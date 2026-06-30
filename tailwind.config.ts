@@ -26,6 +26,13 @@ export default {
           soft: "hsl(var(--ivory-soft))",
           deep: "hsl(var(--ivory-deep))",
         },
+        paper: "hsl(var(--paper))",
+        bone: "hsl(var(--bone))",
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          soft: "hsl(var(--ink-soft))",
+        },
+        oxblood: "hsl(var(--oxblood))",
         wine: {
           DEFAULT: "hsl(var(--wine))",
           soft: "hsl(var(--wine-soft))",
