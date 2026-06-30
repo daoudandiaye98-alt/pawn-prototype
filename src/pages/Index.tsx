@@ -6,17 +6,19 @@ import { DesignerCard } from "@/components/pawn/DesignerCard";
 import { SectionHeading } from "@/components/pawn/SectionHeading";
 import { PageLabel } from "@/components/pawn/PageLabel";
 import { PawnMark } from "@/components/pawn/PawnMark";
+import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
+import { DNAVisual } from "@/components/pawn/DNAVisual";
 import { products, designers } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
   return (
     <PublicLayout>
-      {/* Hero — Light vs Shadow */}
-      <section className="relative border-b border-foreground/10">
+      {/* HERO — true paper vs ink chess split */}
+      <section className="relative">
         <div className="relative grid min-h-[680px] grid-cols-1 md:grid-cols-2">
-          {/* LIGHT */}
-          <article className="relative flex flex-col justify-between bg-gradient-light p-10 md:p-16">
+          {/* PAPER side */}
+          <article className="paper-panel relative flex flex-col justify-between p-10 md:p-16">
             <PageLabel index="01">Light</PageLabel>
             <div className="animate-fade-up">
               <h1 className="font-serif text-[3rem] leading-[0.92] md:text-[5.8rem]">
@@ -35,13 +37,13 @@ const Index = () => {
               </Link>
             </div>
             <div className="flex items-end justify-between text-[0.6rem] uppercase tracking-[0.32em] text-foreground/55">
-              <span>PAWN · Chapter 01</span>
+              <span>PAWN · White</span>
               <span className="pawn-numeral text-foreground/40 text-base">— I</span>
             </div>
           </article>
 
-          {/* SHADOW */}
-          <article className="relative flex flex-col justify-between bg-gradient-shadow p-10 text-primary-foreground md:p-16">
+          {/* INK side */}
+          <article className="ink-panel relative flex flex-col justify-between p-10 md:p-16">
             <PageLabel index="02" className="text-primary-foreground/70">
               Shadow
             </PageLabel>
@@ -62,12 +64,12 @@ const Index = () => {
               </Link>
             </div>
             <div className="flex items-end justify-between text-[0.6rem] uppercase tracking-[0.32em] text-primary-foreground/45">
-              <span>PAWN · Chapter 02</span>
+              <span>PAWN · Black</span>
               <span className="pawn-numeral text-primary-foreground/35 text-base">II —</span>
             </div>
           </article>
 
-          {/* Centerpiece pawn between two worlds */}
+          {/* Centerpiece pawn — the chess pivot */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:block">
             <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-foreground/20 bg-background">
               <PawnMark className="h-12 w-12 text-foreground" />
@@ -77,7 +79,7 @@ const Index = () => {
       </section>
 
       {/* Feature strip */}
-      <section className="border-b border-foreground/10">
+      <section className="ivory-surface border-y border-foreground/10">
         <div className="editorial-container grid grid-cols-2 divide-x divide-foreground/10 md:grid-cols-4">
           {[
             { icon: Hand, label: "Curated by PAWN" },
@@ -86,15 +88,17 @@ const Index = () => {
             { icon: Globe2, label: "Worldwide Shipping" },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center gap-3 px-6 py-7">
-              <Icon className="h-4 w-4 text-accent" strokeWidth={1.4} />
+              <Icon className="h-4 w-4" strokeWidth={1.4} />
               <span className="text-[0.7rem] uppercase tracking-[0.26em]">{label}</span>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Featured Designers */}
-      <section className="py-24">
+      <ChessDivider label="The Houses" />
+
+      {/* Featured Designers — bone surface */}
+      <section className="bone-surface pb-24">
         <div className="editorial-container">
           <div className="flex items-end justify-between gap-6">
             <SectionHeading
@@ -117,8 +121,10 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Pieces */}
-      <section className="border-t border-foreground/10 py-24">
+      <ChessDivider label="The Pieces" />
+
+      {/* Featured Pieces — paper surface */}
+      <section className="paper-surface py-24">
         <div className="editorial-container">
           <div className="flex items-end justify-between gap-6">
             <SectionHeading
@@ -140,68 +146,62 @@ const Index = () => {
         </div>
       </section>
 
-      {/* DNA CTA */}
-      <section className="relative border-t border-foreground/10 bg-gradient-shadow py-28 text-primary-foreground">
-        <div className="editorial-container grid items-center gap-12 md:grid-cols-2">
+      {/* Intelligence band — INK with chess-grid texture */}
+      <section className="relative ink-panel overflow-hidden">
+        <div className="absolute inset-0 chess-grid-light opacity-40" aria-hidden />
+        <div className="editorial-container relative grid items-center gap-12 py-24 md:grid-cols-[1.2fr_0.9fr]">
           <div>
-            <PageLabel index="03" className="text-primary-foreground/60">
-              Your DNA · Your Code
-            </PageLabel>
-            <h2 className="mt-5 font-serif text-5xl leading-[0.95] md:text-7xl">
-              Style is a language.
-              <br />
-              We decode it.
+            <ChapterLabel index="03" invert>Intelligence</ChapterLabel>
+            <h2 className="mt-7 font-serif text-5xl leading-[0.95] md:text-7xl">
+              PAWN is not a shop.
+              <br />It is a system.
             </h2>
-            <p className="mt-7 max-w-lg text-primary-foreground/70">
-              Discover the structural signature behind the way you dress — and
-              the next evolution of your wardrobe.
+            <p className="mt-7 max-w-xl text-primary-foreground/70">
+              An intelligence engine that learns your structural signature, decodes
+              the houses that match it, and predicts the next piece before you do.
             </p>
-            <Button
-              asChild
-              size="lg"
-              className="mt-9 rounded-none bg-primary-foreground px-8 text-primary hover:bg-primary-foreground/90"
-            >
-              <Link to="/dna">Discover your DNA</Link>
-            </Button>
+            <div className="mt-10 flex items-center gap-6">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-none bg-primary-foreground px-8 text-primary hover:bg-primary-foreground/90"
+              >
+                <Link to="/dna">Open your DNA dossier</Link>
+              </Button>
+              <Link
+                to="/designers"
+                className="text-[0.7rem] uppercase tracking-[0.28em] text-primary-foreground/70 hover:text-primary-foreground"
+              >
+                For designers →
+              </Link>
+            </div>
           </div>
-          <div className="aspect-square w-full max-w-md justify-self-end border border-primary-foreground/15 bg-primary/40 backdrop-blur">
-            <svg viewBox="0 0 200 200" className="h-full w-full">
-              <g stroke="hsl(36 35% 92% / 0.45)" fill="none" strokeWidth="0.5">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <circle key={i} cx="100" cy="100" r={20 + i * 10} />
-                ))}
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <line
-                    key={i}
-                    x1="100"
-                    y1="100"
-                    x2={100 + 90 * Math.cos((i * Math.PI) / 6)}
-                    y2={100 + 90 * Math.sin((i * Math.PI) / 6)}
-                  />
-                ))}
-              </g>
-              <text
-                x="100"
-                y="108"
-                textAnchor="middle"
-                fontFamily="Playfair Display"
-                fontSize="44"
-                fill="hsl(36 35% 92%)"
-              >
-                87
-              </text>
-              <text
-                x="100"
-                y="128"
-                textAnchor="middle"
-                fontFamily="Inter"
-                fontSize="6"
-                letterSpacing="3"
-                fill="hsl(36 35% 92% / 0.7)"
-              >
-                DNA SCORE
-              </text>
-            </svg>
+          <div className="flex justify-center text-primary-foreground/80">
+            <DNAVisual className="h-[360px] w-auto" />
+          </div>
+        </div>
+      </section>
+
+      {/* Closing ivory commerce band */}
+      <section className="ivory-surface">
+        <div className="editorial-container grid items-center gap-10 py-20 md:grid-cols-[1.2fr_auto_1fr]">
+          <div>
+            <PageLabel index="04">The Floor</PageLabel>
+            <h3 className="mt-4 font-serif text-4xl leading-[1.02] md:text-5xl">
+              Enter the boutique.
+            </h3>
+            <p className="mt-4 max-w-md text-foreground/65">
+              Every piece on PAWN is selected. Nothing is here by accident.
+            </p>
+          </div>
+          <div className="hidden h-32 w-px bg-foreground/15 md:block" aria-hidden />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button asChild className="rounded-none bg-foreground px-8 text-background hover:bg-foreground/90">
+              <Link to="/shop">Shop the collection</Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-none border-foreground/30">
+              <Link to="/designers/all">Browse designers</Link>
+            </Button>
           </div>
         </div>
       </section>
