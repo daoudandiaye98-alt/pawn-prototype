@@ -2,95 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
-All colors MUST be HSL.
-*/
+/* PAWN Design System — Editorial luxury fashion.
+   All colors in HSL. Tokens only — no ad-hoc colors in components. */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Surfaces */
+    --background: 38 32% 93%;          /* warm ivory canvas */
+    --foreground: 30 8% 12%;           /* near-black charcoal */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --ivory: 38 32% 93%;
+    --ivory-soft: 36 28% 88%;
+    --ivory-deep: 34 22% 82%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --card: 38 28% 96%;
+    --card-foreground: 30 8% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --popover: 38 30% 96%;
+    --popover-foreground: 30 8% 12%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Brand */
+    --primary: 30 8% 10%;              /* near black */
+    --primary-foreground: 38 32% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --secondary: 36 18% 86%;
+    --secondary-foreground: 30 8% 12%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 36 16% 88%;
+    --muted-foreground: 30 6% 38%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 350 45% 25%;             /* deep wine / oxblood */
+    --accent-foreground: 38 32% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --wine: 350 50% 22%;
+    --wine-soft: 350 30% 35%;
+    --beige: 34 24% 78%;
+    --charcoal: 30 8% 18%;
 
-    --radius: 0.5rem;
+    --destructive: 0 60% 40%;
+    --destructive-foreground: 38 32% 95%;
 
-    --sidebar-background: 0 0% 98%;
+    --border: 30 10% 80%;
+    --input: 30 10% 78%;
+    --ring: 30 8% 20%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --radius: 0.125rem;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Admin / portal dark surface */
+    --sidebar-background: 30 6% 8%;
+    --sidebar-foreground: 38 20% 82%;
+    --sidebar-primary: 350 45% 30%;
+    --sidebar-primary-foreground: 38 32% 95%;
+    --sidebar-accent: 30 6% 14%;
+    --sidebar-accent-foreground: 38 32% 95%;
+    --sidebar-border: 30 5% 18%;
+    --sidebar-ring: 350 45% 30%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Gradients & shadows */
+    --gradient-light: linear-gradient(180deg, hsl(38 32% 95%), hsl(36 24% 84%));
+    --gradient-shadow: linear-gradient(180deg, hsl(30 8% 18%), hsl(30 10% 6%));
+    --gradient-wine: linear-gradient(135deg, hsl(350 50% 22%), hsl(20 30% 14%));
+    --shadow-editorial: 0 30px 80px -40px hsl(30 8% 8% / 0.35);
+    --shadow-card: 0 1px 0 0 hsl(30 10% 80%);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 30 6% 8%;
+    --foreground: 38 20% 90%;
+    --card: 30 6% 10%;
+    --card-foreground: 38 20% 90%;
+    --popover: 30 6% 10%;
+    --popover-foreground: 38 20% 90%;
+    --primary: 38 32% 92%;
+    --primary-foreground: 30 8% 10%;
+    --secondary: 30 6% 14%;
+    --secondary-foreground: 38 20% 90%;
+    --muted: 30 6% 14%;
+    --muted-foreground: 30 6% 60%;
+    --accent: 350 45% 35%;
+    --accent-foreground: 38 32% 95%;
+    --border: 30 5% 18%;
+    --input: 30 5% 18%;
+    --ring: 350 45% 35%;
   }
 }
 
@@ -98,8 +91,33 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
+  html, body, #root {
+    @apply min-h-screen;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, h4, .font-serif {
+    font-family: "Cormorant Garamond", "Times New Roman", serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .editorial-eyebrow {
+    @apply text-[0.7rem] uppercase tracking-[0.28em] text-muted-foreground;
+  }
+  .editorial-rule {
+    @apply h-px w-full bg-border;
+  }
+  .editorial-container {
+    @apply mx-auto w-full max-w-[1400px] px-6 md:px-10;
+  }
+  .editorial-card {
+    @apply border border-border bg-card;
+  }
+  .ivory-surface {
+    background-color: hsl(var(--ivory));
   }
 }
