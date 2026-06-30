@@ -3,93 +3,94 @@
 @tailwind utilities;
 
 /* PAWN Design System — Editorial luxury fashion.
-   All colors in HSL. Tokens only — no ad-hoc colors in components. */
+   Strict palette. All colors HSL. Tokens only. */
 
 @layer base {
   :root {
-    /* Surfaces */
-    --background: 38 32% 93%;          /* warm ivory canvas */
-    --foreground: 30 8% 12%;           /* near-black charcoal */
+    /* Surfaces — warm ivory canvas */
+    --background: 36 35% 93%;          /* #F4EFE6 */
+    --foreground: 18 12% 10%;          /* #1D1A18 charcoal text */
 
-    --ivory: 38 32% 93%;
-    --ivory-soft: 36 28% 88%;
-    --ivory-deep: 34 22% 82%;
+    --ivory: 36 35% 93%;               /* #F4EFE6 */
+    --ivory-soft: 34 36% 90%;          /* #EFE7DC */
+    --ivory-deep: 32 28% 84%;          /* warmer panel */
 
-    --card: 38 28% 96%;
-    --card-foreground: 30 8% 12%;
+    --card: 36 32% 95%;
+    --card-foreground: 18 12% 10%;
 
-    --popover: 38 30% 96%;
-    --popover-foreground: 30 8% 12%;
+    --popover: 36 32% 96%;
+    --popover-foreground: 18 12% 10%;
 
-    /* Brand */
-    --primary: 30 8% 10%;              /* near black */
-    --primary-foreground: 38 32% 95%;
+    /* Brand — deep black-brown */
+    --primary: 0 17% 7%;               /* #140D0D */
+    --primary-foreground: 36 35% 95%;
 
-    --secondary: 36 18% 86%;
-    --secondary-foreground: 30 8% 12%;
+    --secondary: 32 22% 84%;           /* #E8DED0 muted beige panel */
+    --secondary-foreground: 18 12% 10%;
 
-    --muted: 36 16% 88%;
-    --muted-foreground: 30 6% 38%;
+    --muted: 32 20% 87%;
+    --muted-foreground: 20 8% 32%;
 
-    --accent: 350 45% 25%;             /* deep wine / oxblood */
-    --accent-foreground: 38 32% 95%;
+    --accent: 0 55% 14%;               /* #3A0D0D oxblood */
+    --accent-foreground: 36 35% 95%;
 
-    --wine: 350 50% 22%;
-    --wine-soft: 350 30% 35%;
-    --beige: 34 24% 78%;
-    --charcoal: 30 8% 18%;
+    --wine: 0 60% 18%;                 /* #4A1212 */
+    --wine-soft: 0 35% 28%;
+    --beige: 32 22% 84%;
+    --charcoal: 18 12% 10%;
 
-    --destructive: 0 60% 40%;
-    --destructive-foreground: 38 32% 95%;
+    --destructive: 0 60% 38%;
+    --destructive-foreground: 36 35% 95%;
 
-    --border: 30 10% 80%;
-    --input: 30 10% 78%;
-    --ring: 30 8% 20%;
+    /* Thin soft border ~ rgba(35,20,15,0.14) */
+    --border: 22 38% 10% / 0.14;
+    --input: 22 38% 10% / 0.22;
+    --ring: 0 55% 14%;
 
-    --radius: 0.125rem;
+    --radius: 0;
 
-    /* Admin / portal dark surface */
-    --sidebar-background: 30 6% 8%;
-    --sidebar-foreground: 38 20% 82%;
-    --sidebar-primary: 350 45% 30%;
-    --sidebar-primary-foreground: 38 32% 95%;
-    --sidebar-accent: 30 6% 14%;
-    --sidebar-accent-foreground: 38 32% 95%;
-    --sidebar-border: 30 5% 18%;
-    --sidebar-ring: 350 45% 30%;
+    /* Inverted admin / portal — #120B0B */
+    --sidebar-background: 0 20% 6%;
+    --sidebar-foreground: 36 25% 84%;
+    --sidebar-primary: 0 55% 18%;
+    --sidebar-primary-foreground: 36 35% 95%;
+    --sidebar-accent: 0 20% 10%;
+    --sidebar-accent-foreground: 36 35% 95%;
+    --sidebar-border: 36 12% 18% / 0.22;
+    --sidebar-ring: 0 55% 22%;
 
     /* Gradients & shadows */
-    --gradient-light: linear-gradient(180deg, hsl(38 32% 95%), hsl(36 24% 84%));
-    --gradient-shadow: linear-gradient(180deg, hsl(30 8% 18%), hsl(30 10% 6%));
-    --gradient-wine: linear-gradient(135deg, hsl(350 50% 22%), hsl(20 30% 14%));
-    --shadow-editorial: 0 30px 80px -40px hsl(30 8% 8% / 0.35);
-    --shadow-card: 0 1px 0 0 hsl(30 10% 80%);
+    --gradient-light: linear-gradient(180deg, hsl(36 35% 95%), hsl(32 26% 84%));
+    --gradient-shadow: linear-gradient(180deg, hsl(0 17% 9%), hsl(0 20% 4%));
+    --gradient-wine: linear-gradient(135deg, hsl(0 55% 14%), hsl(15 30% 10%));
+    --shadow-editorial: 0 30px 80px -40px hsl(0 0% 0% / 0.35);
+    --shadow-card: 0 1px 0 0 hsl(22 38% 10% / 0.10);
   }
 
   .dark {
-    --background: 30 6% 8%;
-    --foreground: 38 20% 90%;
-    --card: 30 6% 10%;
-    --card-foreground: 38 20% 90%;
-    --popover: 30 6% 10%;
-    --popover-foreground: 38 20% 90%;
-    --primary: 38 32% 92%;
-    --primary-foreground: 30 8% 10%;
-    --secondary: 30 6% 14%;
-    --secondary-foreground: 38 20% 90%;
-    --muted: 30 6% 14%;
-    --muted-foreground: 30 6% 60%;
-    --accent: 350 45% 35%;
-    --accent-foreground: 38 32% 95%;
-    --border: 30 5% 18%;
-    --input: 30 5% 18%;
-    --ring: 350 45% 35%;
+    --background: 0 20% 6%;
+    --foreground: 36 25% 90%;
+    --card: 0 20% 8%;
+    --card-foreground: 36 25% 90%;
+    --popover: 0 20% 8%;
+    --popover-foreground: 36 25% 90%;
+    --primary: 36 35% 92%;
+    --primary-foreground: 0 17% 7%;
+    --secondary: 0 12% 12%;
+    --secondary-foreground: 36 25% 90%;
+    --muted: 0 10% 12%;
+    --muted-foreground: 36 10% 58%;
+    --accent: 0 55% 22%;
+    --accent-foreground: 36 35% 95%;
+    --border: 36 12% 80% / 0.12;
+    --input: 36 12% 80% / 0.16;
+    --ring: 0 55% 30%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   html, body, #root {
     @apply min-h-screen;
@@ -98,26 +99,45 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3, h4, .font-serif {
-    font-family: "Cormorant Garamond", "Times New Roman", serif;
-    letter-spacing: -0.01em;
+  h1, h2, h3, h4, .font-serif, .font-display {
+    font-family: "Playfair Display", "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    letter-spacing: -0.015em;
+    font-weight: 500;
+  }
+  .font-cormorant {
+    font-family: "Cormorant Garamond", Georgia, serif;
   }
 }
 
 @layer components {
   .editorial-eyebrow {
-    @apply text-[0.7rem] uppercase tracking-[0.28em] text-muted-foreground;
+    @apply text-[0.65rem] uppercase tracking-[0.32em] text-muted-foreground;
   }
   .editorial-rule {
-    @apply h-px w-full bg-border;
+    height: 1px;
+    width: 100%;
+    background: hsl(var(--border));
   }
   .editorial-container {
-    @apply mx-auto w-full max-w-[1400px] px-6 md:px-10;
+    @apply mx-auto w-full max-w-[1440px] px-6 md:px-10;
   }
   .editorial-card {
-    @apply border border-border bg-card;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
   }
   .ivory-surface {
     background-color: hsl(var(--ivory));
+  }
+  .pawn-numeral {
+    font-family: "Playfair Display", serif;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+  }
+  /* Subtle vertical scan lines used as PAWN texture overlay */
+  .pawn-grain {
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.025) 1px, transparent 1px);
+    background-size: 100% 6px;
   }
 }
