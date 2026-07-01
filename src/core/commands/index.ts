@@ -42,6 +42,32 @@ export const clearCart = (_state: DomainState, p: C.ClearCartPayload): CommandRe
   events: [{ type: "cart.cleared", actor: p.identityId, payload: p }],
 });
 
+let orderSeq = 0;
+export const placeOrder = (_state: DomainState, p: C.PlaceOrderPayload): CommandResult => {
+  if (p.items.length === 0) return { ok: false, reason: "Cart is empty" };
+  orderSeq += 1;
+  const orderId = asOrderId(`ord_${Date.now().toString(36)}_${orderSeq}`);
+  const placedAt = new Date().toISOString();
+  return {
+    ok: true,
+    events: [
+      {
+        type: "order.placed",
+        actor: p.identityId,
+        payload: {
+          identityId: p.identityId,
+          orderId,
+          items: p.items,
+          total: p.total,
+          customerLabel: p.customerLabel,
+          placedAt,
+        },
+      },
+      { type: "cart.cleared", actor: p.identityId, payload: { identityId: p.identityId } },
+    ],
+  };
+};
+
 // Mutations
 let mutationSeq = 0;
 export const proposeMutation = (state: DomainState, p: C.ProposeMutationPayload): CommandResult => {
