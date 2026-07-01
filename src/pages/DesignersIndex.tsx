@@ -6,6 +6,7 @@ import { useStore, marketplaceSelectors } from "@/core";
 import { Button } from "@/components/ui/button";
 
 const DesignersIndex = () => {
+  const designers = useStore(marketplaceSelectors.getAllDesignerViews);
   return (
     <PublicLayout>
       <section className="border-b border-border bg-gradient-light">
