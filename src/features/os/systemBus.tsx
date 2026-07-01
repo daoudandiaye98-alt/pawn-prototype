@@ -76,7 +76,7 @@ const CHAINS: Record<OsAction, Omit<CausalStep, "id" | "at">[]> = {
     { action: "designer.approve", label: "als Designer freigegeben", actor: "Governance", tone: "positive", targets: ["marketplace"], effect: "+1 aktiver Designer" },
     { action: "dna.recompute", label: "Customer-DNA rekalibriert für neues Sortiment", actor: "DNA Engine", tone: "neutral", targets: ["dna", "identity"], effect: "284 Identitäten aktualisiert" },
     { action: "recommender.rebuild", label: "Recommendation Graph neu aufgebaut", actor: "Recommender", tone: "neutral", targets: ["recommender", "vector"], effect: "42 Karten neu bewertet" },
-    { action: "insight.act", label: "AI Observer: „Neuer Designer erweitert Shadow-Cluster um 6 %"", actor: "AI Observer", tone: "positive", targets: ["revenue"], effect: "Prognose +€4.2K" },
+    { action: "insight.act", label: "AI Observer: Neuer Designer erweitert Shadow-Cluster um 6 %", actor: "AI Observer", tone: "positive", targets: ["revenue"], effect: "Prognose +€4.2K" },
   ],
   "designer.reject": [
     { action: "designer.reject", label: "Application abgelehnt · Feedback gesendet", actor: "Governance", tone: "warn", targets: ["marketplace"] },
