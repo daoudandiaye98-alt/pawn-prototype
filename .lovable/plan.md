@@ -1,140 +1,99 @@
-# PAWN — Coherence Pass v1
-"One organism, three nervous-system projections."
 
----
+# PAWN — Frontend Evolution v1
 
-## Part A — Architectural Audit
+Goal: one design language across public, customer, designer, admin. Fix primitives first, then migrate pages. Zero changes to routing, state, or business logic.
 
-Classification: 🟢 production-ready · 🟡 prototype-real (works end-to-end, needs hardening) · 🟠 simulated (UI only) · 🔴 missing.
+## Phase 1 — Audit & language lock (no code yet mentally, first commits are tokens)
 
-### A1. Event backbone
-| Area | State | Notes |
-|---|---|---|
-| `src/core` event log + reducers + selectors | 🟢 | Deterministic, tested (30 specs), snapshot/compaction ready. |
-| `domain_events` table + RLS | 🟡 | Persists events for signed-in users; only `order.placed` currently whitelisted. |
-| Local↔remote hydration | 🟡 | Replays remote on top of local; no conflict strategy, no realtime. |
-| Public/customer events (view, save, follow, stylist, dna.open) | 🔴 | Fired nowhere — biggest gap. |
-| Designer publish/edit events | 🔴 | Portal is read-only mocks. |
-| OS causal chains → real events | 🟠 | `systemBus` is a UI-only fan-out. Not written to `domain_events`. |
+Audit sweep across `src/pages/**`, `src/components/pawn/**`, admin/portal shells. Catalogue every ad-hoc:
+- card / panel / bordered box variant
+- KPI / stat display
+- section header / eyebrow / chapter label
+- button + link treatment
+- table / list row
+- empty & loading state
+- explanation / tooltip / rationale block
+- badge / pill / tag
+- divider / hairline / chess seam
 
-### A2. DNA layer
-| Surface | State |
-|---|---|
-| `/dna` dossier | 🟡 real selectors |
-| Product Card DNA match | 🔴 |
-| Product Detail "why this fits" | 🔴 |
-| Designer page alignment | 🔴 |
-| Shop filter by DNA direction | 🔴 |
-| Cart wardrobe impact | 🔴 |
-| Account DNA history | 🔴 |
-| Designer audience clusters | 🟠 (static) |
-| Admin global cluster shifts | 🟠 (static) |
+Outcome: a written primitive map (in `src/docs/DESIGN_LANGUAGE.md`) naming each primitive, its rules, and every current offender to replace.
 
-No shared `dnaMatch(identity, product)` selector exists yet — every surface would reinvent it.
+## Phase 2 — Token & rule hardening (`src/index.css`, `tailwind.config.ts`)
 
-### A3. Role security
-| Control | State |
-|---|---|
-| Frontend `RoleGate` | 🟡 prototype pass-through when signed-out |
-| `has_role()` SQL function | 🟢 |
-| `user_roles` RLS | 🟢 |
-| `domain_events` RLS restricts write to own `user_id` | 🟡 verify `event_type` allow-list |
-| Admin-only event guard (server-side) | 🔴 no check that only admins emit `designer.approve`, `prompt.deploy`, etc. |
-| Designer isolation on writes | 🔴 no `designer_id` scoping on future product tables |
-| Customer isolation on reads | 🟢 for `profiles`, 🟡 for events |
+Lock the language before touching components:
+- Type scale: 4 display sizes (Playfair) + 3 body sizes (Inter) + eyebrow. Named utilities: `.t-display-xl/lg/md/sm`, `.t-body-lg/md/sm`, `.t-eyebrow`, `.t-numeral`. No other font sizes allowed in pages.
+- Spacing rhythm: 4 / 8 / 16 / 24 / 40 / 64 / 96. Section vertical padding standardized (`.section-y`).
+- Surface hierarchy: `paper` (editorial silence) → `ivory` (commerce body) → `bone` (secondary panel) → `ink` (control/admin). Codify allowed nesting.
+- Border language: only `hairline` (1px `--border`) and `hairline-strong`. No shadows on public; single `--shadow-editorial` reserved for overlays.
+- Color semantics: oxblood = decision only; gold = rare accolade accent (new token `--gold: 40 35% 55%`); ink = authority; ivory/paper = calm.
+- Motion: one easing (`cubic-bezier(.2,.7,.2,1)`), two durations (180ms micro, 520ms reveal). Utility `.motion-reveal`, `.motion-hover`.
+- Radius: 0 everywhere (already). Enforce by removing rounded-* from primitives.
 
-### A4. Surfaces
-| Surface | Projection quality |
-|---|---|
-| Customer Account | Orders-centric, not identity-centric. |
-| Designer Studio | Rich UI, zero writes, no audience-cluster selector. |
-| Admin Command Deck | Strong; missing "one decision today" primary layer. |
-| Public site | Disconnected from event log. |
+## Phase 3 — Primitive library (`src/components/pawn/primitives/`)
 
-### A5. Highest-risk simulated parts (fix first)
-1. Customer interactions never touch the event log → the "living system" claim is false.
-2. Server-side event allow-list per role is missing → any client could persist `designer.approve`.
-3. DNA is a page, not a layer → no shared selector.
-4. `systemBus` chains are pure UI theatre → must be seeded by real events (own or subscribed).
+Extract 11 primitives. Each ships with variants + stories in `src/docs/DESIGN_LANGUAGE.md`.
 
----
+```text
+Panel            surface container: variants paper|ivory|bone|ink, padding sm|md|lg, optional eyebrow+title+action slot
+SectionHeader    eyebrow · numeral · title · description · trailing action; one grammar for every page
+Metric           label · value (numeral) · delta · rationale tooltip; replaces StatCard + inline KPIs
+Timeline         vertical event stream (used by Activity, Provenance, Mutation Path)
+Activity         event row (actor · verb · object · time · dna tag)
+Insight          reasoning card: cause → effect → confidence; replaces ad-hoc "why"
+Recommendation   subject · rationale · action; used by Shop, Cockpit, Portal
+Command          decision affordance (oxblood pill or ink button); replaces mixed CTAs
+Status           dot + label + tone (live|watch|risk|calm)
+DnaBadge         already exists — normalize sizes, unify rationale slot
+IdentityChip     avatar/mono glyph + name + role
+```
 
-## Part B — Execution Plan (7 vertical slices)
+Also standardize:
+- `Button` variants pruned to: `ink` (primary), `paper` (secondary), `ghost`, `decision` (oxblood, single-per-view rule documented). Remove default shadcn blues.
+- `Hairline`, `ChessSeam`, `ChapterLabel` consolidated under `primitives/`.
 
-Each slice is shippable, testable, and preserves the visual language. No visual redesign; only additions consistent with the ivory/ink/oxblood moodboard.
+## Phase 4 — Shell unification
 
-### Slice 1 — Role security & event boundaries (foundation)
-- Extend `domain_events` schema: `role_required` allow-list enforced by a `BEFORE INSERT` trigger + `has_role()`.
-- Whitelist per event_type:
-  - customer: `product.viewed|saved|unsaved`, `designer.followed|unfollowed`, `dna.opened`, `stylist.used`, `cart.*`, `order.placed`, `mutation.proposed`.
-  - designer: `product.drafted|published|updated`, `collection.*`, `payout.requested`.
-  - admin: `designer.approved|rejected`, `prompt.deployed|rolledback`, `policy.updated`, `plugin.enabled`, `broadcast.sent`, `mutation.ratified`.
-- Harden `RoleGate` so signed-in users without a role can't read admin/portal surfaces; keep anonymous prototype banner.
-- Tests: RLS reject matrix.
+- `PublicLayout`, `AdminShell`, `PortalShell` share a single `Shell` grammar: sticky utility bar, main header, section grid (12-col, 40px gutters desktop, 16 mobile), footer/hairline. Sidebars become `NavRail` primitive with identical typographic rhythm in ink vs ivory.
+- One `PageHeader` (eyebrow · numeral · h1 · lede · action) used by every route.
 
-### Slice 2 — Event flow unification (customer)
-- New file `src/core/events/customer.ts` exposing `emitProductViewed`, `emitProductSaved`, `emitDesignerFollowed`, `emitDnaOpened`, `emitStylistUsed`, `emitMutationProposed`.
-- Wire into `ProductCard` (view on intersection, save on click), `ProductDetail`, `DesignerPage`, `DNA` page open, `Cart`, `Checkout`, `Stylist` CTA.
-- Reducer updates: identity `savedCount`, `followsCount`, `dna.mutations` (proposed).
-- Persisted via existing supabase adapter (extend whitelist).
+## Phase 5 — Page migration (presentation only)
 
-### Slice 3 — DNA as a layer
-- New selector `src/core/selectors/dna.ts`:
-  - `dnaMatch(state, identityId, productId): { score: 0..1, topAxes, rationale[] }`
-  - `dnaAlignment(state, identityId, designerId)`
-  - `wardrobeImpact(state, identityId, cart)`
-- New component `DnaBadge` (ivory ring + % + tooltip w/ rationale).
-- Integrate into ProductCard, ProductDetail ("Warum es passt"), DesignerPage, Cart summary, Shop filter chip ("Light / Shadow / Structure / Edge").
-- Selector is pure; UI reuses same rationale everywhere → coherence.
+Route-by-route, replace local implementations with primitives. No logic changes.
 
-### Slice 4 — Customer Identity Archive
-- Restructure `Account.tsx` into tabs, DNA-first:
-  1. Identity Timeline (from event log, own events)
-  2. DNA History (mutations + version diffs)
-  3. Saved Signals (products saved + why)
-  4. Wardrobe Map (chess-grid of saved items by axis)
-  5. Designer Affinity
-  6. Recommendation Reasons
-  7. Privacy (Freeze DNA · Export DNA JSON · Delete)
-  8. Secondary: Orders · Wishlist · Addresses · Payment
-- New selectors `getIdentityTimeline`, `getDnaHistory`, `getDesignerAffinity`.
-- "Freeze DNA" emits `dna.frozen` → dnaEvolution policy skips proposals.
+1. Home (`Index.tsx`) — SectionHeader + Panel + Recommendation
+2. DNA — Panel(paper) + Metric + Timeline (Mutation Path) + Insight
+3. Shop — SectionHeader + filter rail as Panel(bone) + ProductCard already primitive; align spacing/typography
+4. Product Detail — PageHeader + Panel + Insight (DNA match) + Command
+5. Designers / DesignerPage — PageHeader + IdentityChip + Metric + Recommendation
+6. Cart / Checkout — Panel + Metric (totals) + Command (oxblood, single)
+7. Account — PageHeader + Timeline (order/activity) + Metric + Insight
+8. Portal (Overview, Editor, others) — Shell + Panel + Metric + Activity + Recommendation
+9. Admin (Overview, DNA, AI, Products) — Shell(ink) + Metric + Timeline + Insight + Command; Cockpit reasoning already fits Insight
+10. Auth / Apply / NotFound — PageHeader + Panel
 
-### Slice 5 — Designer Studio Intelligence
-- Studio-scoped selectors in `src/core/selectors/portal.ts`:
-  - `getAudienceClusters(designerId)` — aggregates identities whose dossier top-axes overlap w/ designer's products.
-  - `getProductOpportunities(designerId)` — axis gaps vs demand.
-  - `getRankingExplanations(productId)`.
-  - `getFulfillmentQueue(designerId)`, `getPayoutStatus(designerId)`.
-- Guard: selectors reject if `designerId !== session.designerId`.
-- No admin surfaces linked from Studio.
+Each page PR removes: local card divs, ad-hoc borders, inline font sizes, stray colors, rogue rounded corners.
 
-### Slice 6 — Admin Decision Layer
-- New selector `getPrimaryDecision(state): Decision` returning `{observation, cause, impact, risk, recommended, alternatives[], expected}`.
-- New panel `PrimaryDecisionCard` at top of `AdminOverview`, above KPIs.
-- Buttons call `useCommand` → real domain events (which then fan out into `systemBus` — bus becomes a *view* of real events, not the source).
-- Decision generator uses simple rules over recent events (revenue delta, inventory risk, cluster migration).
+## Phase 6 — Cleanup & guardrails
 
-### Slice 7 — Bus becomes projection, not source
-- Refactor `systemBus`: subscribe to `useDomainEvents()` and derive `feed`/`engines` from real events + a small "expected downstream" map.
-- Remove synthetic `fire()` demo button; keep for admin QA behind `?debug=1`.
-- All three surfaces now consume the same event stream, projected differently.
+- Delete unused old components once no references remain (`StatCard` → alias to `Metric` for one release, then remove).
+- Add ESLint rule / doc note forbidding raw `text-white`, `bg-black`, hex literals, arbitrary `text-[..]` sizes in `src/pages` and `src/components/pawn` (documented; lint rule optional).
+- Vitest snapshot on primitives; visual smoke via existing Playwright to confirm no route regressions.
+- Update `src/docs/DESIGN_LANGUAGE.md` with the final map and "how to add a new screen" checklist.
 
----
+## Out of scope
 
-## Part C — Ordering & risk
+Routing, domain core, Supabase, commands, selectors, auth. No new features. Presentation layer only.
 
-Order matches priority: 1 → 7. Slice 1 must ship first (security). Slices 2 and 3 unlock the "DNA everywhere" and "living system" claims. Slices 4–6 are surface projections built on the same substrate. Slice 7 flips the causality direction so no surface lies.
+## Deliverables
 
-Rollback: each slice is independent; feature-flag `VITE_PAWN_EVENTS_V2` gates client emits during Slice 2 rollout.
+1. `DESIGN_LANGUAGE.md` — tokens, primitives, rules, offender list.
+2. Token hardening in `index.css` + `tailwind.config.ts`.
+3. `src/components/pawn/primitives/` library (11 primitives + shell parts).
+4. Every page under `src/pages/**` migrated to primitives.
+5. Summary at end: primitives introduced, inconsistencies removed, future screens that inherit the language automatically.
 
-## Part D — Non-goals
-- No visual redesign.
-- No new routes.
-- No new pages beyond restructured Account tabs.
-- No AI provider swap.
-- No plugin runtime work.
+## Risks
 
----
-
-Approve to start Slice 1 (role security + event allow-list trigger + RLS reject tests). I'll ship slices sequentially with typecheck + targeted tests between each.
+- Large surface area — mitigated by phasing: tokens → primitives → pages, each independently verifiable.
+- Silent visual drift on migration — mitigated by keeping ProductCard/DnaBadge visual identity intact and diffing screenshots per route.
+- Temporary duplication while old + new coexist — bounded to one phase; removals happen in Phase 6.
