@@ -8,6 +8,7 @@ import { ProductImage } from "@/components/pawn/ProductImage";
 import { cn } from "@/lib/utils";
 
 const AdminProducts = () => {
+  const products = useStore(marketplaceSelectors.getAllProductViews);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("All");
   const cats = ["All", "Outerwear", "Tops", "Bottoms", "Bags", "Accessories"];
