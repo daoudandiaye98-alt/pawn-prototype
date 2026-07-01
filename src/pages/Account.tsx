@@ -65,6 +65,7 @@ function Overview() {
 }
 
 function Orders({ compact = false }: { compact?: boolean }) {
+  const customerOrders = useStore(selectors.getCustomerOrders);
   return (
     <div>
       <h2 className="font-serif text-2xl">{compact ? "Recent orders" : "All orders"}</h2>
