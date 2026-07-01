@@ -38,7 +38,7 @@ const PAD: Record<Padding, string> = {
   lg:   "p-8 md:p-10",
 };
 
-export interface PanelProps extends HTMLAttributes<HTMLElement> {
+export interface PanelProps extends Omit<HTMLAttributes<HTMLElement>, "title"> {
   surface?: Surface;
   padding?: Padding;
   eyebrow?: string;
