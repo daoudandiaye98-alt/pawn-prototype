@@ -1,20 +1,18 @@
 // Thin adapter over the core store — public API preserved so no page needs to change.
 import { useMemo, type ReactNode } from "react";
-import { Product, products } from "@/data/mock";
-import { useStore } from "@/core/react/useStore";
-import { useCommand } from "@/core/react/useCommand";
-import { commands, defaultIdentityId, marketplaceSelectors } from "@/core";
+import type { ProductView } from "@/core";
+import { useStore, useCommand, commands, defaultIdentityId, marketplaceSelectors, toProductView } from "@/core";
 import type { ProductId } from "@/core/types/ids";
 
 export interface CartItem {
-  product: Product;
+  product: ProductView;
   size: string;
   qty: number;
 }
 
 export interface CartCtx {
   items: CartItem[];
-  add: (product: Product, size: string) => void;
+  add: (product: ProductView, size: string) => void;
   remove: (id: string, size: string) => void;
   setQty: (id: string, size: string, qty: number) => void;
   clear: () => void;
@@ -29,13 +27,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart(): CartCtx {
   const cart = useStore((s) => marketplaceSelectors.getCart(s));
+  const products = useStore(marketplaceSelectors.getAllProducts);
+  const designers = useStore(marketplaceSelectors.getAllDesigners);
   const dispatch = useCommand();
 
   return useMemo(() => {
+    const designerById = new Map(designers.map((d) => [d.id as string, d]));
+    const productById = new Map(products.map((p) => [p.id as string, p]));
+
     const items: CartItem[] = cart.lines
       .map((line) => {
-        const product = products.find((p) => p.id === (line.productId as string));
-        return product ? { product, size: line.size, qty: line.qty } : null;
+        const product = productById.get(line.productId as string);
+        if (!product) return null;
+        return {
+          product: toProductView(product, designerById.get(product.designerId as string)),
+          size: line.size,
+          qty: line.qty,
+        };
       })
       .filter((x): x is CartItem => x !== null);
 
@@ -56,5 +64,5 @@ export function useCart(): CartCtx {
         dispatch(commands.clearCart, { identityId: defaultIdentityId });
       },
     };
-  }, [cart, dispatch]);
+  }, [cart, products, designers, dispatch]);
 }

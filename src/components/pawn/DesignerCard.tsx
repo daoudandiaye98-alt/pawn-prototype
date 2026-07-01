@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { Designer } from "@/data/mock";
+import type { DesignerView } from "@/core";
 import { ProductImage } from "./ProductImage";
 
-export function DesignerCard({ designer }: { designer: Designer }) {
+export function DesignerCard({ designer }: { designer: DesignerView }) {
   return (
     <Link to={`/designer/${designer.slug}`} className="group block">
       <ProductImage seed={designer.slug + "_d"} className="aspect-[4/5] w-full" label={designer.location} />
