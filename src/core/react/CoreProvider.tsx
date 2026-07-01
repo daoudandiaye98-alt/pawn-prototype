@@ -96,7 +96,6 @@ export function CoreProvider({ children, adapter, userId }: CoreProviderProps) {
     return () => { cancelled = true; };
   }, [remoteAdapter, log]);
 
-  const listenersRef = useRef(new Set<() => void>());
   const subscribe = useCallback((listener: () => void) => {
     listenersRef.current.add(listener);
     return () => { listenersRef.current.delete(listener); };
@@ -116,9 +115,10 @@ export function CoreProvider({ children, adapter, userId }: CoreProviderProps) {
     setState(next);
     void memAdapter.append(emitted);
     void localAdapter.append(emitted);
+    if (remoteAdapter) void remoteAdapter.append(emitted);
     listenersRef.current.forEach((l) => l());
     return result;
-  }, [log, localAdapter, memAdapter]);
+  }, [log, localAdapter, memAdapter, remoteAdapter]);
 
   const api = useMemo<StoreApi>(() => ({
     getState: () => stateRef.current,
