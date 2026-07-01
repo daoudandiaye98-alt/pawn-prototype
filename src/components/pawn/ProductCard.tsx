@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { Product } from "@/data/mock";
+import type { ProductView } from "@/core";
 import { ProductImage } from "./ProductImage";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product }: { product: ProductView }) {
   return (
     <Link to={`/product/${product.slug}`} className="group block">
       <div className="overflow-hidden">

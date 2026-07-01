@@ -1,5 +1,9 @@
 import type { DomainState } from "../reducers/root";
 import type { DesignerId } from "../types/ids";
+import { memoByStateAndKey } from "./memo";
+import { seedRevenueSeries, seedMonthsShort } from "../seed";
+import type { OrderView, ProductView } from "../views/product";
+import { toOrderView, toProductView } from "../views/product";
 
 export interface DesignerPortalOverview {
   designerId: DesignerId | null;
@@ -35,3 +39,28 @@ export function getDesignerPortalOverview(state: DomainState, designerId?: Desig
     revenueAttributed,
   };
 }
+
+export interface StudioOverview {
+  designerName: string;
+  products: ProductView[];
+  orders: OrderView[];
+  revenueSeries: number[];
+  months: string[];
+}
+
+export const getStudioOverview = memoByStateAndKey(
+  (state: DomainState, designerId: DesignerId | "primary"): StudioOverview => {
+    const designers = Object.values(state.marketplace.designers);
+    const designer = designerId === "primary" ? designers[0] : state.marketplace.designers[designerId];
+    const scoped = designer
+      ? Object.values(state.marketplace.products).filter((p) => p.designerId === designer.id)
+      : [];
+    return {
+      designerName: designer?.name ?? "—",
+      products: scoped.map((p) => toProductView(p, designer)),
+      orders: state.marketplace.orders.map(toOrderView),
+      revenueSeries: seedRevenueSeries,
+      months: seedMonthsShort,
+    };
+  },
+);

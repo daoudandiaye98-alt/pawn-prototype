@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
@@ -9,20 +9,36 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Heart } from "lucide-react";
-import { productBySlug, products } from "@/data/mock";
+import {
+  useStore, marketplaceSelectors, toProductView, defaultIdentityId,
+} from "@/core";
 import { useCart } from "@/store/cart";
 import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const product = productBySlug(id ?? "asymmetric-coat");
+  const slug = id ?? "asymmetric-coat";
+
+  const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug) ?? marketplaceSelectors.getAllProducts(s)[0]);
+  const designer = useStore((s) => marketplaceSelectors.getDesignerById(s, coreProduct.designerId as string));
+  const designerProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreProduct.designerId));
+  const recommendations = useStore((s) => marketplaceSelectors.getRecommendedProducts(s, defaultIdentityId));
+  const allDesigners = useStore(marketplaceSelectors.getAllDesigners);
   const cart = useCart();
+
+  const product = useMemo(() => toProductView(coreProduct, designer), [coreProduct, designer]);
+
+  const related = useMemo(() => {
+    const designerById = new Map(allDesigners.map((d) => [d.id as string, d]));
+    return designerProducts
+      .filter((p) => p.id !== coreProduct.id)
+      .slice(0, 3)
+      .map((p) => ({ view: toProductView(p, designerById.get(p.designerId as string)), recId: recommendations.find((r) => r.productId === p.id)?.id }));
+  }, [designerProducts, allDesigners, coreProduct.id, recommendations]);
 
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
   const [activeImg, setActiveImg] = useState(0);
-
-  const related = products.filter((p) => p.designer === product.designer && p.id !== product.id).slice(0, 3);
 
   function addToBag() {
     cart.add(product, size);
@@ -143,7 +159,11 @@ const ProductDetail = () => {
           <div className="editorial-container">
             <p className="editorial-eyebrow">More from {product.designer}</p>
             <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((p) => <ProductCard key={p.id} product={p} />)}
+              {related.map(({ view, recId }) => (
+                <div key={view.id} data-recommendation-id={recId ?? undefined}>
+                  <ProductCard product={view} />
+                </div>
+              ))}
             </div>
           </div>
         </section>

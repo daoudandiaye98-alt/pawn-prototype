@@ -1,328 +1,177 @@
 
-# PAWN — `src/core/` Implementation Plan (Item 1)
+# PAWN — Core Migration Plan v1
 
-Introduce the missing middle. No visible product changes, no backend, no real AI. When merged: every page still renders identically, but domain meaning has moved out of `mock.ts` and page components into a framework-free core that a future Supabase adapter can drop behind.
+Goal: pages stop importing `@/data/mock` and instead read via `useStore(selector)` + `useCommand()` from `src/core`. No visual changes, no new features, no route changes. The `mock.ts` shim stays alive until the final phase, then is deleted.
 
----
+## Ground rules (apply to every phase)
 
-## 0. Guiding rules
+- One page (or one small cluster) per PR-sized step. Ship, verify, then continue.
+- Legacy denormalized shapes (`Product`, `Designer`, `Order` in `mock.ts`) stay untouched until the last phase. New selectors return **core entities** — pages adapt at the call site with tiny local `toView(entity)` mappers when a component still expects the legacy shape.
+- Every migrated page: typecheck clean, prod build clean, route renders, DOM diff visually unchanged.
+- No selector may return a freshly-allocated object/array on each call unless memoised (see Selector Identity Stability).
 
-- **Framework-free.** `src/core/` never imports React, Vite, or Tailwind.
-- **Pure by default.** Reducers, selectors, policies are pure functions of `(state, event)` or `(state)`.
-- **Events are the only writer.** Commands produce events; reducers fold events; selectors read state. No component mutates domain state directly.
-- **Backward compatible.** `src/data/mock.ts` continues to re-export shapes so existing pages keep compiling during migration. It becomes a thin adapter over `core/seed.ts`.
-- **No visual regressions.** Migration is behind-the-scenes. The only React-facing addition is a `CoreProvider` and typed hooks that mirror what pages already consume.
+## Selector identity stability rules
 
----
+Enforced by convention + a lint-style checklist in `src/core/README.md`:
 
-## 1. Directory layout
+1. Selectors that return a **primitive**, a **stored reference**, or `undefined` — safe.
+2. Selectors that derive a new object/array — must either:
+   - use a module-level `WeakMap<DomainState, Result>` cache keyed by state, or
+   - use a small keyed cache (as `getCart` does with `emptyCartCache`), or
+   - be composed at the component boundary with `useMemo(() => derive(x), [x])`.
+3. Aggregate selectors that fan out (`getRecommendedProducts`, `getAlignedDesigners`) get a `WeakMap<DomainState, Map<IdentityId, Result>>` memo.
+4. Rule of thumb baked into every new selector file header: "same state in → same reference out."
 
-```text
-src/core/
-├── README.md
-├── index.ts                       # public surface (types + hooks + commands)
-├── types/
-│   ├── ids.ts                     # branded IDs (IdentityId, ProductId, …)
-│   ├── entities.ts                # all entity interfaces
-│   ├── events.ts                  # discriminated union of DomainEvent
-│   ├── commands.ts                # command payload types
-│   └── provenance.ts              # Provenance, ReasonCode
-├── events/
-│   ├── log.ts                     # append-only in-memory EventLog
-│   ├── emit.ts                    # emit(event) → log + reducers + subscribers
-│   └── subscribe.ts               # motion-event contract subscription
-├── reducers/
-│   ├── identity.ts
-│   ├── marketplace.ts
-│   ├── aiGovernance.ts
-│   ├── plugin.ts
-│   ├── audit.ts
-│   └── root.ts                    # combines into DomainState
-├── selectors/
-│   ├── identity.ts                # getIdentityDossier, getStyleGenome, getMutationPath
-│   ├── marketplace.ts             # getRecommendedProducts, getAlignedDesigners, getCart
-│   ├── admin.ts                   # getAdminOverview
-│   ├── portal.ts                  # getDesignerPortalOverview
-│   ├── ai.ts                      # getAiControlState
-│   └── provenance.ts              # getProvenanceTrace(entityId)
-├── commands/
-│   ├── identity.ts                # recordProductView, saveProduct, followDesigner
-│   ├── cart.ts                    # addToCart, removeFromCart, setQty
-│   ├── mutation.ts                # proposeMutation, ratifyMutation, rejectMutation
-│   ├── ai.ts                      # updateAgentPrompt, enablePlugin, disablePlugin
-│   └── index.ts
-├── policies/
-│   ├── dnaEvolution.ts            # damping rules: propose only; ratify to write
-│   ├── recommendation.ts          # ranking + provenance construction
-│   ├── access.ts                  # role gates (mirrors future RLS)
-│   └── memory.ts                  # what AI may recall
-├── engines/
-│   ├── identity.ts                # command handlers → events
-│   ├── marketplace.ts
-│   ├── ai.ts
-│   ├── governance.ts
-│   ├── plugin.ts
-│   ├── evolution.ts               # analyses signals → proposes mutations
-│   └── analytics.ts               # derived read models over event log
-├── adapters/
-│   ├── memory.ts                  # in-memory persistence (default)
-│   ├── localStorage.ts            # optional: hydrate/persist event log
-│   └── PersistenceAdapter.ts      # interface both above implement
-├── seed/
-│   ├── index.ts                   # buildSeedEvents() → replay to genesis state
-│   ├── designers.ts
-│   ├── products.ts
-│   ├── orders.ts
-│   └── dna.ts
-└── react/
-    ├── CoreProvider.tsx           # wraps app, owns store + subscribers
-    ├── useStore.ts                # subscribe to selector
-    ├── useCommand.ts              # dispatch a command
-    └── useDomainEvents.ts         # motion-event subscription
+## localStorage event log compaction
 
-src/docs/
-├── ARCHITECTURE.md                # NEW — layered model, engines, event flow
-└── BACKEND.md                     # REWRITTEN — event store + projections
-```
+Current risk: append-only log in `localStorage` grows without bound.
+
+Strategy (design only, implemented in a later step, no behaviour change now):
+
+- Threshold: when log length exceeds `COMPACTION_THRESHOLD = 500` events **or** serialised size > 256 KB, run a compaction pass on next `emit`.
+- Compaction = fold all events into current `DomainState`, then rewrite the log as a **single `SnapshotRestored` genesis event** carrying the snapshot payload, followed by any events that arrived during the fold.
+- Snapshot schema versioned: `{ v: 1, state, at }`. Version mismatch on load ⇒ discard snapshot, replay from seed genesis.
+- Separate keys: `pawn.core.log.v1` (events) + `pawn.core.snapshot.v1` (snapshot). Snapshot loaded first, then log replayed on top.
+- Feature flag `CORE_COMPACTION_ENABLED = false` until we have vitest coverage of the fold/restore round-trip.
+
+## Minimum vitest coverage before touching pages
+
+Add `src/core/__tests__/` with the following before Phase 2:
+
+1. `reducers/identity.spec.ts` — DNA evolution: axis clamp `[0..100]`, damping factor, mutation history append.
+2. `reducers/marketplace.spec.ts` — cart add / remove / qty change / clear; product/designer registration idempotency.
+3. `reducers/aiGovernance.spec.ts` — prompt version bump, plugin enable/disable.
+4. `commands/index.spec.ts` — command → event → reducer round-trip; rejection paths return `CommandResult.error` without emitting.
+5. `events/log.spec.ts` — append preserves order; subscribers fire once per emit; unsubscribe works.
+6. `selectors/marketplace.spec.ts` — `getCart` returns stable ref for empty carts; `getRecommendedProducts` memoised per `(state, identityId)`.
+7. `seed/index.spec.ts` — hydrated state matches legacy `mock.ts` shim shape (guards the compat contract).
+
+Target: ≥ 80 % line coverage on `src/core/{reducers,commands,selectors,policies}`. CI budget: < 2 s.
+
+## Provenance surfacing (design only, no UI yet)
+
+- Every `Recommendation` already carries `{ reason, sourceEventIds[], affectedAxes[] }` from `buildRecommendations`.
+- Add `getProvenanceTrace(state, recommendationId)` returning `{ recommendation, events, genomeSnapshotBefore, genomeSnapshotAfter }`.
+- UI hook later (out of scope now): `<ProvenanceTooltip recommendationId>` that opens on hover of any product card fed by a recommendation. No visual change in this migration — just make sure every migrated page that reads `getRecommendedProducts` keeps the `Recommendation.id` on the rendered element as `data-recommendation-id`, so the tooltip can attach later without another refactor.
 
 ---
 
-## 2. Entities (`types/entities.ts`)
+## Execution order (9 phases, risk labelled)
 
-Branded IDs from `types/ids.ts` (`IdentityId`, `ProductId`, `DesignerId`, `OrderId`, `AgentId`, …) — prevent cross-entity ID confusion at compile time.
+### Phase 1 — Cart  ·  Risk: **Very Low**
+Already core-backed via `useCart` adapter. This phase promotes the page to use selectors/commands directly and removes the adapter's public surface leakage.
 
-```ts
-interface Identity { id: IdentityId; profile: Profile; dna: DNA; wardrobe: Wardrobe; relationships: Relationships; memory: MemoryScope; createdAt: string }
-interface Profile  { displayName: string; locale: string; consent: ConsentFlags }
-interface DNA      { genome: StyleGenome; signals: DNASignal[]; mutations: Mutation[]; version: number; updatedAt: string }
-interface StyleGenome { structure: number; edge: number; elegance: number; darkness: number; sensuality: number; utility: number }
-interface Mutation { id: MutationId; from: Partial<StyleGenome>; to: Partial<StyleGenome>; rationale: string; status: "proposed"|"ratified"|"rejected"; proposedAt: string; sourceEventIds: EventId[] }
-interface Wardrobe { saved: ProductId[]; owned: ProductId[]; considered: ProductId[] }
-interface Relationships { follows: DesignerId[]; muted: DesignerId[] }
-interface MemoryScope { allow: MemoryKey[]; deny: MemoryKey[] }
+- Current mock imports: none directly; goes through `src/store/cart.tsx`.
+- Replacement selectors: `marketplaceSelectors.getCart`, `marketplaceSelectors.getAllProducts` (to resolve line → product).
+- Replacement commands: `commands.addToCart`, `commands.removeCartLine`, `commands.updateCartLineQty`, `commands.clearCart`.
+- Keep `useCart` as a 5-line convenience hook (`return { cart, add, remove, ... }`) so `Checkout.tsx` and header badge don't churn.
+- Expected UI: identical. Same line items, same totals, same toast on add.
+- Regression risk: cart badge count in header; verify `getCart(...).lines.length` matches previous `items.length`.
+- Files touched: `src/pages/Cart.tsx`, `src/store/cart.tsx` (thin rewrite), `src/components/pawn/PublicHeader.tsx` (if it reads cart count).
+- Acceptance: add → remove → clear round-trip works; `localStorage` events append; refresh preserves cart; typecheck + build clean.
 
-interface Designer { id; slug; name; location; slogan; bio; brandIds; memberSince; …stats }
-interface Brand    { id; designerId; name }
-interface Product  { id; slug; name; designerId; brandId?; price; category; gender; colors; sizes; status; description; genomeAffinity: Partial<StyleGenome> }
-interface Collection { id; designerId; title; productIds }
+### Phase 2 — Shop grid  ·  Risk: **Low**
+- Current mock imports: `import { products } from "@/data/mock"`.
+- Replacement: `useStore(marketplaceSelectors.getAllProducts)` + local `useMemo` to build the legacy view shape (`designer`, `designerSlug`) via `getDesignerById`.
+- Commands: none (read-only).
+- UI: identical grid, identical filters. Filter chips remain a local `useState`.
+- Regression risk: `ProductCard` currently expects `Product` from `mock.ts` — introduce `toProductView(product, designer)` helper in `src/core/views/product.ts` used by Shop, ProductDetail, DesignerPage, Portal, DNA. Card component signature unchanged.
+- Files touched: `src/pages/Shop.tsx`, new `src/core/views/product.ts`.
+- Acceptance: same product count, same order, filters unchanged.
 
-interface Order { id; identityId; items: OrderItem[]; total; status; placedAt }
-interface OrderItem { productId; size; qty; unitPrice }
+### Phase 3 — Product Detail  ·  Risk: **Low**
+- Current mock imports: `productBySlug`, `products`.
+- Replacement selectors: `marketplaceSelectors.getProductBySlug`, `marketplaceSelectors.getRecommendedProducts` (for "You may also like" — currently a random slice; migration also silently upgrades it to provenance-aware without visual change since the section already renders 4 cards).
+- Commands: `commands.addToCart` (already via `useCart`).
+- Regression risk: URL not-found path — selector returns `undefined`, keep existing 404 branch.
+- Files touched: `src/pages/ProductDetail.tsx`, uses `toProductView`.
+- Acceptance: slug lookup works; add-to-cart still fires; related products count unchanged; `data-recommendation-id` attribute added to related cards (invisible).
 
-interface Recommendation { id; identityId; productId; score; provenance: Provenance }
+### Phase 4 — DNA page  ·  Risk: **Medium**
+- Current mock imports: `products`, `designers` (used for "aligned" preview).
+- Replacement selectors: `selectors.getIdentityDossier`, `selectors.getStyleGenome`, `selectors.getMutationPath`, `marketplaceSelectors.getAlignedDesigners`, `marketplaceSelectors.getRecommendedProducts`.
+- Commands: `commands.applyDnaMutation` (already used by AI prompt input — verify wiring, do not change UX).
+- UI: identical 9 chapters. Genome bars now driven by `getStyleGenome` instead of a static array; provided seed produces identical numbers by construction.
+- Regression risk: bar order — enforce a canonical `GenomeAxis[]` export from `types/entities` so display order is stable.
+- Files touched: `src/pages/DNA.tsx`, `src/core/types/entities.ts` (add exported `GENOME_AXES` const array).
+- Acceptance: chapters render, values match previous static values within ±0 (seeded), mutation history list identical.
 
-interface Agent { id: AgentId; audience: "customer"|"designer"|"admin"|"internal"; activePromptId: PromptVersionId; toolIds: ToolId[]; memoryPolicyId: string }
-interface PromptVersion { id; agentId; body; author; createdAt; note; isActive }
-interface KnowledgeSource { id; kind: "url"|"doc"|"collection"; ref; enabled }
-interface PluginConnection { id; slug; status: "available"|"connected"|"disabled"; configSummary?: string }
-interface Policy { id; scope: "content"|"safety"|"memory"|"response"; body: Record<string, unknown>; version: number }
-interface AuditEvent { id; actor: IdentityId|"system"; action: string; entity: string; entityId: string; diff?: unknown; at: string }
-```
+### Phase 5 — Designer public page  ·  Risk: **Low**
+- Current mock imports: `designerBySlug`, `products` (filtered by designer).
+- Replacement selectors: `marketplaceSelectors.getDesignerBySlug`, new `marketplaceSelectors.getProductsByDesignerId(state, designerId)` (add with memo).
+- Regression risk: none — pure read migration.
+- Files touched: `src/pages/DesignerPage.tsx`, `src/core/selectors/marketplace.ts` (+1 memoised selector).
+- Acceptance: designer bio, product list, counts unchanged.
 
-`genomeAffinity` on Product is what lets recommendations be explained ("this coat scores high on Structure + Darkness — matches your rising Structure axis").
+### Phase 6 — Account  ·  Risk: **Low**
+- Current mock imports: `customerOrders`.
+- Replacement selectors: new `selectors.getCustomerOrders(state, identityId)` sourcing from `state.marketplace.orders` filtered by identity. Seed already contains these orders; selector wraps.
+- Regression risk: order status/date formatting — keep local formatter untouched.
+- Files touched: `src/pages/Account.tsx`, `src/core/selectors/identity.ts`.
+- Acceptance: same orders, same order.
 
----
+### Phase 7 — Admin Overview  ·  Risk: **Medium**
+- Current mock imports: `adminOrders`, `revenueSeries`, `monthsShort`.
+- Replacement selectors: `adminSelectors.getPlatformOverview(state)` returning `{ orders, revenueSeries, months, kpis }`. This is a compound selector — must be memoised via `WeakMap<DomainState, PlatformOverview>`.
+- Regression risk: chart data identity — recharts re-renders if the array reference changes; memoisation is mandatory here.
+- Files touched: `src/pages/admin/AdminOverview.tsx`, `src/core/selectors/admin.ts`.
+- Acceptance: chart draws identically, order table rows match.
 
-## 3. Domain events (`types/events.ts`)
+### Phase 8 — Admin AI Control Panel  ·  Risk: **Medium**
+- Current mock imports: none direct (already isolated), but state is component-local. Migrate to core so future events are auditable.
+- Replacement selectors: `aiSelectors.getModelSettings`, `getSystemPrompt`, `getKnowledgeSources`, `getPluginCatalog`, `getPolicyMatrix` (add stubs where missing).
+- Replacement commands: `commands.updateModelSettings`, `commands.publishSystemPromptVersion`, `commands.togglePlugin`, `commands.updatePolicy`. All already exist in seed reducers; wire the panels' local state → commands.
+- Regression risk: 11 panels × form state — migrate panel-by-panel (sub-steps 8.1 … 8.11), commit after each.
+- Files touched: `src/pages/admin/AdminAI.tsx` (split into subcomponents `src/pages/admin/ai/*.tsx` if it grows > 400 lines — otherwise leave as-is).
+- Acceptance: every toggle/save persists across refresh (proves event log wiring), no visual change.
 
-Discriminated union `DomainEvent = { id: EventId; at: string; actor: IdentityId|"system"; cause?: EventId } & (…)`.
+### Phase 9 — Designer Portal  ·  Risk: **Medium**
+- Current mock imports (PortalOverview): `adminOrders`, `revenueSeries`, `monthsShort`, `products`.
+- Replacement selectors: `portalSelectors.getStudioOverview(state, designerId)` returning `{ orders, revenueSeries, months, products, payoutStatus }`, memoised per designer id.
+- Commands: none for overview; `commands.updateDesignerProfile` for `PortalEditor` (already wired via a local mock — swap).
+- Regression risk: revenue data is currently global — scope it to designer via seed events; ensure numbers still look plausible (they can differ slightly; acceptable since values were placeholder).
+- Files touched: `src/pages/portal/PortalOverview.tsx`, `src/pages/portal/PortalEditor.tsx`, `src/core/selectors/portal.ts`.
+- Acceptance: page renders, editor save round-trips through event log.
 
-Variants (exhaustive, matches request):
-
-```
-identity.created            { identityId, profile }
-profile.updated             { identityId, patch }
-product.viewed              { identityId, productId, dwellMs? }
-product.saved               { identityId, productId }
-designer.followed           { identityId, designerId }
-cart.item_added             { identityId, productId, size }
-cart.item_removed           { identityId, productId, size }
-cart.qty_set                { identityId, productId, size, qty }
-order.placed                { identityId, orderId, items, total }
-dna.signal_recorded         { identityId, signal }             # raw
-dna.updated                 { identityId, genome, version }    # only via ratify
-mutation.proposed           { identityId, mutation }
-mutation.ratified           { identityId, mutationId }
-mutation.rejected           { identityId, mutationId }
-recommendation.reranked     { identityId, recommendationIds }
-ai.prompt_updated           { agentId, promptVersionId }
-ai.agent_configured         { agentId, patch }
-ai.tool_enabled             { agentId, toolId }
-ai.tool_disabled            { agentId, toolId }
-policy.updated              { policyId, version }
-audit.written               { auditId }
-```
-
-`cause` (parent event id) is what powers provenance traversal.
-
----
-
-## 4. Reducers (`reducers/*`)
-
-Each pure `(slice, event) => slice`. `root.ts` composes into:
-
-```ts
-interface DomainState {
-  identities: Record<IdentityId, Identity>
-  marketplace: { designers, brands, products, collections, orders, cartsByIdentity, recommendationsByIdentity }
-  ai:          { agents, prompts, knowledgeSources, policies }
-  plugins:     Record<PluginId, PluginConnection>
-  audit:       AuditEvent[]
-  // derived indices (rebuilt on demand, not stored)
-}
-```
-
-Reducers ignore events they don't own — no defaults, no side effects.
+### Phase 10 (finalisation) — Delete the shim  ·  Risk: **Low if 1–9 green**
+- Delete `src/data/mock.ts`.
+- Delete legacy interfaces in favour of `Product`/`Designer` from `src/core/types/entities.ts`.
+- Ripgrep must return zero matches for `@/data/mock`.
+- Files touched: removal only.
+- Acceptance: build + typecheck green; all 16 routes render; cart, DNA, admin AI persistence intact.
 
 ---
 
-## 5. Selectors (`selectors/*`)
+## Cross-cutting risks
 
-Pure `(DomainState, args?) => view-model`. Memoized via a tiny `weakMemo` helper (WeakMap on state), no external deps.
-
-Named exports mirror the spec exactly:
-`getIdentityDossier`, `getStyleGenome`, `getMutationPath`, `getRecommendedProducts`, `getAlignedDesigners`, `getCart`, `getAdminOverview`, `getDesignerPortalOverview`, `getAiControlState`, `getProvenanceTrace`.
-
-Each returns a plain object shaped for the corresponding page — pages consume selectors, not raw state.
-
----
-
-## 6. Commands (`commands/*`)
-
-A command is `(state, payload) => DomainEvent[]`. Never mutates. The store's `dispatch(command, payload)` runs the command, appends events, folds them, notifies subscribers.
-
-Named exports mirror the spec exactly:
-`recordProductView`, `saveProduct`, `followDesigner`, `addToCart`, `proposeMutation`, `ratifyMutation`, `rejectMutation`, `updateAgentPrompt`, `enablePlugin`, `disablePlugin` (plus `removeFromCart`, `setCartQty` for parity with existing UI).
-
-Governance-sensitive commands go through `policies/access.ts` first; violations emit no events and return a typed error.
-
----
-
-## 7. Policies (`policies/*`)
-
-- **`dnaEvolution`** — engines/analytics may only call `proposeMutation`. `dna.updated` is only emitted by `ratifyMutation`. Rate-limits: at most one open proposal per axis. This is the damping the review demanded.
-- **`recommendation`** — ranking function + provenance builder. Reads: identity genome, saved/viewed history, follows, product `genomeAffinity`. Emits `Recommendation` with a fully-populated `Provenance` (see §9).
-- **`access`** — role gates keyed by future `has_role` semantics (`customer|designer|admin`). Today: single seeded identity has all roles.
-- **`memory`** — what the AI layer is allowed to recall per identity; enforced when `engines/ai` composes context.
-
----
-
-## 8. Event log & store (`events/*`)
-
-- `log.ts` — append-only array + monotonically increasing `EventId`. Exposes `append`, `all`, `since(cursor)`.
-- `emit.ts` — takes an event, appends to log, folds through `rootReducer`, fires subscribers.
-- `subscribe.ts` — typed subscription for the motion-event contract (§10) and for React re-render.
-
-State is always `replay(events)`; the "current" state is a cached fold invalidated on append. This guarantees a future backend can rehydrate from the same log.
-
----
-
-## 9. Provenance (`types/provenance.ts` + `selectors/provenance.ts`)
-
-```ts
-interface Provenance {
-  reason: string                         // human-readable sentence
-  reasonCodes: ReasonCode[]              // machine-readable tags
-  sourceEventIds: EventId[]              // links back into the log
-  affectedAxes: (keyof StyleGenome)[]
-  confidence: number                     // 0..1
-  at: string
-}
-type ReasonCode =
-  | "genome_alignment" | "saved_similar" | "follows_designer"
-  | "collection_context" | "editorial_pick" | "cold_start"
-```
-
-Every `Recommendation` MUST carry a fully-populated `Provenance` — enforced by the recommendation policy's return type. `getProvenanceTrace(entityId)` walks `cause` links backward through the event log to produce an audit-ready trace for any recommendation, mutation, or AI response.
-
----
-
-## 10. Motion-event contract (`events/subscribe.ts`)
-
-Exports a single `subscribeToMotionEvents(handler)` that emits only the whitelisted set:
-
-```
-dna.updated, recommendation.reranked, mutation.proposed,
-ai.responding, chart.constructed, route.entered
-```
-
-(`ai.responding`, `chart.constructed`, `route.entered` are UI-originated signals published *through* the same bus so the motion layer has one source of truth.) UI motion may not subscribe to any other event. Documented in `README.md` and enforced by an ESLint boundary rule (added in step 12).
-
----
-
-## 11. Adapters & seed (`adapters/*`, `seed/*`)
-
-- `PersistenceAdapter` interface: `load(): Event[] | Promise<Event[]>`, `append(events): void | Promise<void>`.
-- `memory.ts` — default, in-process.
-- `localStorage.ts` — optional, opt-in; persists event log under a versioned key. **Cart persistence migrates to this** (replacing the current `pawn-cart-v1` string blob) so cart survives reload with zero component churn.
-- `seed/index.ts` — `buildSeedEvents()` returns the events required to reach today's mock world: identities created, designers/brands/products/collections registered, sample orders placed, an initial `dna.updated` seeded from `dnaSegments`. Loaded on first boot when the log is empty.
-
-Existing `src/data/mock.ts` is kept, but its exports become **re-exports from `core/seed`** so any component not yet migrated continues to compile. Deletion is a later pass.
-
----
-
-## 12. React bridge (`react/*`) — the only React-facing surface
-
-- `<CoreProvider>` — instantiates store, loads adapter, wraps `<App>`. Sits **inside** the existing providers, replaces nothing.
-- `useStore(selector, args?)` — subscribes to a selector; re-renders only on shallow change.
-- `useCommand()` — returns typed `dispatch`.
-- `useDomainEvents(types, handler)` — motion-event subscription (whitelist-checked).
-- **`useCart`** in `src/store/cart.tsx` is rewritten as a thin adapter over `useStore(getCart)` + `useCommand()`. Public API unchanged → zero page changes.
-
-Optional ESLint rule (config only, no code churn) forbids importing from `src/data/mock` outside `src/core/seed` and `src/store/*`.
-
----
-
-## 13. Documentation
-
-- **`src/core/README.md`** — 1 page. Layered model diagram, "how to add an event/command/selector", motion contract, non-goals.
-- **`src/docs/ARCHITECTURE.md`** (new) — the layered model from Review §4.1, engine table, event backbone diagram, ratified-mutation flow, provenance model.
-- **`src/docs/BACKEND.md`** (rewritten) — event store + outbox + projections. Explicitly frame `products/orders/order_items` as **projections** of the event log, not source of truth. Sketch the Supabase adapter contract that satisfies `PersistenceAdapter`. Keep the old schema in a "Legacy sketch" appendix for reference.
-
----
-
-## 14. Execution order (file-by-file)
-
-Each step ends with `bun run build` + typecheck. No route or visual change until the final step's verification.
-
-1. `types/ids.ts`, `types/entities.ts`, `types/events.ts`, `types/commands.ts`, `types/provenance.ts`
-2. `events/log.ts`, `events/emit.ts`, `events/subscribe.ts`
-3. `reducers/*` + `reducers/root.ts`
-4. `seed/*` + `adapters/memory.ts` + `adapters/PersistenceAdapter.ts`
-5. `policies/access.ts`, `policies/dnaEvolution.ts`, `policies/recommendation.ts`, `policies/memory.ts`
-6. `engines/*` (thin — mostly compose policies + emit events)
-7. `selectors/*`
-8. `commands/*`
-9. `react/CoreProvider.tsx`, `react/useStore.ts`, `react/useCommand.ts`, `react/useDomainEvents.ts`
-10. `index.ts` public surface
-11. `adapters/localStorage.ts`
-12. **Migrate `src/store/cart.tsx`** to core (public hook API unchanged). Add `CoreProvider` to `src/App.tsx` outside `CartProvider`.
-13. **Migrate `src/data/mock.ts`** exports to re-export from `core/seed` (compat shim). No page edits.
-14. `src/core/README.md`, `src/docs/ARCHITECTURE.md`, rewrite `src/docs/BACKEND.md`.
-15. ESLint boundary rule for `src/data/mock` imports.
-16. Full route walk (Playwright, all 16 routes) — assert no visual diff vs. pre-change screenshots. Assert cart persists across reload via the new adapter.
-
----
-
-## 15. Acceptance criteria mapping
-
-| Criterion | Satisfied by |
+| Risk | Mitigation |
 |---|---|
-| UI can later be connected to core selectors instead of mock arrays | Steps 7, 13; `useStore(selector)` bridge |
-| Future backend can persist event log without rewriting UI | `PersistenceAdapter` (§11), event log is the source of truth |
-| AI Control Panel maps to real future domain objects | `Agent`, `PromptVersion`, `KnowledgeSource`, `PluginConnection`, `Policy` + `getAiControlState` |
-| DNA evolution is event-driven and user-ratified | `dnaEvolution` policy (§7), `proposeMutation`/`ratifyMutation`/`rejectMutation` |
-| Recommendations become explainable through provenance | `Provenance` type + recommendation policy return type (§9) |
-| No visual regressions | Steps 12–13 are compat shims; step 16 verifies |
+| `useSyncExternalStore` re-render storms from unstable selector refs | Selector Identity Stability rules + `WeakMap` memos; enforced by unit test that calls each selector twice with same state and asserts `===`. |
+| Event log growth in `localStorage` during a long session | Compaction design shipped in the same milestone as vitest coverage (before Phase 7). |
+| Recharts / shadcn components re-mounting on selector churn | Every admin/portal compound selector is memoised; verified by rendering the page and asserting stable child keys. |
+| Migration touches many files — merge risk | 10 phases, each self-contained, each with build + typecheck gate; no phase depends on the next except through selectors it already added. |
+| Silent behaviour drift in recommendations | Snapshot test: `getRecommendedProducts(seedState, meId)` asserted against a committed JSON fixture. |
+| Provenance metadata attached to DOM but unused | Only `data-*` attributes, zero visual impact, zero bundle cost until the tooltip lands. |
 
----
+## Technical appendix
 
-## Out of scope (again, explicit)
+- New files:
+  - `src/core/views/product.ts` — `toProductView(product, designer): ProductView`
+  - `src/core/__tests__/*.spec.ts` — reducer/command/selector/log coverage
+  - `src/core/adapters/compaction.ts` — snapshot + replay (behind flag)
+- Extended selector files:
+  - `selectors/marketplace.ts` — `getProductsByDesignerId`
+  - `selectors/identity.ts` — `getCustomerOrders`
+  - `selectors/admin.ts` — `getPlatformOverview`
+  - `selectors/portal.ts` — `getStudioOverview`
+  - `selectors/ai.ts` — panel-specific selectors for the 11 sections
+  - `selectors/provenance.ts` — `getProvenanceTrace`
+- No changes to: routes, `App.tsx`, shadcn components, Tailwind tokens, page-level markup, `CartProvider` public API.
 
-- Supabase / Lovable Cloud enablement
-- Any real AI Gateway call
-- New pages, new routes, new visual components
-- Changes to existing page layouts
-- Replacing shadcn primitives
+## Definition of done
 
-Approve to execute steps 1 → 16 in order.
+- `rg "@/data/mock" src` → 0 results.
+- `bun run build` + `bunx tsgo --noEmit` → clean.
+- `bunx vitest run` → all core tests green.
+- All 16 routes render with no visible diff vs. pre-migration screenshots (spot-check Home, Shop, DNA, Admin AI, Portal Overview).
+- Cart, AI Control Panel toggles, and Designer Editor edits survive a hard refresh (proves the event log is the source of truth).

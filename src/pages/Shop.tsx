@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductCard } from "@/components/pawn/ProductCard";
-import { products } from "@/data/mock";
+import { useStore, marketplaceSelectors, toProductView } from "@/core";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,15 @@ const COLORS = ["Bone", "Ink", "Onyx", "Obsidian", "Sand", "Ash", "Raw Indigo", 
 const SIZES = ["XS", "S", "M", "L", "XL"];
 
 const Shop = () => {
-  const designerNames = useMemo(() => Array.from(new Set(products.map((p) => p.designer))), []);
+  const coreProducts = useStore(marketplaceSelectors.getAllProducts);
+  const coreDesigners = useStore(marketplaceSelectors.getAllDesigners);
+
+  const products = useMemo(() => {
+    const designerById = new Map(coreDesigners.map((d) => [d.id as string, d]));
+    return coreProducts.map((p) => toProductView(p, designerById.get(p.designerId as string)));
+  }, [coreProducts, coreDesigners]);
+
+  const designerNames = useMemo(() => Array.from(new Set(products.map((p) => p.designer))), [products]);
   const [search, setSearch] = useState("");
   const [cat, setCat] = useState<string | null>(null);
   const [designer, setDesigner] = useState<string | null>(null);
