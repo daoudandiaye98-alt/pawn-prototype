@@ -32,11 +32,13 @@ const Shop = () => {
   const [search, setSearch] = useState("");
   const [cat, setCat] = useState<string | null>(null);
   const [designer, setDesigner] = useState<string | null>(null);
+  const [dnaAxis, setDnaAxis] = useState<GenomeAxis | null>(null);
   const [maxPrice, setMaxPrice] = useState(2000);
 
   const filtered = products.filter((p) => {
     if (cat && p.category !== cat) return false;
     if (designer && p.designer !== designer) return false;
+    if (dnaAxis && (p.genomeAffinity[dnaAxis] ?? 0) < 0.5) return false;
     if (p.price > maxPrice) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
