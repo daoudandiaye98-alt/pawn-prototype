@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { Button } from "@/components/ui/button";
+import { DnaBadge } from "@/components/pawn/DnaBadge";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -12,6 +13,8 @@ import { Heart } from "lucide-react";
 import {
   useStore, marketplaceSelectors, toProductView, defaultIdentityId,
 } from "@/core";
+import { useDnaMatch } from "@/features/dna/hooks";
+import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { cn } from "@/lib/utils";
 
