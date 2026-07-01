@@ -58,7 +58,7 @@ export function PublicHeader() {
             <button className="hidden hover:text-foreground sm:block" aria-label="Search">
               <Search className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.4} />
             </button>
-            <Link to="/account" className="hover:text-foreground" aria-label="Account">
+            <Link to={user ? "/account" : "/auth"} className="hover:text-foreground" aria-label={user ? "Account" : "Sign in"}>
               <User className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.4} />
             </Link>
             <Link to="/account" className="hidden hover:text-foreground sm:block" aria-label="Wishlist">
