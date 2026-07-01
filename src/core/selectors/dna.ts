@@ -76,22 +76,24 @@ export const dnaMatchForProduct = memoByStateAndKey(
 );
 
 /** Alignment between an identity's genome and a designer's aggregate product affinity. */
-export function dnaAlignmentForDesigner(state: DomainState, designerId: DesignerId, identityId: IdentityId = defaultIdentityId): DnaMatch {
-  const products: Product[] = Object.values(state.marketplace.products).filter((p) => p.designerId === designerId);
-  if (products.length === 0) return EMPTY_MATCH;
-  const agg: Partial<StyleGenome> = {};
-  const counts: Partial<Record<GenomeAxis, number>> = {};
-  for (const p of products) {
-    for (const axis of Object.keys(p.genomeAffinity) as GenomeAxis[]) {
-      agg[axis] = (agg[axis] ?? 0) + (p.genomeAffinity[axis] ?? 0);
-      counts[axis] = (counts[axis] ?? 0) + 1;
+export const dnaAlignmentForDesigner = memoByStateAndKey(
+  (state: DomainState, designerId: DesignerId | string): DnaMatch => {
+    const products: Product[] = Object.values(state.marketplace.products).filter((p) => p.designerId === designerId);
+    if (products.length === 0) return EMPTY_MATCH;
+    const agg: Partial<StyleGenome> = {};
+    const counts: Partial<Record<GenomeAxis, number>> = {};
+    for (const p of products) {
+      for (const axis of Object.keys(p.genomeAffinity) as GenomeAxis[]) {
+        agg[axis] = (agg[axis] ?? 0) + (p.genomeAffinity[axis] ?? 0);
+        counts[axis] = (counts[axis] ?? 0) + 1;
+      }
     }
-  }
-  for (const axis of Object.keys(agg) as GenomeAxis[]) {
-    agg[axis] = (agg[axis] ?? 0) / (counts[axis] ?? 1);
-  }
-  return dnaMatchForAffinity(state, agg, identityId);
-}
+    for (const axis of Object.keys(agg) as GenomeAxis[]) {
+      agg[axis] = (agg[axis] ?? 0) / (counts[axis] ?? 1);
+    }
+    return dnaMatchForAffinity(state, agg, defaultIdentityId);
+  },
+);
 
 /** Impact of the current cart on the wardrobe genome — a preview of the direction it will nudge. */
 export function wardrobeImpact(state: DomainState, cartAffinities: Partial<StyleGenome>[], identityId: IdentityId = defaultIdentityId) {
