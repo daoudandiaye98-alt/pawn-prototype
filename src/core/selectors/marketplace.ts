@@ -24,8 +24,13 @@ export function getDesignerById(state: DomainState, id: string): Designer | unde
   return state.marketplace.designers[id];
 }
 
+const emptyCartCache = new Map<string, Cart>();
 export function getCart(state: DomainState, id: IdentityId = defaultIdentityId): Cart {
-  return state.marketplace.carts[id] ?? { identityId: id, lines: [] };
+  const existing = state.marketplace.carts[id];
+  if (existing) return existing;
+  let empty = emptyCartCache.get(id);
+  if (!empty) { empty = { identityId: id, lines: [] }; emptyCartCache.set(id, empty); }
+  return empty;
 }
 
 export function getRecommendedProducts(state: DomainState, id: IdentityId = defaultIdentityId): Recommendation[] {
