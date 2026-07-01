@@ -25,6 +25,13 @@ const DesignerPage = () => {
     () => coreProducts.map((p) => toProductView(p, coreDesigner)),
     [coreProducts, coreDesigner],
   );
+  const alignment = useDnaAlignment(coreDesigner.id);
+  const { followDesigner } = useCustomerEvents();
+
+  function onFollow() {
+    followDesigner(coreDesigner.id);
+    toast.success(`Following ${designer.name}`);
+  }
 
   return (
     <PublicLayout>
