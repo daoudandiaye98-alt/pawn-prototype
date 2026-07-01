@@ -57,6 +57,7 @@ export function toProductView(product: Product, designer: Designer | undefined):
     sizes: product.sizes,
     status: product.status,
     description: product.description,
+    genomeAffinity: product.genomeAffinity,
   };
 }
 
