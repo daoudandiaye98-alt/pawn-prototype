@@ -48,7 +48,7 @@ export const proposeMutation = (state: DomainState, p: C.ProposeMutationPayload)
   const identity = state.identity.byId[p.identityId];
   if (!identity) return { ok: false, reason: "Unknown identity" };
   const guard = canPropose(identity, p.to);
-  if (!guard.ok) return { ok: false, reason: guard.reason };
+  if (guard.ok === false) return { ok: false, reason: guard.reason };
   mutationSeq += 1;
   const mutation = {
     id: asMutationId(`mut_${Date.now().toString(36)}_${mutationSeq}`),
