@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Minus, Plus, X, ShieldCheck, Sparkles } from "lucide-react";
+import { Minus, Plus, X, ShieldCheck } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/pawn/ProductImage";
