@@ -17,5 +17,7 @@ export * as portalSelectors from "./selectors/portal";
 export * as aiSelectors from "./selectors/ai";
 export { getProvenanceTrace } from "./selectors/provenance";
 
+export * from "./views";
+
 export * as commands from "./commands";
 export { defaultIdentityId } from "./selectors/identity";
