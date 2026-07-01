@@ -10,7 +10,14 @@ import { createLocalStorageAdapter } from "../adapters/localStorage";
 import type { PersistenceAdapter } from "../adapters/PersistenceAdapter";
 import type { CommandResult } from "../commands";
 
-/** Events that we want to persist across reloads (durable UX state). */
+/**
+ * Durable-event whitelist. Only events representing user-owned state that must
+ * survive a reload go here — cart lines, saves, follows. Session-grade signals
+ * (views, dwell, ephemeral AI chatter) are deliberately excluded so localStorage
+ * cannot grow unbounded and so a private session leaves no residue. Any addition
+ * here must also be considered in the schema-versioning contract of
+ * `adapters/localStorage.ts`.
+ */
 const isDurable = (e: DomainEvent) =>
   e.type === "cart.item_added" ||
   e.type === "cart.item_removed" ||
