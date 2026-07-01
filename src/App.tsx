@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
 import { CoreProvider } from "@/core";
+import { AuthProvider, useAuth } from "@/lib/auth";
 
 import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
@@ -17,6 +18,7 @@ import Checkout from "./pages/Checkout.tsx";
 import DesignersIndex from "./pages/DesignersIndex.tsx";
 import DesignerPage from "./pages/DesignerPage.tsx";
 import Account from "./pages/Account.tsx";
+import Auth from "./pages/Auth.tsx";
 
 import AdminOverview from "./pages/admin/AdminOverview.tsx";
 import AdminDNA from "./pages/admin/AdminDNA.tsx";
@@ -30,40 +32,48 @@ import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
+function AuthedCore({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  return <CoreProvider userId={user?.id ?? null}>{children}</CoreProvider>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <CoreProvider>
-        <CartProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dna" element={<DNA />} />
-              <Route path="/designers" element={<Designers />} />
-              <Route path="/designers/all" element={<DesignersIndex />} />
-              <Route path="/designer/:slug" element={<DesignerPage />} />
-              <Route path="/apply" element={<Apply />} />
-              <Route path="/shop" element={<Shop />} />
-              <Route path="/product/:slug" element={<ProductDetail />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/account" element={<Account />} />
+      <BrowserRouter>
+        <AuthProvider>
+          <AuthedCore>
+            <CartProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/dna" element={<DNA />} />
+                <Route path="/designers" element={<Designers />} />
+                <Route path="/designers/all" element={<DesignersIndex />} />
+                <Route path="/designer/:slug" element={<DesignerPage />} />
+                <Route path="/apply" element={<Apply />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/product/:slug" element={<ProductDetail />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/account" element={<Account />} />
 
-              <Route path="/admin" element={<AdminOverview />} />
-              <Route path="/admin/dna" element={<AdminDNA />} />
-              <Route path="/admin/products" element={<AdminProducts />} />
-              <Route path="/admin/ai" element={<AdminAI />} />
+                <Route path="/admin" element={<AdminOverview />} />
+                <Route path="/admin/dna" element={<AdminDNA />} />
+                <Route path="/admin/products" element={<AdminProducts />} />
+                <Route path="/admin/ai" element={<AdminAI />} />
 
-              <Route path="/portal" element={<PortalOverview />} />
-              <Route path="/portal/editor" element={<PortalEditor />} />
+                <Route path="/portal" element={<PortalOverview />} />
+                <Route path="/portal/editor" element={<PortalEditor />} />
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </CartProvider>
-      </CoreProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </CartProvider>
+          </AuthedCore>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
