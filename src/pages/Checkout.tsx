@@ -39,7 +39,7 @@ const Checkout = () => {
       })),
       total: subtotal + shipping,
     });
-    if (!result.ok) {
+    if (result.ok === false) {
       toast.error(result.reason);
       return;
     }
