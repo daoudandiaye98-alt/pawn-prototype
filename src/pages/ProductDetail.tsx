@@ -96,6 +96,16 @@ const ProductDetail = () => {
           <h1 className="mt-3 font-serif text-5xl leading-tight">{product.name}</h1>
           <p className="mt-4 text-xl tabular-nums">€{product.price.toLocaleString("de-DE")}</p>
 
+          {match.percent > 0 && (
+            <div className="mt-6 flex items-center gap-4 border border-border bg-card p-4">
+              <DnaBadge match={match} size="lg" />
+              <div>
+                <p className="editorial-eyebrow">Why it fits you</p>
+                <p className="mt-1 text-sm text-foreground/80">{match.rationale}</p>
+              </div>
+            </div>
+          )}
+
           <p className="mt-8 max-w-md text-sm text-foreground/70">{product.description}</p>
 
           <div className="mt-10">
