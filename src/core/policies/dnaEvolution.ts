@@ -6,7 +6,9 @@ import type { MutationId } from "../types/ids";
  * only ratifyMutation writes dna.updated. This is the damping requested in the review.
  */
 
-export function canPropose(identity: Identity, to: Partial<StyleGenome>): { ok: true } | { ok: false; reason: string } {
+export type Guard = { ok: true } | { ok: false; reason: string };
+
+export function canPropose(identity: Identity, to: Partial<StyleGenome>): Guard {
   const openByAxis = new Set(
     identity.dna.mutations
       .filter((m) => m.status === "proposed")
