@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { useStore, selectors } from "@/core";
+import { useAuth } from "@/lib/auth";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { cn } from "@/lib/utils";
 
@@ -11,12 +12,30 @@ type Tab = typeof TABS[number];
 
 const Account = () => {
   const [tab, setTab] = useState<Tab>("Overview");
+  const { user, profile, loading, signOut, roles } = useAuth();
+
+  if (loading) return null;
+  if (!user) return <Navigate to="/auth" replace />;
+
+  const displayName = profile?.displayName || user.email?.split("@")[0] || "Guest";
+  const memberSince = new Date(user.created_at).getFullYear();
+
   return (
     <PublicLayout>
       <div className="editorial-container py-12">
-        <p className="editorial-eyebrow">Welcome back</p>
-        <h1 className="mt-3 font-serif text-5xl">Alex Vogt</h1>
-        <p className="mt-2 text-sm text-muted-foreground">alex@pawn.studio · Member since 2024</p>
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <p className="editorial-eyebrow">Welcome back</p>
+            <h1 className="mt-3 font-serif text-5xl capitalize">{displayName}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {user.email} · Member since {memberSince}
+              {roles.length > 0 && <span className="ml-2 uppercase tracking-[0.2em] text-[0.6rem]">· {roles.join(" / ")}</span>}
+            </p>
+          </div>
+          <Button variant="outline" className="rounded-none" onClick={signOut}>
+            Sign out
+          </Button>
+        </div>
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[220px_1fr]">
           <nav className="flex flex-row flex-wrap gap-1 lg:flex-col">

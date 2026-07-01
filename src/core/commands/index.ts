@@ -1,7 +1,7 @@
 import type { DomainState } from "../reducers/root";
 import type { RawEvent } from "../events/emit";
 import type * as C from "../types/commands";
-import { asMutationId } from "../types/ids";
+import { asMutationId, asOrderId } from "../types/ids";
 import { canPropose, findMutation, applyRatified } from "../policies/dnaEvolution";
 
 export type CommandResult =
@@ -41,6 +41,32 @@ export const clearCart = (_state: DomainState, p: C.ClearCartPayload): CommandRe
   ok: true,
   events: [{ type: "cart.cleared", actor: p.identityId, payload: p }],
 });
+
+let orderSeq = 0;
+export const placeOrder = (_state: DomainState, p: C.PlaceOrderPayload): CommandResult => {
+  if (p.items.length === 0) return { ok: false, reason: "Cart is empty" };
+  orderSeq += 1;
+  const orderId = asOrderId(`ord_${Date.now().toString(36)}_${orderSeq}`);
+  const placedAt = new Date().toISOString();
+  return {
+    ok: true,
+    events: [
+      {
+        type: "order.placed",
+        actor: p.identityId,
+        payload: {
+          identityId: p.identityId,
+          orderId,
+          items: p.items,
+          total: p.total,
+          customerLabel: p.customerLabel,
+          placedAt,
+        },
+      },
+      { type: "cart.cleared", actor: p.identityId, payload: { identityId: p.identityId } },
+    ],
+  };
+};
 
 // Mutations
 let mutationSeq = 0;

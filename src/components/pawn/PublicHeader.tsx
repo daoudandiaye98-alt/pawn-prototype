@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Heart, Search, ShoppingBag, User } from "lucide-react";
 import { useCart } from "@/store/cart";
+import { useAuth } from "@/lib/auth";
 import { PawnMark } from "./PawnMark";
 
 const NAV = [
@@ -15,6 +16,7 @@ const NAV = [
 
 export function PublicHeader() {
   const { count } = useCart();
+  const { user } = useAuth();
   const { pathname } = useLocation();
 
   return (
@@ -56,7 +58,7 @@ export function PublicHeader() {
             <button className="hidden hover:text-foreground sm:block" aria-label="Search">
               <Search className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.4} />
             </button>
-            <Link to="/account" className="hover:text-foreground" aria-label="Account">
+            <Link to={user ? "/account" : "/auth"} className="hover:text-foreground" aria-label={user ? "Account" : "Sign in"}>
               <User className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.4} />
             </Link>
             <Link to="/account" className="hidden hover:text-foreground sm:block" aria-label="Wishlist">

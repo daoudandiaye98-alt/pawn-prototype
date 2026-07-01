@@ -50,8 +50,9 @@ export const getIdentityDossier = memoByStateAndKey(
 );
 
 /**
- * Customer-facing order digest. Static seed today; a future backend will
- * derive this from `state.marketplace.orders` scoped to the identity.
+ * Customer-facing order digest. Derives from state.marketplace.orders scoped to
+ * the identity. Falls back to seed orders for a first-run experience when the
+ * signed-out browsing session has no real orders yet.
  */
 export interface CustomerOrderView {
   id: string;
@@ -61,6 +62,17 @@ export interface CustomerOrderView {
   items: { name: string; designer: string }[];
 }
 
-export function getCustomerOrders(_state: DomainState, _id: IdentityId = defaultIdentityId): CustomerOrderView[] {
-  return seedCustomerOrders;
+export function getCustomerOrders(state: DomainState, id: IdentityId = defaultIdentityId): CustomerOrderView[] {
+  const mine = state.marketplace.orders.filter((o) => o.identityId === id);
+  if (mine.length === 0) return seedCustomerOrders;
+  return mine.map((o) => ({
+    id: o.id,
+    date: o.placedAt.slice(0, 10),
+    total: o.total,
+    status: o.status,
+    items: o.items.map((it) => {
+      const p = state.marketplace.products[it.productId];
+      return { name: p?.name ?? "Item", designer: p ? (state.marketplace.designers[p.designerId]?.name ?? "—") : "—" };
+    }),
+  }));
 }
