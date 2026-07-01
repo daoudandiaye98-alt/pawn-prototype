@@ -9,6 +9,7 @@ import type { DomainState } from "../reducers/root";
 import type { IdentityId, ProductId, DesignerId } from "../types/ids";
 import type { GenomeAxis, StyleGenome, Product } from "../types/entities";
 import { getIdentity, defaultIdentityId } from "./identity";
+import { memoByStateAndKey } from "./memo";
 
 const AXIS_LABEL: Record<GenomeAxis, string> = {
   structure: "Structure",
