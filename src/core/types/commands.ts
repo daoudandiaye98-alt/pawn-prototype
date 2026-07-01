@@ -9,6 +9,12 @@ export interface AddToCartPayload { identityId: IdentityId; productId: ProductId
 export interface RemoveFromCartPayload { identityId: IdentityId; productId: ProductId; size: string }
 export interface SetCartQtyPayload { identityId: IdentityId; productId: ProductId; size: string; qty: number }
 export interface ClearCartPayload { identityId: IdentityId }
+export interface PlaceOrderPayload {
+  identityId: IdentityId;
+  customerLabel: string;
+  items: import("./entities").OrderItem[];
+  total: number;
+}
 export interface ProposeMutationPayload {
   identityId: IdentityId;
   to: Partial<Record<import("./entities").GenomeAxis, number>>;
