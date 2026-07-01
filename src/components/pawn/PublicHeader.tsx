@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Heart, Search, ShoppingBag, User } from "lucide-react";
 import { useCart } from "@/store/cart";
+import { useAuth } from "@/lib/auth";
 import { PawnMark } from "./PawnMark";
 
 const NAV = [
