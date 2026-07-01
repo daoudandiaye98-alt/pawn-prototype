@@ -49,6 +49,8 @@ const MUTATION = [
 ];
 
 const DNA = () => {
+  const products = useStore(marketplaceSelectors.getAllProductViews);
+  const designers = useStore(marketplaceSelectors.getAllDesignerViews);
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState<string | null>(null);
 
