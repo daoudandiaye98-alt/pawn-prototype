@@ -14,16 +14,207 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_logs: {
+        Row: {
+          agent_id: string
+          cause_event_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          identity_scope: string | null
+          latency_ms: number | null
+          model: string | null
+          prompt_version_id: string | null
+          request: Json
+          response: Json | null
+          status: string
+        }
+        Insert: {
+          agent_id: string
+          cause_event_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          identity_scope?: string | null
+          latency_ms?: number | null
+          model?: string | null
+          prompt_version_id?: string | null
+          request: Json
+          response?: Json | null
+          status?: string
+        }
+        Update: {
+          agent_id?: string
+          cause_event_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          identity_scope?: string | null
+          latency_ms?: number | null
+          model?: string | null
+          prompt_version_id?: string | null
+          request?: Json
+          response?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_logs_cause_event_id_fkey"
+            columns: ["cause_event_id"]
+            isOneToOne: false
+            referencedRelation: "domain_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domain_events: {
+        Row: {
+          actor: string
+          at: string
+          cause: string | null
+          created_at: string
+          id: string
+          identity_scope: string | null
+          payload: Json
+          schema_version: number
+          type: string
+        }
+        Insert: {
+          actor: string
+          at: string
+          cause?: string | null
+          created_at?: string
+          id: string
+          identity_scope?: string | null
+          payload: Json
+          schema_version?: number
+          type: string
+        }
+        Update: {
+          actor?: string
+          at?: string
+          cause?: string | null
+          created_at?: string
+          id?: string
+          identity_scope?: string | null
+          payload?: Json
+          schema_version?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domain_events_cause_fkey"
+            columns: ["cause"]
+            isOneToOne: false
+            referencedRelation: "domain_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domain_snapshots: {
+        Row: {
+          created_at: string
+          identity_scope: string
+          last_event_id: string | null
+          state: Json
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          identity_scope: string
+          last_event_id?: string | null
+          state: Json
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          identity_scope?: string
+          last_event_id?: string | null
+          state?: Json
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domain_snapshots_last_event_id_fkey"
+            columns: ["last_event_id"]
+            isOneToOne: false
+            referencedRelation: "domain_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          consent_analytics: boolean
+          consent_memory: boolean
+          consent_personalization: boolean
+          created_at: string
+          display_name: string
+          id: string
+          locale: string
+          updated_at: string
+        }
+        Insert: {
+          consent_analytics?: boolean
+          consent_memory?: boolean
+          consent_personalization?: boolean
+          created_at?: string
+          display_name?: string
+          id: string
+          locale?: string
+          updated_at?: string
+        }
+        Update: {
+          consent_analytics?: boolean
+          consent_memory?: boolean
+          consent_personalization?: boolean
+          created_at?: string
+          display_name?: string
+          id?: string
+          locale?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "customer" | "designer" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +341,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["customer", "designer", "admin"],
+    },
   },
 } as const
