@@ -64,6 +64,7 @@ export function CoreProvider({ children, adapter, userId }: CoreProviderProps) {
   const [state, setState] = useState<DomainState>(initial);
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
+  const listenersRef = useRef(new Set<() => void>());
 
   // Prime the log with seed events + persisted events (so provenance traces can walk them).
   const log = useMemo(() => {
