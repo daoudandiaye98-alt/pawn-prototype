@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Play } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
@@ -6,12 +7,21 @@ import { ProductCard } from "@/components/pawn/ProductCard";
 import { SectionHeading } from "@/components/pawn/SectionHeading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { designerBySlug, products } from "@/data/mock";
+import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
 
 const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
-  const designer = designerBySlug(slug ?? "y-project");
-  const designerProducts = products.filter((p) => p.designerSlug === designer.slug);
+  const activeSlug = slug ?? "y-project";
+
+  const coreDesigner = useStore((s) => marketplaceSelectors.getDesignerBySlug(s, activeSlug))
+    ?? useStore((s) => marketplaceSelectors.getAllDesigners(s)[0]);
+  const coreProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreDesigner.id));
+
+  const designer = useMemo(() => toDesignerView(coreDesigner), [coreDesigner]);
+  const designerProducts = useMemo(
+    () => coreProducts.map((p) => toProductView(p, coreDesigner)),
+    [coreProducts, coreDesigner],
+  );
 
   return (
     <PublicLayout>
