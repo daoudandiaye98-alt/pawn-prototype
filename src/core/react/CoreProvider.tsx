@@ -25,7 +25,8 @@ const isDurable = (e: DomainEvent) =>
   e.type === "cart.qty_set" ||
   e.type === "cart.cleared" ||
   e.type === "product.saved" ||
-  e.type === "designer.followed";
+  e.type === "designer.followed" ||
+  e.type === "order.placed";
 
 type CommandFn<P> = (state: DomainState, payload: P) => CommandResult;
 
