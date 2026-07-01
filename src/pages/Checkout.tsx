@@ -108,14 +108,15 @@ const Checkout = () => {
             </section>
           </div>
 
-          <aside className="h-fit border border-border bg-card p-8">
-            <h2 className="font-serif text-2xl">Summary</h2>
-            <ul className="mt-6 divide-y divide-border text-sm">
+          <aside className="h-fit border border-[hsl(var(--border-strong))] bg-card p-8">
+            <p className="t-eyebrow">Summary</p>
+            <h2 className="mt-1 t-display-sm">Your order</h2>
+            <ul className="mt-6 divide-y divide-[hsl(var(--border))] text-sm">
               {items.map((i) => (
                 <li key={i.product.id + i.size} className="flex items-start justify-between py-3">
                   <div>
                     <p>{i.product.name}</p>
-                    <p className="text-xs text-muted-foreground">{i.product.designer} · {i.size} · ×{i.qty}</p>
+                    <p className="t-eyebrow mt-0.5">{i.product.designer} · {i.size} · ×{i.qty}</p>
                   </div>
                   <span className="tabular-nums">€{(i.product.price * i.qty).toLocaleString("de-DE")}</span>
                 </li>
@@ -125,13 +126,13 @@ const Checkout = () => {
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between"><dt>Subtotal</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
               <div className="flex justify-between"><dt>Shipping</dt><dd className="tabular-nums">€{shipping}</dd></div>
-              <div className="flex justify-between pt-2 font-serif text-lg"><dt>Total</dt><dd className="tabular-nums">€{(subtotal + shipping).toLocaleString("de-DE")}</dd></div>
+              <div className="flex justify-between pt-2 t-display-sm"><dt>Total</dt><dd className="tabular-nums">€{(subtotal + shipping).toLocaleString("de-DE")}</dd></div>
             </dl>
-            <Button type="submit" size="lg" className="mt-8 w-full rounded-none" disabled={items.length === 0}>
+            <Button type="submit" size="lg" className="mt-8 w-full rounded-none bg-[hsl(var(--oxblood))] uppercase tracking-[0.18em] text-[hsl(var(--accent-foreground))] hover:opacity-90" disabled={items.length === 0}>
               Pay now (simulated)
             </Button>
             <p className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-accent" /> Encrypted, prototype-only
+              <ShieldCheck className="h-3.5 w-3.5 text-[hsl(var(--oxblood))]" /> Encrypted, prototype-only
             </p>
           </aside>
         </form>

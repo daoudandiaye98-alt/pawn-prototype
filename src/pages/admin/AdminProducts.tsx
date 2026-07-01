@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Search, Plus } from "lucide-react";
 import { AdminShell } from "@/components/pawn/AdminShell";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStore, marketplaceSelectors } from "@/core";
 import { ProductImage } from "@/components/pawn/ProductImage";
+import { Panel, Command, Status } from "@/components/pawn/primitives";
 import { cn } from "@/lib/utils";
 
 const AdminProducts = () => {
@@ -29,8 +29,8 @@ const AdminProducts = () => {
                 key={c}
                 onClick={() => setCat(c)}
                 className={cn(
-                  "border px-3 py-2 text-[0.65rem] uppercase tracking-[0.18em]",
-                  cat === c ? "border-foreground bg-foreground text-background" : "border-border bg-card",
+                  "border px-3 py-2 t-eyebrow motion-micro",
+                  cat === c ? "border-foreground bg-foreground text-background" : "border-[hsl(var(--border-strong))] bg-card hover:border-foreground",
                 )}
               >
                 {c}
@@ -38,13 +38,13 @@ const AdminProducts = () => {
             ))}
           </div>
         </div>
-        <Button className="rounded-none"><Plus className="mr-2 h-4 w-4" /> New product</Button>
+        <Command><Plus className="mr-2 h-4 w-4" /> New product</Command>
       </div>
 
-      <div className="mt-8 border border-border bg-card">
+      <Panel className="mt-8" padding="none" headerBorder={false} eyebrow={`${filtered.length} pieces`} title="Catalog">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
+            <tr className="border-b border-[hsl(var(--border))] text-left t-eyebrow">
               <th className="px-6 py-3">Product</th>
               <th className="px-6 py-3">Designer</th>
               <th className="px-6 py-3">Category</th>
@@ -54,27 +54,24 @@ const AdminProducts = () => {
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} className="border-b border-border last:border-0">
+              <tr key={p.id} className="border-b border-[hsl(var(--border))] last:border-0 motion-micro hover:bg-foreground/[0.03]">
                 <td className="px-6 py-3">
                   <div className="flex items-center gap-3">
                     <ProductImage seed={p.slug} className="h-12 w-10" />
-                    <span className="font-serif text-base">{p.name}</span>
+                    <span className="t-display-sm">{p.name}</span>
                   </div>
                 </td>
                 <td className="px-6 py-3 text-muted-foreground">{p.designer}</td>
                 <td className="px-6 py-3">{p.category}</td>
                 <td className="px-6 py-3">
-                  <span className={cn(
-                    "border px-2 py-0.5 text-[0.65rem] uppercase tracking-[0.18em]",
-                    p.status === "Active" ? "border-accent text-accent" : "border-border text-muted-foreground",
-                  )}>{p.status}</span>
+                  <Status tone={p.status === "Active" ? "live" : "muted"} label={p.status} />
                 </td>
                 <td className="px-6 py-3 text-right tabular-nums">€{p.price.toLocaleString("de-DE")}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     </AdminShell>
   );
 };

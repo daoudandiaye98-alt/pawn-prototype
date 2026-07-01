@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
-import { Button } from "@/components/ui/button";
 import { useStore, selectors } from "@/core";
 import { useAuth } from "@/lib/auth";
 import { ProductImage } from "@/components/pawn/ProductImage";
+import { Panel, PageHeader, Metric, Command, Timeline, Status, Hairline } from "@/components/pawn/primitives";
 import { cn } from "@/lib/utils";
 
-const TABS = ["Overview", "Orders", "Wishlist", "Addresses", "Payment Methods", "Vouchers", "Returns", "Support", "Settings"] as const;
+const TABS = ["Overview", "Orders", "Wishlist", "Addresses", "Payment", "Vouchers", "Returns", "Support", "Settings"] as const;
 type Tab = typeof TABS[number];
 
 const Account = () => {
@@ -22,20 +22,21 @@ const Account = () => {
 
   return (
     <PublicLayout>
-      <div className="editorial-container py-12">
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <p className="editorial-eyebrow">Welcome back</p>
-            <h1 className="mt-3 font-serif text-5xl capitalize">{displayName}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <div className="editorial-container section-y">
+        <PageHeader
+          eyebrow="Welcome back"
+          index="—"
+          title={<span className="capitalize">{displayName}</span>}
+          lede={
+            <>
               {user.email} · Member since {memberSince}
-              {roles.length > 0 && <span className="ml-2 uppercase tracking-[0.2em] text-[0.6rem]">· {roles.join(" / ")}</span>}
-            </p>
-          </div>
-          <Button variant="outline" className="rounded-none" onClick={signOut}>
-            Sign out
-          </Button>
-        </div>
+              {roles.length > 0 && <span className="ml-2 t-eyebrow not-italic">· {roles.join(" / ")}</span>}
+            </>
+          }
+          action={<Command variant="paper" onClick={signOut}>Sign out</Command>}
+        />
+
+        <Hairline className="mt-10" />
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[220px_1fr]">
           <nav className="flex flex-row flex-wrap gap-1 lg:flex-col">
@@ -44,8 +45,8 @@ const Account = () => {
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "border-l-2 px-4 py-2 text-left text-xs uppercase tracking-[0.22em]",
-                  tab === t ? "border-accent bg-card text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                  "border-l-2 px-4 py-2 text-left t-eyebrow motion-micro",
+                  tab === t ? "border-[hsl(var(--oxblood))] bg-card text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 {t}
@@ -58,7 +59,7 @@ const Account = () => {
             {tab === "Orders" && <Orders />}
             {tab === "Wishlist" && <EmptyState title="Your wishlist is empty." cta="Browse the boutique" to="/shop" />}
             {tab === "Addresses" && <Addresses />}
-            {tab === "Payment Methods" && <PaymentMethods />}
+            {tab === "Payment" && <PaymentMethods />}
             {tab === "Vouchers" && <EmptyState title="No vouchers, yet." cta="Discover the boutique" to="/shop" />}
             {tab === "Returns" && <EmptyState title="No active returns." cta="View orders" to="#" />}
             {tab === "Support" && <Support />}
@@ -74,9 +75,9 @@ function Overview() {
   return (
     <div className="space-y-8">
       <div className="grid gap-4 md:grid-cols-3">
-        <KPI label="Lifetime spend" value="€4,820" />
-        <KPI label="Orders" value="9" />
-        <KPI label="DNA score" value="87" tone="accent" />
+        <Metric label="Lifetime spend" value="€4,820" delta="+€820 YTD" trend="up" />
+        <Metric label="Orders" value="9" delta="2 in the last 30d" trend="neutral" />
+        <Metric label="DNA score" value="87" delta="top 8%" trend="up" rationale={["Cohesion 92", "Edge 78", "Range 84"]} />
       </div>
       <Orders compact />
     </div>
@@ -86,60 +87,37 @@ function Overview() {
 function Orders({ compact = false }: { compact?: boolean }) {
   const customerOrders = useStore(selectors.getCustomerOrders);
   return (
-    <div>
-      <h2 className="font-serif text-2xl">{compact ? "Recent orders" : "All orders"}</h2>
-      <ul className="mt-6 space-y-4">
-        {customerOrders.map((o) => (
-          <li key={o.id} className="border border-border bg-card p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="editorial-eyebrow">{o.id} · {o.date}</p>
-                <p className="mt-1 font-serif text-xl">€{o.total.toLocaleString("de-DE")}</p>
-              </div>
-              <StatusBadge status={o.status} />
-            </div>
-            <div className="mt-6 flex items-start gap-4">
-              {o.items.map((it, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <ProductImage seed={it.name} className="h-20 w-16" />
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{it.designer}</p>
-                    <p className="font-serif text-base">{it.name}</p>
-                  </div>
+    <div className="space-y-6">
+      <h2 className="t-display-md">{compact ? "Recent orders" : "All orders"}</h2>
+      <ul className="space-y-4">
+        {customerOrders.map((o) => {
+          const reached = o.status === "Delivered" ? 4 : o.status === "In transit" ? 3 : 2;
+          const steps = ["Placed", "Confirmed", "Shipped", "Delivered"].map((label, i) => ({
+            label,
+            reached: i < reached,
+            current: i === reached - 1,
+          }));
+          const tone = o.status === "Delivered" ? "live" : o.status === "In transit" ? "watch" : "calm";
+          return (
+            <Panel key={o.id} eyebrow={`${o.id} · ${o.date}`} title={`€${o.total.toLocaleString("de-DE")}`} action={<Status tone={tone as never} label={o.status} />}>
+              <div className="p-6 md:p-8">
+                <div className="flex flex-wrap items-start gap-6">
+                  {o.items.map((it, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <ProductImage seed={it.name} className="h-20 w-16" />
+                      <div>
+                        <p className="t-eyebrow">{it.designer}</p>
+                        <p className="t-display-sm">{it.name}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <Timeline status={o.status} />
-          </li>
-        ))}
+                <div className="mt-8"><Timeline steps={steps} /></div>
+              </div>
+            </Panel>
+          );
+        })}
       </ul>
-    </div>
-  );
-}
-
-function Timeline({ status }: { status: string }) {
-  const steps = ["Placed", "Confirmed", "Shipped", "Delivered"];
-  const reached = status === "Delivered" ? 4 : status === "In transit" ? 3 : 2;
-  return (
-    <ol className="mt-6 grid grid-cols-4 gap-2">
-      {steps.map((s, i) => (
-        <li key={s} className={cn("border-t-2 pt-3", i < reached ? "border-accent" : "border-border")}>
-          <p className={cn("text-[0.65rem] uppercase tracking-[0.22em]", i < reached ? "text-foreground" : "text-muted-foreground")}>{s}</p>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return <span className="border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em]">{status}</span>;
-}
-
-function KPI({ label, value, tone }: { label: string; value: string; tone?: "accent" }) {
-  return (
-    <div className={cn("border border-border bg-card p-6", tone === "accent" && "border-accent bg-accent/5")}>
-      <p className="editorial-eyebrow">{label}</p>
-      <p className="mt-2 font-serif text-3xl">{value}</p>
     </div>
   );
 }
@@ -155,24 +133,26 @@ function Addresses() {
 
 function AddressCard({ label }: { label: string }) {
   return (
-    <div className="border border-border bg-card p-6">
-      <p className="editorial-eyebrow">{label}</p>
-      <p className="mt-3 font-serif text-xl">Alex Vogt</p>
-      <p className="mt-1 text-sm text-muted-foreground">Bergmannstraße 24<br />10961 Berlin, Germany</p>
-      <button className="mt-4 text-xs uppercase tracking-[0.18em] underline-offset-4 hover:underline">Edit</button>
-    </div>
+    <Panel eyebrow={label} padding="md">
+      <div className="p-6">
+        <p className="t-display-sm">Alex Vogt</p>
+        <p className="mt-1 t-body-sm text-muted-foreground">Bergmannstraße 24<br />10961 Berlin, Germany</p>
+        <button className="mt-4 t-eyebrow underline-offset-4 hover:underline">Edit</button>
+      </div>
+    </Panel>
   );
 }
 
 function PaymentMethods() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <div className="border border-border bg-card p-6">
-        <p className="editorial-eyebrow">Default card</p>
-        <p className="mt-3 font-serif text-xl">•••• •••• •••• 4242</p>
-        <p className="mt-1 text-sm text-muted-foreground">Visa · expires 08/29</p>
-      </div>
-      <div className="border border-dashed border-border bg-background p-6 text-center text-sm text-muted-foreground">
+      <Panel eyebrow="Default card">
+        <div className="p-6">
+          <p className="t-display-sm">•••• •••• •••• 4242</p>
+          <p className="mt-1 t-body-sm text-muted-foreground">Visa · expires 08/29</p>
+        </div>
+      </Panel>
+      <div className="border border-dashed border-[hsl(var(--border-strong))] p-6 text-center t-body-sm text-muted-foreground">
         + Add new method
       </div>
     </div>
@@ -181,29 +161,33 @@ function PaymentMethods() {
 
 function Support() {
   return (
-    <div className="border border-border bg-card p-8">
-      <h2 className="font-serif text-2xl">PAWN Concierge</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Reach our customer team 24/7. Average response time: 2h.</p>
-      <Button className="mt-6 rounded-none">Open a conversation</Button>
-    </div>
+    <Panel eyebrow="Concierge" title="PAWN Concierge">
+      <div className="p-6 md:p-8">
+        <p className="t-body-md text-muted-foreground">Reach our customer team 24/7. Average response time: 2h.</p>
+        <Command className="mt-6">Open a conversation</Command>
+      </div>
+    </Panel>
   );
 }
 
 function Settings() {
   return (
-    <div className="border border-border bg-card p-8">
-      <h2 className="font-serif text-2xl">Settings</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Notifications, privacy and language preferences.</p>
-    </div>
+    <Panel eyebrow="Preferences" title="Settings">
+      <div className="p-6 md:p-8">
+        <p className="t-body-md text-muted-foreground">Notifications, privacy and language preferences.</p>
+      </div>
+    </Panel>
   );
 }
 
 function EmptyState({ title, cta, to }: { title: string; cta: string; to: string }) {
   return (
-    <div className="border border-border bg-card p-16 text-center">
-      <p className="font-serif text-3xl">{title}</p>
-      <Button asChild className="mt-6 rounded-none"><Link to={to}>{cta}</Link></Button>
-    </div>
+    <Panel padding="none">
+      <div className="p-16 text-center">
+        <p className="t-display-md">{title}</p>
+        <Link to={to} className="mt-6 inline-flex h-10 items-center justify-center bg-foreground px-5 text-[0.72rem] uppercase tracking-[0.22em] text-background motion-micro hover:bg-foreground/90">{cta}</Link>
+      </div>
+    </Panel>
   );
 }
 

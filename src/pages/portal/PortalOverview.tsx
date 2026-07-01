@@ -6,39 +6,22 @@ import { RoleGate, PrototypeAccessBanner } from "@/features/access/RoleGate";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowUpRight, Sparkles, Package, MessageSquare, Truck, Wallet, Dna } from "lucide-react";
+import { Panel, Metric, Command, Status, Recommendation } from "@/components/pawn/primitives";
 
 /**
  * Designer Studio — the tenant surface.
- *
- * Deliberately excludes platform internals: no AI governance, no prompt
- * management, no recommendation engine, no plugin runtime, no global
- * marketplace analytics. Studio owners see their own business only.
+ * Uses the shared primitive language. No tenant-local card variants.
  */
 
-function Card({ title, action, children, className, eyebrow }: {
-  title: string; action?: React.ReactNode; children: React.ReactNode; className?: string; eyebrow?: string;
-}) {
-  return (
-    <section className={cn("border border-border bg-card", className)}>
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div>
-          {eyebrow && <p className="editorial-eyebrow">{eyebrow}</p>}
-          <h3 className="font-serif text-lg leading-tight">{title}</h3>
-        </div>
-        {action}
-      </header>
-      <div>{children}</div>
-    </section>
-  );
-}
-
+const Card = Panel;
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "accent" }) {
   return (
-    <div className={cn("border border-border bg-card p-6", tone === "accent" && "border-accent/60 bg-accent/5")}>
-      <p className="editorial-eyebrow">{label}</p>
-      <p className="mt-2 font-serif text-3xl tabular-nums">{value}</p>
-      {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
-    </div>
+    <Metric
+      label={label}
+      value={value}
+      delta={sub}
+      trend={tone === "accent" ? "up" : "neutral"}
+    />
   );
 }
 
