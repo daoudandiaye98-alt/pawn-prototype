@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { DesignerCard } from "@/components/pawn/DesignerCard";
 import { SectionHeading } from "@/components/pawn/SectionHeading";
-import { designers } from "@/data/mock";
+import { useStore, marketplaceSelectors } from "@/core";
 import { Button } from "@/components/ui/button";
 
 const DesignersIndex = () => {
