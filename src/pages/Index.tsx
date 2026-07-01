@@ -12,7 +12,8 @@ import { useStore, marketplaceSelectors } from "@/core";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  return (
+  const products = useStore(marketplaceSelectors.getAllProductViews);
+  const designers = useStore(marketplaceSelectors.getAllDesignerViews);
     <PublicLayout>
       {/* HERO — true paper vs ink chess split */}
       <section className="relative">
