@@ -67,11 +67,13 @@ export function dnaMatchForAffinity(
   return { score, percent: Math.round(score * 100), topAxes: top, rationale };
 }
 
-export function dnaMatchForProduct(state: DomainState, productId: ProductId, identityId: IdentityId = defaultIdentityId): DnaMatch {
-  const product = state.marketplace.products[productId];
-  if (!product) return EMPTY_MATCH;
-  return dnaMatchForAffinity(state, product.genomeAffinity, identityId);
-}
+export const dnaMatchForProduct = memoByStateAndKey(
+  (state: DomainState, productId: ProductId | string): DnaMatch => {
+    const product = state.marketplace.products[productId as string];
+    if (!product) return EMPTY_MATCH;
+    return dnaMatchForAffinity(state, product.genomeAffinity, defaultIdentityId);
+  },
+);
 
 /** Alignment between an identity's genome and a designer's aggregate product affinity. */
 export function dnaAlignmentForDesigner(state: DomainState, designerId: DesignerId, identityId: IdentityId = defaultIdentityId): DnaMatch {
