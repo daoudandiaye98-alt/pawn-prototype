@@ -1,7 +1,7 @@
 import type { DomainState } from "../reducers/root";
 import type { RawEvent } from "../events/emit";
 import type * as C from "../types/commands";
-import { asMutationId } from "../types/ids";
+import { asMutationId, asOrderId } from "../types/ids";
 import { canPropose, findMutation, applyRatified } from "../policies/dnaEvolution";
 
 export type CommandResult =
