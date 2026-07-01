@@ -3,20 +3,26 @@
 @tailwind utilities;
 
 /* PAWN Design System — Architectural chess luxury.
-   Strict palette. Chess polarity: Ivory · Paper · Ink · Oxblood. */
+   One organism. Ivory · Paper · Bone · Ink · Oxblood · rare Gold.
+   Rules:
+   - Radius: 0 everywhere.
+   - Shadows: reserved for overlays; presentation uses hairlines.
+   - Motion: one easing, two durations.
+   - Typography: locked scale (see .t-display-* / .t-body-*).
+   - Oxblood: decision-only. Gold: rare accolade. */
 
 @layer base {
   :root {
     /* Chess polarity surfaces */
-    --background: 36 35% 93%;          /* #F4EFE6 ivory — commerce/body */
-    --foreground: 18 12% 10%;          /* charcoal text */
+    --background: 36 35% 93%;
+    --foreground: 18 12% 10%;
 
-    --ivory: 36 35% 93%;               /* commerce calm */
+    --ivory: 36 35% 93%;
     --ivory-soft: 34 36% 90%;
     --ivory-deep: 32 28% 84%;
-    --paper: 40 30% 98%;               /* near-white editorial silence */
-    --bone: 34 24% 88%;                /* warmer separator */
-    --ink: 18 10% 5%;                  /* #0E0B0A near-pure black, control */
+    --paper: 40 30% 98%;
+    --bone: 34 24% 88%;
+    --ink: 18 10% 5%;
     --ink-soft: 18 10% 8%;
 
     --card: 36 32% 95%;
@@ -25,7 +31,6 @@
     --popover: 36 32% 96%;
     --popover-foreground: 18 12% 10%;
 
-    /* Brand — deep black */
     --primary: 18 10% 5%;
     --primary-foreground: 40 30% 98%;
 
@@ -35,7 +40,7 @@
     --muted: 32 20% 87%;
     --muted-foreground: 20 8% 32%;
 
-    --accent: 0 55% 14%;               /* oxblood — RARE decision accent */
+    --accent: 0 55% 14%;
     --accent-foreground: 40 30% 98%;
 
     --wine: 0 60% 18%;
@@ -44,16 +49,20 @@
     --charcoal: 18 12% 10%;
     --oxblood: 0 55% 14%;
 
+    /* Rare accolade accent — used for verified / awarded / museum only */
+    --gold: 40 32% 52%;
+    --gold-soft: 40 28% 68%;
+
     --destructive: 0 60% 38%;
     --destructive-foreground: 36 35% 95%;
 
     --border: 22 38% 10% / 0.14;
+    --border-strong: 22 38% 10% / 0.28;
     --input: 22 38% 10% / 0.22;
     --ring: 0 55% 14%;
 
     --radius: 0;
 
-    /* Ink sidebar (admin/portal) */
     --sidebar-background: 18 10% 5%;
     --sidebar-foreground: 36 25% 84%;
     --sidebar-primary: 0 55% 22%;
@@ -68,6 +77,11 @@
     --gradient-wine: linear-gradient(135deg, hsl(0 55% 14%), hsl(15 30% 10%));
     --shadow-editorial: 0 30px 80px -40px hsl(0 0% 0% / 0.35);
     --shadow-card: 0 1px 0 0 hsl(22 38% 10% / 0.10);
+
+    /* Motion — one easing, two durations */
+    --ease-pawn: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --dur-micro: 180ms;
+    --dur-reveal: 520ms;
   }
 
   .dark {
@@ -107,35 +121,48 @@
 }
 
 @layer components {
-  .editorial-eyebrow {
-    @apply text-[0.65rem] uppercase tracking-[0.32em] text-muted-foreground;
-  }
+  /* ── Locked type scale ─────────────────────────────
+     Use these instead of inline text-[..] sizes. */
+  .t-display-xl { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
+  .t-display-lg { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
+  .t-display-md { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
+  .t-display-sm { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
+
+  .t-body-lg { font-family: Inter, system-ui, sans-serif; font-size: 1.05rem; line-height: 1.55; }
+  .t-body-md { font-family: Inter, system-ui, sans-serif; font-size: 0.92rem; line-height: 1.55; }
+  .t-body-sm { font-family: Inter, system-ui, sans-serif; font-size: 0.8rem;  line-height: 1.55; }
+
+  .t-eyebrow { font-family: Inter, system-ui, sans-serif; font-size: 0.65rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.32em; color: hsl(var(--muted-foreground)); }
+  .t-num     { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+
+  /* Back-compat aliases */
+  .editorial-eyebrow { @apply t-eyebrow; }
+  .pawn-numeral { font-family: "Playfair Display", serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; }
+
+  /* ── Rhythm ─────────────────────────────── */
   .editorial-rule { height: 1px; width: 100%; background: hsl(var(--border)); }
   .editorial-container { @apply mx-auto w-full max-w-[1440px] px-6 md:px-10; }
   .editorial-card { border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .section-y { @apply py-16 md:py-24; }
+  .section-y-lg { @apply py-24 md:py-32; }
 
-  /* Chess polarity surfaces */
+  /* ── Surfaces ───────────────────────────── */
   .ivory-surface  { background-color: hsl(var(--ivory)); color: hsl(var(--foreground)); }
   .paper-surface  { background-color: hsl(var(--paper)); color: hsl(var(--foreground)); }
-  .bone-surface   { background-color: hsl(var(--bone)); color: hsl(var(--foreground)); }
-  .ink-surface    { background-color: hsl(var(--ink)); color: hsl(var(--primary-foreground)); }
+  .bone-surface   { background-color: hsl(var(--bone));  color: hsl(var(--foreground)); }
+  .ink-surface    { background-color: hsl(var(--ink));   color: hsl(var(--primary-foreground)); }
 
-  .ink-panel  { background-color: hsl(var(--ink)); color: hsl(var(--primary-foreground)); }
+  .ink-panel   { background-color: hsl(var(--ink));   color: hsl(var(--primary-foreground)); }
   .paper-panel { background-color: hsl(var(--paper)); color: hsl(var(--foreground)); }
-  .bone-panel  { background-color: hsl(var(--bone)); color: hsl(var(--foreground)); }
+  .bone-panel  { background-color: hsl(var(--bone));  color: hsl(var(--foreground)); }
 
-  .pawn-numeral {
-    font-family: "Playfair Display", serif;
-    font-style: italic;
-    font-weight: 400;
-    letter-spacing: 0.04em;
-  }
+  /* ── Hairlines & seams ─────────────────── */
+  .hairline        { height: 1px; width: 100%; background: hsl(var(--foreground) / 0.14); }
+  .hairline-strong { height: 1px; width: 100%; background: hsl(var(--foreground) / 0.28); }
+  .hairline-light  { height: 1px; width: 100%; background: hsl(40 30% 98% / 0.16); }
+  .v-hairline      { width: 1px; background: hsl(var(--foreground) / 0.14); }
 
-  /* Continuous hairline — bleeds section to section */
-  .hairline { height: 1px; width: 100%; background: hsl(var(--foreground) / 0.14); }
-  .hairline-light { height: 1px; width: 100%; background: hsl(40 30% 98% / 0.16); }
-
-  /* Chess micro-grid: 8px checker (subtle texture) */
+  /* ── Chess grid textures ───────────────── */
   .chess-grid {
     background-image:
       linear-gradient(45deg, hsl(var(--foreground) / 0.06) 25%, transparent 25%),
@@ -154,15 +181,9 @@
     background-size: 16px 16px;
     background-position: 0 0, 0 8px, 8px -8px, -8px 0;
   }
+  .pawn-grain { background-image: linear-gradient(hsl(var(--foreground) / 0.025) 1px, transparent 1px); background-size: 100% 6px; }
 
-  /* Subtle scan-line texture */
-  .pawn-grain {
-    background-image:
-      linear-gradient(hsl(var(--foreground) / 0.025) 1px, transparent 1px);
-    background-size: 100% 6px;
-  }
-
-  /* Oxblood pill — reserved for single decision moments */
+  /* ── Decision affordance (oxblood, single-per-view) ── */
   .decision-pill {
     background-color: hsl(var(--oxblood));
     color: hsl(var(--accent-foreground));
@@ -170,4 +191,9 @@
     text-transform: uppercase;
     font-size: 0.7rem;
   }
+
+  /* ── Motion utilities ────────────────────── */
+  .motion-micro  { transition: color var(--dur-micro) var(--ease-pawn), background-color var(--dur-micro) var(--ease-pawn), border-color var(--dur-micro) var(--ease-pawn), opacity var(--dur-micro) var(--ease-pawn); }
+  .motion-reveal { animation: pawn-reveal var(--dur-reveal) var(--ease-pawn) both; }
+  @keyframes pawn-reveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 }
