@@ -96,24 +96,30 @@ export const dnaAlignmentForDesigner = memoByStateAndKey(
 );
 
 /** Impact of the current cart on the wardrobe genome — a preview of the direction it will nudge. */
-export function wardrobeImpact(state: DomainState, cartAffinities: Partial<StyleGenome>[], identityId: IdentityId = defaultIdentityId) {
-  const identity = getIdentity(state, identityId);
-  if (!identity || cartAffinities.length === 0) {
-    return { dominant: null as GenomeAxis | null, dominantLabel: "", delta: 0 };
-  }
-  const totals: Partial<Record<GenomeAxis, number>> = {};
-  for (const a of cartAffinities) {
-    for (const axis of Object.keys(a) as GenomeAxis[]) {
-      totals[axis] = (totals[axis] ?? 0) + (a[axis] ?? 0);
+export const wardrobeImpactForProducts = memoByStateAndKey(
+  (state: DomainState, productIdsKey: string) => {
+    const identity = getIdentity(state, defaultIdentityId);
+    const productIds = productIdsKey ? productIdsKey.split("|") : [];
+    if (!identity || productIds.length === 0) {
+      return { dominant: null as GenomeAxis | null, dominantLabel: "", delta: 0 };
     }
-  }
-  const sorted = (Object.keys(totals) as GenomeAxis[]).sort((x, y) => (totals[y] ?? 0) - (totals[x] ?? 0));
-  const dominant = sorted[0] ?? null;
-  return {
-    dominant,
-    dominantLabel: dominant ? AXIS_LABEL[dominant] : "",
-    delta: dominant ? Math.round(((totals[dominant] ?? 0) / cartAffinities.length) * 100) : 0,
-  };
-}
+    const affinities = productIds
+      .map((id) => state.marketplace.products[id]?.genomeAffinity)
+      .filter(Boolean) as Partial<StyleGenome>[];
+    const totals: Partial<Record<GenomeAxis, number>> = {};
+    for (const a of affinities) {
+      for (const axis of Object.keys(a) as GenomeAxis[]) {
+        totals[axis] = (totals[axis] ?? 0) + (a[axis] ?? 0);
+      }
+    }
+    const sorted = (Object.keys(totals) as GenomeAxis[]).sort((x, y) => (totals[y] ?? 0) - (totals[x] ?? 0));
+    const dominant = sorted[0] ?? null;
+    return {
+      dominant,
+      dominantLabel: dominant ? AXIS_LABEL[dominant] : "",
+      delta: dominant ? Math.round(((totals[dominant] ?? 0) / Math.max(affinities.length, 1)) * 100) : 0,
+    };
+  },
+);
 
 export const DNA_AXIS_LABEL = AXIS_LABEL;
