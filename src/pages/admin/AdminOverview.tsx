@@ -318,7 +318,7 @@ const AdminOverview = () => {
     },
     {
       title: "Kunden verschieben sich",
-      body: "DNA-Cluster „Editorial → Shadow" wächst +8 % in 14 Tagen",
+      body: 'DNA-Cluster „Editorial → Shadow" wächst +8 % in 14 Tagen',
       severity: "medium" as const,
       actions: ["Segment öffnen", "Kollektion vorschlagen"],
     },
