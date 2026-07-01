@@ -4,6 +4,8 @@ import type { Cart, Designer, Product, Recommendation } from "../types/entities"
 import { defaultIdentityId } from "./identity";
 import { buildRecommendations } from "../policies/recommendation";
 import { memoByState, memoByStateAndKey } from "./memo";
+import type { DesignerView, ProductView } from "../views/product";
+import { toDesignerView, toProductView } from "../views/product";
 
 export const getAllProducts = memoByState((state: DomainState): Product[] =>
   Object.values(state.marketplace.products),
@@ -11,6 +13,25 @@ export const getAllProducts = memoByState((state: DomainState): Product[] =>
 
 export const getAllDesigners = memoByState((state: DomainState): Designer[] =>
   Object.values(state.marketplace.designers),
+);
+
+export const getAllProductViews = memoByState((state: DomainState): ProductView[] =>
+  Object.values(state.marketplace.products).map((p) =>
+    toProductView(p, state.marketplace.designers[p.designerId]),
+  ),
+);
+
+export const getAllDesignerViews = memoByState((state: DomainState): DesignerView[] =>
+  Object.values(state.marketplace.designers).map(toDesignerView),
+);
+
+export const getProductViewsByDesignerId = memoByStateAndKey(
+  (state: DomainState, designerId: DesignerId | string): ProductView[] => {
+    const designer = state.marketplace.designers[designerId];
+    return Object.values(state.marketplace.products)
+      .filter((p) => p.designerId === designerId)
+      .map((p) => toProductView(p, designer));
+  },
 );
 
 export function getProductBySlug(state: DomainState, slug: string): Product | undefined {
