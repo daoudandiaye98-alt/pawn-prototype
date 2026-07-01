@@ -3,7 +3,7 @@ import { Search, Plus } from "lucide-react";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { products } from "@/data/mock";
+import { useStore, marketplaceSelectors } from "@/core";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { cn } from "@/lib/utils";
 
