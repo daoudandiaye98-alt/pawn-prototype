@@ -29,6 +29,7 @@ import PortalOverview from "./pages/portal/PortalOverview.tsx";
 import PortalEditor from "./pages/portal/PortalEditor.tsx";
 
 import NotFound from "./pages/NotFound.tsx";
+import { RoleGate } from "@/features/access/RoleGate";
 
 const queryClient = new QueryClient();
 
@@ -61,12 +62,12 @@ const App = () => (
                 <Route path="/account" element={<Account />} />
 
                 <Route path="/admin" element={<AdminOverview />} />
-                <Route path="/admin/dna" element={<AdminDNA />} />
-                <Route path="/admin/products" element={<AdminProducts />} />
-                <Route path="/admin/ai" element={<AdminAI />} />
+                <Route path="/admin/dna" element={<RoleGate role="admin"><AdminDNA /></RoleGate>} />
+                <Route path="/admin/products" element={<RoleGate role="admin"><AdminProducts /></RoleGate>} />
+                <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
 
                 <Route path="/portal" element={<PortalOverview />} />
-                <Route path="/portal/editor" element={<PortalEditor />} />
+                <Route path="/portal/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
