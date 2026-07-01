@@ -1,5 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+// Thin adapter over the core store — public API preserved so no page needs to change.
+import { useMemo, type ReactNode } from "react";
 import { Product, products } from "@/data/mock";
+import { useStore } from "@/core/react/useStore";
+import { useCommand } from "@/core/react/useCommand";
+import { commands, defaultIdentityId, marketplaceSelectors } from "@/core";
+import type { ProductId } from "@/core/types/ids";
 
 export interface CartItem {
   product: Product;
@@ -7,7 +12,7 @@ export interface CartItem {
   qty: number;
 }
 
-interface CartCtx {
+export interface CartCtx {
   items: CartItem[];
   add: (product: Product, size: string) => void;
   remove: (id: string, size: string) => void;
@@ -17,71 +22,39 @@ interface CartCtx {
   subtotal: number;
 }
 
-const Ctx = createContext<CartCtx | null>(null);
-
-interface StoredItem {
-  productId: string;
-  size: string;
-  qty: number;
+/** Kept for API compatibility — CoreProvider now owns state. */
+export function CartProvider({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }
 
-const STORAGE_KEY = "pawn-cart-v1";
+export function useCart(): CartCtx {
+  const cart = useStore((s) => marketplaceSelectors.getCart(s));
+  const dispatch = useCommand();
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  return useMemo(() => {
+    const items: CartItem[] = cart.lines
+      .map((line) => {
+        const product = products.find((p) => p.id === (line.productId as string));
+        return product ? { product, size: line.size, qty: line.qty } : null;
+      })
+      .filter((x): x is CartItem => x !== null);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const stored: StoredItem[] = JSON.parse(raw);
-      const hydrated = stored
-        .map((s) => {
-          const product = products.find((p) => p.id === s.productId);
-          return product ? { product, size: s.size, qty: s.qty } : null;
-        })
-        .filter((x): x is CartItem => x !== null);
-      setItems(hydrated);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    const stored: StoredItem[] = items.map((i) => ({ productId: i.product.id, size: i.size, qty: i.qty }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  }, [items]);
-
-  const value = useMemo<CartCtx>(
-    () => ({
+    return {
       items,
-      add: (product, size) =>
-        setItems((prev) => {
-          const existing = prev.find((i) => i.product.id === product.id && i.size === size);
-          if (existing) {
-            return prev.map((i) => (i === existing ? { ...i, qty: i.qty + 1 } : i));
-          }
-          return [...prev, { product, size, qty: 1 }];
-        }),
-      remove: (id, size) => setItems((prev) => prev.filter((i) => !(i.product.id === id && i.size === size))),
-      setQty: (id, size, qty) =>
-        setItems((prev) =>
-          prev
-            .map((i) => (i.product.id === id && i.size === size ? { ...i, qty } : i))
-            .filter((i) => i.qty > 0),
-        ),
-      clear: () => setItems([]),
       count: items.reduce((acc, i) => acc + i.qty, 0),
       subtotal: items.reduce((acc, i) => acc + i.qty * i.product.price, 0),
-    }),
-    [items],
-  );
-
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
-
-export function useCart() {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useCart must be used inside CartProvider");
-  return ctx;
+      add: (product, size) => {
+        dispatch(commands.addToCart, { identityId: defaultIdentityId, productId: product.id as ProductId, size });
+      },
+      remove: (id, size) => {
+        dispatch(commands.removeFromCart, { identityId: defaultIdentityId, productId: id as ProductId, size });
+      },
+      setQty: (id, size, qty) => {
+        dispatch(commands.setCartQty, { identityId: defaultIdentityId, productId: id as ProductId, size, qty });
+      },
+      clear: () => {
+        dispatch(commands.clearCart, { identityId: defaultIdentityId });
+      },
+    };
+  }, [cart, dispatch]);
 }
