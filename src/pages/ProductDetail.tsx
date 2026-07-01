@@ -19,8 +19,7 @@ const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const slug = id ?? "asymmetric-coat";
 
-  const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug))
-    ?? useStore((s) => marketplaceSelectors.getAllProducts(s)[0]);
+  const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug) ?? marketplaceSelectors.getAllProducts(s)[0]);
   const designer = useStore((s) => marketplaceSelectors.getDesignerById(s, coreProduct.designerId as string));
   const designerProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreProduct.designerId));
   const recommendations = useStore((s) => marketplaceSelectors.getRecommendedProducts(s, defaultIdentityId));

@@ -13,8 +13,7 @@ const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const activeSlug = slug ?? "y-project";
 
-  const coreDesigner = useStore((s) => marketplaceSelectors.getDesignerBySlug(s, activeSlug))
-    ?? useStore((s) => marketplaceSelectors.getAllDesigners(s)[0]);
+  const coreDesigner = useStore((s) => marketplaceSelectors.getDesignerBySlug(s, activeSlug) ?? marketplaceSelectors.getAllDesigners(s)[0]);
   const coreProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreDesigner.id));
 
   const designer = useMemo(() => toDesignerView(coreDesigner), [coreDesigner]);
