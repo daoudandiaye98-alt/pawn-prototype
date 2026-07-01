@@ -66,21 +66,19 @@ const Checkout = () => {
     );
   }
 
-  const shipping = 25;
-
   return (
     <PublicLayout>
       <div className="editorial-container py-14">
         <p className="editorial-eyebrow">Checkout · Prototype</p>
         <h1 className="mt-3 font-serif text-5xl">Checkout</h1>
 
-        <form onSubmit={placeOrder} className="mt-12 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
+        <form onSubmit={placeOrderHandler} className="mt-12 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
           <div className="space-y-10">
             <section className="border border-border bg-card p-8">
               <h2 className="font-serif text-2xl">Shipping</h2>
               <div className="mt-6 grid grid-cols-2 gap-4">
-                <FieldL label="First name" />
-                <FieldL label="Last name" />
+                <FieldL label="First name" value={firstName} onChange={setFirstName} />
+                <FieldL label="Last name" value={lastName} onChange={setLastName} />
                 <FieldL label="Email" type="email" className="col-span-2" />
                 <FieldL label="Address" className="col-span-2" />
                 <FieldL label="City" />
