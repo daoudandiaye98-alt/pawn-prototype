@@ -6,19 +6,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/store/cart";
+import { useCommand, selectors } from "@/core";
+import * as commands from "@/core/commands";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const METHODS = ["Credit Card", "PayPal", "Apple Pay", "Klarna"] as const;
 
 const Checkout = () => {
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal } = useCart();
+  const dispatch = useCommand();
+  const { user, profile } = useAuth();
   const [method, setMethod] = useState<typeof METHODS[number]>("Credit Card");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [done, setDone] = useState(false);
 
-  function placeOrder(e: React.FormEvent) {
+  const shipping = 25;
+
+  function placeOrderHandler(e: React.FormEvent) {
     e.preventDefault();
+    const label = [firstName, lastName].filter(Boolean).join(" ") || profile?.displayName || user?.email || "Guest";
+    const result = dispatch(commands.placeOrder, {
+      identityId: selectors.defaultIdentityId,
+      customerLabel: label,
+      items: items.map((i) => ({
+        productId: i.product.id as never,
+        size: i.size,
+        qty: i.qty,
+        unitPrice: i.product.price,
+      })),
+      total: subtotal + shipping,
+    });
+    if (!result.ok) {
+      toast.error(result.reason);
+      return;
+    }
     setDone(true);
-    setTimeout(() => clear(), 250);
   }
 
   if (done) {
