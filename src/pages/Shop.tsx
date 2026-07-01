@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { useStore, marketplaceSelectors, toProductView } from "@/core";
+import type { GenomeAxis } from "@/core";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,14 @@ import { cn } from "@/lib/utils";
 const CATEGORIES = ["Outerwear", "Tops", "Bottoms", "Bags", "Accessories"] as const;
 const COLORS = ["Bone", "Ink", "Onyx", "Obsidian", "Sand", "Ash", "Raw Indigo", "Cognac"];
 const SIZES = ["XS", "S", "M", "L", "XL"];
+const DNA_DIRECTIONS: { key: GenomeAxis; label: string }[] = [
+  { key: "structure", label: "Structure" },
+  { key: "edge", label: "Edge" },
+  { key: "elegance", label: "Elegance" },
+  { key: "darkness", label: "Shadow" },
+  { key: "sensuality", label: "Sensuality" },
+  { key: "utility", label: "Utility" },
+];
 
 const Shop = () => {
   const coreProducts = useStore(marketplaceSelectors.getAllProducts);
