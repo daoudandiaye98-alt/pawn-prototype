@@ -16,6 +16,7 @@ const NAV = [
 
 export function PublicHeader() {
   const { count } = useCart();
+  const { user } = useAuth();
   const { pathname } = useLocation();
 
   return (
