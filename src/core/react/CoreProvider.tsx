@@ -42,15 +42,20 @@ interface CoreProviderProps {
   children: ReactNode;
   /** Optional adapter override for tests. Default: memory + localStorage overlay. */
   adapter?: PersistenceAdapter;
+  /** When present, adds a Supabase-backed adapter scoped to this user's identity. */
+  userId?: string | null;
 }
 
-export function CoreProvider({ children, adapter }: CoreProviderProps) {
+export function CoreProvider({ children, adapter, userId }: CoreProviderProps) {
   const localAdapter = useMemo(() => adapter ?? createLocalStorageAdapter("primary", isDurable), [adapter]);
   const memAdapter = useMemo(() => createMemoryAdapter(), []);
+  const remoteAdapter = useMemo<PersistenceAdapter | null>(
+    () => (userId ? createSupabaseAdapter(userId, isDurable) : null),
+    [userId],
+  );
 
   const initial = useMemo(() => {
     const state = buildSeedState();
-    // Replay any persisted events onto seed state.
     const persisted = localAdapter.load();
     const persistedEvents = Array.isArray(persisted) ? persisted : [];
     return persistedEvents.reduce((s, e) => rootReducer(s, e), state);
@@ -67,6 +72,28 @@ export function CoreProvider({ children, adapter }: CoreProviderProps) {
     (Array.isArray(persisted) ? persisted : []).forEach((e) => l.append(e));
     return l;
   }, [localAdapter]);
+
+  // Hydrate from Supabase once a user is available. Any remote-only events are
+  // replayed on top of local state; the local log is enriched so provenance
+  // traces still resolve.
+  useEffect(() => {
+    if (!remoteAdapter) return;
+    let cancelled = false;
+    void Promise.resolve(remoteAdapter.load()).then((events) => {
+      if (cancelled || events.length === 0) return;
+      const knownIds = new Set<string>();
+      log.all().forEach((e) => knownIds.add(e.id as unknown as string));
+      const fresh = events.filter((e) => !knownIds.has(e.id as unknown as string));
+      if (fresh.length === 0) return;
+      fresh.forEach((e) => log.append(e));
+      let next = stateRef.current;
+      for (const e of fresh) next = rootReducer(next, e);
+      stateRef.current = next;
+      setState(next);
+      listenersRef.current.forEach((l) => l());
+    });
+    return () => { cancelled = true; };
+  }, [remoteAdapter, log]);
 
   const listenersRef = useRef(new Set<() => void>());
   const subscribe = useCallback((listener: () => void) => {
