@@ -9,7 +9,7 @@ import { DesignerCard } from "@/components/pawn/DesignerCard";
 import { PageLabel } from "@/components/pawn/PageLabel";
 import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
 import { DNAVisual, DNARing } from "@/components/pawn/DNAVisual";
-import { products, designers } from "@/data/mock";
+import { useStore, marketplaceSelectors } from "@/core";
 
 /**
  * DNA — the Identity Dossier.
