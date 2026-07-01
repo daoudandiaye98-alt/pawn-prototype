@@ -1,8 +1,15 @@
-// Thin adapter over the core store — public API preserved so no page needs to change.
+/**
+ * Legacy shape adapter over the core store.
+ *
+ * This module exists ONLY to preserve the `useCart()` / `CartProvider` API that
+ * pages were originally written against. All state lives in the core store; this
+ * file is a thin projection + dispatch wrapper. New surfaces should read via
+ * `marketplaceSelectors.getCart` and write via `commands.*` directly, and this
+ * file should be deleted once no consumers remain.
+ */
 import { useMemo, type ReactNode } from "react";
-import type { ProductView } from "@/core";
+import type { ProductId, ProductView } from "@/core";
 import { useStore, useCommand, commands, defaultIdentityId, marketplaceSelectors, toProductView } from "@/core";
-import type { ProductId } from "@/core/types/ids";
 
 export interface CartItem {
   product: ProductView;

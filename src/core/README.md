@@ -17,7 +17,40 @@ Commands  ──►  Reducers  ──►  Selectors
                     └──►  Motion bus (whitelisted signals only)
 ```
 
+## Rules for surfaces
+
+Pages and components may import **only** from these paths:
+
+- `@/core` (the public barrel)
+- `@/core/selectors/*`
+- `@/core/commands`
+- `@/core/views`
+- `@/core/react`
+
+They must **never** import from `@/core/reducers/*`, `@/core/events/*`, or
+`@/core/adapters/*`. This is enforced by `__tests__/boundaries.spec.ts`.
+
+State is read via selectors and written via commands. Nothing else.
+
+## Compaction (flag-gated)
+
+`adapters/compaction.ts` can fold the durable event log into a snapshot event
+(`SnapshotRestored`) to bound growth. It is **off by default** and should stay
+off until item 2 (provenance) is complete: snapshots break the `cause` chains
+that provenance traces walk, so any provenance a surface needs to display must
+be captured before its source events are compacted away.
+
+## What item 2 will add
+
+Provenance is already stamped on `Recommendation` but not on other mutations.
+Item 2 extends the pattern: every command result will carry a `Provenance`
+alongside its events, reducers will store it against the affected entities, and
+`getProvenanceTrace` will return a fully typed chain for any observable change.
+No new surfaces required — the DNA dossier and admin AI logs simply gain a
+"why" affordance.
+
 ## Rules
+
 
 - **Framework-free.** No React/Vite/Tailwind imports inside `src/core/*` except `react/`.
 - **Events are the only writer.** Commands return `RawEvent[]`; the store appends
