@@ -3,7 +3,7 @@
 // The domain layer stores normalized entities. Views join them for display so
 // pages stay dumb and never traverse relationships themselves.
 
-import type { Designer, Order, Product } from "../types/entities";
+import type { Designer, Order, Product, StyleGenome } from "../types/entities";
 
 export interface ProductView {
   id: string;
@@ -18,6 +18,7 @@ export interface ProductView {
   sizes: string[];
   status: Product["status"];
   description: string;
+  genomeAffinity: Partial<StyleGenome>;
 }
 
 export interface DesignerView {
@@ -56,6 +57,7 @@ export function toProductView(product: Product, designer: Designer | undefined):
     sizes: product.sizes,
     status: product.status,
     description: product.description,
+    genomeAffinity: product.genomeAffinity,
   };
 }
 

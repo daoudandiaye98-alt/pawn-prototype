@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
-import { Minus, Plus, X, ShieldCheck } from "lucide-react";
+import { Minus, Plus, X, ShieldCheck, Sparkles } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { useCart } from "@/store/cart";
+import { useCartWardrobeImpact } from "@/features/dna/hooks";
 
 const Cart = () => {
   const { items, setQty, remove, subtotal, count } = useCart();
+  const impact = useCartWardrobeImpact(items.map((i) => i.product.id));
 
   if (items.length === 0) {
     return (
@@ -73,20 +75,36 @@ const Cart = () => {
             ))}
           </ul>
 
-          <aside className="h-fit border border-border bg-card p-8">
-            <h2 className="font-serif text-2xl">Order summary</h2>
-            <dl className="mt-6 space-y-3 text-sm">
-              <Row label="Subtotal" value={`€${subtotal.toLocaleString("de-DE")}`} />
-              <Row label="Shipping" value={`€${shipping}`} />
-              <div className="editorial-rule my-3" />
-              <Row label={<span className="font-serif text-lg">Total</span>} value={<span className="font-serif text-lg">€{(subtotal + shipping).toLocaleString("de-DE")}</span>} />
-            </dl>
-            <Button asChild size="lg" className="mt-8 w-full rounded-none">
-              <Link to="/checkout">Proceed to checkout</Link>
-            </Button>
-            <p className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-accent" /> Secure payment · encrypted checkout
-            </p>
+          <aside className="h-fit space-y-6">
+            {impact.dominant && (
+              <div className="border border-border bg-card p-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-accent" />
+                  <p className="editorial-eyebrow">Wardrobe impact</p>
+                </div>
+                <p className="mt-3 font-serif text-2xl leading-tight">
+                  This bag pushes you toward <span className="italic">{impact.dominantLabel}</span>.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Dominant axis · +{impact.delta} pts to your {impact.dominantLabel.toLowerCase()} signature.
+                </p>
+              </div>
+            )}
+            <div className="border border-border bg-card p-8">
+              <h2 className="font-serif text-2xl">Order summary</h2>
+              <dl className="mt-6 space-y-3 text-sm">
+                <Row label="Subtotal" value={`€${subtotal.toLocaleString("de-DE")}`} />
+                <Row label="Shipping" value={`€${shipping}`} />
+                <div className="editorial-rule my-3" />
+                <Row label={<span className="font-serif text-lg">Total</span>} value={<span className="font-serif text-lg">€{(subtotal + shipping).toLocaleString("de-DE")}</span>} />
+              </dl>
+              <Button asChild size="lg" className="mt-8 w-full rounded-none">
+                <Link to="/checkout">Proceed to checkout</Link>
+              </Button>
+              <p className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-accent" /> Secure payment · encrypted checkout
+              </p>
+            </div>
           </aside>
         </div>
       </div>

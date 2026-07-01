@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { useStore, marketplaceSelectors, toProductView } from "@/core";
+import type { GenomeAxis } from "@/core";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,14 @@ import { cn } from "@/lib/utils";
 const CATEGORIES = ["Outerwear", "Tops", "Bottoms", "Bags", "Accessories"] as const;
 const COLORS = ["Bone", "Ink", "Onyx", "Obsidian", "Sand", "Ash", "Raw Indigo", "Cognac"];
 const SIZES = ["XS", "S", "M", "L", "XL"];
+const DNA_DIRECTIONS: { key: GenomeAxis; label: string }[] = [
+  { key: "structure", label: "Structure" },
+  { key: "edge", label: "Edge" },
+  { key: "elegance", label: "Elegance" },
+  { key: "darkness", label: "Shadow" },
+  { key: "sensuality", label: "Sensuality" },
+  { key: "utility", label: "Utility" },
+];
 
 const Shop = () => {
   const coreProducts = useStore(marketplaceSelectors.getAllProducts);
@@ -23,11 +32,13 @@ const Shop = () => {
   const [search, setSearch] = useState("");
   const [cat, setCat] = useState<string | null>(null);
   const [designer, setDesigner] = useState<string | null>(null);
+  const [dnaAxis, setDnaAxis] = useState<GenomeAxis | null>(null);
   const [maxPrice, setMaxPrice] = useState(2000);
 
   const filtered = products.filter((p) => {
     if (cat && p.category !== cat) return false;
     if (designer && p.designer !== designer) return false;
+    if (dnaAxis && (p.genomeAffinity[dnaAxis] ?? 0) < 0.5) return false;
     if (p.price > maxPrice) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -52,6 +63,11 @@ const Shop = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-none"
           />
+          <FilterGroup title="DNA Direction">
+            {DNA_DIRECTIONS.map((d) => (
+              <FilterPill key={d.key} active={dnaAxis === d.key} onClick={() => setDnaAxis(dnaAxis === d.key ? null : d.key)}>{d.label}</FilterPill>
+            ))}
+          </FilterGroup>
           <FilterGroup title="Categories">
             {CATEGORIES.map((c) => (
               <FilterPill key={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)}>{c}</FilterPill>

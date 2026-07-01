@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { Button } from "@/components/ui/button";
+import { DnaBadge } from "@/components/pawn/DnaBadge";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -12,6 +13,8 @@ import { Heart } from "lucide-react";
 import {
   useStore, marketplaceSelectors, toProductView, defaultIdentityId,
 } from "@/core";
+import { useDnaMatch } from "@/features/dna/hooks";
+import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { cn } from "@/lib/utils";
 
@@ -40,9 +43,21 @@ const ProductDetail = () => {
   const [color, setColor] = useState(product.colors[0]);
   const [activeImg, setActiveImg] = useState(0);
 
+  const match = useDnaMatch(product.id);
+  const { viewProduct, saveProduct } = useCustomerEvents();
+
+  useEffect(() => {
+    viewProduct(product.id);
+  }, [product.id, viewProduct]);
+
   function addToBag() {
     cart.add(product, size);
     toast.success(`${product.name} added to bag`);
+  }
+
+  function onSave() {
+    saveProduct(product.id);
+    toast.success("Saved to your identity");
   }
 
   return (
@@ -80,6 +95,16 @@ const ProductDetail = () => {
           <p className="editorial-eyebrow">{product.designer}</p>
           <h1 className="mt-3 font-serif text-5xl leading-tight">{product.name}</h1>
           <p className="mt-4 text-xl tabular-nums">€{product.price.toLocaleString("de-DE")}</p>
+
+          {match.percent > 0 && (
+            <div className="mt-6 flex items-center gap-4 border border-border bg-card p-4">
+              <DnaBadge match={match} size="lg" />
+              <div>
+                <p className="editorial-eyebrow">Why it fits you</p>
+                <p className="mt-1 text-sm text-foreground/80">{match.rationale}</p>
+              </div>
+            </div>
+          )}
 
           <p className="mt-8 max-w-md text-sm text-foreground/70">{product.description}</p>
 
@@ -123,7 +148,7 @@ const ProductDetail = () => {
             <Button size="lg" className="flex-1 rounded-none" onClick={addToBag}>
               Add to bag
             </Button>
-            <Button size="lg" variant="outline" className="rounded-none" aria-label="Add to wishlist">
+            <Button size="lg" variant="outline" className="rounded-none" aria-label="Save to identity" onClick={onSave}>
               <Heart className="h-4 w-4" />
             </Button>
           </div>

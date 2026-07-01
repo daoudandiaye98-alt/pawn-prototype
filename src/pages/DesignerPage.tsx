@@ -1,13 +1,17 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Play } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { SectionHeading } from "@/components/pawn/SectionHeading";
+import { DnaBadge } from "@/components/pawn/DnaBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
+import { useDnaAlignment } from "@/features/dna/hooks";
+import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 
 const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -21,6 +25,13 @@ const DesignerPage = () => {
     () => coreProducts.map((p) => toProductView(p, coreDesigner)),
     [coreProducts, coreDesigner],
   );
+  const alignment = useDnaAlignment(coreDesigner.id);
+  const { followDesigner } = useCustomerEvents();
+
+  function onFollow() {
+    followDesigner(coreDesigner.id);
+    toast.success(`Following ${designer.name}`);
+  }
 
   return (
     <PublicLayout>
@@ -32,8 +43,11 @@ const DesignerPage = () => {
             <p className="text-[0.7rem] uppercase tracking-[0.28em] text-primary-foreground/60">{designer.location}</p>
             <h1 className="mt-3 font-serif text-6xl leading-[0.95] md:text-8xl">{designer.name}</h1>
             <p className="mt-3 max-w-xl text-lg text-primary-foreground/80">{designer.slogan}</p>
-            <div className="mt-6">
-              <Button className="rounded-none bg-primary-foreground text-primary hover:bg-primary-foreground/90">Follow studio</Button>
+            <div className="mt-6 flex items-center gap-4">
+              <Button onClick={onFollow} className="rounded-none bg-primary-foreground text-primary hover:bg-primary-foreground/90">Follow studio</Button>
+              {alignment.percent > 0 && (
+                <DnaBadge match={alignment} size="md" variant="ink" showLabel />
+              )}
             </div>
           </div>
         </div>
