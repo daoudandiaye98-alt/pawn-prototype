@@ -148,7 +148,7 @@ const ProductDetail = () => {
             <Button size="lg" className="flex-1 rounded-none" onClick={addToBag}>
               Add to bag
             </Button>
-            <Button size="lg" variant="outline" className="rounded-none" aria-label="Add to wishlist">
+            <Button size="lg" variant="outline" className="rounded-none" aria-label="Save to identity" onClick={onSave}>
               <Heart className="h-4 w-4" />
             </Button>
           </div>
