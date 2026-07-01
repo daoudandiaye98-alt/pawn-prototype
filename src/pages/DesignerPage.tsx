@@ -1,13 +1,17 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Play } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { SectionHeading } from "@/components/pawn/SectionHeading";
+import { DnaBadge } from "@/components/pawn/DnaBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
+import { useDnaAlignment } from "@/features/dna/hooks";
+import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 
 const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
