@@ -140,11 +140,11 @@ const Checkout = () => {
   );
 };
 
-function FieldL({ label, type = "text", className }: { label: string; type?: string; className?: string }) {
+function FieldL({ label, type = "text", className, value, onChange }: { label: string; type?: string; className?: string; value?: string; onChange?: (v: string) => void }) {
   return (
     <div className={cn("space-y-2", className)}>
       <Label className="editorial-eyebrow">{label}</Label>
-      <Input type={type} className="rounded-none" />
+      <Input type={type} className="rounded-none" value={value} onChange={onChange ? (e) => onChange(e.target.value) : undefined} />
     </div>
   );
 }
