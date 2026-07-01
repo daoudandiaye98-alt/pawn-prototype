@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 const Index = () => {
   const products = useStore(marketplaceSelectors.getAllProductViews);
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
+  return (
     <PublicLayout>
       {/* HERO — true paper vs ink chess split */}
       <section className="relative">
