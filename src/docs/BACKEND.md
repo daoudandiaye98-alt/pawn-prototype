@@ -1,100 +1,74 @@
-# PAWN — Backend Architecture (Roadmap)
+# PAWN — Backend Roadmap (Future Supabase)
 
-Status: **Not implemented.** This document defines the target Supabase schema and
-backend boundaries for the post-prototype build. The current app is frontend-only
-mock data; every admin and AI control surface has been typed and laid out to drop
-cleanly onto these tables.
+Not implemented yet. This document defines the adapter contract the current
+frontend already conforms to, so the transition is additive.
 
-## 1. Principles
+## Contract
 
-- **Lovable Cloud (Supabase)** for database, auth, storage, edge functions.
-- **Lovable AI Gateway** for every model call. No provider keys in the client.
-- **RLS everywhere.** Roles in a dedicated `user_roles` table — never on profiles.
-- **Audit by default.** Every admin mutation writes `admin_audit_logs`.
+The frontend depends on a single interface:
 
-## 2. Core tables
-
-### Identity
-- `profiles` — public profile, FK to `auth.users`.
-- `user_roles` — `(user_id, role)` where `role ∈ {admin, moderator, designer, user}`.
-  Roles checked via `public.has_role(uid, role)` security-definer function.
-
-### Designers & Brands
-- `designers` — house identity, slug, status, payout connection.
-- `brands` — sub-labels under a designer (optional).
-- `designer_applications` — onboarding flow; moves to `designers` on approval.
-
-### Catalog
-- `products`, `collections`, `product_images`
-- `products.designer_id → designers.id`
-
-### Commerce
-- `orders`, `order_items`
-- Order status lifecycle: `processing → shipped → delivered → returned`.
-
-### DNA / Intelligence
-- `dna_profiles` — per-user vector + the six Style Genome axes
-  (`structure, edge, elegance, darkness, sensuality, utility`).
-- `dna_reports` — versioned snapshots; report PDF in Storage.
-
-### AI Control Plane
-- `ai_settings` — provider, model, temperature, max_tokens, top_p (singleton per env).
-- `ai_prompts` — versioned system prompts; `is_active` flag.
-- `ai_knowledge_sources` — URLs / files / DB views the AI may read.
-- `ai_tools` — capability flags (`enabled`, `requires_role`).
-- `ai_logs` — request, response, latency_ms, tokens, actor.
-
-### Plugins
-- `plugin_connections` — `(slug, status, config_json, created_by)`.
-
-### Auditing
-- `admin_audit_logs` — `(actor, action, entity, entity_id, diff_json, at)`.
-
-## 3. RLS sketch (must be re-validated at implementation time)
-
-```sql
--- Public read of active products
-create policy "public read products" on public.products
-  for select to anon, authenticated using (status = 'Active');
-
--- Designers manage only their own catalog
-create policy "designer writes own products" on public.products
-  for all to authenticated
-  using (public.has_role(auth.uid(), 'designer') and designer_id = (
-    select id from public.designers where owner_id = auth.uid()
-  ));
-
--- Admin full access
-create policy "admin all products" on public.products
-  for all to authenticated
-  using (public.has_role(auth.uid(), 'admin'));
+```ts
+interface PersistenceAdapter {
+  load(): DomainEvent[] | Promise<DomainEvent[]>;
+  append(events: DomainEvent[]): void | Promise<void>;
+  clear?(): void | Promise<void>;
+}
 ```
 
-Every new public-schema table must include `GRANT` to `authenticated` and
-`service_role` in the same migration (Supabase's Data API does not auto-grant).
+Today: `createMemoryAdapter` + `createLocalStorageAdapter`.
+Tomorrow: `createSupabaseAdapter`. No page changes.
 
-## 4. Edge Functions
+## Event store (source of truth)
 
-- `chat` — streams `streamText` via Lovable AI Gateway; persists to `ai_logs`.
-- `dna-generate` — computes Style Genome from interactions; writes `dna_reports`.
-- `apply-designer` — moderates `designer_applications`, notifies admin.
-- `webhook-stripe` — payment lifecycle into `orders`.
+```sql
+create table public.domain_events (
+  id text primary key,           -- EventId from client (deterministic)
+  at timestamptz not null,
+  actor text not null,           -- identity id or 'system'
+  type text not null,
+  cause text references public.domain_events(id),
+  payload jsonb not null,
+  identity_scope uuid            -- indexed for per-identity replay
+);
+create index on public.domain_events (identity_scope, at);
+create index on public.domain_events (type, at);
 
-## 5. Admin governance — what the platform owner controls
+grant select, insert on public.domain_events to authenticated;
+grant all on public.domain_events to service_role;
+alter table public.domain_events enable row level security;
 
-- Approve / reject designers
-- Edit brands, products, collections
-- Configure AI: provider, model, system prompt, personality, knowledge, tools
-- Enable / disable plugins
-- Inspect `ai_logs` and `admin_audit_logs`
-- Marketplace settings (currency, regions, commission)
+create policy "identity reads its own events"
+  on public.domain_events for select to authenticated
+  using (identity_scope = auth.uid());
+create policy "identity appends its own events"
+  on public.domain_events for insert to authenticated
+  with check (identity_scope = auth.uid() and actor = auth.uid()::text);
+```
 
-## 6. What is NOT in this prototype
+System-produced events (registry, orders after payment webhook) are inserted
+via `service_role` from edge functions.
 
-- Real auth, RLS, or tables
-- Real AI calls (mocked responses only)
-- Real plugin integrations (catalog UI only)
-- File storage / image uploads
+## Projections (read models)
 
-When Lovable Cloud is enabled, migrate frontend mock data → real tables in the
-order: `profiles → user_roles → designers → products → orders → dna_* → ai_*`.
+Commerce tables (`products`, `designers`, `orders`, `order_items`, `carts`) are
+**materialized projections** rebuilt by database triggers or a background
+worker that consumes `domain_events`. They are optimized for query, not for
+truth. Rebuilding a projection from scratch is always safe.
+
+## AI Gateway
+
+The AI Control Panel today reads/writes to `Agent`, `PromptVersion`,
+`KnowledgeSource`, `Policy`, `PluginConnection` in the domain core. When a real
+AI Gateway is wired in:
+
+- `engines/ai.ts` composes `context = { agent, activePrompt, knowledge, memory }`
+  respecting the memory policy.
+- The gateway call is a side-effect; its request/response are recorded as a
+  `ai.responded` event with `cause = ai.requested.id`.
+- Provenance for AI answers walks the same `cause` chain used for recommendations.
+
+## Legacy sketch (kept for reference)
+
+The earlier per-entity table sketch is superseded by the event-store approach
+above. Projections replace what those tables used to hold. Keep RLS defaults
+per the workspace `user-roles` and `public-schema-grants` conventions.
