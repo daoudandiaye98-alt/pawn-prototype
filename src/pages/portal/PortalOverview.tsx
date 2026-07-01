@@ -1,9 +1,12 @@
 import { PortalShell } from "@/components/pawn/PortalShell";
 import { StatCard } from "@/components/pawn/StatCard";
 import { ChartPlaceholder } from "@/components/pawn/ChartPlaceholder";
-import { adminOrders, revenueSeries, monthsShort, products } from "@/data/mock";
+import { useStore, portalSelectors, adminSelectors } from "@/core";
 
 const PortalOverview = () => {
+  const studio = useStore((s) => portalSelectors.getStudioOverview(s, "primary"));
+  const { orders: adminOrders } = useStore(adminSelectors.getPlatformOverview);
+  const { products, revenueSeries, months: monthsShort } = studio;
   return (
     <PortalShell eyebrow="Y/PROJECT · Studio" title="Übersicht">
       <div className="border border-border bg-card p-8">

@@ -9,7 +9,7 @@ import { DesignerCard } from "@/components/pawn/DesignerCard";
 import { PageLabel } from "@/components/pawn/PageLabel";
 import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
 import { DNAVisual, DNARing } from "@/components/pawn/DNAVisual";
-import { products, designers } from "@/data/mock";
+import { useStore, marketplaceSelectors } from "@/core";
 
 /**
  * DNA — the Identity Dossier.
@@ -49,6 +49,8 @@ const MUTATION = [
 ];
 
 const DNA = () => {
+  const products = useStore(marketplaceSelectors.getAllProductViews);
+  const designers = useStore(marketplaceSelectors.getAllDesignerViews);
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState<string | null>(null);
 

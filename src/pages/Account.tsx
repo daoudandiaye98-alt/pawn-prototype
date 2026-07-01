@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { Button } from "@/components/ui/button";
-import { customerOrders } from "@/data/mock";
+import { useStore, selectors } from "@/core";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +65,7 @@ function Overview() {
 }
 
 function Orders({ compact = false }: { compact?: boolean }) {
+  const customerOrders = useStore(selectors.getCustomerOrders);
   return (
     <div>
       <h2 className="font-serif text-2xl">{compact ? "Recent orders" : "All orders"}</h2>

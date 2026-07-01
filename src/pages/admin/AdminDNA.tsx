@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { ChartPlaceholder, RadarPlaceholder } from "@/components/pawn/ChartPlaceholder";
-import { dnaSegments, colorTrends } from "@/data/mock";
+import { useStore, adminSelectors } from "@/core";
 import { cn } from "@/lib/utils";
 
 const TABS = ["Übersicht", "Segmente", "Farben", "Schnitte", "Materialien", "Trends"] as const;
 
 const AdminDNA = () => {
+  const { segments: dnaSegments, colorTrends } = useStore(adminSelectors.getGlobalDnaView);
   const [tab, setTab] = useState<typeof TABS[number]>("Übersicht");
   return (
     <AdminShell eyebrow="Intelligence" title="Global DNA">

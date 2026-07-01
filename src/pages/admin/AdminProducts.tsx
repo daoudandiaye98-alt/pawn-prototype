@@ -3,11 +3,12 @@ import { Search, Plus } from "lucide-react";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { products } from "@/data/mock";
+import { useStore, marketplaceSelectors } from "@/core";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { cn } from "@/lib/utils";
 
 const AdminProducts = () => {
+  const products = useStore(marketplaceSelectors.getAllProductViews);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("All");
   const cats = ["All", "Outerwear", "Tops", "Bottoms", "Bags", "Accessories"];

@@ -1,9 +1,10 @@
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { StatCard } from "@/components/pawn/StatCard";
 import { ChartPlaceholder } from "@/components/pawn/ChartPlaceholder";
-import { adminOrders, revenueSeries, monthsShort } from "@/data/mock";
+import { useStore, adminSelectors } from "@/core";
 
 const AdminOverview = () => {
+  const { orders: adminOrders, revenueSeries, months: monthsShort } = useStore(adminSelectors.getPlatformOverview);
   return (
     <AdminShell eyebrow="Kontrollhub" title="Übersicht">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
