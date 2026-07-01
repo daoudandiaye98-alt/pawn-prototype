@@ -24,6 +24,15 @@ export function useWardrobeImpact(affinities: Partial<StyleGenome>[]) {
   return useStore((s) => wardrobeImpact(s, affinities));
 }
 
+export function useCartWardrobeImpact(productIds: (ProductId | string)[]) {
+  return useStore((s) => {
+    const affinities = productIds
+      .map((id) => s.marketplace.products[id as string]?.genomeAffinity)
+      .filter((a): a is StyleGenome => !!a);
+    return wardrobeImpact(s, affinities);
+  });
+}
+
 export function useDnaMatchForAffinity(affinity: Partial<StyleGenome>) {
   return useStore((s) => dnaMatchForAffinity(s, affinity));
 }
