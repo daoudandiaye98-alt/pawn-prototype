@@ -45,12 +45,12 @@ export function createSupabaseAdapter(
     const persistable = batch.filter(includes);
     if (persistable.length === 0) return;
     const rows = persistable.map((e) => ({
-      id: e.id,
+      id: e.id as string,
       at: e.at,
-      actor: e.actor,
-      type: e.type,
-      cause: e.cause ?? null,
-      payload: (e as unknown as { payload: unknown }).payload,
+      actor: e.actor as string,
+      type: e.type as string,
+      cause: (e.cause ?? undefined) as string | undefined,
+      payload: (e as unknown as { payload: unknown }).payload as never,
       identity_scope: userId,
     }));
     const { error } = await supabase.from("domain_events").insert(rows);
