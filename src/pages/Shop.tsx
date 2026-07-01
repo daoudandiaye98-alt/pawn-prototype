@@ -63,6 +63,11 @@ const Shop = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-none"
           />
+          <FilterGroup title="DNA Direction">
+            {DNA_DIRECTIONS.map((d) => (
+              <FilterPill key={d.key} active={dnaAxis === d.key} onClick={() => setDnaAxis(dnaAxis === d.key ? null : d.key)}>{d.label}</FilterPill>
+            ))}
+          </FilterGroup>
           <FilterGroup title="Categories">
             {CATEGORIES.map((c) => (
               <FilterPill key={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)}>{c}</FilterPill>
