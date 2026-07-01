@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { Button } from "@/components/ui/button";
-import { customerOrders } from "@/data/mock";
+import { useStore, selectors } from "@/core";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { cn } from "@/lib/utils";
 
