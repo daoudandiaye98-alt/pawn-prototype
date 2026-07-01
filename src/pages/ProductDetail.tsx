@@ -43,9 +43,21 @@ const ProductDetail = () => {
   const [color, setColor] = useState(product.colors[0]);
   const [activeImg, setActiveImg] = useState(0);
 
+  const match = useDnaMatch(product.id);
+  const { viewProduct, saveProduct } = useCustomerEvents();
+
+  useEffect(() => {
+    viewProduct(product.id);
+  }, [product.id, viewProduct]);
+
   function addToBag() {
     cart.add(product, size);
     toast.success(`${product.name} added to bag`);
+  }
+
+  function onSave() {
+    saveProduct(product.id);
+    toast.success("Saved to your identity");
   }
 
   return (
