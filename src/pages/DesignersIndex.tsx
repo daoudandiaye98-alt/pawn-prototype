@@ -16,9 +16,9 @@ const DesignersIndex = () => {
             title={<>The houses<br />we collect.</>}
             lede="Independent studios building entire worlds around their garments. Each one curated by PAWN."
             action={
-              <Command variant="decision" asChild={false} onClick={() => (window.location.href = "/apply")}>
-                <Link to="/apply">Apply as designer</Link>
-              </Command>
+              <Link to="/apply" className="inline-flex h-12 items-center justify-center bg-[hsl(var(--oxblood))] px-8 text-[0.78rem] uppercase tracking-[0.22em] text-[hsl(var(--accent-foreground))] motion-micro hover:opacity-90">
+                Apply as designer
+              </Link>
             }
           />
         </div>

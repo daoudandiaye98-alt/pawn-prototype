@@ -185,9 +185,7 @@ function EmptyState({ title, cta, to }: { title: string; cta: string; to: string
     <Panel padding="none">
       <div className="p-16 text-center">
         <p className="t-display-md">{title}</p>
-        <Command asChild={false} className="mt-6" onClick={() => (window.location.href = to)}>
-          <Link to={to}>{cta}</Link>
-        </Command>
+        <Link to={to} className="mt-6 inline-flex h-10 items-center justify-center bg-foreground px-5 text-[0.72rem] uppercase tracking-[0.22em] text-background motion-micro hover:bg-foreground/90">{cta}</Link>
       </div>
     </Panel>
   );
