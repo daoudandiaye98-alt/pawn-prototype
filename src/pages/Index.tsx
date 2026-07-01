@@ -8,7 +8,7 @@ import { PageLabel } from "@/components/pawn/PageLabel";
 import { PawnMark } from "@/components/pawn/PawnMark";
 import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
 import { DNAVisual } from "@/components/pawn/DNAVisual";
-import { products, designers } from "@/data/mock";
+import { useStore, marketplaceSelectors } from "@/core";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
