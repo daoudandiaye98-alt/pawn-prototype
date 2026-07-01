@@ -7,6 +7,7 @@ import { emit, type RawEvent } from "../events/emit";
 import { buildSeedState, buildSeedEvents } from "../seed";
 import { createMemoryAdapter } from "../adapters/memory";
 import { createLocalStorageAdapter } from "../adapters/localStorage";
+import { createSupabaseAdapter } from "../adapters/supabase";
 import type { PersistenceAdapter } from "../adapters/PersistenceAdapter";
 import type { CommandResult } from "../commands";
 
