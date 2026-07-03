@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { DesignerCard } from "@/components/pawn/DesignerCard";
+import { ProductImage } from "@/components/pawn/ProductImage";
 import { DNAVisual } from "@/components/pawn/DNAVisual";
 import {
   useStore,
@@ -186,23 +187,20 @@ const Index = () => {
             {ordered[0] && (
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-accent shadow-2xl">
                 <Link to={`/product/${ordered[0].slug}`} className="block h-full w-full">
-                  {ordered[0].image ? (
-                    <img src={ordered[0].image} alt={ordered[0].name} className="h-full w-full object-cover grayscale contrast-125 transition-transform duration-[2000ms] hover:scale-105" />
-                  ) : (
-                    <div className="h-full w-full chess-grid-light" />
-                  )}
-                  <div className="absolute right-6 top-6">
+                  <ProductImage seed={ordered[0].slug} className="h-full w-full grayscale contrast-125 transition-transform duration-[2000ms] hover:scale-105" />
+                  <div className="pointer-events-none absolute right-6 top-6">
                     <span className="bg-background px-3 py-1 text-[10px] uppercase tracking-widest text-foreground">
                       Shadow No. 1
                     </span>
                   </div>
-                  <div className="absolute bottom-8 left-8 text-background">
+                  <div className="pointer-events-none absolute bottom-8 left-8 text-background">
                     <p className="font-serif text-3xl italic">{ordered[0].name}</p>
-                    <p className="mt-2 text-[10px] uppercase tracking-[0.4em] opacity-70">{ordered[0].designerName}</p>
+                    <p className="mt-2 text-[10px] uppercase tracking-[0.4em] opacity-70">{ordered[0].designer}</p>
                   </div>
                 </Link>
               </div>
             )}
+
 
             {/* Monumental type bleed */}
             <div className="relative select-none">
@@ -215,20 +213,17 @@ const Index = () => {
             {ordered[1] && (
               <div className="relative ml-auto aspect-square w-4/5 overflow-hidden bg-secondary">
                 <Link to={`/product/${ordered[1].slug}`} className="block h-full w-full">
-                  {ordered[1].image ? (
-                    <img src={ordered[1].image} alt={ordered[1].name} className="h-full w-full object-cover grayscale mix-blend-multiply transition-transform duration-[2000ms] hover:scale-105" />
-                  ) : (
-                    <div className="h-full w-full chess-grid opacity-40" />
-                  )}
-                  <div className="absolute bottom-8 left-8 max-w-[220px] text-foreground">
+                  <ProductImage seed={ordered[1].slug} className="h-full w-full grayscale mix-blend-multiply transition-transform duration-[2000ms] hover:scale-105" />
+                  <div className="pointer-events-none absolute bottom-8 left-8 max-w-[220px] text-foreground">
                     <p className="font-serif text-2xl italic leading-tight">{ordered[1].name}</p>
                     <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.3em]">
-                      {ordered[1].designerName}
+                      {ordered[1].designer}
                     </p>
                   </div>
                 </Link>
               </div>
             )}
+
           </div>
         </div>
 
