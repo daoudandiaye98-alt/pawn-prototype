@@ -1,119 +1,402 @@
-## Kernfusion — Der Bauer bewegt sich
+# PAWN — Designer Application Pipeline · Architektur- und Planungsbericht
 
-Wir behalten die komplette Architektur (Core, Events, Reducers, DNA, Moments M1–M8) und legen darüber **eine einzige narrative Schicht**: PAWN als Partie. Jeder Nutzer ist ein Bauer. Jede Interaktion ist ein Zug. Die DNA ist der Weg über das Brett. Am Ende: Promotion.
-
-Wir wählen **Lesart C** (kontinuierlich + Schwellen), weil sie beide bereits existierenden Systeme trägt: die kleinen Momente (M2, M3, M5) sind Züge; die großen (M6-Mutation, M7-Kauf) sind Promotions.
-
-Keine Datenbankänderung. Keine neue Route. Keine Feature-Erweiterung. Nur Bedeutungsverdichtung der vorhandenen Oberfläche.
+Reiner Analysebericht. Nichts wird implementiert. Alle folgenden Aussagen basieren auf dem aktuellen Codestand (`src/pages/Apply.tsx`, `src/pages/portal/*`, `src/features/access/RoleGate.tsx`, `src/lib/auth.tsx`, den Admin-Seiten sowie den 4 Migrationen in `supabase/migrations/`).
 
 ---
 
-### 1 · Ein neues narratives Vokabular (`src/features/narrative/`)
+## I. Einstieg — wie ein Designer heute zur Bewerbung findet
 
-Ein zentrales Modul, das die Sprache des Brettes bereitstellt — damit jede Oberfläche dieselben Worte spricht.
+**Route:** `/apply` → Komponente `src/pages/Apply.tsx`
+**Einstiegspunkte:** aktuell nur eine harte Verlinkung von `/designers`. Kein Link im `PublicHeader`, kein CTA auf `/`.
 
-- `pieces.ts` — Mapping Genom → Figur. Die dominanteste Genom-Achse eines Nutzers bestimmt seinen aktuellen „Schatten der Figur" (structure→Turm, edge→Springer, elegance→Läufer, darkness→Dame, sensuality→Läufer, utility→Turm). Der Bauer bleibt Startpunkt.
-- `moves.ts` — Zählt Züge (aus dem Event-Log ableiten: jede Wahl, jedes Save, jede Mutation = 1 Zug). Reine Selektor-Logik.
-- `rank.ts` — Der aktuelle Rang des Bauern (0–7). Berechnet aus Zug-Anzahl + DNA-Kohärenz. Promotion bei Rang 8 = erster Kauf ODER genug Kohärenz.
+**Vier Schritte** (rein Frontend-State, `useState`):
+1. Konto — `fullName`, `email`, `password`
+2. Profil — `brandName`, Location, plus 2 `UploadField`-Placeholder (nicht funktional)
+3. Über dich — `website`, `instagram`, `story`, `tags`, `production`
+4. Bestätigung — Review-Liste, Submit-Button
 
-Kein neuer State — alles abgeleitet aus dem existierenden Event-Log.
+**Was beim Submit passiert:**
+```ts
+function submit(e) {
+  e.preventDefault();
+  setSubmitted(true);   // rendert SuccessState. Nichts wird gespeichert.
+}
+```
 
----
+**Konsequenzen:**
+- Kein `supabase.auth.signUp` → kein User wird angelegt.
+- Kein Insert in irgendeine Tabelle.
+- Die zwei Upload-Buttons sind reine Dummies (`<button>` ohne Handler, kein Storage-Bucket).
+- Nach Reload ist die Bewerbung verloren.
+- Der `SuccessState` verlinkt auf `/portal`, obwohl der Bewerber weder Konto noch Rolle hat — funktioniert nur, weil `RoleGate` unauthentifizierte Besucher als Prototyp durchlässt.
 
-### 2 · Der Symbolsatz — was bleibt, was wird umgedeutet
-
-**Bleibt unverändert:**
-- Logo (Wortmarke oben) — die Signatur, nicht das Symbol.
-- PawnMark-Glyphe — bleibt, aber wird zur **einzigen Figur** auf jeder Seite. Nur eine pro Viewport.
-
-**Wird umgedeutet:**
-- `ChessDivider` → **RankDivider**. Zeigt visuell den aktuellen Rang des Bauern (kleine Marker 1–8, aktueller hervorgehoben). Jede Section-Grenze = ein Rang weiter.
-- `PageLabel` (die „01 — Shadow" etc.) → **entfernt überall dort, wo sie nur katalogisieren**. Bleiben nur, wo sie einen echten Zug markieren (Home-Hero-Panels als „Zug I / Zug II"). Alle Section-„01 Featured Houses" etc. verschwinden.
-- Nummerierungen 01/02 → **Zugnummern** in Schach-Notation-Ästhetik (dünn, monospace, klein), nicht editorial-magazine.
-
----
-
-### 3 · Home (`src/pages/Index.tsx`) — Die Eröffnung
-
-**FirstVisitDoor** (M1) wird zu **„Die Eröffnung"**:
-- Titel weg (kein „Wähle einen Raum"). Statt dessen: eine schmale Zeile *„Weiß beginnt. Dein erster Zug."*
-- Der PawnMark in der Mitte ist die Figur des Nutzers. Nach dem Klick auf ein Panel **animiert er sichtbar ein Feld in die gewählte Richtung** (300ms Translate), bevor die Seite rekomponiert. Das ist der Beweis: der Bauer hat sich bewegt.
-- Panels: „I" / „II" bleiben (Zugnotation), aber die Sub-Zeilen werden knapper („Licht." / „Schatten." — ein Wort).
-
-**Nach dem ersten Zug (Hero):**
-- Statt zwei parallele Panels → das gewählte Feld wird groß, das ungewählte schrumpft zu einem schmalen Streifen am Rand („der nicht gespielte Zug bleibt sichtbar"). Die Wahl bleibt reversibel via Klick auf den Streifen, aber sie hat visuelles Gewicht.
-- Über der Headline: kleine Zug-Signatur `1. e4` — die tatsächliche Notation der ersten Entscheidung des Nutzers.
-
-**Sections darunter:**
-- `ChessDivider` bekommt Rang-Indikator: `— II —` zeigt, dass wir jetzt auf Rang 2 des Brettes sind (Section 2).
-- Section-Titel verlieren ihre „01/02" Präfixe. Die Rang-Position steht im Divider, nicht im Heading.
-- „The Houses" / „The Pieces" bleiben — sie sind bereits Schach-Sprache und tragen das Narrativ.
+**Fehlende Felder für ein tragfähiges Bewerbungsprofil:**
+- Rechtliches: Firmen-/Rechtsname, Sitzland, Steuer-ID (für spätere Auszahlungen)
+- Kontakt: Telefon, bevorzugte Sprache
+- Substanz: Portfolio-Uploads (mind. 5 Werke), Preisspanne, Produktionskapazität, Lieferzeiten
+- Nachhaltigkeit / Herkunftsangaben (Marktdifferenzierer)
+- Referenzen (Presse, bisherige Verkaufsstellen)
+- Consent auf die Angebotsseite (siehe II)
 
 ---
 
-### 4 · DNA (`src/pages/DNA.tsx`) — Das Brett des Selbst
+## II. Vertrags- und Angebotsseite — Consent
 
-Der bereits existierende DNAVisual bleibt strukturell, wird aber neu gerahmt:
-- Header-Zeile: *„Du bist auf Rang [N]. [M] Züge gespielt."* (aus `rank.ts`/`moves.ts`).
-- Neben dem Genom-Radar: der **Figur-Schatten** — welche Figur der Bauer aktuell am ehesten wird, wenn er promoviert. Kleine PawnMark mit dünner Überlagerung der Ziel-Figur (Turm/Läufer/Springer/Dame). Reine SVG-Komposition.
-- Bei Mutation (M6): das existierende `MutationMoment` bekommt einen Satz-Zusatz: *„Ein Feld weiter."* Der Genom-Balken animiert weiterhin — aber jetzt ist klar, was passiert ist.
+**Aktuell:** Die Angebotsversprechen (Gewinnbeteiligung, AI-Marketing, Plattform-Vorteile) existieren im UI-Text — z.B. der linke Panel-Text und die drei Zeilen unten in `Apply.tsx`. Es gibt **keine Checkbox**, kein explizites Accept, keine Version, keine Signatur, keine Speicherung.
 
----
+Ein Bewerber kann heute keinerlei Nachweis erbringen, welchen Vertragstext er wann akzeptiert hat.
 
-### 5 · Product Detail (`src/pages/ProductDetail.tsx`) — Ein Zug in Betracht
+**Wie das robust aufgebaut würde (Vorschlag, nicht umgesetzt):**
 
-- DNA-Match-Prozent wird gerahmt als *„Dieses Stück würde dich [N]% näher an [Figur] rücken."* — der Nutzer sieht, was ein Kauf mit ihm macht, nicht nur wie sehr das Produkt „passt".
-- Save (M3): die existierende Bild-Atmung bleibt. Zusätzlich: kleine Zeile unter dem Preis nach Save: *„Notiert. Zug [N+1]."*
-- Provenance (M5) bleibt unverändert — sie ist bereits Beweis-auf-Nachfrage.
+Zwei Tabellen, versionierte Verträge:
 
----
+```text
+contract_versions
+  id, kind ('designer_terms' | 'ai_marketing' | 'commission'),
+  version (int), body_markdown, effective_from, effective_to, checksum
 
-### 6 · Checkout / Purchase (`src/pages/Checkout.tsx`) — Die Promotion
+designer_consents
+  id, application_id, contract_version_id,
+  accepted_at, ip, user_agent, checksum_at_accept
+```
 
-Der existierende Ein-Frame-Moment „Es gehört jetzt dir." wird zum **Promotions-Ritual**:
-- Wenn der Kauf den Bauern auf Rang 8 bringt (erster Kauf ODER Kohärenz-Schwelle): der PawnMark verwandelt sich sichtbar in seine Figur (SVG-Morph, 1.2s). Ein zweiter Satz erscheint: *„Der Bauer ist gefallen. [Figur] steht."*
-- Bei allen weiteren Käufen: der bisherige Frame bleibt, aber der Rang-Zähler erhöht sich in der Ecke.
+Regeln:
+- Vertragstext ist eine unveränderliche Version. Änderungen erzeugen eine neue `version`.
+- Beim Submit wird für jeden aktiven Vertrag genau ein `designer_consents`-Zeile geschrieben — mit dem `checksum` des Textes zu diesem Zeitpunkt (verhindert stille Nachbesserungen).
+- RLS: Bewerber sieht nur seine eigenen Consents, Admin alle.
+- Im Ereignis-Log zusätzlich `designer.consent_accepted` als `domain_event` (siehe III), sodass die Zustimmung auch im Kausalstrom auftaucht.
 
-Kein Modal, keine Fanfare. Ein Frame, wie gehabt.
-
----
-
-### 7 · RoomShift-Zeilen (`src/features/os/roomShift.tsx`)
-
-Die schmalen Hairline-Zeilen, die heute Kontext erklären („Weil du Schatten gewählt hast."), bekommen konsistente **Schach-Kadenz**:
-- Nach Zug: *„1. [Notation]."*
-- Nach Return (M4): *„Die Partie ruht seit [Zeit]. Es liegt an dir."*
-- Nach Mutation: *„Ein Feld weiter — [Achse]."*
-
-Ein einziges Vokabular, das durch die ganze App klingt.
+Für PAWN wichtig: die Angebotsversprechen (**Umsatzbeteiligung, AI-Marketing kostenlos, exklusive Reichweite**) sollten als eigenständige `contract_versions.kind`-Einträge modelliert werden, sodass jedes Versprechen einzeln akzeptiert wird und einzeln geändert werden kann, ohne alte Bewerber ungültig zu machen.
 
 ---
 
-### 8 · Was NICHT passiert
+## III. Backend Flow — heute vs. Ziel
 
-- Kein Data-Model-Change. Rang und Züge sind Selektoren.
-- Kein Bruch existierender Moments. M1–M8 tragen jetzt Bedeutung, ihre Mechanik bleibt.
-- Kein Schach-Kitsch. Keine Brett-Grafiken als Deko. Keine Springer-Icons als Bullets. Die Sprache ist Schach, die Ästhetik bleibt PAWN (Ivory/Ink/Bone, Cormorant, Serif).
-- Kein neuer Feature-Screen. Alles legt sich in Vorhandenes.
+**Vorhandene Tabellen** (aus `supabase-tables`):
+
+| Tabelle | Rolle in der Bewerbungsstrecke |
+|---|---|
+| `profiles` | wird bei Signup via `handle_new_user`-Trigger angelegt (nur `display_name`) |
+| `user_roles` | Trigger vergibt automatisch `'customer'`. **Kein `'designer_applicant'` oder Ähnliches.** |
+| `domain_events` | Event-Store mit Role-Allowlist (`enforce_event_role_allowlist`). `designer.approved` / `designer.rejected` sind bereits als **admin-only** Event-Typen deklariert. Es gibt aber keinen Event-Typ für **Antrag gestellt**. |
+| `domain_snapshots` | Snapshots des Event-Streams — nicht bewerbungs-spezifisch. |
+| `ai_logs` | AI-Aufrufe — nicht bewerbungs-spezifisch. |
+
+**Was heute im Backend passiert, wenn jemand `/apply` abschickt:** nichts. Es existiert kein Insert, kein Auth-Signup, kein Storage-Upload, kein Event.
+
+**Zielbild des Datenflusses:**
+
+```text
+Designer öffnet /apply
+   │
+Formular (mehrstufig, mit Uploads)
+   │
+Frontend State (Zod-validiert, Dateien im Speicher)
+   │  supabase.auth.signUp({ email, password, data: { display_name, intent: 'designer' }})
+   │  → handle_new_user legt profile + user_roles('customer') an
+   │  → zusätzlicher Insert in user_roles: 'designer_applicant'
+   │
+Storage-Bucket 'designer-applications/{user_id}/'
+   │  Profil-Bild, Banner, Portfolio-Dateien
+   │
+Insert in public.designer_applications
+   │  siehe Schema unten
+   │
+Insert in public.designer_consents  (pro akzeptierter contract_versions)
+   │
+Insert in public.domain_events  (type = 'designer.application_submitted', actor = user_id)
+   │
+Admin sieht Antrag in /admin/designers/applications
+   │
+Admin drückt Freigabe
+   │
+  Insert domain_events(type='designer.approved', actor='system' via admin)
+  RPC public.approve_designer(application_id):
+    - update designer_applications.status = 'approved'
+    - insert user_roles(user_id, 'designer')
+    - delete user_roles(user_id, 'designer_applicant')
+    - insert public.designers  (Marktplatz-Projektion)
+    - trigger optional: welcome-Mail + AI-Onboarding-Slot anlegen
+   │
+Designer landet beim nächsten Login in /portal
+   → RoleGate('designer') greift
+   → statt Studio-Dashboard: AI-Onboarding startet (siehe VI)
+```
+
+**Zusätzliche Tabelle (Vorschlag):**
+
+```text
+designer_applications
+  id (uuid, PK)
+  user_id (uuid, FK auth.users)
+  brand_name, legal_name, location, country
+  website, instagram
+  story (text)
+  tags (text[])
+  production_status
+  portfolio_urls (text[] — Storage-Pfade)
+  banner_url, avatar_url
+  status ('draft' | 'submitted' | 'in_review' | 'approved' | 'rejected' | 'archived')
+  submitted_at, reviewed_at
+  admin_notes (text)              -- interne Notizen
+  rejection_reason (text)
+  ai_review_summary (jsonb)       -- optionale AI-Vorbewertung
+```
+
+RLS-Skizze:
+- Bewerber: `select` und `update` (nur solange `status = 'draft'`) auf eigene Zeile.
+- Admin: voller Zugriff, plus Schreibrecht auf `admin_notes` / `status` / `rejection_reason`.
+- `service_role`: `all` für Edge Functions.
+
+**Beziehungen:**
+- `designer_applications.user_id → auth.users.id`
+- `designer_consents.application_id → designer_applications.id`
+- `designer_consents.contract_version_id → contract_versions.id`
+- Nach Approval: `designers.user_id → auth.users.id` (heute existiert `designers` nur im Core-Seed, nicht in Postgres — siehe VIII).
 
 ---
 
-### Technische Reihenfolge
+## IV. Admin Workflow — was heute möglich ist
 
-1. `src/features/narrative/` anlegen (pieces, moves, rank) — reine Selektor-Module über Event-Log.
-2. `ChessDivider` erweitern um `rank`-Prop; alle Nutzungen aktualisieren.
-3. `PageLabel`-Nutzungen prüfen: entfernen wo redundant, umbenennen wo Zug-tragend.
-4. `Index.tsx`: FirstVisitDoor + Hero-nach-Wahl umbauen (Bauer-Animation, geschrumpfter Streifen des nicht-gewählten Zugs).
-5. `DNA.tsx`: Rang-/Zug-Header, Figur-Schatten-Overlay.
-6. `MutationMoment.tsx`: Satz-Zusatz.
-7. `ProductDetail.tsx`: Match-Rahmung + Save-Zeile.
-8. `Checkout.tsx`: Promotions-Zweig für Rang-8-Erreichung.
-9. `roomShift.tsx`-Aufrufer: Notation-Vokabular vereinheitlichen.
+**Existierender Zugang:** `/admin` (AdminOverview), `/admin/dna`, `/admin/products`, `/admin/ai`. Es gibt **keine** `/admin/designers`-Route.
 
-Jeder Schritt ist eigenständig lauffähig — kein Big-Bang.
+Im `AdminOverview`-Cockpit gibt es zwei Referenzen auf Bewerbungen:
+- KPI-Karte „Aktive Designer" mit Untertitel „18 warten auf Review" — hartcodiert.
+- Attention-Zeile „18 Designer warten auf Freigabe" mit Button `Freigeben`, der eine **rein visuelle** `designer.approve`-Aktion in den lokalen `useOsBus` feuert (kein DB-Effekt, kein Event im echten `domain_events`-Log).
+
+**Als Gründer kannst du heute konkret:**
+
+| Fähigkeit | Status |
+|---|---|
+| alle Bewerbungen sehen | ✗ keine Tabelle, keine Liste |
+| filtern / sortieren | ✗ |
+| Bewerbung öffnen | ✗ kein Detail-View |
+| Notizen hinterlegen | ✗ |
+| annehmen | ✗ (nur visuelle Simulation im OS-Bus) |
+| ablehnen | ✗ |
+| archivieren | ✗ |
+| Bewerbungshistorie einsehen | ✗ |
+
+**Empfohlener Admin-Workflow (Vorschlag):**
+
+```text
+/admin/designers  (Inbox)
+├── Tabs: Neu · In Prüfung · Angenommen · Abgelehnt · Archiviert
+├── Filter: Land, Kategorie, Datum, "wartet > 3 Tage"
+├── Sortierung: Datum, DNA-Match-Score (später), zufällig
+└── Zeile → Detail-Drawer:
+      ├── Portfolio-Galerie (Storage-URLs)
+      ├── Bewerbungsdaten (alle Felder aus III)
+      ├── Consent-Status (welche Verträge, welche Version, wann)
+      ├── Admin-Notizen (append-only, mit Autor + Zeitstempel)
+      ├── Aktionen: [Ablehnen mit Grund] [Annehmen] [Archivieren] [Notiz]
+      └── AI-Vorbewertung (optional, siehe VI)
+```
+
+Jede Aktion erzeugt ein `domain_event` (`designer.approved` / `designer.rejected` / `designer.archived` / `designer.note_added`), sodass die komplette Governance rekonstruierbar bleibt — dafür ist der Event-Store bereits vorhanden und mit Role-Allowlist geschützt.
 
 ---
 
-### Der Beweis, dass die Fusion gelungen ist
+## V. Nach der Annahme — Rollen-, Permission- und Datenwechsel
 
-Wenn ein neuer Nutzer die Seite betritt und nach drei Klicks — ohne einen einzigen Erklärtext gelesen zu haben — versteht: *„Ich bewege eine Figur. Ich spiele eine Partie mit mir selbst. Am Ende werde ich etwas."* Dann ist das Skelett zur Kreatur geworden.
+**Heute:** passiert nichts, weil keine Bewerbung persistent ist.
+
+**Zielbild:** Eine einzige Server-Function `public.approve_designer(application_id uuid)` als `SECURITY DEFINER`, admin-only, die atomar:
+
+1. `user_roles`: entfernt `'designer_applicant'`, fügt `'designer'` hinzu. `'customer'` bleibt erhalten (Designer soll auch als Kunde einkaufen können).
+2. `designer_applications.status = 'approved'`, `reviewed_at = now()`.
+3. Materialisiert das Designer-Profil in eine echte `public.designers`-Tabelle (existiert heute nicht in Postgres, siehe VIII).
+4. Legt eine `designer_onboarding_sessions`-Zeile an (Status `pending`), damit der Designer beim nächsten Login das AI-Interview startet und **nicht** das Studio-Dashboard sieht.
+5. Schreibt `domain_events(type='designer.approved', actor=<admin user_id>, payload={ application_id, designer_id })`.
+6. Optional: triggert Welcome-Mail via Edge Function.
+
+**Effekt auf UI:**
+- `RoleGate('designer')` greift ab jetzt echt. `/portal` wird geschützter Bereich.
+- `PortalOverview` liest `designer_onboarding_sessions.status`: `pending` → Onboarding-Screen, `complete` → Studio-Dashboard.
+- Header zeigt Designer-Umschalter (Studio vs. Kundenmodus).
+
+**Ereignisse, die dabei entstehen:**
+- `designer.application_submitted` (bei Submit)
+- `designer.reviewed` (wenn Admin öffnet)
+- `designer.note_added` (jede Notiz)
+- `designer.approved` / `designer.rejected` / `designer.archived`
+- `designer.onboarding_started` (beim ersten Portal-Besuch nach Approval)
+- `designer.onboarding_completed`
+
+Alle sind über die vorhandene `enforce_event_role_allowlist`-Funktion absicherbar — sie muss nur um diese Typen erweitert werden.
+
+---
+
+## VI. AI-Onboarding — Interview-basierte Brand-DNA-Erzeugung
+
+**Aktueller Stand:** existiert nicht. Nach erfolgreicher (heute simulierter) Bewerbung führt `/portal` direkt zum Studio-Dashboard.
+
+**Architektonischer Einbau (Vorschlag):**
+
+**Datenmodell:**
+```text
+designer_onboarding_sessions
+  id, designer_id, status ('pending'|'in_progress'|'complete'),
+  started_at, completed_at, transcript (jsonb)
+
+designer_brand_dna
+  designer_id (PK),
+  brand_dna (jsonb)       -- was steht die Marke für, Emotion, Zielgruppe
+  brand_voice (jsonb)     -- Ton, verbotene Wörter, Beispielsätze
+  marketing_dna (jsonb)   -- Kanäle, Frequenz, Format-Präferenzen
+  audience_profile (jsonb)
+  color_palette (jsonb)   -- inkl. verbotene Farben
+  storytelling (jsonb)
+  campaign_style (jsonb)
+  prompt_library (jsonb)  -- generierte Text/Bild/Video-Prompt-Templates
+  version, generated_at
+```
+
+**Flow:**
+
+```text
+1. Designer landet nach Approval auf /portal
+2. RoleGate('designer') OK → PortalGateway prüft onboarding.status
+3. 'pending' → /portal/onboarding
+   ├── AI-Chat mit fest strukturierter Fragefolge (state machine)
+   │     Wofür steht deine Marke? / Emotion? / Inspirationen? /
+   │     Zielgruppe? / verbotene Farben? / Materialien? /
+   │     Musik? / Filme? / Architektur?
+   ├── Jede Antwort → append zu session.transcript
+   └── Session-Events als domain_events (ai.interview.turn)
+4. Nach letzter Frage: Edge Function synthesize_brand_dna
+   ├── ruft Lovable AI Gateway (LOVABLE_API_KEY vorhanden)
+   ├── produziert die 8 Bausteine oben in einem Zug (JSON)
+   ├── schreibt sie in designer_brand_dna
+   └── Event ai.brand_dna_generated (cause = session_id)
+5. Designer bekommt "Kuratier deine DNA"-Screen:
+   jeder Baustein einzeln bearbeitbar, ein "Ratify"-Button
+   → ratifiziert wandert die DNA in den Status 'active'
+   → session.status = 'complete', Studio-Dashboard freigeschaltet
+```
+
+**Warum diese Architektur passt:**
+- Deckt sich mit dem vorhandenen **DNA-Evolution-Muster** (proposal → ratification, siehe `src/core/policies/dnaEvolution.ts`) — hier: AI proposes, Designer ratifies.
+- Alles läuft über den Event-Store, damit später jede Kampagne rückverfolgt werden kann bis zum ursprünglichen Interview-Turn.
+- `LOVABLE_API_KEY` ist bereits als Secret gesetzt → keine neue Kreditbarriere.
+- `ai_logs` (existiert) nimmt Request/Response-Log auf.
+
+---
+
+## VII. AI Marketing Pipeline — Systemarchitektur
+
+**Grobe Architektur ohne Implementierung, in Anlehnung an das Event-Sourcing-Prinzip von PAWN:**
+
+```text
+┌── Trigger ────────────────────────────────────────────┐
+│  product.registered   (Designer lädt Produkt hoch)    │
+│  brand_dna.ratified   (nach VI)                       │
+│  campaign.scheduled   (manuell oder Cron)             │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Analyse-Worker (Edge Function) ─────────────────────┐
+│  1. product-vision      → Bilder analysieren          │
+│                           (Farben, Silhouette, Tags)  │
+│  2. dna-merge           → Produkt-Tags + brand_dna    │
+│                           → creative_brief (jsonb)    │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Prompt-Generator ───────────────────────────────────┐
+│  aus creative_brief + prompt_library                  │
+│  erzeugt N Varianten pro Kanal                        │
+│  (IG-Reel, TikTok, Pinterest-Pin, YT-Short)           │
+│  → Insert campaigns / campaign_variants               │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Media-Generator (Video-AI) ─────────────────────────┐
+│  pro Variante → Video/Bild rendern                    │
+│  → Storage-Bucket 'campaigns/{designer}/{campaign}/'  │
+│  → variant.status = 'rendered'                        │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Auto-Bewertung ─────────────────────────────────────┐
+│  score = f(brand_alignment, technical_quality,        │
+│           predicted_ctr, policy_compliance)           │
+│  → variant.score, variant.rejection_reasons           │
+│  Top-K werden in "Designer-Freigabe-Inbox" gelegt.    │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Designer Approval Loop ─────────────────────────────┐
+│  /portal/marketing/inbox                              │
+│  Designer: Approve / Tweak-Prompt / Reject            │
+│  → campaign.status = 'approved'                       │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Channel-Publisher (Plugin-Runtime) ─────────────────┐
+│  Instagram · TikTok · Pinterest · YT Shorts           │
+│  jede Plattform als eigenes Plugin (Plugin-Registry   │
+│  existiert bereits, siehe reducers/plugin.ts)         │
+│  Publish → external_post_id gespeichert               │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Performance-Feedback ───────────────────────────────┐
+│  Webhook / Poll pro Plattform                         │
+│  → campaign_metrics (impressions, ctr, saves, sales)  │
+│  → Event campaign.metric_recorded                     │
+└─────────────────────────────────┬────────────────────┘
+                                  ▼
+┌── Learning Loop ──────────────────────────────────────┐
+│  Nightly-Job: metrics + variant.score → update        │
+│  prompt_library.weight, dna.affinity                  │
+│  → nächste Kampagne startet klüger                    │
+└───────────────────────────────────────────────────────┘
+```
+
+**Passt gut zur bestehenden Architektur, weil:**
+- Der Event-Store trägt bereits `plugin.enabled`/`ai.tool_enabled`-Events — Publishing-Plattformen sind einfach neue Plugins.
+- `PromptVersion`-Entity existiert im Core → `prompt_library` ist deren produktionsreife Form.
+- `Provenance` (siehe `src/core/types/provenance.ts`) ist schon dafür gebaut, jede Empfehlung zu ihrer Ursache zu tracen — das ist exakt das, was du für „warum wurde diese Kampagne so gebaut?" brauchst.
+
+**Neue Tabellen (Skizze):**
+```text
+campaigns(id, designer_id, product_id, brief, status, created_at)
+campaign_variants(id, campaign_id, channel, prompt, media_url, score, status, external_post_id, published_at)
+campaign_metrics(id, variant_id, at, impressions, clicks, saves, sales, revenue)
+prompt_library(id, designer_id, kind, template, weight, updated_at)
+```
+
+---
+
+## VIII. Fehlende Bausteine — priorisiert
+
+### 1 · Kritisch (ohne diese ist die Strecke nicht funktionsfähig)
+
+1. **Persistenz der Bewerbung.** `designer_applications`-Tabelle + RLS + Storage-Bucket für Uploads. Ohne das ist `/apply` ein Placebo.
+2. **Auth-Signup im Submit.** `Apply.tsx` muss `supabase.auth.signUp` aufrufen; Trigger `handle_new_user` erweitern, dass er bei `intent = 'designer'` zusätzlich `user_roles('designer_applicant')` setzt.
+3. **Consent-System.** `contract_versions` + `designer_consents`. Pflicht für Rechtssicherheit (Umsatzbeteiligung, AI-Nutzung).
+4. **Admin-Bewerbungs-Inbox** unter `/admin/designers/applications` mit Detail-Drawer, Notizen und den Aktionen Annehmen/Ablehnen/Archivieren.
+5. **`approve_designer`-Function** (SECURITY DEFINER, admin-only). Atomarer Rollenwechsel + Projektion.
+6. **`public.designers`-Tabelle** als echte Projektion — heute existieren Designer nur im Core-Seed (`src/core/seed/designers.ts`), nicht in Postgres. Ohne diese Tabelle kann `/designer/:slug` nicht öffentlich aus DB gerendert werden.
+7. **Event-Typen erweitern** (`designer.application_submitted`, `designer.reviewed`, `designer.note_added`, `designer.archived`) + Allowlist in `enforce_event_role_allowlist`.
+
+### 2 · Wichtig (nächste Ausbaustufe)
+
+8. **AI-Onboarding-Modul** (`/portal/onboarding` + `designer_onboarding_sessions` + `designer_brand_dna` + Edge Function `synthesize_brand_dna`).
+9. **Portal-Gate** (`PortalGateway`), das `onboarding.status` liest und Studio erst nach `complete` freigibt.
+10. **Rejection-/Notification-Flow.** Bewerber muss per Mail erfahren, was passiert ist. Edge Function + Mail-Provider (`RESEND_API_KEY` oder ähnlich, muss neu hinzugefügt werden).
+11. **Bewerbungsentwurf speichern.** `status = 'draft'` mit Auto-Save alle 5s. Verhindert Verlust bei einer 4-Step-Strecke.
+12. **Sichtbare Einstiegspunkte:** Link im `PublicHeader` („Für Designer") und CTA auf `/designers`.
+13. **Uploads real machen:** Storage-Bucket `designer-applications` mit RLS (owner read/write bis Approval, Admin read all).
+
+### 3 · Nice to have (später)
+
+14. **AI-Vorbewertung der Bewerbung** — Score für Passung, Auffälligkeiten, Empfehlungen an den Admin.
+15. **Reviewer-Zuweisung** (mehrere Admins, Zuständigkeiten).
+16. **Öffentliche Statusseite** für Bewerber: „Deine Bewerbung ist in Prüfung, geschätzt noch 3 Tage."
+17. **Analytics** auf der Bewerbungs-Funnel-Ebene: wie viele erreichen Step 4, wo brechen sie ab.
+18. **AI Marketing Pipeline** (VII) — kompletter Ausbau als eigenes Modul.
+19. **A/B-Test-Framework** für Vertragsversprechen (welche Kombination konvertiert am besten).
+20. **Multi-Language** für den Bewerbungsprozess.
+
+---
+
+## Wo wir stehen — in einem Satz
+
+Es gibt ein hübsches Bewerbungsformular ohne Backend, einen Portal-Bereich ohne Onboarding, einen Admin-Bereich ohne Bewerbungsansicht, einen Event-Store, der bereits die richtigen Event-Typen kennt aber niemand feuert sie, und ein Rollen-System, das robust genug ist, um darauf aufzubauen — sobald die kritischen 7 Bausteine oben sitzen.
+
+**Nächster empfohlener Schritt** (nach deiner Freigabe): mit Baustein 1–3 (Persistenz + Auth-Signup + Consent) in *einer* Migration + einem Apply-Formular-Rewrite anfangen. Alles andere baut darauf auf.
