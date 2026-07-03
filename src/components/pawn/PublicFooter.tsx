@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
+import { Logo } from "./Logo";
 
 export function PublicFooter() {
   return (
     <footer className="mt-32 border-t border-border bg-background">
       <div className="editorial-container grid grid-cols-2 gap-10 py-16 md:grid-cols-4">
         <div>
-          <p className="font-serif text-2xl tracking-[0.35em]">PAWN</p>
+          <Logo className="h-7 w-auto" />
           <p className="mt-4 max-w-xs text-sm text-muted-foreground">
             Fashion as identity architecture. A curated marketplace for visionary designers and the customers who collect them.
           </p>

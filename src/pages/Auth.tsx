@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { PawnMark } from "@/components/pawn/PawnMark";
+import { Logo } from "@/components/pawn/Logo";
 
 export default function Auth() {
   const { user, loading, signInWithPassword, signUp, signInWithGoogle } = useAuth();
@@ -44,8 +44,8 @@ export default function Auth() {
     <main className="min-h-screen bg-background flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-md">
         <div className="mb-10 flex flex-col items-center gap-4">
-          <PawnMark className="h-12 w-12" />
-          <h1 className="font-serif text-4xl tracking-tight">Enter PAWN</h1>
+          <Logo className="h-10 w-auto" />
+          <h1 className="sr-only">Enter PAWN</h1>
           <p className="text-sm text-muted-foreground text-center">
             Your identity, curated across a living wardrobe.
           </p>

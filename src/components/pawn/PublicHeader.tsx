@@ -2,7 +2,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { Heart, Search, ShoppingBag, User } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/lib/auth";
-import { PawnMark } from "./PawnMark";
+import { Logo } from "./Logo";
 
 const NAV = [
   { label: "Women", to: "/shop?gender=women" },
@@ -31,12 +31,9 @@ export function PublicHeader() {
 
       <div className="border-b border-foreground/10">
         <div className="editorial-container flex h-20 items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <PawnMark className="h-6 w-6 text-foreground" />
-            <Link to="/" className="font-serif text-[1.55rem] tracking-[0.42em] leading-none">
-              PAWN
-            </Link>
-          </div>
+          <Link to="/" aria-label="PAWN — Home" className="flex items-center">
+            <Logo className="h-7 w-auto" />
+          </Link>
           <nav className="hidden items-center gap-6 lg:flex">
             {NAV.map((item) => (
               <NavLink
