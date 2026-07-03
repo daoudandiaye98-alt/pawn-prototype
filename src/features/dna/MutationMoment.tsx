@@ -98,9 +98,9 @@ export function MutationMoment() {
       </p>
       <p className="mt-5 max-w-2xl font-serif text-2xl leading-snug text-primary-foreground md:text-3xl">
         {status === "accepted"
-          ? `Übernommen. Deine ${AXIS_LABEL[candidate.axis].toLowerCase()}-Achse hat sich verschoben.`
+          ? `Ein Feld weiter. Deine ${AXIS_LABEL[candidate.axis].toLowerCase()}-Achse hat sich verschoben.`
           : status === "dismissed"
-          ? "Nicht jetzt. Wir kommen später darauf zurück."
+          ? "Nicht jetzt. Der Zug bleibt offen."
           : PHRASES[candidate.axis]}
       </p>
 
