@@ -1,0 +1,384 @@
+import { useEffect, useMemo, useState } from "react";
+import { AdminShell } from "@/components/pawn/AdminShell";
+import { RoleGate } from "@/features/access/RoleGate";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Loader2, X, Check, FileText, Archive, Ban } from "lucide-react";
+
+type Status = "all" | "submitted" | "in_review" | "approved" | "rejected" | "archived";
+
+interface Application {
+  id: string;
+  user_id: string;
+  brand_name: string;
+  legal_name: string | null;
+  location: string | null;
+  country: string | null;
+  website: string | null;
+  instagram: string | null;
+  story: string | null;
+  tags: string[] | null;
+  production_status: string | null;
+  portfolio_paths: string[] | null;
+  status: string;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  admin_notes: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+}
+
+const TABS: { key: Status; label: string }[] = [
+  { key: "submitted", label: "Neu" },
+  { key: "in_review", label: "In Prüfung" },
+  { key: "approved", label: "Angenommen" },
+  { key: "rejected", label: "Abgelehnt" },
+  { key: "archived", label: "Archiviert" },
+  { key: "all", label: "Alle" },
+];
+
+function AdminApplicationsBody() {
+  const [tab, setTab] = useState<Status>("submitted");
+  const [search, setSearch] = useState("");
+  const [rows, setRows] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Application | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    let q = supabase
+      .from("designer_applications")
+      .select("*")
+      .order("submitted_at", { ascending: false, nullsFirst: false });
+    if (tab !== "all") q = q.eq("status", tab);
+    const { data, error } = await q;
+    if (error) toast.error(error.message);
+    setRows((data as Application[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [tab]);
+
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    if (!s) return rows;
+    return rows.filter((r) =>
+      r.brand_name?.toLowerCase().includes(s) ||
+      r.location?.toLowerCase().includes(s) ||
+      r.country?.toLowerCase().includes(s) ||
+      (r.tags ?? []).some((t) => t.toLowerCase().includes(s))
+    );
+  }, [rows, search]);
+
+  const counts = useMemo(() => {
+    const m: Record<string, number> = {};
+    rows.forEach((r) => { m[r.status] = (m[r.status] ?? 0) + 1; });
+    return m;
+  }, [rows]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "border px-3 py-1.5 text-[0.7rem] uppercase tracking-[0.22em] transition-colors",
+              tab === t.key ? "border-accent text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t.label}
+            {t.key !== "all" && counts[t.key] !== undefined && (
+              <span className="ml-2 text-muted-foreground">({counts[t.key]})</span>
+            )}
+          </button>
+        ))}
+        <div className="ml-auto w-full sm:w-64">
+          <Input
+            placeholder="Suchen (Brand, Ort, Tag)…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-none"
+          />
+        </div>
+      </div>
+
+      <div className="border border-border bg-card">
+        {loading ? (
+          <div className="flex items-center justify-center p-16 text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Lade Bewerbungen…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-16 text-center text-muted-foreground">
+            <FileText className="mx-auto mb-3 h-6 w-6" />
+            Keine Bewerbungen in dieser Ansicht.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-border text-left text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3">Brand</th>
+                <th className="px-4 py-3 hidden md:table-cell">Ort</th>
+                <th className="px-4 py-3 hidden lg:table-cell">Tags</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 hidden md:table-cell">Eingereicht</th>
+                <th className="px-4 py-3 text-right">Aktion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-secondary/30">
+                  <td className="px-4 py-3 font-medium">{r.brand_name}</td>
+                  <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
+                    {[r.location, r.country].filter(Boolean).join(", ")}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">
+                    {(r.tags ?? []).slice(0, 3).join(" · ")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusPill status={r.status} />
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
+                    {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString("de-DE") : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => setSelected(r)}
+                      className="text-[0.7rem] uppercase tracking-[0.22em] underline-offset-4 hover:underline"
+                    >
+                      Öffnen
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {selected && (
+        <DetailDrawer app={selected} onClose={() => setSelected(null)} onChange={load} />
+      )}
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    submitted: "border-accent text-foreground",
+    in_review: "border-amber-500/60 text-amber-600 dark:text-amber-300",
+    approved: "border-emerald-500/60 text-emerald-600 dark:text-emerald-300",
+    rejected: "border-red-500/60 text-red-600 dark:text-red-300",
+    archived: "border-border text-muted-foreground",
+    draft: "border-border text-muted-foreground",
+  };
+  return (
+    <span className={cn("border px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em]", map[status] ?? "border-border")}>
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
+function DetailDrawer({ app, onClose, onChange }: { app: Application; onClose: () => void; onChange: () => void }) {
+  const [notes, setNotes] = useState(app.admin_notes ?? "");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState<null | "approve" | "reject" | "archive" | "notes" | "review">(null);
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      if (!app.portfolio_paths?.length) return;
+      const urls: string[] = [];
+      for (const path of app.portfolio_paths) {
+        const { data } = await supabase.storage
+          .from("designer-applications")
+          .createSignedUrl(path, 3600);
+        if (data?.signedUrl) urls.push(data.signedUrl);
+      }
+      setPortfolioUrls(urls);
+    })();
+    // set to in_review on open (silent) if currently submitted
+    if (app.status === "submitted") {
+      supabase.from("designer_applications").update({ status: "in_review" }).eq("id", app.id).then(() => onChange());
+    }
+  }, [app.id]);
+
+  async function saveNotes() {
+    setBusy("notes");
+    const { error } = await supabase
+      .from("designer_applications")
+      .update({ admin_notes: notes })
+      .eq("id", app.id);
+    setBusy(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Notiz gespeichert."); onChange(); }
+  }
+
+  async function approve() {
+    setBusy("approve");
+    const { error } = await supabase.rpc("approve_designer", { _application_id: app.id });
+    setBusy(null);
+    if (error) toast.error(error.message);
+    else { toast.success(`${app.brand_name} angenommen.`); onClose(); onChange(); }
+  }
+
+  async function reject() {
+    if (!reason.trim()) { toast.error("Bitte einen Grund angeben."); return; }
+    setBusy("reject");
+    const { error } = await supabase.rpc("reject_designer", { _application_id: app.id, _reason: reason });
+    setBusy(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Abgelehnt."); onClose(); onChange(); }
+  }
+
+  async function archive() {
+    setBusy("archive");
+    const { error } = await supabase.rpc("archive_application", { _application_id: app.id });
+    setBusy(null);
+    if (error) toast.error(error.message);
+    else { toast.success("Archiviert."); onClose(); onChange(); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/50" onClick={onClose}>
+      <div
+        className="h-full w-full max-w-2xl overflow-y-auto bg-background shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-6 py-4 backdrop-blur">
+          <div>
+            <p className="editorial-eyebrow">Bewerbung</p>
+            <h2 className="font-serif text-2xl">{app.brand_name}</h2>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="space-y-8 p-6">
+          <section>
+            <p className="editorial-eyebrow mb-3">Portfolio</p>
+            {portfolioUrls.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Portfolio-Bilder.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {portfolioUrls.map((u, i) => (
+                  <a key={i} href={u} target="_blank" rel="noreferrer" className="block border border-border">
+                    <img src={u} alt="" loading="lazy" className="h-32 w-full object-cover" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <p className="editorial-eyebrow mb-3">Details</p>
+            <dl className="divide-y divide-border text-sm">
+              {[
+                ["Status", app.status],
+                ["Rechtsname", app.legal_name],
+                ["Ort", [app.location, app.country].filter(Boolean).join(", ")],
+                ["Website", app.website],
+                ["Instagram", app.instagram],
+                ["Tags", (app.tags ?? []).join(", ")],
+                ["Produktion", app.production_status],
+                ["Eingereicht", app.submitted_at ? new Date(app.submitted_at).toLocaleString("de-DE") : "—"],
+              ].map(([k, v]) => (
+                <div key={k as string} className="grid grid-cols-3 py-2">
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className="col-span-2 break-words">{v || <em className="text-muted-foreground">—</em>}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          {app.story && (
+            <section>
+              <p className="editorial-eyebrow mb-3">Story</p>
+              <p className="whitespace-pre-line text-sm text-foreground/80">{app.story}</p>
+            </section>
+          )}
+
+          <section>
+            <div className="flex items-center justify-between">
+              <p className="editorial-eyebrow">Admin-Notizen</p>
+              <Button onClick={saveNotes} disabled={busy === "notes"} size="sm" variant="outline" className="rounded-none">
+                {busy === "notes" ? <Loader2 className="h-3 w-3 animate-spin" /> : "Speichern"}
+              </Button>
+            </div>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+              className="mt-2 rounded-none"
+              placeholder="Interne Notizen…"
+            />
+          </section>
+
+          {app.status !== "approved" && app.status !== "archived" && (
+            <section className="space-y-4 border-t border-border pt-6">
+              <p className="editorial-eyebrow">Entscheidung</p>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={approve}
+                  disabled={busy !== null}
+                  className="rounded-none bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  {busy === "approve" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                  Annehmen
+                </Button>
+                <Button onClick={archive} disabled={busy !== null} variant="outline" className="rounded-none">
+                  <Archive className="mr-2 h-4 w-4" /> Archivieren
+                </Button>
+              </div>
+
+              <div className="border border-border p-4">
+                <Label className="editorial-eyebrow">Grund für Ablehnung</Label>
+                <Textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={3}
+                  placeholder="Kurzer, respektvoller Grund…"
+                  className="mt-2 rounded-none"
+                />
+                <Button
+                  onClick={reject}
+                  disabled={busy !== null || !reason.trim()}
+                  variant="destructive"
+                  className="mt-3 rounded-none"
+                >
+                  {busy === "reject" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}
+                  Ablehnen
+                </Button>
+              </div>
+            </section>
+          )}
+
+          {app.status === "rejected" && app.rejection_reason && (
+            <section className="border-t border-border pt-6">
+              <p className="editorial-eyebrow mb-2">Abgelehnt mit Grund</p>
+              <p className="text-sm text-muted-foreground">{app.rejection_reason}</p>
+            </section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const AdminApplications = () => (
+  <RoleGate role="admin">
+    <AdminShell eyebrow="Governance" title="Bewerbungen">
+      <AdminApplicationsBody />
+    </AdminShell>
+  </RoleGate>
+);
+
+export default AdminApplications;
