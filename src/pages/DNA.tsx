@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { DesignerCard } from "@/components/pawn/DesignerCard";
-import { PageLabel } from "@/components/pawn/PageLabel";
 import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
 import { DNAVisual, DNARing } from "@/components/pawn/DNAVisual";
 import { useStore, marketplaceSelectors } from "@/core";
 import { MutationMoment } from "@/features/dna/MutationMoment";
+import { useRank, useMoves, usePieceShadow } from "@/features/narrative/hooks";
 
 
 /**
