@@ -126,21 +126,21 @@
 @layer components {
   /* ── Locked type scale ─────────────────────────────
      Use these instead of inline text-[..] sizes. */
-  .t-display-xl { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
-  .t-display-lg { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
-  .t-display-md { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
-  .t-display-sm { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
+  .t-display-xl { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
+  .t-display-lg { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
+  .t-display-md { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
+  .t-display-sm { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
 
-  .t-body-lg { font-family: Inter, system-ui, sans-serif; font-size: 1.05rem; line-height: 1.55; }
-  .t-body-md { font-family: Inter, system-ui, sans-serif; font-size: 0.92rem; line-height: 1.55; }
-  .t-body-sm { font-family: Inter, system-ui, sans-serif; font-size: 0.8rem;  line-height: 1.55; }
+  .t-body-lg { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 1.05rem; line-height: 1.55; }
+  .t-body-md { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.92rem; line-height: 1.55; }
+  .t-body-sm { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.8rem;  line-height: 1.55; }
 
-  .t-eyebrow { font-family: Inter, system-ui, sans-serif; font-size: 0.65rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.32em; color: hsl(var(--muted-foreground)); }
-  .t-num     { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .t-eyebrow { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.65rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.32em; color: hsl(var(--muted-foreground)); }
+  .t-num     { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
 
   /* Back-compat aliases */
   .editorial-eyebrow { @apply t-eyebrow; }
-  .pawn-numeral { font-family: "Playfair Display", serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; }
+  .pawn-numeral { font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; }
 
   /* ── Rhythm ─────────────────────────────── */
   .editorial-rule { height: 1px; width: 100%; background: hsl(var(--border)); }
