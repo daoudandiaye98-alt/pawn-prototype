@@ -53,6 +53,9 @@ const MUTATION = [
 const DNA = () => {
   const products = useStore(marketplaceSelectors.getAllProductViews);
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
+  const rank = useRank();
+  const moves = useMoves();
+  const shadow = usePieceShadow();
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState<string | null>(null);
 
