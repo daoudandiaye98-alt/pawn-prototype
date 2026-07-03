@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PawnMark } from "@/components/pawn/PawnMark";
 import { useCart } from "@/store/cart";
 import { useCommand, selectors } from "@/core";
 import * as commands from "@/core/commands";
 import { useAuth } from "@/lib/auth";
+import { useRank, usePieceShadow } from "@/features/narrative/hooks";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
