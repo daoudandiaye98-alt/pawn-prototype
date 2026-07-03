@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
 import { CoreProvider } from "@/core";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { RoomShiftProvider } from "@/features/os/roomShift";
 
 import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
@@ -47,6 +48,7 @@ const App = () => (
         <AuthProvider>
           <AuthedCore>
             <CartProvider>
+              <RoomShiftProvider>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
@@ -71,6 +73,7 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </RoomShiftProvider>
             </CartProvider>
           </AuthedCore>
         </AuthProvider>

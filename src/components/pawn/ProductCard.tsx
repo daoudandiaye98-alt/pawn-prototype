@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart } from "lucide-react";
 import type { ProductView } from "@/core";
@@ -6,13 +6,13 @@ import { ProductImage } from "./ProductImage";
 import { DnaBadge } from "./DnaBadge";
 import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
-import { toast } from "@/components/ui/sonner";
 
 export function ProductCard({ product, recommendationId }: { product: ProductView; recommendationId?: string }) {
   const match = useDnaMatch(product.id);
   const { viewProduct, saveProduct } = useCustomerEvents();
   const ref = useRef<HTMLAnchorElement | null>(null);
   const viewedRef = useRef(false);
+  const [breathing, setBreathing] = useState(false);
 
   useEffect(() => {
     if (!ref.current || viewedRef.current) return;
@@ -38,7 +38,10 @@ export function ProductCard({ product, recommendationId }: { product: ProductVie
       data-recommendation-id={recommendationId}
     >
       <div className="relative overflow-hidden">
-        <ProductImage seed={product.slug} className="aspect-[3/4] w-full transition-transform duration-700 group-hover:scale-[1.02]" />
+        <ProductImage
+          seed={product.slug}
+          className={`aspect-[3/4] w-full transition-transform duration-700 group-hover:scale-[1.02] ${breathing ? "animate-[breathe_800ms_ease-out]" : ""}`}
+        />
         {match.percent > 0 && (
           <div className="absolute right-3 top-3 rounded-full bg-ivory/90 p-1 backdrop-blur">
             <DnaBadge match={match} size="sm" />
@@ -51,7 +54,8 @@ export function ProductCard({ product, recommendationId }: { product: ProductVie
             e.preventDefault();
             e.stopPropagation();
             saveProduct(product.id);
-            toast.success("Saved to your identity");
+            setBreathing(true);
+            window.setTimeout(() => setBreathing(false), 850);
           }}
           className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center border border-foreground/20 bg-ivory/80 text-foreground opacity-0 backdrop-blur transition-opacity group-hover:opacity-100"
         >
@@ -75,3 +79,4 @@ export function ProductCard({ product, recommendationId }: { product: ProductVie
     </Link>
   );
 }
+
