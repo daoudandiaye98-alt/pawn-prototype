@@ -69,9 +69,11 @@ const App = () => (
                 <Route path="/admin" element={<AdminOverview />} />
                 <Route path="/admin/dna" element={<RoleGate role="admin"><AdminDNA /></RoleGate>} />
                 <Route path="/admin/products" element={<RoleGate role="admin"><AdminProducts /></RoleGate>} />
+                <Route path="/admin/applications" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
 
-                <Route path="/portal" element={<PortalOverview />} />
+                <Route path="/portal" element={<PortalGate><PortalOverview /></PortalGate>} />
+                <Route path="/portal/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
                 <Route path="/portal/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />
 
                 <Route path="*" element={<NotFound />} />
