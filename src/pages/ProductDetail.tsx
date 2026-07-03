@@ -109,6 +109,17 @@ const ProductDetail = () => {
           <p className="mt-4 text-xl tabular-nums">€{product.price.toLocaleString("de-DE")}</p>
 
           {match.percent > 0 && (
+            <p className="mt-3 font-cormorant text-base italic text-foreground/65">
+              Rückt dich {match.percent}% näher an die {shadow.label}.
+            </p>
+          )}
+          {savedNote && (
+            <p className="mt-2 animate-fade-up text-[0.65rem] uppercase tracking-[0.3em] text-foreground/60">
+              Notiert. Zug {moves.total}.
+            </p>
+          )}
+
+          {match.percent > 0 && (
             <div className="mt-6 border border-border bg-card">
               <button
                 type="button"
