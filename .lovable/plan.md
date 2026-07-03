@@ -1,125 +1,119 @@
+## Kernfusion — Der Bauer bewegt sich
 
-# PAWN — Situations Pass v1
+Wir behalten die komplette Architektur (Core, Events, Reducers, DNA, Moments M1–M8) und legen darüber **eine einzige narrative Schicht**: PAWN als Partie. Jeder Nutzer ist ein Bauer. Jede Interaktion ist ein Zug. Die DNA ist der Weg über das Brett. Am Ende: Promotion.
 
-Von Philosophie zu Beweis. Keine neuen Features, keine neue Architektur. Wir nehmen die bereits existierenden Organe (Event-Log, Reducer, DNA-Selektoren, System-Bus) und machen **acht Momente** im Browser spürbar. Jeder Moment muss die vier Fragen bestehen: *3-Sekunden-Erkennbarkeit, beweisende Oberfläche, systemisches Verhalten, Event/Projektion/Konsequenz*.
+Wir wählen **Lesart C** (kontinuierlich + Schwellen), weil sie beide bereits existierenden Systeme trägt: die kleinen Momente (M2, M3, M5) sind Züge; die großen (M6-Mutation, M7-Kauf) sind Promotions.
 
-Regel für diesen Pass: **PAWN erklärt nicht — PAWN beweist.** Jeder Text, der beschreibt was PAWN tut, wird durch Verhalten ersetzt, das es tut.
-
----
-
-## Deliverables
-
-### 1. `src/docs/EXPERIENCES.md` — die Verfassung der Momente
-
-Ein einziges Dokument mit ~30 Momenten, jeder in fester Struktur:
-- Auslöser (Event)
-- Innere Konsequenz (Reducer/Projektion)
-- Äußere Konsequenz (sichtbares Verhalten)
-- Emotion
-- Existenzgrund
-
-Dieser Pass implementiert die ersten **acht**. Der Rest bleibt als Backlog im Dokument.
-
-### 2. Acht implementierte Momente
-
-Jeder Moment ist ein kleiner, chirurgischer Eingriff — keine Rebuilds.
+Keine Datenbankänderung. Keine neue Route. Keine Feature-Erweiterung. Nur Bedeutungsverdichtung der vorhandenen Oberfläche.
 
 ---
 
-## Die acht Momente
+### 1 · Ein neues narratives Vokabular (`src/features/narrative/`)
 
-### M1 — First Visit *(Home)*
-- **Auslöser:** kein `identityId` im lokalen Log, erster Aufruf `/`.
-- **Beweis im Browser:** Der Hero ist still. Kein Marketing-Copy-Bombardement. Ein einziger Satz, ein einziger Blick auf einen dunklen Raum. Nach ~1.2s erscheint *eine* Frage — nicht "Sign up", sondern eine Wahl zwischen zwei Bildern (Licht / Schatten). Kein CTA-Button. Die Wahl *ist* der Eintritt.
-- **System:** Klick emittiert `dna.signal_recorded` (erstes Signal, gewichtet niedrig). Kein Modal, kein Onboarding-Flow.
-- **Warum:** Beweist Regel „PAWN fragt, bevor es spricht".
+Ein zentrales Modul, das die Sprache des Brettes bereitstellt — damit jede Oberfläche dieselben Worte spricht.
 
-### M2 — First Choice → Room becomes visible *(Home, sofort nach M1)*
-- **Auslöser:** erstes `dna.signal_recorded`.
-- **Beweis:** Der Home-Raum re-rendert *ohne Reload*. Ein Produkt-Grid, das vorher nicht existierte, erscheint — sortiert nach dem soeben gesetzten Vektor. Über dem Grid steht eine hairline-Zeile: „*Weil du Schatten gewählt hast.*" — verschwindet nach 6s.
-- **System:** `rerankFor(state, identityId)` läuft, `SystemBus` publiziert `recommendation.reranked`.
-- **Warum:** Beweist „Der Raum reagiert."
+- `pieces.ts` — Mapping Genom → Figur. Die dominanteste Genom-Achse eines Nutzers bestimmt seinen aktuellen „Schatten der Figur" (structure→Turm, edge→Springer, elegance→Läufer, darkness→Dame, sensuality→Läufer, utility→Turm). Der Bauer bleibt Startpunkt.
+- `moves.ts` — Zählt Züge (aus dem Event-Log ableiten: jede Wahl, jedes Save, jede Mutation = 1 Zug). Reine Selektor-Logik.
+- `rank.ts` — Der aktuelle Rang des Bauern (0–7). Berechnet aus Zug-Anzahl + DNA-Kohärenz. Promotion bei Rang 8 = erster Kauf ODER genug Kohärenz.
 
-### M3 — First Save → the room remembers *(Shop/Product)*
-- **Auslöser:** `product.saved`.
-- **Beweis:** Kein Toast. Stattdessen: das ProductCard-Bild atmet einmal (subtle scale 1→1.01→1, 800ms). Beim nächsten Home-Besuch steht oben eine schmale Zeile: „*Zuletzt gespeichert: [Name]. Der Raum hat sich leicht verschoben.*"
-- **System:** existierender Event fließt in Wardrobe + DNA. Wir entfernen den bisherigen Sonner-Toast.
-- **Warum:** Beweist „PAWN erinnert sich, ohne es zu sagen."
-
-### M4 — Return after time *(jeder erneute Besuch)*
-- **Auslöser:** `identityId` existiert, `now - lastSeen > 24h`.
-- **Beweis:** Home zeigt beim Wiedereintritt für 2s einen leeren Ivory-Raum mit *einem* Satz: „*Willkommen zurück. Es hat sich etwas verschoben.*" Dann fadet der neue Zustand ein — sichtbar anders als beim letzten Besuch (Reihenfolge, ein neuer Designer oben, eine gedämpfte alte Präferenz).
-- **System:** `lastSeen` im lokalen Adapter, Diff-Berechnung auf DNA-Version.
-- **Warum:** Beweist Kontinuität ohne Erklärung.
-
-### M5 — Provenance on demand *(Product Detail)*
-- **Auslöser:** Nutzer klickt auf den DNA-Match-Prozentwert.
-- **Beweis:** Statt Tooltip öffnet sich *inline* eine schmale Spur: die drei konkreten Signale (gespeicherte Teile, gefolgter Designer, verweilte Sekunden), die diese Empfehlung erzeugt haben. Kein Modal.
-- **System:** `provenanceFor(recommendationId)` existiert bereits — wir rendern sie nur.
-- **Warum:** Beweist „Erklärt sich nur, wenn gefragt."
-
-### M6 — First Mutation *(DNA-Seite)*
-- **Auslöser:** `mutation.proposed` (bereits vorhanden über evolution-Engine).
-- **Beweis:** Auf `/dna` erscheint der Vorschlag nicht als Card mit Buttons, sondern als *Satz*: „*Deine Struktur scheint sich zu verhärten. Soll ich das übernehmen?*" — zwei Wörter darunter: *annehmen* / *nicht jetzt*. Bei Annahme animiert der Genome-Balken *sichtbar* seinen Wert. Kein Success-Toast.
-- **System:** `ratifyMutation` command, `dna.updated` event, Reducer läuft, Balken interpoliert 1.2s.
-- **Warum:** Beweist „Mutation ist ein Moment, keine Einstellung."
-
-### M7 — First Purchase → threshold *(Checkout Success)*
-- **Auslöser:** `order.placed`.
-- **Beweis:** Keine Konfetti-Seite. Ein einziger Frame: das Produkt, klein, zentriert, darunter der Satz „*Es gehört jetzt zu dir.*" — 4 Sekunden lang, dann automatischer Übergang zurück in einen leicht veränderten Home-Raum (das gekaufte Teil verschwindet aus Empfehlungen, verwandte Formsprache steigt).
-- **System:** existierender `order.placed`-Reducer + Rerank.
-- **Warum:** Beweist „Kauf verändert den Raum, nicht nur die Datenbank."
-
-### M8 — Admin Intervention → visible ripple *(Admin AI)*
-- **Auslöser:** Admin ändert eine AI-Policy (`ai.prompt_updated`).
-- **Beweis:** Rechts im Admin erscheint eine Live-Zeile: „*Diese Änderung würde 42 aktuelle Empfehlungen verschieben.*" — mit einem *Vorher/Nachher* Diff zweier Beispielprodukte. Erst danach der Speichern-Klick.
-- **System:** trockene Simulation via `rerankFor` gegen einen Sample-Identity-Snapshot, kein neuer Event vor Bestätigung.
-- **Warum:** Beweist „Entscheidungen haben sichtbare Folgen, bevor sie passieren."
+Kein neuer State — alles abgeleitet aus dem existierenden Event-Log.
 
 ---
 
-## Was *entfernt* wird
+### 2 · Der Symbolsatz — was bleibt, was wird umgedeutet
 
-Um Beweisen Raum zu geben, verschwindet Erklärung:
-- Sonner-Toasts bei Save/Follow (ersetzt durch räumliches Verhalten).
-- Beschreibende Marketing-Sätze auf Home, die behaupten was PAWN ist.
-- „How it works"-artige Sekundärtexte auf `/dna`.
-- Success-Screens ohne Konsequenz.
+**Bleibt unverändert:**
+- Logo (Wortmarke oben) — die Signatur, nicht das Symbol.
+- PawnMark-Glyphe — bleibt, aber wird zur **einzigen Figur** auf jeder Seite. Nur eine pro Viewport.
 
----
-
-## Technische Notizen (für Lead Engineer)
-
-- **Keine neuen Reducer, keine neuen Event-Typen.** Alle acht Momente nutzen existierende Events aus `src/core/types/events.ts`.
-- **Neu:** ein `lastSeen`-Feld im `localStorage`-Adapter (Meta, nicht Event) für M4.
-- **Neu:** eine kleine `useRoomShift(reason)`-Hook, die kurzlebige hairline-Zeilen mit auto-dismiss orchestriert (M2, M3, M4). Rein Präsentation.
-- **Motion:** ausschließlich existierende Tokens `--ease-pawn`, `--dur-*` aus `src/index.css`. Keine neue Motion-Lib.
-- **Interpolation** für Genome-Balken (M6): einfache `requestAnimationFrame`-Rampe, keine Framer-Abhängigkeit.
-- **M8-Simulation:** `rerankFor` gegen einen deterministischen Seed-Identity, Diff clientseitig; keine Persistenz bis Bestätigung.
-- **Boundaries** bleiben: UI liest nur Selectors/Views, keine Reducer-Interna. Bestehende `boundaries.spec.ts` bleibt grün.
+**Wird umgedeutet:**
+- `ChessDivider` → **RankDivider**. Zeigt visuell den aktuellen Rang des Bauern (kleine Marker 1–8, aktueller hervorgehoben). Jede Section-Grenze = ein Rang weiter.
+- `PageLabel` (die „01 — Shadow" etc.) → **entfernt überall dort, wo sie nur katalogisieren**. Bleiben nur, wo sie einen echten Zug markieren (Home-Hero-Panels als „Zug I / Zug II"). Alle Section-„01 Featured Houses" etc. verschwinden.
+- Nummerierungen 01/02 → **Zugnummern** in Schach-Notation-Ästhetik (dünn, monospace, klein), nicht editorial-magazine.
 
 ---
 
-## Reihenfolge
+### 3 · Home (`src/pages/Index.tsx`) — Die Eröffnung
 
-1. `src/docs/EXPERIENCES.md` — Struktur + 8 Momente ausgeschrieben, restliche ~22 als Titel-Backlog.
-2. M2 + M3 (Home & Save) — höchster erlebbarer Impact, kleinste Fläche.
-3. M1 (First Visit) — braucht Home-Restrukturierung, aber nur Hero-Bereich.
-4. M4 (Return) — Adapter-Meta + Home-Intro.
-5. M5 (Provenance) — nur Product Detail.
-6. M6 (Mutation) — nur `/dna`.
-7. M7 (Purchase) — Checkout Success.
-8. M8 (Admin) — Admin AI.
+**FirstVisitDoor** (M1) wird zu **„Die Eröffnung"**:
+- Titel weg (kein „Wähle einen Raum"). Statt dessen: eine schmale Zeile *„Weiß beginnt. Dein erster Zug."*
+- Der PawnMark in der Mitte ist die Figur des Nutzers. Nach dem Klick auf ein Panel **animiert er sichtbar ein Feld in die gewählte Richtung** (300ms Translate), bevor die Seite rekomponiert. Das ist der Beweis: der Bauer hat sich bewegt.
+- Panels: „I" / „II" bleiben (Zugnotation), aber die Sub-Zeilen werden knapper („Licht." / „Schatten." — ein Wort).
 
-Kein visueller Redesign-Pass. Kein neues Token. Kein neuer Route. Nur: **die bereits gebaute Realität zum ersten Mal fühlbar machen.**
+**Nach dem ersten Zug (Hero):**
+- Statt zwei parallele Panels → das gewählte Feld wird groß, das ungewählte schrumpft zu einem schmalen Streifen am Rand („der nicht gespielte Zug bleibt sichtbar"). Die Wahl bleibt reversibel via Klick auf den Streifen, aber sie hat visuelles Gewicht.
+- Über der Headline: kleine Zug-Signatur `1. e4` — die tatsächliche Notation der ersten Entscheidung des Nutzers.
+
+**Sections darunter:**
+- `ChessDivider` bekommt Rang-Indikator: `— II —` zeigt, dass wir jetzt auf Rang 2 des Brettes sind (Section 2).
+- Section-Titel verlieren ihre „01/02" Präfixe. Die Rang-Position steht im Divider, nicht im Heading.
+- „The Houses" / „The Pieces" bleiben — sie sind bereits Schach-Sprache und tragen das Narrativ.
 
 ---
 
-## Erfolgsmessung
+### 4 · DNA (`src/pages/DNA.tsx`) — Das Brett des Selbst
 
-Ein Außenstehender öffnet PAWN, tut nichts als klicken, und kann *ohne Erklärung* sagen:
-- „Der Raum hat sich verändert, weil ich etwas getan habe."
-- „Es weiß etwas über mich, das es vorher nicht wusste."
-- „Wenn ich es frage, warum, antwortet es — sonst nicht."
+Der bereits existierende DNAVisual bleibt strukturell, wird aber neu gerahmt:
+- Header-Zeile: *„Du bist auf Rang [N]. [M] Züge gespielt."* (aus `rank.ts`/`moves.ts`).
+- Neben dem Genom-Radar: der **Figur-Schatten** — welche Figur der Bauer aktuell am ehesten wird, wenn er promoviert. Kleine PawnMark mit dünner Überlagerung der Ziel-Figur (Turm/Läufer/Springer/Dame). Reine SVG-Komposition.
+- Bei Mutation (M6): das existierende `MutationMoment` bekommt einen Satz-Zusatz: *„Ein Feld weiter."* Der Genom-Balken animiert weiterhin — aber jetzt ist klar, was passiert ist.
 
-Wenn diese drei Sätze wahr sind, ist der Pass fertig. Alles andere ist noch Philosophie.
+---
+
+### 5 · Product Detail (`src/pages/ProductDetail.tsx`) — Ein Zug in Betracht
+
+- DNA-Match-Prozent wird gerahmt als *„Dieses Stück würde dich [N]% näher an [Figur] rücken."* — der Nutzer sieht, was ein Kauf mit ihm macht, nicht nur wie sehr das Produkt „passt".
+- Save (M3): die existierende Bild-Atmung bleibt. Zusätzlich: kleine Zeile unter dem Preis nach Save: *„Notiert. Zug [N+1]."*
+- Provenance (M5) bleibt unverändert — sie ist bereits Beweis-auf-Nachfrage.
+
+---
+
+### 6 · Checkout / Purchase (`src/pages/Checkout.tsx`) — Die Promotion
+
+Der existierende Ein-Frame-Moment „Es gehört jetzt dir." wird zum **Promotions-Ritual**:
+- Wenn der Kauf den Bauern auf Rang 8 bringt (erster Kauf ODER Kohärenz-Schwelle): der PawnMark verwandelt sich sichtbar in seine Figur (SVG-Morph, 1.2s). Ein zweiter Satz erscheint: *„Der Bauer ist gefallen. [Figur] steht."*
+- Bei allen weiteren Käufen: der bisherige Frame bleibt, aber der Rang-Zähler erhöht sich in der Ecke.
+
+Kein Modal, keine Fanfare. Ein Frame, wie gehabt.
+
+---
+
+### 7 · RoomShift-Zeilen (`src/features/os/roomShift.tsx`)
+
+Die schmalen Hairline-Zeilen, die heute Kontext erklären („Weil du Schatten gewählt hast."), bekommen konsistente **Schach-Kadenz**:
+- Nach Zug: *„1. [Notation]."*
+- Nach Return (M4): *„Die Partie ruht seit [Zeit]. Es liegt an dir."*
+- Nach Mutation: *„Ein Feld weiter — [Achse]."*
+
+Ein einziges Vokabular, das durch die ganze App klingt.
+
+---
+
+### 8 · Was NICHT passiert
+
+- Kein Data-Model-Change. Rang und Züge sind Selektoren.
+- Kein Bruch existierender Moments. M1–M8 tragen jetzt Bedeutung, ihre Mechanik bleibt.
+- Kein Schach-Kitsch. Keine Brett-Grafiken als Deko. Keine Springer-Icons als Bullets. Die Sprache ist Schach, die Ästhetik bleibt PAWN (Ivory/Ink/Bone, Cormorant, Serif).
+- Kein neuer Feature-Screen. Alles legt sich in Vorhandenes.
+
+---
+
+### Technische Reihenfolge
+
+1. `src/features/narrative/` anlegen (pieces, moves, rank) — reine Selektor-Module über Event-Log.
+2. `ChessDivider` erweitern um `rank`-Prop; alle Nutzungen aktualisieren.
+3. `PageLabel`-Nutzungen prüfen: entfernen wo redundant, umbenennen wo Zug-tragend.
+4. `Index.tsx`: FirstVisitDoor + Hero-nach-Wahl umbauen (Bauer-Animation, geschrumpfter Streifen des nicht-gewählten Zugs).
+5. `DNA.tsx`: Rang-/Zug-Header, Figur-Schatten-Overlay.
+6. `MutationMoment.tsx`: Satz-Zusatz.
+7. `ProductDetail.tsx`: Match-Rahmung + Save-Zeile.
+8. `Checkout.tsx`: Promotions-Zweig für Rang-8-Erreichung.
+9. `roomShift.tsx`-Aufrufer: Notation-Vokabular vereinheitlichen.
+
+Jeder Schritt ist eigenständig lauffähig — kein Big-Bang.
+
+---
+
+### Der Beweis, dass die Fusion gelungen ist
+
+Wenn ein neuer Nutzer die Seite betritt und nach drei Klicks — ohne einen einzigen Erklärtext gelesen zu haben — versteht: *„Ich bewege eine Figur. Ich spiele eine Partie mit mir selbst. Am Ende werde ich etwas."* Dann ist das Skelett zur Kreatur geworden.
