@@ -58,7 +58,7 @@ const initial: FormState = {
 
 const Apply = () => {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
+  
 
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormState>(initial);
