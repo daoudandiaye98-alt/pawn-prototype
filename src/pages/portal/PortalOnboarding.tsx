@@ -75,7 +75,7 @@ function OnboardingBody() {
     const { error } = await supabase
       .from("designer_onboarding_sessions")
       .update({
-        transcript: next,
+        transcript: next as unknown as import("@/integrations/supabase/types").Json,
         status: isLast ? "complete" : "in_progress",
         started_at: transcript.length === 0 ? new Date().toISOString() : undefined,
         completed_at: isLast ? new Date().toISOString() : null,
@@ -88,6 +88,8 @@ function OnboardingBody() {
     if (isLast) {
       setComplete(true);
       await supabase.from("domain_events").insert({
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
         type: "designer.onboarding_completed",
         actor: user!.id,
         payload: { session_id: sessionId },
