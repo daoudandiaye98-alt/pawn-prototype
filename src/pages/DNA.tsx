@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { DesignerCard } from "@/components/pawn/DesignerCard";
-import { PageLabel } from "@/components/pawn/PageLabel";
 import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
 import { DNAVisual, DNARing } from "@/components/pawn/DNAVisual";
 import { useStore, marketplaceSelectors } from "@/core";
 import { MutationMoment } from "@/features/dna/MutationMoment";
+import { useRank, useMoves, usePieceShadow } from "@/features/narrative/hooks";
 
 
 /**
@@ -53,6 +53,9 @@ const MUTATION = [
 const DNA = () => {
   const products = useStore(marketplaceSelectors.getAllProductViews);
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
+  const rank = useRank();
+  const moves = useMoves();
+  const shadow = usePieceShadow();
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState<string | null>(null);
 
@@ -77,7 +80,15 @@ const DNA = () => {
           <p className="mt-10 max-w-xl font-cormorant text-2xl italic text-foreground/70">
             Your style is a language. We decode it — molecule by molecule.
           </p>
-          <div className="mt-16 flex items-center gap-3 text-foreground/50">
+          <div className="mt-14 flex flex-wrap items-baseline gap-x-8 gap-y-3 border-t border-foreground/10 pt-6">
+            <p className="font-cormorant text-xl italic text-foreground/75">
+              Du stehst auf Rang <span className="pawn-numeral not-italic text-foreground">{rank.rank}</span> von 8. <span className="pawn-numeral not-italic text-foreground">{moves.total}</span> {moves.total === 1 ? "Zug" : "Züge"} gespielt.
+            </p>
+            <p className="text-[0.6rem] uppercase tracking-[0.32em] text-foreground/50">
+              Der Bauer trägt: {shadow.label} — {shadow.quality}
+            </p>
+          </div>
+          <div className="mt-10 flex items-center gap-3 text-foreground/50">
             <ArrowDown className="h-4 w-4" strokeWidth={1.2} />
             <span className="text-[0.6rem] uppercase tracking-[0.34em]">
               Continue the dossier

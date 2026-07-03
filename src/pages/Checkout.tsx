@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PawnMark } from "@/components/pawn/PawnMark";
 import { useCart } from "@/store/cart";
 import { useCommand, selectors } from "@/core";
 import * as commands from "@/core/commands";
 import { useAuth } from "@/lib/auth";
+import { useRank, usePieceShadow } from "@/features/narrative/hooks";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -18,6 +20,8 @@ const Checkout = () => {
   const { items, subtotal } = useCart();
   const dispatch = useCommand();
   const { user, profile } = useAuth();
+  const rank = useRank();
+  const shadow = usePieceShadow();
   const [method, setMethod] = useState<typeof METHODS[number]>("Credit Card");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -47,13 +51,37 @@ const Checkout = () => {
   }
 
   if (done) {
+    // Promotion: Rang 8 mit erstem Kauf → der Bauer fällt, die Figur steht.
+    const promoted = rank.rank >= 7;
     return (
       <PublicLayout>
         <section className="editorial-container flex min-h-[70vh] flex-col items-center justify-center py-32 text-center">
-          <p className="editorial-eyebrow text-muted-foreground">Ein einzelner Satz</p>
-          <h1 className="mt-8 font-serif text-6xl italic leading-[1.05] md:text-7xl">
-            Es gehört jetzt dir.
+          <div className="relative flex h-32 w-32 items-center justify-center">
+            <PawnMark
+              className={cn(
+                "h-16 w-16 text-foreground transition-all duration-[1200ms] ease-out",
+                promoted && "scale-0 opacity-0",
+              )}
+            />
+            {promoted && (
+              <div className="absolute inset-0 flex items-center justify-center animate-fade-up">
+                <p className="pawn-numeral text-6xl text-foreground">
+                  {shadow.piece === "queen" ? "♛" : shadow.piece === "rook" ? "♜" : shadow.piece === "bishop" ? "♝" : shadow.piece === "knight" ? "♞" : "♟"}
+                </p>
+              </div>
+            )}
+          </div>
+          <p className="mt-8 editorial-eyebrow text-muted-foreground">
+            {promoted ? `Rang 8 · Promotion` : `Zug ${rank.rank + 1}`}
+          </p>
+          <h1 className="mt-4 font-serif text-6xl italic leading-[1.05] md:text-7xl">
+            {promoted ? "Der Bauer ist gefallen." : "Es gehört jetzt dir."}
           </h1>
+          {promoted && (
+            <p className="mt-4 font-cormorant text-2xl italic text-foreground/70">
+              Die {shadow.label} steht.
+            </p>
+          )}
           <div className="mt-16 h-px w-24 bg-foreground/25" />
           <div className="mt-16 flex justify-center gap-8 text-[0.65rem] uppercase tracking-[0.3em]">
             <Link to="/account" className="border-b border-foreground pb-1">Deine Sammlung</Link>
@@ -63,6 +91,7 @@ const Checkout = () => {
       </PublicLayout>
     );
   }
+
 
 
   return (

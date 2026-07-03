@@ -16,6 +16,7 @@ import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { useRoomShift } from "@/features/os/roomShift";
+import { useMoves, usePieceShadow } from "@/features/narrative/hooks";
 import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
@@ -30,6 +31,8 @@ const ProductDetail = () => {
   const identity = useStore((s) => selectors.getIdentity(s, defaultIdentityId));
   const cart = useCart();
   const { push } = useRoomShift();
+  const moves = useMoves();
+  const shadow = usePieceShadow();
 
   const product = useMemo(() => toProductView(coreProduct, designer), [coreProduct, designer]);
 
@@ -46,6 +49,7 @@ const ProductDetail = () => {
   const [activeImg, setActiveImg] = useState(0);
   const [provenanceOpen, setProvenanceOpen] = useState(false);
   const [breathing, setBreathing] = useState(false);
+  const [savedNote, setSavedNote] = useState(false);
 
   const match = useDnaMatch(product.id);
   const { viewProduct, saveProduct } = useCustomerEvents();
@@ -56,13 +60,15 @@ const ProductDetail = () => {
 
   function addToBag() {
     cart.add(product, size);
-    push(`${product.name} liegt bereit.`);
+    push(`${product.name} betritt das Brett.`);
   }
 
   function onSave() {
     saveProduct(product.id);
     setBreathing(true);
+    setSavedNote(true);
     window.setTimeout(() => setBreathing(false), 850);
+    window.setTimeout(() => setSavedNote(false), 4000);
   }
 
 
@@ -101,6 +107,17 @@ const ProductDetail = () => {
           <p className="editorial-eyebrow">{product.designer}</p>
           <h1 className="mt-3 font-serif text-5xl leading-tight">{product.name}</h1>
           <p className="mt-4 text-xl tabular-nums">€{product.price.toLocaleString("de-DE")}</p>
+
+          {match.percent > 0 && (
+            <p className="mt-3 font-cormorant text-base italic text-foreground/65">
+              Rückt dich {match.percent}% näher an die {shadow.label}.
+            </p>
+          )}
+          {savedNote && (
+            <p className="mt-2 animate-fade-up text-[0.65rem] uppercase tracking-[0.3em] text-foreground/60">
+              Notiert. Zug {moves.total}.
+            </p>
+          )}
 
           {match.percent > 0 && (
             <div className="mt-6 border border-border bg-card">
