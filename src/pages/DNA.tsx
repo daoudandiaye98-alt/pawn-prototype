@@ -10,6 +10,8 @@ import { PageLabel } from "@/components/pawn/PageLabel";
 import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
 import { DNAVisual, DNARing } from "@/components/pawn/DNAVisual";
 import { useStore, marketplaceSelectors } from "@/core";
+import { MutationMoment } from "@/features/dna/MutationMoment";
+
 
 /**
  * DNA — the Identity Dossier.
@@ -213,6 +215,9 @@ const DNA = () => {
                 )}
               </div>
             ))}
+          </div>
+          <div className="mt-16">
+            <MutationMoment />
           </div>
         </div>
       </section>

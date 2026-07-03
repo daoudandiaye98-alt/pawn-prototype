@@ -196,4 +196,5 @@
   .motion-micro  { transition: color var(--dur-micro) var(--ease-pawn), background-color var(--dur-micro) var(--ease-pawn), border-color var(--dur-micro) var(--ease-pawn), opacity var(--dur-micro) var(--ease-pawn); }
   .motion-reveal { animation: pawn-reveal var(--dur-reveal) var(--ease-pawn) both; }
   @keyframes pawn-reveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes breathe { 0% { transform: scale(1); } 45% { transform: scale(1.012); } 100% { transform: scale(1); } }
 }

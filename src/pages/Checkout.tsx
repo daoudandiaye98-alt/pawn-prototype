@@ -49,22 +49,21 @@ const Checkout = () => {
   if (done) {
     return (
       <PublicLayout>
-        <section className="editorial-container py-32 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center border border-accent text-accent">
-            <Check className="h-6 w-6" />
-          </div>
-          <h1 className="mt-6 font-serif text-5xl">Order placed.</h1>
-          <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-            This is a prototype confirmation. A real PAWN order will arrive insured and tracked.
-          </p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Button asChild className="rounded-none"><Link to="/account">View my orders</Link></Button>
-            <Button asChild variant="outline" className="rounded-none"><Link to="/shop">Continue browsing</Link></Button>
+        <section className="editorial-container flex min-h-[70vh] flex-col items-center justify-center py-32 text-center">
+          <p className="editorial-eyebrow text-muted-foreground">Ein einzelner Satz</p>
+          <h1 className="mt-8 font-serif text-6xl italic leading-[1.05] md:text-7xl">
+            Es gehört jetzt dir.
+          </h1>
+          <div className="mt-16 h-px w-24 bg-foreground/25" />
+          <div className="mt-16 flex justify-center gap-8 text-[0.65rem] uppercase tracking-[0.3em]">
+            <Link to="/account" className="border-b border-foreground pb-1">Deine Sammlung</Link>
+            <Link to="/shop" className="text-muted-foreground hover:text-foreground">Weiter sehen</Link>
           </div>
         </section>
       </PublicLayout>
     );
   }
+
 
   return (
     <PublicLayout>

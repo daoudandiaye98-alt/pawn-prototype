@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { toast } from "@/components/ui/sonner";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { ProductCard } from "@/components/pawn/ProductCard";
@@ -11,11 +10,12 @@ import {
 } from "@/components/ui/accordion";
 import { Heart } from "lucide-react";
 import {
-  useStore, marketplaceSelectors, toProductView, defaultIdentityId,
+  useStore, marketplaceSelectors, toProductView, defaultIdentityId, selectors,
 } from "@/core";
 import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
+import { useRoomShift } from "@/features/os/roomShift";
 import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
@@ -27,7 +27,9 @@ const ProductDetail = () => {
   const designerProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreProduct.designerId));
   const recommendations = useStore((s) => marketplaceSelectors.getRecommendedProducts(s, defaultIdentityId));
   const allDesigners = useStore(marketplaceSelectors.getAllDesigners);
+  const identity = useStore((s) => selectors.getIdentity(s, defaultIdentityId));
   const cart = useCart();
+  const { push } = useRoomShift();
 
   const product = useMemo(() => toProductView(coreProduct, designer), [coreProduct, designer]);
 
@@ -42,6 +44,8 @@ const ProductDetail = () => {
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
   const [activeImg, setActiveImg] = useState(0);
+  const [provenanceOpen, setProvenanceOpen] = useState(false);
+  const [breathing, setBreathing] = useState(false);
 
   const match = useDnaMatch(product.id);
   const { viewProduct, saveProduct } = useCustomerEvents();
@@ -52,13 +56,15 @@ const ProductDetail = () => {
 
   function addToBag() {
     cart.add(product, size);
-    toast.success(`${product.name} added to bag`);
+    push(`${product.name} liegt bereit.`);
   }
 
   function onSave() {
     saveProduct(product.id);
-    toast.success("Saved to your identity");
+    setBreathing(true);
+    window.setTimeout(() => setBreathing(false), 850);
   }
+
 
   return (
     <PublicLayout>
@@ -87,7 +93,7 @@ const ProductDetail = () => {
               </button>
             ))}
           </div>
-          <ProductImage seed={product.slug + activeImg} className="aspect-[3/4] w-full" />
+          <ProductImage seed={product.slug + activeImg} className={`aspect-[3/4] w-full ${breathing ? "animate-[breathe_800ms_ease-out]" : ""}`} />
         </div>
 
         {/* Details */}
@@ -97,12 +103,47 @@ const ProductDetail = () => {
           <p className="mt-4 text-xl tabular-nums">€{product.price.toLocaleString("de-DE")}</p>
 
           {match.percent > 0 && (
-            <div className="mt-6 flex items-center gap-4 border border-border bg-card p-4">
-              <DnaBadge match={match} size="lg" />
-              <div>
-                <p className="editorial-eyebrow">Why it fits you</p>
-                <p className="mt-1 text-sm text-foreground/80">{match.rationale}</p>
-              </div>
+            <div className="mt-6 border border-border bg-card">
+              <button
+                type="button"
+                onClick={() => setProvenanceOpen((v) => !v)}
+                className="flex w-full items-center gap-4 p-4 text-left"
+                aria-expanded={provenanceOpen}
+              >
+                <DnaBadge match={match} size="lg" />
+                <div className="flex-1">
+                  <p className="editorial-eyebrow">DNA Match</p>
+                  <p className="mt-1 text-sm text-foreground/80">{match.rationale}</p>
+                </div>
+                <span className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
+                  {provenanceOpen ? "Schließen" : "Warum?"}
+                </span>
+              </button>
+              {provenanceOpen && (
+                <div className="border-t border-border px-4 py-4 animate-fade-up">
+                  <p className="text-[0.6rem] uppercase tracking-[0.3em] text-muted-foreground">Herkunft</p>
+                  <ul className="mt-3 space-y-2 text-sm text-foreground/75">
+                    {match.topAxes.map((a) => (
+                      <li key={a.axis} className="flex items-baseline justify-between border-b border-border/60 pb-1.5">
+                        <span className="font-cormorant italic">Deine {a.label.toLowerCase()}-Achse</span>
+                        <span className="pawn-numeral tabular-nums">{(a.contribution * 100).toFixed(0)}</span>
+                      </li>
+                    ))}
+                    {identity && (
+                      <>
+                        <li className="flex items-baseline justify-between border-b border-border/60 pb-1.5">
+                          <span className="font-cormorant italic">Gespeicherte Teile</span>
+                          <span className="pawn-numeral tabular-nums">{identity.wardrobe.saved.length}</span>
+                        </li>
+                        <li className="flex items-baseline justify-between">
+                          <span className="font-cormorant italic">Gefolgte Häuser</span>
+                          <span className="pawn-numeral tabular-nums">{identity.relationships.follows.length}</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
