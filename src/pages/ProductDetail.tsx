@@ -16,6 +16,7 @@ import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { useRoomShift } from "@/features/os/roomShift";
+import { useMoves, usePieceShadow } from "@/features/narrative/hooks";
 import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
