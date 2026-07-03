@@ -13,76 +13,77 @@
 
 @layer base {
   :root {
-    /* Chess polarity surfaces */
-    --background: 36 35% 93%;
-    --foreground: 18 12% 10%;
+    /* Marmor & Graphit — the obsidian archive palace.
+       #EFEDE8 marble · #B8B4AC smoke · #3A3A3C graphite · #0F0F10 obsidian */
+    --background: 40 20% 92%;     /* #EFEDE8 marble */
+    --foreground: 240 6% 6%;      /* #0F0F10 obsidian */
 
-    --ivory: 36 35% 93%;
-    --ivory-soft: 34 36% 90%;
-    --ivory-deep: 32 28% 84%;
-    --paper: 40 30% 98%;
-    --bone: 34 24% 88%;
-    --ink: 18 10% 5%;
-    --ink-soft: 18 10% 8%;
+    --ivory: 40 20% 92%;
+    --ivory-soft: 40 18% 95%;
+    --ivory-deep: 36 12% 84%;
+    --paper: 40 20% 95%;
+    --bone: 36 10% 88%;
+    --ink: 240 6% 6%;
+    --ink-soft: 240 4% 10%;
 
-    --card: 36 32% 95%;
-    --card-foreground: 18 12% 10%;
+    --card: 40 18% 94%;
+    --card-foreground: 240 6% 6%;
 
-    --popover: 36 32% 96%;
-    --popover-foreground: 18 12% 10%;
+    --popover: 40 18% 95%;
+    --popover-foreground: 240 6% 6%;
 
-    --primary: 18 10% 5%;
-    --primary-foreground: 40 30% 98%;
+    --primary: 240 6% 6%;
+    --primary-foreground: 40 22% 94%;
 
-    --secondary: 32 22% 84%;
-    --secondary-foreground: 18 12% 10%;
+    --secondary: 36 6% 70%;       /* #B8B4AC smoke */
+    --secondary-foreground: 240 6% 6%;
 
-    --muted: 32 20% 87%;
-    --muted-foreground: 20 8% 32%;
+    --muted: 36 8% 82%;
+    --muted-foreground: 240 3% 30%;
 
-    --accent: 0 55% 14%;
-    --accent-foreground: 40 30% 98%;
+    --accent: 240 3% 23%;         /* #3A3A3C graphite */
+    --accent-foreground: 40 22% 94%;
 
-    --wine: 0 60% 18%;
-    --wine-soft: 0 35% 28%;
-    --beige: 32 22% 84%;
-    --charcoal: 18 12% 10%;
-    --oxblood: 0 55% 14%;
+    --wine: 240 3% 23%;
+    --wine-soft: 240 3% 35%;
+    --beige: 36 8% 82%;
+    --charcoal: 240 3% 23%;
+    --oxblood: 240 6% 6%;         /* decisions collapse to obsidian in this palette */
 
-    /* Rare accolade accent — used for verified / awarded / museum only */
-    --gold: 40 32% 52%;
-    --gold-soft: 40 28% 68%;
+    --gold: 36 6% 70%;
+    --gold-soft: 36 8% 82%;
 
-    --destructive: 0 60% 38%;
-    --destructive-foreground: 36 35% 95%;
+    --destructive: 0 55% 34%;
+    --destructive-foreground: 40 22% 94%;
 
-    --border: 22 38% 10% / 0.14;
-    --border-strong: 22 38% 10% / 0.28;
-    --input: 22 38% 10% / 0.22;
-    --ring: 0 55% 14%;
+    --border: 240 6% 6% / 0.12;
+    --border-strong: 240 6% 6% / 0.28;
+    --input: 240 6% 6% / 0.20;
+    --ring: 240 3% 23%;
 
     --radius: 0;
 
-    --sidebar-background: 18 10% 5%;
-    --sidebar-foreground: 36 25% 84%;
-    --sidebar-primary: 0 55% 22%;
-    --sidebar-primary-foreground: 40 30% 98%;
-    --sidebar-accent: 18 10% 9%;
-    --sidebar-accent-foreground: 40 30% 98%;
-    --sidebar-border: 36 12% 80% / 0.10;
-    --sidebar-ring: 0 55% 22%;
+    --sidebar-background: 240 6% 6%;
+    --sidebar-foreground: 36 10% 84%;
+    --sidebar-primary: 36 6% 70%;
+    --sidebar-primary-foreground: 40 22% 94%;
+    --sidebar-accent: 240 4% 10%;
+    --sidebar-accent-foreground: 40 22% 94%;
+    --sidebar-border: 36 12% 80% / 0.08;
+    --sidebar-ring: 36 6% 70%;
 
-    --gradient-light: linear-gradient(180deg, hsl(40 30% 98%), hsl(32 26% 84%));
-    --gradient-shadow: linear-gradient(180deg, hsl(18 10% 6%), hsl(18 10% 3%));
-    --gradient-wine: linear-gradient(135deg, hsl(0 55% 14%), hsl(15 30% 10%));
-    --shadow-editorial: 0 30px 80px -40px hsl(0 0% 0% / 0.35);
-    --shadow-card: 0 1px 0 0 hsl(22 38% 10% / 0.10);
+    --gradient-light: linear-gradient(180deg, hsl(40 20% 95%), hsl(36 10% 84%));
+    --gradient-shadow: linear-gradient(180deg, hsl(240 6% 8%), hsl(240 6% 3%));
+    --gradient-wine: linear-gradient(135deg, hsl(240 3% 23%), hsl(240 6% 10%));
+    --shadow-editorial: 0 40px 120px -50px hsl(240 6% 0% / 0.45);
+    --shadow-card: 0 1px 0 0 hsl(240 6% 6% / 0.10);
 
-    /* Motion — one easing, two durations */
-    --ease-pawn: cubic-bezier(0.2, 0.7, 0.2, 1);
-    --dur-micro: 180ms;
-    --dur-reveal: 520ms;
+    /* Motion — the palace dolly */
+    --ease-pawn: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur-micro: 220ms;
+    --dur-reveal: 900ms;
   }
+
 
   .dark {
     --background: 18 10% 5%;
@@ -107,37 +108,39 @@
 
 @layer base {
   * { border-color: hsl(var(--border)); }
+  html { scroll-behavior: smooth; }
   html, body, #root { @apply min-h-screen; }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss01", "cv11";
   }
   h1, h2, h3, h4, .font-serif, .font-display {
-    font-family: "Playfair Display", "Cormorant Garamond", Georgia, "Times New Roman", serif;
-    letter-spacing: -0.015em;
-    font-weight: 500;
+    font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    letter-spacing: -0.02em;
+    font-weight: 400;
   }
   .font-cormorant { font-family: "Cormorant Garamond", Georgia, serif; }
 }
 
+
 @layer components {
   /* ── Locked type scale ─────────────────────────────
      Use these instead of inline text-[..] sizes. */
-  .t-display-xl { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
-  .t-display-lg { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
-  .t-display-md { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
-  .t-display-sm { font-family: "Playfair Display", Georgia, serif; font-weight: 500; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
+  .t-display-xl { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
+  .t-display-lg { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
+  .t-display-md { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
+  .t-display-sm { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
 
-  .t-body-lg { font-family: Inter, system-ui, sans-serif; font-size: 1.05rem; line-height: 1.55; }
-  .t-body-md { font-family: Inter, system-ui, sans-serif; font-size: 0.92rem; line-height: 1.55; }
-  .t-body-sm { font-family: Inter, system-ui, sans-serif; font-size: 0.8rem;  line-height: 1.55; }
+  .t-body-lg { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 1.05rem; line-height: 1.55; }
+  .t-body-md { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.92rem; line-height: 1.55; }
+  .t-body-sm { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.8rem;  line-height: 1.55; }
 
-  .t-eyebrow { font-family: Inter, system-ui, sans-serif; font-size: 0.65rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.32em; color: hsl(var(--muted-foreground)); }
-  .t-num     { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .t-eyebrow { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.65rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.32em; color: hsl(var(--muted-foreground)); }
+  .t-num     { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
 
   /* Back-compat aliases */
   .editorial-eyebrow { @apply t-eyebrow; }
-  .pawn-numeral { font-family: "Playfair Display", serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; }
+  .pawn-numeral { font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; }
 
   /* ── Rhythm ─────────────────────────────── */
   .editorial-rule { height: 1px; width: 100%; background: hsl(var(--border)); }

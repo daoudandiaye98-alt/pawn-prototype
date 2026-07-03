@@ -4,40 +4,39 @@ import { ArrowRight } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
 import { ProductCard } from "@/components/pawn/ProductCard";
 import { DesignerCard } from "@/components/pawn/DesignerCard";
-import { SectionHeading } from "@/components/pawn/SectionHeading";
-import { PawnMark } from "@/components/pawn/PawnMark";
-import { ChessDivider, ChapterLabel } from "@/components/pawn/ChessDivider";
+import { ProductImage } from "@/components/pawn/ProductImage";
 import { DNAVisual } from "@/components/pawn/DNAVisual";
-import { useStore, marketplaceSelectors, selectors, useCommand, commands, defaultIdentityId } from "@/core";
-import { Button } from "@/components/ui/button";
+import {
+  useStore,
+  marketplaceSelectors,
+  selectors,
+  useCommand,
+  commands,
+  defaultIdentityId,
+} from "@/core";
 import { readFirstChoice, writeFirstChoice, readLastSeen, writeLastSeen, isReturningVisit } from "@/features/os/lastSeen";
 import { useRoomShift } from "@/features/os/roomShift";
-import { useRank, useMoves, usePieceShadow } from "@/features/narrative/hooks";
-import { moveNotation } from "@/features/narrative";
+import { useRank, usePieceShadow } from "@/features/narrative/hooks";
 
 /**
- * Home — die Eröffnung.
- * Ein Bauer steht auf dem Brett. Der Nutzer macht den ersten Zug.
- * Jede Section darunter ist ein Rang, den der Bauer bereits erreicht hat.
+ * PAWN — The Obsidian Archive Palace.
+ * One monumental scroll: Portal → Shadow room → Houses → Curation → DNA finale.
+ * No dead ends. Every section pulls the eye down into the next room.
  */
 const Index = () => {
   const products = useStore(marketplaceSelectors.getAllProductViews);
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
   const identity = useStore((s) => selectors.getIdentity(s, defaultIdentityId));
   const rank = useRank();
-  const moves = useMoves();
   const shadow = usePieceShadow();
   const dispatch = useCommand();
   const { push } = useRoomShift();
 
   const [choice, setChoice] = useState<"light" | "shadow" | null>(() => readFirstChoice());
-  const [justChose, setJustChose] = useState(false);
 
   useEffect(() => {
     const prev = readLastSeen();
-    if (isReturningVisit(prev)) {
-      push("Die Partie ruht. Es liegt an dir.");
-    }
+    if (isReturningVisit(prev)) push("Die Partie ruht. Es liegt an dir.");
     writeLastSeen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -52,7 +51,6 @@ const Index = () => {
   function makeChoice(pick: "light" | "shadow") {
     writeFirstChoice(pick);
     setChoice(pick);
-    setJustChose(true);
     if (identity) {
       const to = pick === "shadow"
         ? { darkness: Math.min(1, identity.dna.genome.darkness + 0.15), edge: Math.min(1, identity.dna.genome.edge + 0.1) }
@@ -63,231 +61,256 @@ const Index = () => {
         rationale: pick === "shadow" ? "Erster Zug: Schatten." : "Erster Zug: Licht.",
       });
       if (r.ok) {
-        const proposedEvent = r.events.find((e) => e.type === "mutation.proposed");
-        const proposedId = proposedEvent && "payload" in proposedEvent && proposedEvent.payload && "mutation" in proposedEvent.payload
-          ? (proposedEvent.payload as { mutation: { id: string } }).mutation.id
+        const proposed = r.events.find((e) => e.type === "mutation.proposed");
+        const proposedId = proposed && "payload" in proposed && proposed.payload && "mutation" in proposed.payload
+          ? (proposed.payload as { mutation: { id: string } }).mutation.id
           : null;
-        if (proposedId) {
-          dispatch(commands.ratifyMutation, { identityId: defaultIdentityId, mutationId: proposedId as never });
-        }
+        if (proposedId) dispatch(commands.ratifyMutation, { identityId: defaultIdentityId, mutationId: proposedId as never });
       }
     }
     push(pick === "shadow" ? "1. Schatten. Der Bauer zieht nach vorn." : "1. Licht. Der Bauer zieht nach vorn.");
-  }
-
-  // Erste Begegnung: nur das Tor.
-  if (!choice) {
-    return (
-      <PublicLayout>
-        <FirstVisitDoor onChoose={makeChoice} />
-      </PublicLayout>
-    );
   }
 
   const ordered = choice === "shadow"
     ? [...products].sort((a, b) => (b.genomeAffinity?.darkness ?? 0) - (a.genomeAffinity?.darkness ?? 0))
     : [...products].sort((a, b) => (b.genomeAffinity?.structure ?? 0) - (a.genomeAffinity?.structure ?? 0));
 
-  // Der nicht gespielte Zug bleibt sichtbar — als schmaler Streifen.
-  const chosenIsLight = choice === "light";
-
   return (
     <PublicLayout>
-      {/* HERO — der gewählte Zug dominiert, der andere bleibt Rand */}
-      <section className="relative">
-        <div
-          className="relative grid min-h-[680px] grid-cols-[64px_1fr] md:grid-cols-[80px_1fr]"
-          style={{ direction: chosenIsLight ? "ltr" : "rtl" }}
-        >
-          {/* Der nicht-gespielte Zug — schmaler Streifen, klickbar */}
-          <button
-            type="button"
-            onClick={() => makeChoice(chosenIsLight ? "shadow" : "light")}
-            className={`${chosenIsLight ? "ink-panel" : "paper-panel"} group relative flex flex-col items-center justify-between py-8 text-center transition-opacity hover:opacity-90`}
-            style={{ direction: "ltr" }}
-            aria-label={chosenIsLight ? "Zurück zum Schatten" : "Zurück zum Licht"}
-          >
-            <span className={`text-[0.55rem] uppercase tracking-[0.3em] ${chosenIsLight ? "text-primary-foreground/50" : "text-foreground/50"}`}>
-              {chosenIsLight ? "II" : "I"}
-            </span>
-            <span
-              className={`writing-vertical font-cormorant text-sm italic ${chosenIsLight ? "text-primary-foreground/60" : "text-foreground/60"}`}
-              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-            >
-              {chosenIsLight ? "Der Schatten wartet." : "Das Licht wartet."}
-            </span>
-            <span className={`text-[0.55rem] uppercase tracking-[0.3em] ${chosenIsLight ? "text-primary-foreground/40" : "text-foreground/40"}`}>
-              ↻
-            </span>
-          </button>
-
-          {/* Der gewählte Zug — der Raum, der jetzt zählt */}
-          <article
-            className={`${chosenIsLight ? "paper-panel" : "ink-panel"} relative flex flex-col justify-between p-10 md:p-16`}
-            style={{ direction: "ltr" }}
-          >
-            <div className={`flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.32em] ${chosenIsLight ? "text-foreground/55" : "text-primary-foreground/55"}`}>
-              <span className="pawn-numeral text-[0.85rem]">{chosenIsLight ? "1. e4" : "1. …e5"}</span>
-              <span className={`h-px w-6 ${chosenIsLight ? "bg-foreground/30" : "bg-primary-foreground/30"}`} />
-              <span>{chosenIsLight ? "Licht" : "Schatten"}</span>
+      {/* ───── 01 · PORTAL ─────────────────────────────────────────
+          Marble hall. Fixed nav floats above. Serif bleeds off the left,
+          graphite slab drifts in from the right. */}
+      <section id="portal" className="relative min-h-screen overflow-hidden bg-background px-6 pt-40 md:px-14 md:pt-48">
+        <div className="grid grid-cols-12 items-center">
+          <div className="col-span-12 z-10 md:col-span-8">
+            <div className="mb-10 flex items-center gap-4 text-[10px] uppercase tracking-[0.5em] text-foreground/50 motion-reveal">
+              <span className="h-px w-10 bg-foreground/50" />
+              Chapter 001 · The Archive
             </div>
-            <div>
-              <h1 className={`font-serif text-[3rem] leading-[0.92] md:text-[5.8rem] ${chosenIsLight ? "" : "text-primary-foreground"}`}>
-                {chosenIsLight ? <>INNOCENCE<br /> IS A CHOICE.</> : <>AMBITION<br /> IS POWER.</>}
-              </h1>
-              <Link
-                to="/shop"
-                className={`mt-10 inline-flex items-center gap-3 border-b pb-1 text-[0.7rem] uppercase tracking-[0.28em] ${chosenIsLight ? "border-foreground" : "border-primary-foreground text-primary-foreground"}`}
-              >
-                Enter <ArrowRight className="h-3 w-3" strokeWidth={1.4} />
+            <h1 className="-ml-1 font-serif font-light leading-[0.82] tracking-[-0.03em] motion-reveal"
+                style={{ fontSize: "clamp(4rem, 13vw, 15rem)" }}>
+              Modern
+              <br />
+              <span className="ml-[8%] italic text-accent">Antiqua.</span>
+            </h1>
+
+            <div className="mt-12 flex max-w-md items-start gap-8 motion-reveal">
+              <div className="mt-3 h-px w-24 shrink-0 bg-foreground" />
+              <p className="text-sm leading-relaxed tracking-wide text-foreground/70">
+                A curation of objects that bridge the threshold between light and shadow —
+                the definitive collection for the modern aesthetician.
+              </p>
+            </div>
+
+            {/* Der erste Zug — subtle, never blocks the room */}
+            <div className="mt-14 flex flex-wrap items-center gap-4 motion-reveal">
+              <span className="text-[10px] uppercase tracking-[0.4em] text-foreground/45">
+                {choice ? `1. ${choice === "shadow" ? "…e5" : "e4"} · Rang ${rank.rank} / 8` : "Weiß beginnt. Wähle deinen Zug."}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => makeChoice("light")}
+                  className={`group px-6 py-3 text-[10px] uppercase tracking-[0.4em] transition-all duration-700 ${
+                    choice === "light"
+                      ? "bg-foreground text-background"
+                      : "border border-foreground/40 text-foreground hover:border-foreground hover:bg-foreground hover:text-background"
+                  }`}
+                >
+                  Licht
+                </button>
+                <button
+                  onClick={() => makeChoice("shadow")}
+                  className={`group px-6 py-3 text-[10px] uppercase tracking-[0.4em] transition-all duration-700 ${
+                    choice === "shadow"
+                      ? "bg-foreground text-background"
+                      : "border border-foreground/40 text-foreground hover:border-foreground hover:bg-foreground hover:text-background"
+                  }`}
+                >
+                  Schatten
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Asymmetric graphite slab drifting from the right */}
+        <div className="absolute right-0 top-[12%] hidden h-[75vh] w-[42vw] overflow-hidden bg-accent md:block">
+          <div className="absolute inset-0 chess-grid-light opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-background/20" />
+          <div className="absolute -left-6 bottom-10 origin-bottom-left rotate-90">
+            <span className="text-[10px] font-light uppercase italic tracking-[0.5em] text-background/40">
+              Fragment Series 003 / 12
+            </span>
+          </div>
+          <div className="absolute bottom-10 right-10 max-w-[220px] text-right">
+            <p className="font-serif text-4xl italic leading-none text-background">Marmor</p>
+            <p className="mt-3 text-[10px] uppercase tracking-[0.4em] text-background/60">Volume 01</p>
+          </div>
+        </div>
+
+        {/* Descend cue */}
+        <a href="#shadow" className="absolute bottom-10 left-6 flex flex-col items-center gap-4 md:left-14">
+          <div className="h-24 w-px bg-gradient-to-b from-foreground/50 to-transparent" />
+          <span className="mt-2 rotate-90 text-[9px] uppercase tracking-[0.5em] text-foreground/45">
+            Descend
+          </span>
+        </a>
+      </section>
+
+      {/* ───── 02 · THE SHADOW ROOM ─────────────────────────────
+          Obsidian void. Sticky left column of narrative,
+          asymmetric right column of floating objects. */}
+      <section id="shadow" className="relative min-h-[120vh] overflow-hidden bg-foreground px-6 py-40 text-background md:px-14 md:py-48">
+        <div className="grid grid-cols-12 items-start gap-8">
+          <div className="col-span-12 md:col-span-4 md:col-start-2 md:sticky md:top-40">
+            <div className="mb-8 flex items-center gap-4 text-[10px] uppercase tracking-[0.5em] text-background/40">
+              <span className="h-px w-10 bg-background/40" />
+              Chapter 002
+            </div>
+            <h2 className="font-serif text-6xl font-light italic leading-[0.95] tracking-tight md:text-8xl">
+              The<br />Shadow<br />Palace
+            </h2>
+            <p className="mt-10 max-w-sm text-sm leading-loose tracking-widest text-background/60">
+              In the absence of illumination, the object reveals its true form —
+              a study in texture, weight, and the permanence of graphite.
+            </p>
+            <Link
+              to="/designers"
+              className="group mt-10 inline-flex items-center gap-4 border-b border-background/30 pb-2 text-[10px] font-semibold uppercase tracking-[0.4em] transition-all duration-700 hover:border-background"
+            >
+              Explore the Archiv
+              <ArrowRight className="h-3 w-3 transition-transform duration-500 group-hover:translate-x-2" strokeWidth={1.4} />
+            </Link>
+          </div>
+
+          <div className="col-span-12 md:col-span-6 md:col-start-7 space-y-[20vh]">
+            {ordered[0] && (
+              <div className="relative aspect-[4/5] w-full overflow-hidden bg-accent shadow-2xl">
+                <Link to={`/product/${ordered[0].slug}`} className="block h-full w-full">
+                  <ProductImage seed={ordered[0].slug} className="h-full w-full grayscale contrast-125 transition-transform duration-[2000ms] hover:scale-105" />
+                  <div className="pointer-events-none absolute right-6 top-6">
+                    <span className="bg-background px-3 py-1 text-[10px] uppercase tracking-widest text-foreground">
+                      Shadow No. 1
+                    </span>
+                  </div>
+                  <div className="pointer-events-none absolute bottom-8 left-8 text-background">
+                    <p className="font-serif text-3xl italic">{ordered[0].name}</p>
+                    <p className="mt-2 text-[10px] uppercase tracking-[0.4em] opacity-70">{ordered[0].designer}</p>
+                  </div>
+                </Link>
+              </div>
+            )}
+
+
+            {/* Monumental type bleed */}
+            <div className="relative select-none">
+              <span className="pointer-events-none absolute -left-[30%] -top-[10vh] whitespace-nowrap font-serif italic leading-none text-background/10"
+                    style={{ fontSize: "22vw" }}>
+                MONUMENTAL
+              </span>
+            </div>
+
+            {ordered[1] && (
+              <div className="relative ml-auto aspect-square w-4/5 overflow-hidden bg-secondary">
+                <Link to={`/product/${ordered[1].slug}`} className="block h-full w-full">
+                  <ProductImage seed={ordered[1].slug} className="h-full w-full grayscale mix-blend-multiply transition-transform duration-[2000ms] hover:scale-105" />
+                  <div className="pointer-events-none absolute bottom-8 left-8 max-w-[220px] text-foreground">
+                    <p className="font-serif text-2xl italic leading-tight">{ordered[1].name}</p>
+                    <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.3em]">
+                      {ordered[1].designer}
+                    </p>
+                  </div>
+                </Link>
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        <div className="pointer-events-none absolute -bottom-[10vw] -right-[10vw] h-[30vw] w-[30vw] rotate-45 border-l border-t border-background/10" />
+      </section>
+
+      {/* ───── 03 · THE HOUSES ─────────────────────────────
+          Marble again. Wide grid of designers, plenty of air. */}
+      <section id="houses" className="relative bg-background px-6 py-40 md:px-14 md:py-56">
+        <div className="mx-auto max-w-[1600px]">
+          <div className="grid grid-cols-12 items-end gap-8">
+            <div className="col-span-12 md:col-span-7 md:col-start-2">
+              <p className="mb-8 text-[10px] uppercase tracking-[0.5em] text-foreground/50">Chapter 003 · The Houses</p>
+              <h2 className="font-serif font-light leading-[0.9] tracking-[-0.02em]" style={{ fontSize: "clamp(3rem, 8vw, 8rem)" }}>
+                The studios<br />we <span className="italic text-accent">collect.</span>
+              </h2>
+            </div>
+            <div className="col-span-12 md:col-span-3 md:col-start-9">
+              <Link to="/designers" className="group inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.4em]">
+                View all houses
+                <span className="inline-block h-px w-10 bg-foreground transition-all duration-700 group-hover:w-20" />
               </Link>
             </div>
-            <span className={`text-[0.6rem] uppercase tracking-[0.32em] ${chosenIsLight ? "text-foreground/55" : "text-primary-foreground/45"}`}>
-              PAWN · Rang {rank.rank} / 8
-            </span>
-          </article>
+          </div>
 
-          {/* Die Figur — bewegt sich nach der Wahl sichtbar in Richtung des gewählten Zugs */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:block">
-            <div
-              className={`relative flex h-28 w-28 items-center justify-center rounded-full border border-foreground/20 bg-background transition-transform duration-700 ease-out ${justChose ? (chosenIsLight ? "-translate-x-12" : "translate-x-12") : ""}`}
-            >
-              <PawnMark className="h-12 w-12 text-foreground" />
+          <div className="mt-24 grid grid-cols-1 gap-x-8 gap-y-20 sm:grid-cols-2 lg:grid-cols-4">
+            {designers.slice(0, 4).map((d) => (
+              <DesignerCard key={d.slug} designer={d} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───── 04 · CURATION — the pull-forward gallery ─────── */}
+      <section id="curation" className="relative bg-secondary/40 px-6 py-40 md:px-14 md:py-56">
+        <div className="mx-auto max-w-[1600px]">
+          <div className="grid grid-cols-12 gap-8">
+            <div className="col-span-12 md:col-span-5">
+              <p className="mb-8 text-[10px] uppercase tracking-[0.5em] text-foreground/50">
+                Chapter 004 · {choice === "shadow" ? "Ordered by Shadow" : "Ordered by Light"}
+              </p>
+              <h2 className="font-serif italic font-light leading-[0.95] tracking-[-0.02em]" style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}>
+                Worn by the<br />undecided<br />minority.
+              </h2>
+              {lastSaved && (
+                <p className="mt-8 font-serif text-lg italic text-foreground/70">
+                  Letzter Zug: <Link to={`/product/${lastSaved.slug}`} className="text-foreground underline-offset-4 hover:underline">{lastSaved.name}</Link>.
+                </p>
+              )}
+            </div>
+            <div className="col-span-12 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 md:col-span-7 md:col-start-6 lg:grid-cols-2">
+              {ordered.slice(0, 4).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* M3 — die Notiz des letzten Zugs */}
-      {lastSaved && (
-        <section className="ivory-surface border-y border-foreground/10">
-          <div className="editorial-container flex items-center justify-between gap-6 py-4">
-            <p className="font-cormorant text-[0.95rem] italic tracking-wide text-foreground/70">
-              Letzter Zug: <span className="text-foreground">{lastSaved.name}</span>. {moves.total} von 16 gespielt.
-            </p>
-            <Link to={`/product/${lastSaved.slug}`} className="text-[0.65rem] uppercase tracking-[0.28em] underline-offset-4 hover:underline">
-              Ansehen →
-            </Link>
-          </div>
-        </section>
-      )}
-
-      <ChessDivider rank={Math.max(1, rank.rank)} />
-
-      <section className="bone-surface pb-24">
-        <div className="editorial-container">
-          <div className="flex items-end justify-between gap-6">
-            <SectionHeading eyebrow="The Houses" title={<>The studios<br />we collect.</>} />
-            <Link to="/designers" className="hidden whitespace-nowrap text-[0.7rem] uppercase tracking-[0.26em] underline-offset-4 hover:underline md:inline">
-              View all →
-            </Link>
-          </div>
-          <div className="mt-14 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
-            {designers.slice(0, 4).map((d) => <DesignerCard key={d.slug} designer={d} />)}
-          </div>
-        </div>
-      </section>
-
-      <ChessDivider rank={Math.max(2, rank.rank)} />
-
-      <section className={`${justChose ? "animate-fade-up" : ""} paper-surface py-24`}>
-        <div className="editorial-container">
-          <div className="flex items-end justify-between gap-6">
-            <SectionHeading
-              eyebrow={choice === "shadow" ? "Ordered by Shadow" : "Ordered by Light"}
-              title={<>Worn by the<br />undecided minority.</>}
-            />
-          </div>
-          <div className="mt-14 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-            {ordered.slice(0, 6).map((p) => <ProductCard key={p.id} product={p} />)}
-          </div>
-        </div>
-      </section>
-
-      <section className="relative ink-panel overflow-hidden">
-        <div className="absolute inset-0 chess-grid-light opacity-40" aria-hidden />
-        <div className="editorial-container relative grid items-center gap-12 py-24 md:grid-cols-[1.2fr_0.9fr]">
-          <div>
-            <ChapterLabel index="03" invert>Intelligence</ChapterLabel>
-            <h2 className="mt-7 font-serif text-5xl leading-[0.95] md:text-7xl text-primary-foreground">
-              Der Bauer wird zur {shadow.label}.
-              <br />Wenn du weiterziehst.
+      {/* ───── 05 · DNA FINALE — the pawn transforms ───────── */}
+      <section id="dna" className="relative overflow-hidden bg-foreground px-6 py-40 text-background md:px-14 md:py-56">
+        <div className="absolute inset-0 chess-grid-light opacity-20" aria-hidden />
+        <div className="relative mx-auto grid max-w-[1600px] grid-cols-12 items-center gap-12">
+          <div className="col-span-12 md:col-span-7 md:col-start-1">
+            <p className="mb-8 text-[10px] uppercase tracking-[0.5em] text-background/40">Chapter 005 · Intelligence</p>
+            <h2 className="font-serif font-light leading-[0.9] tracking-[-0.02em]" style={{ fontSize: "clamp(3rem, 8vw, 8rem)" }}>
+              Der Bauer wird<br />zur <span className="italic">{shadow.label.toLowerCase()}</span>.
             </h2>
-            <p className="mt-6 max-w-md font-cormorant text-lg italic text-primary-foreground/70">
-              Deine dominante Achse trägt {shadow.quality.toLowerCase()}. Das ist die Figur, die aus dir wird.
+            <p className="mt-8 max-w-md font-serif text-xl italic text-background/70">
+              Wenn du weiterziehst. Deine dominante Achse trägt {shadow.quality.toLowerCase()} —
+              das ist die Figur, die aus dir wird.
             </p>
-            <div className="mt-10">
-              <Button asChild size="lg" className="rounded-none bg-primary-foreground px-8 text-primary hover:bg-primary-foreground/90">
-                <Link to="/dna">Das Brett des Selbst</Link>
-              </Button>
-            </div>
+            <Link
+              to="/dna"
+              className="mt-12 inline-flex items-center gap-4 border border-background/40 px-8 py-4 text-[10px] uppercase tracking-[0.4em] transition-all duration-700 hover:bg-background hover:text-foreground"
+            >
+              Das Brett des Selbst
+              <ArrowRight className="h-3 w-3" strokeWidth={1.4} />
+            </Link>
           </div>
-          <div className="flex justify-center text-primary-foreground/80">
-            <DNAVisual className="h-[360px] w-auto" />
+          <div className="col-span-12 flex justify-center text-background/80 md:col-span-4 md:col-start-9">
+            <DNAVisual className="h-[420px] w-auto" />
           </div>
         </div>
       </section>
     </PublicLayout>
   );
 };
-
-/**
- * Die Eröffnung. Kein Titel. Zwei Felder. Ein Bauer in der Mitte, der wartet.
- * Der erste Klick ist der erste Zug.
- */
-function FirstVisitDoor({ onChoose }: { onChoose: (pick: "light" | "shadow") => void }) {
-  const [visible, setVisible] = useState(false);
-  const [moving, setMoving] = useState<"light" | "shadow" | null>(null);
-  useEffect(() => {
-    const t = window.setTimeout(() => setVisible(true), 800);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  function handle(pick: "light" | "shadow") {
-    setMoving(pick);
-    window.setTimeout(() => onChoose(pick), 350);
-  }
-
-  return (
-    <section className="relative min-h-[calc(100vh-72px)]">
-      <div className="grid min-h-[calc(100vh-72px)] grid-cols-2">
-        <button
-          type="button"
-          onClick={() => handle("light")}
-          disabled={moving !== null}
-          className="paper-panel group relative flex items-end justify-start p-10 text-left transition-colors hover:bg-[hsl(var(--paper))]/95 md:p-20"
-        >
-          <div>
-            <p className="text-[0.6rem] uppercase tracking-[0.34em] text-foreground/50">I</p>
-            <p className="mt-6 font-serif text-5xl leading-[0.95] md:text-7xl">Licht.</p>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => handle("shadow")}
-          disabled={moving !== null}
-          className="ink-panel group relative flex items-end justify-start p-10 text-left transition-colors hover:bg-[hsl(var(--ink))]/95 md:p-20"
-        >
-          <div>
-            <p className="text-[0.6rem] uppercase tracking-[0.34em] text-primary-foreground/50">II</p>
-            <p className="mt-6 font-serif text-5xl leading-[0.95] md:text-7xl text-primary-foreground">Schatten.</p>
-          </div>
-        </button>
-      </div>
-
-      {/* Der Bauer — steht in der Mitte, zieht bei der Wahl */}
-      <div
-        className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center transition-all duration-500 ease-out ${visible ? "opacity-100" : "opacity-0"} ${moving === "light" ? "-translate-x-[calc(50%+120px)]" : ""} ${moving === "shadow" ? "translate-x-[calc(-50%+120px)]" : ""}`}
-      >
-        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-foreground/20 bg-background">
-          <PawnMark className="h-10 w-10 text-foreground" />
-        </div>
-        <p className="mt-6 font-cormorant text-xl italic text-foreground/70">
-          Weiß beginnt. Dein erster Zug.
-        </p>
-      </div>
-    </section>
-  );
-}
 
 export default Index;
