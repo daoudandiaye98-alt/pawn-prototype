@@ -20,6 +20,8 @@ const Checkout = () => {
   const { items, subtotal } = useCart();
   const dispatch = useCommand();
   const { user, profile } = useAuth();
+  const rank = useRank();
+  const shadow = usePieceShadow();
   const [method, setMethod] = useState<typeof METHODS[number]>("Credit Card");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
