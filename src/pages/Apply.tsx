@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Check, Upload, Loader2, X } from "lucide-react";
 import { PublicHeader } from "@/components/pawn/PublicHeader";
 import { Button } from "@/components/ui/button";
