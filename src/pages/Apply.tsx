@@ -205,6 +205,8 @@ const Apply = () => {
 
       // Event
       await supabase.from("domain_events").insert({
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
         type: "designer.application_submitted",
         actor: userId,
         payload: { application_id: app.id, brand_name: data.brandName },
