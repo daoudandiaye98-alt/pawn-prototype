@@ -67,6 +67,322 @@ export type Database = {
           },
         ]
       }
+      contract_versions: {
+        Row: {
+          body_markdown: string
+          checksum: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          kind: string
+          title: string
+          version: number
+        }
+        Insert: {
+          body_markdown: string
+          checksum: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          kind: string
+          title: string
+          version: number
+        }
+        Update: {
+          body_markdown?: string
+          checksum?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          kind?: string
+          title?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      designer_applications: {
+        Row: {
+          admin_notes: string | null
+          ai_review_summary: Json | null
+          avatar_path: string | null
+          banner_path: string | null
+          brand_name: string
+          country: string | null
+          created_at: string
+          id: string
+          instagram: string | null
+          legal_name: string | null
+          location: string | null
+          portfolio_paths: string[] | null
+          production_status: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          story: string | null
+          submitted_at: string | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          ai_review_summary?: Json | null
+          avatar_path?: string | null
+          banner_path?: string | null
+          brand_name: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          legal_name?: string | null
+          location?: string | null
+          portfolio_paths?: string[] | null
+          production_status?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          story?: string | null
+          submitted_at?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          ai_review_summary?: Json | null
+          avatar_path?: string | null
+          banner_path?: string | null
+          brand_name?: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          legal_name?: string | null
+          location?: string | null
+          portfolio_paths?: string[] | null
+          production_status?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          story?: string | null
+          submitted_at?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      designer_brand_dna: {
+        Row: {
+          audience_profile: Json | null
+          brand_dna: Json | null
+          brand_voice: Json | null
+          campaign_style: Json | null
+          color_palette: Json | null
+          designer_id: string
+          generated_at: string | null
+          marketing_dna: Json | null
+          prompt_library: Json | null
+          status: string
+          storytelling: Json | null
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          audience_profile?: Json | null
+          brand_dna?: Json | null
+          brand_voice?: Json | null
+          campaign_style?: Json | null
+          color_palette?: Json | null
+          designer_id: string
+          generated_at?: string | null
+          marketing_dna?: Json | null
+          prompt_library?: Json | null
+          status?: string
+          storytelling?: Json | null
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          audience_profile?: Json | null
+          brand_dna?: Json | null
+          brand_voice?: Json | null
+          campaign_style?: Json | null
+          color_palette?: Json | null
+          designer_id?: string
+          generated_at?: string | null
+          marketing_dna?: Json | null
+          prompt_library?: Json | null
+          status?: string
+          storytelling?: Json | null
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_brand_dna_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      designer_consents: {
+        Row: {
+          accepted_at: string
+          application_id: string
+          checksum_at_accept: string
+          contract_version_id: string
+          id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          application_id: string
+          checksum_at_accept: string
+          contract_version_id: string
+          id?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          application_id?: string
+          checksum_at_accept?: string
+          contract_version_id?: string
+          id?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_consents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "designer_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designer_consents_contract_version_id_fkey"
+            columns: ["contract_version_id"]
+            isOneToOne: false
+            referencedRelation: "contract_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      designer_onboarding_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          designer_id: string
+          id: string
+          started_at: string | null
+          status: string
+          transcript: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          designer_id: string
+          id?: string
+          started_at?: string | null
+          status?: string
+          transcript?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          designer_id?: string
+          id?: string
+          started_at?: string | null
+          status?: string
+          transcript?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_onboarding_sessions_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      designers: {
+        Row: {
+          avatar_url: string | null
+          banner_url: string | null
+          brand_name: string
+          country: string | null
+          created_at: string
+          id: string
+          instagram: string | null
+          location: string | null
+          published: boolean
+          slug: string
+          story: string | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          banner_url?: string | null
+          brand_name: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          location?: string | null
+          published?: boolean
+          slug: string
+          story?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          banner_url?: string | null
+          brand_name?: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          location?: string | null
+          published?: boolean
+          slug?: string
+          story?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       domain_events: {
         Row: {
           actor: string
@@ -205,6 +521,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_designer: { Args: { _application_id: string }; Returns: string }
+      archive_application: {
+        Args: { _application_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -212,9 +533,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      reject_designer: {
+        Args: { _application_id: string; _reason: string }
+        Returns: undefined
+      }
+      slugify: { Args: { txt: string }; Returns: string }
     }
     Enums: {
-      app_role: "customer" | "designer" | "admin"
+      app_role: "customer" | "designer" | "admin" | "designer_applicant"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -342,7 +668,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["customer", "designer", "admin"],
+      app_role: ["customer", "designer", "admin", "designer_applicant"],
     },
   },
 } as const
