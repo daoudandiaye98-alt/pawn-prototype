@@ -91,8 +91,6 @@ const Cart = () => {
                 </li>
               );
             })}
-
-            ))}
           </ul>
 
           <aside className="h-fit space-y-6">
