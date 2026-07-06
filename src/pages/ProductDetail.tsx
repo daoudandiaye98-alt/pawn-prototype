@@ -1,55 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { PublicLayout } from "@/components/pawn/PublicLayout";
-import { ProductImage } from "@/components/pawn/ProductImage";
-import { ProductCard } from "@/components/pawn/ProductCard";
-import { Button } from "@/components/ui/button";
-import { DnaBadge } from "@/components/pawn/DnaBadge";
+import { Link, useParams } from "react-router-dom";
+import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { EditorialImage } from "@/components/palace/EditorialImage";
+import { Reveal } from "@/components/palace/Reveal";
+import { toast } from "@/components/ui/sonner";
 import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Heart } from "lucide-react";
-import {
-  useStore, marketplaceSelectors, toProductView, defaultIdentityId, selectors,
+  useStore, marketplaceSelectors, toProductView,
 } from "@/core";
 import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { useRoomShift } from "@/features/os/roomShift";
-import { useMoves, usePieceShadow } from "@/features/narrative/hooks";
 import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
-  const { id } = useParams<{ id: string }>();
-  const slug = id ?? "asymmetric-coat";
+  const params = useParams<{ slug?: string; id?: string }>();
+  const slug = params.slug ?? params.id ?? "asymmetric-coat";
 
   const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug) ?? marketplaceSelectors.getAllProducts(s)[0]);
   const designer = useStore((s) => marketplaceSelectors.getDesignerById(s, coreProduct.designerId as string));
-  const designerProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreProduct.designerId));
-  const recommendations = useStore((s) => marketplaceSelectors.getRecommendedProducts(s, defaultIdentityId));
-  const allDesigners = useStore(marketplaceSelectors.getAllDesigners);
-  const identity = useStore((s) => selectors.getIdentity(s, defaultIdentityId));
   const cart = useCart();
   const { push } = useRoomShift();
-  const moves = useMoves();
-  const shadow = usePieceShadow();
 
   const product = useMemo(() => toProductView(coreProduct, designer), [coreProduct, designer]);
 
-  const related = useMemo(() => {
-    const designerById = new Map(allDesigners.map((d) => [d.id as string, d]));
-    return designerProducts
-      .filter((p) => p.id !== coreProduct.id)
-      .slice(0, 3)
-      .map((p) => ({ view: toProductView(p, designerById.get(p.designerId as string)), recId: recommendations.find((r) => r.productId === p.id)?.id }));
-  }, [designerProducts, allDesigners, coreProduct.id, recommendations]);
-
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
-  const [activeImg, setActiveImg] = useState(0);
-  const [provenanceOpen, setProvenanceOpen] = useState(false);
-  const [breathing, setBreathing] = useState(false);
-  const [savedNote, setSavedNote] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const match = useDnaMatch(product.id);
   const { viewProduct, saveProduct } = useCustomerEvents();
@@ -58,200 +35,148 @@ const ProductDetail = () => {
     viewProduct(product.id);
   }, [product.id, viewProduct]);
 
+  useEffect(() => {
+    setSize(product.sizes[0]);
+    setColor(product.colors[0]);
+  }, [product.id, product.sizes, product.colors]);
+
   function addToBag() {
     cart.add(product, size);
     push(`${product.name} betritt das Brett.`);
+    toast.success("Zur Tasche hinzugefügt.");
   }
 
   function onSave() {
     saveProduct(product.id);
-    setBreathing(true);
-    setSavedNote(true);
-    window.setTimeout(() => setBreathing(false), 850);
-    window.setTimeout(() => setSavedNote(false), 4000);
+    setSaved(true);
   }
 
-
   return (
-    <PublicLayout>
-      <div className="editorial-container py-10 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        <Link to="/shop" className="hover:text-foreground">Shop</Link>
-        <span className="mx-2">/</span>
-        <Link to={`/designer/${product.designerSlug}`} className="hover:text-foreground">{product.designer}</Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">{product.name}</span>
-      </div>
-
-      <div className="editorial-container grid gap-12 pb-24 lg:grid-cols-[1fr_1fr]">
-        {/* Gallery */}
-        <div className="grid grid-cols-[80px_1fr] gap-4">
-          <div className="flex flex-col gap-3">
-            {[0, 1, 2, 3].map((i) => (
-              <button
-                key={i}
-                onClick={() => setActiveImg(i)}
-                className={cn(
-                  "aspect-[3/4] border",
-                  i === activeImg ? "border-foreground" : "border-border",
-                )}
-              >
-                <ProductImage seed={product.slug + i} className="h-full w-full" />
-              </button>
-            ))}
-          </div>
-          <ProductImage seed={product.slug + activeImg} className={`aspect-[3/4] w-full ${breathing ? "animate-[breathe_800ms_ease-out]" : ""}`} />
-        </div>
-
-        {/* Details */}
-        <div>
-          <p className="editorial-eyebrow">{product.designer}</p>
-          <h1 className="mt-3 font-serif text-5xl leading-tight">{product.name}</h1>
-          <p className="mt-4 text-xl tabular-nums">€{product.price.toLocaleString("de-DE")}</p>
-
-          {match.percent > 0 && (
-            <p className="mt-3 font-cormorant text-base italic text-foreground/65">
-              Rückt dich {match.percent}% näher an die {shadow.label}.
-            </p>
-          )}
-          {savedNote && (
-            <p className="mt-2 animate-fade-up text-[0.65rem] uppercase tracking-[0.3em] text-foreground/60">
-              Notiert. Zug {moves.total}.
-            </p>
-          )}
-
-          {match.percent > 0 && (
-            <div className="mt-6 border border-border bg-card">
-              <button
-                type="button"
-                onClick={() => setProvenanceOpen((v) => !v)}
-                className="flex w-full items-center gap-4 p-4 text-left"
-                aria-expanded={provenanceOpen}
-              >
-                <DnaBadge match={match} size="lg" />
-                <div className="flex-1">
-                  <p className="editorial-eyebrow">DNA Match</p>
-                  <p className="mt-1 text-sm text-foreground/80">{match.rationale}</p>
-                </div>
-                <span className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
-                  {provenanceOpen ? "Schließen" : "Warum?"}
-                </span>
-              </button>
-              {provenanceOpen && (
-                <div className="border-t border-border px-4 py-4 animate-fade-up">
-                  <p className="text-[0.6rem] uppercase tracking-[0.3em] text-muted-foreground">Herkunft</p>
-                  <ul className="mt-3 space-y-2 text-sm text-foreground/75">
-                    {match.topAxes.map((a) => (
-                      <li key={a.axis} className="flex items-baseline justify-between border-b border-border/60 pb-1.5">
-                        <span className="font-cormorant italic">Deine {a.label.toLowerCase()}-Achse</span>
-                        <span className="pawn-numeral tabular-nums">{(a.contribution * 100).toFixed(0)}</span>
-                      </li>
-                    ))}
-                    {identity && (
-                      <>
-                        <li className="flex items-baseline justify-between border-b border-border/60 pb-1.5">
-                          <span className="font-cormorant italic">Gespeicherte Teile</span>
-                          <span className="pawn-numeral tabular-nums">{identity.wardrobe.saved.length}</span>
-                        </li>
-                        <li className="flex items-baseline justify-between">
-                          <span className="font-cormorant italic">Gefolgte Häuser</span>
-                          <span className="pawn-numeral tabular-nums">{identity.relationships.follows.length}</span>
-                        </li>
-                      </>
-                    )}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          <p className="mt-8 max-w-md text-sm text-foreground/70">{product.description}</p>
-
-          <div className="mt-10">
-            <p className="editorial-eyebrow">Color · <span className="text-foreground">{color}</span></p>
-            <div className="mt-3 flex gap-2">
-              {product.colors.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={cn(
-                    "border px-4 py-2 text-xs uppercase tracking-[0.18em]",
-                    c === color ? "border-foreground bg-foreground text-background" : "border-border bg-card",
-                  )}
-                >
-                  {c}
-                </button>
+    <PalaceLayout transparentHeader={false}>
+      <section className="px-6 pt-32 md:px-14 md:pt-40">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
+          {/* Left: full image */}
+          <Reveal>
+            <EditorialImage seed={`prd-${product.slug}`} ratio="4/5" className="w-full" />
+            <div className="mt-6 grid grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <EditorialImage key={i} seed={`prd-${product.slug}-${i}`} ratio="1/1" />
               ))}
             </div>
-          </div>
+          </Reveal>
 
-          <div className="mt-6">
-            <p className="editorial-eyebrow">Size · <span className="text-foreground">{size}</span></p>
-            <div className="mt-3 grid grid-cols-5 gap-2">
-              {product.sizes.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSize(s)}
-                  className={cn(
-                    "border px-3 py-2 text-xs uppercase tracking-[0.18em]",
-                    s === size ? "border-foreground bg-foreground text-background" : "border-border bg-card",
-                  )}
+          {/* Right: sticky detail */}
+          <div>
+            <div className="md:sticky md:top-28">
+              <Reveal>
+                <p className="palace-eyebrow">{product.world} · {product.category}</p>
+                <h1
+                  className="palace-serif mt-6 font-light text-[#0C0C0E]"
+                  style={{ fontSize: "clamp(2rem, 4vw, 3.4rem)", lineHeight: 1.02, letterSpacing: "-0.01em" }}
                 >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-10 flex gap-3">
-            <Button size="lg" className="flex-1 rounded-none" onClick={addToBag}>
-              Add to bag
-            </Button>
-            <Button size="lg" variant="outline" className="rounded-none" aria-label="Save to identity" onClick={onSave}>
-              <Heart className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <Accordion type="single" collapsible className="mt-12 border-t border-border">
-            <AccordionItem value="details">
-              <AccordionTrigger className="text-xs uppercase tracking-[0.22em]">Details</AccordionTrigger>
-              <AccordionContent className="text-sm text-foreground/70">
-                Composition and craftsmanship: heavyweight Italian fabric, raw inner edges, made in small batches. Care: dry clean only.
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="shipping">
-              <AccordionTrigger className="text-xs uppercase tracking-[0.22em]">Shipping & Returns</AccordionTrigger>
-              <AccordionContent className="text-sm text-foreground/70">
-                Insured worldwide shipping. Free returns within 14 days for unworn pieces with original tags.
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="designer">
-              <AccordionTrigger className="text-xs uppercase tracking-[0.22em]">Designer</AccordionTrigger>
-              <AccordionContent className="text-sm text-foreground/70">
-                {product.designer} —{" "}
-                <Link to={`/designer/${product.designerSlug}`} className="underline underline-offset-4">
-                  visit the studio page
+                  {product.name}
+                </h1>
+                <Link
+                  to={`/designer/${product.designerSlug}`}
+                  className="palace-eyebrow uline mt-4 inline-block text-[#0C0C0E]"
+                >
+                  {product.designer} →
                 </Link>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      </div>
+                <p className="mt-8 palace-serif text-[1.4rem] tabular-nums text-[#0C0C0E]">
+                  €{product.price.toLocaleString("de-DE")}
+                </p>
 
-      {related.length > 0 && (
-        <section className="border-t border-border py-20">
-          <div className="editorial-container">
-            <p className="editorial-eyebrow">More from {product.designer}</p>
-            <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map(({ view, recId }) => (
-                <div key={view.id} data-recommendation-id={recId ?? undefined}>
-                  <ProductCard product={view} />
+                <p className="mt-8 max-w-md text-[0.98rem] leading-relaxed text-[#0C0C0E]/80">
+                  {product.description}
+                </p>
+
+                {/* Provenance */}
+                {match.percent > 0 && (
+                  <div className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6">
+                    <p className="palace-eyebrow">Ausgewählt für dich, weil</p>
+                    <p className="mt-3 font-serif italic text-[1.05rem] leading-snug text-[#0C0C0E]/80">
+                      {match.rationale}
+                    </p>
+                  </div>
+                )}
+
+                {/* Color */}
+                {product.colors.length > 1 && (
+                  <div className="mt-10">
+                    <p className="palace-eyebrow">Farbe · <span className="text-[#0C0C0E]">{color}</span></p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {product.colors.map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => setColor(c)}
+                          className={cn(
+                            "border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300",
+                            c === color
+                              ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]"
+                              : "border-[rgba(12,12,14,.22)] text-[#0C0C0E] hover:border-[#0C0C0E]",
+                          )}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Size */}
+                {product.sizes.length > 1 && (
+                  <div className="mt-6">
+                    <p className="palace-eyebrow">Format · <span className="text-[#0C0C0E]">{size}</span></p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {product.sizes.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setSize(s)}
+                          className={cn(
+                            "border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300",
+                            s === size
+                              ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]"
+                              : "border-[rgba(12,12,14,.22)] text-[#0C0C0E] hover:border-[#0C0C0E]",
+                          )}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={addToBag}
+                    className="palace-btn flex-1 justify-center text-center hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                  >
+                    In die Tasche
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onSave}
+                    className={cn(
+                      "palace-btn justify-center text-center",
+                      saved ? "bg-[#0C0C0E] text-[#F1EEE7]" : "",
+                    )}
+                  >
+                    {saved ? "Gemerkt" : "Merken"}
+                  </button>
                 </div>
-              ))}
+
+                <p className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6 text-[0.8rem] leading-relaxed text-[#0C0C0E]/60">
+                  Versichert weltweit versendet · Rückgabe innerhalb von 14 Tagen · Direkt aus dem Atelier.
+                </p>
+              </Reveal>
             </div>
           </div>
-        </section>
-      )}
-    </PublicLayout>
+        </div>
+      </section>
+
+      <div className="h-32" />
+    </PalaceLayout>
   );
 };
 
