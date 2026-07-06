@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
@@ -8,8 +9,9 @@ import { useStore, marketplaceSelectors } from "@/core";
  * Simple editorial grid for /mode /interior /kunst.
  * Placeholder — same tokens as the palace, filters by world tag later.
  */
-export function PalaceWorldPage({ world, eyebrow, headline }: { world: string; eyebrow: string; headline: string }) {
+export function PalaceWorldPage({ world, eyebrow, headline }: { world: string; eyebrow: string; headline: ReactNode }) {
   const products = useStore(marketplaceSelectors.getAllProductViews);
+
   return (
     <PalaceLayout transparentHeader={false}>
       <section className="px-6 py-24 md:px-14 md:py-32">
