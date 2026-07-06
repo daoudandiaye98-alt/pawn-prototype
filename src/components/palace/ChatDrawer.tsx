@@ -1,11 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
-interface Msg { role: "user" | "assistant"; content: string }
+interface Card {
+  kind: "product" | "designer";
+  title: string;
+  subtitle?: string;
+  href: string;
+  reason?: string;
+}
+interface Msg {
+  role: "user" | "assistant";
+  content: string;
+  cards?: Card[];
+  meta?: "consent";
+}
 
 const OPENER: Msg = {
   role: "assistant",
   content: "Schön, dass du hier bist. Wonach ist dir heute — nach etwas zum Anziehen, für einen Raum, oder eine Arbeit für die Wand?",
+};
+
+const CONSENT: Msg = {
+  role: "assistant",
+  meta: "consent",
+  content: "Deine Antworten nutzen wir, um dir passende Stücke zu zeigen. Details findest du unter /datenschutz.",
 };
 
 function getSessionId(): string {
@@ -20,7 +39,7 @@ function getSessionId(): string {
 }
 
 export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [messages, setMessages] = useState<Msg[]>([OPENER]);
+  const [messages, setMessages] = useState<Msg[]>([OPENER, CONSENT]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -34,23 +53,24 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     const text = input.trim();
     if (!text || busy) return;
     setBusy(true);
-    const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+    // Strip consent notice from wire payload
+    const wire = [...messages.filter((m) => m.meta !== "consent"), { role: "user" as const, content: text }];
+    setMessages((m) => [...m, { role: "user", content: text }]);
     setInput("");
     try {
       const { data, error } = await supabase.functions.invoke("pawn-chat", {
-        body: { messages: next, session_id: sessionId },
+        body: { messages: wire, session_id: sessionId },
       });
-      const reply = (data as { reply?: string } | null)?.reply
+      const payload = (data ?? {}) as { reply?: string; cards?: Card[] };
+      const reply = payload.reply
         ?? (error ? "Kurz — ich sammle einen Gedanken. Sag mir nochmal, wonach dir ist." : "…");
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      setMessages((m) => [...m, { role: "assistant", content: reply, cards: payload.cards ?? [] }]);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: "Verbindung stockt. Versuch's gleich nochmal." }]);
     } finally {
       setBusy(false);
     }
   }
-
 
   return (
     <>
@@ -82,16 +102,44 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         <div ref={listRef} className="flex-1 space-y-6 overflow-y-auto px-6 py-8">
           {messages.map((m, i) => (
             <div key={i} className={m.role === "assistant" ? "" : "text-right"}>
-              <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">
-                {m.role === "assistant" ? "Pawn" : "Du"}
-              </p>
-              <p
-                className={`mt-2 text-[0.95rem] leading-relaxed text-[#0C0C0E] ${
-                  m.role === "assistant" ? "font-serif italic" : "font-light"
-                }`}
-              >
-                {m.content}
-              </p>
+              {m.meta === "consent" ? (
+                <p className="border border-[rgba(12,12,14,.13)] bg-white/40 px-3 py-2 text-[0.7rem] leading-relaxed text-[#7C7972]">
+                  {m.content}
+                </p>
+              ) : (
+                <>
+                  <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">
+                    {m.role === "assistant" ? "Pawn" : "Du"}
+                  </p>
+                  <p
+                    className={`mt-2 text-[0.95rem] leading-relaxed text-[#0C0C0E] ${
+                      m.role === "assistant" ? "font-serif italic" : "font-light"
+                    }`}
+                  >
+                    {m.content}
+                  </p>
+                  {m.cards && m.cards.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {m.cards.map((c, k) => (
+                        <Link
+                          key={k}
+                          to={c.href}
+                          onClick={onClose}
+                          className="block border border-[rgba(12,12,14,.13)] bg-white/50 px-4 py-3 transition-colors hover:border-[#0C0C0E]"
+                        >
+                          <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#7C7972]">
+                            {c.kind === "product" ? "Stück" : "Designer"}{c.subtitle ? ` · ${c.subtitle}` : ""}
+                          </p>
+                          <p className="mt-1 font-serif italic text-[1rem] text-[#0C0C0E]">{c.title}</p>
+                          {c.reason && (
+                            <p className="mt-1 text-[0.78rem] text-[#0C0C0E]/70">{c.reason}</p>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ))}
           {busy && (
