@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Minus, Plus, X, ShieldCheck } from "lucide-react";
 import { PublicLayout } from "@/components/pawn/PublicLayout";
@@ -6,10 +7,24 @@ import { ProductImage } from "@/components/pawn/ProductImage";
 import { useCart } from "@/store/cart";
 import { useCartWardrobeImpact } from "@/features/dna/hooks";
 import { Panel, Insight } from "@/components/pawn/primitives";
+import { useCartStockLimits } from "@/features/commerce/hooks";
+import { toast } from "sonner";
 
 const Cart = () => {
   const { items, setQty, remove, subtotal, count } = useCart();
   const impact = useCartWardrobeImpact(items.map((i) => i.product.id));
+  const slugs = useMemo(() => items.map((i) => i.product.slug), [items]);
+  const limits = useCartStockLimits(slugs);
+
+  const tryIncrement = (slug: string, currentQty: number, id: string, size: string) => {
+    const max = limits[slug];
+    const cap = max === undefined ? Number.POSITIVE_INFINITY : max;
+    if (currentQty + 1 > cap) {
+      toast.error(cap === 0 ? "Ausverkauft." : `Nur noch ${cap} verfügbar.`);
+      return;
+    }
+    setQty(id, size, currentQty + 1);
+  };
 
   if (items.length === 0) {
     return (
