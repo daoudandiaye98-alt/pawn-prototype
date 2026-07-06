@@ -5,9 +5,13 @@ import type {
 } from "./ids";
 import type { Provenance } from "./provenance";
 
-export type ProductCategory = "Outerwear" | "Tops" | "Bottoms" | "Bags" | "Accessories";
+export type ProductCategory =
+  | "Outerwear" | "Tops" | "Bottoms" | "Bags" | "Accessories"
+  | "Lighting" | "Furniture" | "Mirror" | "Vase"
+  | "Painting" | "Edition" | "Tapestry";
 export type ProductGender = "Women" | "Men" | "Unisex";
 export type ProductStatus = "Active" | "Inactive";
+export type World = "Mode" | "Interior" | "Kunst";
 
 export type GenomeAxis = "structure" | "edge" | "elegance" | "darkness" | "sensuality" | "utility";
 export type StyleGenome = Record<GenomeAxis, number>;
