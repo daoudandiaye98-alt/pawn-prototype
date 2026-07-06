@@ -17,6 +17,8 @@ import { createCustomRequestThread } from "@/features/messages/customRequest";
 import { useAuth } from "@/lib/auth";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PrevNext } from "@/components/palace/PrevNext";
+import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
