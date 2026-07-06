@@ -20,7 +20,12 @@ export function PalaceHeader() {
     const onScroll = () => setScrolled(window.scrollY > 60);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const openChat = () => setChatOpen(true);
+    window.addEventListener("palace:open-chat", openChat as EventListener);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("palace:open-chat", openChat as EventListener);
+    };
   }, []);
 
   return (

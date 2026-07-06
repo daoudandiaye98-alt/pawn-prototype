@@ -20,6 +20,10 @@ import DesignersIndex from "./pages/DesignersIndex.tsx";
 import DesignerPage from "./pages/DesignerPage.tsx";
 import Account from "./pages/Account.tsx";
 import Auth from "./pages/Auth.tsx";
+import Mode from "./pages/palace/Mode.tsx";
+import Interior from "./pages/palace/Interior.tsx";
+import Kunst from "./pages/palace/Kunst.tsx";
+import Neu from "./pages/palace/Neu.tsx";
 
 import AdminOverview from "./pages/admin/AdminOverview.tsx";
 import AdminDNA from "./pages/admin/AdminDNA.tsx";
@@ -54,6 +58,10 @@ const App = () => (
               <RoomShiftProvider>
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/mode" element={<Mode />} />
+                <Route path="/interior" element={<Interior />} />
+                <Route path="/kunst" element={<Kunst />} />
+                <Route path="/neu" element={<Neu />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/dna" element={<DNA />} />
                 <Route path="/designers" element={<Designers />} />
