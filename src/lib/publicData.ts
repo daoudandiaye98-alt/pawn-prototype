@@ -39,32 +39,32 @@ export const SEED_DESIGNERS: PublicDesigner[] = [
   {
     id: "seed-3", slug: "rick-owens", brand_name: "Rick Owens", location: "Paris", country: "FR",
     story: "Ein fortlaufendes Studium brutalistischer Romantik.", quote: null, quote_role: null,
-    is_featured: false, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
+    is_featured: true, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
   },
   {
     id: "seed-4", slug: "alyx", brand_name: "1017 ALYX 9SM", location: "Milano", country: "IT",
     story: "Industrielle Präzision, in Ready-to-wear übersetzt.", quote: null, quote_role: null,
-    is_featured: false, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
+    is_featured: true, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
   },
   {
     id: "seed-5", slug: "toteme", brand_name: "TOTEME", location: "Stockholm", country: "SE",
     story: "Essenzen, zu denen man zurückkehrt.", quote: null, quote_role: null,
-    is_featured: false, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
+    is_featured: true, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
   },
   {
     id: "seed-6", slug: "studio-oyu", brand_name: "Studio Oyu", location: "Rotterdam", country: "NL",
     story: "Objekte an der Schwelle zwischen Möbel und Skulptur.", quote: null, quote_role: null,
-    is_featured: false, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Interior"],
+    is_featured: true, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Interior"],
   },
   {
     id: "seed-7", slug: "kaja-solgaard", brand_name: "Kaja Solgaard", location: "Oslo", country: "NO",
     story: "Malerei als geologische Zeitschicht.", quote: null, quote_role: null,
-    is_featured: false, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Kunst"],
+    is_featured: true, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Kunst"],
   },
   {
     id: "seed-8", slug: "atelier-noor", brand_name: "Atelier Noor", location: "Antwerpen", country: "BE",
     story: "Handwerkliche Textilarbeit an der Grenze zum Objekt.", quote: null, quote_role: null,
-    is_featured: false, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
+    is_featured: true, hero_image_url: null, avatar_url: null, banner_url: null, tags: ["Mode"],
   },
 ];
 
