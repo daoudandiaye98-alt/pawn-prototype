@@ -9,17 +9,34 @@ import { Upload } from "lucide-react";
 export default function StudioBrand() {
   const { designer, loading, refresh } = useMyDesigner();
   const { user } = useAuth();
-  const [form, setForm] = useState({ story: "", quote: "", quote_role: "", hero_image_url: "", banner_url: "" });
+  const [form, setForm] = useState({
+    story: "",
+    quote: "",
+    quote_role: "",
+    hero_image_url: "",
+    banner_url: "",
+    portrait_url: "",
+    manifesto: "",
+    atelier_image_url: "",
+    atelier_caption: "",
+    collection_title: "",
+  });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!designer) return;
+    const d = designer as typeof designer & Partial<typeof form>;
     setForm({
-      story: designer.story ?? "",
-      quote: designer.quote ?? "",
-      quote_role: designer.quote_role ?? "",
-      hero_image_url: designer.hero_image_url ?? "",
-      banner_url: designer.banner_url ?? "",
+      story: d.story ?? "",
+      quote: d.quote ?? "",
+      quote_role: d.quote_role ?? "",
+      hero_image_url: d.hero_image_url ?? "",
+      banner_url: d.banner_url ?? "",
+      portrait_url: d.portrait_url ?? "",
+      manifesto: d.manifesto ?? "",
+      atelier_image_url: d.atelier_image_url ?? "",
+      atelier_caption: d.atelier_caption ?? "",
+      collection_title: d.collection_title ?? "",
     });
   }, [designer]);
 
@@ -33,7 +50,7 @@ export default function StudioBrand() {
     void refresh();
   };
 
-  const upload = async (kind: "hero_image_url" | "banner_url", file: File) => {
+  const upload = async (kind: "hero_image_url" | "banner_url" | "portrait_url" | "atelier_image_url", file: File) => {
     if (!user) return;
     const path = `${user.id}/brand/${kind}-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     const { error } = await supabase.storage.from("designer-media").upload(path, file);
@@ -42,25 +59,43 @@ export default function StudioBrand() {
     setForm((f) => ({ ...f, [kind]: data?.signedUrl ?? "" }));
   };
 
-  if (loading) return <StudioShell title="Brand-Page"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Brand-Page"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title="Retrospektive"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title="Retrospektive"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
 
   return (
-    <StudioShell title="Brand-Page" eyebrow={`Öffentlich unter /designer/${designer.slug}`}>
+    <StudioShell title="Retrospektive" eyebrow={`Öffentlich unter /designer/${designer.slug}`}>
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
-          <Field label="Story">
+          <p className="editorial-eyebrow">Akt I · Auftritt</p>
+          <Field label="Story · für den Katalog">
             <textarea value={form.story} onChange={(e) => setForm({ ...form, story: e.target.value })} className="input min-h-40" />
           </Field>
-          <Field label="Zitat">
+
+          <p className="editorial-eyebrow pt-4">Akt II · Haltung</p>
+          <Field label="Manifest / Zitat (groß gesetzt)">
+            <textarea value={form.manifesto} onChange={(e) => setForm({ ...form, manifesto: e.target.value })} className="input min-h-32" placeholder="Ein Satz, der eure Handschrift auf den Punkt bringt." />
+          </Field>
+          <Field label="Kurz-Zitat (optional, zusätzlich)">
             <textarea value={form.quote} onChange={(e) => setForm({ ...form, quote: e.target.value })} className="input min-h-20" />
           </Field>
-          <Field label="Zitat · Autor:in">
+          <Field label="Signatur · Autor:in / Rolle">
             <input value={form.quote_role} onChange={(e) => setForm({ ...form, quote_role: e.target.value })} className="input" />
+          </Field>
+
+          <p className="editorial-eyebrow pt-4">Akt III · Kollektion</p>
+          <Field label="Kollektionstitel (z.B. „Ausgabe 07 — Marmor")">
+            <input value={form.collection_title} onChange={(e) => setForm({ ...form, collection_title: e.target.value })} className="input" />
+          </Field>
+
+          <p className="editorial-eyebrow pt-4">Akt IV · Atelier</p>
+          <Field label="Atelier-Caption (z.B. „Berlin · 06:14 Uhr")">
+            <input value={form.atelier_caption} onChange={(e) => setForm({ ...form, atelier_caption: e.target.value })} className="input" />
           </Field>
         </div>
         <div className="space-y-6">
-          <ImageField label="Hero-Bild" url={form.hero_image_url} onUpload={(f) => upload("hero_image_url", f)} />
+          <ImageField label="Header-/Porträtbild (Akt I)" url={form.portrait_url || form.hero_image_url} onUpload={(f) => upload("portrait_url", f)} />
+          <ImageField label="Hero-Bild (alternativer Header)" url={form.hero_image_url} onUpload={(f) => upload("hero_image_url", f)} />
+          <ImageField label="Atelier-Bild (Akt IV, Parallax)" url={form.atelier_image_url} onUpload={(f) => upload("atelier_image_url", f)} />
           <ImageField label="Banner" url={form.banner_url} onUpload={(f) => upload("banner_url", f)} />
         </div>
       </div>
