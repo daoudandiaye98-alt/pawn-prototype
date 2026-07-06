@@ -5,7 +5,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
-import { usePublicDesigners } from "@/lib/publicData";
+import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
 
 interface WorldPageProps {
   world: World;
@@ -23,10 +23,22 @@ interface WorldPageProps {
  * - Slim CTA to /apply
  */
 export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
-  const products = useStore(marketplaceSelectors.getAllProductViews);
+  const seedProducts = useStore(marketplaceSelectors.getAllProductViews);
   const { designers } = usePublicDesigners();
+  const { products: dbProducts } = usePublishedProducts(world);
 
-  const worldProducts = useMemo(() => products.filter((p) => p.world === world), [products, world]);
+  const worldProducts = useMemo(() => {
+    const seed = seedProducts.filter((p) => p.world === world);
+    // DB products win by slug — merge into seed shape
+    const dbShaped = dbProducts.map((p) => ({
+      id: p.id, slug: p.slug, name: p.name, world, category: "Neu",
+      designer: designers.find((d) => d.id === p.designer_id)?.brand_name ?? "PAWN",
+      designerSlug: designers.find((d) => d.id === p.designer_id)?.slug ?? "",
+      price: p.price, imageUrl: p.image_url,
+    }));
+    const dbSlugs = new Set(dbShaped.map((p) => p.slug));
+    return [...dbShaped, ...seed.filter((p) => !dbSlugs.has(p.slug))];
+  }, [seedProducts, dbProducts, world, designers]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
