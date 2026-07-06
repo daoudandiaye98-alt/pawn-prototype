@@ -115,7 +115,7 @@ export function PalaceHeader() {
               onClick={() => setSearchOpen(true)}
               className="hidden text-[#55534E] hover:text-[#0C0C0E] md:inline-flex"
             >
-              <Search className="h-4 w-4" strokeWidth={1.2} />
+              <PawnSearchIcon className="h-5 w-5" />
             </button>
 
             <button
@@ -143,7 +143,7 @@ export function PalaceHeader() {
                   onClick={() => setAccountOpen((v) => !v)}
                   className="text-[#55534E] hover:text-[#0C0C0E]"
                 >
-                  <User className="h-4 w-4" strokeWidth={1.2} />
+                  <PawnProfileIcon className="h-5 w-5" />
                 </button>
                 {accountOpen && (
                   <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
@@ -174,7 +174,7 @@ export function PalaceHeader() {
                 aria-label="Anmelden"
                 className="hidden text-[#55534E] hover:text-[#0C0C0E] xl:inline-flex"
               >
-                <User className="h-4 w-4" strokeWidth={1.2} />
+                <PawnProfileIcon className="h-5 w-5" />
               </Link>
             )}
 
@@ -184,7 +184,7 @@ export function PalaceHeader() {
               onClick={() => setMenuOpen(true)}
               className="text-[#0C0C0E] xl:hidden"
             >
-              <Menu className="h-5 w-5" strokeWidth={1.2} />
+              <PawnMenuIcon className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -204,7 +204,7 @@ export function PalaceHeader() {
             onClick={() => setMenuOpen(false)}
             className="text-[#0C0C0E]"
           >
-            <X className="h-5 w-5" strokeWidth={1.2} />
+            <PawnCloseIcon className="h-5 w-5" />
           </button>
         </div>
         <nav className="flex flex-1 flex-col justify-center gap-6 px-8">
