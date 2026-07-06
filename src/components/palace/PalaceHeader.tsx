@@ -97,12 +97,22 @@ export function PalaceHeader() {
 
           <div className="flex items-center gap-4 md:gap-6">
             <button
+              type="button"
+              aria-label="Suche"
+              onClick={() => setSearchOpen(true)}
+              className="hidden text-[#7C7972] hover:text-[#0C0C0E] md:inline-flex"
+            >
+              <Search className="h-4 w-4" strokeWidth={1.2} />
+            </button>
+
+            <button
               onClick={() => setChatOpen(true)}
               className="hidden items-center gap-2 border border-[rgba(12,12,14,.28)] px-4 py-2 text-[0.62rem] uppercase tracking-[0.36em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] md:flex"
             >
               <span className="h-[6px] w-[6px] rounded-full bg-[#0C0C0E]" />
               {t("nav.frag")}
             </button>
+
 
             <button
               type="button"
