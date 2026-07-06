@@ -89,10 +89,13 @@ const App = () => (
                 <Route path="/apply/form" element={<Apply />} />
                 <Route path="/datenschutz" element={<Datenschutz />} />
                 <Route path="/impressum" element={<Impressum />} />
+                <Route path="/versand" element={<Versand />} />
+                <Route path="/agb" element={<AGB />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/order/success" element={<OrderConfirmation />} />
                 <Route path="/account" element={<Account />} />
 
                 <Route path="/admin" element={<AdminOverview />} />
