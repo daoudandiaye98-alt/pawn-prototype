@@ -23,11 +23,10 @@ export default function Designers() {
 
   const productBySlug = useMemo(() => {
     const map = new Map<string, string | undefined>();
-    for (const p of products) {
-      if (!map.has(p.designerSlug)) map.set(p.designerSlug, p.imageUrl);
-    }
+    // Seed ProductView has no imageUrl; leave empty so we rely on designer hero/banner.
     return map;
-  }, [products]);
+  }, []);
+
 
   const [hover, setHover] = useState<{ src?: string; brand: string } | null>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
