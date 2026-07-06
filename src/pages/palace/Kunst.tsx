@@ -1,10 +1,12 @@
-import { PalaceWorldPage } from "./Neu";
+import { WorldPage } from "@/components/palace/WorldPage";
+
 export default function Kunst() {
   return (
-    <PalaceWorldPage
+    <WorldPage
       world="Kunst"
       eyebrow="Welt · 03"
-      headline={<>Kunst. <span className="italic">Was an der Wand bleibt.</span></>}
+      headline={<>Kunst. <span className="italic">Was den Raum trägt.</span></>}
+      intro="Malerei, Editionen, Tapisserie — Arbeiten, die eine Wand zu einem Ort machen."
     />
   );
 }
