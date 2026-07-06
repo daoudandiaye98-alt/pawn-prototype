@@ -51,43 +51,47 @@ const Cart = () => {
 
         <div className="mt-12 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
           <ul className="divide-y divide-border border-y border-border">
-            {items.map((i) => (
-              <li key={i.product.id + i.size} className="grid grid-cols-[120px_1fr_auto] items-start gap-6 py-6">
-                <ProductImage seed={i.product.slug} className="aspect-[3/4] w-[120px]" />
-                <div>
-                  <p className="editorial-eyebrow">{i.product.designer}</p>
-                  <Link to={`/product/${i.product.slug}`} className="mt-1 block font-serif text-2xl hover:underline">
-                    {i.product.name}
-                  </Link>
-                  <p className="mt-1 text-xs text-muted-foreground">Size {i.size}</p>
-                  <div className="mt-4 inline-flex items-center border border-border">
-                    <button
-                      className="px-2 py-1 hover:bg-secondary"
-                      onClick={() => setQty(i.product.id, i.size, i.qty - 1)}
-                      aria-label="Decrease"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="px-3 text-sm tabular-nums">{i.qty}</span>
-                    <button
-                      className="px-2 py-1 hover:bg-secondary"
-                      onClick={() => setQty(i.product.id, i.size, i.qty + 1)}
-                      aria-label="Increase"
-                    >
-                      <Plus className="h-3 w-3" />
+            {items.map((i) => {
+              const max = limits[i.product.slug];
+              const atCap = max !== undefined && Number.isFinite(max) && i.qty >= max;
+              return (
+                <li key={i.product.id + i.size} className="grid grid-cols-[120px_1fr_auto] items-start gap-6 py-6">
+                  <ProductImage seed={i.product.slug} className="aspect-[3/4] w-[120px]" />
+                  <div>
+                    <p className="editorial-eyebrow">{i.product.designer}</p>
+                    <Link to={`/product/${i.product.slug}`} className="mt-1 block font-serif text-2xl hover:underline">
+                      {i.product.name}
+                    </Link>
+                    <p className="mt-1 text-xs text-muted-foreground">Size {i.size}</p>
+                    {max !== undefined && Number.isFinite(max) && (
+                      <p className="mt-1 text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">
+                        {max === 0 ? "Ausverkauft" : `Noch ${max} verfügbar`}
+                      </p>
+                    )}
+                    <div className="mt-4 inline-flex items-center border border-border">
+                      <button className="px-2 py-1 hover:bg-secondary"
+                        onClick={() => setQty(i.product.id, i.size, i.qty - 1)} aria-label="Decrease">
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="px-3 text-sm tabular-nums">{i.qty}</span>
+                      <button className="px-2 py-1 hover:bg-secondary disabled:opacity-30"
+                        disabled={atCap}
+                        onClick={() => tryIncrement(i.product.slug, i.qty, i.product.id, i.size)} aria-label="Increase">
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="tabular-nums">€{(i.product.price * i.qty).toLocaleString("de-DE")}</p>
+                    <button onClick={() => remove(i.product.id, i.size)}
+                      className="mt-3 inline-flex items-center gap-1 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground">
+                      <X className="h-3 w-3" /> Remove
                     </button>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="tabular-nums">€{(i.product.price * i.qty).toLocaleString("de-DE")}</p>
-                  <button
-                    onClick={() => remove(i.product.id, i.size)}
-                    className="mt-3 inline-flex items-center gap-1 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" /> Remove
-                  </button>
-                </div>
-              </li>
+                </li>
+              );
+            })}
+
             ))}
           </ul>
 
