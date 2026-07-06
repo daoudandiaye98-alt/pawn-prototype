@@ -1,10 +1,11 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, Search, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { SearchOverlay } from "./SearchOverlay";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
+import { useCart } from "@/store/cart";
+import { PawnBagIcon, PawnCloseIcon, PawnMenuIcon, PawnProfileIcon, PawnSearchIcon } from "@/components/pawn/icons/PawnIcons";
 
 /**
  * Palace header.
