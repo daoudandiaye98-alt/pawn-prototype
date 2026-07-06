@@ -267,31 +267,13 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ── 05 STATEMENT BANNER ─────────────────────────────── */}
-      {statement && (
-        <section className="relative z-10 min-h-[72vh] overflow-hidden">
-          <EditorialImage
-            seed={`banner-${statement.slug}`}
-            src={statement.hero_image_url ?? statement.banner_url}
-            ratio="16/9"
-            className="absolute inset-0 h-full w-full"
-          />
-          <div className="absolute inset-0 bg-[#0C0C0E]/45" />
-          <div className="relative flex min-h-[72vh] items-center justify-center px-6 text-center">
-            <Reveal>
-              <p className="palace-eyebrow text-white/60">Statement</p>
-              <blockquote className="mx-auto mt-8 max-w-3xl">
-                <p className="palace-serif italic font-light text-white" style={{ fontSize: "clamp(1.8rem, 4.5vw, 3.6rem)", lineHeight: 1.1 }}>
-                  „{statement.quote ?? "Der Raum trägt, was du sonst nirgends findest."}"
-                </p>
-                <cite className="mt-8 block not-italic palace-eyebrow text-white/70">
-                  {statement.quote_role ?? statement.brand_name}
-                </cite>
-              </blockquote>
-            </Reveal>
-          </div>
-        </section>
-      )}
+      {/* ── 05 STATEMENT BANNER — rotates through featured designers ── */}
+      <DynamicBanner />
+
+      {/* ── 05b PICK YOUR STYLE — swipe discovery ─────────── */}
+      <section className="relative z-10 border-y border-[rgba(12,12,14,.13)] bg-[#F1EEE7] py-24 md:py-32">
+        <PickYourStyle />
+      </section>
 
       {/* ── 06 CURATED COLLECTION · horizontal scroll ─────── */}
       <section ref={trackSectionRef} className="relative z-10 bg-[#F1EEE7]" style={{ height: "320vh" }}>
