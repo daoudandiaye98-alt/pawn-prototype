@@ -124,6 +124,8 @@ const Cart = () => {
             </Panel>
           </aside>
         </div>
+
+        <CartRecommendations variant="in-cart" title="Passt dazu" limit={3} />
       </div>
     </PublicLayout>
   );
