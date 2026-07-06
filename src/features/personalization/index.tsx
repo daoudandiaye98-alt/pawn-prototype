@@ -143,6 +143,7 @@ function applyCssVars(profile: PersonalizationProfile) {
 
 export function PersonalizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { allowsPersistence } = useConsent();
   const [profile, setProfile] = useState<PersonalizationProfile>(() => {
     if (typeof window === "undefined") return EMPTY;
     try {
