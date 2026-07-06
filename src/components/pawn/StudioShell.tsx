@@ -1,6 +1,6 @@
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { ReactNode } from "react";
-import { LayoutGrid, Package, Megaphone, UserCircle2, LogOut } from "lucide-react";
+import { LayoutGrid, Package, Megaphone, UserCircle2, LogOut, Receipt, Mail, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
@@ -9,11 +9,13 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 const ITEMS = [
   { to: "/studio", label: "Übersicht", icon: LayoutGrid, end: true },
   { to: "/studio/produkte", label: "Produkte", icon: Package },
+  { to: "/studio/bestellungen", label: "Bestellungen", icon: Receipt },
   { to: "/studio/kampagnen", label: "Kampagnen", icon: Megaphone },
   { to: "/studio/brand", label: "Brand-Page", icon: UserCircle2 },
-  { to: "/studio/nachrichten", label: "Nachrichten", icon: UserCircle2 },
-  { to: "/studio/auszahlung", label: "Auszahlung", icon: UserCircle2 },
+  { to: "/studio/nachrichten", label: "Nachrichten", icon: Mail },
+  { to: "/studio/auszahlung", label: "Auszahlung", icon: Wallet },
 ];
+
 
 export function StudioShell({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow?: string }) {
   const { signOut, user } = useAuth();

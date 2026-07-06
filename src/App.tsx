@@ -21,6 +21,7 @@ import AGB from "./pages/AGB.tsx";
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import StudioOverview from "./pages/studio/StudioOverview.tsx";
 import StudioProducts from "./pages/studio/StudioProducts.tsx";
+import StudioOrders from "./pages/studio/StudioOrders.tsx";
 import StudioBrand from "./pages/studio/StudioBrand.tsx";
 import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
 import StudioMessages from "./pages/studio/StudioMessages.tsx";
@@ -28,6 +29,7 @@ import StudioPayout from "./pages/studio/StudioPayout.tsx";
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
 import AdminPayments from "./pages/admin/AdminPayments.tsx";
+import AdminDesigners from "./pages/admin/AdminDesigners.tsx";
 import Shop from "./pages/Shop.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Cart from "./pages/Cart.tsx";
@@ -102,7 +104,7 @@ const App = () => (
                 <Route path="/admin/dna" element={<RoleGate role="admin"><AdminDNA /></RoleGate>} />
                 <Route path="/admin/products" element={<RoleGate role="admin"><AdminProducts /></RoleGate>} />
                 <Route path="/admin/applications" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
-                <Route path="/admin/designers" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
+                <Route path="/admin/designers" element={<RoleGate role="admin"><AdminDesigners /></RoleGate>} />
                 <Route path="/admin/kampagnen" element={<RoleGate role="admin"><AdminCampaigns /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
@@ -111,6 +113,7 @@ const App = () => (
 
                 <Route path="/studio" element={<RoleGate role="designer"><StudioOverview /></RoleGate>} />
                 <Route path="/studio/produkte" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
+                <Route path="/studio/bestellungen" element={<RoleGate role="designer"><StudioOrders /></RoleGate>} />
                 <Route path="/studio/kampagnen" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
                 <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/nachrichten" element={<RoleGate role="designer"><StudioMessages /></RoleGate>} />

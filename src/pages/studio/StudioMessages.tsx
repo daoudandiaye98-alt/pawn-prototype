@@ -60,7 +60,10 @@ export default function StudioMessages() {
                   onClick={() => setActive(t.id)}
                   className={`w-full border-b border-border px-4 py-3 text-left hover:bg-secondary ${active === t.id ? "bg-secondary" : ""}`}
                 >
-                  <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">{t.category} · {t.status}</p>
+                  <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
+                    {t.category} · {t.status}
+                    {t.category === "produkt" && <span className="ml-2 border border-foreground/60 px-1.5 py-0.5 text-[0.5rem] text-foreground">PRODUKT</span>}
+                  </p>
                   <p className="mt-1 font-serif text-sm">{t.subject}</p>
                 </button>
               </li>

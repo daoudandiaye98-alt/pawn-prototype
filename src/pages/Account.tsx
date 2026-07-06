@@ -7,8 +7,10 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useMyRequestThreads } from "@/features/commerce/hooks";
+import { useThreadMessages, sendMessage } from "@/features/messages/useMessages";
 
-const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Zahlung", "Meine Daten", "Einstellungen"] as const;
+const TABS = ["Übersicht", "Bestellungen", "Anfragen", "Merkzettel", "Zahlung", "Meine Daten", "Einstellungen"] as const;
 type Tab = typeof TABS[number];
 
 const Account = () => {
@@ -67,6 +69,7 @@ const Account = () => {
           <div>
             {tab === "Übersicht" && <Overview name={displayName} />}
             {tab === "Bestellungen" && <Orders />}
+            {tab === "Anfragen" && <Requests />}
             {tab === "Merkzettel" && <Empty title="Dein Merkzettel ist noch leer." to="/neu" cta="Ausstellung ansehen" />}
             {tab === "Zahlung" && <PaymentTab />}
             {tab === "Meine Daten" && <MyData />}
@@ -80,28 +83,89 @@ const Account = () => {
 
 function Overview({ name }: { name: string }) {
   return (
-    <div className="space-y-16">
-      <div className="grid gap-8 md:grid-cols-3">
-        {[
-          { label: "Gesehen", value: "42", note: "in den letzten 30 Tagen" },
-          { label: "Gemerkt", value: "8", note: "Stücke" },
-          { label: "Bestellt", value: "3", note: "Ateliers" },
-        ].map((m) => (
-          <div key={m.label} className="border-t border-[rgba(12,12,14,.13)] pt-6">
-            <p className="palace-eyebrow">{m.label}</p>
-            <p className="palace-serif mt-4 text-[2.4rem] font-light leading-none tabular-nums text-[#0C0C0E]">
-              {m.value}
-            </p>
-            <p className="mt-2 font-serif italic text-[#0C0C0E]/70">{m.note}</p>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-8">
       <p className="palace-serif italic text-[1.15rem] text-[#0C0C0E]/80">
         Willkommen zurück, {name}. Der Raum hat sich gemerkt, wo du zuletzt warst.
+      </p>
+      <p className="text-[0.95rem] text-[#0C0C0E]/70 max-w-lg">
+        Über die Reiter oben erreichst du deine Bestellungen, individuellen Anfragen an Ateliers, den Merkzettel
+        und deine Daten.
       </p>
     </div>
   );
 }
+
+function Requests() {
+  const { user } = useAuth();
+  const { threads, loading, refresh } = useMyRequestThreads();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const { messages, listRef } = useThreadMessages(activeId);
+  const [reply, setReply] = useState("");
+  const active = threads.find((t) => t.id === activeId) ?? null;
+
+  const send = async () => {
+    if (!activeId || !user || !reply.trim()) return;
+    const { error } = await sendMessage(activeId, user.id, reply.trim());
+    if (error) return toast.error(error.message);
+    setReply(""); refresh();
+  };
+
+  if (loading) return <p className="palace-eyebrow">Lade …</p>;
+  if (threads.length === 0) return <Empty title="Noch keine Anfragen." to="/neu" cta="Ausstellung ansehen" />;
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
+      <aside className="border-t border-[rgba(12,12,14,.13)]">
+        <ul className="divide-y divide-[rgba(12,12,14,.09)]">
+          {threads.map((t) => (
+            <li key={t.id}>
+              <button onClick={() => setActiveId(t.id)}
+                className={`block w-full px-1 py-4 text-left ${activeId === t.id ? "bg-[rgba(12,12,14,.04)]" : ""}`}>
+                <p className="palace-eyebrow">
+                  {t.designer?.brand_name ?? "Atelier"}
+                  {t.category === "produkt" && <span className="ml-2 border border-[rgba(12,12,14,.28)] px-1.5 py-0.5 text-[0.5rem] tracking-[0.28em]">PRODUKT</span>}
+                </p>
+                <p className="palace-serif mt-1 text-[1.1rem] italic text-[#0C0C0E]">{t.subject}</p>
+                {t.product && <p className="mt-1 text-[0.75rem] text-[#7C7972]">→ {t.product.name}</p>}
+                <p className="mt-1 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{new Date(t.last_message_at).toLocaleDateString("de-DE")} · {t.status}</p>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </aside>
+      <section className="border border-[rgba(12,12,14,.13)] p-6 min-h-[50vh] flex flex-col">
+        {!active ? (
+          <p className="palace-eyebrow text-[#7C7972]">Wähle eine Anfrage.</p>
+        ) : (
+          <>
+            <header className="border-b border-[rgba(12,12,14,.09)] pb-4">
+              <p className="palace-eyebrow">{active.category} · {active.status}</p>
+              <h3 className="palace-serif mt-1 text-[1.4rem] text-[#0C0C0E]">{active.subject}</h3>
+              {active.product && <Link to={`/product/${active.product.slug}`} className="palace-eyebrow uline mt-2 inline-block">Zum Produkt →</Link>}
+            </header>
+            <div ref={listRef} className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
+              {messages.map((m) => (
+                <div key={m.id} className={m.sender_id === user?.id ? "text-right" : ""}>
+                  <p className="text-[0.55rem] uppercase tracking-[0.28em] text-[#7C7972]">{m.sender_id === user?.id ? "Du" : active.designer?.brand_name ?? "Atelier"}</p>
+                  <p className="mt-1 text-[0.95rem] text-[#0C0C0E]">{m.body}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-[rgba(12,12,14,.09)] pt-3">
+              <div className="flex gap-2">
+                <textarea rows={2} value={reply} onChange={(e) => setReply(e.target.value)}
+                  placeholder="Antworten …"
+                  className="flex-1 border border-[rgba(12,12,14,.22)] bg-transparent p-2 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
+                <button onClick={send} disabled={!reply.trim()} className="palace-btn bg-[#0C0C0E] text-[#F1EEE7] disabled:opacity-40">Senden</button>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
 
 function Orders() {
   const customerOrders = useStore(selectors.getCustomerOrders);
