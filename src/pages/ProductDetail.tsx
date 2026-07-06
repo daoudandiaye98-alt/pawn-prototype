@@ -308,8 +308,9 @@ const ProductDetail = () => {
           </div>
         </div>
       )}
-
+    </PalaceLayout>
   );
+
 };
 
 export default ProductDetail;
