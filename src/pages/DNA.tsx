@@ -110,10 +110,10 @@ export default function DNA() {
     <PalaceLayout>
       {/* 01 · Hero */}
       <section ref={heroRef} className="relative min-h-[86vh] overflow-hidden bg-[#F1EEE7]">
-        <div className="absolute inset-0 flex items-center justify-center opacity-30">
+        <div className="absolute inset-0 flex items-center justify-center opacity-60">
           <HelixScene />
         </div>
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#F1EEE7]/60 via-[#F1EEE7]/30 to-[#F1EEE7]/80" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#F1EEE7]/45 via-transparent to-[#F1EEE7]/85" />
 
         <div className="relative z-10 mx-auto flex min-h-[86vh] max-w-[1200px] flex-col items-center justify-center px-6 pt-32 text-center md:px-14">
           <Reveal>
