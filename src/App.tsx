@@ -22,6 +22,8 @@ import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
 import StudioMessages from "./pages/studio/StudioMessages.tsx";
 import StudioPayout from "./pages/studio/StudioPayout.tsx";
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
+import AdminMessages from "./pages/admin/AdminMessages.tsx";
+import AdminPayments from "./pages/admin/AdminPayments.tsx";
 import Shop from "./pages/Shop.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Cart from "./pages/Cart.tsx";
