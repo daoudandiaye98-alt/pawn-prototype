@@ -127,7 +127,23 @@ const Apply = () => {
 
   const allContractsAccepted = contracts.length > 0 && contracts.every((c) => accepted[c.id]);
 
-  function next() { setStep((s) => Math.min(s + 1, STEPS.length - 1)); }
+  function validateStep(current: number): boolean {
+    const runners: Array<() => z.SafeParseReturnType<unknown, unknown> | null> = [
+      () => (user ? null : accountSchema.safeParse(data)),
+      () => profileSchema.safeParse(data),
+      () => aboutSchema.safeParse({ story: data.story, tags: data.tags }),
+      () => (allContractsAccepted ? null : ({ success: false, error: { issues: [{ message: "Bitte stimme allen Verträgen zu." }] } } as unknown as z.SafeParseReturnType<unknown, unknown>)),
+      () => null,
+    ];
+    const result = runners[current]?.();
+    if (result && !result.success) {
+      const msg = result.error.issues[0]?.message ?? "Bitte alle Felder korrekt ausfüllen.";
+      toast.error(msg);
+      return false;
+    }
+    return true;
+  }
+  function next() { if (validateStep(step)) setStep((s) => Math.min(s + 1, STEPS.length - 1)); }
   function back() { setStep((s) => Math.max(s - 1, 0)); }
 
   async function ensureAuth(): Promise<string | null> {
