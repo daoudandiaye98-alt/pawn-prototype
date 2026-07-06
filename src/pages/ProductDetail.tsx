@@ -58,7 +58,7 @@ const ProductDetail = () => {
         <Reveal>
           <EditorialImage
             seed={`prd-${product.slug}-hero`}
-            ratio="21/9"
+            ratio="16/9"
             className="w-full"
           />
         </Reveal>
