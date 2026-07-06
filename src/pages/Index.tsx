@@ -116,7 +116,10 @@ const Index = () => {
           <p className="mx-auto mt-10 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70">
             Mode · Interior · Kunst — ausgewählt aus {atelierCount} unabhängigen Ateliers.
           </p>
-          <div className="mt-20 flex flex-col items-center gap-4">
+
+          <HeroPrompt />
+
+          <div className="mt-16 flex flex-col items-center gap-4">
             <span className="palace-eyebrow">Scroll</span>
             <span className="palace-drip block h-14 w-px bg-[#0C0C0E]" />
           </div>
