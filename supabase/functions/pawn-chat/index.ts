@@ -187,11 +187,19 @@ function extractUserIdFromJWT(auth: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const body = (await req.json()) as { messages: Msg[]; session_id?: string };
+    const body = (await req.json()) as { messages: Msg[]; session_id?: string; probe?: boolean };
+
+    // Provider probe (used by /admin/ki status badge) — no side effects.
+    if (body.probe) {
+      const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+      return new Response(JSON.stringify({ provider }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
     const session_id = body.session_id ?? crypto.randomUUID();
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const user_id = extractUserIdFromJWT(req.headers.get("Authorization"));
+
 
     const url = Deno.env.get("SUPABASE_URL");
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
