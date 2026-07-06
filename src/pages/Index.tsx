@@ -41,9 +41,6 @@ const Index = () => {
 
   const featured = designers.filter((d) => d.is_featured);
   const cover = featured[0] ?? designers[0];
-  const statement = featured[1] ?? designers[1] ?? designers[0];
-  const featuredCount = featured.length || 8;
-  const atelierCount = designers.length;
 
   // Canvas fade — smoothed via rAF so the pawn never pops on scroll.
   // Full opacity through the first viewport (hero), soft fade after, restored during finale.
