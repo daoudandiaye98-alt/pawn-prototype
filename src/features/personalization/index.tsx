@@ -11,6 +11,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useConsent } from "@/lib/consent";
 
 export type Mood = "ruhig" | "spannung" | "neutral";
 export type World = "Mode" | "Interior" | "Kunst";
