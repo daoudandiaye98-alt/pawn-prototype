@@ -178,6 +178,14 @@ export function PalaceHeader() {
               </Link>
             )}
 
+            <Link
+              to="/cart"
+              aria-label={`Warenkorb${cartCount > 0 ? ` (${cartCount})` : ""}`}
+              className="text-[#55534E] hover:text-[#0C0C0E]"
+            >
+              <PawnBagIcon count={cartCount} className="h-5 w-5" />
+            </Link>
+
             <button
               type="button"
               aria-label="Menü öffnen"
@@ -189,6 +197,7 @@ export function PalaceHeader() {
           </div>
         </div>
       </header>
+
 
       {/* Mobile / tablet fullscreen menu */}
       <div
