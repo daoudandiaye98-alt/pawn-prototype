@@ -38,6 +38,9 @@ const Cart = () => {
             <Link to="/shop">Enter the boutique</Link>
           </Button>
         </section>
+        <section className="editorial-container pb-24">
+          <CartRecommendations variant="empty-cart" title="Deine DNA · Vorschläge" limit={3} />
+        </section>
       </PublicLayout>
     );
   }
