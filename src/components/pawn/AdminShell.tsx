@@ -28,6 +28,7 @@ const ITEMS = [
   { to: "/admin/marketing", label: "Marketing", icon: Megaphone },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/ai", label: "AI Center", icon: Bot },
+  { to: "/admin/ki", label: "KI Cockpit", icon: Bot },
   { to: "/admin/settings", label: "Einstellungen", icon: Settings },
 ];
 
