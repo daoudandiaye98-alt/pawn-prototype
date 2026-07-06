@@ -116,6 +116,7 @@ export interface Product {
   price: number;
   category: ProductCategory;
   gender: ProductGender;
+  world: World;
   colors: string[];
   sizes: string[];
   status: ProductStatus;
