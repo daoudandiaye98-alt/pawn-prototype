@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-
 
 interface Msg { role: "user" | "assistant"; content: string }
 
@@ -9,16 +8,23 @@ const OPENER: Msg = {
   content: "Schön, dass du hier bist. Wonach ist dir heute — nach etwas zum Anziehen, für einen Raum, oder eine Arbeit für die Wand?",
 };
 
+function getSessionId(): string {
+  if (typeof window === "undefined") return "server";
+  const KEY = "palace.chat.session_id";
+  let id = window.localStorage.getItem(KEY);
+  if (!id) {
+    id = (crypto.randomUUID?.() ?? String(Date.now())) as string;
+    window.localStorage.setItem(KEY, id);
+  }
+  return id;
+}
+
 export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [messages, setMessages] = useState<Msg[]>([OPENER]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages, open]);
-
+  const sessionId = useMemo(() => getSessionId(), []);
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -31,13 +37,9 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     const next: Msg[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
-
-    // Taste signals are captured via the edge function later; no direct DB write from anon browser.
-
-
     try {
       const { data, error } = await supabase.functions.invoke("pawn-chat", {
-        body: { messages: next },
+        body: { messages: next, session_id: sessionId },
       });
       const reply = (data as { reply?: string } | null)?.reply
         ?? (error ? "Kurz — ich sammle einen Gedanken. Sag mir nochmal, wonach dir ist." : "…");
@@ -48,6 +50,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       setBusy(false);
     }
   }
+
 
   return (
     <>
