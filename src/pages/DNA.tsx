@@ -202,7 +202,7 @@ export default function DNA() {
         </div>
       </section>
 
-      {/* 03 · What PAWN does NOT do */}
+      {/* 03 · Wie PAWN mit dir umgeht */}
       <section className="border-t border-[rgba(12,12,14,.13)] bg-[#0C0C0E] px-6 py-24 text-[#F1EEE7] md:px-14 md:py-32">
         <div className="mx-auto grid max-w-[1200px] gap-16 md:grid-cols-[1fr_1.4fr]">
           <div>
@@ -211,14 +211,14 @@ export default function DNA() {
               className="palace-serif mt-8 font-light"
               style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", lineHeight: 1.05, color: "#F1EEE7" }}
             >
-              Was PAWN <span className="italic">nicht</span> tut.
+              Wie PAWN <span className="italic">mit dir umgeht.</span>
             </h2>
           </div>
           <ul className="space-y-8">
             {[
-              { t: "Wir speichern deine Signale — deinem Konto zugeordnet.", b: "Nach deiner Zustimmung führen wir deine Geschmackssignale über Besuche hinweg. Du siehst sie hier, du korrigierst sie hier, du löschst sie hier." },
-              { t: "Kein Verkauf von Daten.", b: "Deine Signale bleiben bei uns — sie sind das Werkzeug, nicht die Ware. Keine Werbenetzwerke Dritter." },
-              { t: "Löschung in einem Klick.", b: "Konto → Meine Daten → Konto löschen. Wir entfernen Profil, Signale und Sessions vollständig." },
+              { t: "Deine Signale gehören dir.", b: "Alles einsehbar in deiner DNA, einzeln löschbar mit einem Klick — hier auf dieser Seite." },
+              { t: "Deine Daten arbeiten nur für deine Auswahl.", b: "Sie helfen dir, Handschriften zu finden, die zu dir passen. Sie bleiben bei uns." },
+              { t: "Volle Kontrolle: Konto löschen entfernt alles, sofort.", b: "Konto → Meine Daten → Konto löschen. Profil, Signale, Sessions — vollständig entfernt." },
             ].map((x) => (
               <li key={x.t} className="border-t border-[rgba(241,238,231,0.16)] pt-6">
                 <p className="palace-serif text-[1.4rem] italic" style={{ color: "#F1EEE7" }}>{x.t}</p>
