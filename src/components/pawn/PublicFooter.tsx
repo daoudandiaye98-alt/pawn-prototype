@@ -1,5 +1,16 @@
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
+import { useConsent } from "@/lib/consent";
+
+function CookieSettingsLink() {
+  const { reopen } = useConsent();
+  return (
+    <button type="button" onClick={reopen} className="hover:text-foreground">
+      Cookie-Einstellungen
+    </button>
+  );
+}
+
 
 export function PublicFooter() {
   return (
