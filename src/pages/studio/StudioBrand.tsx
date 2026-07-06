@@ -83,12 +83,12 @@ export default function StudioBrand() {
           </Field>
 
           <p className="editorial-eyebrow pt-4">Akt III · Kollektion</p>
-          <Field label="Kollektionstitel (z.B. „Ausgabe 07 — Marmor")">
+          <Field label={"Kollektionstitel (z.B. \u201eAusgabe 07 — Marmor\u201c)"}>
             <input value={form.collection_title} onChange={(e) => setForm({ ...form, collection_title: e.target.value })} className="input" />
           </Field>
 
           <p className="editorial-eyebrow pt-4">Akt IV · Atelier</p>
-          <Field label="Atelier-Caption (z.B. „Berlin · 06:14 Uhr")">
+          <Field label={"Atelier-Caption (z.B. \u201eBerlin · 06:14 Uhr\u201c)"}>
             <input value={form.atelier_caption} onChange={(e) => setForm({ ...form, atelier_caption: e.target.value })} className="input" />
           </Field>
         </div>
