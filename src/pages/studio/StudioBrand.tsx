@@ -70,10 +70,13 @@ export default function StudioBrand() {
         </button>
       </div>
 
+      <ImageUsageConsent />
+
       <style>{`.input { width:100%; border:1px solid hsl(var(--border)); background:hsl(var(--background)); padding: 0.6rem 0.8rem; font-size: 0.9rem; }`}</style>
     </StudioShell>
   );
 }
+
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="editorial-eyebrow">{label}</span><div className="mt-2">{children}</div></label>;
