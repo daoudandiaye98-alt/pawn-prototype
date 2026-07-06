@@ -42,7 +42,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
     const query = q.trim().toLowerCase();
     if (query.length < 2) return [];
     const p = seedProducts.filter((x) => x.name.toLowerCase().includes(query)).slice(0, 6).map((x) => ({ kind: "product" as const, slug: x.slug, title: x.name, subtitle: x.world }));
-    const d = seedDesigners.filter((x) => x.brandName.toLowerCase().includes(query)).slice(0, 4).map((x) => ({ kind: "designer" as const, slug: x.slug, title: x.brandName, subtitle: x.location }));
+    const d = seedDesigners.filter((x) => x.name.toLowerCase().includes(query)).slice(0, 4).map((x) => ({ kind: "designer" as const, slug: x.slug, title: x.name, subtitle: x.location }));
     return [...p, ...d];
   }, [q, seedProducts, seedDesigners]);
 
