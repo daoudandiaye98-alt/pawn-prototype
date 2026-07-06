@@ -107,8 +107,8 @@ const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const activeSlug = slug ?? "y-project";
   const reduced = useReducedMotion();
-  const siteContent = useSiteContent();
-  const edition = (siteContent?.edition_number as string | undefined) ?? "07";
+  const editionNum = useSiteContent("ausgabe_nummer");
+  const edition = String(editionNum ?? "07");
 
   const [dbDesigner, setDbDesigner] = useState<DbDesigner | null>(null);
   const [totalCount, setTotalCount] = useState<number>(0);
