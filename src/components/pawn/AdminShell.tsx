@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { ReactNode } from "react";
 import {
   LayoutGrid,
@@ -26,6 +27,7 @@ const ITEMS = [
   { to: "/admin/customers", label: "Kunden", icon: UserCircle2 },
   { to: "/admin/content", label: "Inhalte", icon: Newspaper },
   { to: "/admin/marketing", label: "Marketing", icon: Megaphone },
+  { to: "/admin/kampagnen", label: "Kampagnen", icon: Megaphone },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/ai", label: "AI Center", icon: Bot },
   { to: "/admin/ki", label: "KI Cockpit", icon: Bot },
@@ -76,7 +78,8 @@ export function AdminShell({ children, title, eyebrow }: { children: ReactNode; 
             {eyebrow && <p className="editorial-eyebrow">{eyebrow}</p>}
             <h1 className="font-serif text-2xl leading-none">{title}</h1>
           </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <NotificationBell />
             <span className="hidden md:inline">Heute, {new Date().toLocaleDateString("de-DE")}</span>
             <span className="flex h-8 w-8 items-center justify-center border border-border bg-secondary text-foreground">A</span>
           </div>

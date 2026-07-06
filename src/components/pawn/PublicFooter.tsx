@@ -24,7 +24,7 @@ export function PublicFooter() {
           title="Platform"
           links={[
             { label: "Apply as designer", to: "/apply" },
-            { label: "Designer portal", to: "/portal" },
+            { label: "Designer studio", to: "/studio" },
             { label: "Style DNA", to: "/dna" },
             { label: "Admin hub", to: "/admin" },
           ]}
@@ -32,10 +32,10 @@ export function PublicFooter() {
         <FooterCol
           title="House"
           links={[
-            { label: "Contact", to: "#" },
-            { label: "Press", to: "#" },
-            { label: "Privacy", to: "#" },
-            { label: "Imprint", to: "#" },
+            { label: "Contact", to: "mailto:kontakt@pawn.example" },
+            { label: "Datenschutz", to: "/datenschutz" },
+            { label: "Impressum", to: "/impressum" },
+            { label: "Für Designer", to: "/apply" },
           ]}
         />
       </div>

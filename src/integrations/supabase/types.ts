@@ -150,6 +150,63 @@ export type Database = {
           },
         ]
       }
+      campaigns: {
+        Row: {
+          content: Json
+          created_at: string
+          created_by: string | null
+          designer_id: string
+          feedback: Json[]
+          id: string
+          kind: Database["public"]["Enums"]["campaign_kind"]
+          product_id: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          designer_id: string
+          feedback?: Json[]
+          id?: string
+          kind?: Database["public"]["Enums"]["campaign_kind"]
+          product_id?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          designer_id?: string
+          feedback?: Json[]
+          id?: string
+          kind?: Database["public"]["Enums"]["campaign_kind"]
+          product_id?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_items: {
         Row: {
           collection_id: string
@@ -639,6 +696,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           created_at: string
@@ -771,6 +861,10 @@ export type Database = {
         Args: { _application_id: string }
         Returns: undefined
       }
+      notify_admins: {
+        Args: { _body: string; _link: string; _title: string; _type: string }
+        Returns: undefined
+      }
       reject_designer: {
         Args: { _application_id: string; _reason: string }
         Returns: undefined
@@ -779,6 +873,15 @@ export type Database = {
     }
     Enums: {
       app_role: "customer" | "designer" | "admin" | "designer_applicant"
+      campaign_kind: "video" | "post" | "text"
+      campaign_status:
+        | "draft"
+        | "proposed"
+        | "in_review"
+        | "changes_requested"
+        | "approved"
+        | "published"
+        | "declined"
       product_status: "draft" | "published" | "archived"
       product_world: "Mode" | "Interior" | "Kunst"
     }
@@ -909,6 +1012,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["customer", "designer", "admin", "designer_applicant"],
+      campaign_kind: ["video", "post", "text"],
+      campaign_status: [
+        "draft",
+        "proposed",
+        "in_review",
+        "changes_requested",
+        "approved",
+        "published",
+        "declined",
+      ],
       product_status: ["draft", "published", "archived"],
       product_world: ["Mode", "Interior", "Kunst"],
     },

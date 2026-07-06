@@ -12,6 +12,14 @@ import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
 import Apply from "./pages/Apply.tsx";
+import ApplyLanding from "./pages/ApplyLanding.tsx";
+import Datenschutz from "./pages/Datenschutz.tsx";
+import Impressum from "./pages/Impressum.tsx";
+import StudioOverview from "./pages/studio/StudioOverview.tsx";
+import StudioProducts from "./pages/studio/StudioProducts.tsx";
+import StudioBrand from "./pages/studio/StudioBrand.tsx";
+import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
+import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import Shop from "./pages/Shop.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Cart from "./pages/Cart.tsx";
@@ -68,7 +76,10 @@ const App = () => (
                 <Route path="/designers" element={<Designers />} />
                 <Route path="/designers/all" element={<DesignersIndex />} />
                 <Route path="/designer/:slug" element={<DesignerPage />} />
-                <Route path="/apply" element={<Apply />} />
+                <Route path="/apply" element={<ApplyLanding />} />
+                <Route path="/apply/form" element={<Apply />} />
+                <Route path="/datenschutz" element={<Datenschutz />} />
+                <Route path="/impressum" element={<Impressum />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
@@ -80,12 +91,15 @@ const App = () => (
                 <Route path="/admin/products" element={<RoleGate role="admin"><AdminProducts /></RoleGate>} />
                 <Route path="/admin/applications" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
                 <Route path="/admin/designers" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
+                <Route path="/admin/kampagnen" element={<RoleGate role="admin"><AdminCampaigns /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
 
-                <Route path="/studio" element={<PortalGate><PortalOverview /></PortalGate>} />
+                <Route path="/studio" element={<RoleGate role="designer"><StudioOverview /></RoleGate>} />
+                <Route path="/studio/produkte" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
+                <Route path="/studio/kampagnen" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
+                <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
-                <Route path="/studio/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />
                 <Route path="/portal" element={<PortalGate><PortalOverview /></PortalGate>} />
                 <Route path="/portal/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
                 <Route path="/portal/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />

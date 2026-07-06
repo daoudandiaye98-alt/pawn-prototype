@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useStore, selectors } from "@/core";
 import { useAuth } from "@/lib/auth";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Adressen", "Zahlung", "Einstellungen"] as const;
+const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Meine Daten", "Einstellungen"] as const;
 type Tab = typeof TABS[number];
 
 const Account = () => {
@@ -66,8 +68,7 @@ const Account = () => {
             {tab === "Übersicht" && <Overview name={displayName} />}
             {tab === "Bestellungen" && <Orders />}
             {tab === "Merkzettel" && <Empty title="Dein Merkzettel ist noch leer." to="/neu" cta="Ausstellung ansehen" />}
-            {tab === "Adressen" && <Addresses />}
-            {tab === "Zahlung" && <Payment />}
+            {tab === "Meine Daten" && <MyData />}
             {tab === "Einstellungen" && <Settings />}
           </div>
         </div>
@@ -125,32 +126,94 @@ function Orders() {
   );
 }
 
-function Addresses() {
-  return (
-    <div className="grid gap-6 md:grid-cols-2">
-      {["Versand · Standard", "Rechnung"].map((label) => (
-        <div key={label} className="border border-[rgba(12,12,14,.13)] p-8">
-          <p className="palace-eyebrow">{label}</p>
-          <p className="palace-serif mt-4 text-[1.2rem] italic">Alex Vogt</p>
-          <p className="mt-2 text-[0.95rem] text-[#0C0C0E]/70">Bergmannstraße 24<br />10961 Berlin, Deutschland</p>
-          <button type="button" className="palace-eyebrow uline mt-6 text-[#0C0C0E]">Bearbeiten</button>
-        </div>
-      ))}
-    </div>
-  );
-}
+function MyData() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
-function Payment() {
+  const exportData = async () => {
+    if (!user) return;
+    setBusy(true);
+    const [profile, events, signals, sessions] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+      supabase.from("domain_events").select("*").eq("actor", user.id).limit(500),
+      supabase.from("domain_events").select("*").eq("type", "ai.taste_signal").contains("payload", { user_id: user.id }).limit(500),
+      supabase.from("ai_sessions").select("*").eq("user_id", user.id),
+    ]);
+    const bundle = {
+      exported_at: new Date().toISOString(),
+      user: { id: user.id, email: user.email },
+      profile: profile.data,
+      events: events.data,
+      signals: signals.data,
+      sessions: sessions.data,
+    };
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pawn-daten-${user.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setBusy(false);
+    toast.success("Deine Daten wurden heruntergeladen.");
+  };
+
+  const deleteAccount = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("delete-account", {});
+    if (error || (data as { error?: string })?.error) {
+      setBusy(false);
+      toast.error((data as { error?: string })?.error ?? error?.message ?? "Löschen fehlgeschlagen.");
+      return;
+    }
+    await signOut();
+    toast.success("Dein Konto wurde gelöscht.");
+    navigate("/");
+  };
+
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="max-w-2xl space-y-8">
       <div className="border border-[rgba(12,12,14,.13)] p-8">
-        <p className="palace-eyebrow">Hinterlegte Karte</p>
-        <p className="palace-serif mt-4 text-[1.2rem] tabular-nums">•••• 4242</p>
-        <p className="mt-2 font-serif italic text-[#0C0C0E]/70">Visa · 08/29</p>
+        <p className="palace-eyebrow">Daten exportieren</p>
+        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#0C0C0E]">Alles, was wir über dich wissen — als JSON.</p>
+        <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">
+          Profil, Ereignisse, Geschmackssignale und Chat-Sessions.
+        </p>
+        <button type="button" onClick={exportData} disabled={busy}
+          className="palace-btn mt-6 disabled:opacity-50">
+          {busy ? "…" : "JSON herunterladen"}
+        </button>
       </div>
-      <button type="button" className="border border-dashed border-[rgba(12,12,14,.28)] p-8 text-center palace-eyebrow text-[#0C0C0E]">
-        + Neue Zahlungsart
-      </button>
+      <div className="border border-destructive/40 p-8">
+        <p className="palace-eyebrow text-destructive">Konto löschen</p>
+        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#0C0C0E]">Das ist endgültig.</p>
+        <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">
+          Wir entfernen dein Profil, deine Bewerbung, Consents, Sessions und Benachrichtigungen. Bestellungen und Buchhaltungsdaten
+          bleiben — anonymisiert — aus gesetzlichen Gründen erhalten.
+        </p>
+        {!confirming ? (
+          <button type="button" onClick={() => setConfirming(true)}
+            className="mt-6 border border-destructive px-6 py-3 text-[0.7rem] uppercase tracking-[0.32em] text-destructive hover:bg-destructive hover:text-destructive-foreground">
+            Konto löschen
+          </button>
+        ) : (
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button type="button" onClick={deleteAccount} disabled={busy}
+              className="border border-destructive bg-destructive px-6 py-3 text-[0.7rem] uppercase tracking-[0.32em] text-destructive-foreground disabled:opacity-50">
+              {busy ? "…" : "Ja, endgültig löschen"}
+            </button>
+            <button type="button" onClick={() => setConfirming(false)}
+              className="palace-btn">
+              Abbrechen
+            </button>
+          </div>
+        )}
+      </div>
+      <p className="palace-eyebrow">
+        <Link to="/datenschutz" className="uline text-[#0C0C0E]">Datenschutzhinweise</Link>
+      </p>
     </div>
   );
 }

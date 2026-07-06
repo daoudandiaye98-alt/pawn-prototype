@@ -104,7 +104,8 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <div key={i} className={m.role === "assistant" ? "" : "text-right"}>
               {m.meta === "consent" ? (
                 <p className="border border-[rgba(12,12,14,.13)] bg-white/40 px-3 py-2 text-[0.7rem] leading-relaxed text-[#7C7972]">
-                  {m.content}
+                  Deine Antworten nutzen wir, um dir passende Stücke zu zeigen. Details unter{" "}
+                  <Link to="/datenschutz" onClick={onClose} className="underline hover:text-[#0C0C0E]">/datenschutz</Link>.
                 </p>
               ) : (
                 <>
