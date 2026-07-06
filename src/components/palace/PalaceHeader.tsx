@@ -21,6 +21,7 @@ export function PalaceHeader() {
   const [chatOpen, setChatOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
