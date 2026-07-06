@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Navigate, useNavigate, Link } from "react-router-dom";
+import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { Logo } from "@/components/pawn/Logo";
 
 export default function Auth() {
   const { user, loading, signInWithPassword, signUp, signInWithGoogle } = useAuth();
@@ -29,7 +25,7 @@ export default function Auth() {
         : await signUp(email, password, displayName || email.split("@")[0]);
     setBusy(false);
     if (error) return toast.error(error);
-    if (mode === "up") toast.success("Check your email to confirm.");
+    if (mode === "up") toast.success("Prüfe deine E-Mail zur Bestätigung.");
     else navigate("/account");
   };
 
@@ -41,61 +37,69 @@ export default function Auth() {
   };
 
   return (
-    <main className="min-h-screen bg-background flex items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md">
-        <div className="mb-10 flex flex-col items-center gap-4">
-          <Logo className="h-10 w-auto" />
-          <h1 className="sr-only">Enter PAWN</h1>
-          <p className="text-sm text-muted-foreground text-center">
-            Your identity, curated across a living wardrobe.
-          </p>
+    <PalaceLayout transparentHeader={false}>
+      <section className="mx-auto flex min-h-[80vh] w-full max-w-[520px] flex-col justify-center px-6 pt-32 pb-20 md:pt-40">
+        <p className="palace-eyebrow text-center">Zutritt</p>
+        <h1
+          className="palace-serif mt-6 text-center font-light text-[#0C0C0E]"
+          style={{ fontSize: "clamp(2.4rem, 5vw, 3.6rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
+        >
+          {mode === "in" ? <>Willkommen <span className="italic">zurück.</span></> : <>Trage dich <span className="italic">ein.</span></>}
+        </h1>
+        <p className="mt-6 text-center font-serif italic text-[#0C0C0E]/70">
+          Deine Ausstellung, wie du sie verlassen hast.
+        </p>
+
+        <div className="mt-12 flex justify-center gap-8">
+          {(["in", "up"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setMode(k)}
+              className={`palace-eyebrow pb-2 transition-colors duration-300 ${
+                mode === k ? "border-b border-[#0C0C0E] text-[#0C0C0E]" : "text-[#7C7972] hover:text-[#0C0C0E]"
+              }`}
+            >
+              {k === "in" ? "Anmelden" : "Konto anlegen"}
+            </button>
+          ))}
         </div>
 
-        <Tabs value={mode} onValueChange={(v) => setMode(v as "in" | "up")}>
-          <TabsList className="grid grid-cols-2 w-full mb-6 rounded-none border border-border bg-transparent">
-            <TabsTrigger value="in" className="rounded-none">Sign in</TabsTrigger>
-            <TabsTrigger value="up" className="rounded-none">Create account</TabsTrigger>
-          </TabsList>
+        <form onSubmit={handleSubmit} className="mt-12 space-y-8">
+          {mode === "up" && (
+            <Field label="Name" value={displayName} onChange={setDisplayName} />
+          )}
+          <Field label="E-Mail" value={email} onChange={setEmail} type="email" required />
+          <Field label="Passwort" value={password} onChange={setPassword} type="password" required />
+          <button
+            type="submit"
+            disabled={busy}
+            className="palace-btn w-full justify-center text-center hover:bg-[#0C0C0E] hover:text-[#F1EEE7] disabled:opacity-50"
+          >
+            {busy ? "…" : mode === "in" ? "Anmelden" : "Konto anlegen"}
+          </button>
+        </form>
 
-          <TabsContent value="in" className="mt-0">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Field label="Email" value={email} onChange={setEmail} type="email" required />
-              <Field label="Password" value={password} onChange={setPassword} type="password" required />
-              <Button type="submit" className="w-full rounded-none" disabled={busy}>
-                {busy ? "Signing in…" : "Sign in"}
-              </Button>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="up" className="mt-0">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Field label="Display name" value={displayName} onChange={setDisplayName} />
-              <Field label="Email" value={email} onChange={setEmail} type="email" required />
-              <Field label="Password" value={password} onChange={setPassword} type="password" required />
-              <Button type="submit" className="w-full rounded-none" disabled={busy}>
-                {busy ? "Creating…" : "Create account"}
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
-
-        <div className="my-6 flex items-center gap-4">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-xs uppercase tracking-widest text-muted-foreground">or</span>
-          <div className="h-px flex-1 bg-border" />
+        <div className="my-10 flex items-center gap-4">
+          <div className="h-px flex-1 bg-[rgba(12,12,14,.13)]" />
+          <span className="palace-eyebrow">oder</span>
+          <div className="h-px flex-1 bg-[rgba(12,12,14,.13)]" />
         </div>
 
-        <Button
+        <button
           type="button"
-          variant="outline"
-          className="w-full rounded-none"
           onClick={handleGoogle}
           disabled={busy}
+          className="palace-btn w-full justify-center text-center disabled:opacity-50"
         >
-          Continue with Google
-        </Button>
-      </div>
-    </main>
+          Mit Google fortfahren
+        </button>
+
+        <p className="mt-10 text-center palace-eyebrow">
+          <Link to="/" className="uline text-[#0C0C0E]">Zurück zur Ausstellung</Link>
+        </p>
+      </section>
+    </PalaceLayout>
   );
 }
 
@@ -103,15 +107,15 @@ function Field({
   label, value, onChange, type = "text", required,
 }: { label: string; value: string; onChange: (v: string) => void; type?: string; required?: boolean }) {
   return (
-    <div className="space-y-2">
-      <Label className="text-xs uppercase tracking-widest">{label}</Label>
-      <Input
+    <label className="block">
+      <span className="palace-eyebrow">{label}</span>
+      <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="rounded-none border-border bg-transparent"
+        className="mt-3 w-full border-0 border-b border-[rgba(12,12,14,.28)] bg-transparent py-3 text-[1rem] text-[#0C0C0E] focus:border-[#0C0C0E] focus:outline-none focus:ring-0"
       />
-    </div>
+    </label>
   );
 }
