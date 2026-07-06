@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { ChartPlaceholder } from "@/components/pawn/ChartPlaceholder";
 import { useStore, adminSelectors } from "@/core";
@@ -167,9 +169,33 @@ function EngineRow({ k, state }: { k: EngineKey; state: EngineState }) {
 function CommandDeck() {
   const { orders, revenueSeries, months, kpis } = useStore(adminSelectors.getPlatformOverview);
   const { feed, engines, pulse, fire } = useOsBus();
+  const navigate = useNavigate();
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = window.setInterval(() => setTick((v) => v + 1), 15_000); return () => window.clearInterval(t); }, []);
   void tick;
+
+  // Real pending-review count from the DB (submitted + in_review)
+  const [pendingApplications, setPendingApplications] = useState<number | null>(null);
+  const [activeDesignerCount, setActiveDesignerCount] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [{ count: pending }, { count: active }] = await Promise.all([
+        supabase
+          .from("designer_applications")
+          .select("*", { count: "exact", head: true })
+          .in("status", ["submitted", "in_review"]),
+        supabase
+          .from("designers")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "active"),
+      ]);
+      if (cancelled) return;
+      setPendingApplications(pending ?? 0);
+      setActiveDesignerCount(active ?? 0);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Numbers that visibly react to the causal chain (owner-only "operating state")
   const [derivedKpi, setDerivedKpi] = useState({ designers: 0, forecast: 0, dnaCoverage: 0 });
@@ -183,12 +209,18 @@ function CommandDeck() {
     });
   }, [feed]);
 
-  const attention = useMemo(() => [
-    { id: "designers", label: "18 Designer warten auf Freigabe", sub: "Onboarding · älteste Anfrage 4 Tage", weight: "high" as const, action: "designer.approve" as OsAction, actionLabel: "Freigeben" },
-    { id: "stripe", label: "4 Zahlungen fehlgeschlagen · €3.240 offen", sub: "Stripe · Chargeback-Risiko", weight: "critical" as const, action: "plugin.enable" as OsAction, actionLabel: "Stripe öffnen" },
-    { id: "logistics", label: "23 Bestellungen warten auf Versand", sub: "SLA-Grenze in 6 h", weight: "medium" as const, action: "broadcast.send" as OsAction, actionLabel: "Auto-Versand" },
-    { id: "prompt", label: "Prompt v18 · CTR −3.1 %", sub: "A/B unter Baseline", weight: "medium" as const, action: "prompt.rollback" as OsAction, actionLabel: "Rollback v17" },
-  ], []);
+  const attention = useMemo(() => {
+    const pending = pendingApplications ?? 0;
+    return [
+      pending > 0
+        ? { id: "designers", label: `${pending} Designer warten auf Freigabe`, sub: "Bewerbungen · Kuratoren-Inbox", weight: "high" as const, action: "designer.approve" as OsAction, actionLabel: "Inbox öffnen", route: "/admin/designers" }
+        : { id: "designers", label: "Keine offenen Bewerbungen", sub: "Inbox sauber", weight: "medium" as const, action: "designer.approve" as OsAction, actionLabel: "Inbox öffnen", route: "/admin/designers" },
+      { id: "stripe", label: "4 Zahlungen fehlgeschlagen · €3.240 offen", sub: "Stripe · Chargeback-Risiko", weight: "critical" as const, action: "plugin.enable" as OsAction, actionLabel: "Stripe öffnen" },
+      { id: "logistics", label: "23 Bestellungen warten auf Versand", sub: "SLA-Grenze in 6 h", weight: "medium" as const, action: "broadcast.send" as OsAction, actionLabel: "Auto-Versand" },
+      { id: "prompt", label: "Prompt v18 · CTR −3.1 %", sub: "A/B unter Baseline", weight: "medium" as const, action: "prompt.rollback" as OsAction, actionLabel: "Rollback v17" },
+    ];
+  }, [pendingApplications]);
+
 
   const insights = [
     { title: "Umsatz-Anomalie", body: "Umsatz 24 % über Prognose · Rick Owens Launch treibt Shadow-Cluster",
@@ -261,9 +293,9 @@ function CommandDeck() {
         <KpiCell label="DNA Coverage" value={`${Math.min(100, 94 + derivedKpi.dnaCoverage)} %`} delta={derivedKpi.dnaCoverage ? `+${derivedKpi.dnaCoverage} pt live` : "+3.2 pt"}
           trend="up" series={[70, 74, 78, 82, 85, 87, 89, 91, 92, 93, 94, 94]} pulseKey={pulse}
           why={["284 Identitäten neu vermessen", "Cold-Start auf 6 %"]} />
-        <KpiCell label="Aktive Designer" value={String((kpis.designerCount || 142) + derivedKpi.designers)} delta={derivedKpi.designers ? `+${derivedKpi.designers} live` : "+7 diesen Monat"}
+        <KpiCell label="Aktive Designer" value={String((activeDesignerCount ?? kpis.designerCount ?? 0) + derivedKpi.designers)} delta={derivedKpi.designers ? `+${derivedKpi.designers} live` : (pendingApplications ? `${pendingApplications} in Prüfung` : "Inbox leer")}
           trend="up" series={[120, 122, 125, 128, 131, 133, 135, 137, 138, 140, 141, 142]} accent="emerald" pulseKey={pulse}
-          why={["18 warten auf Review", "3 Onboarding heute"]} />
+          why={[`${pendingApplications ?? 0} warten auf Review`, "Live aus Governance-Inbox"]} />
       </div>
 
       {/* Row: Backend engines + Live feed + Decision queue */}
@@ -326,7 +358,11 @@ function CommandDeck() {
                   <p className="mt-0.5 text-[11px] text-[hsl(36_15%_55%)]">{item.sub}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Btn variant={item.weight === "critical" ? "danger" : "solid"}
-                      onClick={() => { fire(item.action, { label: `${item.label} → ausgelöst`, actor: "Owner" }); toast(item.actionLabel); }}>
+                      onClick={() => {
+                        if ("route" in item && item.route) { navigate(item.route); return; }
+                        fire(item.action, { label: `${item.label} → ausgelöst`, actor: "Owner" });
+                        toast(item.actionLabel);
+                      }}>
                       {item.actionLabel}
                     </Btn>
                     <Btn>Zur Queue</Btn>

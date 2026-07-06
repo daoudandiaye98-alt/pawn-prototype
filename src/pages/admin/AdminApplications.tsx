@@ -185,39 +185,79 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+interface NoteRow {
+  id: string;
+  body: string;
+  created_at: string;
+  author_id: string;
+}
+
+interface ConsentRow {
+  id: string;
+  accepted_at: string;
+  contract_version_id: string;
+  contract_versions: { kind: string; version: number; title: string } | null;
+}
+
 function DetailDrawer({ app, onClose, onChange }: { app: Application; onClose: () => void; onChange: () => void }) {
-  const [notes, setNotes] = useState(app.admin_notes ?? "");
+  const [notes, setNotes] = useState<NoteRow[]>([]);
+  const [newNote, setNewNote] = useState("");
+  const [consents, setConsents] = useState<ConsentRow[]>([]);
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState<null | "approve" | "reject" | "archive" | "notes" | "review">(null);
+  const [busy, setBusy] = useState<null | "approve" | "reject" | "archive" | "note">(null);
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+
+  async function loadNotes() {
+    const { data } = await supabase
+      .from("application_notes")
+      .select("id, body, created_at, author_id")
+      .eq("application_id", app.id)
+      .order("created_at", { ascending: false });
+    setNotes((data as NoteRow[]) ?? []);
+  }
+
+  async function loadConsents() {
+    const { data } = await supabase
+      .from("designer_consents")
+      .select("id, accepted_at, contract_version_id, contract_versions(kind, version, title)")
+      .eq("application_id", app.id);
+    setConsents((data as unknown as ConsentRow[]) ?? []);
+  }
 
   useEffect(() => {
     (async () => {
-      if (!app.portfolio_paths?.length) return;
-      const urls: string[] = [];
-      for (const path of app.portfolio_paths) {
-        const { data } = await supabase.storage
-          .from("designer-applications")
-          .createSignedUrl(path, 3600);
-        if (data?.signedUrl) urls.push(data.signedUrl);
+      if (app.portfolio_paths?.length) {
+        const urls: string[] = [];
+        for (const path of app.portfolio_paths) {
+          const { data } = await supabase.storage
+            .from("designer-applications")
+            .createSignedUrl(path, 3600);
+          if (data?.signedUrl) urls.push(data.signedUrl);
+        }
+        setPortfolioUrls(urls);
       }
-      setPortfolioUrls(urls);
+      await loadNotes();
+      await loadConsents();
+      if (app.status === "submitted") {
+        const { error } = await supabase.rpc("mark_application_in_review", { _application_id: app.id });
+        if (!error) onChange();
+      }
     })();
-    // set to in_review on open (silent) if currently submitted
-    if (app.status === "submitted") {
-      supabase.from("designer_applications").update({ status: "in_review" }).eq("id", app.id).then(() => onChange());
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.id]);
 
-  async function saveNotes() {
-    setBusy("notes");
-    const { error } = await supabase
-      .from("designer_applications")
-      .update({ admin_notes: notes })
-      .eq("id", app.id);
+  async function addNote() {
+    if (!newNote.trim()) return;
+    setBusy("note");
+    const { error } = await supabase.rpc("add_application_note", {
+      _application_id: app.id,
+      _body: newNote.trim(),
+    });
     setBusy(null);
-    if (error) toast.error(error.message);
-    else { toast.success("Notiz gespeichert."); onChange(); }
+    if (error) { toast.error(error.message); return; }
+    setNewNote("");
+    toast.success("Notiz gespeichert.");
+    loadNotes();
   }
 
   async function approve() {
@@ -306,19 +346,60 @@ function DetailDrawer({ app, onClose, onChange }: { app: Application; onClose: (
           )}
 
           <section>
-            <div className="flex items-center justify-between">
-              <p className="editorial-eyebrow">Admin-Notizen</p>
-              <Button onClick={saveNotes} disabled={busy === "notes"} size="sm" variant="outline" className="rounded-none">
-                {busy === "notes" ? <Loader2 className="h-3 w-3 animate-spin" /> : "Speichern"}
+            <p className="editorial-eyebrow mb-3">Admin-Notizen · append-only</p>
+            <div className="flex gap-2">
+              <Textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                rows={2}
+                className="rounded-none"
+                placeholder="Neue Notiz hinzufügen…"
+              />
+              <Button
+                onClick={addNote}
+                disabled={busy === "note" || !newNote.trim()}
+                className="rounded-none"
+              >
+                {busy === "note" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Notiz"}
               </Button>
             </div>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              className="mt-2 rounded-none"
-              placeholder="Interne Notizen…"
-            />
+            {notes.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">Noch keine Notizen.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-border border border-border">
+                {notes.map((n) => (
+                  <li key={n.id} className="px-3 py-2 text-sm">
+                    <p className="whitespace-pre-line text-foreground/90">{n.body}</p>
+                    <p className="mt-1 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
+                      {new Date(n.created_at).toLocaleString("de-DE")} · {n.author_id.slice(0, 8)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <p className="editorial-eyebrow mb-3">Zustimmungen</p>
+            {consents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Zustimmungen erfasst.</p>
+            ) : (
+              <ul className="divide-y divide-border border border-border text-sm">
+                {consents.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between px-3 py-2">
+                    <span>
+                      {c.contract_versions?.title ?? c.contract_version_id}
+                      <span className="ml-2 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
+                        v{c.contract_versions?.version ?? "?"}
+                      </span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(c.accepted_at).toLocaleDateString("de-DE")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           {app.status !== "approved" && app.status !== "archived" && (

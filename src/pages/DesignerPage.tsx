@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Play } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
@@ -9,18 +9,60 @@ import { SectionHeading } from "@/components/pawn/SectionHeading";
 import { DnaBadge } from "@/components/pawn/DnaBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
 import { useDnaAlignment } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
+
+interface DbDesigner {
+  id: string;
+  slug: string;
+  brand_name: string;
+  location: string | null;
+  country: string | null;
+  story: string | null;
+  tags: string[] | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  website: string | null;
+  instagram: string | null;
+}
 
 const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const activeSlug = slug ?? "y-project";
 
+  const [dbDesigner, setDbDesigner] = useState<DbDesigner | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("designers")
+        .select("id, slug, brand_name, location, country, story, tags, avatar_url, banner_url, website, instagram")
+        .eq("slug", activeSlug)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!cancelled) setDbDesigner((data as DbDesigner) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [activeSlug]);
+
   const coreDesigner = useStore((s) => marketplaceSelectors.getDesignerBySlug(s, activeSlug) ?? marketplaceSelectors.getAllDesigners(s)[0]);
   const coreProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreDesigner.id));
 
-  const designer = useMemo(() => toDesignerView(coreDesigner), [coreDesigner]);
+  const designer = useMemo(() => {
+    const base = toDesignerView(coreDesigner);
+    if (!dbDesigner) return base;
+    return {
+      ...base,
+      name: dbDesigner.brand_name,
+      slug: dbDesigner.slug,
+      location: [dbDesigner.location, dbDesigner.country].filter(Boolean).join(", ") || base.location,
+      bio: dbDesigner.story ?? base.bio,
+      slogan: dbDesigner.tags?.slice(0, 3).join(" · ") || base.slogan,
+    };
+  }, [coreDesigner, dbDesigner]);
+
   const designerProducts = useMemo(
     () => coreProducts.map((p) => toProductView(p, coreDesigner)),
     [coreProducts, coreDesigner],
