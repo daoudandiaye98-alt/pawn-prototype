@@ -12,6 +12,9 @@ const raw: RawDesigner[] = [
   { slug: "rick-owens", name: "Rick Owens", location: "Paris, France", slogan: "Glamour in the ruins.", bio: "An ongoing study of brutalist romance.", followers: 421000, collections: 24, productsCount: 142, memberSince: "2020", featuredIn: 22 },
   { slug: "alyx", name: "1017 ALYX 9SM", location: "Milan, Italy", slogan: "Hardware as language.", bio: "Industrial precision applied to ready-to-wear.", followers: 198000, collections: 11, productsCount: 72, memberSince: "2021", featuredIn: 12 },
   { slug: "toteme", name: "TOTEME", location: "Stockholm, Sweden", slogan: "Wardrobe as architecture.", bio: "Considered essentials, made to be returned to.", followers: 256000, collections: 14, productsCount: 98, memberSince: "2022", featuredIn: 10 },
+  { slug: "studio-oyu", name: "Studio Oyu", location: "Rotterdam, Netherlands", slogan: "Objects between furniture and sculpture.", bio: "A Rotterdam studio working slowly in wood, paper, brass and stoneware. Every object is drawn to be lived with, not looked at once.", followers: 42000, collections: 6, productsCount: 24, memberSince: "2023", featuredIn: 5 },
+  { slug: "kaja-solgaard", name: "Kaja Solgaard", location: "Oslo, Norway", slogan: "Painting as a geological layer.", bio: "Oil, pigment and raw linen, worked over months. Kaja's canvases read like sedimentary strata — quiet, weighted, patient.", followers: 28000, collections: 4, productsCount: 12, memberSince: "2024", featuredIn: 3 },
+  { slug: "atelier-noor", name: "Atelier Noor", location: "Antwerp, Belgium", slogan: "Handwoven textile at the edge of object.", bio: "Undyed wool, iron-mordant thread and long hours at the loom. Noor's tapestries hold the room the way a painting used to.", followers: 19000, collections: 3, productsCount: 9, memberSince: "2024", featuredIn: 2 },
 ];
 
 export const seedDesigners: Designer[] = raw.map((r) => ({
