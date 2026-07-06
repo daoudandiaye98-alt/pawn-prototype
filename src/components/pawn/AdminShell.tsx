@@ -23,6 +23,8 @@ const ITEMS = [
   { to: "/admin/dna", label: "Global DNA", icon: Activity },
   { to: "/admin/products", label: "Produkte", icon: Package },
   { to: "/admin/orders", label: "Bestellungen", icon: ClipboardList },
+  { to: "/admin/zahlungen", label: "Zahlungen", icon: ClipboardList },
+  { to: "/admin/nachrichten", label: "Nachrichten", icon: FileSignature },
   { to: "/admin/designers", label: "Bewerbungen", icon: FileSignature },
   { to: "/admin/customers", label: "Kunden", icon: UserCircle2 },
   { to: "/admin/content", label: "Inhalte", icon: Newspaper },
