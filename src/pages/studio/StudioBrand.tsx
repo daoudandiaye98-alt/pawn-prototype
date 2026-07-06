@@ -70,10 +70,13 @@ export default function StudioBrand() {
         </button>
       </div>
 
+      <ImageUsageConsent />
+
       <style>{`.input { width:100%; border:1px solid hsl(var(--border)); background:hsl(var(--background)); padding: 0.6rem 0.8rem; font-size: 0.9rem; }`}</style>
     </StudioShell>
   );
 }
+
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="editorial-eyebrow">{label}</span><div className="mt-2">{children}</div></label>;
@@ -91,5 +94,68 @@ function ImageField({ label, url, onUpload }: { label: string; url: string; onUp
         <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
       </label>
     </div>
+  );
+}
+
+function ImageUsageConsent() {
+  const { user } = useAuth();
+  const [state, setState] = useState<{ contractId: string | null; accepted: boolean; revoked: boolean; loading: boolean }>({ contractId: null, accepted: false, revoked: false, loading: true });
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    if (!user) return;
+    const { data: cv } = await supabase.from("contract_versions").select("id").eq("kind", "image_usage").order("version", { ascending: false }).limit(1).maybeSingle();
+    if (!cv) { setState({ contractId: null, accepted: false, revoked: false, loading: false }); return; }
+    const { data: cons } = await supabase.from("designer_consents").select("id, revoked_at").eq("user_id", user.id).eq("contract_version_id", cv.id).order("accepted_at", { ascending: false }).limit(1).maybeSingle();
+    setState({ contractId: cv.id, accepted: !!cons, revoked: !!cons?.revoked_at, loading: false });
+  };
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
+
+  const accept = async () => {
+    if (!user || !state.contractId) return;
+    setBusy(true);
+    const { error } = await supabase.from("designer_consents").insert({
+      user_id: user.id, contract_version_id: state.contractId, checksum_at_accept: "studio_accept", user_agent: navigator.userAgent,
+    } as never);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    await supabase.from("domain_events").insert({ type: "designer.consent_accepted", actor: user.id, payload: { kind: "image_usage" } } as never);
+    toast.success("Einwilligung erteilt.");
+    void load();
+  };
+  const revoke = async () => {
+    if (!user || !state.contractId) return;
+    setBusy(true);
+    const { error } = await supabase.from("designer_consents")
+      .update({ revoked_at: new Date().toISOString(), revoke_reason: "studio_revoke" } as never)
+      .eq("user_id", user.id).eq("contract_version_id", state.contractId).is("revoked_at", null);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    await supabase.from("domain_events").insert({ type: "consent.revoked", actor: user.id, payload: { kind: "image_usage" } } as never);
+    toast.message("Einwilligung widerrufen. Laufende Kampagnen mit diesen Bildern werden pausiert.");
+    void load();
+  };
+
+  if (state.loading || !state.contractId) return null;
+  const active = state.accepted && !state.revoked;
+
+  return (
+    <section className="mt-12 border border-border bg-card p-6">
+      <p className="editorial-eyebrow">Bildnutzung · Einwilligung</p>
+      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        Deine Zustimmung erlaubt PAWN, die von dir eingereichten Bilder für Ausstellungs- und Werbezwecke auf pawn.com und in PAWN-Kanälen zu verwenden. Bildrechte bleiben bei dir. Widerruf jederzeit — laufende Kampagnen mit diesen Bildern werden dann pausiert.
+      </p>
+      <div className="mt-4 flex items-center gap-3">
+        <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.62rem] uppercase tracking-[0.28em] ${active ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600"}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : "bg-amber-500"}`} />
+          {active ? "Aktiv" : state.revoked ? "Widerrufen" : "Nicht erteilt"}
+        </span>
+        {active ? (
+          <button type="button" disabled={busy} onClick={revoke} className="border border-destructive px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-destructive disabled:opacity-50">Widerrufen</button>
+        ) : (
+          <button type="button" disabled={busy} onClick={accept} className="border border-accent bg-accent px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-accent-foreground disabled:opacity-50">Zustimmen</button>
+        )}
+      </div>
+    </section>
   );
 }

@@ -9,6 +9,9 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { I18nProvider } from "@/lib/i18n";
 import { RoomShiftProvider } from "@/features/os/roomShift";
 import { PersonalizationProvider } from "@/features/personalization";
+import { ConsentProvider } from "@/lib/consent";
+import { ConsentBanner } from "@/components/palace/ConsentBanner";
+import AdminInhalte from "./pages/admin/AdminInhalte.tsx";
 
 
 import Index from "./pages/Index.tsx";
@@ -78,6 +81,7 @@ const App = () => (
         <AuthProvider>
           <AuthedCore>
             <CartProvider>
+              <ConsentProvider>
               <PersonalizationProvider>
               <RoomShiftProvider>
 
@@ -116,6 +120,7 @@ const App = () => (
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
                 <Route path="/admin/nachrichten" element={<RoleGate role="admin"><AdminMessages /></RoleGate>} />
                 <Route path="/admin/zahlungen" element={<RoleGate role="admin"><AdminPayments /></RoleGate>} />
+                <Route path="/admin/inhalte" element={<AdminInhalte />} />
 
                 <Route path="/studio" element={<RoleGate role="designer"><StudioOverview /></RoleGate>} />
                 <Route path="/studio/produkte" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
@@ -131,9 +136,12 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <ConsentBanner />
               </RoomShiftProvider>
               </PersonalizationProvider>
+              </ConsentProvider>
             </CartProvider>
+
 
           </AuthedCore>
         </AuthProvider>

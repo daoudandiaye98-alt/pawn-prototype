@@ -1,5 +1,16 @@
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
+import { useConsent } from "@/lib/consent";
+
+function CookieSettingsLink() {
+  const { reopen } = useConsent();
+  return (
+    <button type="button" onClick={reopen} className="hover:text-foreground">
+      Cookie-Einstellungen
+    </button>
+  );
+}
+
 
 export function PublicFooter() {
   return (
@@ -43,13 +54,16 @@ export function PublicFooter() {
       <div className="border-t border-border">
         <div className="editorial-container flex flex-col items-start justify-between gap-3 py-6 text-xs text-muted-foreground md:flex-row md:items-center">
           <span>© {new Date().getFullYear()} PAWN. Prototype build for review.</span>
-          <div className="flex items-center gap-5 text-[0.62rem] uppercase tracking-[0.32em]">
+          <div className="flex flex-wrap items-center gap-5 text-[0.62rem] uppercase tracking-[0.32em]">
             <Link to="/auth" className="hover:text-foreground">Login</Link>
             <span className="opacity-30">·</span>
             <Link to="/apply" className="hover:text-foreground">Für Designer</Link>
             <span className="opacity-30">·</span>
+            <CookieSettingsLink />
+            <span className="opacity-30">·</span>
             <Link to="/admin" className="hover:text-foreground">Admin</Link>
           </div>
+
         </div>
       </div>
     </footer>

@@ -452,6 +452,8 @@ export type Database = {
           checksum_at_accept: string
           contract_version_id: string
           id: string
+          revoke_reason: string | null
+          revoked_at: string | null
           user_agent: string | null
           user_id: string
         }
@@ -461,6 +463,8 @@ export type Database = {
           checksum_at_accept: string
           contract_version_id: string
           id?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
           user_agent?: string | null
           user_id: string
         }
@@ -470,6 +474,8 @@ export type Database = {
           checksum_at_accept?: string
           contract_version_id?: string
           id?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
           user_agent?: string | null
           user_id?: string
         }
@@ -1005,6 +1011,27 @@ export type Database = {
         }
         Relationships: []
       }
+      site_content: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1083,6 +1110,10 @@ export type Database = {
       mark_application_in_review: {
         Args: { _application_id: string }
         Returns: undefined
+      }
+      merge_anon_session: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: number
       }
       notify_admins: {
         Args: { _body: string; _link: string; _title: string; _type: string }

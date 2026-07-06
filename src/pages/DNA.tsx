@@ -216,9 +216,9 @@ export default function DNA() {
           </div>
           <ul className="space-y-8">
             {[
-              { t: "Keine Werbe-Cookies.", b: "Wir tracken dich nicht über andere Seiten hinweg. Punkt." },
-              { t: "Kein Verkauf von Daten.", b: "Deine Signale bleiben bei uns — sie sind das Werkzeug, nicht die Ware." },
-              { t: "Löschung jederzeit.", b: "Ein Klick in deinem Konto — und alles ist weg. Auch die Signale, die du hier siehst." },
+              { t: "Wir speichern deine Signale — deinem Konto zugeordnet.", b: "Nach deiner Zustimmung führen wir deine Geschmackssignale über Besuche hinweg. Du siehst sie hier, du korrigierst sie hier, du löschst sie hier." },
+              { t: "Kein Verkauf von Daten.", b: "Deine Signale bleiben bei uns — sie sind das Werkzeug, nicht die Ware. Keine Werbenetzwerke Dritter." },
+              { t: "Löschung in einem Klick.", b: "Konto → Meine Daten → Konto löschen. Wir entfernen Profil, Signale und Sessions vollständig." },
             ].map((x) => (
               <li key={x.t} className="border-t border-[rgba(241,238,231,0.16)] pt-6">
                 <p className="palace-serif text-[1.4rem] italic" style={{ color: "#F1EEE7" }}>{x.t}</p>

@@ -11,6 +11,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useConsent } from "@/lib/consent";
 
 export type Mood = "ruhig" | "spannung" | "neutral";
 export type World = "Mode" | "Interior" | "Kunst";
@@ -142,6 +143,7 @@ function applyCssVars(profile: PersonalizationProfile) {
 
 export function PersonalizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { allowsPersistence } = useConsent();
   const [profile, setProfile] = useState<PersonalizationProfile>(() => {
     if (typeof window === "undefined") return EMPTY;
     try {
@@ -175,7 +177,11 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
       const agg = aggregate(signals);
       const next = { ...agg, correctedIds: corrected };
       setProfile(next);
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...agg, correctedIds: [] })); } catch { /* noop */ }
+      if (allowsPersistence) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...agg, correctedIds: [] })); } catch { /* noop */ }
+      } else {
+        try { localStorage.removeItem(CACHE_KEY); } catch { /* noop */ }
+      }
     } catch (err) {
       console.warn("[personalization] refresh failed", err);
     } finally { setLoading(false); }

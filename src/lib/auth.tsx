@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
@@ -68,12 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const [p, r] = await Promise.all([loadProfile(s.user.id), loadRoles(s.user.id)]);
           setProfile(p);
           setRoles(r);
+          // Attach anonymous chat/taste session to this user on sign-in.
+          if (event === "SIGNED_IN") {
+            try {
+              const sid = typeof window !== "undefined" ? window.localStorage.getItem("palace.chat.session_id") : null;
+              if (sid) await supabase.functions.invoke("merge-session", { body: { session_id: sid } });
+            } catch { /* best-effort */ }
+          }
         }, 0);
       } else {
         setProfile(null);
         setRoles([]);
       }
     });
+
 
     supabase.auth.getSession().then(async ({ data: { session: s } }) => {
       setSession(s);

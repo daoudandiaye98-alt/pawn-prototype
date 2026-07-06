@@ -68,24 +68,39 @@ export const SEED_DESIGNERS: PublicDesigner[] = [
   },
 ];
 
+async function loadShowSeedFlag(): Promise<boolean> {
+  try {
+    const { data } = await supabase.from("site_content").select("value").eq("key", "show_seed_content").maybeSingle();
+    if (!data) return true;
+    const v = data.value;
+    return typeof v === "boolean" ? v : true;
+  } catch { return true; }
+}
+
 export function usePublicDesigners() {
   const [designers, setDesigners] = useState<PublicDesigner[]>(SEED_DESIGNERS);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("designers")
-        .select("id, slug, brand_name, location, country, story, quote, quote_role, is_featured, hero_image_url, avatar_url, banner_url, tags")
-        .eq("status", "active")
-        .order("is_featured", { ascending: false })
-        .limit(40);
+      const [showSeed, resp] = await Promise.all([
+        loadShowSeedFlag(),
+        supabase
+          .from("designers")
+          .select("id, slug, brand_name, location, country, story, quote, quote_role, is_featured, hero_image_url, avatar_url, banner_url, tags")
+          .eq("status", "active")
+          .order("is_featured", { ascending: false })
+          .limit(60),
+      ]);
       if (cancelled) return;
-      if (!error && data && data.length > 0) {
-        // Merge: DB wins on slug, seeds fill gaps
+      const { data, error } = resp;
+      const dbList = !error && data ? (data as PublicDesigner[]) : [];
+      if (!showSeed) {
+        setDesigners(dbList);
+      } else {
         const bySlug = new Map<string, PublicDesigner>();
         for (const s of SEED_DESIGNERS) bySlug.set(s.slug, s);
-        for (const d of data as PublicDesigner[]) bySlug.set(d.slug, d);
+        for (const d of dbList) bySlug.set(d.slug, d);
         setDesigners(Array.from(bySlug.values()));
       }
       setLoading(false);
@@ -94,6 +109,7 @@ export function usePublicDesigners() {
   }, []);
   return { designers, loading };
 }
+
 
 export interface PublicCollection {
   id: string;

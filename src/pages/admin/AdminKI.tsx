@@ -28,6 +28,7 @@ export default function AdminKI() {
   const [busy, setBusy] = useState(false);
   const [signals, setSignals] = useState<SignalRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [provider, setProvider] = useState<"openai" | "fallback" | "unknown">("unknown");
 
   useEffect(() => {
     if (!user || !roles.includes("admin")) return;
@@ -37,12 +38,20 @@ export default function AdminKI() {
         supabase.from("domain_events").select("id, at, payload").eq("type", "ai.taste_signal").order("at", { ascending: false }).limit(50),
         supabase.from("ai_sessions").select("session_id, user_id, turns, extracted, updated_at").order("updated_at", { ascending: false }).limit(50),
       ]);
-      const val = cfg.data?.value as { system_prompt?: string } | undefined;
+      const val = cfg.data?.value as { system_prompt?: string; provider_hint?: string } | undefined;
       setPrompt(val?.system_prompt ?? DEFAULT_PROMPT);
       setSignals((sig.data ?? []) as SignalRow[]);
       setSessions((ses.data ?? []) as SessionRow[]);
+      // Probe pawn-chat: it returns which provider actually answered when passed a diagnostic ping.
+      try {
+        const { data } = await supabase.functions.invoke("pawn-chat", { body: { messages: [{ role: "user", content: "__provider_probe__" }], probe: true } });
+        const d = data as { provider?: string } | null;
+        if (d?.provider === "openai") setProvider("openai");
+        else setProvider("fallback");
+      } catch { setProvider("fallback"); }
     })();
   }, [user, roles]);
+
 
   if (loading) return null;
   if (!user || !roles.includes("admin")) return <Navigate to="/auth" replace />;
@@ -59,6 +68,19 @@ export default function AdminKI() {
 
   return (
     <AdminShell title="KI Cockpit" eyebrow="Persona · Signale · Sessions">
+      <div className="mb-6 flex flex-wrap items-center gap-3 border border-border bg-card p-4">
+        <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Provider</span>
+        <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.65rem] uppercase tracking-[0.28em] ${
+          provider === "openai" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600"
+        }`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${provider === "openai" ? "bg-emerald-500" : "bg-amber-500"}`} />
+          {provider === "openai" ? "OpenAI aktiv" : provider === "unknown" ? "prüfe…" : "Fallback aktiv"}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          OpenAI-Anbindung: Secret <code>OPENAI_API_KEY</code> in den Edge-Function-Secrets hinterlegen. Ohne Key nutzt PAWN einen Fallback-Gesprächsbaum.
+        </span>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <section className="border border-border bg-card p-8">
           <p className="editorial-eyebrow">Persona · pawn-chat</p>
@@ -66,6 +88,7 @@ export default function AdminKI() {
           <p className="mt-2 text-sm text-muted-foreground">
             Diese Stimme wird bei jeder Antwort verwendet. Änderungen greifen sofort für neue Nachrichten.
           </p>
+
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}

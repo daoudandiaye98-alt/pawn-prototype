@@ -121,6 +121,29 @@ function fallbackReply(ex: Extracted, cards: Card[], turns: number, action: Acti
   return `Alles klar, ${ex.world} mit ${ex.mood === "ruhig" ? "ruhiger" : "kantiger"} Handschrift. Wofür?`;
 }
 
+async function callOpenAI(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        messages: [
+          { role: "system", content: system },
+          ...(contextHint ? [{ role: "system", content: contextHint }] : []),
+          ...messages,
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content ?? null;
+  } catch { return null; }
+}
+
 async function callGateway(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
   const key = Deno.env.get("LOVABLE_API_KEY");
   if (!key) return null;
@@ -143,6 +166,14 @@ async function callGateway(system: string, messages: Msg[], contextHint: string)
   } catch { return null; }
 }
 
+async function callProvider(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+  // Prefer OpenAI when configured, silently fall back to the Lovable gateway.
+  const openai = await callOpenAI(system, messages, contextHint);
+  if (openai) return openai;
+  return await callGateway(system, messages, contextHint);
+}
+
+
 function extractUserIdFromJWT(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
   try {
@@ -156,11 +187,19 @@ function extractUserIdFromJWT(auth: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const body = (await req.json()) as { messages: Msg[]; session_id?: string };
+    const body = (await req.json()) as { messages: Msg[]; session_id?: string; probe?: boolean };
+
+    // Provider probe (used by /admin/ki status badge) — no side effects.
+    if (body.probe) {
+      const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+      return new Response(JSON.stringify({ provider }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
     const session_id = body.session_id ?? crypto.randomUUID();
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const user_id = extractUserIdFromJWT(req.headers.get("Authorization"));
+
 
     const url = Deno.env.get("SUPABASE_URL");
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -208,9 +247,10 @@ Deno.serve(async (req) => {
     if (action) contextHint = `Der Nutzer hat gerade nach Navigation gefragt: ${action.label}. Antworte in EINEM kurzen warmen Satz, bestätige dass du ihn hinbringst. Keine Fragen.`;
 
     const system = admin ? await loadSystemPrompt(admin) : DEFAULT_SYSTEM;
-    const reply = (await callGateway(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
+    const reply = (await callProvider(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
 
-    return new Response(JSON.stringify({ reply, cards, action, session_id }), {
+    const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+    return new Response(JSON.stringify({ reply, cards, action, session_id, provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch {
