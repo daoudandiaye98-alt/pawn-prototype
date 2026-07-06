@@ -58,7 +58,7 @@ export default function AdminKI() {
   };
 
   return (
-    <AdminShell title="KI Cockpit" subtitle="Persona, Signale, Sessions">
+    <AdminShell title="KI Cockpit" eyebrow="Persona · Signale · Sessions">
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <section className="border border-border bg-card p-8">
           <p className="editorial-eyebrow">Persona · pawn-chat</p>
