@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { useRank, usePieceShadow } from "@/features/narrative/hooks";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const METHODS = ["Credit Card", "PayPal", "Apple Pay", "Klarna"] as const;
 
@@ -29,9 +30,31 @@ const Checkout = () => {
 
   const shipping = 25;
 
-  function placeOrderHandler(e: React.FormEvent) {
+  async function placeOrderHandler(e: React.FormEvent) {
     e.preventDefault();
     const label = [firstName, lastName].filter(Boolean).join(" ") || profile?.displayName || user?.email || "Guest";
+
+    // Try Stripe Checkout first. If the function returns 503 (STRIPE_SECRET_KEY missing),
+    // fall back to the internal ledger + success screen.
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          items: items.map((i) => ({
+            name: `${i.product.name} · ${i.size}`,
+            unit_amount: Math.round(i.product.price * 100),
+            qty: i.qty,
+            slug: i.product.slug,
+          })),
+          customer_email: user?.email,
+        },
+      });
+      if (!error && data?.url) {
+        window.location.href = data.url as string;
+        return;
+      }
+      if (error) toast.message("Zahlung wird gerade eingerichtet — deine Bestellung wird direkt vermerkt.");
+    } catch { /* fall through to internal ledger */ }
+
     const result = dispatch(commands.placeOrder, {
       identityId: selectors.defaultIdentityId,
       customerLabel: label,
@@ -43,10 +66,7 @@ const Checkout = () => {
       })),
       total: subtotal + shipping,
     });
-    if (result.ok === false) {
-      toast.error(result.reason);
-      return;
-    }
+    if (result.ok === false) { toast.error(result.reason); return; }
     setDone(true);
   }
 

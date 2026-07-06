@@ -11,6 +11,8 @@ const ITEMS = [
   { to: "/studio/produkte", label: "Produkte", icon: Package },
   { to: "/studio/kampagnen", label: "Kampagnen", icon: Megaphone },
   { to: "/studio/brand", label: "Brand-Page", icon: UserCircle2 },
+  { to: "/studio/nachrichten", label: "Nachrichten", icon: UserCircle2 },
+  { to: "/studio/auszahlung", label: "Auszahlung", icon: UserCircle2 },
 ];
 
 export function StudioShell({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow?: string }) {

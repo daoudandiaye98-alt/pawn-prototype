@@ -2,17 +2,19 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
-
-const NAV = [
-  { label: "Mode", to: "/mode" },
-  { label: "Interior", to: "/interior" },
-  { label: "Kunst", to: "/kunst" },
-  { label: "Designer", to: "/designers" },
-];
 
 export function PalaceHeader() {
   const { user, roles, signOut } = useAuth();
+  const { locale, setLocale, t } = useI18n();
+  const NAV = [
+    { label: t("nav.mode"), to: "/mode" },
+    { label: t("nav.interior"), to: "/interior" },
+    { label: t("nav.kunst"), to: "/kunst" },
+    { label: t("nav.designer"), to: "/designers" },
+    { label: t("nav.forDesigners"), to: "/apply" },
+  ];
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -97,7 +99,16 @@ export function PalaceHeader() {
               className="hidden items-center gap-2 border border-[rgba(12,12,14,.28)] px-4 py-2 text-[0.62rem] uppercase tracking-[0.36em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] md:flex"
             >
               <span className="h-[6px] w-[6px] rounded-full bg-[#0C0C0E]" />
-              Frag PAWN
+              {t("nav.frag")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLocale(locale === "de" ? "en" : "de")}
+              className="hidden text-[0.6rem] uppercase tracking-[0.32em] text-[#7C7972] hover:text-[#0C0C0E] md:inline"
+              aria-label="Sprache wechseln"
+            >
+              {locale.toUpperCase()} · {locale === "de" ? "EN" : "DE"}
             </button>
 
             {user ? (

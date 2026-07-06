@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Meine Daten", "Einstellungen"] as const;
+const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Zahlung", "Meine Daten", "Einstellungen"] as const;
 type Tab = typeof TABS[number];
 
 const Account = () => {
@@ -68,6 +68,7 @@ const Account = () => {
             {tab === "Übersicht" && <Overview name={displayName} />}
             {tab === "Bestellungen" && <Orders />}
             {tab === "Merkzettel" && <Empty title="Dein Merkzettel ist noch leer." to="/neu" cta="Ausstellung ansehen" />}
+            {tab === "Zahlung" && <PaymentTab />}
             {tab === "Meine Daten" && <MyData />}
             {tab === "Einstellungen" && <Settings />}
           </div>
@@ -237,4 +238,15 @@ function Empty({ title, to, cta }: { title: string; to: string; cta: string }) {
   );
 }
 
+function PaymentTab() {
+  return (
+    <div className="max-w-xl border border-[rgba(12,12,14,.13)] p-8">
+      <p className="palace-eyebrow">Zahlungsmethoden</p>
+      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#0C0C0E]">Noch keine hinterlegt.</p>
+      <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.</p>
+    </div>
+  );
+}
+
 export default Account;
+

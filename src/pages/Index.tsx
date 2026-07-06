@@ -116,7 +116,10 @@ const Index = () => {
           <p className="mx-auto mt-10 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70">
             Mode · Interior · Kunst — ausgewählt aus {atelierCount} unabhängigen Ateliers.
           </p>
-          <div className="mt-20 flex flex-col items-center gap-4">
+
+          <HeroPrompt />
+
+          <div className="mt-16 flex flex-col items-center gap-4">
             <span className="palace-eyebrow">Scroll</span>
             <span className="palace-drip block h-14 w-px bg-[#0C0C0E]" />
           </div>
@@ -398,4 +401,32 @@ const Index = () => {
   );
 };
 
+function HeroPrompt() {
+  const [value, setValue] = useState("");
+  const send = () => {
+    const text = value.trim();
+    if (!text) return;
+    window.dispatchEvent(new CustomEvent("palace:open-chat"));
+    // Give the drawer a beat to mount before we hand off the message.
+    setTimeout(() => window.dispatchEvent(new CustomEvent("palace:chat-send", { detail: { message: text } })), 220);
+    setValue("");
+  };
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); send(); }}
+      className="mx-auto mt-12 flex w-full max-w-2xl items-center gap-4 border-b border-[rgba(12,12,14,.28)] pb-3"
+    >
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder='Frag PAWN — „zeig mir skulpturale Mäntel" oder „bring mich zur Kollektion von …"'
+        className="flex-1 bg-transparent py-2 text-left font-serif italic text-[1rem] text-[#0C0C0E] placeholder:text-[#0C0C0E]/40 focus:outline-none md:text-[1.1rem]"
+        aria-label="Frag PAWN"
+      />
+      <button type="submit" className="palace-eyebrow uline text-[#0C0C0E]">Fragen →</button>
+    </form>
+  );
+}
+
 export default Index;
+

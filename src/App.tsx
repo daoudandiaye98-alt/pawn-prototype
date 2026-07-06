@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
 import { CoreProvider } from "@/core";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { I18nProvider } from "@/lib/i18n";
 import { RoomShiftProvider } from "@/features/os/roomShift";
 
 import Index from "./pages/Index.tsx";
@@ -19,7 +20,11 @@ import StudioOverview from "./pages/studio/StudioOverview.tsx";
 import StudioProducts from "./pages/studio/StudioProducts.tsx";
 import StudioBrand from "./pages/studio/StudioBrand.tsx";
 import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
+import StudioMessages from "./pages/studio/StudioMessages.tsx";
+import StudioPayout from "./pages/studio/StudioPayout.tsx";
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
+import AdminMessages from "./pages/admin/AdminMessages.tsx";
+import AdminPayments from "./pages/admin/AdminPayments.tsx";
 import Shop from "./pages/Shop.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Cart from "./pages/Cart.tsx";
@@ -61,6 +66,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <I18nProvider>
         <AuthProvider>
           <AuthedCore>
             <CartProvider>
@@ -94,11 +100,15 @@ const App = () => (
                 <Route path="/admin/kampagnen" element={<RoleGate role="admin"><AdminCampaigns /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
+                <Route path="/admin/nachrichten" element={<RoleGate role="admin"><AdminMessages /></RoleGate>} />
+                <Route path="/admin/zahlungen" element={<RoleGate role="admin"><AdminPayments /></RoleGate>} />
 
                 <Route path="/studio" element={<RoleGate role="designer"><StudioOverview /></RoleGate>} />
                 <Route path="/studio/produkte" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
                 <Route path="/studio/kampagnen" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
                 <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
+                <Route path="/studio/nachrichten" element={<RoleGate role="designer"><StudioMessages /></RoleGate>} />
+                <Route path="/studio/auszahlung" element={<RoleGate role="designer"><StudioPayout /></RoleGate>} />
                 <Route path="/studio/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
                 <Route path="/portal" element={<PortalGate><PortalOverview /></PortalGate>} />
                 <Route path="/portal/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
@@ -110,6 +120,7 @@ const App = () => (
             </CartProvider>
           </AuthedCore>
         </AuthProvider>
+        </I18nProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
