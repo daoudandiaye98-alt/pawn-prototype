@@ -185,39 +185,79 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+interface NoteRow {
+  id: string;
+  body: string;
+  created_at: string;
+  author_id: string;
+}
+
+interface ConsentRow {
+  id: string;
+  accepted_at: string;
+  contract_version_id: string;
+  contract_versions: { kind: string; version: number; title: string } | null;
+}
+
 function DetailDrawer({ app, onClose, onChange }: { app: Application; onClose: () => void; onChange: () => void }) {
-  const [notes, setNotes] = useState(app.admin_notes ?? "");
+  const [notes, setNotes] = useState<NoteRow[]>([]);
+  const [newNote, setNewNote] = useState("");
+  const [consents, setConsents] = useState<ConsentRow[]>([]);
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState<null | "approve" | "reject" | "archive" | "notes" | "review">(null);
+  const [busy, setBusy] = useState<null | "approve" | "reject" | "archive" | "note">(null);
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+
+  async function loadNotes() {
+    const { data } = await supabase
+      .from("application_notes")
+      .select("id, body, created_at, author_id")
+      .eq("application_id", app.id)
+      .order("created_at", { ascending: false });
+    setNotes((data as NoteRow[]) ?? []);
+  }
+
+  async function loadConsents() {
+    const { data } = await supabase
+      .from("designer_consents")
+      .select("id, accepted_at, contract_version_id, contract_versions(kind, version, title)")
+      .eq("application_id", app.id);
+    setConsents((data as unknown as ConsentRow[]) ?? []);
+  }
 
   useEffect(() => {
     (async () => {
-      if (!app.portfolio_paths?.length) return;
-      const urls: string[] = [];
-      for (const path of app.portfolio_paths) {
-        const { data } = await supabase.storage
-          .from("designer-applications")
-          .createSignedUrl(path, 3600);
-        if (data?.signedUrl) urls.push(data.signedUrl);
+      if (app.portfolio_paths?.length) {
+        const urls: string[] = [];
+        for (const path of app.portfolio_paths) {
+          const { data } = await supabase.storage
+            .from("designer-applications")
+            .createSignedUrl(path, 3600);
+          if (data?.signedUrl) urls.push(data.signedUrl);
+        }
+        setPortfolioUrls(urls);
       }
-      setPortfolioUrls(urls);
+      await loadNotes();
+      await loadConsents();
+      if (app.status === "submitted") {
+        const { error } = await supabase.rpc("mark_application_in_review", { _application_id: app.id });
+        if (!error) onChange();
+      }
     })();
-    // set to in_review on open (silent) if currently submitted
-    if (app.status === "submitted") {
-      supabase.from("designer_applications").update({ status: "in_review" }).eq("id", app.id).then(() => onChange());
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.id]);
 
-  async function saveNotes() {
-    setBusy("notes");
-    const { error } = await supabase
-      .from("designer_applications")
-      .update({ admin_notes: notes })
-      .eq("id", app.id);
+  async function addNote() {
+    if (!newNote.trim()) return;
+    setBusy("note");
+    const { error } = await supabase.rpc("add_application_note", {
+      _application_id: app.id,
+      _body: newNote.trim(),
+    });
     setBusy(null);
-    if (error) toast.error(error.message);
-    else { toast.success("Notiz gespeichert."); onChange(); }
+    if (error) { toast.error(error.message); return; }
+    setNewNote("");
+    toast.success("Notiz gespeichert.");
+    loadNotes();
   }
 
   async function approve() {
