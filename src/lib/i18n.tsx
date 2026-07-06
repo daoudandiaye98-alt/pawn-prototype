@@ -15,7 +15,7 @@ const de = {
   "nav.logout": "Abmelden",
   "nav.forDesigners": "Für Designer",
   "hero.eyebrow": "Kuratierte Ausstellung",
-  "hero.promptPlaceholder": "Frag PAWN — „zeig mir skulpturale Mäntel" oder „bring mich zur Kollektion von …"",
+  "hero.promptPlaceholder": "Frag PAWN — z.B. „zeig mir skulpturale Mäntel" oder „bring mich zur Kollektion von …"",
   "hero.promptSend": "Fragen",
   "auth.signIn": "Anmelden",
   "auth.signUp": "Konto anlegen",
