@@ -11,36 +11,55 @@ import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { useRoomShift } from "@/features/os/roomShift";
+import { useDbProductBySlug } from "@/features/products/useDbProduct";
+import { useWishlist } from "@/features/wishlist/useWishlist";
+import { createCustomRequestThread } from "@/features/messages/customRequest";
+import { useAuth } from "@/lib/auth";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
   const slug = params.slug ?? params.id ?? "asymmetric-coat";
+  const { user } = useAuth();
 
+  const { product: dbProduct } = useDbProductBySlug(slug);
   const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug) ?? marketplaceSelectors.getAllProducts(s)[0]);
   const designer = useStore((s) => marketplaceSelectors.getDesignerById(s, coreProduct.designerId as string));
   const cart = useCart();
   const { push } = useRoomShift();
+  const wishlist = useWishlist();
 
   const product = useMemo(() => toProductView(coreProduct, designer), [coreProduct, designer]);
 
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
   const [saved, setSaved] = useState(false);
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqBody, setReqBody] = useState("");
+  const [reqBudget, setReqBudget] = useState("");
+  const [reqBusy, setReqBusy] = useState(false);
 
   const match = useDnaMatch(product.id);
   const { viewProduct, saveProduct } = useCustomerEvents();
 
-  useEffect(() => {
-    viewProduct(product.id);
-  }, [product.id, viewProduct]);
+  useEffect(() => { viewProduct(product.id); }, [product.id, viewProduct]);
 
   useEffect(() => {
     setSize(product.sizes[0]);
     setColor(product.colors[0]);
   }, [product.id, product.sizes, product.colors]);
 
+  const wished = dbProduct ? wishlist.has(dbProduct.id) : false;
+  const isMto = dbProduct?.inventory_mode === "made_to_order";
+  const stock = dbProduct?.inventory_mode === "stock" ? dbProduct.stock_quantity : null;
+  const soldOut = stock === 0;
+  const lowStock = stock !== null && stock > 0 && stock < 5;
+  const dbVariants = (dbProduct?.variants ?? []) as { name: string; options: string[] }[];
+  const canRequest = !!dbProduct?.allow_custom_requests;
+
   function addToBag() {
+    if (soldOut) { toast.error("Ausverkauft."); return; }
     cart.add(product, size);
     push(`${product.name} betritt das Brett.`);
     toast.success("Zur Tasche hinzugefügt.");
@@ -49,7 +68,32 @@ const ProductDetail = () => {
   function onSave() {
     saveProduct(product.id);
     setSaved(true);
+    if (dbProduct) void wishlist.toggle(dbProduct.id);
   }
+
+  async function submitRequest() {
+    if (!user) { toast.error("Bitte anmelden."); return; }
+    if (!dbProduct?.designers?.id) { toast.error("Designer nicht verfügbar."); return; }
+    if (reqBody.trim().length < 10) { toast.error("Bitte beschreibe deinen Wunsch etwas ausführlicher."); return; }
+    setReqBusy(true);
+    try {
+      await createCustomRequestThread({
+        userId: user.id,
+        designerId: dbProduct.designers.id,
+        productId: dbProduct.id,
+        productName: dbProduct.name,
+        body: reqBody.trim(),
+        budget: reqBudget.trim() || undefined,
+      });
+      toast.success("Anfrage gesendet.");
+      setReqOpen(false); setReqBody(""); setReqBudget("");
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Fehler beim Senden.");
+    } finally {
+      setReqBusy(false);
+    }
+  }
+
 
   return (
     <PalaceLayout transparentHeader={false}>
