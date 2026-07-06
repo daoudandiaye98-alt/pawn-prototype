@@ -104,7 +104,7 @@ const App = () => (
                 <Route path="/admin/dna" element={<RoleGate role="admin"><AdminDNA /></RoleGate>} />
                 <Route path="/admin/products" element={<RoleGate role="admin"><AdminProducts /></RoleGate>} />
                 <Route path="/admin/applications" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
-                <Route path="/admin/designers" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
+                <Route path="/admin/designers" element={<RoleGate role="admin"><AdminDesigners /></RoleGate>} />
                 <Route path="/admin/kampagnen" element={<RoleGate role="admin"><AdminCampaigns /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
