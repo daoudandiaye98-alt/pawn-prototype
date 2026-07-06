@@ -8,6 +8,7 @@ import { useCart } from "@/store/cart";
 import { useCartWardrobeImpact } from "@/features/dna/hooks";
 import { Panel, Insight } from "@/components/pawn/primitives";
 import { useCartStockLimits } from "@/features/commerce/hooks";
+import { CartRecommendations } from "@/features/commerce/CartRecommendations";
 import { toast } from "sonner";
 
 const Cart = () => {
@@ -36,6 +37,9 @@ const Cart = () => {
           <Button asChild className="mt-8 rounded-none">
             <Link to="/shop">Enter the boutique</Link>
           </Button>
+        </section>
+        <section className="editorial-container pb-24">
+          <CartRecommendations variant="empty-cart" title="Deine DNA · Vorschläge" limit={3} />
         </section>
       </PublicLayout>
     );
@@ -120,6 +124,8 @@ const Cart = () => {
             </Panel>
           </aside>
         </div>
+
+        <CartRecommendations variant="in-cart" title="Passt dazu" limit={3} />
       </div>
     </PublicLayout>
   );

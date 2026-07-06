@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
 import { useDnaAlignment } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
+import { PrevNext } from "@/components/palace/PrevNext";
+import { useDesignerPrevNext } from "@/features/navigation/usePrevNext";
 
 interface DbDesigner {
   id: string;
@@ -97,6 +99,11 @@ const DesignerPage = () => {
           className="absolute inset-0 h-full w-full"
         />
         <div className="absolute inset-0 bg-[#0C0C0E]/10" />
+        <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
+          <div className="pointer-events-auto">
+            <PrevNextForDesigner slug={designer.slug} />
+          </div>
+        </div>
         <div className="relative flex h-full flex-col justify-end px-6 pb-14 md:px-14 md:pb-20">
           <p className="palace-eyebrow text-white/70" style={{ mixBlendMode: "difference" }}>
             {designer.location} {designer.tags?.length ? `· ${designer.tags.slice(0, 3).join(" · ")}` : ""}
@@ -202,5 +209,11 @@ const DesignerPage = () => {
     </PalaceLayout>
   );
 };
+
+function PrevNextForDesigner({ slug }: { slug: string }) {
+  const { prev, next } = useDesignerPrevNext(slug);
+  if (!prev && !next) return null;
+  return <PrevNext prev={prev} next={next} />;
+}
 
 export default DesignerPage;

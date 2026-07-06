@@ -17,6 +17,8 @@ import { createCustomRequestThread } from "@/features/messages/customRequest";
 import { useAuth } from "@/lib/auth";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PrevNext } from "@/components/palace/PrevNext";
+import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
@@ -98,7 +100,7 @@ const ProductDetail = () => {
   return (
     <PalaceLayout transparentHeader={false}>
       {/* Banner: hero image always first, directly under the nav */}
-      <section className="pt-20 md:pt-24">
+      <section className="relative pt-20 md:pt-24">
         <Reveal>
           <EditorialImage
             seed={`prd-${product.slug}-hero`}
@@ -106,6 +108,11 @@ const ProductDetail = () => {
             className="w-full"
           />
         </Reveal>
+        <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
+          <div className="pointer-events-auto">
+            <PrevNextForProduct slug={product.slug} />
+          </div>
+        </div>
       </section>
 
       <section className="px-6 pt-12 md:px-14 md:pt-16">
@@ -312,5 +319,11 @@ const ProductDetail = () => {
   );
 
 };
+
+function PrevNextForProduct({ slug }: { slug: string }) {
+  const { prev, next } = useProductPrevNext(slug);
+  if (!prev && !next) return null;
+  return <PrevNext prev={prev} next={next} />;
+}
 
 export default ProductDetail;
