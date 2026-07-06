@@ -1,16 +1,39 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Upload, Loader2, X } from "lucide-react";
+import { z } from "zod";
 import { PublicHeader } from "@/components/pawn/PublicHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const accountSchema = z.object({
+  displayName: z.string().trim().min(2, "Bitte gib deinen Namen an."),
+  email: z.string().trim().email("Bitte gib eine gültige E-Mail an."),
+  password: z.string().min(8, "Mindestens 8 Zeichen."),
+});
+const profileSchema = z.object({
+  brandName: z.string().trim().min(2, "Brand-Name fehlt."),
+  location: z.string().trim().min(2, "Ort fehlt."),
+  country: z.string().trim().min(2, "Land fehlt."),
+});
+const aboutSchema = z.object({
+  story: z.string().trim().min(30, "Erzähl uns mindestens ein paar Sätze (30+ Zeichen)."),
+  tags: z.string().trim().min(2, "Mindestens einen Tag angeben."),
+});
 
 /**
  * Designer Application — persisted end-to-end.
@@ -104,7 +127,23 @@ const Apply = () => {
 
   const allContractsAccepted = contracts.length > 0 && contracts.every((c) => accepted[c.id]);
 
-  function next() { setStep((s) => Math.min(s + 1, STEPS.length - 1)); }
+  function validateStep(current: number): boolean {
+    const runners: Array<() => z.SafeParseReturnType<unknown, unknown> | null> = [
+      () => (user ? null : accountSchema.safeParse(data)),
+      () => profileSchema.safeParse(data),
+      () => aboutSchema.safeParse({ story: data.story, tags: data.tags }),
+      () => (allContractsAccepted ? null : ({ success: false, error: { issues: [{ message: "Bitte stimme allen Verträgen zu." }] } } as unknown as z.SafeParseReturnType<unknown, unknown>)),
+      () => null,
+    ];
+    const result = runners[current]?.();
+    if (result && !result.success) {
+      const msg = result.error.issues[0]?.message ?? "Bitte alle Felder korrekt ausfüllen.";
+      toast.error(msg);
+      return false;
+    }
+    return true;
+  }
+  function next() { if (validateStep(step)) setStep((s) => Math.min(s + 1, STEPS.length - 1)); }
   function back() { setStep((s) => Math.max(s - 1, 0)); }
 
   async function ensureAuth(): Promise<string | null> {
@@ -294,9 +333,21 @@ const Apply = () => {
                             <p className="font-serif text-lg">{c.title}</p>
                             <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">v{c.version}</span>
                           </div>
-                          <div className="max-h-40 overflow-y-auto whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-                            {c.body_markdown}
-                          </div>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button type="button" className="text-xs uppercase tracking-[0.22em] text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                                Vertragstext lesen →
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto rounded-none">
+                              <DialogHeader>
+                                <DialogTitle className="font-serif text-2xl">{c.title} · v{c.version}</DialogTitle>
+                              </DialogHeader>
+                              <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                                {c.body_markdown}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                           <label className="mt-3 flex cursor-pointer items-start gap-3 border-t border-border pt-3 text-sm">
                             <Checkbox
                               checked={!!accepted[c.id]}
@@ -453,14 +504,11 @@ function SuccessState() {
       <div className="mx-auto flex h-14 w-14 items-center justify-center border border-accent text-accent">
         <Check className="h-6 w-6" />
       </div>
-      <h2 className="mt-6 font-serif text-4xl">Bewerbung eingereicht.</h2>
+      <h2 className="mt-6 font-serif text-4xl">Deine Bewerbung ist eingegangen.</h2>
       <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-        Wir melden uns innerhalb von 7 Tagen mit dem Ergebnis unserer Kuratoren. Sobald wir dich annehmen, startet PAWN dein AI-Onboarding im Portal.
+        Unsere Kuratoren prüfen jede Bewerbung persönlich. Du hörst innerhalb von 7 Tagen von uns — per E-Mail an die von dir angegebene Adresse. Erst nach Freigabe wird dein Designer-Portal aktiviert.
       </p>
       <div className="mt-8 flex justify-center gap-3">
-        <Button asChild className="rounded-none">
-          <Link to="/portal">Zum Designer Portal</Link>
-        </Button>
         <Button asChild variant="outline" className="rounded-none">
           <Link to="/">Zur Startseite</Link>
         </Button>

@@ -12,6 +12,7 @@ const NAV = [
   { label: "DNA", to: "/dna" },
   { label: "Clothing", to: "/shop?cat=clothing" },
   { label: "Accessories", to: "/shop?cat=accessories" },
+  { label: "Für Designer", to: "/apply" },
 ];
 
 /**
