@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
 import { useDnaAlignment } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
+import { PrevNext } from "@/components/palace/PrevNext";
+import { useDesignerPrevNext } from "@/features/navigation/usePrevNext";
 
 interface DbDesigner {
   id: string;
