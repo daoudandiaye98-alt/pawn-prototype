@@ -346,19 +346,60 @@ function DetailDrawer({ app, onClose, onChange }: { app: Application; onClose: (
           )}
 
           <section>
-            <div className="flex items-center justify-between">
-              <p className="editorial-eyebrow">Admin-Notizen</p>
-              <Button onClick={saveNotes} disabled={busy === "notes"} size="sm" variant="outline" className="rounded-none">
-                {busy === "notes" ? <Loader2 className="h-3 w-3 animate-spin" /> : "Speichern"}
+            <p className="editorial-eyebrow mb-3">Admin-Notizen · append-only</p>
+            <div className="flex gap-2">
+              <Textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                rows={2}
+                className="rounded-none"
+                placeholder="Neue Notiz hinzufügen…"
+              />
+              <Button
+                onClick={addNote}
+                disabled={busy === "note" || !newNote.trim()}
+                className="rounded-none"
+              >
+                {busy === "note" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Notiz"}
               </Button>
             </div>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              className="mt-2 rounded-none"
-              placeholder="Interne Notizen…"
-            />
+            {notes.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">Noch keine Notizen.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-border border border-border">
+                {notes.map((n) => (
+                  <li key={n.id} className="px-3 py-2 text-sm">
+                    <p className="whitespace-pre-line text-foreground/90">{n.body}</p>
+                    <p className="mt-1 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
+                      {new Date(n.created_at).toLocaleString("de-DE")} · {n.author_id.slice(0, 8)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <p className="editorial-eyebrow mb-3">Zustimmungen</p>
+            {consents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Zustimmungen erfasst.</p>
+            ) : (
+              <ul className="divide-y divide-border border border-border text-sm">
+                {consents.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between px-3 py-2">
+                    <span>
+                      {c.contract_versions?.title ?? c.contract_version_id}
+                      <span className="ml-2 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
+                        v{c.contract_versions?.version ?? "?"}
+                      </span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(c.accepted_at).toLocaleDateString("de-DE")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           {app.status !== "approved" && app.status !== "archived" && (
