@@ -12,6 +12,9 @@ import {
   Sparkles, TrendingUp, UserPlus, Zap, Layers, BookOpen, ShieldCheck, Send, Radio,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats, requestAdminAction,
+} from "@/features/admin/useAdminData";
 
 /* ─────────────────────── Cockpit primitives ─────────────────────── */
 
