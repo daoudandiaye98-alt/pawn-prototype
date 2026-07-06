@@ -70,6 +70,7 @@ const App = () => (
                 <Route path="/admin/dna" element={<RoleGate role="admin"><AdminDNA /></RoleGate>} />
                 <Route path="/admin/products" element={<RoleGate role="admin"><AdminProducts /></RoleGate>} />
                 <Route path="/admin/applications" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
+                <Route path="/admin/designers" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
 
                 <Route path="/portal" element={<PortalGate><PortalOverview /></PortalGate>} />
