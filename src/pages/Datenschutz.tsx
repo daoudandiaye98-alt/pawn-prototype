@@ -42,32 +42,39 @@ export default function Datenschutz() {
             </ul>
           </Section>
 
-          <Section title="4. Session-ID im lokalen Speicher">
+          <Section title="4. Cookies und persistente Speicherung">
             <p>
-              Wir setzen eine anonyme Session-ID in deinem Browser-<em>localStorage</em> unter dem Schlüssel <code>palace.chat.session_id</code>.
-              Sie ermöglicht PAWN, im Chat den Faden zu halten. Sie enthält keine personenbezogenen Daten. Du kannst sie jederzeit im
-              Browser löschen.
+              Nach deiner ausdrücklichen Zustimmung nutzen wir einen technischen Cookie <code>pawn_consent</code> sowie
+              lokalen Speicher (<em>localStorage</em>) unter Schlüsseln wie <code>palace.chat.session_id</code> und
+              <code>pawn.personalization.cache.v1</code>. Zweck: dass PAWN dich bei erneuten Besuchen wiedererkennt und
+              deine Geschmackssignale — deinem Konto zugeordnet — weiterführt. Wenn du nur „notwendige" wählst,
+              behalten wir keine Signale zwischen Sitzungen. <strong>Widerruf jederzeit</strong> über den Link
+              „Cookie-Einstellungen" im Footer oder in deinem Konto unter „Meine Daten". Speicherdauer für den
+              Consent-Cookie: 12 Monate. Deine Signale löschen wir mit deinem Konto vollständig.
             </p>
           </Section>
 
           <Section title="5. Speicherdauer">
-            <p>Konto- und Bestelldaten so lange, wie gesetzlich vorgeschrieben. Chat-Sessions und Geschmackssignale bis zu 12 Monate ab
-              letzter Aktivität, danach automatische Löschung oder Anonymisierung. [TODO: exakte Fristen prüfen]</p>
+            <p>Konto- und Bestelldaten so lange, wie gesetzlich vorgeschrieben. Chat-Sessions und Geschmackssignale
+              bis zu 24 Monate ab letzter Aktivität, danach automatische Löschung oder Anonymisierung.
+              [TODO: exakte Fristen final durch Kanzlei prüfen]</p>
           </Section>
 
           <Section title="6. Deine Rechte">
             <p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerruf erteilter Einwilligungen.
               In deinem Konto findest du unter „Meine Daten" die Buttons <em>Daten exportieren</em> und <em>Konto löschen</em>.
-              Beschwerde bei einer Datenschutz-Aufsichtsbehörde ist möglich.</p>
+              Die Konto-Löschung entfernt nachweislich auch alle Signale und Sessions. Beschwerde bei einer
+              Datenschutz-Aufsichtsbehörde ist möglich.</p>
           </Section>
 
           <Section title="7. Empfänger">
             <p>Hosting und Datenbank: [TODO: Anbieter benennen]. Zahlungsdienstleister: [TODO]. Keine Weitergabe an Werbenetzwerke.</p>
           </Section>
 
-          <Section title="8. Keine Tracking-Cookies">
-            <p>Wir setzen keine Werbe- oder Analytics-Cookies. Nur technisch notwendige Speicherung wie oben beschrieben.</p>
+          <Section title="8. Keine Tracking-Cookies Dritter">
+            <p>Wir setzen keine Werbe- oder Analytics-Cookies Dritter. Nur die oben beschriebene erst-Party-Speicherung.</p>
           </Section>
+
 
           <Section title="9. Kontakt">
             <p>Fragen zum Datenschutz: <a href="mailto:datenschutz@pawn.example" className="underline">datenschutz@pawn.example</a>.</p>
