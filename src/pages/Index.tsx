@@ -172,7 +172,6 @@ const Index = () => {
             <span className="palace-drip block h-14 w-px bg-[#0C0C0E]" />
           </div>
         </div>
-        </div>
       </section>
 
       {/* ── 02 NAMESTRIP ────────────────────────────────────── */}
