@@ -138,13 +138,52 @@ const ProductDetail = () => {
                 >
                   {product.designer} →
                 </Link>
-                <p className="mt-8 palace-serif text-[1.4rem] tabular-nums text-[#0C0C0E]">
-                  €{product.price.toLocaleString("de-DE")}
-                </p>
+                <div className="mt-8 flex items-baseline gap-3">
+                  <p className="palace-serif text-[1.4rem] tabular-nums text-[#0C0C0E]">
+                    €{(dbProduct?.price ?? product.price).toLocaleString("de-DE")}
+                  </p>
+                  {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
+                    <span className="palace-eyebrow text-[#7C7972] line-through">€{Number(dbProduct.compare_at_price).toLocaleString("de-DE")}</span>
+                  )}
+                </div>
+
+                {/* Availability badges */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {isMto && (
+                    <span className="border border-[rgba(12,12,14,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#0C0C0E]">
+                      Auf Anfertigung{dbProduct?.lead_time_days ? ` · ca. ${dbProduct.lead_time_days} Tage` : ""}
+                    </span>
+                  )}
+                  {!isMto && soldOut && (
+                    <span className="border border-[#0C0C0E] bg-[#0C0C0E] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#F1EEE7]">Ausverkauft</span>
+                  )}
+                  {!isMto && lowStock && (
+                    <span className="border border-[rgba(12,12,14,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Noch {stock} verfügbar</span>
+                  )}
+                </div>
 
                 <p className="mt-8 max-w-md text-[0.98rem] leading-relaxed text-[#0C0C0E]/80">
-                  {product.description}
+                  {dbProduct?.description || product.description}
                 </p>
+
+                {/* DB variants */}
+                {dbVariants.length > 0 && (
+                  <div className="mt-8 space-y-6">
+                    {dbVariants.map((v) => (
+                      <div key={v.name}>
+                        <p className="palace-eyebrow">{v.name}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {v.options.map((o) => (
+                            <button key={o} type="button" className="border border-[rgba(12,12,14,.22)] px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] text-[#0C0C0E] hover:border-[#0C0C0E]">
+                              {o}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
 
                 {/* Provenance */}
                 {match.percent > 0 && (
