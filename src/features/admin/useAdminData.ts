@@ -147,10 +147,12 @@ export function useAdminSystemStats(): AdminSystemStats {
 /** Writes an admin.action_requested domain event. */
 export async function requestAdminAction(action: string, note?: string) {
   const { data: userData } = await supabase.auth.getUser();
-  const actor = userData?.user?.id ?? "system";
+  const uid = userData?.user?.id ?? null;
   await supabase.from("domain_events").insert({
     type: "admin.action_requested",
-    actor,
+    actor: uid ?? "system",
+    identity_scope: uid,
     payload: { action, note: note ?? null, requested_at: new Date().toISOString() },
   } as never);
 }
+
