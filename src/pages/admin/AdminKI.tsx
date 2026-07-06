@@ -68,6 +68,19 @@ export default function AdminKI() {
 
   return (
     <AdminShell title="KI Cockpit" eyebrow="Persona · Signale · Sessions">
+      <div className="mb-6 flex flex-wrap items-center gap-3 border border-border bg-card p-4">
+        <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Provider</span>
+        <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.65rem] uppercase tracking-[0.28em] ${
+          provider === "openai" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600"
+        }`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${provider === "openai" ? "bg-emerald-500" : "bg-amber-500"}`} />
+          {provider === "openai" ? "OpenAI aktiv" : provider === "unknown" ? "prüfe…" : "Fallback aktiv"}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          OpenAI-Anbindung: Secret <code>OPENAI_API_KEY</code> in den Edge-Function-Secrets hinterlegen. Ohne Key nutzt PAWN einen Fallback-Gesprächsbaum.
+        </span>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <section className="border border-border bg-card p-8">
           <p className="editorial-eyebrow">Persona · pawn-chat</p>
@@ -75,6 +88,7 @@ export default function AdminKI() {
           <p className="mt-2 text-sm text-muted-foreground">
             Diese Stimme wird bei jeder Antwort verwendet. Änderungen greifen sofort für neue Nachrichten.
           </p>
+
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
