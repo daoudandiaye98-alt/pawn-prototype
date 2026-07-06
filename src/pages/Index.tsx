@@ -45,21 +45,42 @@ const Index = () => {
   const featuredCount = featured.length || 8;
   const atelierCount = designers.length;
 
-  // Canvas fade-out on scroll (except during finale).
+  // Canvas fade — smoothed via rAF so the pawn never pops on scroll.
+  // Full opacity through the first viewport (hero), soft fade after, restored during finale.
   const [canvasOpacity, setCanvasOpacity] = useState(1);
   const finaleRef = useRef<HTMLElement | null>(null);
   const finaleProgress = useScrollProgress(finaleRef as React.RefObject<HTMLElement>);
+  const targetOpacityRef = useRef(1);
+  const currentOpacityRef = useRef(1);
 
   useEffect(() => {
-    const onScroll = () => {
+    const compute = () => {
       const y = window.scrollY;
-      const heroFade = Math.max(0.07, 1 - y / (window.innerHeight * 0.9));
+      const vh = window.innerHeight || 800;
+      // Stay fully visible through 70% of the first screen, then ease to 0.12 by 1.8vh.
+      const fadeStart = vh * 0.7;
+      const fadeEnd = vh * 1.8;
+      const raw = 1 - Math.max(0, Math.min(1, (y - fadeStart) / (fadeEnd - fadeStart)));
+      const heroFade = 0.12 + raw * 0.88;
       const finaleBoost = finaleProgress > 0.05 ? finaleProgress : 0;
-      setCanvasOpacity(Math.min(1, heroFade + finaleBoost));
+      targetOpacityRef.current = Math.min(1, heroFade + finaleBoost);
     };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    compute();
+    window.addEventListener("scroll", compute, { passive: true });
+    window.addEventListener("resize", compute);
+
+    let raf = 0;
+    const loop = () => {
+      currentOpacityRef.current += (targetOpacityRef.current - currentOpacityRef.current) * 0.08;
+      setCanvasOpacity(currentOpacityRef.current);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", compute);
+      window.removeEventListener("resize", compute);
+    };
   }, [finaleProgress]);
 
   // Horizontal collection track scroll
