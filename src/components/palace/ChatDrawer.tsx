@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
+
 
 interface Msg { role: "user" | "assistant"; content: string }
 
@@ -13,20 +13,12 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [messages, setMessages] = useState<Msg[]>([OPENER]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const { user } = useAuth();
   const listRef = useRef<HTMLDivElement | null>(null);
-  const startedRef = useRef(false);
 
   useEffect(() => {
-    if (open && !startedRef.current) {
-      startedRef.current = true;
-      if (user) {
-        void supabase.from("domain_events").insert({
-          type: "ai.conversation_started", actor: "user", payload: {}, actor_id: user.id,
-        } as never);
-      }
-    }
-  }, [open, user]);
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [messages, open]);
+
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
