@@ -170,9 +170,13 @@ function EngineRow({ k, state }: { k: EngineKey; state: EngineState }) {
 /* ─────────────────────── Command Deck (OS body) ─────────────────────── */
 
 function CommandDeck() {
-  const { orders, revenueSeries, months, kpis } = useStore(adminSelectors.getPlatformOverview);
+  const { revenueSeries, months, kpis } = useStore(adminSelectors.getPlatformOverview);
   const { feed, engines, pulse, fire } = useOsBus();
   const navigate = useNavigate();
+  const { rows: recentOrders, loading: ordersLoading } = useAdminRecentOrders(6);
+  const { rows: topDesigners, loading: topLoading } = useAdminTopDesigners(5);
+  const sysStats = useAdminSystemStats();
+  const [actionDialog, setActionDialog] = useState<null | { action: string; title: string; description: string }>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = window.setInterval(() => setTick((v) => v + 1), 15_000); return () => window.clearInterval(t); }, []);
   void tick;
