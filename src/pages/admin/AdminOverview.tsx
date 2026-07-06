@@ -574,6 +574,45 @@ function timeAgo(ts: number) {
   return `vor ${Math.floor(m / 60)}h`;
 }
 
+function EmptyRow({ text }: { text: string }) {
+  return (
+    <div className="flex min-h-[120px] items-center justify-center px-5 py-8 text-center text-[11px] leading-relaxed text-[hsl(36_15%_55%)]">
+      {text}
+    </div>
+  );
+}
+
+function ActionDialog({
+  title, description, onCancel, onConfirm,
+}: { title: string; description: string; onCancel: () => void; onConfirm: () => void | Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4" onClick={onCancel}>
+      <div className="w-full max-w-md border border-white/10 bg-[hsl(18_10%_7%)] p-6 text-[hsl(36_25%_88%)]" onClick={(e) => e.stopPropagation()}>
+        <p className="text-[0.55rem] uppercase tracking-[0.28em] text-[hsl(36_15%_55%)]">Aktion bestätigen</p>
+        <h3 className="mt-2 font-serif text-[20px] leading-tight text-[hsl(36_28%_94%)]">{title}</h3>
+        <p className="mt-3 text-[12.5px] leading-relaxed text-[hsl(36_18%_70%)]">{description}</p>
+        <p className="mt-3 text-[10.5px] uppercase tracking-[0.22em] text-[hsl(36_15%_50%)]">
+          Schreibt ein <span className="text-[hsl(36_25%_82%)]">admin.action_requested</span>-Ereignis in den Kausalstrom.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button onClick={onCancel} disabled={busy}
+            className="border border-white/15 px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.22em] text-[hsl(36_25%_82%)] hover:bg-white/[0.04] disabled:opacity-50">
+            Abbrechen
+          </button>
+          <button
+            onClick={async () => { setBusy(true); try { await onConfirm(); } finally { setBusy(false); } }}
+            disabled={busy}
+            className="border border-[hsl(350_55%_35%)] bg-[hsl(350_55%_22%)] px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.22em] text-[hsl(36_28%_94%)] hover:bg-[hsl(350_55%_28%)] disabled:opacity-50">
+            {busy ? "Läuft …" : "Ausführen"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 /* ─────────────────────── Page ─────────────────────── */
 
 const AdminOverview = () => {
