@@ -286,10 +286,10 @@ const Index = () => {
                   {collection.title}. <span className="italic">{collection.subtitle}</span>
                 </h2>
               </div>
-              <p className="palace-eyebrow hidden md:block">Scroll = seitwärts</p>
+              <p className="palace-eyebrow hidden md:block">Scroll = seitwärts · oder Pfeile</p>
             </div>
           </div>
-          <div className="mt-16 flex flex-1 items-center overflow-hidden">
+          <div className="relative mt-16 flex flex-1 items-center overflow-hidden">
             <div ref={trackInnerRef} className="flex gap-8 pl-6 md:pl-14 will-change-transform">
               {collection.items.map((it, i) => {
                 const p = productBySlug.get(it.product_slug);
@@ -317,6 +317,9 @@ const Index = () => {
               })}
               <div className="w-[10vw] shrink-0" />
             </div>
+
+            {/* Palace navigation arrows — advance one card at a time */}
+            <TrackArrows sectionRef={trackSectionRef} steps={collection.items.length} />
           </div>
         </div>
       </section>
