@@ -27,7 +27,7 @@ const ITEMS = [
   { to: "/admin/nachrichten", label: "Nachrichten", icon: FileSignature },
   { to: "/admin/designers", label: "Bewerbungen", icon: FileSignature },
   { to: "/admin/customers", label: "Kunden", icon: UserCircle2 },
-  { to: "/admin/content", label: "Inhalte", icon: Newspaper },
+  { to: "/admin/inhalte", label: "Inhalte", icon: Newspaper },
   { to: "/admin/marketing", label: "Marketing", icon: Megaphone },
   { to: "/admin/kampagnen", label: "Kampagnen", icon: Megaphone },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
