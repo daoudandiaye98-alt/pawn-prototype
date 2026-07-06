@@ -444,17 +444,57 @@ function HeroPrompt() {
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); send(); }}
-      className="mx-auto mt-12 flex w-full max-w-2xl items-center gap-4 border-b border-[rgba(12,12,14,.28)] pb-3"
+      className="mx-auto mt-10 flex w-full max-w-2xl items-stretch border border-[rgba(12,12,14,.35)] bg-white shadow-[0_8px_30px_-18px_rgba(12,12,14,.35)]"
     >
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder='Frag PAWN — „zeig mir skulpturale Mäntel" oder „bring mich zur Kollektion von …"'
-        className="flex-1 bg-transparent py-2 text-left font-serif italic text-[1rem] text-[#0C0C0E] placeholder:text-[#0C0C0E]/40 focus:outline-none md:text-[1.1rem]"
+        placeholder='Frag PAWN — z.B. „skulpturale Mäntel"'
+        className="flex-1 bg-transparent px-5 py-4 text-left text-[1rem] text-[#0C0C0E] placeholder:text-[#55534E] focus:outline-none md:text-[1.05rem]"
         aria-label="Frag PAWN"
       />
-      <button type="submit" className="palace-eyebrow uline text-[#0C0C0E]">Fragen →</button>
+      <button
+        type="submit"
+        className="whitespace-nowrap bg-[#0C0C0E] px-6 text-[0.68rem] uppercase tracking-[0.32em] text-[#F1EEE7] transition-colors duration-300 hover:bg-[#3A3A3C]"
+      >
+        Fragen →
+      </button>
     </form>
+  );
+}
+
+function TrackArrows({ sectionRef, steps }: { sectionRef: React.RefObject<HTMLElement>; steps: number }) {
+  const scrollByCard = (dir: -1 | 1) => {
+    const sec = sectionRef.current;
+    if (!sec) return;
+    const rect = sec.getBoundingClientRect();
+    const pinDistance = sec.offsetHeight - window.innerHeight;
+    const step = pinDistance / Math.max(1, steps - 1);
+    // Nudge into the pinning window first if the user hasn't reached it.
+    const base = rect.top < 0 ? window.scrollY : window.scrollY + rect.top;
+    const target = base + Math.round(step * dir + (rect.top < 0 ? step * dir * 0 : 0));
+    window.scrollTo({ top: rect.top < 0 ? window.scrollY + dir * step : target, behavior: "smooth" });
+  };
+  const btn = "grid h-12 w-12 place-items-center rounded-full border border-[rgba(12,12,14,.35)] bg-[#F1EEE7]/85 text-[#0C0C0E] backdrop-blur transition-all duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7]";
+  return (
+    <div className="pointer-events-none absolute inset-0 hidden items-center justify-between px-4 md:flex md:px-8">
+      <button
+        type="button"
+        aria-label="Zurück"
+        onClick={() => scrollByCard(-1)}
+        className={`${btn} pointer-events-auto`}
+      >
+        <ChevronLeft className="h-5 w-5" strokeWidth={1.3} />
+      </button>
+      <button
+        type="button"
+        aria-label="Weiter"
+        onClick={() => scrollByCard(1)}
+        className={`${btn} pointer-events-auto`}
+      >
+        <ChevronRight className="h-5 w-5" strokeWidth={1.3} />
+      </button>
+    </div>
   );
 }
 
