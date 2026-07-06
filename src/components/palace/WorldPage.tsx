@@ -5,7 +5,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
-import { usePublicDesigners } from "@/lib/publicData";
+import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
 
 interface WorldPageProps {
   world: World;
