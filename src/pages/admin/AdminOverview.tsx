@@ -293,9 +293,9 @@ function CommandDeck() {
         <KpiCell label="DNA Coverage" value={`${Math.min(100, 94 + derivedKpi.dnaCoverage)} %`} delta={derivedKpi.dnaCoverage ? `+${derivedKpi.dnaCoverage} pt live` : "+3.2 pt"}
           trend="up" series={[70, 74, 78, 82, 85, 87, 89, 91, 92, 93, 94, 94]} pulseKey={pulse}
           why={["284 Identitäten neu vermessen", "Cold-Start auf 6 %"]} />
-        <KpiCell label="Aktive Designer" value={String((kpis.designerCount || 142) + derivedKpi.designers)} delta={derivedKpi.designers ? `+${derivedKpi.designers} live` : "+7 diesen Monat"}
+        <KpiCell label="Aktive Designer" value={String((activeDesignerCount ?? kpis.designerCount ?? 0) + derivedKpi.designers)} delta={derivedKpi.designers ? `+${derivedKpi.designers} live` : (pendingApplications ? `${pendingApplications} in Prüfung` : "Inbox leer")}
           trend="up" series={[120, 122, 125, 128, 131, 133, 135, 137, 138, 140, 141, 142]} accent="emerald" pulseKey={pulse}
-          why={["18 warten auf Review", "3 Onboarding heute"]} />
+          why={[`${pendingApplications ?? 0} warten auf Review`, "Live aus Governance-Inbox"]} />
       </div>
 
       {/* Row: Backend engines + Live feed + Decision queue */}
