@@ -19,6 +19,8 @@ import StudioOverview from "./pages/studio/StudioOverview.tsx";
 import StudioProducts from "./pages/studio/StudioProducts.tsx";
 import StudioBrand from "./pages/studio/StudioBrand.tsx";
 import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
+import StudioMessages from "./pages/studio/StudioMessages.tsx";
+import StudioPayout from "./pages/studio/StudioPayout.tsx";
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import Shop from "./pages/Shop.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
