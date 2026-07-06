@@ -7,8 +7,10 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useMyRequestThreads } from "@/features/commerce/hooks";
+import { useThreadMessages, sendMessage } from "@/features/messages/useMessages";
 
-const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Zahlung", "Meine Daten", "Einstellungen"] as const;
+const TABS = ["Übersicht", "Bestellungen", "Anfragen", "Merkzettel", "Zahlung", "Meine Daten", "Einstellungen"] as const;
 type Tab = typeof TABS[number];
 
 const Account = () => {
