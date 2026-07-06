@@ -75,13 +75,13 @@ function EmptyInvitation() {
     window.dispatchEvent(new Event("palace:open-chat"));
   };
   return (
-    <div className="mx-auto max-w-2xl border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] p-10 md:p-14">
-      <p className="palace-eyebrow">Noch leer — und das ist gut so</p>
+    <div className="mx-auto max-w-2xl border border-[rgba(12,12,14,.13)] bg-white p-10 md:p-14">
+      <p className="palace-eyebrow">Bereit für dein erstes Signal</p>
       <h3 className="palace-serif mt-6 text-[2rem] font-light leading-[1.05] text-[#0C0C0E]">
         Erzähl mir von dir — <span className="italic">oder stöbere einfach, ich schaue zu.</span>
       </h3>
       <p className="mt-6 text-[0.95rem] leading-[1.65] text-[#0C0C0E]/75">
-        Deine DNA entsteht in Gesprächen und aus dem, was du dir merkst. Nichts wird gespeichert, was du nicht selbst gesagt hast.
+        Deine DNA entsteht aus Gesprächen und dem, was du dir merkst. Alles, was hier landet, hast du selbst gesagt oder ausgewählt.
       </p>
       <form
         onSubmit={(e) => { e.preventDefault(); openChat(prompt); setPrompt(""); }}
