@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { useRank, usePieceShadow } from "@/features/narrative/hooks";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const METHODS = ["Credit Card", "PayPal", "Apple Pay", "Klarna"] as const;
 
