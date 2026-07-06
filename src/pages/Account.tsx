@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Meine Daten", "Einstellungen"] as const;
+const TABS = ["Übersicht", "Bestellungen", "Merkzettel", "Zahlung", "Meine Daten", "Einstellungen"] as const;
 type Tab = typeof TABS[number];
 
 const Account = () => {
