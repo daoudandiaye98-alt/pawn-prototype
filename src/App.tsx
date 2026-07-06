@@ -44,6 +44,7 @@ import Mode from "./pages/palace/Mode.tsx";
 import Interior from "./pages/palace/Interior.tsx";
 import Kunst from "./pages/palace/Kunst.tsx";
 import Neu from "./pages/palace/Neu.tsx";
+import Style from "./pages/Style.tsx";
 
 import AdminOverview from "./pages/admin/AdminOverview.tsx";
 import AdminDNA from "./pages/admin/AdminDNA.tsx";
@@ -87,6 +88,7 @@ const App = () => (
                 <Route path="/kunst" element={<Kunst />} />
                 <Route path="/neu" element={<Neu />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/style" element={<Style />} />
                 <Route path="/dna" element={<DNA />} />
                 <Route path="/designers" element={<Designers />} />
                 <Route path="/designers/all" element={<DesignersIndex />} />

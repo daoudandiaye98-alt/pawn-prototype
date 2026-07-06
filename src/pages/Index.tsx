@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { HeroScene } from "@/components/palace/HeroScene";
 import { HelixScene } from "@/components/palace/HelixScene";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
+import { DynamicBanner } from "@/components/palace/DynamicBanner";
+import { PickYourStyle } from "@/components/palace/PickYourStyle";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
@@ -38,25 +41,43 @@ const Index = () => {
 
   const featured = designers.filter((d) => d.is_featured);
   const cover = featured[0] ?? designers[0];
-  const statement = featured[1] ?? designers[1] ?? designers[0];
-  const featuredCount = featured.length || 8;
-  const atelierCount = designers.length;
 
-  // Canvas fade-out on scroll (except during finale).
+  // Canvas fade — smoothed via rAF so the pawn never pops on scroll.
+  // Full opacity through the first viewport (hero), soft fade after, restored during finale.
   const [canvasOpacity, setCanvasOpacity] = useState(1);
   const finaleRef = useRef<HTMLElement | null>(null);
   const finaleProgress = useScrollProgress(finaleRef as React.RefObject<HTMLElement>);
+  const targetOpacityRef = useRef(1);
+  const currentOpacityRef = useRef(1);
 
   useEffect(() => {
-    const onScroll = () => {
+    const compute = () => {
       const y = window.scrollY;
-      const heroFade = Math.max(0.07, 1 - y / (window.innerHeight * 0.9));
+      const vh = window.innerHeight || 800;
+      // Stay fully visible through 70% of the first screen, then ease to 0.12 by 1.8vh.
+      const fadeStart = vh * 0.7;
+      const fadeEnd = vh * 1.8;
+      const raw = 1 - Math.max(0, Math.min(1, (y - fadeStart) / (fadeEnd - fadeStart)));
+      const heroFade = 0.12 + raw * 0.88;
       const finaleBoost = finaleProgress > 0.05 ? finaleProgress : 0;
-      setCanvasOpacity(Math.min(1, heroFade + finaleBoost));
+      targetOpacityRef.current = Math.min(1, heroFade + finaleBoost);
     };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    compute();
+    window.addEventListener("scroll", compute, { passive: true });
+    window.addEventListener("resize", compute);
+
+    let raf = 0;
+    const loop = () => {
+      currentOpacityRef.current += (targetOpacityRef.current - currentOpacityRef.current) * 0.08;
+      setCanvasOpacity(currentOpacityRef.current);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", compute);
+      window.removeEventListener("resize", compute);
+    };
   }, [finaleProgress]);
 
   // Horizontal collection track scroll
@@ -123,25 +144,28 @@ const Index = () => {
       {/* ── 01 HERO ─────────────────────────────────────────── */}
       <section className="relative z-10 flex min-h-screen items-center justify-center px-6 md:px-14">
         <div className="mx-auto max-w-[1400px] text-center">
-          <p className="palace-eyebrow motion-reveal">
-            Kuratierte Ausstellung · Ausgabe 07 · Juli
-          </p>
-          <h1
-            className="palace-serif palace-line-rise mt-10 text-[#0C0C0E]"
-            style={{ fontSize: "clamp(3rem, 8.5vw, 8.2rem)", lineHeight: 0.94, letterSpacing: "-0.02em" }}
-          >
-            <span className="block font-light">{featuredCount} Designer,</span>
-            <span className="block italic font-light">die du noch nicht kennst.</span>
-          </h1>
-          <p className="mx-auto mt-10 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/75">
-            {personalSubtitle ?? `Mode · Interior · Kunst — ausgewählt aus ${atelierCount} unabhängigen Ateliers.`}
-          </p>
+          {/* Soft white plate keeps text legible over the 3D canvas without hiding the pawn */}
+          <div className="mx-auto max-w-[1100px] rounded-none px-2 py-6 md:px-8 md:py-10"
+               style={{ background: "radial-gradient(ellipse at center, rgba(241,238,231,.92) 0%, rgba(241,238,231,.72) 55%, rgba(241,238,231,0) 100%)" }}>
+            <p className="palace-eyebrow motion-reveal" style={{ color: "#55534E" }}>
+              Kuratierte Ausstellung · Ausgabe 07 · Juli
+            </p>
+            <h1
+              className="palace-serif palace-line-rise mt-8 text-[#0C0C0E]"
+              style={{ fontSize: "clamp(2.4rem, 6.5vw, 6.4rem)", lineHeight: 1.02, letterSpacing: "-0.02em" }}
+            >
+              <span className="block font-light">Mode, Interior und Kunst —</span>
+              <span className="block italic font-light">von unabhängigen Designern.</span>
+            </h1>
+            <p className="mx-auto mt-8 max-w-2xl text-[1.05rem] leading-[1.65] text-[#3A3833]">
+              {personalSubtitle ?? "PAWN ist die kuratierte Ausstellung, in der du sie zuerst entdeckst."}
+            </p>
 
+            <HeroPrompt />
+          </div>
 
-          <HeroPrompt />
-
-          <div className="mt-16 flex flex-col items-center gap-4">
-            <span className="palace-eyebrow">Scroll</span>
+          <div className="mt-14 flex flex-col items-center gap-4">
+            <span className="palace-eyebrow" style={{ color: "#55534E" }}>Scroll</span>
             <span className="palace-drip block h-14 w-px bg-[#0C0C0E]" />
           </div>
         </div>
@@ -243,31 +267,13 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ── 05 STATEMENT BANNER ─────────────────────────────── */}
-      {statement && (
-        <section className="relative z-10 min-h-[72vh] overflow-hidden">
-          <EditorialImage
-            seed={`banner-${statement.slug}`}
-            src={statement.hero_image_url ?? statement.banner_url}
-            ratio="16/9"
-            className="absolute inset-0 h-full w-full"
-          />
-          <div className="absolute inset-0 bg-[#0C0C0E]/45" />
-          <div className="relative flex min-h-[72vh] items-center justify-center px-6 text-center">
-            <Reveal>
-              <p className="palace-eyebrow text-white/60">Statement</p>
-              <blockquote className="mx-auto mt-8 max-w-3xl">
-                <p className="palace-serif italic font-light text-white" style={{ fontSize: "clamp(1.8rem, 4.5vw, 3.6rem)", lineHeight: 1.1 }}>
-                  „{statement.quote ?? "Der Raum trägt, was du sonst nirgends findest."}"
-                </p>
-                <cite className="mt-8 block not-italic palace-eyebrow text-white/70">
-                  {statement.quote_role ?? statement.brand_name}
-                </cite>
-              </blockquote>
-            </Reveal>
-          </div>
-        </section>
-      )}
+      {/* ── 05 STATEMENT BANNER — rotates through featured designers ── */}
+      <DynamicBanner />
+
+      {/* ── 05b PICK YOUR STYLE — swipe discovery ─────────── */}
+      <section className="relative z-10 border-y border-[rgba(12,12,14,.13)] bg-[#F1EEE7] py-24 md:py-32">
+        <PickYourStyle />
+      </section>
 
       {/* ── 06 CURATED COLLECTION · horizontal scroll ─────── */}
       <section ref={trackSectionRef} className="relative z-10 bg-[#F1EEE7]" style={{ height: "320vh" }}>
@@ -280,10 +286,10 @@ const Index = () => {
                   {collection.title}. <span className="italic">{collection.subtitle}</span>
                 </h2>
               </div>
-              <p className="palace-eyebrow hidden md:block">Scroll = seitwärts</p>
+              <p className="palace-eyebrow hidden md:block">Scroll = seitwärts · oder Pfeile</p>
             </div>
           </div>
-          <div className="mt-16 flex flex-1 items-center overflow-hidden">
+          <div className="relative mt-16 flex flex-1 items-center overflow-hidden">
             <div ref={trackInnerRef} className="flex gap-8 pl-6 md:pl-14 will-change-transform">
               {collection.items.map((it, i) => {
                 const p = productBySlug.get(it.product_slug);
@@ -311,6 +317,9 @@ const Index = () => {
               })}
               <div className="w-[10vw] shrink-0" />
             </div>
+
+            {/* Palace navigation arrows — advance one card at a time */}
+            <TrackArrows sectionRef={trackSectionRef} steps={collection.items.length} />
           </div>
         </div>
       </section>
@@ -435,17 +444,57 @@ function HeroPrompt() {
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); send(); }}
-      className="mx-auto mt-12 flex w-full max-w-2xl items-center gap-4 border-b border-[rgba(12,12,14,.28)] pb-3"
+      className="mx-auto mt-10 flex w-full max-w-2xl items-stretch border border-[rgba(12,12,14,.35)] bg-white shadow-[0_8px_30px_-18px_rgba(12,12,14,.35)]"
     >
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder='Frag PAWN — „zeig mir skulpturale Mäntel" oder „bring mich zur Kollektion von …"'
-        className="flex-1 bg-transparent py-2 text-left font-serif italic text-[1rem] text-[#0C0C0E] placeholder:text-[#0C0C0E]/40 focus:outline-none md:text-[1.1rem]"
+        placeholder='Frag PAWN — z.B. „skulpturale Mäntel"'
+        className="flex-1 bg-transparent px-5 py-4 text-left text-[1rem] text-[#0C0C0E] placeholder:text-[#55534E] focus:outline-none md:text-[1.05rem]"
         aria-label="Frag PAWN"
       />
-      <button type="submit" className="palace-eyebrow uline text-[#0C0C0E]">Fragen →</button>
+      <button
+        type="submit"
+        className="whitespace-nowrap bg-[#0C0C0E] px-6 text-[0.68rem] uppercase tracking-[0.32em] text-[#F1EEE7] transition-colors duration-300 hover:bg-[#3A3A3C]"
+      >
+        Fragen →
+      </button>
     </form>
+  );
+}
+
+function TrackArrows({ sectionRef, steps }: { sectionRef: React.RefObject<HTMLElement>; steps: number }) {
+  const scrollByCard = (dir: -1 | 1) => {
+    const sec = sectionRef.current;
+    if (!sec) return;
+    const rect = sec.getBoundingClientRect();
+    const pinDistance = sec.offsetHeight - window.innerHeight;
+    const step = pinDistance / Math.max(1, steps - 1);
+    // Nudge into the pinning window first if the user hasn't reached it.
+    const base = rect.top < 0 ? window.scrollY : window.scrollY + rect.top;
+    const target = base + Math.round(step * dir + (rect.top < 0 ? step * dir * 0 : 0));
+    window.scrollTo({ top: rect.top < 0 ? window.scrollY + dir * step : target, behavior: "smooth" });
+  };
+  const btn = "grid h-12 w-12 place-items-center rounded-full border border-[rgba(12,12,14,.35)] bg-[#F1EEE7]/85 text-[#0C0C0E] backdrop-blur transition-all duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7]";
+  return (
+    <div className="pointer-events-none absolute inset-0 hidden items-center justify-between px-4 md:flex md:px-8">
+      <button
+        type="button"
+        aria-label="Zurück"
+        onClick={() => scrollByCard(-1)}
+        className={`${btn} pointer-events-auto`}
+      >
+        <ChevronLeft className="h-5 w-5" strokeWidth={1.3} />
+      </button>
+      <button
+        type="button"
+        aria-label="Weiter"
+        onClick={() => scrollByCard(1)}
+        className={`${btn} pointer-events-auto`}
+      >
+        <ChevronRight className="h-5 w-5" strokeWidth={1.3} />
+      </button>
+    </div>
   );
 }
 

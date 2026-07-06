@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
+import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
@@ -147,6 +148,9 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
           </div>
         </section>
       )}
+
+      {/* Rotating banner — random featured designer of this world */}
+      <DynamicBanner world={world} minHeight="60vh" />
 
       {/* ── Grid ─────────────────────────────────────────── */}
       <section className="px-6 py-24 md:px-14 md:py-32">

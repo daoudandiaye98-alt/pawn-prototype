@@ -71,6 +71,7 @@ function persistCorrected(set: Set<string>) {
 function parseSignal(row: { id: string; at: string; payload: unknown }): Signal | null {
   const p = (row.payload ?? {}) as Record<string, unknown>;
   const message = typeof p.message === "string" ? p.message.toLowerCase() : "";
+  const verdict = typeof p.verdict === "string" ? p.verdict : "";
   const world =
     typeof p.world === "string" ? p.world :
     /interior|einrichtung|möbel|lampe|sofa|tisch/.test(message) ? "Interior" :
@@ -81,9 +82,12 @@ function parseSignal(row: { id: string; at: string; payload: unknown }): Signal 
     /ruhig|leise|zurückhaltend|minimal/.test(message) ? "ruhig" :
     /spannung|dramatisch|laut|kontrast/.test(message) ? "spannung" : "";
   const tag = typeof p.tag === "string" ? p.tag : "";
-  if (world) return { id: row.id, at: row.at, kind: "world", value: world, weight: 1, raw: p };
-  if (mood) return { id: row.id, at: row.at, kind: "mood", value: mood, weight: 1, raw: p };
-  if (tag) return { id: row.id, at: row.at, kind: "tag", value: tag, weight: 1, raw: p };
+  // Swipe signals from /style get twice the weight for likes, discount skips.
+  const w = verdict === "like" ? 2 : verdict === "skip" ? 0 : 1;
+  if (verdict === "skip") return null;
+  if (world) return { id: row.id, at: row.at, kind: "world", value: world, weight: w || 1, raw: p };
+  if (mood) return { id: row.id, at: row.at, kind: "mood", value: mood, weight: w || 1, raw: p };
+  if (tag) return { id: row.id, at: row.at, kind: "tag", value: tag, weight: w || 1, raw: p };
   if (message) return { id: row.id, at: row.at, kind: "message", value: message.slice(0, 80), weight: 0.4, raw: p };
   return null;
 }
