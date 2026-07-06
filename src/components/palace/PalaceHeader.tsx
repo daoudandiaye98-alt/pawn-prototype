@@ -80,19 +80,18 @@ export function PalaceHeader() {
         }`}
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
       >
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-6 py-5 md:px-10 md:py-6 lg:px-14">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-5 md:px-10 md:py-6 lg:gap-12 lg:px-14">
           {/* Wordmark — never wraps, fixed intrinsic width */}
           <Link
             to="/"
             aria-label="PAWN"
-            className="shrink-0 whitespace-nowrap font-serif text-[0.95rem] font-light uppercase tracking-[0.42em] text-[#0C0C0E]"
-            style={{ letterSpacing: "0.42em" }}
+            className="whitespace-nowrap font-serif text-[0.95rem] font-light uppercase tracking-[0.42em] text-[#0C0C0E]"
           >
             PAWN
           </Link>
 
-          {/* Desktop nav — appears at lg (>=1024px) so it never quetsched on iPad portrait */}
-          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-6 xl:gap-9 lg:flex">
+          {/* Desktop nav — collapses to burger below the lg breakpoint (1024px) */}
+          <nav className="hidden min-w-0 items-center justify-center gap-6 lg:flex xl:gap-9">
             {NAV.map((item) => (
               <NavLink
                 key={item.label}
@@ -108,7 +107,7 @@ export function PalaceHeader() {
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-3 justify-self-end md:gap-5">
             <button
               type="button"
               aria-label="Suche"
