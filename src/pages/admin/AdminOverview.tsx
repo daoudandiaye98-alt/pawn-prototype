@@ -431,84 +431,109 @@ function CommandDeck() {
         </Panel>
       </div>
 
-      {/* Row: Orders + Top Designers + System perf */}
+      {/* Row: Orders + Top Designers + System perf (real DB data) */}
       <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_1fr_1.1fr]">
-        <Panel title="Letzte Bestellungen" action={<Btn>Alle</Btn>}>
-          <table className="w-full text-[12px]">
-            <thead>
-              <tr className="text-left text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">
-                <th className="px-5 py-2.5 font-normal">Bestellung</th>
-                <th className="px-5 py-2.5 font-normal">Kunde</th>
-                <th className="px-5 py-2.5 font-normal">Status</th>
-                <th className="px-5 py-2.5 text-right font-normal">Betrag</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.slice(0, 6).map((o) => (
-                <tr key={o.id} className="border-t border-white/[0.05] transition-colors hover:bg-white/[0.02]">
-                  <td className="px-5 py-2.5 font-mono text-[11px] text-[hsl(36_20%_78%)]">{o.id}</td>
-                  <td className="px-5 py-2.5 text-[hsl(36_25%_88%)]">{o.customer}</td>
-                  <td className="px-5 py-2.5">
-                    <span className="border border-white/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.2em] text-[hsl(36_20%_78%)]">{o.status}</span>
-                  </td>
-                  <td className="px-5 py-2.5 text-right tabular-nums text-[hsl(36_28%_92%)]">€{o.total.toLocaleString("de-DE")}</td>
+        <Panel title="Letzte Bestellungen" eyebrow="live" action={<Btn onClick={() => navigate("/admin/zahlungen")}>Alle</Btn>}>
+          {ordersLoading ? (
+            <EmptyRow text="Lade …" />
+          ) : recentOrders.length === 0 ? (
+            <EmptyRow text="Noch keine Bestellungen." />
+          ) : (
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="text-left text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">
+                  <th className="px-5 py-2.5 font-normal">Bestellung</th>
+                  <th className="px-5 py-2.5 font-normal">Kunde</th>
+                  <th className="px-5 py-2.5 font-normal">Status</th>
+                  <th className="px-5 py-2.5 text-right font-normal">Betrag</th>
                 </tr>
+              </thead>
+              <tbody>
+                {recentOrders.map((o) => (
+                  <tr key={o.id} className="border-t border-white/[0.05] transition-colors hover:bg-white/[0.02]">
+                    <td className="px-5 py-2.5 font-mono text-[11px] text-[hsl(36_20%_78%)]">{o.short}</td>
+                    <td className="px-5 py-2.5 text-[hsl(36_25%_88%)]">{o.customer}</td>
+                    <td className="px-5 py-2.5">
+                      <span className="border border-white/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.2em] text-[hsl(36_20%_78%)]">{o.status}</span>
+                    </td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-[hsl(36_28%_92%)]">€{o.total.toLocaleString("de-DE")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+
+        <Panel title="Top Designer" eyebrow="Umsatz · 30T" action={<Btn onClick={() => navigate("/admin/designers")}>Alle</Btn>}>
+          {topLoading ? (
+            <EmptyRow text="Lade …" />
+          ) : topDesigners.length === 0 ? (
+            <EmptyRow text="Noch keine bezahlten Bestellungen in den letzten 30 Tagen." />
+          ) : (
+            <ul>
+              {topDesigners.map((d, i) => (
+                <li key={d.id} className="flex items-center justify-between border-t border-white/[0.05] px-5 py-2.5 text-[12px] first:border-t-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-4 text-[10px] tabular-nums text-[hsl(36_15%_50%)]">{i + 1}</span>
+                    <span className="flex h-6 w-6 items-center justify-center border border-white/10 font-serif text-[10px] text-[hsl(36_28%_92%)]">{d.name.slice(0, 2).toUpperCase()}</span>
+                    <span className="text-[hsl(36_25%_88%)]">{d.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="tabular-nums text-[hsl(36_28%_92%)]">€{d.revenue.toLocaleString("de-DE")}</span>
+                    <span className="text-[11px] text-[hsl(36_15%_55%)]">{d.orders} Pos.</span>
+                  </div>
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+          )}
         </Panel>
 
-        <Panel title="Top Designer" eyebrow="Umsatz · 30T" action={<Btn>Alle</Btn>}>
-          <ul>
-            {[["Y/PROJECT", 120, "+24%"], ["Rick Owens", 106, "+18%"], ["LEMAIRE", 92, "+16%"], ["1017 ALYX 9SM", 78, "+12%"], ["Our Legacy", 64, "+9%"]].map(([name, k, d], i) => (
-              <li key={String(name)} className="flex items-center justify-between border-t border-white/[0.05] px-5 py-2.5 text-[12px] first:border-t-0">
-                <div className="flex items-center gap-3">
-                  <span className="w-4 text-[10px] tabular-nums text-[hsl(36_15%_50%)]">{i + 1}</span>
-                  <span className="flex h-6 w-6 items-center justify-center border border-white/10 font-serif text-[10px] text-[hsl(36_28%_92%)]">{String(name).slice(0, 2)}</span>
-                  <span className="text-[hsl(36_25%_88%)]">{name}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="tabular-nums text-[hsl(36_28%_92%)]">€{k}K</span>
-                  <span className="text-[11px] text-emerald-300/90">{d}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-
-        <Panel title="System Performance" eyebrow="letzte 24 h">
+        <Panel title="Systemzahlen" eyebrow="letzte 24 h · echt">
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 py-4 sm:grid-cols-3">
             {[
-              { l: "API Latenz", v: "142ms", s: [130, 128, 135, 140, 138, 142, 141, 143, 142], c: "hsl(160 55% 55%)" },
-              { l: "Uptime", v: "99.98%", s: [99.9, 99.95, 99.98, 99.98, 99.98, 99.97, 99.98, 99.98], c: "hsl(160 55% 55%)" },
-              { l: "Events (24h)", v: "12.431", s: [400, 520, 480, 610, 700, 680, 730, 780], c: "hsl(220 60% 70%)" },
-              { l: "AI Requests", v: "3.247", s: [120, 160, 180, 210, 260, 300, 340, 360], c: "hsl(280 40% 70%)" },
-              { l: "Fehlerquote", v: "0.02%", s: [0.03, 0.02, 0.04, 0.02, 0.02, 0.03, 0.02, 0.02], c: "hsl(0 60% 55%)" },
-              { l: "Vector Ops", v: "18.9K", s: [12, 14, 15, 17, 16, 18, 19, 19], c: "hsl(350 55% 55%)" },
+              { l: "Events", v: sysStats.eventsLast24h.toLocaleString("de-DE") },
+              { l: "AI-Anfragen", v: sysStats.aiRequestsLast24h.toLocaleString("de-DE") },
+              { l: "Bestellungen", v: sysStats.ordersLast24h.toLocaleString("de-DE") },
+              { l: "Davon bezahlt", v: sysStats.paidOrdersLast24h.toLocaleString("de-DE") },
+              { l: "Aktive Designer", v: sysStats.designerCount.toLocaleString("de-DE") },
+              { l: "Session-Events", v: String(feed.length) },
             ].map((m) => (
               <div key={m.l}>
                 <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">{m.l}</p>
-                <p className="mt-1 font-serif text-[18px] text-[hsl(36_28%_94%)] tabular-nums">{m.v}</p>
-                <div className="mt-1 opacity-80"><Sparkline series={m.s} stroke={m.c} height={22} /></div>
+                <p className="mt-1 font-serif text-[18px] text-[hsl(36_28%_94%)] tabular-nums">
+                  {sysStats.loading ? "…" : m.v}
+                </p>
               </div>
             ))}
           </div>
         </Panel>
       </div>
 
-      {/* Quick actions — every one fires a real chain */}
+      {/* Quick actions — verdrahtet: Navigation oder Domain-Event-Dialog */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {[
-          { l: "Designer freigeben", i: UserPlus, chain: "designer.approve" as OsAction },
-          { l: "Prompt deployen", i: Bot, chain: "prompt.deploy" as OsAction },
-          { l: "Recommender rebuild", i: Cpu, chain: "recommender.rebuild" as OsAction },
-          { l: "Knowledge reindex", i: BookOpen, chain: "knowledge.reindex" as OsAction },
-          { l: "DNA rekomputieren", i: Dna, chain: "dna.recompute" as OsAction },
-          { l: "Broadcast senden", i: Activity, chain: "broadcast.send" as OsAction },
-        ].map((q) => {
+        {([
+          { l: "Designer freigeben", i: UserPlus, kind: "nav", route: "/admin/designers" },
+          { l: "Prompt deployen", i: Bot, kind: "nav", route: "/admin/ki" },
+          { l: "Recommender rebuild", i: Cpu, kind: "action", action: "recommender.rebuild",
+            title: "Recommendation Graph neu aufbauen",
+            description: "Erzeugt einen Rebuild-Auftrag im Ereignisstrom. Der Rebuild wird vom nächsten Rerank-Job aufgenommen." },
+          { l: "Knowledge reindex", i: BookOpen, kind: "action", action: "knowledge.reindex",
+            title: "Knowledge Graph reindizieren",
+            description: "Legt einen Reindex-Auftrag ab. Neue Dokumente und Entitäten werden im nächsten Zyklus eingelesen." },
+          { l: "DNA rekomputieren", i: Dna, kind: "action", action: "dna.recompute",
+            title: "DNA neu berechnen",
+            description: "Fordert eine Neuberechnung aller Kunden-Genome an — nachgelagert vom Signal-Batch verarbeitet." },
+          { l: "Broadcast senden", i: Activity, kind: "action", action: "broadcast.send",
+            title: "Broadcast an alle Designer",
+            description: "Erstellt einen Broadcast-Auftrag. Text und Zielsegmente werden in der Nachrichten-Console verfeinert." },
+        ] as const).map((q) => {
           const I = q.i;
+          const onClick = () => {
+            if (q.kind === "nav") { navigate(q.route); return; }
+            setActionDialog({ action: q.action, title: q.title, description: q.description });
+          };
           return (
-            <button key={q.l} onClick={() => fire(q.chain)}
+            <button key={q.l} onClick={onClick}
               className="group flex items-center gap-2 border border-white/10 bg-[hsl(18_10%_6%)] px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-[hsl(36_25%_84%)] transition-colors hover:border-[hsl(350_55%_35%)] hover:bg-[hsl(350_55%_10%)]/40">
               <I className="h-3.5 w-3.5 text-[hsl(350_55%_60%)] transition-transform group-hover:scale-110" />
               {q.l}
@@ -516,6 +541,27 @@ function CommandDeck() {
           );
         })}
       </div>
+
+      {actionDialog && (
+        <ActionDialog
+          title={actionDialog.title}
+          description={actionDialog.description}
+          onCancel={() => setActionDialog(null)}
+          onConfirm={async () => {
+            const label = actionDialog.title;
+            const action = actionDialog.action;
+            try {
+              await requestAdminAction(action);
+              fire(action as OsAction, { label: `${label} → beauftragt`, actor: "Owner" });
+              toast.success(`${label} — Auftrag erzeugt.`);
+            } catch (e) {
+              toast.error((e as Error)?.message ?? "Fehler beim Erzeugen.");
+            } finally {
+              setActionDialog(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
