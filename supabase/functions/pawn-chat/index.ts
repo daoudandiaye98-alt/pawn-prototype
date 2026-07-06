@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
     if (action) contextHint = `Der Nutzer hat gerade nach Navigation gefragt: ${action.label}. Antworte in EINEM kurzen warmen Satz, bestätige dass du ihn hinbringst. Keine Fragen.`;
 
     const system = admin ? await loadSystemPrompt(admin) : DEFAULT_SYSTEM;
-    const reply = (await callGateway(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
+    const reply = (await callProvider(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
 
     return new Response(JSON.stringify({ reply, cards, action, session_id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
