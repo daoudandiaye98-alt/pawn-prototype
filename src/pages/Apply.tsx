@@ -1,16 +1,39 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Upload, Loader2, X } from "lucide-react";
+import { z } from "zod";
 import { PublicHeader } from "@/components/pawn/PublicHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const accountSchema = z.object({
+  displayName: z.string().trim().min(2, "Bitte gib deinen Namen an."),
+  email: z.string().trim().email("Bitte gib eine gültige E-Mail an."),
+  password: z.string().min(8, "Mindestens 8 Zeichen."),
+});
+const profileSchema = z.object({
+  brandName: z.string().trim().min(2, "Brand-Name fehlt."),
+  location: z.string().trim().min(2, "Ort fehlt."),
+  country: z.string().trim().min(2, "Land fehlt."),
+});
+const aboutSchema = z.object({
+  story: z.string().trim().min(30, "Erzähl uns mindestens ein paar Sätze (30+ Zeichen)."),
+  tags: z.string().trim().min(2, "Mindestens einen Tag angeben."),
+});
 
 /**
  * Designer Application — persisted end-to-end.
