@@ -72,7 +72,17 @@ export default function Auth() {
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-12 space-y-8">
+        {mode === "up" && (
+          <div className="mt-10 border border-[rgba(12,12,14,.13)] bg-white/40 p-5 text-center">
+            <p className="palace-eyebrow">Registrieren als</p>
+            <div className="mt-3 flex items-center justify-center gap-6 text-[0.75rem] uppercase tracking-[0.28em]">
+              <span className="border-b border-[#0C0C0E] pb-1 text-[#0C0C0E]">Kunde</span>
+              <Link to="/apply" className="text-[#7C7972] hover:text-[#0C0C0E]">Designer →</Link>
+            </div>
+            <p className="mt-3 text-[0.7rem] text-[#7C7972]">Designer bewerben sich über /apply — dort erfährst du unser Angebot.</p>
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="mt-8 space-y-8">
           {mode === "up" && (
             <Field label="Name" value={displayName} onChange={setDisplayName} />
           )}
