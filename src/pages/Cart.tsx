@@ -1,16 +1,19 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Minus, Plus, X, ShieldCheck } from "lucide-react";
-import { PublicLayout } from "@/components/pawn/PublicLayout";
-import { Button } from "@/components/ui/button";
+import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { useCart } from "@/store/cart";
 import { useCartWardrobeImpact } from "@/features/dna/hooks";
-import { Panel, Insight } from "@/components/pawn/primitives";
+import { Insight } from "@/components/pawn/primitives";
 import { useCartStockLimits } from "@/features/commerce/hooks";
 import { CartRecommendations } from "@/features/commerce/CartRecommendations";
 import { toast } from "sonner";
 
+/**
+ * /cart — Palace-Layout, vollweiße Bestellkarte, deutsche Sprache.
+ * Leerer Cart lädt in die Ausstellung ein statt einer negativen Botschaft.
+ */
 const Cart = () => {
   const { items, setQty, remove, subtotal, count } = useCart();
   const impact = useCartWardrobeImpact(items.map((i) => i.product.id));
@@ -21,7 +24,7 @@ const Cart = () => {
     const max = limits[slug];
     const cap = max === undefined ? Number.POSITIVE_INFINITY : max;
     if (currentQty + 1 > cap) {
-      toast.error(cap === 0 ? "Ausverkauft." : `Nur noch ${cap} verfügbar.`);
+      toast.message(cap === 0 ? "Dieses Stück ist gerade vergriffen." : `Noch ${cap} auf Lager.`);
       return;
     }
     setQty(id, size, currentQty + 1);
@@ -29,67 +32,82 @@ const Cart = () => {
 
   if (items.length === 0) {
     return (
-      <PublicLayout>
-        <section className="editorial-container py-32 text-center">
-          <p className="editorial-eyebrow">Your bag</p>
-          <h1 className="mt-3 font-serif text-5xl md:text-6xl">An empty stage.</h1>
-          <p className="mx-auto mt-4 max-w-md text-muted-foreground">Nothing here yet. The boutique is waiting.</p>
-          <Button asChild className="mt-8 rounded-none">
-            <Link to="/shop">Enter the boutique</Link>
-          </Button>
+      <PalaceLayout>
+        <section className="mx-auto max-w-[1200px] px-6 py-32 pt-40 text-center md:px-14">
+          <p className="palace-eyebrow">Deine Tasche</p>
+          <h1
+            className="palace-serif mt-8 font-light text-[#0C0C0E]"
+            style={{ fontSize: "clamp(2.6rem, 6vw, 5rem)", lineHeight: 0.98, letterSpacing: "-0.02em" }}
+          >
+            Noch ist die Bühne <span className="italic">leer.</span>
+          </h1>
+          <p className="mx-auto mt-6 max-w-md text-[0.98rem] leading-relaxed text-[#0C0C0E]/75">
+            Ein Klick genügt — der Vorhang öffnet sich für dich.
+          </p>
+          <Link
+            to="/mode"
+            className="palace-btn mt-10 justify-center border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7] hover:bg-[#F1EEE7] hover:text-[#0C0C0E]"
+          >
+            Zur Ausstellung
+          </Link>
         </section>
-        <section className="editorial-container pb-24">
+        <section className="mx-auto max-w-[1400px] px-6 pb-24 md:px-14">
           <CartRecommendations variant="empty-cart" title="Deine DNA · Vorschläge" limit={3} />
         </section>
-      </PublicLayout>
+      </PalaceLayout>
     );
   }
 
   const shipping = 25;
 
   return (
-    <PublicLayout>
-      <div className="editorial-container py-14">
-        <p className="editorial-eyebrow">Your bag · {count} {count === 1 ? "piece" : "pieces"}</p>
-        <h1 className="mt-3 font-serif text-5xl">Bag</h1>
+    <PalaceLayout>
+      <div className="mx-auto max-w-[1400px] px-6 pt-32 md:px-14 md:pt-36">
+        <p className="palace-eyebrow">Deine Tasche · {count} {count === 1 ? "Stück" : "Stücke"}</p>
+        <h1
+          className="palace-serif mt-6 font-light text-[#0C0C0E]"
+          style={{ fontSize: "clamp(2.2rem, 5vw, 4rem)", lineHeight: 0.98, letterSpacing: "-0.02em" }}
+        >
+          Tasche
+        </h1>
 
-        <div className="mt-12 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
-          <ul className="divide-y divide-border border-y border-border">
+        <div className="mt-14 grid gap-12 lg:grid-cols-[1.5fr_1fr]">
+          <ul className="divide-y divide-[rgba(12,12,14,.13)] border-y border-[rgba(12,12,14,.13)]">
             {items.map((i) => {
               const max = limits[i.product.slug];
               const atCap = max !== undefined && Number.isFinite(max) && i.qty >= max;
               return (
-                <li key={i.product.id + i.size} className="grid grid-cols-[120px_1fr_auto] items-start gap-6 py-6">
-                  <ProductImage seed={i.product.slug} className="aspect-[3/4] w-[120px]" />
+                <li key={i.product.id + i.size} className="grid grid-cols-[110px_1fr_auto] items-start gap-6 py-6 md:grid-cols-[140px_1fr_auto]">
+                  <ProductImage seed={i.product.slug} className="aspect-[3/4] w-full" />
                   <div>
-                    <p className="editorial-eyebrow">{i.product.designer}</p>
-                    <Link to={`/product/${i.product.slug}`} className="mt-1 block font-serif text-2xl hover:underline">
+                    <p className="palace-eyebrow">{i.product.designer}</p>
+                    <Link to={`/product/${i.product.slug}`} className="palace-serif mt-2 block text-[1.4rem] italic text-[#0C0C0E] hover:underline">
                       {i.product.name}
                     </Link>
-                    <p className="mt-1 text-xs text-muted-foreground">Size {i.size}</p>
+                    <p className="mt-1 text-[0.85rem] text-[#55534E]">Größe {i.size}</p>
                     {max !== undefined && Number.isFinite(max) && (
-                      <p className="mt-1 text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">
-                        {max === 0 ? "Ausverkauft" : `Noch ${max} verfügbar`}
+                      <p className="mt-1 text-[0.6rem] uppercase tracking-[0.28em] text-[#8F8B82]">
+                        {max === 0 ? "Vergriffen" : `Noch ${max} auf Lager`}
                       </p>
                     )}
-                    <div className="mt-4 inline-flex items-center border border-border">
-                      <button className="px-2 py-1 hover:bg-secondary"
-                        onClick={() => setQty(i.product.id, i.size, i.qty - 1)} aria-label="Decrease">
+                    <div className="mt-4 inline-flex items-center border border-[rgba(12,12,14,.28)] bg-white">
+                      <button className="px-3 py-1.5 text-[#0C0C0E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                        onClick={() => setQty(i.product.id, i.size, i.qty - 1)} aria-label="Weniger">
                         <Minus className="h-3 w-3" />
                       </button>
-                      <span className="px-3 text-sm tabular-nums">{i.qty}</span>
-                      <button className="px-2 py-1 hover:bg-secondary disabled:opacity-30"
+                      <span className="px-3 text-[0.95rem] tabular-nums text-[#0C0C0E]">{i.qty}</span>
+                      <button className="px-3 py-1.5 text-[#0C0C0E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7] disabled:opacity-30"
                         disabled={atCap}
-                        onClick={() => tryIncrement(i.product.slug, i.qty, i.product.id, i.size)} aria-label="Increase">
+                        onClick={() => tryIncrement(i.product.slug, i.qty, i.product.id, i.size)} aria-label="Mehr">
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="tabular-nums">€{(i.product.price * i.qty).toLocaleString("de-DE")}</p>
+                    <p className="palace-serif italic text-[1.15rem] tabular-nums text-[#0C0C0E]">€{(i.product.price * i.qty).toLocaleString("de-DE")}</p>
                     <button onClick={() => remove(i.product.id, i.size)}
-                      className="mt-3 inline-flex items-center gap-1 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground">
-                      <X className="h-3 w-3" /> Remove
+                      className="mt-3 inline-flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] text-[#55534E] hover:text-[#0C0C0E]">
+                      <X className="h-3 w-3" /> Entfernen
                     </button>
                   </div>
                 </li>
@@ -100,34 +118,44 @@ const Cart = () => {
           <aside className="h-fit space-y-6">
             {impact.dominant && (
               <Insight
-                title={`This bag pushes you toward ${impact.dominantLabel}.`}
-                cause={`+${impact.delta} pts to your ${impact.dominantLabel.toLowerCase()} signature`}
-                effect="Your next DNA reading will reflect the shift."
+                title={`Diese Auswahl schärft dein ${impact.dominantLabel}.`}
+                cause={`+${impact.delta} Punkte auf deine ${impact.dominantLabel.toLowerCase()}-Signatur`}
+                effect="Deine nächste DNA-Lesung nimmt das auf."
                 severity="medium"
               />
             )}
-            <Panel eyebrow="Order" title="Order summary" padding="none">
+            <div className="border border-[rgba(12,12,14,.13)] bg-white">
+              <div className="border-b border-[rgba(12,12,14,.09)] px-6 py-4">
+                <p className="palace-eyebrow">Bestellung</p>
+              </div>
               <div className="p-6 md:p-8">
-                <dl className="space-y-3 text-sm">
-                  <Row label="Subtotal" value={`€${subtotal.toLocaleString("de-DE")}`} />
-                  <Row label="Shipping" value={`€${shipping}`} />
-                  <div className="editorial-rule my-3" />
-                  <Row label={<span className="t-display-sm">Total</span>} value={<span className="t-display-sm">€{(subtotal + shipping).toLocaleString("de-DE")}</span>} />
+                <dl className="space-y-3 text-[0.95rem] text-[#0C0C0E]">
+                  <Row label="Zwischensumme" value={`€${subtotal.toLocaleString("de-DE")}`} />
+                  <Row label="Versand" value={`€${shipping}`} />
+                  <div className="h-px bg-[rgba(12,12,14,.13)] my-3" />
+                  <Row
+                    label={<span className="palace-serif italic text-[1.15rem]">Gesamt</span>}
+                    value={<span className="palace-serif italic text-[1.15rem] tabular-nums">€{(subtotal + shipping).toLocaleString("de-DE")}</span>}
+                  />
                 </dl>
-                <Button asChild size="lg" className="mt-8 w-full rounded-none bg-[hsl(var(--oxblood))] text-[hsl(var(--accent-foreground))] uppercase tracking-[0.18em] hover:opacity-90">
-                  <Link to="/checkout">Proceed to checkout</Link>
-                </Button>
-                <p className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[hsl(var(--oxblood))]" /> Secure payment · encrypted checkout
+                <Link
+                  to="/checkout"
+                  className="palace-btn mt-8 w-full justify-center border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7] hover:bg-[#F1EEE7] hover:text-[#0C0C0E]"
+                >
+                  Zur Kasse
+                </Link>
+                <p className="mt-4 flex items-center justify-center gap-2 text-[0.75rem] text-[#55534E]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#0C0C0E]" /> Sichere Bezahlung · verschlüsselt
                 </p>
               </div>
-            </Panel>
+            </div>
           </aside>
         </div>
 
         <CartRecommendations variant="in-cart" title="Passt dazu" limit={3} />
+        <div className="h-24" />
       </div>
-    </PublicLayout>
+    </PalaceLayout>
   );
 };
 

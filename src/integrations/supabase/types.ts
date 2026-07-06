@@ -584,16 +584,22 @@ export type Database = {
       designers: {
         Row: {
           application_id: string | null
+          atelier_caption: string | null
+          atelier_image_url: string | null
           avatar_url: string | null
           banner_url: string | null
           brand_name: string
+          collection_title: string | null
           country: string | null
           created_at: string
           hero_image_url: string | null
+          house_number: number | null
           id: string
           instagram: string | null
           is_featured: boolean
           location: string | null
+          manifesto: string | null
+          portrait_url: string | null
           published: boolean
           quote: string | null
           quote_role: string | null
@@ -608,16 +614,22 @@ export type Database = {
         }
         Insert: {
           application_id?: string | null
+          atelier_caption?: string | null
+          atelier_image_url?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           brand_name: string
+          collection_title?: string | null
           country?: string | null
           created_at?: string
           hero_image_url?: string | null
+          house_number?: number | null
           id?: string
           instagram?: string | null
           is_featured?: boolean
           location?: string | null
+          manifesto?: string | null
+          portrait_url?: string | null
           published?: boolean
           quote?: string | null
           quote_role?: string | null
@@ -632,16 +644,22 @@ export type Database = {
         }
         Update: {
           application_id?: string | null
+          atelier_caption?: string | null
+          atelier_image_url?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           brand_name?: string
+          collection_title?: string | null
           country?: string | null
           created_at?: string
           hero_image_url?: string | null
+          house_number?: number | null
           id?: string
           instagram?: string | null
           is_featured?: boolean
           location?: string | null
+          manifesto?: string | null
+          portrait_url?: string | null
           published?: boolean
           quote?: string | null
           quote_role?: string | null

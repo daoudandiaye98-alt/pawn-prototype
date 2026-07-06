@@ -85,7 +85,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           {messages.map((m, i) => (
             <div key={i} className={m.role === "assistant" ? "" : "text-right"}>
               {m.meta === "consent" ? (
-                <p className="border border-[rgba(12,12,14,.13)] bg-white/40 px-3 py-2 text-[0.7rem] leading-relaxed text-[#7C7972]">
+                <p className="border border-[rgba(12,12,14,.13)] bg-white px-3 py-2 text-[0.7rem] leading-relaxed text-[#7C7972]">
                   {t("chat.consent")}{" "}
                   <Link to="/datenschutz" onClick={onClose} className="underline hover:text-[#0C0C0E]">/datenschutz</Link>.
                 </p>
@@ -110,7 +110,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     <div className="mt-4 space-y-2">
                       {m.cards.map((c, k) => (
                         <Link key={k} to={c.href} onClick={onClose}
-                          className="block border border-[rgba(12,12,14,.13)] bg-white/50 px-4 py-3 transition-colors hover:border-[#0C0C0E]">
+                          className="block border border-[rgba(12,12,14,.13)] bg-white px-4 py-3 transition-colors hover:border-[#0C0C0E]">
                           <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#7C7972]">
                             {c.kind === "product" ? "Stück" : "Designer"}{c.subtitle ? ` · ${c.subtitle}` : ""}
                           </p>
