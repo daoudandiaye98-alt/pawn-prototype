@@ -6,6 +6,13 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
 
+/**
+ * Palace header.
+ * - Logo is a single non-wrapping wordmark (fixed width).
+ * - Nav collapses into the burger menu below the `lg` breakpoint (1024px)
+ *   so we never quetsch items on iPad and 13" laptops.
+ * - All nav items and utility buttons use whitespace-nowrap.
+ */
 export function PalaceHeader() {
   const { user, roles, signOut } = useAuth();
   const { locale, setLocale, t } = useI18n();
@@ -14,6 +21,7 @@ export function PalaceHeader() {
     { label: t("nav.interior"), to: "/interior" },
     { label: t("nav.kunst"), to: "/kunst" },
     { label: t("nav.designer"), to: "/designers" },
+    { label: "Style", to: "/style" },
     { label: "Deine DNA", to: "/dna" },
     { label: t("nav.forDesigners"), to: "/apply" },
   ];
@@ -67,28 +75,31 @@ export function PalaceHeader() {
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-700 ${
           scrolled
-            ? "border-b border-[rgba(12,12,14,.13)] bg-[#F1EEE7]/85 backdrop-blur-md"
-            : "border-b border-transparent bg-gradient-to-b from-[#F1EEE7]/70 to-transparent backdrop-blur-[2px]"
+            ? "border-b border-[rgba(12,12,14,.13)] bg-[#F1EEE7]/90 backdrop-blur-md"
+            : "border-b border-transparent bg-gradient-to-b from-[#F1EEE7]/75 to-transparent backdrop-blur-[3px]"
         }`}
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
       >
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-5 md:px-14 md:py-6">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-6 py-5 md:px-10 md:py-6 lg:px-14">
+          {/* Wordmark — never wraps, fixed intrinsic width */}
           <Link
             to="/"
             aria-label="PAWN"
-            className="font-serif text-[0.9rem] font-light uppercase tracking-[0.42em] text-[#0C0C0E]"
+            className="shrink-0 whitespace-nowrap font-serif text-[0.95rem] font-light uppercase tracking-[0.42em] text-[#0C0C0E]"
+            style={{ letterSpacing: "0.42em" }}
           >
-            P A W N
+            PAWN
           </Link>
 
-          <nav className="hidden items-center gap-10 md:flex">
+          {/* Desktop nav — appears at lg (>=1024px) so it never quetsched on iPad portrait */}
+          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-6 xl:gap-9 lg:flex">
             {NAV.map((item) => (
               <NavLink
                 key={item.label}
                 to={item.to}
                 className={({ isActive }) =>
-                  `text-[0.7rem] uppercase tracking-[0.32em] transition-colors duration-300 ${
-                    isActive ? "text-[#0C0C0E]" : "text-[#7C7972] hover:text-[#0C0C0E]"
+                  `whitespace-nowrap text-[0.68rem] uppercase tracking-[0.28em] transition-colors duration-300 ${
+                    isActive ? "text-[#0C0C0E]" : "text-[#55534E] hover:text-[#0C0C0E]"
                   }`
                 }
               >
@@ -97,48 +108,47 @@ export function PalaceHeader() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex shrink-0 items-center gap-3 md:gap-5">
             <button
               type="button"
               aria-label="Suche"
               onClick={() => setSearchOpen(true)}
-              className="hidden text-[#7C7972] hover:text-[#0C0C0E] md:inline-flex"
+              className="hidden text-[#55534E] hover:text-[#0C0C0E] md:inline-flex"
             >
               <Search className="h-4 w-4" strokeWidth={1.2} />
             </button>
 
             <button
               onClick={() => setChatOpen(true)}
-              className="hidden items-center gap-2 border border-[rgba(12,12,14,.28)] px-4 py-2 text-[0.62rem] uppercase tracking-[0.36em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] md:flex"
+              className="hidden items-center gap-2 whitespace-nowrap border border-[rgba(12,12,14,.32)] px-3 py-2 text-[0.62rem] uppercase tracking-[0.3em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] lg:flex xl:px-4"
             >
               <span className="h-[6px] w-[6px] rounded-full bg-[#0C0C0E]" />
               {t("nav.frag")}
             </button>
 
-
             <button
               type="button"
               onClick={() => setLocale(locale === "de" ? "en" : "de")}
-              className="hidden text-[0.6rem] uppercase tracking-[0.32em] text-[#7C7972] hover:text-[#0C0C0E] md:inline"
+              className="hidden whitespace-nowrap text-[0.6rem] uppercase tracking-[0.28em] text-[#55534E] hover:text-[#0C0C0E] xl:inline"
               aria-label="Sprache wechseln"
             >
               {locale.toUpperCase()} · {locale === "de" ? "EN" : "DE"}
             </button>
 
             {user ? (
-              <div ref={accountRef} className="relative hidden md:block">
+              <div ref={accountRef} className="relative hidden lg:block">
                 <button
                   type="button"
                   aria-label="Konto"
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="text-[#7C7972] hover:text-[#0C0C0E]"
+                  className="text-[#55534E] hover:text-[#0C0C0E]"
                 >
                   <User className="h-4 w-4" strokeWidth={1.2} />
                 </button>
                 {accountOpen && (
                   <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
                     <div className="border-b border-[rgba(12,12,14,.09)] px-5 py-4">
-                      <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#7C7972]">Zutritt</p>
+                      <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#55534E]">Zutritt</p>
                       <p className="mt-1 font-serif text-[0.95rem] italic text-[#0C0C0E]">
                         {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : "Sammlung"}
                       </p>
@@ -151,7 +161,7 @@ export function PalaceHeader() {
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#7C7972] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
                     >
                       Abmelden
                     </button>
@@ -162,7 +172,7 @@ export function PalaceHeader() {
               <Link
                 to="/auth"
                 aria-label="Anmelden"
-                className="hidden text-[#7C7972] hover:text-[#0C0C0E] md:inline-flex"
+                className="hidden text-[#55534E] hover:text-[#0C0C0E] lg:inline-flex"
               >
                 <User className="h-4 w-4" strokeWidth={1.2} />
               </Link>
@@ -172,7 +182,7 @@ export function PalaceHeader() {
               type="button"
               aria-label="Menü öffnen"
               onClick={() => setMenuOpen(true)}
-              className="md:hidden text-[#0C0C0E]"
+              className="text-[#0C0C0E] lg:hidden"
             >
               <Menu className="h-5 w-5" strokeWidth={1.2} />
             </button>
@@ -180,14 +190,14 @@ export function PalaceHeader() {
         </div>
       </header>
 
-      {/* Mobile fullscreen menu */}
+      {/* Mobile / tablet fullscreen menu */}
       <div
-        className={`fixed inset-0 z-[90] flex flex-col bg-[#F1EEE7] transition-opacity duration-500 md:hidden ${
+        className={`fixed inset-0 z-[90] flex flex-col bg-[#F1EEE7] transition-opacity duration-500 lg:hidden ${
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
         <div className="flex items-center justify-between px-6 py-5">
-          <span className="font-serif text-[0.9rem] uppercase tracking-[0.42em] text-[#0C0C0E]">P A W N</span>
+          <span className="whitespace-nowrap font-serif text-[0.95rem] uppercase tracking-[0.42em] text-[#0C0C0E]">PAWN</span>
           <button
             type="button"
             aria-label="Menü schließen"
@@ -203,7 +213,7 @@ export function PalaceHeader() {
               key={item.label}
               to={item.to}
               onClick={() => setMenuOpen(false)}
-              className="font-serif text-[2.6rem] font-light leading-[0.98] text-[#0C0C0E]"
+              className="whitespace-nowrap font-serif text-[2.4rem] font-light leading-[0.98] text-[#0C0C0E]"
             >
               {item.label}
             </NavLink>
@@ -222,7 +232,7 @@ export function PalaceHeader() {
               <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Konto</Link>
               {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Studio</Link>}
               {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Admin-Cockpit</Link>}
-              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#7C7972]">Abmelden</button>
+              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#55534E]">Abmelden</button>
             </>
           ) : (
             <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Anmelden</Link>
