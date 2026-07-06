@@ -534,6 +534,47 @@ export type Database = {
           },
         ]
       }
+      designer_payout_profiles: {
+        Row: {
+          account_holder: string
+          bic: string | null
+          created_at: string
+          designer_id: string
+          iban: string
+          id: string
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_holder: string
+          bic?: string | null
+          created_at?: string
+          designer_id: string
+          iban: string
+          id?: string
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_holder?: string
+          bic?: string | null
+          created_at?: string
+          designer_id?: string
+          iban?: string
+          id?: string
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_payout_profiles_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designers: {
         Row: {
           application_id: string | null
@@ -696,6 +737,82 @@ export type Database = {
           },
         ]
       }
+      message_threads: {
+        Row: {
+          category: Database["public"]["Enums"]["message_category"]
+          created_at: string
+          created_by: string
+          designer_id: string
+          id: string
+          last_message_at: string
+          status: Database["public"]["Enums"]["message_status"]
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["message_category"]
+          created_at?: string
+          created_by: string
+          designer_id: string
+          id?: string
+          last_message_at?: string
+          status?: Database["public"]["Enums"]["message_status"]
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["message_category"]
+          created_at?: string
+          created_by?: string
+          designer_id?: string
+          id?: string
+          last_message_at?: string
+          status?: Database["public"]["Enums"]["message_status"]
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_threads_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sender_id: string
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "message_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
@@ -726,6 +843,45 @@ export type Database = {
           title?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          amount_total: number
+          created_at: string
+          currency: string
+          customer_email: string | null
+          id: string
+          items: Json
+          status: Database["public"]["Enums"]["order_status"]
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount_total?: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          id?: string
+          items?: Json
+          status?: Database["public"]["Enums"]["order_status"]
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount_total?: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          id?: string
+          items?: Json
+          status?: Database["public"]["Enums"]["order_status"]
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -882,6 +1038,14 @@ export type Database = {
         | "approved"
         | "published"
         | "declined"
+      message_category:
+        | "allgemein"
+        | "auszahlung"
+        | "kampagne"
+        | "produkt"
+        | "technik"
+      message_status: "open" | "closed"
+      order_status: "pending" | "paid" | "failed" | "refunded"
       product_status: "draft" | "published" | "archived"
       product_world: "Mode" | "Interior" | "Kunst"
     }
@@ -1022,6 +1186,15 @@ export const Constants = {
         "published",
         "declined",
       ],
+      message_category: [
+        "allgemein",
+        "auszahlung",
+        "kampagne",
+        "produkt",
+        "technik",
+      ],
+      message_status: ["open", "closed"],
+      order_status: ["pending", "paid", "failed", "refunded"],
       product_status: ["draft", "published", "archived"],
       product_world: ["Mode", "Interior", "Kunst"],
     },
