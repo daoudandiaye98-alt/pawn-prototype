@@ -8,6 +8,7 @@ import { useCart } from "@/store/cart";
 import { useCartWardrobeImpact } from "@/features/dna/hooks";
 import { Panel, Insight } from "@/components/pawn/primitives";
 import { useCartStockLimits } from "@/features/commerce/hooks";
+import { CartRecommendations } from "@/features/commerce/CartRecommendations";
 import { toast } from "sonner";
 
 const Cart = () => {
