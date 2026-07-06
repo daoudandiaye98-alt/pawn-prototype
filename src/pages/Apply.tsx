@@ -333,9 +333,21 @@ const Apply = () => {
                             <p className="font-serif text-lg">{c.title}</p>
                             <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">v{c.version}</span>
                           </div>
-                          <div className="max-h-40 overflow-y-auto whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-                            {c.body_markdown}
-                          </div>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button type="button" className="text-xs uppercase tracking-[0.22em] text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                                Vertragstext lesen →
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto rounded-none">
+                              <DialogHeader>
+                                <DialogTitle className="font-serif text-2xl">{c.title} · v{c.version}</DialogTitle>
+                              </DialogHeader>
+                              <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                                {c.body_markdown}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                           <label className="mt-3 flex cursor-pointer items-start gap-3 border-t border-border pt-3 text-sm">
                             <Checkbox
                               checked={!!accepted[c.id]}
