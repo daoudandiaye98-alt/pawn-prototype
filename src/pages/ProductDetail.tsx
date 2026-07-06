@@ -320,4 +320,10 @@ const ProductDetail = () => {
 
 };
 
+function PrevNextForProduct({ slug }: { slug: string }) {
+  const { prev, next } = useProductPrevNext(slug);
+  if (!prev && !next) return null;
+  return <PrevNext prev={prev} next={next} />;
+}
+
 export default ProductDetail;
