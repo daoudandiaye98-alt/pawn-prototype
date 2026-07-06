@@ -745,6 +745,7 @@ export type Database = {
           designer_id: string
           id: string
           last_message_at: string
+          product_id: string | null
           status: Database["public"]["Enums"]["message_status"]
           subject: string
           updated_at: string
@@ -756,6 +757,7 @@ export type Database = {
           designer_id: string
           id?: string
           last_message_at?: string
+          product_id?: string | null
           status?: Database["public"]["Enums"]["message_status"]
           subject: string
           updated_at?: string
@@ -767,6 +769,7 @@ export type Database = {
           designer_id?: string
           id?: string
           last_message_at?: string
+          product_id?: string | null
           status?: Database["public"]["Enums"]["message_status"]
           subject?: string
           updated_at?: string
@@ -777,6 +780,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_threads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -887,45 +897,69 @@ export type Database = {
       }
       products: {
         Row: {
+          allow_custom_requests: boolean
+          compare_at_price: number | null
           created_at: string
           description: string | null
           designer_id: string
           id: string
           image_url: string | null
+          inventory_mode: Database["public"]["Enums"]["inventory_mode"]
+          lead_time_days: number | null
           name: string
           price: number
+          sku: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
+          stock_quantity: number
           tags: string[]
           updated_at: string
+          variants: Json
+          weight_grams: number | null
           world: Database["public"]["Enums"]["product_world"]
         }
         Insert: {
+          allow_custom_requests?: boolean
+          compare_at_price?: number | null
           created_at?: string
           description?: string | null
           designer_id: string
           id?: string
           image_url?: string | null
+          inventory_mode?: Database["public"]["Enums"]["inventory_mode"]
+          lead_time_days?: number | null
           name: string
           price?: number
+          sku?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
+          stock_quantity?: number
           tags?: string[]
           updated_at?: string
+          variants?: Json
+          weight_grams?: number | null
           world?: Database["public"]["Enums"]["product_world"]
         }
         Update: {
+          allow_custom_requests?: boolean
+          compare_at_price?: number | null
           created_at?: string
           description?: string | null
           designer_id?: string
           id?: string
           image_url?: string | null
+          inventory_mode?: Database["public"]["Enums"]["inventory_mode"]
+          lead_time_days?: number | null
           name?: string
           price?: number
+          sku?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
+          stock_quantity?: number
           tags?: string[]
           updated_at?: string
+          variants?: Json
+          weight_grams?: number | null
           world?: Database["public"]["Enums"]["product_world"]
         }
         Relationships: [
@@ -992,6 +1026,35 @@ export type Database = {
         }
         Relationships: []
       }
+      wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1004,6 +1067,10 @@ export type Database = {
       approve_designer: { Args: { _application_id: string }; Returns: string }
       archive_application: {
         Args: { _application_id: string }
+        Returns: undefined
+      }
+      decrement_stock_for_order: {
+        Args: { _product_id: string; _qty: number }
         Returns: undefined
       }
       has_role: {
@@ -1038,6 +1105,7 @@ export type Database = {
         | "approved"
         | "published"
         | "declined"
+      inventory_mode: "stock" | "made_to_order"
       message_category:
         | "allgemein"
         | "auszahlung"
@@ -1186,6 +1254,7 @@ export const Constants = {
         "published",
         "declined",
       ],
+      inventory_mode: ["stock", "made_to_order"],
       message_category: [
         "allgemein",
         "auszahlung",

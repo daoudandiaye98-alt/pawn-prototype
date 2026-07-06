@@ -37,11 +37,18 @@ Deno.serve(async (req) => {
           payload: { order_id: order.id, amount: order.amount_total, currency: order.currency },
           schema_version: 1,
         });
-        // Notify related designers (best-effort based on product slugs in items)
+        // Notify related designers + decrement stock (best-effort based on product slugs in items)
         try {
-          const slugs = (order.items as { slug?: string }[] ?? []).map((i) => i.slug).filter(Boolean) as string[];
+          const items = (order.items as { slug?: string; qty?: number }[] ?? []);
+          const slugs = items.map((i) => i.slug).filter(Boolean) as string[];
           if (slugs.length) {
-            const { data: prods } = await admin.from("products").select("designer_id, name").in("slug", slugs);
+            const { data: prods } = await admin.from("products").select("id, designer_id, name, slug, inventory_mode").in("slug", slugs);
+            // Decrement stock per line item
+            for (const item of items) {
+              const prod = (prods ?? []).find((p) => p.slug === item.slug);
+              if (!prod || prod.inventory_mode !== "stock") continue;
+              await admin.rpc("decrement_stock_for_order", { _product_id: prod.id, _qty: Math.max(1, item.qty ?? 1) });
+            }
             const designerIds = Array.from(new Set((prods ?? []).map((p) => p.designer_id).filter(Boolean)));
             if (designerIds.length) {
               const { data: designers } = await admin.from("designers").select("user_id, brand_name").in("id", designerIds);
@@ -51,7 +58,7 @@ Deno.serve(async (req) => {
                   user_id: d.user_id, type: "order.received",
                   title: "Ein Stück fand ein Zuhause.",
                   body: `Eine Bestellung mit einem deiner Werke ist eingegangen.`,
-                  link: "/studio",
+                  link: "/studio/bestellungen",
                 });
               }
             }

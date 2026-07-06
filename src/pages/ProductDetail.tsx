@@ -11,36 +11,55 @@ import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { useRoomShift } from "@/features/os/roomShift";
+import { useDbProductBySlug } from "@/features/products/useDbProduct";
+import { useWishlist } from "@/features/wishlist/useWishlist";
+import { createCustomRequestThread } from "@/features/messages/customRequest";
+import { useAuth } from "@/lib/auth";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
   const slug = params.slug ?? params.id ?? "asymmetric-coat";
+  const { user } = useAuth();
 
+  const { product: dbProduct } = useDbProductBySlug(slug);
   const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug) ?? marketplaceSelectors.getAllProducts(s)[0]);
   const designer = useStore((s) => marketplaceSelectors.getDesignerById(s, coreProduct.designerId as string));
   const cart = useCart();
   const { push } = useRoomShift();
+  const wishlist = useWishlist();
 
   const product = useMemo(() => toProductView(coreProduct, designer), [coreProduct, designer]);
 
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
   const [saved, setSaved] = useState(false);
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqBody, setReqBody] = useState("");
+  const [reqBudget, setReqBudget] = useState("");
+  const [reqBusy, setReqBusy] = useState(false);
 
   const match = useDnaMatch(product.id);
   const { viewProduct, saveProduct } = useCustomerEvents();
 
-  useEffect(() => {
-    viewProduct(product.id);
-  }, [product.id, viewProduct]);
+  useEffect(() => { viewProduct(product.id); }, [product.id, viewProduct]);
 
   useEffect(() => {
     setSize(product.sizes[0]);
     setColor(product.colors[0]);
   }, [product.id, product.sizes, product.colors]);
 
+  const wished = dbProduct ? wishlist.has(dbProduct.id) : false;
+  const isMto = dbProduct?.inventory_mode === "made_to_order";
+  const stock = dbProduct?.inventory_mode === "stock" ? dbProduct.stock_quantity : null;
+  const soldOut = stock === 0;
+  const lowStock = stock !== null && stock > 0 && stock < 5;
+  const dbVariants = (dbProduct?.variants ?? []) as { name: string; options: string[] }[];
+  const canRequest = !!dbProduct?.allow_custom_requests;
+
   function addToBag() {
+    if (soldOut) { toast.error("Ausverkauft."); return; }
     cart.add(product, size);
     push(`${product.name} betritt das Brett.`);
     toast.success("Zur Tasche hinzugefügt.");
@@ -49,7 +68,32 @@ const ProductDetail = () => {
   function onSave() {
     saveProduct(product.id);
     setSaved(true);
+    if (dbProduct) void wishlist.toggle(dbProduct.id);
   }
+
+  async function submitRequest() {
+    if (!user) { toast.error("Bitte anmelden."); return; }
+    if (!dbProduct?.designers?.id) { toast.error("Designer nicht verfügbar."); return; }
+    if (reqBody.trim().length < 10) { toast.error("Bitte beschreibe deinen Wunsch etwas ausführlicher."); return; }
+    setReqBusy(true);
+    try {
+      await createCustomRequestThread({
+        userId: user.id,
+        designerId: dbProduct.designers.id,
+        productId: dbProduct.id,
+        productName: dbProduct.name,
+        body: reqBody.trim(),
+        budget: reqBudget.trim() || undefined,
+      });
+      toast.success("Anfrage gesendet.");
+      setReqOpen(false); setReqBody(""); setReqBudget("");
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Fehler beim Senden.");
+    } finally {
+      setReqBusy(false);
+    }
+  }
+
 
   return (
     <PalaceLayout transparentHeader={false}>
@@ -94,13 +138,52 @@ const ProductDetail = () => {
                 >
                   {product.designer} →
                 </Link>
-                <p className="mt-8 palace-serif text-[1.4rem] tabular-nums text-[#0C0C0E]">
-                  €{product.price.toLocaleString("de-DE")}
-                </p>
+                <div className="mt-8 flex items-baseline gap-3">
+                  <p className="palace-serif text-[1.4rem] tabular-nums text-[#0C0C0E]">
+                    €{(dbProduct?.price ?? product.price).toLocaleString("de-DE")}
+                  </p>
+                  {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
+                    <span className="palace-eyebrow text-[#7C7972] line-through">€{Number(dbProduct.compare_at_price).toLocaleString("de-DE")}</span>
+                  )}
+                </div>
+
+                {/* Availability badges */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {isMto && (
+                    <span className="border border-[rgba(12,12,14,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#0C0C0E]">
+                      Auf Anfertigung{dbProduct?.lead_time_days ? ` · ca. ${dbProduct.lead_time_days} Tage` : ""}
+                    </span>
+                  )}
+                  {!isMto && soldOut && (
+                    <span className="border border-[#0C0C0E] bg-[#0C0C0E] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#F1EEE7]">Ausverkauft</span>
+                  )}
+                  {!isMto && lowStock && (
+                    <span className="border border-[rgba(12,12,14,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Noch {stock} verfügbar</span>
+                  )}
+                </div>
 
                 <p className="mt-8 max-w-md text-[0.98rem] leading-relaxed text-[#0C0C0E]/80">
-                  {product.description}
+                  {dbProduct?.description || product.description}
                 </p>
+
+                {/* DB variants */}
+                {dbVariants.length > 0 && (
+                  <div className="mt-8 space-y-6">
+                    {dbVariants.map((v) => (
+                      <div key={v.name}>
+                        <p className="palace-eyebrow">{v.name}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {v.options.map((o) => (
+                            <button key={o} type="button" className="border border-[rgba(12,12,14,.22)] px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] text-[#0C0C0E] hover:border-[#0C0C0E]">
+                              {o}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
 
                 {/* Provenance */}
                 {match.percent > 0 && (
@@ -162,21 +245,32 @@ const ProductDetail = () => {
                   <button
                     type="button"
                     onClick={addToBag}
-                    className="palace-btn flex-1 justify-center text-center hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                    disabled={soldOut && !isMto}
+                    className="palace-btn flex-1 justify-center text-center hover:bg-[#0C0C0E] hover:text-[#F1EEE7] disabled:opacity-40"
                   >
-                    In die Tasche
+                    {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
                   </button>
                   <button
                     type="button"
                     onClick={onSave}
-                    className={cn(
-                      "palace-btn justify-center text-center",
-                      saved ? "bg-[#0C0C0E] text-[#F1EEE7]" : "",
-                    )}
+                    aria-label="Merken"
+                    className={cn("palace-btn justify-center text-center", (saved || wished) ? "bg-[#0C0C0E] text-[#F1EEE7]" : "")}
                   >
-                    {saved ? "Gemerkt" : "Merken"}
+                    <Heart className={cn("mr-2 inline h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
+                    {(saved || wished) ? "Gemerkt" : "Merken"}
                   </button>
                 </div>
+
+                {canRequest && (
+                  <button
+                    type="button"
+                    onClick={() => setReqOpen(true)}
+                    className="mt-4 inline-flex text-[0.62rem] uppercase tracking-[0.32em] text-[#0C0C0E] underline underline-offset-4 hover:text-[#0C0C0E]/70"
+                  >
+                    Individuelle Anfrage stellen →
+                  </button>
+                )}
+
 
                 <p className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6 text-[0.8rem] leading-relaxed text-[#0C0C0E]/60">
                   Versichert weltweit versendet · Rückgabe innerhalb von 14 Tagen · Direkt aus dem Atelier.
@@ -188,8 +282,35 @@ const ProductDetail = () => {
       </section>
 
       <div className="h-32" />
+
+      {reqOpen && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 md:items-center md:p-6" onClick={() => setReqOpen(false)}>
+          <div className="w-full max-w-lg border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] p-8" onClick={(e) => e.stopPropagation()}>
+            <p className="palace-eyebrow">Individuelle Anfrage</p>
+            <h3 className="palace-serif mt-3 text-[1.8rem] font-light leading-tight text-[#0C0C0E]">{dbProduct?.name}</h3>
+            <p className="mt-3 text-[0.9rem] text-[#7C7972]">
+              Deine Nachricht geht direkt an die Designer:in. Beschreibe, was du dir vorstellst — Maße, Materialien, Anlass.
+            </p>
+            <label className="mt-6 block">
+              <span className="palace-eyebrow">Wunsch</span>
+              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="mt-2 w-full border border-[rgba(12,12,14,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
+            </label>
+            <label className="mt-4 block">
+              <span className="palace-eyebrow">Budget (optional)</span>
+              <input value={reqBudget} onChange={(e) => setReqBudget(e.target.value)} placeholder="z.B. 800–1200 €" className="mt-2 w-full border border-[rgba(12,12,14,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
+            </label>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setReqOpen(false)} className="palace-btn">Abbrechen</button>
+              <button type="button" onClick={submitRequest} disabled={reqBusy} className="palace-btn bg-[#0C0C0E] text-[#F1EEE7] disabled:opacity-50">
+                {reqBusy ? "Sende …" : "Anfrage senden"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PalaceLayout>
   );
+
 };
 
 export default ProductDetail;

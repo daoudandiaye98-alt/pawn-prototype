@@ -16,6 +16,9 @@ import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import Impressum from "./pages/Impressum.tsx";
+import Versand from "./pages/Versand.tsx";
+import AGB from "./pages/AGB.tsx";
+import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import StudioOverview from "./pages/studio/StudioOverview.tsx";
 import StudioProducts from "./pages/studio/StudioProducts.tsx";
 import StudioBrand from "./pages/studio/StudioBrand.tsx";
@@ -86,10 +89,13 @@ const App = () => (
                 <Route path="/apply/form" element={<Apply />} />
                 <Route path="/datenschutz" element={<Datenschutz />} />
                 <Route path="/impressum" element={<Impressum />} />
+                <Route path="/versand" element={<Versand />} />
+                <Route path="/agb" element={<AGB />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/order/success" element={<OrderConfirmation />} />
                 <Route path="/account" element={<Account />} />
 
                 <Route path="/admin" element={<AdminOverview />} />

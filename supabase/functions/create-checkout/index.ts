@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         },
         quantity: i.qty,
       })),
-      success_url: body.success_url ?? `${origin}/account?checkout=success`,
+      success_url: body.success_url ?? `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: body.cancel_url ?? `${origin}/cart?checkout=cancelled`,
       customer_email: body.customer_email,
     });
