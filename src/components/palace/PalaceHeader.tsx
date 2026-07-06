@@ -16,6 +16,7 @@ import { PawnBagIcon, PawnCloseIcon, PawnMenuIcon, PawnProfileIcon, PawnSearchIc
  */
 export function PalaceHeader() {
   const { user, roles, signOut } = useAuth();
+  const { count: cartCount } = useCart();
   const { locale, setLocale, t } = useI18n();
   const NAV = [
     { label: t("nav.mode"), to: "/mode" },
