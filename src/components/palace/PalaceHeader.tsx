@@ -14,8 +14,10 @@ export function PalaceHeader() {
     { label: t("nav.interior"), to: "/interior" },
     { label: t("nav.kunst"), to: "/kunst" },
     { label: t("nav.designer"), to: "/designers" },
+    { label: "Deine DNA", to: "/dna" },
     { label: t("nav.forDesigners"), to: "/apply" },
   ];
+
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -142,8 +144,10 @@ export function PalaceHeader() {
                       </p>
                     </div>
                     <MenuItem to="/account" onClick={() => setAccountOpen(false)}>Mein Konto</MenuItem>
+                    <MenuItem to="/dna" onClick={() => setAccountOpen(false)}>Deine DNA</MenuItem>
                     {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>Mein Studio</MenuItem>}
                     {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>Admin-Cockpit</MenuItem>}
+
                     <button
                       type="button"
                       onClick={handleSignOut}

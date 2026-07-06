@@ -8,6 +8,8 @@ import { CoreProvider } from "@/core";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { I18nProvider } from "@/lib/i18n";
 import { RoomShiftProvider } from "@/features/os/roomShift";
+import { PersonalizationProvider } from "@/features/personalization";
+
 
 import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
@@ -75,7 +77,9 @@ const App = () => (
         <AuthProvider>
           <AuthedCore>
             <CartProvider>
+              <PersonalizationProvider>
               <RoomShiftProvider>
+
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/mode" element={<Mode />} />
@@ -126,7 +130,9 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </RoomShiftProvider>
+              </PersonalizationProvider>
             </CartProvider>
+
           </AuthedCore>
         </AuthProvider>
         </I18nProvider>
