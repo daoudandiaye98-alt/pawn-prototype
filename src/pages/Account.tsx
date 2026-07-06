@@ -68,6 +68,7 @@ const Account = () => {
             {tab === "Übersicht" && <Overview name={displayName} />}
             {tab === "Bestellungen" && <Orders />}
             {tab === "Merkzettel" && <Empty title="Dein Merkzettel ist noch leer." to="/neu" cta="Ausstellung ansehen" />}
+            {tab === "Zahlung" && <PaymentTab />}
             {tab === "Meine Daten" && <MyData />}
             {tab === "Einstellungen" && <Settings />}
           </div>
