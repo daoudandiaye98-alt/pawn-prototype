@@ -99,6 +99,41 @@ export type Database = {
           },
         ]
       }
+      collection_items: {
+        Row: {
+          collection_id: string
+          created_at: string
+          id: string
+          product_slug: string
+          sort: number
+          world: string | null
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          id?: string
+          product_slug: string
+          sort?: number
+          world?: string | null
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          id?: string
+          product_slug?: string
+          sort?: number
+          world?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "curated_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_versions: {
         Row: {
           body_markdown: string
@@ -132,6 +167,36 @@ export type Database = {
           kind?: string
           title?: string
           version?: number
+        }
+        Relationships: []
+      }
+      curated_collections: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          number: number
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          number: number
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          number?: number
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -369,10 +434,14 @@ export type Database = {
           brand_name: string
           country: string | null
           created_at: string
+          hero_image_url: string | null
           id: string
           instagram: string | null
+          is_featured: boolean
           location: string | null
           published: boolean
+          quote: string | null
+          quote_role: string | null
           revenue_share_pct: number
           slug: string
           status: string
@@ -389,10 +458,14 @@ export type Database = {
           brand_name: string
           country?: string | null
           created_at?: string
+          hero_image_url?: string | null
           id?: string
           instagram?: string | null
+          is_featured?: boolean
           location?: string | null
           published?: boolean
+          quote?: string | null
+          quote_role?: string | null
           revenue_share_pct?: number
           slug: string
           status?: string
@@ -409,10 +482,14 @@ export type Database = {
           brand_name?: string
           country?: string | null
           created_at?: string
+          hero_image_url?: string | null
           id?: string
           instagram?: string | null
+          is_featured?: boolean
           location?: string | null
           published?: boolean
+          quote?: string | null
+          quote_role?: string | null
           revenue_share_pct?: number
           slug?: string
           status?: string
