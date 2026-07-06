@@ -507,7 +507,7 @@ const DesignerPage = () => {
                       >
                         {String(i + 1).padStart(2, "0")}
                       </span>
-                      <EditorialImage seed={`d-${p.slug}`} src={p.image} ratio={odd ? "3/4" : "4/5"} />
+                      <EditorialImage seed={`d-${p.slug}`} ratio={odd ? "3/4" : "4/5"} />
                       <div className="mt-4 flex items-baseline justify-between gap-4">
                         <p className="palace-serif italic text-[1.15rem] text-[#0C0C0E]">{p.name}</p>
                         <p className="palace-eyebrow text-[#0C0C0E]">€{p.price.toLocaleString("de-DE")}</p>
