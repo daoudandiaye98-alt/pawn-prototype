@@ -67,6 +67,38 @@ export type Database = {
           },
         ]
       }
+      application_notes: {
+        Row: {
+          application_id: string
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          application_id: string
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          application_id?: string
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_notes_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "designer_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_versions: {
         Row: {
           body_markdown: string
@@ -331,6 +363,7 @@ export type Database = {
       }
       designers: {
         Row: {
+          application_id: string | null
           avatar_url: string | null
           banner_url: string | null
           brand_name: string
@@ -340,7 +373,9 @@ export type Database = {
           instagram: string | null
           location: string | null
           published: boolean
+          revenue_share_pct: number
           slug: string
+          status: string
           story: string | null
           tags: string[] | null
           updated_at: string
@@ -348,6 +383,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          application_id?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           brand_name: string
@@ -357,7 +393,9 @@ export type Database = {
           instagram?: string | null
           location?: string | null
           published?: boolean
+          revenue_share_pct?: number
           slug: string
+          status?: string
           story?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -365,6 +403,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          application_id?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           brand_name?: string
@@ -374,14 +413,24 @@ export type Database = {
           instagram?: string | null
           location?: string | null
           published?: boolean
+          revenue_share_pct?: number
           slug?: string
+          status?: string
           story?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "designers_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "designer_applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       domain_events: {
         Row: {
@@ -521,6 +570,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_application_note: {
+        Args: { _application_id: string; _body: string }
+        Returns: string
+      }
       approve_designer: { Args: { _application_id: string }; Returns: string }
       archive_application: {
         Args: { _application_id: string }
@@ -532,6 +585,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      mark_application_in_review: {
+        Args: { _application_id: string }
+        Returns: undefined
       }
       reject_designer: {
         Args: { _application_id: string; _reason: string }
