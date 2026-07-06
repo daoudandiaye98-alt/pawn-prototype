@@ -28,6 +28,7 @@ export default function AdminKI() {
   const [busy, setBusy] = useState(false);
   const [signals, setSignals] = useState<SignalRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [provider, setProvider] = useState<"openai" | "fallback" | "unknown">("unknown");
 
   useEffect(() => {
     if (!user || !roles.includes("admin")) return;
@@ -37,12 +38,20 @@ export default function AdminKI() {
         supabase.from("domain_events").select("id, at, payload").eq("type", "ai.taste_signal").order("at", { ascending: false }).limit(50),
         supabase.from("ai_sessions").select("session_id, user_id, turns, extracted, updated_at").order("updated_at", { ascending: false }).limit(50),
       ]);
-      const val = cfg.data?.value as { system_prompt?: string } | undefined;
+      const val = cfg.data?.value as { system_prompt?: string; provider_hint?: string } | undefined;
       setPrompt(val?.system_prompt ?? DEFAULT_PROMPT);
       setSignals((sig.data ?? []) as SignalRow[]);
       setSessions((ses.data ?? []) as SessionRow[]);
+      // Probe pawn-chat: it returns which provider actually answered when passed a diagnostic ping.
+      try {
+        const { data } = await supabase.functions.invoke("pawn-chat", { body: { messages: [{ role: "user", content: "__provider_probe__" }], probe: true } });
+        const d = data as { provider?: string } | null;
+        if (d?.provider === "openai") setProvider("openai");
+        else setProvider("fallback");
+      } catch { setProvider("fallback"); }
     })();
   }, [user, roles]);
+
 
   if (loading) return null;
   if (!user || !roles.includes("admin")) return <Navigate to="/auth" replace />;
