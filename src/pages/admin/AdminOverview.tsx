@@ -358,7 +358,11 @@ function CommandDeck() {
                   <p className="mt-0.5 text-[11px] text-[hsl(36_15%_55%)]">{item.sub}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Btn variant={item.weight === "critical" ? "danger" : "solid"}
-                      onClick={() => { fire(item.action, { label: `${item.label} → ausgelöst`, actor: "Owner" }); toast(item.actionLabel); }}>
+                      onClick={() => {
+                        if ("route" in item && item.route) { navigate(item.route); return; }
+                        fire(item.action, { label: `${item.label} → ausgelöst`, actor: "Owner" });
+                        toast(item.actionLabel);
+                      }}>
                       {item.actionLabel}
                     </Btn>
                     <Btn>Zur Queue</Btn>
