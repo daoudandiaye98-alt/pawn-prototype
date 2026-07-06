@@ -453,14 +453,11 @@ function SuccessState() {
       <div className="mx-auto flex h-14 w-14 items-center justify-center border border-accent text-accent">
         <Check className="h-6 w-6" />
       </div>
-      <h2 className="mt-6 font-serif text-4xl">Bewerbung eingereicht.</h2>
+      <h2 className="mt-6 font-serif text-4xl">Deine Bewerbung ist eingegangen.</h2>
       <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-        Wir melden uns innerhalb von 7 Tagen mit dem Ergebnis unserer Kuratoren. Sobald wir dich annehmen, startet PAWN dein AI-Onboarding im Portal.
+        Unsere Kuratoren prüfen jede Bewerbung persönlich. Du hörst innerhalb von 7 Tagen von uns — per E-Mail an die von dir angegebene Adresse. Erst nach Freigabe wird dein Designer-Portal aktiviert.
       </p>
       <div className="mt-8 flex justify-center gap-3">
-        <Button asChild className="rounded-none">
-          <Link to="/portal">Zum Designer Portal</Link>
-        </Button>
         <Button asChild variant="outline" className="rounded-none">
           <Link to="/">Zur Startseite</Link>
         </Button>
