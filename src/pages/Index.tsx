@@ -147,27 +147,31 @@ const Index = () => {
       {/* ── 01 HERO ─────────────────────────────────────────── */}
       <section className="relative z-10 flex min-h-screen items-center justify-center px-6 md:px-14">
         <div className="mx-auto max-w-[1400px] text-center">
-          <p className="palace-eyebrow motion-reveal">
-            Kuratierte Ausstellung · Ausgabe 07 · Juli
-          </p>
-          <h1
-            className="palace-serif palace-line-rise mt-10 text-[#0C0C0E]"
-            style={{ fontSize: "clamp(3rem, 8.5vw, 8.2rem)", lineHeight: 0.94, letterSpacing: "-0.02em" }}
-          >
-            <span className="block font-light">{featuredCount} Designer,</span>
-            <span className="block italic font-light">die du noch nicht kennst.</span>
-          </h1>
-          <p className="mx-auto mt-10 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/75">
-            {personalSubtitle ?? `Mode · Interior · Kunst — ausgewählt aus ${atelierCount} unabhängigen Ateliers.`}
-          </p>
+          {/* Soft white plate keeps text legible over the 3D canvas without hiding the pawn */}
+          <div className="mx-auto max-w-[1100px] rounded-none px-2 py-6 md:px-8 md:py-10"
+               style={{ background: "radial-gradient(ellipse at center, rgba(241,238,231,.92) 0%, rgba(241,238,231,.72) 55%, rgba(241,238,231,0) 100%)" }}>
+            <p className="palace-eyebrow motion-reveal" style={{ color: "#55534E" }}>
+              Kuratierte Ausstellung · Ausgabe 07 · Juli
+            </p>
+            <h1
+              className="palace-serif palace-line-rise mt-8 text-[#0C0C0E]"
+              style={{ fontSize: "clamp(2.4rem, 6.5vw, 6.4rem)", lineHeight: 1.02, letterSpacing: "-0.02em" }}
+            >
+              <span className="block font-light">Mode, Interior und Kunst —</span>
+              <span className="block italic font-light">von unabhängigen Designern.</span>
+            </h1>
+            <p className="mx-auto mt-8 max-w-2xl text-[1.05rem] leading-[1.65] text-[#3A3833]">
+              {personalSubtitle ?? "PAWN ist die kuratierte Ausstellung, in der du sie zuerst entdeckst."}
+            </p>
 
+            <HeroPrompt />
+          </div>
 
-          <HeroPrompt />
-
-          <div className="mt-16 flex flex-col items-center gap-4">
-            <span className="palace-eyebrow">Scroll</span>
+          <div className="mt-14 flex flex-col items-center gap-4">
+            <span className="palace-eyebrow" style={{ color: "#55534E" }}>Scroll</span>
             <span className="palace-drip block h-14 w-px bg-[#0C0C0E]" />
           </div>
+        </div>
         </div>
       </section>
 
