@@ -238,4 +238,15 @@ function Empty({ title, to, cta }: { title: string; to: string; cta: string }) {
   );
 }
 
+function PaymentTab() {
+  return (
+    <div className="max-w-xl border border-[rgba(12,12,14,.13)] p-8">
+      <p className="palace-eyebrow">Zahlungsmethoden</p>
+      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#0C0C0E]">Noch keine hinterlegt.</p>
+      <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.</p>
+    </div>
+  );
+}
+
 export default Account;
+
