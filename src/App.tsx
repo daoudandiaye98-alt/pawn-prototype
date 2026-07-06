@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
 import { CoreProvider } from "@/core";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { I18nProvider } from "@/lib/i18n";
 import { RoomShiftProvider } from "@/features/os/roomShift";
 
 import Index from "./pages/Index.tsx";
