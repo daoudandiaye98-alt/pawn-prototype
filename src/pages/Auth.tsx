@@ -45,7 +45,21 @@ export default function Auth() {
 
   return (
     <PalaceLayout transparentHeader={false}>
-      <section className="mx-auto flex min-h-[80vh] w-full max-w-[520px] flex-col justify-center px-6 pt-32 pb-20 md:pt-40">
+      {/* Subtle chessboard backdrop */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            "linear-gradient(45deg, #0C0C0E 25%, transparent 25%), linear-gradient(-45deg, #0C0C0E 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #0C0C0E 75%), linear-gradient(-45deg, transparent 75%, #0C0C0E 75%)",
+          backgroundSize: "48px 48px",
+          backgroundPosition: "0 0, 0 24px, 24px -24px, -24px 0",
+          maskImage: "radial-gradient(ellipse at center, black 30%, transparent 75%)",
+          WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 75%)",
+        }}
+      />
+      <section className="relative z-10 mx-auto flex min-h-[80vh] w-full max-w-[520px] flex-col justify-center px-6 pt-32 pb-20 md:pt-40">
+
         <p className="palace-eyebrow text-center">Zutritt</p>
         <h1
           className="palace-serif mt-6 text-center font-light text-[#0C0C0E]"
