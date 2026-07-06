@@ -90,7 +90,7 @@ function EmptyInvitation() {
         <input
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="z.B. „ich mag ruhige, skulpturale Mode""
+          placeholder={"z.B. \u201eich mag ruhige, skulpturale Mode\u201c"}
           className="flex-1 bg-transparent px-2 py-2 text-[0.95rem] text-[#0C0C0E] placeholder:text-[#8F8B82] focus:outline-none"
         />
         <button type="submit" className="palace-eyebrow uline text-[#0C0C0E]">Los →</button>
