@@ -4,8 +4,14 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
+function homeForRoles(roles: string[]) {
+  if (roles.includes("admin")) return "/admin";
+  if (roles.includes("designer")) return "/studio";
+  return "/account";
+}
+
 export default function Auth() {
-  const { user, loading, signInWithPassword, signUp, signInWithGoogle } = useAuth();
+  const { user, roles, loading, signInWithPassword, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
@@ -14,7 +20,7 @@ export default function Auth() {
   const [busy, setBusy] = useState(false);
 
   if (loading) return null;
-  if (user) return <Navigate to="/account" replace />;
+  if (user) return <Navigate to={homeForRoles(roles)} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +32,7 @@ export default function Auth() {
     setBusy(false);
     if (error) return toast.error(error);
     if (mode === "up") toast.success("Prüfe deine E-Mail zur Bestätigung.");
+    // Role redirect happens automatically via the Navigate above once auth state updates.
     else navigate("/account");
   };
 

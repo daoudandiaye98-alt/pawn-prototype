@@ -150,3 +150,38 @@ export function useActiveCollection() {
   }, []);
   return collection;
 }
+
+/** Published DB products, keyed by world for the world pages / Neu grid. */
+export interface PublicProduct {
+  id: string;
+  slug: string;
+  name: string;
+  world: "Mode" | "Interior" | "Kunst";
+  price: number;
+  image_url: string | null;
+  designer_id: string;
+}
+
+export function usePublishedProducts(world?: "Mode" | "Interior" | "Kunst") {
+  const [products, setProducts] = useState<PublicProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let q = supabase
+        .from("products")
+        .select("id, slug, name, world, price, image_url, designer_id")
+        .eq("status", "published")
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (world) q = q.eq("world", world);
+      const { data } = await q;
+      if (cancelled) return;
+      setProducts((data ?? []) as PublicProduct[]);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [world]);
+  return { products, loading };
+}
+

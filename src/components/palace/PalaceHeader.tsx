@@ -1,6 +1,6 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, User, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { ChatDrawer } from "./ChatDrawer";
 
@@ -12,10 +12,13 @@ const NAV = [
 ];
 
 export function PalaceHeader() {
-  const { user } = useAuth();
+  const { user, roles, signOut } = useAuth();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -34,6 +37,24 @@ export function PalaceHeader() {
     else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setAccountOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [accountOpen]);
+
+  const handleSignOut = async () => {
+    setAccountOpen(false);
+    await signOut();
+    navigate("/");
+  };
+
+  const isAdmin = roles.includes("admin");
+  const isDesigner = roles.includes("designer");
 
   return (
     <>
@@ -78,13 +99,48 @@ export function PalaceHeader() {
               <span className="h-[6px] w-[6px] rounded-full bg-[#0C0C0E]" />
               Frag PAWN
             </button>
-            <Link
-              to={user ? "/account" : "/auth"}
-              aria-label={user ? "Konto" : "Anmelden"}
-              className="hidden text-[#7C7972] hover:text-[#0C0C0E] md:inline-flex"
-            >
-              <User className="h-4 w-4" strokeWidth={1.2} />
-            </Link>
+
+            {user ? (
+              <div ref={accountRef} className="relative hidden md:block">
+                <button
+                  type="button"
+                  aria-label="Konto"
+                  onClick={() => setAccountOpen((v) => !v)}
+                  className="text-[#7C7972] hover:text-[#0C0C0E]"
+                >
+                  <User className="h-4 w-4" strokeWidth={1.2} />
+                </button>
+                {accountOpen && (
+                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
+                    <div className="border-b border-[rgba(12,12,14,.09)] px-5 py-4">
+                      <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#7C7972]">Zutritt</p>
+                      <p className="mt-1 font-serif text-[0.95rem] italic text-[#0C0C0E]">
+                        {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : "Sammlung"}
+                      </p>
+                    </div>
+                    <MenuItem to="/account" onClick={() => setAccountOpen(false)}>Mein Konto</MenuItem>
+                    {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>Mein Studio</MenuItem>}
+                    {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>Admin-Cockpit</MenuItem>}
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#7C7972] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                    >
+                      Abmelden
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                aria-label="Anmelden"
+                className="hidden text-[#7C7972] hover:text-[#0C0C0E] md:inline-flex"
+              >
+                <User className="h-4 w-4" strokeWidth={1.2} />
+              </Link>
+            )}
+
             <button
               type="button"
               aria-label="Menü öffnen"
@@ -133,18 +189,33 @@ export function PalaceHeader() {
             Frag PAWN →
           </button>
         </nav>
-        <div className="border-t border-[rgba(12,12,14,.13)] px-8 py-6">
-          <Link
-            to={user ? "/account" : "/auth"}
-            onClick={() => setMenuOpen(false)}
-            className="text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]"
-          >
-            {user ? "Konto" : "Anmelden"}
-          </Link>
+        <div className="space-y-2 border-t border-[rgba(12,12,14,.13)] px-8 py-6">
+          {user ? (
+            <>
+              <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Konto</Link>
+              {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Studio</Link>}
+              {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Admin-Cockpit</Link>}
+              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#7C7972]">Abmelden</button>
+            </>
+          ) : (
+            <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Anmelden</Link>
+          )}
         </div>
       </div>
 
       <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
     </>
+  );
+}
+
+function MenuItem({ to, onClick, children }: { to: string; onClick?: () => void; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className="block px-5 py-3 text-[0.68rem] uppercase tracking-[0.32em] text-[#0C0C0E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+    >
+      {children}
+    </Link>
   );
 }

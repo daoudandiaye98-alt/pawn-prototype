@@ -53,9 +53,20 @@ const ProductDetail = () => {
 
   return (
     <PalaceLayout transparentHeader={false}>
-      <section className="px-6 pt-32 md:px-14 md:pt-40">
+      {/* Banner: hero image always first, directly under the nav */}
+      <section className="pt-20 md:pt-24">
+        <Reveal>
+          <EditorialImage
+            seed={`prd-${product.slug}-hero`}
+            ratio="16/9"
+            className="w-full"
+          />
+        </Reveal>
+      </section>
+
+      <section className="px-6 pt-12 md:px-14 md:pt-16">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
-          {/* Left: full image */}
+          {/* Left: gallery thumbnails */}
           <Reveal>
             <EditorialImage seed={`prd-${product.slug}`} ratio="4/5" className="w-full" />
             <div className="mt-6 grid grid-cols-3 gap-4">
@@ -64,6 +75,7 @@ const ProductDetail = () => {
               ))}
             </div>
           </Reveal>
+
 
           {/* Right: sticky detail */}
           <div>

@@ -30,6 +30,7 @@ import AdminDNA from "./pages/admin/AdminDNA.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminAI from "./pages/admin/AdminAI.tsx";
 import AdminApplications from "./pages/admin/AdminApplications.tsx";
+import AdminKI from "./pages/admin/AdminKI.tsx";
 
 import PortalOverview from "./pages/portal/PortalOverview.tsx";
 import PortalEditor from "./pages/portal/PortalEditor.tsx";
@@ -80,7 +81,11 @@ const App = () => (
                 <Route path="/admin/applications" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
                 <Route path="/admin/designers" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
+                <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
 
+                <Route path="/studio" element={<PortalGate><PortalOverview /></PortalGate>} />
+                <Route path="/studio/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
+                <Route path="/studio/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />
                 <Route path="/portal" element={<PortalGate><PortalOverview /></PortalGate>} />
                 <Route path="/portal/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
                 <Route path="/portal/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />
