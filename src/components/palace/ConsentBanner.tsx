@@ -16,7 +16,7 @@ export function ConsentBanner() {
       aria-label="Cookie-Einstellungen"
       className="fixed inset-x-0 bottom-0 z-[70] px-4 pb-4 md:px-8 md:pb-8"
     >
-      <div className="mx-auto max-w-4xl border border-[rgba(12,12,14,.18)] bg-[#F1EEE7] shadow-[0_16px_48px_-24px_rgba(12,12,14,0.35)]">
+      <div className="mx-auto max-w-4xl border border-[rgba(12,12,14,.18)] bg-white shadow-[0_16px_48px_-24px_rgba(12,12,14,0.35)]">
         <div className="grid gap-6 p-6 md:grid-cols-[1.4fr_auto] md:items-center md:p-8">
           <div>
             <p className="palace-eyebrow">Über Besuche hinweg</p>
