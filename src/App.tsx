@@ -120,6 +120,7 @@ const App = () => (
             </CartProvider>
           </AuthedCore>
         </AuthProvider>
+        </I18nProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
