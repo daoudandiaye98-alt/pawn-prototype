@@ -121,6 +121,29 @@ function fallbackReply(ex: Extracted, cards: Card[], turns: number, action: Acti
   return `Alles klar, ${ex.world} mit ${ex.mood === "ruhig" ? "ruhiger" : "kantiger"} Handschrift. Wofür?`;
 }
 
+async function callOpenAI(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        messages: [
+          { role: "system", content: system },
+          ...(contextHint ? [{ role: "system", content: contextHint }] : []),
+          ...messages,
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content ?? null;
+  } catch { return null; }
+}
+
 async function callGateway(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
   const key = Deno.env.get("LOVABLE_API_KEY");
   if (!key) return null;
@@ -142,6 +165,14 @@ async function callGateway(system: string, messages: Msg[], contextHint: string)
     return data.choices?.[0]?.message?.content ?? null;
   } catch { return null; }
 }
+
+async function callProvider(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+  // Prefer OpenAI when configured, silently fall back to the Lovable gateway.
+  const openai = await callOpenAI(system, messages, contextHint);
+  if (openai) return openai;
+  return await callGateway(system, messages, contextHint);
+}
+
 
 function extractUserIdFromJWT(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
