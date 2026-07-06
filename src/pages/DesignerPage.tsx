@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Play } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
-import { PublicLayout } from "@/components/pawn/PublicLayout";
-import { ProductImage } from "@/components/pawn/ProductImage";
-import { ProductCard } from "@/components/pawn/ProductCard";
-import { SectionHeading } from "@/components/pawn/SectionHeading";
-import { DnaBadge } from "@/components/pawn/DnaBadge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { EditorialImage } from "@/components/palace/EditorialImage";
+import { Reveal } from "@/components/palace/Reveal";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
 import { useDnaAlignment } from "@/features/dna/hooks";
@@ -21,9 +16,12 @@ interface DbDesigner {
   location: string | null;
   country: string | null;
   story: string | null;
+  quote: string | null;
+  quote_role: string | null;
   tags: string[] | null;
   avatar_url: string | null;
   banner_url: string | null;
+  hero_image_url: string | null;
   website: string | null;
   instagram: string | null;
 }
@@ -38,7 +36,7 @@ const DesignerPage = () => {
     (async () => {
       const { data } = await supabase
         .from("designers")
-        .select("id, slug, brand_name, location, country, story, tags, avatar_url, banner_url, website, instagram")
+        .select("id, slug, brand_name, location, country, story, quote, quote_role, tags, avatar_url, banner_url, hero_image_url, website, instagram")
         .eq("slug", activeSlug)
         .eq("status", "active")
         .maybeSingle();
@@ -52,14 +50,25 @@ const DesignerPage = () => {
 
   const designer = useMemo(() => {
     const base = toDesignerView(coreDesigner);
-    if (!dbDesigner) return base;
+    if (!dbDesigner) return {
+      ...base,
+      name: base.name,
+      story: base.bio,
+      quote: null as string | null,
+      quoteRole: null as string | null,
+      heroImage: null as string | null,
+      tags: [] as string[],
+    };
     return {
       ...base,
       name: dbDesigner.brand_name,
       slug: dbDesigner.slug,
       location: [dbDesigner.location, dbDesigner.country].filter(Boolean).join(", ") || base.location,
-      bio: dbDesigner.story ?? base.bio,
-      slogan: dbDesigner.tags?.slice(0, 3).join(" · ") || base.slogan,
+      story: dbDesigner.story ?? base.bio,
+      quote: dbDesigner.quote,
+      quoteRole: dbDesigner.quote_role,
+      heroImage: dbDesigner.hero_image_url ?? dbDesigner.banner_url,
+      tags: dbDesigner.tags ?? [],
     };
   }, [coreDesigner, dbDesigner]);
 
@@ -69,111 +78,128 @@ const DesignerPage = () => {
   );
   const alignment = useDnaAlignment(coreDesigner.id);
   const { followDesigner } = useCustomerEvents();
+  const [following, setFollowing] = useState(false);
 
   function onFollow() {
     followDesigner(coreDesigner.id);
-    toast.success(`Following ${designer.name}`);
+    setFollowing(true);
+    toast.success(`${designer.name} — im Blick.`);
   }
 
   return (
-    <PublicLayout>
-      {/* Hero */}
-      <section className="border-b border-border">
-        <div className="relative">
-          <ProductImage seed={designer.slug + "_hero"} className="h-[60vh] min-h-[420px] w-full" />
-          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-10 text-primary-foreground md:p-16">
-            <p className="text-[0.7rem] uppercase tracking-[0.28em] text-primary-foreground/60">{designer.location}</p>
-            <h1 className="mt-3 font-serif text-6xl leading-[0.95] md:text-8xl">{designer.name}</h1>
-            <p className="mt-3 max-w-xl text-lg text-primary-foreground/80">{designer.slogan}</p>
-            <div className="mt-6 flex items-center gap-4">
-              <Button onClick={onFollow} className="rounded-none bg-primary-foreground text-primary hover:bg-primary-foreground/90">Follow studio</Button>
+    <PalaceLayout transparentHeader>
+      {/* Full-bleed hero with mix-blend-difference brand name */}
+      <section className="relative h-[92vh] min-h-[560px] w-full overflow-hidden">
+        <EditorialImage
+          seed={`designer-hero-${designer.slug}`}
+          src={designer.heroImage}
+          ratio="16/9"
+          className="absolute inset-0 h-full w-full"
+        />
+        <div className="absolute inset-0 bg-[#0C0C0E]/10" />
+        <div className="relative flex h-full flex-col justify-end px-6 pb-14 md:px-14 md:pb-20">
+          <p className="palace-eyebrow text-white/70" style={{ mixBlendMode: "difference" }}>
+            {designer.location} {designer.tags?.length ? `· ${designer.tags.slice(0, 3).join(" · ")}` : ""}
+          </p>
+          <h1
+            className="palace-serif mt-6 font-light text-white"
+            style={{
+              mixBlendMode: "difference",
+              fontSize: "clamp(3rem, 12vw, 12rem)",
+              lineHeight: 0.92,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            {designer.name}
+          </h1>
+        </div>
+      </section>
+
+      {/* Story + Quote (2 columns) */}
+      <section className="border-t border-[rgba(12,12,14,.13)] px-6 py-24 md:px-14 md:py-32">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-14 md:grid-cols-[1.15fr_1fr] md:gap-24">
+          <Reveal>
+            <p className="palace-eyebrow">Die Handschrift</p>
+            <h2 className="palace-serif mt-6 font-light text-[clamp(1.8rem,3.2vw,2.8rem)] leading-[1.05]">
+              {designer.name}. <span className="italic">In eigener Erzählung.</span>
+            </h2>
+            <p className="mt-8 max-w-xl text-[0.98rem] leading-relaxed text-[#0C0C0E]/80">
+              {designer.story}
+            </p>
+            <div className="mt-10 flex items-center gap-6">
+              <button
+                type="button"
+                onClick={onFollow}
+                className={`palace-btn ${following ? "bg-[#0C0C0E] text-[#F1EEE7]" : ""}`}
+              >
+                {following ? "Im Blick" : "Studio folgen"}
+              </button>
               {alignment.percent > 0 && (
-                <DnaBadge match={alignment} size="md" variant="ink" showLabel />
+                <span className="palace-eyebrow">
+                  {alignment.percent}% deiner DNA
+                </span>
               )}
             </div>
-          </div>
+          </Reveal>
+
+          {designer.quote && (
+            <Reveal delay={120}>
+              <blockquote className="border-l border-[rgba(12,12,14,.28)] pl-8">
+                <p
+                  className="palace-serif italic font-light text-[#0C0C0E]"
+                  style={{ fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)", lineHeight: 1.15 }}
+                >
+                  „{designer.quote}"
+                </p>
+                <cite className="mt-8 block not-italic palace-eyebrow">
+                  {designer.quoteRole ?? designer.name}
+                </cite>
+              </blockquote>
+            </Reveal>
+          )}
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="border-b border-border">
-        <div className="editorial-container grid grid-cols-2 divide-x divide-border py-8 md:grid-cols-5">
-          {[
-            ["Collections", designer.collections],
-            ["Products", designer.productsCount],
-            ["Followers", (designer.followers / 1000).toFixed(0) + "K"],
-            ["Featured in", designer.featuredIn],
-            ["Member since", designer.memberSince],
-          ].map(([label, value]) => (
-            <div key={label} className="px-4">
-              <p className="font-serif text-3xl">{value}</p>
-              <p className="mt-1 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Story + showreel */}
-      <section className="border-b border-border py-20">
-        <div className="editorial-container grid items-start gap-12 md:grid-cols-[1.1fr_1fr]">
-          <div>
-            <p className="editorial-eyebrow">The story</p>
-            <h2 className="mt-3 font-serif text-4xl md:text-5xl">A studio drawn in long lines.</h2>
-            <p className="mt-6 text-foreground/70">{designer.bio}</p>
-            <p className="mt-4 text-foreground/70">
-              Each collection at {designer.name} extends a single sentence — re-cut, re-draped, re-asked. PAWN is the only marketplace where the studio releases archival drops.
-            </p>
-          </div>
-          <div className="relative aspect-video w-full overflow-hidden border border-border">
-            <ProductImage seed={designer.slug + "_reel"} className="h-full w-full" />
-            <button className="absolute inset-0 m-auto flex h-16 w-16 items-center justify-center border border-primary-foreground/60 bg-background/20 text-primary-foreground backdrop-blur transition-colors hover:bg-background/40">
-              <Play className="ml-0.5 h-5 w-5" />
-            </button>
-            <span className="absolute bottom-3 left-3 text-[0.65rem] uppercase tracking-[0.28em] text-primary-foreground/80">Showreel · A/W 26</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Collections grid */}
-      <section className="border-b border-border py-20">
-        <div className="editorial-container">
-          <SectionHeading eyebrow="Collections" title="From archive to current." />
-          <div className="mt-10 grid grid-cols-2 gap-6 md:grid-cols-4">
-            {["S/S 26", "A/W 25", "Resort 25", "Archive"].map((c, i) => (
-              <div key={c} className="group">
-                <ProductImage seed={designer.slug + "_c" + i} className="aspect-[4/5] w-full" />
-                <p className="mt-3 font-serif text-xl">{c}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured pieces */}
+      {/* Product grid */}
       {designerProducts.length > 0 && (
-        <section className="border-b border-border py-20">
-          <div className="editorial-container">
-            <SectionHeading eyebrow="Featured pieces" title="What we recommend, right now." />
-            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-              {designerProducts.map((p) => <ProductCard key={p.id} product={p} />)}
+        <section className="border-t border-[rgba(12,12,14,.13)] px-6 py-24 md:px-14 md:py-32">
+          <div className="mx-auto max-w-[1400px]">
+            <Reveal>
+              <p className="palace-eyebrow">Arbeiten</p>
+              <h3 className="palace-serif mt-6 font-light text-[clamp(1.8rem,3.2vw,2.8rem)] leading-[1.05]">
+                Was gerade das Atelier verlässt.
+              </h3>
+            </Reveal>
+            <div className="mt-16 grid grid-cols-12 gap-6 md:gap-8">
+              {designerProducts.map((p, i) => {
+                const layouts = [
+                  { span: "col-span-12 md:col-span-6", ratio: "4/5" as const },
+                  { span: "col-span-12 md:col-span-6", ratio: "4/5" as const },
+                  { span: "col-span-12 md:col-span-4", ratio: "3/4" as const },
+                  { span: "col-span-12 md:col-span-4", ratio: "3/4" as const },
+                  { span: "col-span-12 md:col-span-4", ratio: "3/4" as const },
+                ];
+                const l = layouts[i % layouts.length];
+                return (
+                  <Reveal key={p.id} delay={i * 50} className={l.span}>
+                    <Link to={`/product/${p.slug}`} className="block">
+                      <EditorialImage seed={`d-${p.slug}`} ratio={l.ratio} />
+                      <div className="mt-4 flex items-baseline justify-between gap-4">
+                        <div>
+                          <p className="palace-serif italic text-[1.15rem] text-[#0C0C0E]">{p.name}</p>
+                          <p className="palace-eyebrow mt-2">{p.world} · {p.category}</p>
+                        </div>
+                        <p className="palace-eyebrow text-[#0C0C0E]">€{p.price.toLocaleString("de-DE")}</p>
+                      </div>
+                    </Link>
+                  </Reveal>
+                );
+              })}
             </div>
           </div>
         </section>
       )}
-
-      {/* Newsletter */}
-      <section className="bg-gradient-shadow py-20 text-primary-foreground">
-        <div className="editorial-container max-w-2xl text-center">
-          <p className="text-[0.7rem] uppercase tracking-[0.28em] text-primary-foreground/60">Studio newsletter</p>
-          <h2 className="mt-4 font-serif text-4xl md:text-5xl">Be first inside the studio.</h2>
-          <p className="mt-3 text-primary-foreground/70">Drops, archival releases and behind-the-scenes notes, only through PAWN.</p>
-          <form className="mt-8 flex gap-2" onSubmit={(e) => e.preventDefault()}>
-            <Input placeholder="Your email" className="rounded-none border-primary-foreground/40 bg-transparent text-primary-foreground placeholder:text-primary-foreground/40" />
-            <Button className="rounded-none bg-primary-foreground text-primary hover:bg-primary-foreground/90">Subscribe</Button>
-          </form>
-        </div>
-      </section>
-    </PublicLayout>
+    </PalaceLayout>
   );
 };
 
