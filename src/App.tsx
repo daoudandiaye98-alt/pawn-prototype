@@ -30,6 +30,7 @@ import AdminDNA from "./pages/admin/AdminDNA.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminAI from "./pages/admin/AdminAI.tsx";
 import AdminApplications from "./pages/admin/AdminApplications.tsx";
+import AdminKI from "./pages/admin/AdminKI.tsx";
 
 import PortalOverview from "./pages/portal/PortalOverview.tsx";
 import PortalEditor from "./pages/portal/PortalEditor.tsx";
