@@ -282,7 +282,33 @@ const ProductDetail = () => {
       </section>
 
       <div className="h-32" />
-    </PalaceLayout>
+
+      {reqOpen && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 md:items-center md:p-6" onClick={() => setReqOpen(false)}>
+          <div className="w-full max-w-lg border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] p-8" onClick={(e) => e.stopPropagation()}>
+            <p className="palace-eyebrow">Individuelle Anfrage</p>
+            <h3 className="palace-serif mt-3 text-[1.8rem] font-light leading-tight text-[#0C0C0E]">{dbProduct?.name}</h3>
+            <p className="mt-3 text-[0.9rem] text-[#7C7972]">
+              Deine Nachricht geht direkt an die Designer:in. Beschreibe, was du dir vorstellst — Maße, Materialien, Anlass.
+            </p>
+            <label className="mt-6 block">
+              <span className="palace-eyebrow">Wunsch</span>
+              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="mt-2 w-full border border-[rgba(12,12,14,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
+            </label>
+            <label className="mt-4 block">
+              <span className="palace-eyebrow">Budget (optional)</span>
+              <input value={reqBudget} onChange={(e) => setReqBudget(e.target.value)} placeholder="z.B. 800–1200 €" className="mt-2 w-full border border-[rgba(12,12,14,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
+            </label>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setReqOpen(false)} className="palace-btn">Abbrechen</button>
+              <button type="button" onClick={submitRequest} disabled={reqBusy} className="palace-btn bg-[#0C0C0E] text-[#F1EEE7] disabled:opacity-50">
+                {reqBusy ? "Sende …" : "Anfrage senden"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
   );
 };
 
