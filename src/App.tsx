@@ -120,6 +120,7 @@ const App = () => (
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
                 <Route path="/admin/nachrichten" element={<RoleGate role="admin"><AdminMessages /></RoleGate>} />
                 <Route path="/admin/zahlungen" element={<RoleGate role="admin"><AdminPayments /></RoleGate>} />
+                <Route path="/admin/inhalte" element={<AdminInhalte />} />
 
                 <Route path="/studio" element={<RoleGate role="designer"><StudioOverview /></RoleGate>} />
                 <Route path="/studio/produkte" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
@@ -135,9 +136,12 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <ConsentBanner />
               </RoomShiftProvider>
               </PersonalizationProvider>
+              </ConsentProvider>
             </CartProvider>
+
 
           </AuthedCore>
         </AuthProvider>
