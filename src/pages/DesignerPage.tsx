@@ -210,4 +210,10 @@ const DesignerPage = () => {
   );
 };
 
+function PrevNextForDesigner({ slug }: { slug: string }) {
+  const { prev, next } = useDesignerPrevNext(slug);
+  if (!prev && !next) return null;
+  return <PrevNext prev={prev} next={next} />;
+}
+
 export default DesignerPage;
