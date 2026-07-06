@@ -32,12 +32,8 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     setMessages(next);
     setInput("");
 
-    // Fire a taste signal — DB-only for signed-in users.
-    if (user) {
-      void supabase.from("domain_events").insert({
-        type: "ai.taste_signal", actor: "user", payload: { raw: text }, actor_id: user.id,
-      } as never);
-    }
+    // Taste signals are captured via the edge function later; no direct DB write from anon browser.
+
 
     try {
       const { data, error } = await supabase.functions.invoke("pawn-chat", {
