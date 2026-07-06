@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { HeroScene } from "@/components/palace/HeroScene";
 import { HelixScene } from "@/components/palace/HelixScene";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
+import { DynamicBanner } from "@/components/palace/DynamicBanner";
+import { PickYourStyle } from "@/components/palace/PickYourStyle";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
