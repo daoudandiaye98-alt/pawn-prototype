@@ -245,21 +245,32 @@ const ProductDetail = () => {
                   <button
                     type="button"
                     onClick={addToBag}
-                    className="palace-btn flex-1 justify-center text-center hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                    disabled={soldOut && !isMto}
+                    className="palace-btn flex-1 justify-center text-center hover:bg-[#0C0C0E] hover:text-[#F1EEE7] disabled:opacity-40"
                   >
-                    In die Tasche
+                    {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
                   </button>
                   <button
                     type="button"
                     onClick={onSave}
-                    className={cn(
-                      "palace-btn justify-center text-center",
-                      saved ? "bg-[#0C0C0E] text-[#F1EEE7]" : "",
-                    )}
+                    aria-label="Merken"
+                    className={cn("palace-btn justify-center text-center", (saved || wished) ? "bg-[#0C0C0E] text-[#F1EEE7]" : "")}
                   >
-                    {saved ? "Gemerkt" : "Merken"}
+                    <Heart className={cn("mr-2 inline h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
+                    {(saved || wished) ? "Gemerkt" : "Merken"}
                   </button>
                 </div>
+
+                {canRequest && (
+                  <button
+                    type="button"
+                    onClick={() => setReqOpen(true)}
+                    className="mt-4 inline-flex text-[0.62rem] uppercase tracking-[0.32em] text-[#0C0C0E] underline underline-offset-4 hover:text-[#0C0C0E]/70"
+                  >
+                    Individuelle Anfrage stellen →
+                  </button>
+                )}
+
 
                 <p className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6 text-[0.8rem] leading-relaxed text-[#0C0C0E]/60">
                   Versichert weltweit versendet · Rückgabe innerhalb von 14 Tagen · Direkt aus dem Atelier.
