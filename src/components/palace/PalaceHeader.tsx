@@ -80,7 +80,7 @@ export function PalaceHeader() {
         }`}
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
       >
-        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-5 md:px-10 md:py-6 lg:gap-12 lg:px-14">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-5 md:px-10 md:py-6 xl:gap-14 xl:px-14">
           {/* Wordmark — never wraps, fixed intrinsic width */}
           <Link
             to="/"
@@ -91,7 +91,7 @@ export function PalaceHeader() {
           </Link>
 
           {/* Desktop nav — collapses to burger below the lg breakpoint (1024px) */}
-          <nav className="hidden min-w-0 items-center justify-center gap-6 lg:flex xl:gap-9">
+          <nav className="hidden min-w-0 items-center justify-center gap-6 xl:flex xl:gap-9">
             {NAV.map((item) => (
               <NavLink
                 key={item.label}
@@ -119,7 +119,7 @@ export function PalaceHeader() {
 
             <button
               onClick={() => setChatOpen(true)}
-              className="hidden items-center gap-2 whitespace-nowrap border border-[rgba(12,12,14,.32)] px-3 py-2 text-[0.62rem] uppercase tracking-[0.3em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] lg:flex xl:px-4"
+              className="hidden items-center gap-2 whitespace-nowrap border border-[rgba(12,12,14,.32)] px-3 py-2 text-[0.62rem] uppercase tracking-[0.3em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] xl:flex xl:px-4"
             >
               <span className="h-[6px] w-[6px] rounded-full bg-[#0C0C0E]" />
               {t("nav.frag")}
@@ -135,7 +135,7 @@ export function PalaceHeader() {
             </button>
 
             {user ? (
-              <div ref={accountRef} className="relative hidden lg:block">
+              <div ref={accountRef} className="relative hidden xl:block">
                 <button
                   type="button"
                   aria-label="Konto"
@@ -171,7 +171,7 @@ export function PalaceHeader() {
               <Link
                 to="/auth"
                 aria-label="Anmelden"
-                className="hidden text-[#55534E] hover:text-[#0C0C0E] lg:inline-flex"
+                className="hidden text-[#55534E] hover:text-[#0C0C0E] xl:inline-flex"
               >
                 <User className="h-4 w-4" strokeWidth={1.2} />
               </Link>
@@ -181,7 +181,7 @@ export function PalaceHeader() {
               type="button"
               aria-label="Menü öffnen"
               onClick={() => setMenuOpen(true)}
-              className="text-[#0C0C0E] lg:hidden"
+              className="text-[#0C0C0E] xl:hidden"
             >
               <Menu className="h-5 w-5" strokeWidth={1.2} />
             </button>
@@ -191,7 +191,7 @@ export function PalaceHeader() {
 
       {/* Mobile / tablet fullscreen menu */}
       <div
-        className={`fixed inset-0 z-[90] flex flex-col bg-[#F1EEE7] transition-opacity duration-500 lg:hidden ${
+        className={`fixed inset-0 z-[90] flex flex-col bg-[#F1EEE7] transition-opacity duration-500 xl:hidden ${
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
