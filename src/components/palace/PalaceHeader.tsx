@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { User } from "lucide-react";
+import { Menu, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { ChatDrawer } from "./ChatDrawer";
@@ -15,6 +15,7 @@ export function PalaceHeader() {
   const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -27,6 +28,12 @@ export function PalaceHeader() {
       window.removeEventListener("palace:open-chat", openChat as EventListener);
     };
   }, []);
+
+  useEffect(() => {
+    if (menuOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [menuOpen]);
 
   return (
     <>
@@ -63,10 +70,10 @@ export function PalaceHeader() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <button
               onClick={() => setChatOpen(true)}
-              className="flex items-center gap-2 border border-[rgba(12,12,14,.28)] px-4 py-2 text-[0.62rem] uppercase tracking-[0.36em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+              className="hidden items-center gap-2 border border-[rgba(12,12,14,.28)] px-4 py-2 text-[0.62rem] uppercase tracking-[0.36em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] md:flex"
             >
               <span className="h-[6px] w-[6px] rounded-full bg-[#0C0C0E]" />
               Frag PAWN
@@ -74,13 +81,69 @@ export function PalaceHeader() {
             <Link
               to={user ? "/account" : "/auth"}
               aria-label={user ? "Konto" : "Anmelden"}
-              className="text-[#7C7972] hover:text-[#0C0C0E]"
+              className="hidden text-[#7C7972] hover:text-[#0C0C0E] md:inline-flex"
             >
               <User className="h-4 w-4" strokeWidth={1.2} />
             </Link>
+            <button
+              type="button"
+              aria-label="Menü öffnen"
+              onClick={() => setMenuOpen(true)}
+              className="md:hidden text-[#0C0C0E]"
+            >
+              <Menu className="h-5 w-5" strokeWidth={1.2} />
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Mobile fullscreen menu */}
+      <div
+        className={`fixed inset-0 z-[90] flex flex-col bg-[#F1EEE7] transition-opacity duration-500 md:hidden ${
+          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div className="flex items-center justify-between px-6 py-5">
+          <span className="font-serif text-[0.9rem] uppercase tracking-[0.42em] text-[#0C0C0E]">P A W N</span>
+          <button
+            type="button"
+            aria-label="Menü schließen"
+            onClick={() => setMenuOpen(false)}
+            className="text-[#0C0C0E]"
+          >
+            <X className="h-5 w-5" strokeWidth={1.2} />
+          </button>
+        </div>
+        <nav className="flex flex-1 flex-col justify-center gap-6 px-8">
+          {NAV.map((item) => (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              onClick={() => setMenuOpen(false)}
+              className="font-serif text-[2.6rem] font-light leading-[0.98] text-[#0C0C0E]"
+            >
+              {item.label}
+            </NavLink>
+          ))}
+          <button
+            type="button"
+            onClick={() => { setMenuOpen(false); setChatOpen(true); }}
+            className="mt-6 text-left font-serif italic text-[1.4rem] leading-tight text-[#0C0C0E]/80"
+          >
+            Frag PAWN →
+          </button>
+        </nav>
+        <div className="border-t border-[rgba(12,12,14,.13)] px-8 py-6">
+          <Link
+            to={user ? "/account" : "/auth"}
+            onClick={() => setMenuOpen(false)}
+            className="text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]"
+          >
+            {user ? "Konto" : "Anmelden"}
+          </Link>
+        </div>
+      </div>
+
       <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
     </>
   );

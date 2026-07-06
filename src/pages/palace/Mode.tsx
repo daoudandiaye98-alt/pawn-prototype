@@ -1,10 +1,12 @@
-import { PalaceWorldPage } from "./Neu";
+import { WorldPage } from "@/components/palace/WorldPage";
+
 export default function Mode() {
   return (
-    <PalaceWorldPage
+    <WorldPage
       world="Mode"
       eyebrow="Welt · 01"
-      headline={<>Mode. <span className="italic">Kleidung als Haltung.</span></>}
+      headline={<>Mode. <span className="italic">Kleidung als Sprache.</span></>}
+      intro="Sechs Ateliers, die jeden Schnitt zweimal denken. Vom leisen Mantel bis zur harten Kante."
     />
   );
 }
