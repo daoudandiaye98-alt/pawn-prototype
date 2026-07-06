@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_config: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       ai_logs: {
         Row: {
           agent_id: string
@@ -66,6 +90,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_sessions: {
+        Row: {
+          created_at: string
+          extracted: Json
+          session_id: string
+          turns: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          extracted?: Json
+          session_id: string
+          turns?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          extracted?: Json
+          session_id?: string
+          turns?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       application_notes: {
         Row: {
@@ -588,6 +639,59 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          created_at: string
+          description: string | null
+          designer_id: string
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          slug: string
+          status: Database["public"]["Enums"]["product_status"]
+          tags: string[]
+          updated_at: string
+          world: Database["public"]["Enums"]["product_world"]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          designer_id: string
+          id?: string
+          image_url?: string | null
+          name: string
+          price?: number
+          slug: string
+          status?: Database["public"]["Enums"]["product_status"]
+          tags?: string[]
+          updated_at?: string
+          world?: Database["public"]["Enums"]["product_world"]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          designer_id?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          slug?: string
+          status?: Database["public"]["Enums"]["product_status"]
+          tags?: string[]
+          updated_at?: string
+          world?: Database["public"]["Enums"]["product_world"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           consent_analytics: boolean
@@ -675,6 +779,8 @@ export type Database = {
     }
     Enums: {
       app_role: "customer" | "designer" | "admin" | "designer_applicant"
+      product_status: "draft" | "published" | "archived"
+      product_world: "Mode" | "Interior" | "Kunst"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -803,6 +909,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["customer", "designer", "admin", "designer_applicant"],
+      product_status: ["draft", "published", "archived"],
+      product_world: ["Mode", "Interior", "Kunst"],
     },
   },
 } as const
