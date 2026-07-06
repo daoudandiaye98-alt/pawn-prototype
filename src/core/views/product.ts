@@ -54,6 +54,7 @@ export function toProductView(product: Product, designer: Designer | undefined):
     price: product.price,
     category: product.category,
     gender: product.gender,
+    world: product.world,
     colors: product.colors,
     sizes: product.sizes,
     status: product.status,
