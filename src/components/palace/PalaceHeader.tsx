@@ -2,17 +2,19 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
-
-const NAV = [
-  { label: "Mode", to: "/mode" },
-  { label: "Interior", to: "/interior" },
-  { label: "Kunst", to: "/kunst" },
-  { label: "Designer", to: "/designers" },
-];
 
 export function PalaceHeader() {
   const { user, roles, signOut } = useAuth();
+  const { locale, setLocale, t } = useI18n();
+  const NAV = [
+    { label: t("nav.mode"), to: "/mode" },
+    { label: t("nav.interior"), to: "/interior" },
+    { label: t("nav.kunst"), to: "/kunst" },
+    { label: t("nav.designer"), to: "/designers" },
+    { label: t("nav.forDesigners"), to: "/apply" },
+  ];
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
