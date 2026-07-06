@@ -9,6 +9,9 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { I18nProvider } from "@/lib/i18n";
 import { RoomShiftProvider } from "@/features/os/roomShift";
 import { PersonalizationProvider } from "@/features/personalization";
+import { ConsentProvider } from "@/lib/consent";
+import { ConsentBanner } from "@/components/palace/ConsentBanner";
+import AdminInhalte from "./pages/admin/AdminInhalte.tsx";
 
 
 import Index from "./pages/Index.tsx";
