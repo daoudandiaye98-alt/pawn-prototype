@@ -177,7 +177,11 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
       const agg = aggregate(signals);
       const next = { ...agg, correctedIds: corrected };
       setProfile(next);
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...agg, correctedIds: [] })); } catch { /* noop */ }
+      if (allowsPersistence) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...agg, correctedIds: [] })); } catch { /* noop */ }
+      } else {
+        try { localStorage.removeItem(CACHE_KEY); } catch { /* noop */ }
+      }
     } catch (err) {
       console.warn("[personalization] refresh failed", err);
     } finally { setLoading(false); }
