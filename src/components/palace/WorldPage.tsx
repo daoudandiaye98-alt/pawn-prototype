@@ -6,6 +6,8 @@ import { Reveal } from "@/components/palace/Reveal";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
+import { usePersonalization, sortByPersonalization } from "@/features/personalization";
+
 
 interface WorldPageProps {
   world: World;
@@ -47,7 +49,10 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
   }, [worldProducts]);
 
   const [active, setActive] = useState<string | null>(null);
-  const visible = active ? worldProducts.filter((p) => p.category === active) : worldProducts;
+  const personalization = usePersonalization();
+  const filtered = active ? worldProducts.filter((p) => p.category === active) : worldProducts;
+  const visible = useMemo(() => sortByPersonalization(filtered, personalization), [filtered, personalization]);
+
 
   // Featured designer: first designer whose tags mention this world (DB) or match seed heuristics.
   const featured = useMemo(() => {

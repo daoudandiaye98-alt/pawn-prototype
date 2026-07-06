@@ -1,13 +1,18 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { useStore, marketplaceSelectors } from "@/core";
+import { usePersonalization, sortByPersonalization } from "@/features/personalization";
 
 export default function Neu() {
-  const products = useStore(marketplaceSelectors.getAllProductViews);
+  const raw = useStore(marketplaceSelectors.getAllProductViews);
+  const personalization = usePersonalization();
+  const products = useMemo(() => sortByPersonalization(raw, personalization), [raw, personalization]);
   return (
     <PalaceLayout transparentHeader={false}>
+
       <section className="px-6 pt-32 md:px-14 md:pt-40">
         <div className="mx-auto max-w-[1600px]">
           <Reveal>

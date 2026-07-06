@@ -7,6 +7,8 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
+import { usePersonalization, sortByPersonalization } from "@/features/personalization";
+
 
 function useScrollProgress(ref: React.RefObject<HTMLElement>) {
   const [p, setP] = useState(0);
@@ -31,6 +33,8 @@ const Index = () => {
   const { designers } = usePublicDesigners();
   const collection = useActiveCollection();
   const products = useStore(marketplaceSelectors.getAllProductViews);
+  const personalization = usePersonalization();
+
 
   const featured = designers.filter((d) => d.is_featured);
   const cover = featured[0] ?? designers[0];
@@ -88,7 +92,23 @@ const Index = () => {
     return m;
   }, [products]);
 
-  const editorialTiles = products.slice(0, 6);
+  const editorialTiles = useMemo(
+    () => sortByPersonalization(products, personalization).slice(0, 6),
+    [products, personalization],
+  );
+
+  const personalSubtitle = useMemo(() => {
+    if (!personalization.hasSignals) return null;
+    const w = personalization.world;
+    const m = personalization.mood;
+    if (m === "ruhig" && w) return `Für dich kuratiert: ruhige, skulpturale Stücke aus ${w}.`;
+    if (m === "spannung" && w) return `Für dich zusammengestellt: kontrastreiche Handschriften aus ${w}.`;
+    if (w) return `Für dich kuratiert — mit Fokus auf ${w}.`;
+    if (m === "ruhig") return "Für dich kuratiert: ruhige, skulpturale Stücke.";
+    if (m === "spannung") return "Für dich kuratiert: kontrastreiche Handschriften.";
+    return null;
+  }, [personalization]);
+
 
   return (
     <PalaceLayout>
@@ -113,9 +133,10 @@ const Index = () => {
             <span className="block font-light">{featuredCount} Designer,</span>
             <span className="block italic font-light">die du noch nicht kennst.</span>
           </h1>
-          <p className="mx-auto mt-10 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70">
-            Mode · Interior · Kunst — ausgewählt aus {atelierCount} unabhängigen Ateliers.
+          <p className="mx-auto mt-10 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/75">
+            {personalSubtitle ?? `Mode · Interior · Kunst — ausgewählt aus ${atelierCount} unabhängigen Ateliers.`}
           </p>
+
 
           <HeroPrompt />
 
