@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, User, X } from "lucide-react";
+import { Menu, Search, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { SearchOverlay } from "./SearchOverlay";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
