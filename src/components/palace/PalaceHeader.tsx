@@ -227,9 +227,11 @@ export function PalaceHeader() {
       </div>
 
       <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }
+
 
 function MenuItem({ to, onClick, children }: { to: string; onClick?: () => void; children: React.ReactNode }) {
   return (
