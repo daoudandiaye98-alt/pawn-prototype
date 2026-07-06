@@ -1,315 +1,400 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import { PublicLayout } from "@/components/pawn/PublicLayout";
-import { ProductCard } from "@/components/pawn/ProductCard";
-import { DesignerCard } from "@/components/pawn/DesignerCard";
-import { ProductImage } from "@/components/pawn/ProductImage";
-import { DNAVisual } from "@/components/pawn/DNAVisual";
-import {
-  useStore,
-  marketplaceSelectors,
-  selectors,
-  useCommand,
-  commands,
-  defaultIdentityId,
-} from "@/core";
-import { readFirstChoice, writeFirstChoice, readLastSeen, writeLastSeen, isReturningVisit } from "@/features/os/lastSeen";
-import { useRoomShift } from "@/features/os/roomShift";
-import { useRank, usePieceShadow } from "@/features/narrative/hooks";
+import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { HeroScene } from "@/components/palace/HeroScene";
+import { HelixScene } from "@/components/palace/HelixScene";
+import { EditorialImage } from "@/components/palace/EditorialImage";
+import { Reveal } from "@/components/palace/Reveal";
+import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
+import { useStore, marketplaceSelectors } from "@/core";
 
-/**
- * PAWN — The Obsidian Archive Palace.
- * One monumental scroll: Portal → Shadow room → Houses → Curation → DNA finale.
- * No dead ends. Every section pulls the eye down into the next room.
- */
+function useScrollProgress(ref: React.RefObject<HTMLElement>) {
+  const [p, setP] = useState(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      const scrolled = -rect.top;
+      const prog = Math.max(0, Math.min(1, scrolled / Math.max(1, total)));
+      setP(prog);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [ref]);
+  return p;
+}
+
 const Index = () => {
+  const { designers } = usePublicDesigners();
+  const collection = useActiveCollection();
   const products = useStore(marketplaceSelectors.getAllProductViews);
-  const designers = useStore(marketplaceSelectors.getAllDesignerViews);
-  const identity = useStore((s) => selectors.getIdentity(s, defaultIdentityId));
-  const rank = useRank();
-  const shadow = usePieceShadow();
-  const dispatch = useCommand();
-  const { push } = useRoomShift();
 
-  const [choice, setChoice] = useState<"light" | "shadow" | null>(() => readFirstChoice());
+  const featured = designers.filter((d) => d.is_featured);
+  const cover = featured[0] ?? designers[0];
+  const statement = featured[1] ?? designers[1] ?? designers[0];
+  const featuredCount = featured.length || 8;
+  const atelierCount = designers.length;
+
+  // Canvas fade-out on scroll (except during finale).
+  const [canvasOpacity, setCanvasOpacity] = useState(1);
+  const finaleRef = useRef<HTMLElement | null>(null);
+  const finaleProgress = useScrollProgress(finaleRef as React.RefObject<HTMLElement>);
 
   useEffect(() => {
-    const prev = readLastSeen();
-    if (isReturningVisit(prev)) push("Die Partie ruht. Es liegt an dir.");
-    writeLastSeen();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const onScroll = () => {
+      const y = window.scrollY;
+      const heroFade = Math.max(0.07, 1 - y / (window.innerHeight * 0.9));
+      const finaleBoost = finaleProgress > 0.05 ? finaleProgress : 0;
+      setCanvasOpacity(Math.min(1, heroFade + finaleBoost));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [finaleProgress]);
 
-  const lastSaved = useMemo(() => {
-    const savedIds = identity?.wardrobe.saved ?? [];
-    if (savedIds.length === 0) return null;
-    const id = savedIds[savedIds.length - 1] as string;
-    return products.find((p) => p.id === id) ?? null;
-  }, [identity, products]);
-
-  function makeChoice(pick: "light" | "shadow") {
-    writeFirstChoice(pick);
-    setChoice(pick);
-    if (identity) {
-      const to = pick === "shadow"
-        ? { darkness: Math.min(1, identity.dna.genome.darkness + 0.15), edge: Math.min(1, identity.dna.genome.edge + 0.1) }
-        : { structure: Math.min(1, identity.dna.genome.structure + 0.15), elegance: Math.min(1, identity.dna.genome.elegance + 0.1) };
-      const r = dispatch(commands.proposeMutation, {
-        identityId: defaultIdentityId,
-        to,
-        rationale: pick === "shadow" ? "Erster Zug: Schatten." : "Erster Zug: Licht.",
-      });
-      if (r.ok) {
-        const proposed = r.events.find((e) => e.type === "mutation.proposed");
-        const proposedId = proposed && "payload" in proposed && proposed.payload && "mutation" in proposed.payload
-          ? (proposed.payload as { mutation: { id: string } }).mutation.id
-          : null;
-        if (proposedId) dispatch(commands.ratifyMutation, { identityId: defaultIdentityId, mutationId: proposedId as never });
+  // Horizontal collection track scroll
+  const trackSectionRef = useRef<HTMLElement | null>(null);
+  const trackInnerRef = useRef<HTMLDivElement | null>(null);
+  const trackProgress = useScrollProgress(trackSectionRef as React.RefObject<HTMLElement>);
+  const smoothedRef = useRef(0);
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      smoothedRef.current += (trackProgress - smoothedRef.current) * 0.09;
+      const inner = trackInnerRef.current;
+      if (inner) {
+        const max = inner.scrollWidth - window.innerWidth;
+        inner.style.transform = `translate3d(${-smoothedRef.current * Math.max(0, max)}px, 0, 0)`;
       }
-    }
-    push(pick === "shadow" ? "1. Schatten. Der Bauer zieht nach vorn." : "1. Licht. Der Bauer zieht nach vorn.");
-  }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [trackProgress]);
 
-  const ordered = choice === "shadow"
-    ? [...products].sort((a, b) => (b.genomeAffinity?.darkness ?? 0) - (a.genomeAffinity?.darkness ?? 0))
-    : [...products].sort((a, b) => (b.genomeAffinity?.structure ?? 0) - (a.genomeAffinity?.structure ?? 0));
+  // Signature scene texts
+  const finaleText = finaleProgress < 0.33
+    ? "Jeder fängt klein an."
+    : finaleProgress < 0.66
+      ? "Der Raum wächst mit."
+      : "Aus dem Bauern wird die Dame.";
+
+  const productBySlug = useMemo(() => {
+    const m = new Map<string, (typeof products)[number]>();
+    for (const p of products) m.set(p.slug, p);
+    return m;
+  }, [products]);
+
+  const editorialTiles = products.slice(0, 6);
 
   return (
-    <PublicLayout>
-      {/* ───── 01 · PORTAL ─────────────────────────────────────────
-          Marble hall. Fixed nav floats above. Serif bleeds off the left,
-          graphite slab drifts in from the right. */}
-      <section id="portal" className="relative min-h-screen overflow-hidden bg-background px-6 pt-40 md:px-14 md:pt-48">
-        <div className="grid grid-cols-12 items-center">
-          <div className="col-span-12 z-10 md:col-span-8">
-            <div className="mb-10 flex items-center gap-4 text-[10px] uppercase tracking-[0.5em] text-foreground/50 motion-reveal">
-              <span className="h-px w-10 bg-foreground/50" />
-              Chapter 001 · The Archive
-            </div>
-            <h1 className="-ml-1 font-serif font-light leading-[0.82] tracking-[-0.03em] motion-reveal"
-                style={{ fontSize: "clamp(4rem, 13vw, 15rem)" }}>
-              Modern
-              <br />
-              <span className="ml-[8%] italic text-accent">Antiqua.</span>
-            </h1>
+    <PalaceLayout>
+      {/* Fixed 3D canvas layer behind everything */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-700"
+        style={{ opacity: canvasOpacity, transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
+      >
+        <HeroScene finaleProgress={finaleProgress} />
+      </div>
 
-            <div className="mt-12 flex max-w-md items-start gap-8 motion-reveal">
-              <div className="mt-3 h-px w-24 shrink-0 bg-foreground" />
-              <p className="text-sm leading-relaxed tracking-wide text-foreground/70">
-                A curation of objects that bridge the threshold between light and shadow —
-                the definitive collection for the modern aesthetician.
-              </p>
-            </div>
-
-            {/* Der erste Zug — subtle, never blocks the room */}
-            <div className="mt-14 flex flex-wrap items-center gap-4 motion-reveal">
-              <span className="text-[10px] uppercase tracking-[0.4em] text-foreground/45">
-                {choice ? `1. ${choice === "shadow" ? "…e5" : "e4"} · Rang ${rank.rank} / 8` : "Weiß beginnt. Wähle deinen Zug."}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => makeChoice("light")}
-                  className={`group px-6 py-3 text-[10px] uppercase tracking-[0.4em] transition-all duration-700 ${
-                    choice === "light"
-                      ? "bg-foreground text-background"
-                      : "border border-foreground/40 text-foreground hover:border-foreground hover:bg-foreground hover:text-background"
-                  }`}
-                >
-                  Licht
-                </button>
-                <button
-                  onClick={() => makeChoice("shadow")}
-                  className={`group px-6 py-3 text-[10px] uppercase tracking-[0.4em] transition-all duration-700 ${
-                    choice === "shadow"
-                      ? "bg-foreground text-background"
-                      : "border border-foreground/40 text-foreground hover:border-foreground hover:bg-foreground hover:text-background"
-                  }`}
-                >
-                  Schatten
-                </button>
-              </div>
-            </div>
+      {/* ── 01 HERO ─────────────────────────────────────────── */}
+      <section className="relative z-10 flex min-h-screen items-center justify-center px-6 md:px-14">
+        <div className="mx-auto max-w-[1400px] text-center">
+          <p className="palace-eyebrow motion-reveal">
+            Kuratierte Ausstellung · Ausgabe 07 · Juli
+          </p>
+          <h1
+            className="palace-serif palace-line-rise mt-10 text-[#0C0C0E]"
+            style={{ fontSize: "clamp(3rem, 8.5vw, 8.2rem)", lineHeight: 0.94, letterSpacing: "-0.02em" }}
+          >
+            <span className="block font-light">{featuredCount} Designer,</span>
+            <span className="block italic font-light">die du noch nicht kennst.</span>
+          </h1>
+          <p className="mx-auto mt-10 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70">
+            Mode · Interior · Kunst — ausgewählt aus {atelierCount} unabhängigen Ateliers.
+          </p>
+          <div className="mt-20 flex flex-col items-center gap-4">
+            <span className="palace-eyebrow">Scroll</span>
+            <span className="palace-drip block h-14 w-px bg-[#0C0C0E]" />
           </div>
         </div>
+      </section>
 
-        {/* Asymmetric graphite slab drifting from the right */}
-        <div className="absolute right-0 top-[12%] hidden h-[75vh] w-[42vw] overflow-hidden bg-accent md:block">
-          <div className="absolute inset-0 chess-grid-light opacity-20" />
-          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-background/20" />
-          <div className="absolute -left-6 bottom-10 origin-bottom-left rotate-90">
-            <span className="text-[10px] font-light uppercase italic tracking-[0.5em] text-background/40">
-              Fragment Series 003 / 12
+      {/* ── 02 NAMESTRIP ────────────────────────────────────── */}
+      <section className="relative z-10 border-y border-[rgba(12,12,14,.13)] bg-[#F1EEE7] py-6 overflow-hidden">
+        <div className="palace-marquee flex whitespace-nowrap">
+          {[...designers, ...designers].map((d, i) => (
+            <span key={`${d.id}-${i}`} className="flex items-center gap-6 px-8 palace-eyebrow">
+              <span className="text-[#0C0C0E]">{d.brand_name}</span>
+              <span className="text-[#A8A49B]">· {d.location ?? "—"}</span>
+              <span className="text-[#A8A49B]">◆</span>
             </span>
-          </div>
-          <div className="absolute bottom-10 right-10 max-w-[220px] text-right">
-            <p className="font-serif text-4xl italic leading-none text-background">Marmor</p>
-            <p className="mt-3 text-[10px] uppercase tracking-[0.4em] text-background/60">Volume 01</p>
-          </div>
+          ))}
         </div>
-
-        {/* Descend cue */}
-        <a href="#shadow" className="absolute bottom-10 left-6 flex flex-col items-center gap-4 md:left-14">
-          <div className="h-24 w-px bg-gradient-to-b from-foreground/50 to-transparent" />
-          <span className="mt-2 rotate-90 text-[9px] uppercase tracking-[0.5em] text-foreground/45">
-            Descend
-          </span>
-        </a>
       </section>
 
-      {/* ───── 02 · THE SHADOW ROOM ─────────────────────────────
-          Obsidian void. Sticky left column of narrative,
-          asymmetric right column of floating objects. */}
-      <section id="shadow" className="relative min-h-[120vh] overflow-hidden bg-foreground px-6 py-40 text-background md:px-14 md:py-48">
-        <div className="grid grid-cols-12 items-start gap-8">
-          <div className="col-span-12 md:col-span-4 md:col-start-2 md:sticky md:top-40">
-            <div className="mb-8 flex items-center gap-4 text-[10px] uppercase tracking-[0.5em] text-background/40">
-              <span className="h-px w-10 bg-background/40" />
-              Chapter 002
-            </div>
-            <h2 className="font-serif text-6xl font-light italic leading-[0.95] tracking-tight md:text-8xl">
-              The<br />Shadow<br />Palace
-            </h2>
-            <p className="mt-10 max-w-sm text-sm leading-loose tracking-widest text-background/60">
-              In the absence of illumination, the object reveals its true form —
-              a study in texture, weight, and the permanence of graphite.
-            </p>
-            <Link
-              to="/designers"
-              className="group mt-10 inline-flex items-center gap-4 border-b border-background/30 pb-2 text-[10px] font-semibold uppercase tracking-[0.4em] transition-all duration-700 hover:border-background"
-            >
-              Explore the Archiv
-              <ArrowRight className="h-3 w-3 transition-transform duration-500 group-hover:translate-x-2" strokeWidth={1.4} />
-            </Link>
-          </div>
-
-          <div className="col-span-12 md:col-span-6 md:col-start-7 space-y-[20vh]">
-            {ordered[0] && (
-              <div className="relative aspect-[4/5] w-full overflow-hidden bg-accent shadow-2xl">
-                <Link to={`/product/${ordered[0].slug}`} className="block h-full w-full">
-                  <ProductImage seed={ordered[0].slug} className="h-full w-full grayscale contrast-125 transition-transform duration-[2000ms] hover:scale-105" />
-                  <div className="pointer-events-none absolute right-6 top-6">
-                    <span className="bg-background px-3 py-1 text-[10px] uppercase tracking-widest text-foreground">
-                      Shadow No. 1
-                    </span>
-                  </div>
-                  <div className="pointer-events-none absolute bottom-8 left-8 text-background">
-                    <p className="font-serif text-3xl italic">{ordered[0].name}</p>
-                    <p className="mt-2 text-[10px] uppercase tracking-[0.4em] opacity-70">{ordered[0].designer}</p>
-                  </div>
-                </Link>
+      {/* ── 03 COVER STORY ──────────────────────────────────── */}
+      {cover && (
+        <section className="relative z-10 bg-[#F1EEE7]">
+          <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 px-0 md:grid-cols-[1.25fr_1fr] md:min-h-[92vh]">
+            <Reveal className="relative">
+              <EditorialImage
+                seed={`cover-${cover.slug}`}
+                src={cover.hero_image_url ?? cover.banner_url}
+                ratio="5/4"
+                className="h-full w-full"
+                priority
+              />
+              <div className="absolute bottom-6 left-6 max-w-xs" style={{ mixBlendMode: "difference" }}>
+                <p className="palace-eyebrow text-white/70">Cover Story · Nr. 07</p>
+                <p className="mt-2 font-serif italic text-white">{cover.brand_name}, {cover.location ?? "—"}</p>
               </div>
-            )}
+            </Reveal>
 
-
-            {/* Monumental type bleed */}
-            <div className="relative select-none">
-              <span className="pointer-events-none absolute -left-[30%] -top-[10vh] whitespace-nowrap font-serif italic leading-none text-background/10"
-                    style={{ fontSize: "22vw" }}>
-                MONUMENTAL
-              </span>
-            </div>
-
-            {ordered[1] && (
-              <div className="relative ml-auto aspect-square w-4/5 overflow-hidden bg-secondary">
-                <Link to={`/product/${ordered[1].slug}`} className="block h-full w-full">
-                  <ProductImage seed={ordered[1].slug} className="h-full w-full grayscale mix-blend-multiply transition-transform duration-[2000ms] hover:scale-105" />
-                  <div className="pointer-events-none absolute bottom-8 left-8 max-w-[220px] text-foreground">
-                    <p className="font-serif text-2xl italic leading-tight">{ordered[1].name}</p>
-                    <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.3em]">
-                      {ordered[1].designer}
-                    </p>
-                  </div>
-                </Link>
-              </div>
-            )}
-
-          </div>
-        </div>
-
-        <div className="pointer-events-none absolute -bottom-[10vw] -right-[10vw] h-[30vw] w-[30vw] rotate-45 border-l border-t border-background/10" />
-      </section>
-
-      {/* ───── 03 · THE HOUSES ─────────────────────────────
-          Marble again. Wide grid of designers, plenty of air. */}
-      <section id="houses" className="relative bg-background px-6 py-40 md:px-14 md:py-56">
-        <div className="mx-auto max-w-[1600px]">
-          <div className="grid grid-cols-12 items-end gap-8">
-            <div className="col-span-12 md:col-span-7 md:col-start-2">
-              <p className="mb-8 text-[10px] uppercase tracking-[0.5em] text-foreground/50">Chapter 003 · The Houses</p>
-              <h2 className="font-serif font-light leading-[0.9] tracking-[-0.02em]" style={{ fontSize: "clamp(3rem, 8vw, 8rem)" }}>
-                The studios<br />we <span className="italic text-accent">collect.</span>
+            <Reveal delay={120} className="flex flex-col justify-center gap-8 px-8 py-16 md:px-14 md:py-24">
+              <p className="palace-eyebrow">Cover Story</p>
+              <h2 className="palace-serif font-light text-[clamp(2.2rem,4vw,3.6rem)] leading-[1.02] text-[#0C0C0E]">
+                {cover.brand_name}. <span className="italic">Eine Handschrift,<br/>die man wiederkennt.</span>
               </h2>
-            </div>
-            <div className="col-span-12 md:col-span-3 md:col-start-9">
-              <Link to="/designers" className="group inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.4em]">
-                View all houses
-                <span className="inline-block h-px w-10 bg-foreground transition-all duration-700 group-hover:w-20" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-24 grid grid-cols-1 gap-x-8 gap-y-20 sm:grid-cols-2 lg:grid-cols-4">
-            {designers.slice(0, 4).map((d) => (
-              <DesignerCard key={d.slug} designer={d} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ───── 04 · CURATION — the pull-forward gallery ─────── */}
-      <section id="curation" className="relative bg-secondary/40 px-6 py-40 md:px-14 md:py-56">
-        <div className="mx-auto max-w-[1600px]">
-          <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-12 md:col-span-5">
-              <p className="mb-8 text-[10px] uppercase tracking-[0.5em] text-foreground/50">
-                Chapter 004 · {choice === "shadow" ? "Ordered by Shadow" : "Ordered by Light"}
-              </p>
-              <h2 className="font-serif italic font-light leading-[0.95] tracking-[-0.02em]" style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}>
-                Worn by the<br />undecided<br />minority.
-              </h2>
-              {lastSaved && (
-                <p className="mt-8 font-serif text-lg italic text-foreground/70">
-                  Letzter Zug: <Link to={`/product/${lastSaved.slug}`} className="text-foreground underline-offset-4 hover:underline">{lastSaved.name}</Link>.
+              {cover.story && (
+                <p className="max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80">
+                  {cover.story}
                 </p>
               )}
+              {cover.quote && (
+                <blockquote className="max-w-md border-l border-[rgba(12,12,14,.28)] pl-5">
+                  <p className="palace-serif italic text-[1.4rem] leading-snug text-[#0C0C0E]">„{cover.quote}"</p>
+                  <cite className="mt-3 block not-italic palace-eyebrow">{cover.quote_role ?? cover.brand_name}</cite>
+                </blockquote>
+              )}
+              <Link to={`/designer/${cover.slug}`} className="palace-eyebrow uline w-fit text-[#0C0C0E]">
+                Kollektion ansehen →
+              </Link>
+            </Reveal>
+          </div>
+        </section>
+      )}
+
+      {/* ── 04 EDITORIAL GRID · Frisch aus den Ateliers ───── */}
+      <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
+        <div className="mx-auto max-w-[1600px]">
+          <div className="mb-16 flex items-end justify-between gap-8">
+            <div>
+              <p className="palace-eyebrow">Diese Woche neu</p>
+              <h2 className="palace-serif mt-4 font-light text-[clamp(2rem,4vw,3.4rem)] leading-[1.02]">
+                Frisch aus <span className="italic">den Ateliers.</span>
+              </h2>
             </div>
-            <div className="col-span-12 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 md:col-span-7 md:col-start-6 lg:grid-cols-2">
-              {ordered.slice(0, 4).map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
+            <Link to="/neu" className="palace-eyebrow uline text-[#0C0C0E]">Alles Neue →</Link>
+          </div>
+
+          <div className="grid grid-cols-12 gap-6 md:gap-8">
+            {editorialTiles.map((p, i) => {
+              // Alternating monumental row shapes
+              const layouts = [
+                { span: "col-span-12 md:col-span-5", ratio: "3/4" as const },
+                { span: "col-span-12 md:col-span-4", ratio: "4/5" as const },
+                { span: "col-span-12 md:col-span-3", ratio: "3/4" as const },
+                { span: "col-span-12 md:col-span-3", ratio: "3/4" as const },
+                { span: "col-span-12 md:col-span-4", ratio: "4/5" as const },
+                { span: "col-span-12 md:col-span-5", ratio: "3/2" as const },
+              ];
+              const l = layouts[i % layouts.length];
+              return (
+                <Reveal key={p.id} delay={i * 60} className={l.span}>
+                  <Link to={`/product/${p.slug}`} className="group block">
+                    <EditorialImage seed={`prod-${p.slug}`} ratio={l.ratio} />
+                    <div className="mt-4">
+                      <p className="palace-serif italic text-[1.15rem] leading-tight text-[#0C0C0E]">{p.name}</p>
+                      <p className="palace-eyebrow mt-2">Mode · {p.designer}</p>
+                    </div>
+                  </Link>
+                </Reveal>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 05 STATEMENT BANNER ─────────────────────────────── */}
+      {statement && (
+        <section className="relative z-10 min-h-[72vh] overflow-hidden">
+          <EditorialImage
+            seed={`banner-${statement.slug}`}
+            src={statement.hero_image_url ?? statement.banner_url}
+            ratio="16/9"
+            className="absolute inset-0 h-full w-full"
+          />
+          <div className="absolute inset-0 bg-[#0C0C0E]/45" />
+          <div className="relative flex min-h-[72vh] items-center justify-center px-6 text-center">
+            <Reveal>
+              <p className="palace-eyebrow text-white/60">Statement</p>
+              <blockquote className="mx-auto mt-8 max-w-3xl">
+                <p className="palace-serif italic font-light text-white" style={{ fontSize: "clamp(1.8rem, 4.5vw, 3.6rem)", lineHeight: 1.1 }}>
+                  „{statement.quote ?? "Der Raum trägt, was du sonst nirgends findest."}"
+                </p>
+                <cite className="mt-8 block not-italic palace-eyebrow text-white/70">
+                  {statement.quote_role ?? statement.brand_name}
+                </cite>
+              </blockquote>
+            </Reveal>
+          </div>
+        </section>
+      )}
+
+      {/* ── 06 CURATED COLLECTION · horizontal scroll ─────── */}
+      <section ref={trackSectionRef} className="relative z-10 bg-[#F1EEE7]" style={{ height: "320vh" }}>
+        <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
+          <div className="px-6 pt-24 md:px-14">
+            <div className="mx-auto flex max-w-[1600px] items-end justify-between gap-8">
+              <div>
+                <p className="palace-eyebrow">Kuratierte Kollektion № {collection.number}</p>
+                <h2 className="palace-serif mt-4 font-light text-[clamp(2rem,4vw,3.4rem)] leading-[1.02]">
+                  {collection.title}. <span className="italic">{collection.subtitle}</span>
+                </h2>
+              </div>
+              <p className="palace-eyebrow hidden md:block">Scroll = seitwärts</p>
+            </div>
+          </div>
+          <div className="mt-16 flex flex-1 items-center overflow-hidden">
+            <div ref={trackInnerRef} className="flex gap-8 pl-6 md:pl-14 will-change-transform">
+              {collection.items.map((it, i) => {
+                const p = productBySlug.get(it.product_slug);
+                return (
+                  <Reveal key={`${it.product_slug}-${i}`} delay={i * 40} className="w-[74vw] shrink-0 md:w-[36vw] lg:w-[28vw]">
+                    <div className="relative">
+                      <EditorialImage seed={`col-${it.product_slug}`} ratio="3/4" />
+                      <span
+                        className="absolute left-4 top-4 palace-eyebrow text-white"
+                        style={{ mixBlendMode: "difference" }}
+                      >
+                        {it.world ?? "—"}
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <p className="palace-serif italic text-[1.15rem] text-[#0C0C0E]">
+                        {p?.name ?? it.product_slug}
+                      </p>
+                      <p className="palace-eyebrow mt-2">
+                        {p?.designer ?? "Studio"} {p ? `· €${p.price.toLocaleString("de-DE")}` : ""}
+                      </p>
+                    </div>
+                  </Reveal>
+                );
+              })}
+              <div className="w-[10vw] shrink-0" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* ───── 05 · DNA FINALE — the pawn transforms ───────── */}
-      <section id="dna" className="relative overflow-hidden bg-foreground px-6 py-40 text-background md:px-14 md:py-56">
-        <div className="absolute inset-0 chess-grid-light opacity-20" aria-hidden />
-        <div className="relative mx-auto grid max-w-[1600px] grid-cols-12 items-center gap-12">
-          <div className="col-span-12 md:col-span-7 md:col-start-1">
-            <p className="mb-8 text-[10px] uppercase tracking-[0.5em] text-background/40">Chapter 005 · Intelligence</p>
-            <h2 className="font-serif font-light leading-[0.9] tracking-[-0.02em]" style={{ fontSize: "clamp(3rem, 8vw, 8rem)" }}>
-              Der Bauer wird<br />zur <span className="italic">{shadow.label.toLowerCase()}</span>.
-            </h2>
-            <p className="mt-8 max-w-md font-serif text-xl italic text-background/70">
-              Wenn du weiterziehst. Deine dominante Achse trägt {shadow.quality.toLowerCase()} —
-              das ist die Figur, die aus dir wird.
+      {/* ── 07 ATELIER FEATURE ──────────────────────────────── */}
+      <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-24">
+          <Reveal className="flex flex-col justify-center">
+            <p className="palace-eyebrow">Im Atelier</p>
+            <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
+              Zwischen zwei Zügen — <span className="italic">wie ein Stück entsteht.</span>
+            </h3>
+            <p className="mt-8 max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80">
+              Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt.
+              Wir zeigen die Momente vor dem Bild, nicht das Bild.
             </p>
-            <Link
-              to="/dna"
-              className="mt-12 inline-flex items-center gap-4 border border-background/40 px-8 py-4 text-[10px] uppercase tracking-[0.4em] transition-all duration-700 hover:bg-background hover:text-foreground"
-            >
-              Das Brett des Selbst
-              <ArrowRight className="h-3 w-3" strokeWidth={1.4} />
+            <Link to="/designers" className="palace-eyebrow uline mt-10 w-fit text-[#0C0C0E]">
+              Zur Geschichte →
             </Link>
-          </div>
-          <div className="col-span-12 flex justify-center text-background/80 md:col-span-4 md:col-start-9">
-            <DNAVisual className="h-[420px] w-auto" />
+          </Reveal>
+          <Reveal delay={140}>
+            <EditorialImage seed="atelier-feature" ratio="4/5" />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── 08 IM HINTERGRUND (Helix) ───────────────────────── */}
+      <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-16 md:grid-cols-2">
+          <Reveal>
+            <p className="palace-eyebrow">Im Hintergrund</p>
+            <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
+              Der Raum merkt sich, <span className="italic">was dich bewegt.</span>
+            </h3>
+            <p className="mt-8 max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80">
+              Ohne Fragebogen, ohne Häkchen. Beim Sehen, beim Verweilen, beim Zurückkommen
+              wird die Ausstellung ein bisschen mehr deine.
+            </p>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("palace:open-chat"))}
+              className="palace-btn mt-10"
+            >
+              Frag PAWN →
+            </button>
+          </Reveal>
+          <Reveal delay={140} className="relative h-[520px]">
+            <HelixScene />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── 09 DESIGNER CTA ─────────────────────────────────── */}
+      <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
+        <div className="mx-auto max-w-[1200px] text-center">
+          <Reveal>
+            <p className="palace-eyebrow">Für Designer</p>
+            <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,4vw,3.6rem)] leading-[1.02]">
+              Die Bühne steht. <span className="italic">Der Auftritt gehört dir.</span>
+            </h3>
+          </Reveal>
+
+          <div className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
+            <Reveal>
+              <Link
+                to="/apply"
+                className="group flex h-full flex-col justify-between border border-[rgba(12,12,14,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+              >
+                <p className="palace-eyebrow group-hover:text-[#A8A49B]">Bewerben</p>
+                <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
+                  Als Designer<br/>bewerben.
+                </p>
+              </Link>
+            </Reveal>
+            <Reveal delay={120}>
+              <Link
+                to="/neu"
+                className="group flex h-full flex-col justify-between border border-[rgba(12,12,14,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+              >
+                <p className="palace-eyebrow group-hover:text-[#A8A49B]">Sehen</p>
+                <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
+                  Zur laufenden<br/>Ausstellung.
+                </p>
+              </Link>
+            </Reveal>
           </div>
         </div>
       </section>
-    </PublicLayout>
+
+      {/* ── 10 SIGNATURE SCENE ──────────────────────────────── */}
+      <section
+        ref={finaleRef as React.RefObject<HTMLElement>}
+        className="relative z-10"
+        style={{ height: "200vh" }}
+      >
+        <div className="sticky top-0 flex h-screen items-end justify-center px-6 pb-24 md:px-14">
+          <div className="text-center">
+            <p className="palace-eyebrow">Signatur</p>
+            <p
+              key={finaleText}
+              className="palace-serif mt-6 font-light italic text-[#0C0C0E] motion-reveal"
+              style={{ fontSize: "clamp(2rem, 5vw, 4.4rem)", lineHeight: 1.05 }}
+            >
+              {finaleText}
+            </p>
+          </div>
+        </div>
+      </section>
+    </PalaceLayout>
   );
 };
 
