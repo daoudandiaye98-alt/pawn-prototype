@@ -249,7 +249,8 @@ Deno.serve(async (req) => {
     const system = admin ? await loadSystemPrompt(admin) : DEFAULT_SYSTEM;
     const reply = (await callProvider(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
 
-    return new Response(JSON.stringify({ reply, cards, action, session_id }), {
+    const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+    return new Response(JSON.stringify({ reply, cards, action, session_id, provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch {
