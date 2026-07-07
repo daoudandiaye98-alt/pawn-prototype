@@ -468,21 +468,22 @@ function HeroPrompt() {
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); send(); }}
-      className="mx-auto mt-10 flex w-full max-w-2xl items-stretch border border-[rgba(12,12,14,.35)] bg-white shadow-[0_8px_30px_-18px_rgba(12,12,14,.35)]"
+      className="mx-auto mt-10 flex h-12 w-full max-w-[520px] items-stretch rounded-[10px] border border-[rgba(12,12,14,.35)] bg-white p-1 shadow-[0_10px_30px_-18px_rgba(12,12,14,.35)]"
     >
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder='Frag PAWN — z.B. „skulpturale Mäntel"'
-        className="flex-1 bg-transparent px-5 py-4 text-left text-[1rem] text-[#0C0C0E] placeholder:text-[#55534E] focus:outline-none md:text-[1.05rem]"
+        className="flex-1 bg-transparent px-4 text-left text-[0.95rem] text-[#0C0C0E] placeholder:text-[#7C7972] focus:outline-none"
         aria-label="Frag PAWN"
       />
       <button
         type="submit"
-        className="whitespace-nowrap bg-[#0C0C0E] px-6 text-[0.68rem] uppercase tracking-[0.32em] text-[#F1EEE7] transition-colors duration-300 hover:bg-[#3A3A3C]"
+        className="whitespace-nowrap rounded-[8px] bg-[#0C0C0E] px-5 text-[0.62rem] uppercase tracking-[0.28em] text-[#F1EEE7] transition-colors duration-300 hover:bg-[#3A3A3C]"
       >
         Fragen →
       </button>
+
     </form>
   );
 }
