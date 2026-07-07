@@ -225,7 +225,7 @@ interface EditorProps {
   onCancel: () => void;
   onSaved: () => void;
   buildPayload: (e: Partial<ProductRow>) => Record<string, unknown>;
-  save: () => Promise<void>;
+  save: () => Promise<unknown>;
   busy: boolean;
   setEditing: (e: Partial<ProductRow> | null) => void;
 }
