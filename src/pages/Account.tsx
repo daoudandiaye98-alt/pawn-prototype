@@ -36,7 +36,7 @@ const Account = () => {
               className="palace-serif font-light text-[#0C0C0E]"
               style={{ fontSize: "clamp(2.4rem, 5vw, 4.2rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
             >
-              <span className="capitalize">{displayName}</span>.
+              <span className="capitalize">{firstName}</span>.
             </h1>
             <div className="flex items-center gap-6">
               <p className="palace-eyebrow">
