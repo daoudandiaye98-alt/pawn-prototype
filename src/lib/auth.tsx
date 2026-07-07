@@ -3,7 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 
-export type Role = "customer" | "designer" | "admin";
+export type Role = "customer" | "designer" | "designer_applicant" | "admin";
 
 export interface AuthProfile {
   id: string;
