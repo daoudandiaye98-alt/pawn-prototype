@@ -20,7 +20,10 @@ const Account = () => {
   if (loading) return null;
   if (!user) return <Navigate to="/auth" replace />;
 
-  const displayName = profile?.displayName || user.email?.split("@")[0] || "Gast";
+  const rawName = (profile?.displayName || "").trim();
+  const displayName = rawName || (user.email ? user.email.split("@")[0] : "Gast");
+  const firstName = displayName.split(/\s+/)[0];
+
   const memberSince = new Date(user.created_at).getFullYear();
 
   return (
@@ -33,7 +36,7 @@ const Account = () => {
               className="palace-serif font-light text-[#0C0C0E]"
               style={{ fontSize: "clamp(2.4rem, 5vw, 4.2rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
             >
-              <span className="capitalize">{displayName}</span>.
+              <span className="capitalize">{firstName}</span>.
             </h1>
             <div className="flex items-center gap-6">
               <p className="palace-eyebrow">

@@ -624,6 +624,7 @@ export type Database = {
           atelier_image_url: string | null
           avatar_url: string | null
           banner_url: string | null
+          brand_dna: Json
           brand_name: string
           collection_title: string | null
           country: string | null
@@ -654,6 +655,7 @@ export type Database = {
           atelier_image_url?: string | null
           avatar_url?: string | null
           banner_url?: string | null
+          brand_dna?: Json
           brand_name: string
           collection_title?: string | null
           country?: string | null
@@ -684,6 +686,7 @@ export type Database = {
           atelier_image_url?: string | null
           avatar_url?: string | null
           banner_url?: string | null
+          brand_dna?: Json
           brand_name?: string
           collection_title?: string | null
           country?: string | null
@@ -1171,6 +1174,10 @@ export type Database = {
       }
       notify_admins: {
         Args: { _body: string; _link: string; _title: string; _type: string }
+        Returns: undefined
+      }
+      recompute_brand_dna: {
+        Args: { _designer_id: string }
         Returns: undefined
       }
       reject_designer: {
