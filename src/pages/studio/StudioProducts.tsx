@@ -251,18 +251,19 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
     if (!local.name || local.name.trim().length < 2) return; // need a name
     const handle = window.setTimeout(async () => {
       setAutosaving(true);
-      const payload = buildPayload({ ...local, status: local.status ?? "draft" });
+      const payload = buildPayload({ ...local, status: local.status ?? "draft" }) as never;
       if (draftIdRef.current) {
         const { error } = await supabase.from("products").update(payload).eq("id", draftIdRef.current);
         if (!error) setSavedAt(new Date());
       } else {
-        const { data, error } = await supabase.from("products").insert({ ...payload, status: "draft" }).select("id").single();
+        const { data, error } = await supabase.from("products").insert(payload).select("id").single();
         if (!error && data?.id) {
           draftIdRef.current = data.id;
           setLocal((prev) => ({ ...prev, id: data.id }));
           setSavedAt(new Date());
         }
       }
+
       setAutosaving(false);
     }, 1200);
     return () => window.clearTimeout(handle);
