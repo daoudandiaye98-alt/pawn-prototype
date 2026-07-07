@@ -29,24 +29,27 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xf1eee7, 0.055);
+    // Softer, farther fog so the room has depth without eating the pieces.
+    scene.fog = new THREE.FogExp2(0xf6f3ec, 0.032);
     const initialFov = 38;
     const camera = new THREE.PerspectiveCamera(initialFov, container.clientWidth / container.clientHeight, 0.1, 100);
     camera.position.set(0, 2.1, 10.5);
     camera.lookAt(0, 0, 0);
 
-    // Lights.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-    const key = new THREE.DirectionalLight(0xffffff, 0.85);
+    // Lights — gallery-key + warm rim + soft under-fill so the black pieces
+    // never sink into the fog.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const key = new THREE.DirectionalLight(0xffffff, 1.05);
     key.position.set(4, 6, 4);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0xf1eee7, 0.65);
+    const rim = new THREE.DirectionalLight(0xffe9c9, 0.75);
     rim.position.set(-4, 3, -2);
     scene.add(rim);
     // Extra fill from below for rim on the pawn's underside.
-    const fill = new THREE.DirectionalLight(0xd9d5cc, 0.25);
+    const fill = new THREE.DirectionalLight(0xd9d5cc, 0.35);
     fill.position.set(0, -4, 3);
     scene.add(fill);
+
 
     // Gradient envMap — cheap reflection giving pieces subtle depth.
     let envMap: THREE.Texture | null = null;
