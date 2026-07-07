@@ -70,6 +70,10 @@ export function StudioShell({ children, title, eyebrow }: { children: ReactNode;
         </header>
         <main className="flex-1 p-6 md:p-10">{children}</main>
       </div>
+      <Link to="/studio/copilot" title="PAWN Copilot"
+        className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center border border-foreground bg-background text-foreground shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)] transition-transform hover:scale-105">
+        <Sparkles className="h-5 w-5" />
+      </Link>
     </div>
   );
 }
