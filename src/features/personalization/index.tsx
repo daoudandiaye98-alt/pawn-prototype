@@ -166,6 +166,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     return { ...EMPTY, correctedIds: loadCorrected() };
   });
   const [loading, setLoading] = useState(false);
+  const [designerDna, setDesignerDna] = useState<Map<string, DesignerDna>>(new Map());
 
   const refresh = async () => {
     if (!user) { setProfile({ ...EMPTY, correctedIds: loadCorrected() }); return; }
@@ -197,6 +198,31 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     } finally { setLoading(false); }
   };
 
+  // Load designer brand_dna map once — public, safe, no PII.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("designers")
+        .select("slug, brand_name, brand_dna")
+        .eq("status", "active")
+        .eq("published", true);
+      if (!alive || !data) return;
+      const m = new Map<string, DesignerDna>();
+      for (const d of data as { slug: string; brand_name: string; brand_dna: unknown }[]) {
+        const dna = (d.brand_dna ?? {}) as { worlds?: Record<string, number>; signals?: string[] };
+        m.set(d.slug, {
+          slug: d.slug,
+          brandName: d.brand_name,
+          worlds: (dna.worlds ?? {}) as Partial<Record<World, number>>,
+          signals: Array.isArray(dna.signals) ? dna.signals : [],
+        });
+      }
+      setDesignerDna(m);
+    })();
+    return () => { alive = false; };
+  }, []);
+
   const correct = async (signalId: string) => {
     const next = new Set(profile.correctedIds);
     next.add(signalId);
@@ -214,31 +240,93 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
   useEffect(() => { applyCssVars(profile); }, [profile]);
 
-  const value = useMemo<Ctx>(() => ({ ...profile, refresh, correct, loading }), [profile, loading]);
+  const value = useMemo<Ctx>(() => ({ ...profile, refresh, correct, loading, designerDna }), [profile, loading, designerDna]);
   return <PersonalizationContext.Provider value={value}>{children}</PersonalizationContext.Provider>;
 }
 
 export function usePersonalization(): Ctx {
   const ctx = useContext(PersonalizationContext);
   if (!ctx) {
-    // Provider not mounted (e.g. admin/portal). Return a stable no-op.
-    return { ...EMPTY, refresh: async () => {}, correct: async () => {}, loading: false };
+    return { ...EMPTY, refresh: async () => {}, correct: async () => {}, loading: false, designerDna: new Map() };
   }
   return ctx;
 }
 
+/* --- DNA-aware scoring & explanation ------------------------------------- */
+
+// Stable hash → [0,1)
+function hashUnit(str: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+interface ScoreItem {
+  world?: string;
+  category?: string;
+  tags?: string[];
+  designerSlug?: string;
+  slug?: string;
+  id?: string;
+}
+
+/**
+ * Score = world_match × 2 + tag_overlap + designer_dna_bonus + 20% discovery noise.
+ * Fully stable per (item.id, session) — no re-shuffle on re-render.
+ */
+export function scoreForPersonalization<T extends ScoreItem>(
+  item: T,
+  profile: Pick<PersonalizationProfile, "world" | "preferredTags" | "hasSignals" | "preferredDesigners">,
+  designerDna: Map<string, DesignerDna>,
+): number {
+  let s = 0;
+  if (profile.world && item.world === profile.world) s += 2;
+  const pref = profile.preferredTags ?? [];
+  if (pref.length && item.category && pref.includes(item.category)) s += 1;
+  if (pref.length && item.tags?.some((t) => pref.includes(t))) s += 1;
+
+  const dna = item.designerSlug ? designerDna.get(item.designerSlug) : undefined;
+  if (dna) {
+    // world match via brand_dna weight
+    if (profile.world && dna.worlds[profile.world as World]) s += (dna.worlds[profile.world as World] ?? 0) * 2;
+    // tag overlap with designer signals
+    if (pref.length && dna.signals.length) {
+      const overlap = dna.signals.filter((sig) => pref.includes(sig)).length;
+      s += Math.min(3, overlap);
+    }
+    if (profile.preferredDesigners?.includes(dna.slug)) s += 1.5;
+  }
+
+  const seed = item.id ?? item.slug ?? "x";
+  s += hashUnit(seed) * 0.4; // 20% discovery: bounded random tiebreaker
+
+  return s;
+}
+
 /** Sort products so preferred world/tags come first — stable, non-destructive. */
-export function sortByPersonalization<T extends { world?: string; category?: string; tags?: string[] }>(
+export function sortByPersonalization<T extends ScoreItem>(
   items: T[],
-  profile: Pick<PersonalizationProfile, "world" | "preferredTags" | "hasSignals">,
+  profile: Pick<PersonalizationProfile, "world" | "preferredTags" | "hasSignals" | "preferredDesigners">,
+  designerDna: Map<string, DesignerDna> = new Map(),
 ): T[] {
   if (!profile.hasSignals) return items;
-  const score = (p: T) => {
-    let s = 0;
-    if (profile.world && p.world === profile.world) s += 10;
-    if (profile.preferredTags.length && p.category && profile.preferredTags.includes(p.category)) s += 3;
-    if (profile.preferredTags.length && p.tags?.some((t) => profile.preferredTags.includes(t))) s += 2;
-    return s;
-  };
-  return [...items].sort((a, b) => score(b) - score(a));
+  return [...items].sort((a, b) => scoreForPersonalization(b, profile, designerDna) - scoreForPersonalization(a, profile, designerDna));
 }
+
+/** Human-readable rationale for a product/designer, based on real DNA overlap. */
+export function explainMatch<T extends ScoreItem>(
+  item: T,
+  profile: Pick<PersonalizationProfile, "world" | "preferredTags" | "hasSignals">,
+  designerDna: Map<string, DesignerDna>,
+): string | null {
+  if (!profile.hasSignals) return null;
+  const dna = item.designerSlug ? designerDna.get(item.designerSlug) : undefined;
+  const brand = dna?.brandName;
+  const sharedTag = profile.preferredTags?.find((t) => item.tags?.includes(t) || dna?.signals.includes(t) || item.category === t);
+  if (sharedTag && brand) return `Weil deine Auswahl zu ${sharedTag} tendiert — wie die Handschrift von ${brand}.`;
+  if (sharedTag) return `Weil deine Auswahl zu ${sharedTag} tendiert.`;
+  if (profile.world && item.world === profile.world && brand) return `Weil du ${profile.world} suchst — und ${brand} dort zuhause ist.`;
+  if (profile.world && item.world === profile.world) return `Weil du ${profile.world} suchst.`;
+  return null;
+}
+
