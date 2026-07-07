@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
+import { Editable } from "@/components/palace/Editable";
 import { usePublicDesigners, type PublicDesigner } from "@/lib/publicData";
 import { usePersonalization } from "@/features/personalization";
 
