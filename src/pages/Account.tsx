@@ -20,7 +20,10 @@ const Account = () => {
   if (loading) return null;
   if (!user) return <Navigate to="/auth" replace />;
 
-  const displayName = profile?.displayName || user.email?.split("@")[0] || "Gast";
+  const rawName = (profile?.displayName || "").trim();
+  const displayName = rawName || (user.email ? user.email.split("@")[0] : "Gast");
+  const firstName = displayName.split(/\s+/)[0];
+
   const memberSince = new Date(user.created_at).getFullYear();
 
   return (

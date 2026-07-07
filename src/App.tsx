@@ -33,6 +33,8 @@ import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
 import StudioMessages from "./pages/studio/StudioMessages.tsx";
 import StudioPayout from "./pages/studio/StudioPayout.tsx";
 import StudioCopilot from "./pages/studio/StudioCopilot.tsx";
+import StudioSettings from "./pages/studio/StudioSettings.tsx";
+
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
 import AdminPayments from "./pages/admin/AdminPayments.tsx";
@@ -133,6 +135,8 @@ const App = () => (
                 <Route path="/studio/nachrichten" element={<RoleGate role="designer"><StudioMessages /></RoleGate>} />
                 <Route path="/studio/auszahlung" element={<RoleGate role="designer"><StudioPayout /></RoleGate>} />
                 <Route path="/studio/copilot" element={<RoleGate role="designer"><StudioCopilot /></RoleGate>} />
+                <Route path="/studio/einstellungen" element={<RoleGate role="designer"><StudioSettings /></RoleGate>} />
+
                 <Route path="/studio/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
                 <Route path="/portal" element={<PortalGate><PortalOverview /></PortalGate>} />
                 <Route path="/portal/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
