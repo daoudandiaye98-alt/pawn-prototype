@@ -53,7 +53,7 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
   const [active, setActive] = useState<string | null>(null);
   const personalization = usePersonalization();
   const filtered = active ? worldProducts.filter((p) => p.category === active) : worldProducts;
-  const visible = useMemo(() => sortByPersonalization(filtered, personalization), [filtered, personalization]);
+  const visible = useMemo(() => sortByPersonalization(filtered, personalization, personalization.designerDna), [filtered, personalization]);
 
 
   // Featured designer: first designer whose tags mention this world (DB) or match seed heuristics.
