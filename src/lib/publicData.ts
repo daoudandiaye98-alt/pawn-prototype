@@ -15,6 +15,7 @@ export interface PublicDesigner {
   avatar_url: string | null;
   banner_url: string | null;
   tags: string[] | null;
+  created_at?: string | null;
 }
 
 /**
@@ -87,7 +88,7 @@ export function usePublicDesigners() {
         loadShowSeedFlag(),
         supabase
           .from("designers")
-          .select("id, slug, brand_name, location, country, story, quote, quote_role, is_featured, hero_image_url, avatar_url, banner_url, tags")
+          .select("id, slug, brand_name, location, country, story, quote, quote_role, is_featured, hero_image_url, avatar_url, banner_url, tags, created_at")
           .eq("status", "active")
           .order("is_featured", { ascending: false })
           .limit(60),
