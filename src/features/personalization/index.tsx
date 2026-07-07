@@ -59,9 +59,11 @@ interface Ctx extends PersonalizationProfile {
   refresh: () => Promise<void>;
   correct: (signalId: string) => Promise<void>;
   loading: boolean;
+  designerDna: Map<string, DesignerDna>;
 }
 
 const PersonalizationContext = createContext<Ctx | null>(null);
+
 
 const CORRECTED_KEY = "pawn.corrected.signals";
 const CACHE_KEY = "pawn.personalization.cache.v1";
