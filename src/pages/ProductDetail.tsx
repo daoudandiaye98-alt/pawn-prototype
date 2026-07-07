@@ -45,7 +45,13 @@ const ProductDetail = () => {
   const [reqBusy, setReqBusy] = useState(false);
 
   const match = useDnaMatch(product.id);
+  const personalization = usePersonalization();
+  const dnaReason = useMemo(
+    () => explainMatch(product, personalization, personalization.designerDna),
+    [product, personalization],
+  );
   const { viewProduct, saveProduct } = useCustomerEvents();
+
 
   useEffect(() => { viewProduct(product.id); }, [product.id, viewProduct]);
 
