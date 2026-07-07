@@ -85,14 +85,15 @@ function buildCards(cand: { products: DBProduct[]; designers: DBDesigner[] }, mo
 }
 function detectNavAction(text: string, all: { designers: DBDesigner[]; products: DBProduct[] }): Action | null {
   const t = text.toLowerCase();
-  // World routes
+  // Explicit intents
+  if (/\b(dna|geschmack|profil)\b/.test(t)) return { type: "navigate", path: "/dna", label: "Zu deiner DNA" };
+  if (/\b(warenkorb|bag|cart|tasche)\b/.test(t)) return { type: "navigate", path: "/cart", label: "Zum Warenkorb" };
+  if (/\b(neu|neuheit|newest|latest)\b/.test(t)) return { type: "navigate", path: "/neu", label: "Was neu ist" };
   if (detectNavIntent(text)) {
     if (/\bmode\b|kleidung/.test(t)) return { type: "navigate", path: "/mode", label: "Zur Welt Mode" };
     if (/\binterior\b|raum|wohn/.test(t)) return { type: "navigate", path: "/interior", label: "Zur Welt Interior" };
     if (/\bkunst\b|wand/.test(t)) return { type: "navigate", path: "/kunst", label: "Zur Welt Kunst" };
     if (/designer(:innen)?( übersicht| overview)?/.test(t)) return { type: "navigate", path: "/designers", label: "Zur Designer-Übersicht" };
-    if (/neu|neuheit/.test(t)) return { type: "navigate", path: "/neu", label: "Was neu ist" };
-    if (/warenkorb|bag|cart/.test(t)) return { type: "navigate", path: "/cart", label: "Zum Warenkorb" };
   }
   // Fuzzy designer match
   for (const d of all.designers) {
@@ -236,6 +237,11 @@ Deno.serve(async (req) => {
     if (admin) {
       const cand = await loadCandidates(admin, extracted.world);
       action = detectNavAction(lastUser, { designers: cand.allDesigners, products: cand.allProducts });
+      // Designer-Kontext: Studio-Fragen an den Copilot verweisen
+      if (!action && user_id && /\b(mein store|studio|copilot|kollektion|meine produkte|umsatz|verkäufe|kampagne)\b/i.test(lastUser)) {
+        const { data: d } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
+        if (d) action = { type: "navigate", path: "/studio/copilot", label: "Zum Copilot im Studio" };
+      }
       if (!action && extracted.world && extracted.mood && !extracted.browsing) {
         cards.push(...buildCards(cand, extracted.mood));
         if (cand.products.length || cand.designers.length) {
@@ -250,6 +256,14 @@ Deno.serve(async (req) => {
     const reply = (await callProvider(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
 
     const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+    if (admin) {
+      await admin.from("domain_events").insert({
+        id: crypto.randomUUID(), type: "ai.response_logged",
+        actor: user_id ? "user" : "anon",
+        payload: { mode: "chat", provider, session_id, prompt: lastUser.slice(0, 400), reply: reply.slice(0, 800), ...(action ? { action: action.path } : {}) },
+        schema_version: 1,
+      });
+    }
     return new Response(JSON.stringify({ reply, cards, action, session_id, provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

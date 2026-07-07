@@ -3,7 +3,7 @@ import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Upload, X } from "lucide-react";
+import { Plus, Upload, X, Sparkles, Megaphone } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 type World = "Mode" | "Interior" | "Kunst";
@@ -184,6 +184,15 @@ export default function StudioProducts() {
                     {p.status === "published" ? "Depublizieren" : "Veröffentlichen"}
                   </button>
                   <button onClick={() => setEditing(p)} className="text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">Bearbeiten</button>
+                  <button onClick={async () => {
+                    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", product_id: p.id } });
+                    if (error) return toast.error(error.message);
+                    const d = data as { error?: string; message?: string; campaign_id?: string };
+                    if (d?.error === "consent_missing") return toast.error(d.message ?? "Bildnutzungs-Einwilligung fehlt.");
+                    if (d?.campaign_id) toast.success("Kampagnen-Entwurf angelegt.");
+                  }} className="flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">
+                    <Megaphone className="h-3 w-3" /> Kampagne
+                  </button>
                   <button onClick={() => remove(p)} className="text-[0.62rem] uppercase tracking-[0.28em] text-destructive hover:text-destructive/70">Löschen</button>
                 </li>
               );
@@ -277,6 +286,16 @@ export default function StudioProducts() {
 
               <Field label="Beschreibung">
                 <textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} className="inp min-h-24" />
+                {editing.id && (
+                  <button type="button" onClick={async () => {
+                    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_text", product_id: editing.id } });
+                    if (error) return toast.error(error.message);
+                    const t = (data as { text?: string })?.text;
+                    if (t) { setEditing((e) => e ? { ...e, description: t } : e); toast.success("Vorschlag eingefügt."); }
+                  }} className="mt-2 inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">
+                    <Sparkles className="h-3 w-3" /> Text von PAWN
+                  </button>
+                )}
               </Field>
               <Field label="Tags (Komma-getrennt)">
                 <input value={(editing.tags ?? []).join(", ")} onChange={(e) => setEditing({ ...editing, tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })} className="inp" />
