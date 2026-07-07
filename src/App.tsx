@@ -83,6 +83,7 @@ const App = () => (
           <AuthedCore>
             <CartProvider>
               <ConsentProvider>
+              <EditModeProvider>
               <PersonalizationProvider>
               <RoomShiftProvider>
 
