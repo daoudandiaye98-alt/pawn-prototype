@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { HelixScene } from "@/components/palace/HelixScene";
 import { Reveal } from "@/components/palace/Reveal";
+import { Editable } from "@/components/palace/Editable";
 import { useAuth } from "@/lib/auth";
 import { usePersonalization, type Signal } from "@/features/personalization";
 
