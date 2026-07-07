@@ -57,6 +57,8 @@ async function saveContent(key: string, value: unknown) {
   invalidateSiteContent();
   try {
     await supabase.from("domain_events").insert({
+      id: crypto.randomUUID(),
+      at: new Date().toISOString(),
       type: "content.updated",
       actor: "system",
       payload: { key } as never,
