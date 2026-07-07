@@ -89,8 +89,10 @@ const App = () => (
               <EditModeProvider>
               <PersonalizationProvider>
               <RoomShiftProvider>
+              <CopilotProvider>
 
               <Routes>
+
                 <Route path="/" element={<Index />} />
                 <Route path="/mode" element={<Mode />} />
                 <Route path="/interior" element={<Interior />} />
