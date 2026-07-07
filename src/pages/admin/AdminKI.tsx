@@ -86,7 +86,8 @@ export default function AdminKI() {
   const saveIntegration = async (i: Partial<IntegrationRow>) => {
     if (!i.kind || !i.label) return toast.error("Kind und Label sind Pflicht.");
     const payload = {
-      kind: i.kind, label: i.label, config: i.config ?? {},
+      kind: i.kind, label: i.label,
+      config: (i.config ?? {}) as never,
       enabled: i.enabled ?? true, event_types: i.event_types ?? [],
       created_by: user.id,
     };
