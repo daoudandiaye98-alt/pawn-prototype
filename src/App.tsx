@@ -32,6 +32,7 @@ import StudioBrand from "./pages/studio/StudioBrand.tsx";
 import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
 import StudioMessages from "./pages/studio/StudioMessages.tsx";
 import StudioPayout from "./pages/studio/StudioPayout.tsx";
+import StudioCopilot from "./pages/studio/StudioCopilot.tsx";
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
 import AdminPayments from "./pages/admin/AdminPayments.tsx";
