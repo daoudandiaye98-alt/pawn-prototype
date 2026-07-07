@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
 import { useDesignerPrevNext } from "@/features/navigation/usePrevNext";
 import { useSiteContent } from "@/lib/siteContent";
+import { Editable } from "@/components/palace/Editable";
 
 interface DbDesigner {
   id: string;
