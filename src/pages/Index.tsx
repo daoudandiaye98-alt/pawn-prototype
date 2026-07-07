@@ -329,20 +329,25 @@ const Index = () => {
       <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-24">
           <Reveal className="flex flex-col justify-center">
-            <p className="palace-eyebrow">Im Atelier</p>
+            <Editable as="p" contentKey="atelier_eyebrow" className="palace-eyebrow">Im Atelier</Editable>
             <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
-              Zwischen zwei Zügen — <span className="italic">wie ein Stück entsteht.</span>
+              <Editable as="span" contentKey="atelier_headline_a">Zwischen zwei Zügen — </Editable>
+              <Editable as="span" contentKey="atelier_headline_b" className="italic">wie ein Stück entsteht.</Editable>
             </h3>
-            <p className="mt-8 max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80">
-              Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt.
-              Wir zeigen die Momente vor dem Bild, nicht das Bild.
-            </p>
+            <Editable as="p" contentKey="atelier_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80" multiline>
+              Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt. Wir zeigen die Momente vor dem Bild, nicht das Bild.
+            </Editable>
             <Link to="/designers" className="palace-eyebrow uline mt-10 w-fit text-[#0C0C0E]">
               Zur Geschichte →
             </Link>
           </Reveal>
           <Reveal delay={140}>
-            <EditorialImage seed="atelier-feature" ratio="4/5" />
+            <EditableImage
+              contentKey="atelier_image"
+              fallback=""
+              alt="Atelier"
+              className="block h-auto w-full"
+            />
           </Reveal>
         </div>
       </section>
