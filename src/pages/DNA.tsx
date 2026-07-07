@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { HelixScene } from "@/components/palace/HelixScene";
 import { Reveal } from "@/components/palace/Reveal";
+import { Editable } from "@/components/palace/Editable";
 import { useAuth } from "@/lib/auth";
 import { usePersonalization, type Signal } from "@/features/personalization";
 
@@ -117,16 +118,22 @@ export default function DNA() {
 
         <div className="relative z-10 mx-auto flex min-h-[86vh] max-w-[1200px] flex-col items-center justify-center px-6 pt-32 text-center md:px-14">
           <Reveal>
-            <p className="palace-eyebrow">Deine DNA</p>
+            <Editable as="p" contentKey="dna_hero_eyebrow" className="palace-eyebrow">Deine DNA</Editable>
             <h1
               className="palace-serif mt-10 font-light text-[#0C0C0E]"
-              style={{ fontSize: "clamp(2.4rem, 6vw, 5.6rem)", lineHeight: 0.98, letterSpacing: "-0.02em" }}
+              style={{ fontSize: "clamp(2.6rem, 8vw, 7rem)", lineHeight: 0.94, letterSpacing: "-0.03em" }}
             >
-              Was der Raum <span className="italic">über dich weiß.</span>
+              <Editable as="span" contentKey="dna_hero_headline_a">Was der Raum </Editable>
+              <Editable as="span" contentKey="dna_hero_headline_b" className="italic">über dich weiß.</Editable>
             </h1>
-            <p className="mx-auto mt-8 max-w-xl font-serif italic text-[1.1rem] leading-relaxed text-[#0C0C0E]/75">
+            <Editable
+              as="p"
+              contentKey="dna_hero_subline"
+              className="mx-auto mt-10 block max-w-xl font-serif italic text-[1.1rem] leading-relaxed text-[#0C0C0E]/75"
+              multiline
+            >
               Kein Profil. Kein Score. Eine lebendige Skizze deiner Handschrift — jederzeit korrigierbar.
-            </p>
+            </Editable>
             {hasSignals && (
               <div className="mt-14 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
                 {world && (

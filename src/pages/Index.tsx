@@ -8,7 +8,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PickYourStyle } from "@/components/palace/PickYourStyle";
-import { Editable } from "@/components/palace/Editable";
+import { Editable, EditableImage } from "@/components/palace/Editable";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
@@ -329,20 +329,26 @@ const Index = () => {
       <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-24">
           <Reveal className="flex flex-col justify-center">
-            <p className="palace-eyebrow">Im Atelier</p>
+            <Editable as="p" contentKey="atelier_eyebrow" className="palace-eyebrow">Im Atelier</Editable>
             <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
-              Zwischen zwei Zügen — <span className="italic">wie ein Stück entsteht.</span>
+              <Editable as="span" contentKey="atelier_headline_a">Zwischen zwei Zügen — </Editable>
+              <Editable as="span" contentKey="atelier_headline_b" className="italic">wie ein Stück entsteht.</Editable>
             </h3>
-            <p className="mt-8 max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80">
-              Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt.
-              Wir zeigen die Momente vor dem Bild, nicht das Bild.
-            </p>
+            <Editable as="p" contentKey="atelier_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80" multiline>
+              Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt. Wir zeigen die Momente vor dem Bild, nicht das Bild.
+            </Editable>
             <Link to="/designers" className="palace-eyebrow uline mt-10 w-fit text-[#0C0C0E]">
               Zur Geschichte →
             </Link>
           </Reveal>
           <Reveal delay={140}>
-            <EditorialImage seed="atelier-feature" ratio="4/5" />
+            <EditableImage
+              contentKey="atelier_image"
+              fallback=""
+              alt="Atelier"
+              className="block h-auto w-full"
+              fallbackNode={<EditorialImage seed="atelier-feature" ratio="4/5" />}
+            />
           </Reveal>
         </div>
       </section>
@@ -376,9 +382,10 @@ const Index = () => {
       <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto max-w-[1200px] text-center">
           <Reveal>
-            <p className="palace-eyebrow">Für Designer</p>
+            <Editable as="p" contentKey="cta_eyebrow" className="palace-eyebrow">Für Designer</Editable>
             <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,4vw,3.6rem)] leading-[1.02]">
-              Die Bühne steht. <span className="italic">Der Auftritt gehört dir.</span>
+              <Editable as="span" contentKey="cta_headline_a">Die Bühne steht. </Editable>
+              <Editable as="span" contentKey="cta_headline_b" className="italic">Der Auftritt gehört dir.</Editable>
             </h3>
           </Reveal>
 
@@ -390,7 +397,7 @@ const Index = () => {
               >
                 <p className="palace-eyebrow group-hover:text-[#A8A49B]">Bewerben</p>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
-                  Als Designer<br/>bewerben.
+                  <Editable as="span" contentKey="cta_card_a">Als Designer<br/>bewerben.</Editable>
                 </p>
               </Link>
             </Reveal>
@@ -401,7 +408,7 @@ const Index = () => {
               >
                 <p className="palace-eyebrow group-hover:text-[#A8A49B]">Sehen</p>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
-                  Zur laufenden<br/>Ausstellung.
+                  <Editable as="span" contentKey="cta_card_b">Zur laufenden<br/>Ausstellung.</Editable>
                 </p>
               </Link>
             </Reveal>

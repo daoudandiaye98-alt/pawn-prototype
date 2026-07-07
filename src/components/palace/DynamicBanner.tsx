@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
+import { Editable } from "@/components/palace/Editable";
 import { usePublicDesigners, type PublicDesigner } from "@/lib/publicData";
 import { usePersonalization } from "@/features/personalization";
 
@@ -53,12 +54,23 @@ export function DynamicBanner({
             Im Rampenlicht{world ? ` · ${world}` : ""}
           </p>
           <blockquote className="mx-auto mt-8 max-w-3xl">
-            <p
-              className="palace-serif italic font-light text-[#F1EEE7]"
-              style={{ fontSize: "clamp(1.7rem, 4.2vw, 3.4rem)", lineHeight: 1.12 }}
-            >
-              „{pick.quote ?? fallbackQuote}"
-            </p>
+            {pick.quote ? (
+              <p
+                className="palace-serif italic font-light text-[#F1EEE7]"
+                style={{ fontSize: "clamp(1.7rem, 4.2vw, 3.4rem)", lineHeight: 1.12 }}
+              >
+                „{pick.quote}"
+              </p>
+            ) : (
+              <Editable
+                as="p"
+                contentKey="banner_fallback_quote"
+                className="palace-serif block italic font-light text-[#F1EEE7]"
+                multiline
+              >
+                {fallbackQuote}
+              </Editable>
+            )}
             <cite className="mt-8 block not-italic palace-eyebrow" style={{ color: "rgba(241,238,231,.75)" }}>
               {pick.quote_role ?? pick.brand_name}
             </cite>
