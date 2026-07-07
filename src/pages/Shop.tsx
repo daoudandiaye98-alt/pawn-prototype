@@ -146,7 +146,7 @@ const Shop = () => {
             {filtered.map((p, i) => (
               <Reveal key={p.id} delay={Math.min(400, i * 40)}>
                 <Link to={`/product/${p.slug}`} className="group block">
-                  <EditorialImage seed={`shop-${p.slug}`} src={p.imageUrl} ratio="4/5" />
+                  <EditorialImage seed={`shop-${p.slug}`} ratio="4/5" />
                   <div className="mt-4 flex items-baseline justify-between gap-4">
                     <div>
                       <p className="palace-serif italic text-[1.1rem] leading-tight text-[#0C0C0E]">{p.name}</p>
