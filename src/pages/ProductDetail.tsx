@@ -201,13 +201,14 @@ const ProductDetail = () => {
 
 
                 {/* Provenance */}
-                {match.percent > 0 && (
+                {(dnaReason || match.percent > 0) && (
                   <div className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6">
                     <p className="palace-eyebrow">Ausgewählt für dich, weil</p>
                     <p className="mt-3 font-serif italic text-[1.05rem] leading-snug text-[#0C0C0E]/80">
-                      {match.rationale}
+                      {dnaReason ?? match.rationale}
                     </p>
                   </div>
+
                 )}
 
                 {/* Color */}
