@@ -129,9 +129,10 @@ interface EditableImageProps {
   alt: string;
   className?: string;
   loading?: "lazy" | "eager";
+  fallbackNode?: React.ReactNode;
 }
 
-export function EditableImage({ contentKey, fallback, alt, className, loading = "lazy" }: EditableImageProps) {
+export function EditableImage({ contentKey, fallback, alt, className, loading = "lazy", fallbackNode }: EditableImageProps) {
   const { enabled } = useEditMode();
   const value = useContentValue(contentKey, fallback);
   const [uploading, setUploading] = useState(false);
@@ -153,8 +154,10 @@ export function EditableImage({ contentKey, fallback, alt, className, loading = 
   };
 
   return (
-    <span className={`relative inline-block ${enabled ? "outline outline-1 outline-dashed outline-black/60" : ""}`}>
-      <img src={src} alt={alt} className={className} loading={loading} />
+    <span className={`relative block ${enabled ? "outline outline-1 outline-dashed outline-black/60" : ""}`}>
+      {src
+        ? <img src={src} alt={alt} className={className} loading={loading} />
+        : (fallbackNode ?? <span className="block h-64 w-full bg-[#E8E4DA]" aria-label={alt} />)}
       {enabled && (
         <>
           <button
