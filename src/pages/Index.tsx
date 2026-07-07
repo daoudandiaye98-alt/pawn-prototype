@@ -120,9 +120,10 @@ const Index = () => {
   }, [products]);
 
   const editorialTiles = useMemo(
-    () => sortByPersonalization(products, personalization).slice(0, 6),
+    () => sortByPersonalization(products, personalization, personalization.designerDna).slice(0, 6),
     [products, personalization],
   );
+
 
   const personalSubtitle = useMemo(() => {
     if (!personalization.hasSignals) return null;
