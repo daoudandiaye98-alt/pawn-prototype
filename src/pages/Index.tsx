@@ -55,13 +55,17 @@ const Index = () => {
     const compute = () => {
       const y = window.scrollY;
       const vh = window.innerHeight || 800;
-      // Stay fully visible through 70% of the first screen, then ease to 0.12 by 1.8vh.
       const fadeStart = vh * 0.7;
       const fadeEnd = vh * 1.8;
       const raw = 1 - Math.max(0, Math.min(1, (y - fadeStart) / (fadeEnd - fadeStart)));
       const heroFade = 0.12 + raw * 0.88;
-      const finaleBoost = finaleProgress > 0.05 ? finaleProgress : 0;
-      targetOpacityRef.current = Math.min(1, heroFade + finaleBoost);
+      // When the finale section enters view, override to a full-strength reveal
+      // so the pawn→queen morph is unmistakably visible.
+      if (finaleProgress > 0.02) {
+        targetOpacityRef.current = 1;
+      } else {
+        targetOpacityRef.current = heroFade;
+      }
     };
     compute();
     window.addEventListener("scroll", compute, { passive: true });
@@ -80,6 +84,7 @@ const Index = () => {
       window.removeEventListener("resize", compute);
     };
   }, [finaleProgress]);
+
 
   // Horizontal collection track scroll
   const trackSectionRef = useRef<HTMLElement | null>(null);
