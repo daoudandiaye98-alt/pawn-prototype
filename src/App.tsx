@@ -147,7 +147,9 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <ConsentBanner />
+              </CopilotProvider>
               </RoomShiftProvider>
+
               </PersonalizationProvider>
               </EditModeProvider>
               </ConsentProvider>
