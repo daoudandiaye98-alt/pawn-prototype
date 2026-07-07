@@ -89,6 +89,22 @@ export default function AdminInhalte() {
               </label>
             </Section>
 
+            <Section title="Builder-Mode-Keys" description="Alle Texte, die Admins direkt auf der Seite (mit dem ✎-Button) angelegt haben. Freiform, ein Feld pro Key.">
+              {Object.keys(extras).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Noch keine Builder-Keys. Aktiviere den Bearbeiten-Modus auf der Seite und klicke einen Text.</p>
+              ) : (
+                Object.keys(extras).sort().map((k) => (
+                  <TextArea
+                    key={k}
+                    label={k}
+                    value={extras[k]}
+                    onChange={(v) => setExtras({ ...extras, [k]: v })}
+                    rows={2}
+                  />
+                ))
+              )}
+            </Section>
+
             <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t border-border bg-background/95 py-4 backdrop-blur">
               <button
                 type="button"
