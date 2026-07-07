@@ -146,31 +146,6 @@ const Apply = () => {
   function next() { if (validateStep(step)) setStep((s) => Math.min(s + 1, STEPS.length - 1)); }
   function back() { setStep((s) => Math.max(s - 1, 0)); }
 
-  async function ensureAuth(): Promise<string | null> {
-    if (user) return user.id;
-    if (!data.email || !data.password) {
-      toast.error("Email und Passwort sind erforderlich.");
-      return null;
-    }
-    const { data: signup, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/apply`,
-        data: {
-          display_name: data.displayName || data.brandName || data.email.split("@")[0],
-          intent: "designer",
-        },
-      },
-    });
-    if (error) { toast.error(error.message); return null; }
-    if (!signup.user) {
-      toast.error("Signup fehlgeschlagen.");
-      return null;
-    }
-    return signup.user.id;
-  }
-
   async function uploadPortfolio(userId: string): Promise<string[]> {
     const paths: string[] = [];
     for (const file of portfolio) {
@@ -191,66 +166,49 @@ const Apply = () => {
     }
     setBusy(true);
     try {
-      const userId = await ensureAuth();
-      if (!userId) { setBusy(false); return; }
-
-      const portfolioPaths = await uploadPortfolio(userId).catch((e) => {
-        toast.error(`Upload fehlgeschlagen: ${e.message}`);
-        return [];
-      });
-
-      const tagsArr = data.tags.split(",").map((t) => t.trim()).filter(Boolean);
-      const { data: app, error: insErr } = await supabase
-        .from("designer_applications")
-        .upsert({
-          user_id: userId,
-          brand_name: data.brandName,
-          legal_name: data.legalName || null,
-          location: data.location || null,
-          country: data.country || null,
-          website: data.website || null,
-          instagram: data.instagram || null,
-          story: data.story || null,
-          tags: tagsArr,
-          production_status: data.productionStatus || null,
-          portfolio_paths: portfolioPaths,
-          status: "submitted",
-          submitted_at: new Date().toISOString(),
-        }, { onConflict: "user_id" })
-        .select()
-        .single();
-
-      if (insErr || !app) {
-        toast.error(insErr?.message ?? "Bewerbung konnte nicht gespeichert werden.");
-        setBusy(false);
-        return;
-      }
-
-      // Consents
-      const consentRows = contracts
-        .filter((c) => accepted[c.id])
-        .map((c) => ({
-          application_id: app.id,
-          user_id: userId,
-          contract_version_id: c.id,
-          checksum_at_accept: c.checksum,
-          user_agent: navigator.userAgent,
-        }));
-      if (consentRows.length) {
-        await supabase.from("designer_consents").upsert(consentRows, {
-          onConflict: "application_id,contract_version_id",
+      // Only upload portfolio when we already have a session (storage RLS needs auth).
+      let portfolioPaths: string[] = [];
+      if (user && portfolio.length > 0) {
+        portfolioPaths = await uploadPortfolio(user.id).catch((e) => {
+          toast.error(`Upload fehlgeschlagen: ${e.message}`);
+          return [];
         });
       }
 
-      // Event
-      await supabase.from("domain_events").insert({
-        id: crypto.randomUUID(),
-        at: new Date().toISOString(),
-        type: "designer.application_submitted",
-        actor: userId,
-        payload: { application_id: app.id, brand_name: data.brandName },
-      });
+      const payload = {
+        email: user ? undefined : data.email,
+        password: user ? undefined : data.password,
+        displayName: data.displayName || data.brandName,
+        brandName: data.brandName,
+        legalName: data.legalName || undefined,
+        location: data.location || undefined,
+        country: data.country || undefined,
+        website: data.website || undefined,
+        instagram: data.instagram || undefined,
+        story: data.story || undefined,
+        tags: data.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        productionStatus: data.productionStatus || undefined,
+        portfolioPaths,
+        acceptedContractIds: contracts.filter((c) => accepted[c.id]).map((c) => c.id),
+      };
 
+      const { data: res, error } = await supabase.functions.invoke("submit-application", { body: payload });
+      if (error) {
+        toast.error(error.message);
+        setBusy(false);
+        return;
+      }
+      const r = res as { ok?: boolean; error?: string; needs_email_confirmation?: boolean } | null;
+      if (!r?.ok) {
+        toast.error(r?.error ?? "Bewerbung konnte nicht gespeichert werden.");
+        setBusy(false);
+        return;
+      }
+      if (r.needs_email_confirmation) {
+        toast.success("Bewerbung eingereicht. Bitte bestätige deine E-Mail, um dein Studio freizuschalten.");
+      } else {
+        toast.success("Bewerbung eingereicht.");
+      }
       setSubmitted(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unbekannter Fehler.");
@@ -258,6 +216,7 @@ const Apply = () => {
       setBusy(false);
     }
   }
+
 
   if (loading) return null;
 
