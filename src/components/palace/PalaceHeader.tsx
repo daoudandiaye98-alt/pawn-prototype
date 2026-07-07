@@ -71,17 +71,19 @@ export function PalaceHeader() {
 
   const isAdmin = roles.includes("admin");
   const isDesigner = roles.includes("designer");
+  const isApplicant = roles.includes("designer_applicant" as never);
 
   return (
     <>
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-700 ${
           scrolled
-            ? "border-b border-[rgba(12,12,14,.13)] bg-[#F1EEE7]/90 backdrop-blur-md"
-            : "border-b border-transparent bg-gradient-to-b from-[#F1EEE7]/75 to-transparent backdrop-blur-[3px]"
+            ? "border-b border-[rgba(12,12,14,.10)] bg-white/95 backdrop-blur-md"
+            : "border-b border-transparent bg-white/80 backdrop-blur-[3px]"
         }`}
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
       >
+
         <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-5 md:px-10 md:py-6 xl:gap-14 xl:px-14">
           {/* Wordmark — never wraps, fixed intrinsic width */}
           <Link
