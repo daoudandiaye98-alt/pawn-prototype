@@ -301,28 +301,26 @@ const DesignerPage = () => {
           </div>
 
           <div className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden">
-            {/* Back-text */}
+            {/* Back-text — full, locked in place */}
             <h1
               aria-hidden={false}
-              className="absolute inset-0 z-[1] flex items-center justify-center px-6 text-center font-light leading-[0.82] text-[#F1EEE7]"
+              className="absolute inset-0 z-[1] flex items-center justify-center px-6 text-center leading-[0.82] text-[#F1EEE7]"
               style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontWeight: 300,
+                fontWeight: 500,
                 fontSize: "clamp(4rem, 17.5vw, 17.5rem)",
                 letterSpacing: "-0.03em",
-                transform: `translateY(${backTextY}vh)`,
-                willChange: "transform",
               }}
             >
               {designer.name}
             </h1>
 
-            {/* Portrait */}
+            {/* Portrait — centered, larger, gently breathes on scroll */}
             <div
               className="relative z-[3]"
               style={{
-                width: "min(34vw, 380px)",
-                aspectRatio: "3 / 4.2",
+                width: "min(42vw, 480px)",
+                aspectRatio: "3 / 4",
                 transform: `translateY(${portraitTranslate}%) scale(${portraitScale})`,
                 boxShadow: "0 60px 120px -40px rgba(0,0,0,.7)",
                 willChange: "transform",
@@ -337,22 +335,23 @@ const DesignerPage = () => {
               />
             </div>
 
-            {/* Front-text with clip */}
+            {/* Front-text — identical placement, clipped so only the portion
+                that lies OUTSIDE the portrait band shows, making the letters
+                weave in front of the portrait. */}
             <h1
               aria-hidden
-              className="absolute inset-0 z-[5] flex items-center justify-center px-6 text-center font-light leading-[0.82] text-[#F1EEE7]"
+              className="absolute inset-0 z-[5] flex items-center justify-center px-6 text-center leading-[0.82] text-[#F1EEE7]"
               style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontWeight: 300,
+                fontWeight: 500,
                 fontSize: "clamp(4rem, 17.5vw, 17.5rem)",
                 letterSpacing: "-0.03em",
-                clipPath: "inset(0 0 52% 0)",
-                transform: `translateY(${frontTextY}vh)`,
-                willChange: "transform",
+                clipPath: "inset(72% 0 0 0)",
               }}
             >
               {designer.name}
             </h1>
+
 
             {/* Top eyebrow */}
             <p className="palace-eyebrow absolute left-6 top-24 z-[10] md:left-14" style={{ color: "rgba(241,238,231,0.72)" }}>
