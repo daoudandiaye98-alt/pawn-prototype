@@ -36,6 +36,13 @@ export interface PersonalizationProfile {
   correctedIds: Set<string>;
 }
 
+export interface DesignerDna {
+  slug: string;
+  brandName: string;
+  worlds: Partial<Record<World, number>>;
+  signals: string[];
+}
+
 const EMPTY: PersonalizationProfile = {
   hasSignals: false,
   world: null,
@@ -46,6 +53,7 @@ const EMPTY: PersonalizationProfile = {
   signals: [],
   correctedIds: new Set(),
 };
+
 
 interface Ctx extends PersonalizationProfile {
   refresh: () => Promise<void>;
