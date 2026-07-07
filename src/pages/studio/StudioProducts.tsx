@@ -481,7 +481,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Tags + SKU */}
-          <Section title="Details" help="Tags helfen PAWN, dein Stück zu den richtigen Kunden zu bringen. Nutze 3–6 präzise Begriffe (z. B. „Kaschmir", „handgenäht", „Nachtblau"). SKU ist deine interne Nummer, optional.">
+          <Section title="Details" help={'Tags helfen PAWN, dein Stück zu den richtigen Kunden zu bringen. Nutze 3–6 präzise Begriffe (z. B. „Kaschmir", „handgenäht", „Nachtblau"). SKU ist deine interne Nummer, optional.'}>
             <Field label="Tags" hint="Mit Komma trennen">
               <input value={(local.tags ?? []).join(", ")} onChange={(e) => patch({ tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })} className="inp" placeholder="Kaschmir, handgenäht, Nachtblau" />
             </Field>
