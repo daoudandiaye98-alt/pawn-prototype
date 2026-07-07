@@ -347,6 +347,7 @@ const Index = () => {
               fallback=""
               alt="Atelier"
               className="block h-auto w-full"
+              fallbackNode={<EditorialImage seed="atelier-feature" ratio="4/5" />}
             />
           </Reveal>
         </div>
