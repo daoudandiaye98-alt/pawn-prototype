@@ -312,3 +312,24 @@
   .palace-drip { animation: palace-drip 2.6s ease-in-out infinite; }
 }
 
+
+/* Editable (builder mode) — dashed hairline + hover key label */
+.pawn-editable {
+  outline: 1px dashed rgba(0,0,0,.35);
+  outline-offset: 3px;
+  cursor: text;
+  transition: outline-color .15s ease, background-color .15s ease;
+}
+.pawn-editable:hover { outline-color: rgba(0,0,0,.75); background: rgba(255,255,255,.4); }
+.pawn-editable:focus { outline: 1px solid #0C0C0E; outline-offset: 3px; background: rgba(255,255,255,.65); }
+.pawn-editable::after {
+  content: attr(data-key);
+  position: absolute;
+  top: -1.35rem; left: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: .55rem; letter-spacing: .28em; text-transform: uppercase;
+  color: rgba(0,0,0,.55); background: rgba(255,255,255,.9);
+  padding: 2px 6px; opacity: 0; pointer-events: none;
+  transition: opacity .15s ease;
+}
+.pawn-editable:hover::after, .pawn-editable:focus::after { opacity: 1; }
