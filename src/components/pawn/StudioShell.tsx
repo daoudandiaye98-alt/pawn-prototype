@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
-import { CopilotProvider, useCopilot } from "./CopilotDrawer";
+import { useCopilot } from "./CopilotDrawer";
 
 /* Hairline inline icons (stroke 1.25) — quiet, monogram-like */
 const IStage = (p: React.SVGProps<SVGSVGElement>) => (
