@@ -256,6 +256,14 @@ Deno.serve(async (req) => {
     const reply = (await callProvider(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
 
     const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+    if (admin) {
+      await admin.from("domain_events").insert({
+        id: crypto.randomUUID(), type: "ai.response_logged",
+        actor: user_id ? "user" : "anon",
+        payload: { mode: "chat", provider, session_id, prompt: lastUser.slice(0, 400), reply: reply.slice(0, 800), ...(action ? { action: action.path } : {}) },
+        schema_version: 1,
+      });
+    }
     return new Response(JSON.stringify({ reply, cards, action, session_id, provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
