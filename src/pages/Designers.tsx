@@ -105,7 +105,7 @@ export default function Designers() {
                     className="group flex flex-col items-center gap-3 py-10 text-center transition-colors duration-500 md:py-14"
                   >
                     <span className="palace-eyebrow text-[#8F8B82] group-hover:text-[#0C0C0E]">
-                      № {String(d.house_number ?? (i + 1)).padStart(3, "0")}
+                      № {String(i + 1).padStart(3, "0")}
                     </span>
                     <span
                       className="palace-serif font-light text-[#0C0C0E]/85 transition-colors duration-500 group-hover:text-[#0C0C0E]"
