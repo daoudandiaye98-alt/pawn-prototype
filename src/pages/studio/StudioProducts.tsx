@@ -3,7 +3,7 @@ import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Upload, X } from "lucide-react";
+import { Plus, Upload, X, Sparkles, Megaphone } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 type World = "Mode" | "Interior" | "Kunst";
