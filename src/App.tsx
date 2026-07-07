@@ -141,6 +141,7 @@ const App = () => (
               <ConsentBanner />
               </RoomShiftProvider>
               </PersonalizationProvider>
+              </EditModeProvider>
               </ConsentProvider>
             </CartProvider>
 
