@@ -68,25 +68,28 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
 
   return (
     <PalaceLayout transparentHeader={false}>
-      {/* ── Editorial header ─────────────────────────────── */}
-      <section className="px-6 pt-32 md:px-14 md:pt-40">
+      {/* ── Monumental world entrance ──────────────────── */}
+      <WorldHero
+        world={world}
+        eyebrow={eyebrow}
+        subline={intro}
+        image={featured?.hero_image_url ?? featured?.banner_url ?? null}
+      />
+
+      {/* ── Kuratierte Headline + Kategorie-Chips ──────── */}
+      <section className="px-6 pt-16 md:px-14 md:pt-24">
         <div className="mx-auto max-w-[1600px]">
           <Reveal>
-            <Editable as="p" contentKey={`world_${world}_eyebrow`} className="palace-eyebrow">{eyebrow}</Editable>
-            <h1
-              className="palace-serif mt-8 font-light text-[#0C0C0E]"
-              style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
+            <h2
+              className="palace-serif font-light text-[#0C0C0E]"
+              style={{ fontSize: "clamp(2rem, 4.5vw, 3.6rem)", lineHeight: 0.98, letterSpacing: "-0.02em" }}
             >
               {headline}
-            </h1>
-            <Editable as="p" contentKey={`world_${world}_intro`} className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70" multiline>
-              {intro}
-            </Editable>
+            </h2>
           </Reveal>
 
-          {/* Hairline category chips */}
           {categories.length > 0 && (
-            <Reveal delay={100} className="mt-12 flex flex-wrap gap-2">
+            <Reveal delay={100} className="mt-10 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setActive(null)}
