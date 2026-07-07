@@ -229,9 +229,18 @@
   .palace h1, .palace h2, .palace h3, .palace h4, .palace .font-cormorant,
   .palace .palace-serif {
     font-family: "Cormorant Garamond", Georgia, serif;
-    font-weight: 400;
+    font-weight: 500;
     letter-spacing: -0.015em;
   }
+  /* Kill anemic serif weights inside the palace surface — even inline
+     font-light utilities collapse to the logo-weight so the wordmark and
+     every headline share the same tension. */
+  .palace .palace-serif.font-light,
+  .palace .palace-serif[style*="font-weight: 300"],
+  .palace h1.font-light, .palace h2.font-light, .palace h3.font-light, .palace h4.font-light {
+    font-weight: 500 !important;
+  }
+
   .palace .palace-eyebrow {
     font-family: Inter, system-ui, sans-serif;
     font-size: 0.6rem;
