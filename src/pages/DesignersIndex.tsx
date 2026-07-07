@@ -1,38 +1,83 @@
 import { Link } from "react-router-dom";
-import { PublicLayout } from "@/components/pawn/PublicLayout";
-import { DesignerCard } from "@/components/pawn/DesignerCard";
+import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { EditorialImage } from "@/components/palace/EditorialImage";
+import { Reveal } from "@/components/palace/Reveal";
+import { Editable } from "@/components/palace/Editable";
 import { useStore, marketplaceSelectors } from "@/core";
-import { PageHeader, SectionHeader, Command, Hairline } from "@/components/pawn/primitives";
 
 const DesignersIndex = () => {
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
   return (
-    <PublicLayout>
-      <section className="paper-surface">
-        <div className="editorial-container section-y">
-          <PageHeader
-            eyebrow="Designers"
-            index="A—Z"
-            title={<>The houses<br />we collect.</>}
-            lede="Independent studios building entire worlds around their garments. Each one curated by PAWN."
-            action={
-              <Link to="/apply" className="inline-flex h-12 items-center justify-center bg-[hsl(var(--oxblood))] px-8 text-[0.78rem] uppercase tracking-[0.22em] text-[hsl(var(--accent-foreground))] motion-micro hover:opacity-90">
-                Apply as designer
-              </Link>
-            }
-          />
+    <PalaceLayout transparentHeader={false}>
+      {/* Hero */}
+      <section className="border-b border-[rgba(12,12,14,.13)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
+        <div className="mx-auto grid max-w-[1600px] gap-10 md:grid-cols-[2fr_1fr] md:items-end">
+          <Reveal>
+            <Editable as="p" contentKey="dindex_eyebrow" className="palace-eyebrow">
+              Alle Häuser · A–Z
+            </Editable>
+            <h1
+              className="palace-serif mt-8 font-light text-[#0C0C0E]"
+              style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.94, letterSpacing: "-0.025em" }}
+            >
+              <Editable as="span" contentKey="dindex_headline_a">Die Häuser, </Editable>
+              <Editable as="span" contentKey="dindex_headline_b" className="italic">die wir sammeln.</Editable>
+            </h1>
+            <Editable
+              as="p"
+              contentKey="dindex_subline"
+              className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70"
+              multiline
+            >
+              Unabhängige Studios, die ganze Welten um ihre Stücke bauen. Jedes einzeln kuratiert.
+            </Editable>
+          </Reveal>
+          <Reveal delay={120} className="flex md:justify-end">
+            <Link
+              to="/apply"
+              className="palace-btn whitespace-nowrap"
+            >
+              Als Designer bewerben →
+            </Link>
+          </Reveal>
         </div>
-        <Hairline />
       </section>
-      <section className="ivory-surface">
-        <div className="editorial-container section-y">
-          <SectionHeader eyebrow="Directory" title="All designers" description="Every studio on PAWN, listed alphabetically." />
-          <div className="mt-12 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {designers.map((d) => <DesignerCard key={d.slug} designer={d} />)}
+
+      {/* Directory grid */}
+      <section className="px-6 py-20 md:px-14 md:py-28">
+        <div className="mx-auto max-w-[1600px]">
+          <div className="mb-14 flex items-end justify-between">
+            <Editable as="p" contentKey="dindex_dir_eyebrow" className="palace-eyebrow">Verzeichnis</Editable>
+            <span className="palace-eyebrow text-[#7C7972]">{designers.length} Ateliers</span>
           </div>
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+            {designers.map((d, i) => (
+              <Reveal key={d.slug} delay={Math.min(400, i * 40)}>
+                <li>
+                  <Link to={`/designer/${d.slug}`} className="group block">
+                    <EditorialImage seed={`dir-${d.slug}`} ratio="4/5" />
+                    <div className="mt-4 flex items-baseline justify-between gap-4">
+                      <div>
+                        <p className="palace-eyebrow text-[#7C7972]">
+                          № {String(i + 1).padStart(3, "0")}
+                        </p>
+                        <p
+                          className="palace-serif mt-2 font-light text-[#0C0C0E]"
+                          style={{ fontSize: "clamp(1.4rem, 2.2vw, 1.9rem)", lineHeight: 1, letterSpacing: "-0.015em" }}
+                        >
+                          {d.name}
+                        </p>
+                      </div>
+                      <span className="palace-eyebrow text-[#7C7972] group-hover:text-[#0C0C0E]">Zum Atelier →</span>
+                    </div>
+                  </Link>
+                </li>
+              </Reveal>
+            ))}
+          </ul>
         </div>
       </section>
-    </PublicLayout>
+    </PalaceLayout>
   );
 };
 
