@@ -12,6 +12,8 @@ import { PersonalizationProvider } from "@/features/personalization";
 import { ConsentProvider } from "@/lib/consent";
 import { ConsentBanner } from "@/components/palace/ConsentBanner";
 import { EditModeProvider } from "@/lib/editMode";
+import { CopilotProvider } from "@/components/pawn/CopilotDrawer";
+
 import AdminInhalte from "./pages/admin/AdminInhalte.tsx";
 
 
