@@ -58,7 +58,7 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
     if (!personalization.hasSignals) {
       return [...pool].sort(() => Math.random() - 0.5);
     }
-    const sorted = sortByPersonalization(pool, personalization);
+    const sorted = sortByPersonalization(pool, personalization, personalization.designerDna);
     // 20% random for discovery — swap random pairs
     const shuffled = [...sorted];
     for (let i = 0; i < shuffled.length; i++) {

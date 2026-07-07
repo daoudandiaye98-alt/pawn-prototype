@@ -29,14 +29,24 @@ export function DynamicBanner({
 
   useEffect(() => {
     if (pool.length === 0) { setPick(null); return; }
-    // Prefer signals if we have them
-    const preferredWorld = personalization.world?.toLowerCase();
-    const preferredPool = preferredWorld
-      ? pool.filter((d) => (d.tags ?? []).some((t) => t.toLowerCase() === preferredWorld))
-      : [];
-    const source = preferredPool.length > 0 && Math.random() < 0.8 ? preferredPool : pool;
-    setPick(source[Math.floor(Math.random() * source.length)]);
-  }, [pool, personalization.world]);
+    // brand_dna-aware weighting: designers matching preferred world + shared signals.
+    const preferredWorld = personalization.world;
+    const preferredTags = personalization.preferredTags ?? [];
+    const dnaMap = personalization.designerDna;
+    const scored = pool.map((d) => {
+      const dna = dnaMap.get(d.slug);
+      let s = 0;
+      if (preferredWorld && dna?.worlds[preferredWorld]) s += (dna.worlds[preferredWorld] ?? 0) * 2;
+      if (preferredTags.length && dna?.signals) s += dna.signals.filter((t) => preferredTags.includes(t)).length;
+      if (preferredWorld && (d.tags ?? []).some((t) => t.toLowerCase() === preferredWorld.toLowerCase())) s += 0.5;
+      return { d, s: s + Math.random() * 0.4 };
+    }).sort((a, b) => b.s - a.s);
+    // 80% pick from top match, 20% random discovery
+    const source = personalization.hasSignals && Math.random() < 0.8 ? scored.slice(0, Math.max(1, Math.floor(scored.length / 3))) : scored;
+    const picked = source[Math.floor(Math.random() * source.length)].d;
+    setPick(picked);
+  }, [pool, personalization.world, personalization.preferredTags, personalization.designerDna, personalization.hasSignals]);
+
 
   if (!pick) return null;
   return (

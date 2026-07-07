@@ -9,7 +9,7 @@ import { usePersonalization, sortByPersonalization } from "@/features/personaliz
 export default function Neu() {
   const raw = useStore(marketplaceSelectors.getAllProductViews);
   const personalization = usePersonalization();
-  const products = useMemo(() => sortByPersonalization(raw, personalization), [raw, personalization]);
+  const products = useMemo(() => sortByPersonalization(raw, personalization, personalization.designerDna), [raw, personalization]);
   return (
     <PalaceLayout transparentHeader={false}>
 

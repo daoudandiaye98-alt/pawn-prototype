@@ -8,6 +8,8 @@ import {
   useStore, marketplaceSelectors, toProductView,
 } from "@/core";
 import { useDnaMatch } from "@/features/dna/hooks";
+import { usePersonalization, explainMatch } from "@/features/personalization";
+
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { useRoomShift } from "@/features/os/roomShift";
@@ -43,7 +45,13 @@ const ProductDetail = () => {
   const [reqBusy, setReqBusy] = useState(false);
 
   const match = useDnaMatch(product.id);
+  const personalization = usePersonalization();
+  const dnaReason = useMemo(
+    () => explainMatch(product, personalization, personalization.designerDna),
+    [product, personalization],
+  );
   const { viewProduct, saveProduct } = useCustomerEvents();
+
 
   useEffect(() => { viewProduct(product.id); }, [product.id, viewProduct]);
 
@@ -193,13 +201,14 @@ const ProductDetail = () => {
 
 
                 {/* Provenance */}
-                {match.percent > 0 && (
+                {(dnaReason || match.percent > 0) && (
                   <div className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6">
                     <p className="palace-eyebrow">Ausgewählt für dich, weil</p>
                     <p className="mt-3 font-serif italic text-[1.05rem] leading-snug text-[#0C0C0E]/80">
-                      {match.rationale}
+                      {dnaReason ?? match.rationale}
                     </p>
                   </div>
+
                 )}
 
                 {/* Color */}
