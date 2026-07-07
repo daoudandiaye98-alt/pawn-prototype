@@ -382,9 +382,10 @@ const Index = () => {
       <section className="relative z-10 bg-[#F1EEE7] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto max-w-[1200px] text-center">
           <Reveal>
-            <p className="palace-eyebrow">Für Designer</p>
+            <Editable as="p" contentKey="cta_eyebrow" className="palace-eyebrow">Für Designer</Editable>
             <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,4vw,3.6rem)] leading-[1.02]">
-              Die Bühne steht. <span className="italic">Der Auftritt gehört dir.</span>
+              <Editable as="span" contentKey="cta_headline_a">Die Bühne steht. </Editable>
+              <Editable as="span" contentKey="cta_headline_b" className="italic">Der Auftritt gehört dir.</Editable>
             </h3>
           </Reveal>
 
@@ -396,7 +397,7 @@ const Index = () => {
               >
                 <p className="palace-eyebrow group-hover:text-[#A8A49B]">Bewerben</p>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
-                  Als Designer<br/>bewerben.
+                  <Editable as="span" contentKey="cta_card_a">Als Designer<br/>bewerben.</Editable>
                 </p>
               </Link>
             </Reveal>
@@ -407,7 +408,7 @@ const Index = () => {
               >
                 <p className="palace-eyebrow group-hover:text-[#A8A49B]">Sehen</p>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
-                  Zur laufenden<br/>Ausstellung.
+                  <Editable as="span" contentKey="cta_card_b">Zur laufenden<br/>Ausstellung.</Editable>
                 </p>
               </Link>
             </Reveal>
