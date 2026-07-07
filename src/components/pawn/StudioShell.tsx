@@ -223,9 +223,6 @@ function Inner({ children, title, eyebrow }: Props) {
 }
 
 export function StudioShell(props: Props) {
-  return (
-    <CopilotProvider>
-      <Inner {...props} />
-    </CopilotProvider>
-  );
+  return <Inner {...props} />;
 }
+
