@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { Reveal } from "@/components/palace/Reveal";
 import { EditorialImage } from "@/components/palace/EditorialImage";
+import { Editable } from "@/components/palace/Editable";
 
 const SERVICES = [
   {
