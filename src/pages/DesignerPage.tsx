@@ -251,11 +251,12 @@ const DesignerPage = () => {
     [designer.manifesto, designer.story],
   );
 
-  // Compute act I transforms
-  const portraitTranslate = reduced ? -50 : -38 + (pAct1 * (-62 - -38));
-  const portraitScale = reduced ? 1 : 0.94 + pAct1 * (1.06 - 0.94);
-  const backTextY = reduced ? 0 : -3 * pAct1;
-  const frontTextY = reduced ? 0 : 3 * pAct1;
+  // Portrait breathes into view — text layers stay locked in place so they
+  // register as a single monumental headline (front-layer clip-path handles
+  // the "image cuts through the letters" illusion).
+  const portraitScale = reduced ? 1 : 0.96 + pAct1 * 0.08;
+  const portraitTranslate = reduced ? 0 : -pAct1 * 4;
+
 
   const houseLabel = designer.houseNumber ?? "—";
   const totalLabel = totalCount || "—";
