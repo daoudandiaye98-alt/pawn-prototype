@@ -85,14 +85,15 @@ function buildCards(cand: { products: DBProduct[]; designers: DBDesigner[] }, mo
 }
 function detectNavAction(text: string, all: { designers: DBDesigner[]; products: DBProduct[] }): Action | null {
   const t = text.toLowerCase();
-  // World routes
+  // Explicit intents
+  if (/\b(dna|geschmack|profil)\b/.test(t)) return { type: "navigate", path: "/dna", label: "Zu deiner DNA" };
+  if (/\b(warenkorb|bag|cart|tasche)\b/.test(t)) return { type: "navigate", path: "/cart", label: "Zum Warenkorb" };
+  if (/\b(neu|neuheit|newest|latest)\b/.test(t)) return { type: "navigate", path: "/neu", label: "Was neu ist" };
   if (detectNavIntent(text)) {
     if (/\bmode\b|kleidung/.test(t)) return { type: "navigate", path: "/mode", label: "Zur Welt Mode" };
     if (/\binterior\b|raum|wohn/.test(t)) return { type: "navigate", path: "/interior", label: "Zur Welt Interior" };
     if (/\bkunst\b|wand/.test(t)) return { type: "navigate", path: "/kunst", label: "Zur Welt Kunst" };
     if (/designer(:innen)?( übersicht| overview)?/.test(t)) return { type: "navigate", path: "/designers", label: "Zur Designer-Übersicht" };
-    if (/neu|neuheit/.test(t)) return { type: "navigate", path: "/neu", label: "Was neu ist" };
-    if (/warenkorb|bag|cart/.test(t)) return { type: "navigate", path: "/cart", label: "Zum Warenkorb" };
   }
   // Fuzzy designer match
   for (const d of all.designers) {
