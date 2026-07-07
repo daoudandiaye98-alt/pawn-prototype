@@ -8,6 +8,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PickYourStyle } from "@/components/palace/PickYourStyle";
+import { Editable } from "@/components/palace/Editable";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
