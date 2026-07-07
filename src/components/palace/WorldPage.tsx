@@ -4,6 +4,7 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
+import { Editable } from "@/components/palace/Editable";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
@@ -71,16 +72,16 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
       <section className="px-6 pt-32 md:px-14 md:pt-40">
         <div className="mx-auto max-w-[1600px]">
           <Reveal>
-            <p className="palace-eyebrow">{eyebrow}</p>
+            <Editable as="p" contentKey={`world_${world}_eyebrow`} className="palace-eyebrow">{eyebrow}</Editable>
             <h1
               className="palace-serif mt-8 font-light text-[#0C0C0E]"
               style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
             >
               {headline}
             </h1>
-            <p className="mt-8 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70">
+            <Editable as="p" contentKey={`world_${world}_intro`} className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70" multiline>
               {intro}
-            </p>
+            </Editable>
           </Reveal>
 
           {/* Hairline category chips */}

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { Reveal } from "@/components/palace/Reveal";
 import { EditorialImage } from "@/components/palace/EditorialImage";
+import { Editable } from "@/components/palace/Editable";
 
 const SERVICES = [
   {
@@ -45,17 +46,17 @@ export default function ApplyLanding() {
       <section className="px-6 pt-32 md:px-14 md:pt-40">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
-            <p className="palace-eyebrow">Für Designer</p>
+            <Editable as="p" contentKey="apply_eyebrow" className="palace-eyebrow">Für Designer</Editable>
             <h1
               className="palace-serif mt-8 font-light text-[#0C0C0E]"
               style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
             >
-              Was PAWN <span className="italic">dir gibt.</span>
+              <Editable as="span" contentKey="apply_headline_a">Was PAWN </Editable>
+              <Editable as="span" contentKey="apply_headline_b" className="italic">dir gibt.</Editable>
             </h1>
-            <p className="mt-10 max-w-2xl font-serif italic text-[1.1rem] leading-relaxed text-[#0C0C0E]/70">
-              Ein Ort, an dem deine Arbeit gelesen wird, nicht gefiltert. Ein Publikum, das dich sucht,
-              bevor es weiß, dass es dich sucht. Und ein Team, das jeden Auftritt mit dir kuratiert.
-            </p>
+            <Editable as="p" contentKey="apply_subline" className="mt-10 block max-w-2xl font-serif italic text-[1.1rem] leading-relaxed text-[#0C0C0E]/70" multiline>
+              Ein Ort, an dem deine Arbeit gelesen wird, nicht gefiltert. Ein Publikum, das dich sucht, bevor es weiß, dass es dich sucht. Und ein Team, das jeden Auftritt mit dir kuratiert.
+            </Editable>
           </Reveal>
         </div>
       </section>

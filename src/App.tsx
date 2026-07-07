@@ -11,6 +11,7 @@ import { RoomShiftProvider } from "@/features/os/roomShift";
 import { PersonalizationProvider } from "@/features/personalization";
 import { ConsentProvider } from "@/lib/consent";
 import { ConsentBanner } from "@/components/palace/ConsentBanner";
+import { EditModeProvider } from "@/lib/editMode";
 import AdminInhalte from "./pages/admin/AdminInhalte.tsx";
 
 
@@ -82,6 +83,7 @@ const App = () => (
           <AuthedCore>
             <CartProvider>
               <ConsentProvider>
+              <EditModeProvider>
               <PersonalizationProvider>
               <RoomShiftProvider>
 
@@ -139,6 +141,7 @@ const App = () => (
               <ConsentBanner />
               </RoomShiftProvider>
               </PersonalizationProvider>
+              </EditModeProvider>
               </ConsentProvider>
             </CartProvider>
 

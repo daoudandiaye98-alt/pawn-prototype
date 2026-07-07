@@ -9,6 +9,7 @@ type Draft = SiteContentMap;
 
 export default function AdminInhalte() {
   const [draft, setDraft] = useState<Draft>(DEFAULTS);
+  const [extras, setExtras] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -18,6 +19,13 @@ export default function AdminInhalte() {
       const map: Record<string, unknown> = {};
       for (const r of (data ?? []) as { key: string; value: unknown }[]) map[r.key] = r.value;
       setDraft({ ...DEFAULTS, ...(map as Partial<SiteContentMap>) });
+      // Collect free-form string keys not covered by DEFAULTS (created via Builder-Mode).
+      const known = new Set(Object.keys(DEFAULTS));
+      const ex: Record<string, string> = {};
+      for (const [k, v] of Object.entries(map)) {
+        if (!known.has(k) && (typeof v === "string" || typeof v === "number")) ex[k] = String(v);
+      }
+      setExtras(ex);
       setLoaded(true);
     })();
   }, []);
@@ -28,6 +36,7 @@ export default function AdminInhalte() {
       key: k as string,
       value: draft[k] as unknown as never,
     }));
+    for (const [k, v] of Object.entries(extras)) rows.push({ key: k, value: v as unknown as never });
     const { error } = await supabase.from("site_content").upsert(rows);
     setBusy(false);
     if (error) return toast.error(error.message);
@@ -78,6 +87,22 @@ export default function AdminInhalte() {
                 />
                 <span className="text-sm">Beispiel-Inhalte anzeigen</span>
               </label>
+            </Section>
+
+            <Section title="Builder-Mode-Keys" description="Alle Texte, die Admins direkt auf der Seite (mit dem ✎-Button) angelegt haben. Freiform, ein Feld pro Key.">
+              {Object.keys(extras).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Noch keine Builder-Keys. Aktiviere den Bearbeiten-Modus auf der Seite und klicke einen Text.</p>
+              ) : (
+                Object.keys(extras).sort().map((k) => (
+                  <TextArea
+                    key={k}
+                    label={k}
+                    value={extras[k]}
+                    onChange={(v) => setExtras({ ...extras, [k]: v })}
+                    rows={2}
+                  />
+                ))
+              )}
             </Section>
 
             <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t border-border bg-background/95 py-4 backdrop-blur">

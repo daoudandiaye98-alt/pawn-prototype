@@ -104,9 +104,12 @@ export default function Designers() {
                     to={`/designer/${d.slug}`}
                     className="group flex flex-col items-center gap-3 py-10 text-center transition-colors duration-500 md:py-14"
                   >
+                    <span className="palace-eyebrow text-[#8F8B82] group-hover:text-[#0C0C0E]">
+                      № {String(i + 1).padStart(3, "0")}
+                    </span>
                     <span
                       className="palace-serif font-light text-[#0C0C0E]/85 transition-colors duration-500 group-hover:text-[#0C0C0E]"
-                      style={{ fontSize: "clamp(2.2rem, 6vw, 5rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
+                      style={{ fontSize: "clamp(2.4rem, 7.4vw, 6.6rem)", lineHeight: 1, letterSpacing: "-0.025em" }}
                     >
                       {d.brand_name}
                     </span>

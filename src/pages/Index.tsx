@@ -8,6 +8,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PickYourStyle } from "@/components/palace/PickYourStyle";
+import { Editable } from "@/components/palace/Editable";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
@@ -147,19 +148,19 @@ const Index = () => {
           {/* Soft white plate keeps text legible over the 3D canvas without hiding the pawn */}
           <div className="mx-auto max-w-[1100px] rounded-none px-2 py-6 md:px-8 md:py-10"
                style={{ background: "radial-gradient(ellipse at center, rgba(241,238,231,.92) 0%, rgba(241,238,231,.72) 55%, rgba(241,238,231,0) 100%)" }}>
-            <p className="palace-eyebrow motion-reveal" style={{ color: "#55534E" }}>
+            <Editable as="p" contentKey="hero_eyebrow" className="palace-eyebrow motion-reveal">
               Kuratierte Ausstellung · Ausgabe 07 · Juli
-            </p>
+            </Editable>
             <h1
               className="palace-serif palace-line-rise mt-8 text-[#0C0C0E]"
               style={{ fontSize: "clamp(2.4rem, 6.5vw, 6.4rem)", lineHeight: 1.02, letterSpacing: "-0.02em" }}
             >
-              <span className="block font-light">Mode, Interior und Kunst —</span>
-              <span className="block italic font-light">von unabhängigen Designern.</span>
+              <Editable as="span" contentKey="hero_headline_1" className="block font-light">Mode, Interior und Kunst —</Editable>
+              <Editable as="span" contentKey="hero_headline_2" className="block italic font-light">von unabhängigen Designern.</Editable>
             </h1>
-            <p className="mx-auto mt-8 max-w-2xl text-[1.05rem] leading-[1.65] text-[#3A3833]">
+            <Editable as="p" contentKey="hero_subline" className="mx-auto mt-8 block max-w-2xl text-[1.05rem] leading-[1.65] text-[#3A3833]" multiline>
               {personalSubtitle ?? "PAWN ist die kuratierte Ausstellung, in der du sie zuerst entdeckst."}
-            </p>
+            </Editable>
 
             <HeroPrompt />
           </div>
