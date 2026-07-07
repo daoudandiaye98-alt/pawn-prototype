@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_integrations: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          event_types: string[]
+          id: string
+          kind: Database["public"]["Enums"]["ai_integration_kind"]
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          event_types?: string[]
+          id?: string
+          kind: Database["public"]["Enums"]["ai_integration_kind"]
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          event_types?: string[]
+          id?: string
+          kind?: Database["public"]["Enums"]["ai_integration_kind"]
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_logs: {
         Row: {
           agent_id: string
@@ -1144,6 +1180,7 @@ export type Database = {
       slugify: { Args: { txt: string }; Returns: string }
     }
     Enums: {
+      ai_integration_kind: "gmail" | "instagram" | "webhook" | "custom"
       app_role: "customer" | "designer" | "admin" | "designer_applicant"
       campaign_kind: "video" | "post" | "text"
       campaign_status:
@@ -1292,6 +1329,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_integration_kind: ["gmail", "instagram", "webhook", "custom"],
       app_role: ["customer", "designer", "admin", "designer_applicant"],
       campaign_kind: ["video", "post", "text"],
       campaign_status: [
