@@ -562,7 +562,9 @@ const DesignerPage = () => {
         {/* AKT V — IM HAUS (Plakette) */}
         <section className="bg-[#0A0A0C] px-6 py-32 text-[#F1EEE7] md:px-14 md:py-40">
           <div className="mx-auto max-w-2xl">
-            <p className="palace-eyebrow text-center" style={{ color: "rgba(241,238,231,0.7)" }}>Akt V · Im Haus</p>
+            <p className="palace-eyebrow text-center" style={{ color: "rgba(241,238,231,0.7)" }}>
+              <Editable as="span" contentKey="retro_plaque_act">Akt V · Im Haus</Editable>
+            </p>
             <div
               className="relative mt-14 border border-[rgba(241,238,231,0.4)] px-10 py-16 text-center"
               style={{ boxShadow: "inset 0 0 0 1px rgba(241,238,231,0.05)" }}
@@ -577,14 +579,14 @@ const DesignerPage = () => {
                 className="palace-serif mt-8 font-light italic"
                 style={{ fontSize: "clamp(1.4rem, 2.6vw, 2rem)", lineHeight: 1.2 }}
               >
-                Aufgenommen in den PAWN-Katalog.
+                <Editable as="span" contentKey="retro_plaque_headline">Aufgenommen in den PAWN-Katalog.</Editable>
               </p>
               <div className="mx-auto mt-10 h-px w-16 bg-[rgba(241,238,231,0.3)]" />
               <dl className="mx-auto mt-10 space-y-4 text-[0.9rem]" style={{ color: "rgba(241,238,231,0.85)" }}>
-                <PlaqueRow label="Haus №" value={`${houseLabel} von ${totalLabel}`} />
-                <PlaqueRow label="Im Haus seit" value={houseSince} />
-                <PlaqueRow label="Kuratiert von" value={`PAWN · Ausgabe ${edition}`} />
-                <PlaqueRow label="Welt · Stadt" value={`${designer.tags[0] ?? "—"} · ${designer.location}`} />
+                <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_house">Haus №</Editable>} value={`${houseLabel} von ${totalLabel}`} />
+                <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_since">Im Haus seit</Editable>} value={houseSince} />
+                <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_curator">Kuratiert von</Editable>} value={`PAWN · Ausgabe ${edition}`} />
+                <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_world">Welt · Stadt</Editable>} value={`${designer.tags[0] ?? "—"} · ${designer.location}`} />
               </dl>
             </div>
           </div>
