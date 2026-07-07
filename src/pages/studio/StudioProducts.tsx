@@ -184,6 +184,15 @@ export default function StudioProducts() {
                     {p.status === "published" ? "Depublizieren" : "Veröffentlichen"}
                   </button>
                   <button onClick={() => setEditing(p)} className="text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">Bearbeiten</button>
+                  <button onClick={async () => {
+                    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", product_id: p.id } });
+                    if (error) return toast.error(error.message);
+                    const d = data as { error?: string; message?: string; campaign_id?: string };
+                    if (d?.error === "consent_missing") return toast.error(d.message ?? "Bildnutzungs-Einwilligung fehlt.");
+                    if (d?.campaign_id) toast.success("Kampagnen-Entwurf angelegt.");
+                  }} className="flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">
+                    <Megaphone className="h-3 w-3" /> Kampagne
+                  </button>
                   <button onClick={() => remove(p)} className="text-[0.62rem] uppercase tracking-[0.28em] text-destructive hover:text-destructive/70">Löschen</button>
                 </li>
               );
