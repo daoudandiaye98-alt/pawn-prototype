@@ -672,10 +672,10 @@ function CornerSquare({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
   return <span className={`absolute h-2 w-2 bg-[#F1EEE7] ${map[pos]}`} aria-hidden />;
 }
 
-function PlaqueRow({ label, value }: { label: string; value: React.ReactNode }) {
+function PlaqueRow({ label, labelNode, value }: { label?: string; labelNode?: React.ReactNode; value: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-6">
-      <dt className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.55)" }}>{label}</dt>
+      <dt className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.55)" }}>{labelNode ?? label}</dt>
       <dd className="palace-serif italic">{value}</dd>
     </div>
   );
