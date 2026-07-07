@@ -8,11 +8,11 @@ type Ctx = { open: () => void; close: () => void; toggle: () => void; isOpen: bo
 
 const CopilotCtx = createContext<Ctx | null>(null);
 
-export function useCopilot() {
-  const ctx = useContext(CopilotCtx);
-  if (!ctx) throw new Error("CopilotProvider missing");
-  return ctx;
+const NOOP: Ctx = { open: () => {}, close: () => {}, toggle: () => {}, isOpen: false };
+export function useCopilot(): Ctx {
+  return useContext(CopilotCtx) ?? NOOP;
 }
+
 
 interface HelpTopic { q: string; a: string }
 
