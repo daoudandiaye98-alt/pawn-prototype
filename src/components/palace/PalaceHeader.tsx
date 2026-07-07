@@ -149,27 +149,29 @@ export function PalaceHeader() {
                   <PawnProfileIcon className="h-5 w-5" />
                 </button>
                 {accountOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
+                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.10)] bg-white shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
                     <div className="border-b border-[rgba(12,12,14,.09)] px-5 py-4">
                       <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#55534E]">Zutritt</p>
-                      <p className="mt-1 font-serif text-[0.95rem] italic text-[#0C0C0E]">
-                        {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : "Sammlung"}
+                      <p className="mt-1 font-serif italic text-[0.95rem] text-[#0C0C0E]" style={{ fontWeight: 500 }}>
+                        {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
                       </p>
                     </div>
                     <MenuItem to="/account" onClick={() => setAccountOpen(false)}>Mein Konto</MenuItem>
                     <MenuItem to="/dna" onClick={() => setAccountOpen(false)}>Deine DNA</MenuItem>
                     {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>Mein Studio</MenuItem>}
+                    {!isDesigner && isApplicant && <MenuItem to="/apply" onClick={() => setAccountOpen(false)}>Bewerbungsstatus</MenuItem>}
                     {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>Admin-Cockpit</MenuItem>}
 
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#0C0C0E] hover:text-white"
                     >
                       Abmelden
                     </button>
                   </div>
                 )}
+
               </div>
             ) : (
               <Link
