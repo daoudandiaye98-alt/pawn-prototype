@@ -139,6 +139,16 @@ const Index = () => {
 
   return (
     <PalaceLayout>
+      {/* Gallery backdrop — warm vertical wash + horizon glow behind the 3D canvas */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 55% at 50% 78%, rgba(255,255,255,0.85) 0%, rgba(241,238,231,0.35) 55%, rgba(241,238,231,0) 100%), linear-gradient(180deg, #E8E5DE 0%, #F1EEE7 38%, #F6F3EC 100%)",
+        }}
+      />
+
       {/* Fixed 3D canvas layer behind everything */}
       <div
         className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-700"
@@ -146,6 +156,7 @@ const Index = () => {
       >
         <HeroScene finaleProgress={finaleProgress} />
       </div>
+
 
       {/* ── 01 HERO ─────────────────────────────────────────── */}
       <section className="relative z-10 flex min-h-screen items-center justify-center px-6 md:px-14">
