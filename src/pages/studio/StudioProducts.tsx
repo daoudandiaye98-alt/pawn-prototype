@@ -277,6 +277,16 @@ export default function StudioProducts() {
 
               <Field label="Beschreibung">
                 <textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} className="inp min-h-24" />
+                {editing.id && (
+                  <button type="button" onClick={async () => {
+                    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_text", product_id: editing.id } });
+                    if (error) return toast.error(error.message);
+                    const t = (data as { text?: string })?.text;
+                    if (t) { setEditing((e) => e ? { ...e, description: t } : e); toast.success("Vorschlag eingefügt."); }
+                  }} className="mt-2 inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">
+                    <Sparkles className="h-3 w-3" /> Text von PAWN
+                  </button>
+                )}
               </Field>
               <Field label="Tags (Komma-getrennt)">
                 <input value={(editing.tags ?? []).join(", ")} onChange={(e) => setEditing({ ...editing, tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })} className="inp" />
