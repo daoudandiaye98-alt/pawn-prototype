@@ -8,6 +8,8 @@ import {
   useStore, marketplaceSelectors, toProductView,
 } from "@/core";
 import { useDnaMatch } from "@/features/dna/hooks";
+import { usePersonalization, explainMatch } from "@/features/personalization";
+
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
 import { useRoomShift } from "@/features/os/roomShift";
