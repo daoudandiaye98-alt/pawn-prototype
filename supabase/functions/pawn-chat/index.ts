@@ -237,6 +237,11 @@ Deno.serve(async (req) => {
     if (admin) {
       const cand = await loadCandidates(admin, extracted.world);
       action = detectNavAction(lastUser, { designers: cand.allDesigners, products: cand.allProducts });
+      // Designer-Kontext: Studio-Fragen an den Copilot verweisen
+      if (!action && user_id && /\b(mein store|studio|copilot|kollektion|meine produkte|umsatz|verkäufe|kampagne)\b/i.test(lastUser)) {
+        const { data: d } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
+        if (d) action = { type: "navigate", path: "/studio/copilot", label: "Zum Copilot im Studio" };
+      }
       if (!action && extracted.world && extracted.mood && !extracted.browsing) {
         cards.push(...buildCards(cand, extracted.mood));
         if (cand.products.length || cand.designers.length) {
