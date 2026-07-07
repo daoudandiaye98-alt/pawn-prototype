@@ -71,17 +71,19 @@ export function PalaceHeader() {
 
   const isAdmin = roles.includes("admin");
   const isDesigner = roles.includes("designer");
+  const isApplicant = roles.includes("designer_applicant" as never);
 
   return (
     <>
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-700 ${
           scrolled
-            ? "border-b border-[rgba(12,12,14,.13)] bg-[#F1EEE7]/90 backdrop-blur-md"
-            : "border-b border-transparent bg-gradient-to-b from-[#F1EEE7]/75 to-transparent backdrop-blur-[3px]"
+            ? "border-b border-[rgba(12,12,14,.10)] bg-white/95 backdrop-blur-md"
+            : "border-b border-transparent bg-white/80 backdrop-blur-[3px]"
         }`}
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
       >
+
         <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-5 md:px-10 md:py-6 xl:gap-14 xl:px-14">
           {/* Wordmark — never wraps, fixed intrinsic width */}
           <Link
@@ -147,27 +149,29 @@ export function PalaceHeader() {
                   <PawnProfileIcon className="h-5 w-5" />
                 </button>
                 {accountOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
+                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.10)] bg-white shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
                     <div className="border-b border-[rgba(12,12,14,.09)] px-5 py-4">
                       <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#55534E]">Zutritt</p>
-                      <p className="mt-1 font-serif text-[0.95rem] italic text-[#0C0C0E]">
-                        {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : "Sammlung"}
+                      <p className="mt-1 font-serif italic text-[0.95rem] text-[#0C0C0E]" style={{ fontWeight: 500 }}>
+                        {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
                       </p>
                     </div>
                     <MenuItem to="/account" onClick={() => setAccountOpen(false)}>Mein Konto</MenuItem>
                     <MenuItem to="/dna" onClick={() => setAccountOpen(false)}>Deine DNA</MenuItem>
                     {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>Mein Studio</MenuItem>}
+                    {!isDesigner && isApplicant && <MenuItem to="/apply" onClick={() => setAccountOpen(false)}>Bewerbungsstatus</MenuItem>}
                     {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>Admin-Cockpit</MenuItem>}
 
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#0C0C0E] hover:text-white"
                     >
                       Abmelden
                     </button>
                   </div>
                 )}
+
               </div>
             ) : (
               <Link
@@ -202,11 +206,11 @@ export function PalaceHeader() {
 
       {/* Mobile / tablet fullscreen menu */}
       <div
-        className={`fixed inset-0 z-[90] flex flex-col bg-[#F1EEE7] transition-opacity duration-500 xl:hidden ${
+        className={`fixed inset-0 z-[90] flex flex-col bg-white transition-opacity duration-500 xl:hidden ${
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        <div className="flex items-center justify-between px-6 py-5">
+        <div className="flex items-center justify-between border-b border-[rgba(12,12,14,.10)] px-6 py-5">
           <span className="whitespace-nowrap font-serif text-[0.95rem] uppercase tracking-[0.42em] text-[#0C0C0E]">PAWN</span>
           <button
             type="button"
@@ -223,7 +227,8 @@ export function PalaceHeader() {
               key={item.label}
               to={item.to}
               onClick={() => setMenuOpen(false)}
-              className="whitespace-nowrap font-serif text-[2.4rem] font-light leading-[0.98] text-[#0C0C0E]"
+              className="whitespace-nowrap font-serif text-[2.4rem] leading-[0.98] text-[#0C0C0E]"
+              style={{ fontWeight: 500 }}
             >
               {item.label}
             </NavLink>
@@ -232,15 +237,17 @@ export function PalaceHeader() {
             type="button"
             onClick={() => { setMenuOpen(false); setChatOpen(true); }}
             className="mt-6 text-left font-serif italic text-[1.4rem] leading-tight text-[#0C0C0E]/80"
+            style={{ fontWeight: 500 }}
           >
             Frag PAWN →
           </button>
         </nav>
-        <div className="space-y-2 border-t border-[rgba(12,12,14,.13)] px-8 py-6">
+        <div className="space-y-2 border-t border-[rgba(12,12,14,.10)] px-8 py-6">
           {user ? (
             <>
               <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Konto</Link>
               {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Studio</Link>}
+              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Bewerbungsstatus</Link>}
               {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Admin-Cockpit</Link>}
               <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#55534E]">Abmelden</button>
             </>
@@ -249,6 +256,7 @@ export function PalaceHeader() {
           )}
         </div>
       </div>
+
 
       <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />

@@ -70,9 +70,10 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         onClick={onClose}
       />
       <aside
-        className={`fixed right-0 top-0 z-[80] flex h-full w-[min(420px,94vw)] flex-col border-l border-[rgba(12,12,14,.13)] bg-[#F1EEE7] transition-transform duration-700 ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed right-0 top-0 z-[80] flex h-full w-[min(420px,94vw)] flex-col border-l border-[rgba(12,12,14,.10)] bg-white transition-transform duration-700 ${open ? "translate-x-0" : "translate-x-full"}`}
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
       >
+
         <header className="flex items-center justify-between border-b border-[rgba(12,12,14,.13)] px-6 py-5">
           <div>
             <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#7C7972]">PAWN</p>

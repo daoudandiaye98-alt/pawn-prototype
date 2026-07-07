@@ -3,7 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 
-export type Role = "customer" | "designer" | "admin";
+export type Role = "customer" | "designer" | "designer_applicant" | "admin";
 
 export interface AuthProfile {
   id: string;
@@ -74,9 +74,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const sid = typeof window !== "undefined" ? window.localStorage.getItem("palace.chat.session_id") : null;
               if (sid) await supabase.functions.invoke("merge-session", { body: { session_id: sid } });
             } catch { /* best-effort */ }
+            // Roles are populated by a trigger — for fresh signups they may
+            // not exist yet when the SIGNED_IN event fires. Retry once.
+            if (r.length === 0) {
+              setTimeout(async () => {
+                const r2 = await loadRoles(s.user.id);
+                if (r2.length) setRoles(r2);
+              }, 1600);
+            }
           }
         }, 0);
       } else {
+
         setProfile(null);
         setRoles([]);
       }
