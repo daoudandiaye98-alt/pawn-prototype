@@ -119,6 +119,14 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
+      <Link
+        to="/"
+        onClick={onNavigate}
+        className="mx-6 mb-4 border border-white/25 px-3 py-2 text-center text-[0.62rem] uppercase tracking-[0.3em] text-white/80 transition-colors hover:bg-white hover:text-black"
+      >
+        Zur Ausstellung →
+      </Link>
+
       {designer && (
         <div className="mx-6 mb-6 border border-white/12 p-4">
           <div className="flex items-baseline gap-2">
