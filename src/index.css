@@ -2,107 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
-/* PAWN Design System — Architectural chess luxury.
-   One organism. Ivory · Paper · Bone · Ink · Oxblood · rare Gold.
-   Rules:
-   - Radius: 0 everywhere.
-   - Shadows: reserved for overlays; presentation uses hairlines.
-   - Motion: one easing, two durations.
-   - Typography: locked scale (see .t-display-* / .t-body-*).
-   - Oxblood: decision-only. Gold: rare accolade. */
+/* PAWN — Final Design System.
+   Pure black and white. Playfair Display serif. Inter UI.
+   Hard offset shadows, no radius, no grain, inversion hovers. */
 
 @layer base {
   :root {
-    /* Marmor & Graphit — the obsidian archive palace.
-       #EFEDE8 marble · #B8B4AC smoke · #3A3A3C graphite · #0F0F10 obsidian */
-    --background: 40 20% 92%;     /* #EFEDE8 marble */
-    --foreground: 240 6% 6%;      /* #0F0F10 obsidian */
+    /* Pure — only #FFFFFF and #000000 */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
 
-    --ivory: 40 20% 92%;
-    --ivory-soft: 40 18% 95%;
-    --ivory-deep: 36 12% 84%;
-    --paper: 40 20% 95%;
-    --bone: 36 10% 88%;
-    --ink: 240 6% 6%;
-    --ink-soft: 240 4% 10%;
+    --ivory: 0 0% 100%;
+    --ivory-soft: 0 0% 100%;
+    --ivory-deep: 0 0% 100%;
+    --paper: 0 0% 100%;
+    --bone: 0 0% 100%;
+    --ink: 0 0% 0%;
+    --ink-soft: 0 0% 0%;
 
-    --card: 40 18% 94%;
-    --card-foreground: 240 6% 6%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
-    --popover: 40 18% 95%;
-    --popover-foreground: 240 6% 6%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 25%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
 
-    --primary: 240 6% 6%;
-    --primary-foreground: 40 22% 94%;
+    --wine: 0 0% 0%;
+    --wine-soft: 0 0% 0%;
+    --beige: 0 0% 100%;
+    --charcoal: 0 0% 0%;
+    --oxblood: 0 0% 0%;
+    --gold: 0 0% 0%;
+    --gold-soft: 0 0% 0%;
 
-    --secondary: 36 6% 70%;       /* #B8B4AC smoke */
-    --secondary-foreground: 240 6% 6%;
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
 
-    --muted: 36 8% 82%;
-    --muted-foreground: 240 3% 30%;
-
-    --accent: 240 3% 23%;         /* #3A3A3C graphite */
-    --accent-foreground: 40 22% 94%;
-
-    --wine: 240 3% 23%;
-    --wine-soft: 240 3% 35%;
-    --beige: 36 8% 82%;
-    --charcoal: 240 3% 23%;
-    --oxblood: 240 6% 6%;         /* decisions collapse to obsidian in this palette */
-
-    --gold: 36 6% 70%;
-    --gold-soft: 36 8% 82%;
-
-    --destructive: 0 55% 34%;
-    --destructive-foreground: 40 22% 94%;
-
-    --border: 240 6% 6% / 0.12;
-    --border-strong: 240 6% 6% / 0.28;
-    --input: 240 6% 6% / 0.20;
-    --ring: 240 3% 23%;
+    --border: 0 0% 0% / 0.18;
+    --border-strong: 0 0% 0% / 0.85;
+    --input: 0 0% 0% / 0.85;
+    --ring: 0 0% 0%;
 
     --radius: 0;
 
-    --sidebar-background: 240 6% 6%;
-    --sidebar-foreground: 36 10% 84%;
-    --sidebar-primary: 36 6% 70%;
-    --sidebar-primary-foreground: 40 22% 94%;
-    --sidebar-accent: 240 4% 10%;
-    --sidebar-accent-foreground: 40 22% 94%;
-    --sidebar-border: 36 12% 80% / 0.08;
-    --sidebar-ring: 36 6% 70%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100% / 0.22;
+    --sidebar-ring: 0 0% 100%;
 
-    --gradient-light: linear-gradient(180deg, hsl(40 20% 95%), hsl(36 10% 84%));
-    --gradient-shadow: linear-gradient(180deg, hsl(240 6% 8%), hsl(240 6% 3%));
-    --gradient-wine: linear-gradient(135deg, hsl(240 3% 23%), hsl(240 6% 10%));
-    --shadow-editorial: 0 40px 120px -50px hsl(240 6% 0% / 0.45);
-    --shadow-card: 0 1px 0 0 hsl(240 6% 6% / 0.10);
+    --gradient-light: none;
+    --gradient-shadow: none;
+    --gradient-wine: none;
+    --shadow-editorial: 6px 6px 0 0 #000;
+    --shadow-card: 6px 6px 0 0 #000;
 
-    /* Motion — the palace dolly */
-    --ease-pawn: cubic-bezier(0.16, 1, 0.3, 1);
-    --dur-micro: 220ms;
-    --dur-reveal: 900ms;
+    /* Motion — harder */
+    --ease-pawn: cubic-bezier(0.76, 0, 0.18, 1);
+    --dur-micro: 250ms;
+    --dur-reveal: 600ms;
   }
 
-
   .dark {
-    --background: 18 10% 5%;
-    --foreground: 36 25% 90%;
-    --card: 18 10% 7%;
-    --card-foreground: 36 25% 90%;
-    --popover: 18 10% 7%;
-    --popover-foreground: 36 25% 90%;
-    --primary: 36 35% 92%;
-    --primary-foreground: 18 10% 5%;
-    --secondary: 18 8% 12%;
-    --secondary-foreground: 36 25% 90%;
-    --muted: 18 6% 12%;
-    --muted-foreground: 36 10% 58%;
-    --accent: 0 55% 22%;
-    --accent-foreground: 36 35% 95%;
-    --border: 36 12% 80% / 0.12;
-    --input: 36 12% 80% / 0.16;
-    --ring: 0 55% 30%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 8%;
+    --muted-foreground: 0 0% 75%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
+    --border: 0 0% 100% / 0.22;
+    --input: 0 0% 100% / 0.85;
+    --ring: 0 0% 100%;
   }
 }
 
@@ -113,201 +101,180 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss01", "cv11";
+    font-weight: 400;
   }
-  h1, h2, h3, h4, .font-serif, .font-display {
-    font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  h1, h2, h3, h4, .font-serif, .font-display, .palace-serif, .font-cormorant {
+    font-family: "Playfair Display", "Cormorant Garamond", Georgia, serif;
     letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  em, i, .italic { font-style: italic; }
+  h1 em, h2 em, h3 em, .font-serif em, .palace-serif em,
+  h1 i, h2 i, h3 i, .font-serif i, .palace-serif i {
     font-weight: 500;
   }
-  .font-cormorant { font-family: "Cormorant Garamond", Georgia, serif; }
+  /* Kill lingering weight-300 declarations */
+  .font-light { font-weight: 500 !important; }
 }
 
-
-
 @layer components {
-  /* ── Locked type scale ─────────────────────────────
-     Use these instead of inline text-[..] sizes. */
-  .t-display-xl { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
-  .t-display-lg { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
-  .t-display-md { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
-  .t-display-sm { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
+  .t-display-xl { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
+  .t-display-lg { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
+  .t-display-md { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
+  .t-display-sm { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
 
-  .t-body-lg { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 1.05rem; line-height: 1.55; }
-  .t-body-md { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.92rem; line-height: 1.55; }
-  .t-body-sm { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.8rem;  line-height: 1.55; }
+  .t-body-lg { font-family: Inter, system-ui, sans-serif; font-weight: 400; font-size: 1.05rem; line-height: 1.55; }
+  .t-body-md { font-family: Inter, system-ui, sans-serif; font-weight: 400; font-size: 0.92rem; line-height: 1.55; }
+  .t-body-sm { font-family: Inter, system-ui, sans-serif; font-weight: 400; font-size: 0.8rem;  line-height: 1.55; }
 
-  .t-eyebrow { font-family: Manrope, Inter, system-ui, sans-serif; font-size: 0.65rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.32em; color: hsl(var(--muted-foreground)); }
-  .t-num     { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .t-eyebrow { font-family: Inter, system-ui, sans-serif; font-weight: 500; font-size: 0.65rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.32em; color: hsl(var(--foreground)); }
+  .t-num     { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-weight: 500; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
 
-  /* Back-compat aliases */
   .editorial-eyebrow { @apply t-eyebrow; }
-  .pawn-numeral { font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 400; letter-spacing: 0.04em; }
+  .pawn-numeral { font-family: "Playfair Display", serif; font-style: italic; font-weight: 500; letter-spacing: 0.04em; }
 
-  /* ── Rhythm ─────────────────────────────── */
-  .editorial-rule { height: 1px; width: 100%; background: hsl(var(--border)); }
+  .editorial-rule { height: 1.5px; width: 100%; background: #000; }
   .editorial-container { @apply mx-auto w-full max-w-[1440px] px-6 md:px-10; }
-  .editorial-card { border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .editorial-card { border: 1.5px solid #000; background: #fff; }
   .section-y { @apply py-16 md:py-24; }
   .section-y-lg { @apply py-24 md:py-32; }
 
-  /* ── Surfaces ───────────────────────────── */
-  .ivory-surface  { background-color: hsl(var(--ivory)); color: hsl(var(--foreground)); }
-  .paper-surface  { background-color: hsl(var(--paper)); color: hsl(var(--foreground)); }
-  .bone-surface   { background-color: hsl(var(--bone));  color: hsl(var(--foreground)); }
-  .ink-surface    { background-color: hsl(var(--ink));   color: hsl(var(--primary-foreground)); }
+  .ivory-surface, .paper-surface, .bone-surface { background-color: #fff; color: #000; }
+  .ink-surface, .ink-panel { background-color: #000; color: #fff; }
+  .paper-panel, .bone-panel { background-color: #fff; color: #000; border: 1.5px solid #000; }
 
-  .ink-panel   { background-color: hsl(var(--ink));   color: hsl(var(--primary-foreground)); }
-  .paper-panel { background-color: hsl(var(--paper)); color: hsl(var(--foreground)); }
-  .bone-panel  { background-color: hsl(var(--bone));  color: hsl(var(--foreground)); }
+  .hairline        { height: 1.5px; width: 100%; background: #000; }
+  .hairline-strong { height: 1.5px; width: 100%; background: #000; }
+  .hairline-light  { height: 1.5px; width: 100%; background: #fff; }
+  .v-hairline      { width: 1.5px; background: #000; }
 
-  /* ── Hairlines & seams ─────────────────── */
-  .hairline        { height: 1px; width: 100%; background: hsl(var(--foreground) / 0.14); }
-  .hairline-strong { height: 1px; width: 100%; background: hsl(var(--foreground) / 0.28); }
-  .hairline-light  { height: 1px; width: 100%; background: hsl(40 30% 98% / 0.16); }
-  .v-hairline      { width: 1px; background: hsl(var(--foreground) / 0.14); }
-
-  /* ── Chess grid textures ───────────────── */
-  .chess-grid {
+  .chess-grid, .chess-grid-light {
     background-image:
-      linear-gradient(45deg, hsl(var(--foreground) / 0.06) 25%, transparent 25%),
-      linear-gradient(-45deg, hsl(var(--foreground) / 0.06) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, hsl(var(--foreground) / 0.06) 75%),
-      linear-gradient(-45deg, transparent 75%, hsl(var(--foreground) / 0.06) 75%);
+      linear-gradient(45deg, rgba(0,0,0,.06) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(0,0,0,.06) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(0,0,0,.06) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(0,0,0,.06) 75%);
     background-size: 16px 16px;
     background-position: 0 0, 0 8px, 8px -8px, -8px 0;
   }
-  .chess-grid-light {
-    background-image:
-      linear-gradient(45deg, hsl(40 30% 98% / 0.06) 25%, transparent 25%),
-      linear-gradient(-45deg, hsl(40 30% 98% / 0.06) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, hsl(40 30% 98% / 0.06) 75%),
-      linear-gradient(-45deg, transparent 75%, hsl(40 30% 98% / 0.06) 75%);
-    background-size: 16px 16px;
-    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-  }
-  .pawn-grain { background-image: linear-gradient(hsl(var(--foreground) / 0.025) 1px, transparent 1px); background-size: 100% 6px; }
+  .pawn-grain { background-image: none; }
 
-  /* ── Decision affordance (oxblood, single-per-view) ── */
   .decision-pill {
-    background-color: hsl(var(--oxblood));
-    color: hsl(var(--accent-foreground));
+    background-color: #000;
+    color: #fff;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     font-size: 0.7rem;
+    border: 1.5px solid #000;
   }
 
-  /* ── Motion utilities ────────────────────── */
   .motion-micro  { transition: color var(--dur-micro) var(--ease-pawn), background-color var(--dur-micro) var(--ease-pawn), border-color var(--dur-micro) var(--ease-pawn), opacity var(--dur-micro) var(--ease-pawn); }
   .motion-reveal { animation: pawn-reveal var(--dur-reveal) var(--ease-pawn) both; }
   @keyframes pawn-reveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   @keyframes breathe { 0% { transform: scale(1); } 45% { transform: scale(1.012); } 100% { transform: scale(1); } }
+
+  /* Hard offset shadow utility */
+  .shadow-hard      { box-shadow: 6px 6px 0 0 #000; }
+  .shadow-hard-sm   { box-shadow: 4px 4px 0 0 #000; }
+  .shadow-hard-invert { box-shadow: 6px 6px 0 0 #fff; }
+
+  /* Inversion hover — replaces opacity hovers */
+  .hover-invert { transition: background-color var(--dur-micro) var(--ease-pawn), color var(--dur-micro) var(--ease-pawn); }
+  .hover-invert:hover { background-color: #000; color: #fff; }
+  .hover-invert-dark { transition: background-color var(--dur-micro) var(--ease-pawn), color var(--dur-micro) var(--ease-pawn); }
+  .hover-invert-dark:hover { background-color: #fff; color: #000; }
 }
 
-/* ───────── Palace tokens (lebendiges Magazin) ─────────
-   Scoped via .palace on the public layout so admin/portal/apply
-   keep their own aesthetic. */
+/* Palace overrides — folded into the black/white system */
 @layer components {
   .palace {
-    --palace-ivory: #F1EEE7;
-    --palace-black: #0C0C0E;
-    --palace-grey: #6B6862;
-    --palace-dim: #8F8B82;
-    --palace-hair: rgba(12,12,14,.14);
-    --palace-hair-strong: rgba(12,12,14,.30);
-    /* Personalization tokens — set by usePersonalization */
+    --palace-ivory: #ffffff;
+    --palace-black: #000000;
+    --palace-grey: #000000;
+    --palace-dim: #000000;
+    --palace-hair: rgba(0,0,0,.18);
+    --palace-hair-strong: rgba(0,0,0,.85);
     --palace-gap: 1.5rem;
     --palace-gap-md: 2rem;
-    --palace-reveal-dur: 1s;
+    --palace-reveal-dur: .6s;
     --palace-image-contrast: 1.06;
-    font-family: Inter, "Manrope", system-ui, sans-serif;
+    font-family: Inter, system-ui, sans-serif;
     font-weight: 400;
     font-size: 0.95rem;
-    line-height: 1.65;
-    color: var(--palace-black);
+    line-height: 1.6;
+    color: #000;
+    background: #fff;
   }
-  .palace p { line-height: 1.65; }
-  .palace h1, .palace h2, .palace h3, .palace h4, .palace .font-cormorant,
-  .palace .palace-serif {
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-weight: 500 !important;
-    letter-spacing: -0.015em;
+  .palace p { line-height: 1.6; }
+  .palace h1, .palace h2, .palace h3, .palace h4,
+  .palace .font-cormorant, .palace .palace-serif {
+    font-family: "Playfair Display", Georgia, serif;
+    font-weight: 600 !important;
+    letter-spacing: -0.02em;
   }
-
+  .palace .palace-serif.italic,
+  .palace .palace-serif em, .palace .palace-serif i { font-weight: 500 !important; }
 
   .palace .palace-eyebrow {
     font-family: Inter, system-ui, sans-serif;
     font-size: 0.6rem;
     letter-spacing: 0.42em;
     text-transform: uppercase;
-    color: var(--palace-grey);
+    color: #000;
     font-weight: 500;
   }
   .palace .uline {
-    border-bottom: 1px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
     padding-bottom: 1px;
-    transition: opacity .3s ease;
+    transition: background-color .25s var(--ease-pawn), color .25s var(--ease-pawn);
   }
-  .palace .uline:hover { opacity: .6; }
+  .palace .uline:hover { background: #000; color: #fff; }
 
   .palace .palace-image-inner {
     filter: grayscale(1) contrast(var(--palace-image-contrast));
-    transition: transform 1.3s cubic-bezier(.22,1,.36,1);
+    transition: transform .8s var(--ease-pawn);
     will-change: transform;
   }
-  .palace .palace-image:hover .palace-image-inner {
-    transform: scale(1.04);
-  }
+  .palace .palace-image:hover .palace-image-inner { transform: scale(1.04); }
 
-
-  /* Reveals */
   .palace-reveal {
     opacity: 0;
-    transform: translateY(36px);
-    transition: opacity var(--palace-reveal-dur, 1s) ease, transform var(--palace-reveal-dur, 1s) cubic-bezier(.22,1,.36,1);
+    transform: translateY(24px);
+    transition: opacity var(--palace-reveal-dur, .6s) var(--ease-pawn),
+                transform var(--palace-reveal-dur, .6s) var(--ease-pawn);
   }
   .palace-reveal.is-visible { opacity: 1; transform: none; }
 
-
-  /* Buttons */
   .palace .palace-btn {
     display: inline-flex; align-items: center; gap: .6rem;
-    border: 1px solid var(--palace-hair-strong);
+    border: 1.5px solid #000;
+    background: #fff; color: #000;
     padding: .8rem 1.4rem;
     font-size: .65rem; letter-spacing: .36em; text-transform: uppercase;
-    color: var(--palace-black);
-    transition: all .35s cubic-bezier(.22,1,.36,1);
+    font-weight: 500;
+    transition: background-color .25s var(--ease-pawn), color .25s var(--ease-pawn);
   }
-  .palace .palace-btn:hover { background: var(--palace-black); color: var(--palace-ivory); }
+  .palace .palace-btn:hover { background: #000; color: #fff; }
 
-  /* Film grain overlay */
-  .palace-grain {
-    pointer-events: none;
-    position: fixed; inset: 0;
-    z-index: 60;
-    opacity: .035;
-    mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  }
+  /* Grain removed */
+  .palace-grain { display: none !important; }
 
-  /* Marquee */
   @keyframes palace-marquee {
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
   }
   .palace-marquee { animation: palace-marquee 60s linear infinite; }
 
-  /* Line rise for hero headings */
   @keyframes palace-line-rise {
     from { opacity: 0; transform: translateY(70%); }
     to { opacity: 1; transform: none; }
   }
   .palace-line-rise > span {
     display: inline-block;
-    animation: palace-line-rise 1.1s cubic-bezier(.22,1,.36,1) both;
+    animation: palace-line-rise .9s var(--ease-pawn) both;
   }
-  .palace-line-rise > span:nth-child(2) { animation-delay: .18s; }
+  .palace-line-rise > span:nth-child(2) { animation-delay: .14s; }
 
-  /* Drip scroll hint */
   @keyframes palace-drip {
     0%, 100% { transform: scaleY(.3); transform-origin: top; opacity: .4; }
     50%      { transform: scaleY(1);  transform-origin: top; opacity: 1;  }
@@ -315,23 +282,22 @@
   .palace-drip { animation: palace-drip 2.6s ease-in-out infinite; }
 }
 
-
-/* Editable (builder mode) — dashed hairline + hover key label */
+/* Editable (builder mode) */
 .pawn-editable {
   outline: 1px dashed rgba(0,0,0,.35);
   outline-offset: 3px;
   cursor: text;
   transition: outline-color .15s ease, background-color .15s ease;
 }
-.pawn-editable:hover { outline-color: rgba(0,0,0,.75); background: rgba(255,255,255,.4); }
-.pawn-editable:focus { outline: 1px solid #0C0C0E; outline-offset: 3px; background: rgba(255,255,255,.65); }
+.pawn-editable:hover { outline-color: #000; background: rgba(0,0,0,.04); }
+.pawn-editable:focus { outline: 1.5px solid #000; outline-offset: 3px; background: #fff; }
 .pawn-editable::after {
   content: attr(data-key);
   position: absolute;
   top: -1.35rem; left: 0;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, system-ui, sans-serif;
   font-size: .55rem; letter-spacing: .28em; text-transform: uppercase;
-  color: rgba(0,0,0,.55); background: rgba(255,255,255,.9);
+  color: #000; background: #fff; border: 1px solid #000;
   padding: 2px 6px; opacity: 0; pointer-events: none;
   transition: opacity .15s ease;
 }

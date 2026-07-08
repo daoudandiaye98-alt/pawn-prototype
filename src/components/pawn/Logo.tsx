@@ -1,26 +1,18 @@
-import logoAsset from "@/assets/pawn-logo.png.asset.json";
 import { cn } from "@/lib/utils";
+import { PawnWordmark } from "./PawnWordmark";
 
-/** Official PAWN wordmark (P[pawn]WN). Use wherever the brand logo appears. */
+/** Legacy Logo shim → forwards to PawnWordmark for backwards compatibility. */
 export function Logo({
   className,
   invert = false,
-  alt = "PAWN",
 }: {
   className?: string;
   invert?: boolean;
   alt?: string;
 }) {
   return (
-    <img
-      src={logoAsset.url}
-      alt={alt}
-      draggable={false}
-      className={cn(
-        "block h-6 w-auto select-none object-contain",
-        invert && "invert",
-        className,
-      )}
+    <PawnWordmark
+      className={cn("text-[1.4rem]", invert ? "text-white" : "text-black", className)}
     />
   );
 }
