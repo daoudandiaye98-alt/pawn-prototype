@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Upload, X, Sparkles, Megaphone, HelpCircle, Check, ImageIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { TagInput } from "@/features/ontology/TagInput";
 
 type World = "Mode" | "Interior" | "Kunst";
 type Status = "draft" | "published" | "archived";
