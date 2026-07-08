@@ -39,7 +39,7 @@ const ITEMS = [
 export function AdminSidebar() {
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
-      <Link to="/" className="flex h-16 items-center border-b border-sidebar-border px-6">
+      <Link to="/" className="flex h-16 items-center border-b border-sidebar-border px-6" title="Zur Ausstellung">
         <span className="font-serif text-xl tracking-[0.35em] text-sidebar-primary-foreground">PAWN</span>
         <span className="ml-3 text-[0.65rem] uppercase tracking-[0.28em] text-sidebar-foreground/60">Admin</span>
       </Link>
@@ -63,6 +63,12 @@ export function AdminSidebar() {
           </NavLink>
         ))}
       </nav>
+      <Link
+        to="/"
+        className="mx-6 mb-4 border border-white/25 px-3 py-2 text-center text-[0.62rem] uppercase tracking-[0.3em] text-white/80 transition-colors hover:bg-white hover:text-black"
+      >
+        Zur Ausstellung →
+      </Link>
       <div className="border-t border-sidebar-border px-6 py-4 text-xs text-sidebar-foreground/50">
         v0.1 · Prototype
       </div>
