@@ -77,22 +77,18 @@ export function PalaceHeader() {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-700 ${
-          scrolled
-            ? "border-b border-[rgba(12,12,14,.10)] bg-white/95 backdrop-blur-md"
-            : "border-b border-transparent bg-white/80 backdrop-blur-[3px]"
-        }`}
-        style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
+        className="fixed inset-x-0 top-0 z-50 border-b-[1.5px] border-black bg-white"
+        style={{ transitionTimingFunction: "cubic-bezier(.76,0,.18,1)" }}
       >
 
-        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-5 md:px-10 md:py-6 xl:gap-14 xl:px-14">
-          {/* Wordmark — never wraps, fixed intrinsic width */}
+        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-3 md:px-10 md:py-4 xl:gap-14 xl:px-14">
+          {/* Wordmark */}
           <Link
             to="/"
             aria-label="PAWN"
-            className="whitespace-nowrap font-serif text-[0.95rem] font-light uppercase tracking-[0.42em] text-[#0C0C0E]"
+            className="whitespace-nowrap text-black"
           >
-            PAWN
+            <PawnWordmark className="text-[1.5rem] md:text-[1.6rem]" />
           </Link>
 
           {/* Desktop nav — collapses to burger below the lg breakpoint (1024px) */}
