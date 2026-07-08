@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 
 export default function Kontakt() {
   const { user, profile } = useAuth();
-  const [name, setName] = useState(profile?.display_name ?? "");
+  const [name, setName] = useState(profile?.displayName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [subject, setSubject] = useState("Allgemeine Anfrage");
   const [body, setBody] = useState("");
