@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
 import { useCart } from "@/store/cart";
 import { PawnBagIcon, PawnCloseIcon, PawnMenuIcon, PawnProfileIcon, PawnSearchIcon } from "@/components/pawn/icons/PawnIcons";
+import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 
 /**
  * Palace header.
