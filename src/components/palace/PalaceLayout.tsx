@@ -1,19 +1,21 @@
 import { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { PalaceHeader } from "./PalaceHeader";
 import { BuilderBar, BuilderToggle } from "./BuilderMode";
 import { Editable } from "./Editable";
+import { Breadcrumbs } from "./Breadcrumbs";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 
 /**
  * PalaceLayout — final black/white system.
- * White surface, hairline black borders, monumental footer wordmark.
  */
-export function PalaceLayout({ children, transparentHeader = true }: { children: ReactNode; transparentHeader?: boolean }) {
+export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean }) {
   return (
     <div className="palace min-h-screen bg-white text-black">
       <BuilderBar />
       <PalaceHeader />
-      <main className={transparentHeader ? "" : "pt-24"}>{children}</main>
+      {showBreadcrumbs && <div className="pt-[68px] md:pt-[76px]"><Breadcrumbs /></div>}
+      <main className={transparentHeader && !showBreadcrumbs ? "" : ""}>{children}</main>
       <footer className="border-t-[1.5px] border-black bg-white">
         <div className="mx-auto max-w-[1600px] px-6 pt-16 md:px-14">
           <PawnWordmark
