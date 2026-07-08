@@ -57,7 +57,7 @@ export function DynamicBanner({
         ratio="16/9"
         className="absolute inset-0 h-full w-full"
       />
-      <div className="absolute inset-0 bg-[#0C0C0E]/50" />
+      <div className="absolute inset-0 bg-[#000000]/50" />
       <div className="relative flex items-center justify-center px-6 py-24 text-center" style={{ minHeight }}>
         <Reveal>
           <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,.75)" }}>
@@ -66,7 +66,7 @@ export function DynamicBanner({
           <blockquote className="mx-auto mt-8 max-w-3xl">
             {pick.quote ? (
               <p
-                className="palace-serif italic font-light text-[#F1EEE7]"
+                className="palace-serif italic font-light text-[#FFFFFF]"
                 style={{ fontSize: "clamp(1.7rem, 4.2vw, 3.4rem)", lineHeight: 1.12 }}
               >
                 „{pick.quote}"
@@ -75,7 +75,7 @@ export function DynamicBanner({
               <Editable
                 as="p"
                 contentKey="banner_fallback_quote"
-                className="palace-serif block italic font-light text-[#F1EEE7]"
+                className="palace-serif block italic font-light text-[#FFFFFF]"
                 multiline
               >
                 {fallbackQuote}
@@ -87,7 +87,7 @@ export function DynamicBanner({
           </blockquote>
           <Link
             to={`/designer/${pick.slug}`}
-            className="mt-10 inline-block whitespace-nowrap border border-[rgba(241,238,231,.6)] px-6 py-3 text-[0.65rem] uppercase tracking-[0.32em] text-[#F1EEE7] transition-colors duration-500 hover:bg-[#F1EEE7] hover:text-[#0C0C0E]"
+            className="mt-10 inline-block whitespace-nowrap border border-[rgba(241,238,231,.6)] px-6 py-3 text-[0.65rem] uppercase tracking-[0.32em] text-[#FFFFFF] transition-colors duration-500 hover:bg-[#FFFFFF] hover:text-[#000000]"
           >
             Zum Atelier von {pick.brand_name} →
           </Link>

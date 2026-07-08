@@ -56,7 +56,7 @@ export default function ApplyLanding() {
           </Reveal>
           <Reveal delay={80}>
             <h1
-              className="palace-serif mt-10 font-light text-[#0C0C0E]"
+              className="palace-serif mt-10 font-light text-[#000000]"
               style={{
                 fontSize: "clamp(3.4rem, 12vw, 12rem)",
                 lineHeight: 0.86,
@@ -75,7 +75,7 @@ export default function ApplyLanding() {
             <Editable
               as="p"
               contentKey="apply_hero_subline"
-              className="mt-14 block max-w-2xl font-serif italic text-[1.15rem] leading-relaxed text-[#0C0C0E]/70"
+              className="mt-14 block max-w-2xl font-serif italic text-[1.15rem] leading-relaxed text-[#000000]/70"
               multiline
             >
               Ein Ort, an dem deine Arbeit gelesen wird, nicht gefiltert. Ein Publikum, das dich sucht,
@@ -86,7 +86,7 @@ export default function ApplyLanding() {
       </section>
 
       {/* ── 5 Akte mit Outline-Nummern ───────────────────── */}
-      <section className="border-t border-[rgba(12,12,14,.13)] px-6 py-24 md:px-14 md:py-32">
+      <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
         <div className="mx-auto max-w-[1400px] space-y-28 md:space-y-40">
           {SERVICES.map((s, i) => (
             <Reveal key={s.number} delay={i * 40}>
@@ -99,7 +99,7 @@ export default function ApplyLanding() {
                     style={{
                       fontSize: "clamp(5rem, 12vw, 11rem)",
                       color: "transparent",
-                      WebkitTextStroke: "1px #0C0C0E",
+                      WebkitTextStroke: "1px #000000",
                       letterSpacing: "-0.04em",
                     }}
                   >
@@ -109,7 +109,7 @@ export default function ApplyLanding() {
                 </div>
                 <div className="md:col-span-5">
                   <h2
-                    className="palace-serif font-light text-[#0C0C0E]"
+                    className="palace-serif font-light text-[#000000]"
                     style={{ fontSize: "clamp(1.8rem, 3.4vw, 2.8rem)", lineHeight: 1.02, letterSpacing: "-0.015em" }}
                   >
                     <Editable as="span" contentKey={`apply_${s.key}_title`}>{s.title}</Editable>
@@ -117,16 +117,16 @@ export default function ApplyLanding() {
                   <Editable
                     as="p"
                     contentKey={`apply_${s.key}_body`}
-                    className="mt-6 block text-[1rem] leading-[1.75] text-[#0C0C0E]/80"
+                    className="mt-6 block text-[1rem] leading-[1.75] text-[#000000]/80"
                     multiline
                   >
                     {s.body}
                   </Editable>
                 </div>
                 <div className="md:col-span-3">
-                  <div className="border-l border-[rgba(12,12,14,.22)] pl-6">
+                  <div className="border-l border-[rgba(0,0,0,.22)] pl-6">
                     <p className="palace-eyebrow text-[#7C7972]">Für dich</p>
-                    <p className="palace-serif mt-3 text-[1.15rem] italic text-[#0C0C0E]/85">
+                    <p className="palace-serif mt-3 text-[1.15rem] italic text-[#000000]/85">
                       {i === 0 && "Editorial statt Katalog."}
                       {i === 1 && "Publikum statt Traffic."}
                       {i === 2 && "Auftritt statt Post."}
@@ -142,12 +142,12 @@ export default function ApplyLanding() {
       </section>
 
       {/* ── Ablauf: vertikale Fortschrittslinie ──────────── */}
-      <section className="border-t border-[rgba(12,12,14,.13)] bg-[#EEE9E0] px-6 py-24 md:px-14 md:py-32">
+      <section className="border-t border-[rgba(0,0,0,.18)] bg-[#EEE9E0] px-6 py-24 md:px-14 md:py-32">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
             <Editable as="p" contentKey="apply_flow_eyebrow" className="palace-eyebrow">Ablauf</Editable>
             <h2
-              className="palace-serif mt-6 font-light text-[#0C0C0E]"
+              className="palace-serif mt-6 font-light text-[#000000]"
               style={{ fontSize: "clamp(2rem, 5vw, 4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
             >
               <Editable as="span" contentKey="apply_flow_headline_a">So läuft es </Editable>
@@ -159,22 +159,22 @@ export default function ApplyLanding() {
             {/* Vertical progress line */}
             <span
               aria-hidden
-              className="pointer-events-none absolute left-[10px] top-3 bottom-3 w-px bg-[rgba(12,12,14,.28)] md:left-4"
+              className="pointer-events-none absolute left-[10px] top-3 bottom-3 w-px bg-[rgba(0,0,0,.28)] md:left-4"
             />
             {FLOW.map((step, i) => (
               <Reveal key={step.label} delay={i * 60}>
                 <li className="relative flex gap-8 pl-10 md:pl-16">
                   <span
                     aria-hidden
-                    className="absolute left-0 top-2 grid h-5 w-5 place-items-center rounded-full border border-[#0C0C0E] bg-[#EEE9E0] md:h-9 md:w-9"
+                    className="absolute left-0 top-2 grid h-5 w-5 place-items-center rounded-full border border-[#000000] bg-[#EEE9E0] md:h-9 md:w-9"
                   >
                     <span className="palace-eyebrow hidden md:block">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="block h-1.5 w-1.5 rounded-full bg-[#0C0C0E] md:hidden" />
+                    <span className="block h-1.5 w-1.5 rounded-full bg-[#000000] md:hidden" />
                   </span>
                   <div className="flex-1">
                     <p className="palace-eyebrow text-[#7C7972]">Schritt {i + 1}</p>
                     <p
-                      className="palace-serif mt-3 font-light text-[#0C0C0E]"
+                      className="palace-serif mt-3 font-light text-[#000000]"
                       style={{ fontSize: "clamp(1.6rem, 3vw, 2.4rem)", lineHeight: 1, letterSpacing: "-0.015em" }}
                     >
                       <Editable as="span" contentKey={`apply_flow_${i}_label`} className="italic">{step.label}</Editable>
@@ -182,7 +182,7 @@ export default function ApplyLanding() {
                     <Editable
                       as="p"
                       contentKey={`apply_flow_${i}_body`}
-                      className="mt-4 block max-w-xl text-[0.98rem] leading-relaxed text-[#0C0C0E]/75"
+                      className="mt-4 block max-w-xl text-[0.98rem] leading-relaxed text-[#000000]/75"
                       multiline
                     >
                       {step.body}
@@ -201,7 +201,7 @@ export default function ApplyLanding() {
           <Reveal>
             <Editable as="p" contentKey="apply_cta_eyebrow" className="palace-eyebrow text-center">Bereit?</Editable>
             <h2
-              className="palace-serif mt-6 text-center font-light text-[#0C0C0E]"
+              className="palace-serif mt-6 text-center font-light text-[#000000]"
               style={{ fontSize: "clamp(2.2rem, 5vw, 4.4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
             >
               <Editable as="span" contentKey="apply_cta_headline_a">Zeig uns </Editable>
@@ -213,7 +213,7 @@ export default function ApplyLanding() {
             <Reveal>
               <Link
                 to="/apply/form"
-                className="group flex h-full flex-col justify-between border border-[#0C0C0E] bg-[#0C0C0E] p-10 text-left text-[#F1EEE7] transition-colors duration-500 hover:bg-[#F1EEE7] hover:text-[#0C0C0E]"
+                className="group flex h-full flex-col justify-between border border-[#000000] bg-[#000000] p-10 text-left text-[#FFFFFF] transition-colors duration-500 hover:bg-[#FFFFFF] hover:text-[#000000]"
               >
                 <p className="palace-eyebrow" style={{ color: "inherit", opacity: 0.75 }}>Bewerbung</p>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
@@ -224,7 +224,7 @@ export default function ApplyLanding() {
             <Reveal delay={120}>
               <Link
                 to="/designers"
-                className="group flex h-full flex-col justify-between border border-[rgba(12,12,14,.28)] p-10 text-left text-[#0C0C0E] transition-colors duration-500 hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+                className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left text-[#000000] transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
                 <p className="palace-eyebrow group-hover:text-[#A8A49B]">Vorher sehen</p>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
@@ -234,7 +234,7 @@ export default function ApplyLanding() {
             </Reveal>
           </div>
 
-          <p className="mt-14 text-center font-serif italic text-[1rem] text-[#0C0C0E]/70">
+          <p className="mt-14 text-center font-serif italic text-[1rem] text-[#000000]/70">
             <Editable as="span" contentKey="apply_cta_footnote" multiline>
               Wir lesen jede Bewerbung persönlich und antworten innerhalb von sieben Tagen.
             </Editable>

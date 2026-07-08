@@ -8,18 +8,18 @@ export default function Datenschutz() {
         <Reveal>
           <p className="palace-eyebrow">Rechtliches</p>
           <h1
-            className="palace-serif mt-6 font-light text-[#0C0C0E]"
+            className="palace-serif mt-6 font-light text-[#000000]"
             style={{ fontSize: "clamp(2.4rem, 5vw, 3.8rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
           >
             Datenschutz.
           </h1>
-          <p className="mt-8 font-serif italic text-[#0C0C0E]/70">
+          <p className="mt-8 font-serif italic text-[#000000]/70">
             Diese Seite ist ein solides deutsches Gerüst. Vor Launch bitte durch eine Kanzlei prüfen und ergänzen. Alle Punkte markiert mit
             <strong> TODO</strong> brauchen finale rechtliche Formulierung.
           </p>
         </Reveal>
 
-        <div className="palace-serif mt-16 space-y-10 text-[#0C0C0E]/85">
+        <div className="palace-serif mt-16 space-y-10 text-[#000000]/85">
           <Section title="1. Verantwortlicher">
             <p>PAWN [TODO: Firmenname, Anschrift, Kontakt]. E-Mail: kontakt@pawn.example.</p>
           </Section>
@@ -88,7 +88,7 @@ export default function Datenschutz() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="font-serif text-[1.4rem] italic text-[#0C0C0E]">{title}</h2>
+      <h2 className="font-serif text-[1.4rem] italic text-[#000000]">{title}</h2>
       <div className="mt-3 font-sans text-[0.95rem] leading-relaxed">{children}</div>
     </section>
   );

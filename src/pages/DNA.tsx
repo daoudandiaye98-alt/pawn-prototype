@@ -43,13 +43,13 @@ function labelForSignal(s: Signal): { title: string; because: string } {
 function SignalCard({ signal, onCorrect }: { signal: Signal; onCorrect: () => void }) {
   const { title, because } = labelForSignal(signal);
   return (
-    <div className="group flex flex-col justify-between border-t border-[rgba(12,12,14,.13)] py-8">
+    <div className="group flex flex-col justify-between border-t border-[rgba(0,0,0,.18)] py-8">
       <div>
         <p className="palace-eyebrow">Signal</p>
-        <p className="palace-serif mt-4 text-[1.5rem] font-light leading-[1.15] text-[#0C0C0E]">
+        <p className="palace-serif mt-4 text-[1.5rem] font-light leading-[1.15] text-[#000000]">
           {title}
         </p>
-        <p className="mt-4 max-w-md text-[0.95rem] leading-[1.65] text-[#0C0C0E]/80">
+        <p className="mt-4 max-w-md text-[0.95rem] leading-[1.65] text-[#000000]/80">
           {because}
         </p>
       </div>
@@ -57,7 +57,7 @@ function SignalCard({ signal, onCorrect }: { signal: Signal; onCorrect: () => vo
         <button
           type="button"
           onClick={onCorrect}
-          className="palace-eyebrow uline text-[#6B6862] hover:text-[#0C0C0E] motion-micro"
+          className="palace-eyebrow uline text-[#6B6862] hover:text-[#000000] motion-micro"
         >
           Stimmt nicht →
         </button>
@@ -76,25 +76,25 @@ function EmptyInvitation() {
     window.dispatchEvent(new Event("palace:open-chat"));
   };
   return (
-    <div className="mx-auto max-w-2xl border border-[rgba(12,12,14,.13)] bg-white p-10 md:p-14">
+    <div className="mx-auto max-w-2xl border border-[rgba(0,0,0,.18)] bg-white p-10 md:p-14">
       <p className="palace-eyebrow">Bereit für dein erstes Signal</p>
-      <h3 className="palace-serif mt-6 text-[2rem] font-light leading-[1.05] text-[#0C0C0E]">
+      <h3 className="palace-serif mt-6 text-[2rem] font-light leading-[1.05] text-[#000000]">
         Erzähl mir von dir — <span className="italic">oder stöbere einfach, ich schaue zu.</span>
       </h3>
-      <p className="mt-6 text-[0.95rem] leading-[1.65] text-[#0C0C0E]/75">
+      <p className="mt-6 text-[0.95rem] leading-[1.65] text-[#000000]/75">
         Deine DNA entsteht aus Gesprächen und dem, was du dir merkst. Alles, was hier landet, hast du selbst gesagt oder ausgewählt.
       </p>
       <form
         onSubmit={(e) => { e.preventDefault(); openChat(prompt); setPrompt(""); }}
-        className="mt-8 flex items-center border-b border-[rgba(12,12,14,.28)] pb-2"
+        className="mt-8 flex items-center border-b border-[rgba(0,0,0,.28)] pb-2"
       >
         <input
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={"z.B. \u201eich mag ruhige, skulpturale Mode\u201c"}
-          className="flex-1 bg-transparent px-2 py-2 text-[0.95rem] text-[#0C0C0E] placeholder:text-[#8F8B82] focus:outline-none"
+          className="flex-1 bg-transparent px-2 py-2 text-[0.95rem] text-[#000000] placeholder:text-[#8F8B82] focus:outline-none"
         />
-        <button type="submit" className="palace-eyebrow uline text-[#0C0C0E]">Los →</button>
+        <button type="submit" className="palace-eyebrow uline text-[#000000]">Los →</button>
       </form>
     </div>
   );
@@ -110,17 +110,17 @@ export default function DNA() {
   return (
     <PalaceLayout>
       {/* 01 · Hero */}
-      <section ref={heroRef} className="relative min-h-[86vh] overflow-hidden bg-[#F1EEE7]">
+      <section ref={heroRef} className="relative min-h-[86vh] overflow-hidden bg-[#FFFFFF]">
         <div className="absolute inset-0 flex items-center justify-center opacity-60">
           <HelixScene />
         </div>
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#F1EEE7]/45 via-transparent to-[#F1EEE7]/85" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#FFFFFF]/45 via-transparent to-[#FFFFFF]/85" />
 
         <div className="relative z-10 mx-auto flex min-h-[86vh] max-w-[1200px] flex-col items-center justify-center px-6 pt-32 text-center md:px-14">
           <Reveal>
             <Editable as="p" contentKey="dna_hero_eyebrow" className="palace-eyebrow">Deine DNA</Editable>
             <h1
-              className="palace-serif mt-10 font-light text-[#0C0C0E]"
+              className="palace-serif mt-10 font-light text-[#000000]"
               style={{ fontSize: "clamp(2.6rem, 8vw, 7rem)", lineHeight: 0.94, letterSpacing: "-0.03em" }}
             >
               <Editable as="span" contentKey="dna_hero_headline_a">Was der Raum </Editable>
@@ -129,7 +129,7 @@ export default function DNA() {
             <Editable
               as="p"
               contentKey="dna_hero_subline"
-              className="mx-auto mt-10 block max-w-xl font-serif italic text-[1.1rem] leading-relaxed text-[#0C0C0E]/75"
+              className="mx-auto mt-10 block max-w-xl font-serif italic text-[1.1rem] leading-relaxed text-[#000000]/75"
               multiline
             >
               Kein Profil. Kein Score. Eine lebendige Skizze deiner Handschrift — jederzeit korrigierbar.
@@ -139,18 +139,18 @@ export default function DNA() {
                 {world && (
                   <div>
                     <p className="palace-eyebrow">Welt</p>
-                    <p className="palace-serif mt-2 text-[1.4rem] italic text-[#0C0C0E]">{world}</p>
+                    <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">{world}</p>
                   </div>
                 )}
                 <div>
                   <p className="palace-eyebrow">Stimmung</p>
-                  <p className="palace-serif mt-2 text-[1.4rem] italic text-[#0C0C0E]">
+                  <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">
                     {mood === "ruhig" ? "ruhig · skulptural" : mood === "spannung" ? "spannung · kontrast" : "im Werden"}
                   </p>
                 </div>
                 <div>
                   <p className="palace-eyebrow">Signale</p>
-                  <p className="palace-serif mt-2 text-[1.4rem] italic text-[#0C0C0E]">{signals.length}</p>
+                  <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">{signals.length}</p>
                 </div>
               </div>
             )}
@@ -164,23 +164,23 @@ export default function DNA() {
           <Reveal>
             <p className="palace-eyebrow">Was der Raum liest</p>
             <h2
-              className="palace-serif mt-6 font-light text-[#0C0C0E]"
+              className="palace-serif mt-6 font-light text-[#000000]"
               style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", lineHeight: 1.05, letterSpacing: "-0.015em" }}
             >
               Jede Erkenntnis <span className="italic">mit Herkunft.</span>
             </h2>
-            <p className="mt-6 max-w-xl text-[0.95rem] leading-[1.65] text-[#0C0C0E]/75">
+            <p className="mt-6 max-w-xl text-[0.95rem] leading-[1.65] text-[#000000]/75">
               Wenn etwas nicht stimmt, sag es. Das Signal verschwindet — und der Raum lernt.
             </p>
           </Reveal>
 
           <div className="mt-16">
             {!user ? (
-              <div className="border-t border-[rgba(12,12,14,.13)] pt-10">
-                <p className="palace-serif text-[1.4rem] italic text-[#0C0C0E]/80">
+              <div className="border-t border-[rgba(0,0,0,.18)] pt-10">
+                <p className="palace-serif text-[1.4rem] italic text-[#000000]/80">
                   Melde dich an, um deine eigene Konstellation zu sehen.
                 </p>
-                <Link to="/auth" className="palace-eyebrow uline mt-6 inline-block text-[#0C0C0E]">Anmelden →</Link>
+                <Link to="/auth" className="palace-eyebrow uline mt-6 inline-block text-[#000000]">Anmelden →</Link>
               </div>
             ) : loading && !hasSignals ? (
               <p className="palace-eyebrow text-[#6B6862]">Lade Signale…</p>
@@ -200,7 +200,7 @@ export default function DNA() {
               <button
                 type="button"
                 onClick={() => { void refresh(); }}
-                className="palace-eyebrow uline text-[#6B6862] hover:text-[#0C0C0E]"
+                className="palace-eyebrow uline text-[#6B6862] hover:text-[#000000]"
               >
                 Neu laden →
               </button>
@@ -210,13 +210,13 @@ export default function DNA() {
       </section>
 
       {/* 03 · Wie PAWN mit dir umgeht */}
-      <section className="border-t border-[rgba(12,12,14,.13)] bg-[#0C0C0E] px-6 py-24 text-[#F1EEE7] md:px-14 md:py-32">
+      <section className="border-t border-[rgba(0,0,0,.18)] bg-[#000000] px-6 py-24 text-[#FFFFFF] md:px-14 md:py-32">
         <div className="mx-auto grid max-w-[1200px] gap-16 md:grid-cols-[1fr_1.4fr]">
           <div>
             <p className="palace-eyebrow" style={{ color: "#A8A49B" }}>Vertrauen</p>
             <h2
               className="palace-serif mt-8 font-light"
-              style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", lineHeight: 1.05, color: "#F1EEE7" }}
+              style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", lineHeight: 1.05, color: "#FFFFFF" }}
             >
               Wie PAWN <span className="italic">mit dir umgeht.</span>
             </h2>
@@ -228,14 +228,14 @@ export default function DNA() {
               { t: "Volle Kontrolle: Konto löschen entfernt alles, sofort.", b: "Konto → Meine Daten → Konto löschen. Profil, Signale, Sessions — vollständig entfernt." },
             ].map((x) => (
               <li key={x.t} className="border-t border-[rgba(241,238,231,0.16)] pt-6">
-                <p className="palace-serif text-[1.4rem] italic" style={{ color: "#F1EEE7" }}>{x.t}</p>
+                <p className="palace-serif text-[1.4rem] italic" style={{ color: "#FFFFFF" }}>{x.t}</p>
                 <p className="mt-3 max-w-md text-[0.95rem] leading-[1.65]" style={{ color: "rgba(241,238,231,0.75)" }}>{x.b}</p>
               </li>
             ))}
           </ul>
         </div>
         <div className="mx-auto mt-16 max-w-[1200px]">
-          <Link to="/datenschutz" className="palace-eyebrow uline" style={{ color: "#F1EEE7" }}>Datenschutz im Detail →</Link>
+          <Link to="/datenschutz" className="palace-eyebrow uline" style={{ color: "#FFFFFF" }}>Datenschutz im Detail →</Link>
         </div>
       </section>
     </PalaceLayout>

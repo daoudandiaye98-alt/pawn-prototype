@@ -8,17 +8,17 @@ export default function Impressum() {
         <Reveal>
           <p className="palace-eyebrow">Rechtliches</p>
           <h1
-            className="palace-serif mt-6 font-light text-[#0C0C0E]"
+            className="palace-serif mt-6 font-light text-[#000000]"
             style={{ fontSize: "clamp(2.4rem, 5vw, 3.8rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
           >
             Impressum.
           </h1>
-          <p className="mt-8 font-serif italic text-[#0C0C0E]/70">
+          <p className="mt-8 font-serif italic text-[#000000]/70">
             Angaben gemäß § 5 TMG. [TODO: Vor Launch durch Kanzlei prüfen und vollständige Angaben ergänzen.]
           </p>
         </Reveal>
 
-        <div className="mt-14 space-y-8 font-sans text-[0.95rem] leading-relaxed text-[#0C0C0E]/85">
+        <div className="mt-14 space-y-8 font-sans text-[0.95rem] leading-relaxed text-[#000000]/85">
           <Row title="Anbieter">
             PAWN [TODO Rechtsform]<br />
             [TODO Straße Hausnummer]<br />
@@ -44,7 +44,7 @@ export default function Impressum() {
 
 function Row({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-[rgba(12,12,14,.13)] pt-6">
+    <div className="border-t border-[rgba(0,0,0,.18)] pt-6">
       <p className="palace-eyebrow">{title}</p>
       <div className="mt-2">{children}</div>
     </div>

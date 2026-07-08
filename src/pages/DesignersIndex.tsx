@@ -10,14 +10,14 @@ const DesignersIndex = () => {
   return (
     <PalaceLayout transparentHeader={false}>
       {/* Hero */}
-      <section className="border-b border-[rgba(12,12,14,.13)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
+      <section className="border-b border-[rgba(0,0,0,.18)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
         <div className="mx-auto grid max-w-[1600px] gap-10 md:grid-cols-[2fr_1fr] md:items-end">
           <Reveal>
             <Editable as="p" contentKey="dindex_eyebrow" className="palace-eyebrow">
               Alle Häuser · A–Z
             </Editable>
             <h1
-              className="palace-serif mt-8 font-light text-[#0C0C0E]"
+              className="palace-serif mt-8 font-light text-[#000000]"
               style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.94, letterSpacing: "-0.025em" }}
             >
               <Editable as="span" contentKey="dindex_headline_a">Die Häuser, </Editable>
@@ -26,7 +26,7 @@ const DesignersIndex = () => {
             <Editable
               as="p"
               contentKey="dindex_subline"
-              className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70"
+              className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#000000]/70"
               multiline
             >
               Unabhängige Studios, die ganze Welten um ihre Stücke bauen. Jedes einzeln kuratiert.
@@ -62,13 +62,13 @@ const DesignersIndex = () => {
                           № {String(i + 1).padStart(3, "0")}
                         </p>
                         <p
-                          className="palace-serif mt-2 font-light text-[#0C0C0E]"
+                          className="palace-serif mt-2 font-light text-[#000000]"
                           style={{ fontSize: "clamp(1.4rem, 2.2vw, 1.9rem)", lineHeight: 1, letterSpacing: "-0.015em" }}
                         >
                           {d.name}
                         </p>
                       </div>
-                      <span className="palace-eyebrow text-[#7C7972] group-hover:text-[#0C0C0E]">Zum Atelier →</span>
+                      <span className="palace-eyebrow text-[#7C7972] group-hover:text-[#000000]">Zum Atelier →</span>
                     </div>
                   </Link>
                 </li>

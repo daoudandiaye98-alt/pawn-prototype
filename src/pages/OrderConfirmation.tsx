@@ -14,10 +14,10 @@ export default function OrderConfirmation() {
     <PalaceLayout>
       <section className="mx-auto max-w-2xl px-6 pt-40 pb-32 text-center md:px-14">
         <p className="palace-eyebrow">Danke</p>
-        <h1 className="palace-serif mt-6 text-[clamp(2rem,4vw,3.4rem)] font-light leading-[1.02] text-[#0C0C0E]">
+        <h1 className="palace-serif mt-6 text-[clamp(2rem,4vw,3.4rem)] font-light leading-[1.02] text-[#000000]">
           Deine Bestellung ist eingegangen.
         </h1>
-        <p className="mx-auto mt-8 max-w-md text-[1rem] leading-relaxed text-[#0C0C0E]/70">
+        <p className="mx-auto mt-8 max-w-md text-[1rem] leading-relaxed text-[#000000]/70">
           Die Designer:in wurde benachrichtigt und bereitet dein Stück vor. Du erhältst eine Bestätigung per
           E-Mail sobald es das Atelier verlässt.
         </p>

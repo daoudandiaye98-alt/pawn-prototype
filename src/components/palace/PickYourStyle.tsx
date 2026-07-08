@@ -138,20 +138,20 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
       <div className="flex flex-col items-center gap-6 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="palace-eyebrow">Pick your Style</p>
-          <h2 className="palace-serif mt-4 font-light text-[#0C0C0E]" style={{ fontSize: "clamp(1.8rem,3.5vw,3rem)", lineHeight: 1.05 }}>
+          <h2 className="palace-serif mt-4 font-light text-[#000000]" style={{ fontSize: "clamp(1.8rem,3.5vw,3rem)", lineHeight: 1.05 }}>
             Swipe dich in deine <span className="italic">Handschrift.</span>
           </h2>
           <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-[#55534E]">
             Herz für Ja, Kreuz für weiter. Jede Reaktion schärft, was PAWN dir zeigt.
           </p>
         </div>
-        <div className="flex items-center gap-2 border border-[rgba(12,12,14,.28)] p-1">
+        <div className="flex items-center gap-2 border border-[rgba(0,0,0,.28)] p-1">
           {WORLDS.map((w) => (
             <button
               key={w.key}
               onClick={() => setWorld(w.key)}
               className={`whitespace-nowrap px-4 py-2 text-[0.62rem] uppercase tracking-[0.32em] transition-colors duration-300 ${
-                world === w.key ? "bg-[#0C0C0E] text-[#F1EEE7]" : "text-[#55534E] hover:text-[#0C0C0E]"
+                world === w.key ? "bg-[#000000] text-[#FFFFFF]" : "text-[#55534E] hover:text-[#000000]"
               }`}
             >
               {w.label}
@@ -162,20 +162,20 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
 
       <div className="relative mx-auto mt-12 h-[62vh] w-full max-w-[520px] select-none md:h-[68vh]">
         {!current ? (
-          <div className="flex h-full flex-col items-center justify-center border border-[rgba(12,12,14,.13)] bg-white p-10 text-center">
+          <div className="flex h-full flex-col items-center justify-center border border-[rgba(0,0,0,.18)] bg-white p-10 text-center">
             <p className="palace-eyebrow">Danke</p>
-            <p className="palace-serif mt-6 text-[1.5rem] italic text-[#0C0C0E]">Du hast diese Welt durchgesehen.</p>
+            <p className="palace-serif mt-6 text-[1.5rem] italic text-[#000000]">Du hast diese Welt durchgesehen.</p>
             <p className="mt-3 text-[0.95rem] text-[#55534E]">Wähle eine andere Welt oder komm gleich wieder — der Katalog wächst.</p>
           </div>
         ) : (
           <>
             {next && (
-              <div className="absolute inset-0 translate-y-2 scale-[.96] border border-[rgba(12,12,14,.13)] bg-white shadow-[0_20px_60px_-30px_rgba(12,12,14,.25)]">
+              <div className="absolute inset-0 translate-y-2 scale-[.96] border border-[rgba(0,0,0,.18)] bg-white shadow-[0_20px_60px_-30px_rgba(0,0,0,.25)]">
                 <EditorialImage seed={`style-${next.slug}`} ratio="3/4" className="h-full w-full" />
               </div>
             )}
             <div
-              className="absolute inset-0 border border-[rgba(12,12,14,.28)] bg-white shadow-[0_30px_80px_-30px_rgba(12,12,14,.4)] transition-transform duration-200"
+              className="absolute inset-0 border border-[rgba(0,0,0,.28)] bg-white shadow-[0_30px_80px_-30px_rgba(0,0,0,.4)] transition-transform duration-200"
               style={{
                 transform: `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`,
                 cursor: dragX ? "grabbing" : "grab",
@@ -192,10 +192,10 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
                   <p className="mt-1 text-[0.7rem] uppercase tracking-[0.32em] text-white/80">{current.designer} · {current.world}</p>
                 </div>
                 {dragX > 40 && (
-                  <div className="pointer-events-none absolute left-6 top-6 border border-[#0C0C0E] bg-white px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Gefällt</div>
+                  <div className="pointer-events-none absolute left-6 top-6 border border-[#000000] bg-white px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-[#000000]">Gefällt</div>
                 )}
                 {dragX < -40 && (
-                  <div className="pointer-events-none absolute right-6 top-6 border border-white bg-[#0C0C0E] px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-white">Weiter</div>
+                  <div className="pointer-events-none absolute right-6 top-6 border border-white bg-[#000000] px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-white">Weiter</div>
                 )}
               </div>
             </div>
@@ -209,7 +209,7 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
           aria-label="Weiter"
           disabled={!current}
           onClick={() => current && react("skip", current)}
-          className="grid h-16 w-16 place-items-center rounded-full border border-[rgba(12,12,14,.35)] bg-white text-[#0C0C0E] transition-all duration-300 hover:scale-105 hover:bg-[#0C0C0E] hover:text-white disabled:opacity-40"
+          className="grid h-16 w-16 place-items-center rounded-full border border-[rgba(0,0,0,.35)] bg-white text-[#000000] transition-all duration-300 hover:scale-105 hover:bg-[#000000] hover:text-white disabled:opacity-40"
         >
           <X className="h-6 w-6" strokeWidth={1.4} />
         </button>
@@ -221,7 +221,7 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
           aria-label="Gefällt"
           disabled={!current}
           onClick={() => current && react("like", current)}
-          className="grid h-16 w-16 place-items-center rounded-full border border-[#0C0C0E] bg-[#0C0C0E] text-white transition-all duration-300 hover:scale-105 hover:bg-white hover:text-[#0C0C0E] disabled:opacity-40"
+          className="grid h-16 w-16 place-items-center rounded-full border border-[#000000] bg-[#000000] text-white transition-all duration-300 hover:scale-105 hover:bg-white hover:text-[#000000] disabled:opacity-40"
         >
           <Heart className="h-6 w-6" strokeWidth={1.4} />
         </button>

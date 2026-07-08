@@ -269,7 +269,7 @@ const DesignerPage = () => {
       <CustomCursor />
       {/* Fortschrittslinie */}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-[65] h-[2px] bg-transparent">
-        <div className="h-full bg-[#0C0C0E] transition-[width] duration-150" style={{ width: `${globalP * 100}%` }} />
+        <div className="h-full bg-[#000000] transition-[width] duration-150" style={{ width: `${globalP * 100}%` }} />
       </div>
 
       {/* Kapitel-Rail */}
@@ -278,7 +278,7 @@ const DesignerPage = () => {
           <span
             key={label}
             className={`palace-eyebrow pointer-events-auto whitespace-nowrap transition-colors ${
-              activeChapter === i ? "text-[#F1EEE7] mix-blend-difference" : "text-[#8F8B82]"
+              activeChapter === i ? "text-[#FFFFFF] mix-blend-difference" : "text-[#8F8B82]"
             }`}
           >
             0{i + 1} · {label}
@@ -291,7 +291,7 @@ const DesignerPage = () => {
         {/* AKT I — AUFTRITT */}
         <section
           ref={actIRef as React.RefObject<HTMLElement>}
-          className="relative bg-[#0A0A0C] text-[#F1EEE7]"
+          className="relative bg-[#0A0A0C] text-[#FFFFFF]"
           style={{ height: reduced ? "auto" : "170vh" }}
         >
           <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
@@ -304,7 +304,7 @@ const DesignerPage = () => {
             {/* Back-text — full, locked in place */}
             <h1
               aria-hidden={false}
-              className="absolute inset-0 z-[1] flex items-center justify-center px-6 text-center leading-[0.82] text-[#F1EEE7]"
+              className="absolute inset-0 z-[1] flex items-center justify-center px-6 text-center leading-[0.82] text-[#FFFFFF]"
               style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
                 fontWeight: 500,
@@ -340,7 +340,7 @@ const DesignerPage = () => {
                 weave in front of the portrait. */}
             <h1
               aria-hidden
-              className="absolute inset-0 z-[5] flex items-center justify-center px-6 text-center leading-[0.82] text-[#F1EEE7]"
+              className="absolute inset-0 z-[5] flex items-center justify-center px-6 text-center leading-[0.82] text-[#FFFFFF]"
               style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
                 fontWeight: 500,
@@ -362,25 +362,25 @@ const DesignerPage = () => {
             <div className="absolute inset-x-0 bottom-8 z-[10] flex items-end justify-between px-6 md:bottom-14 md:px-14">
               <div>
                 <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.7)" }}>Gründung</p>
-                <p className="palace-serif mt-2 italic text-[1rem] text-[#F1EEE7]">{designer.location}</p>
+                <p className="palace-serif mt-2 italic text-[1rem] text-[#FFFFFF]">{designer.location}</p>
               </div>
               <div className="text-right">
                 <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.7)" }}>
                   {designer.tags[0] ?? "Welt"} {designer.collectionTitle ? `· ${designer.collectionTitle}` : ""}
                 </p>
-                <p className="palace-serif mt-2 italic text-[1rem] text-[#F1EEE7]">Aktuelle Ausstellung</p>
+                <p className="palace-serif mt-2 italic text-[1rem] text-[#FFFFFF]">Aktuelle Ausstellung</p>
               </div>
             </div>
 
             <div className="absolute bottom-2 left-1/2 z-[10] -translate-x-1/2 text-center">
               <span className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.6)" }}>Der Vorhang öffnet sich</span>
-              <span className="mx-auto mt-2 block h-6 w-px palace-drip bg-[#F1EEE7]/60" />
+              <span className="mx-auto mt-2 block h-6 w-px palace-drip bg-[#FFFFFF]/60" />
             </div>
           </div>
         </section>
 
         {/* BIGBAND — endloses Marquee */}
-        <div className="overflow-hidden border-y border-[rgba(241,238,231,0.12)] bg-[#0A0A0C] py-8 text-[#F1EEE7]">
+        <div className="overflow-hidden border-y border-[rgba(241,238,231,0.12)] bg-[#0A0A0C] py-8 text-[#FFFFFF]">
           <div className="palace-marquee flex whitespace-nowrap">
             {Array.from({ length: 8 }).map((_, i) => (
               <span
@@ -390,7 +390,7 @@ const DesignerPage = () => {
                   fontSize: "clamp(2.6rem, 6vw, 6rem)",
                   fontWeight: 300,
                   fontStyle: i % 2 === 1 ? "italic" : "normal",
-                  color: i % 2 === 1 ? "#F1EEE7" : "transparent",
+                  color: i % 2 === 1 ? "#FFFFFF" : "transparent",
                   WebkitTextStroke: i % 2 === 1 ? "0" : "1px rgba(241,238,231,0.4)",
                 }}
               >
@@ -409,7 +409,7 @@ const DesignerPage = () => {
             <p className="palace-eyebrow">Akt II · Haltung</p>
             <div className="mt-16 max-w-[1200px]">
               <p
-                className="palace-serif font-light text-[#0C0C0E]"
+                className="palace-serif font-light text-[#000000]"
                 style={{
                   fontSize: "clamp(2rem, 5.2vw, 5.2rem)",
                   lineHeight: 1.08,
@@ -417,7 +417,7 @@ const DesignerPage = () => {
                 }}
               >
                 {manifestoWords.length === 0 ? (
-                  <span className="italic text-[#0C0C0E]/40">Noch kein Manifest hinterlegt.</span>
+                  <span className="italic text-[#000000]/40">Noch kein Manifest hinterlegt.</span>
                 ) : (
                   manifestoWords.map((w, i) => {
                     const step = manifestoWords.length > 0 ? i / manifestoWords.length : 0;
@@ -436,11 +436,11 @@ const DesignerPage = () => {
             </div>
 
             <div className="mt-20 flex items-center gap-6">
-              <div className="h-16 w-16 overflow-hidden rounded-full border border-[rgba(12,12,14,.13)] md:h-20 md:w-20">
+              <div className="h-16 w-16 overflow-hidden rounded-full border border-[rgba(0,0,0,.18)] md:h-20 md:w-20">
                 <EditorialImage seed={`portrait-round-${designer.slug}`} src={designer.portrait} ratio="1/1" className="h-full w-full" />
               </div>
               <div>
-                <p className="palace-serif italic text-[1.2rem] text-[#0C0C0E]">{designer.name}</p>
+                <p className="palace-serif italic text-[1.2rem] text-[#000000]">{designer.name}</p>
                 <p className="palace-eyebrow mt-1">{designer.quoteRole ?? "Gründung"} · {designer.location}</p>
               </div>
             </div>
@@ -450,16 +450,16 @@ const DesignerPage = () => {
         {/* AKT III — KOLLEKTION (Cinema horizontal) */}
         <section
           ref={actIIIRef as React.RefObject<HTMLElement>}
-          className="relative bg-[#F1EEE7]"
+          className="relative bg-[#FFFFFF]"
           style={{ height: reduced ? "auto" : "380vh" }}
         >
           <div className="sticky top-0 flex h-screen w-full flex-col overflow-hidden">
-            <div className="border-b border-[rgba(12,12,14,.13)] px-6 py-6 md:px-14">
+            <div className="border-b border-[rgba(0,0,0,.18)] px-6 py-6 md:px-14">
               <div className="flex items-baseline justify-between gap-6">
                 <div>
                   <p className="palace-eyebrow">Akt III · Kollektion</p>
                   <h3
-                    className="palace-serif mt-3 font-light text-[#0C0C0E]"
+                    className="palace-serif mt-3 font-light text-[#000000]"
                     style={{ fontSize: "clamp(1.6rem, 3vw, 2.6rem)", lineHeight: 1.05 }}
                   >
                     {designer.collectionTitle ?? "Was gerade das Atelier verlässt"}
@@ -482,7 +482,7 @@ const DesignerPage = () => {
                 }}
               >
                 {designerProducts.length === 0 && (
-                  <p className="palace-serif italic text-[1.4rem] text-[#0C0C0E]/50">Kollektion in Vorbereitung.</p>
+                  <p className="palace-serif italic text-[1.4rem] text-[#000000]/50">Kollektion in Vorbereitung.</p>
                 )}
                 {designerProducts.map((p, i) => {
                   const odd = i % 2 === 0;
@@ -502,7 +502,7 @@ const DesignerPage = () => {
                         style={{
                           fontSize: "clamp(3rem, 8vw, 8rem)",
                           color: "transparent",
-                          WebkitTextStroke: "1px rgba(12,12,14,.28)",
+                          WebkitTextStroke: "1px rgba(0,0,0,.28)",
                           lineHeight: 0.9,
                         }}
                       >
@@ -510,8 +510,8 @@ const DesignerPage = () => {
                       </span>
                       <EditorialImage seed={`d-${p.slug}`} ratio={odd ? "3/4" : "4/5"} />
                       <div className="mt-4 flex items-baseline justify-between gap-4">
-                        <p className="palace-serif italic text-[1.15rem] text-[#0C0C0E]">{p.name}</p>
-                        <p className="palace-eyebrow text-[#0C0C0E]">€{p.price.toLocaleString("de-DE")}</p>
+                        <p className="palace-serif italic text-[1.15rem] text-[#000000]">{p.name}</p>
+                        <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
                       </div>
                     </Link>
                   );
@@ -547,7 +547,7 @@ const DesignerPage = () => {
             style={{
               fontSize: "clamp(1.4rem, 2.6vw, 2.4rem)",
               mixBlendMode: "difference",
-              color: "#F1EEE7",
+              color: "#FFFFFF",
               maxWidth: "34ch",
               lineHeight: 1.2,
             }}
@@ -560,7 +560,7 @@ const DesignerPage = () => {
         </section>
 
         {/* AKT V — IM HAUS (Plakette) */}
-        <section className="bg-[#0A0A0C] px-6 py-32 text-[#F1EEE7] md:px-14 md:py-40">
+        <section className="bg-[#0A0A0C] px-6 py-32 text-[#FFFFFF] md:px-14 md:py-40">
           <div className="mx-auto max-w-2xl">
             <p className="palace-eyebrow text-center" style={{ color: "rgba(241,238,231,0.7)" }}>
               <Editable as="span" contentKey="retro_plaque_act">Akt V · Im Haus</Editable>
@@ -574,7 +574,7 @@ const DesignerPage = () => {
               <CornerSquare pos="bl" />
               <CornerSquare pos="br" />
 
-              <p className="text-[2.4rem] leading-none" style={{ color: "#F1EEE7" }}>♟</p>
+              <p className="text-[2.4rem] leading-none" style={{ color: "#FFFFFF" }}>♟</p>
               <p
                 className="palace-serif mt-8 font-light italic"
                 style={{ fontSize: "clamp(1.4rem, 2.6vw, 2rem)", lineHeight: 1.2 }}
@@ -612,7 +612,7 @@ const DesignerPage = () => {
                   WebkitTextStroke: "1px rgba(241,238,231,0.6)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#F1EEE7";
+                  e.currentTarget.style.color = "#FFFFFF";
                   e.currentTarget.style.webkitTextStroke = "0";
                 }}
                 onMouseLeave={(e) => {
@@ -635,7 +635,7 @@ const DesignerPage = () => {
         .palace-cursor {
           position: fixed; top: 0; left: 0; z-index: 200;
           width: 12px; height: 12px; border-radius: 50%;
-          background: #F1EEE7; mix-blend-mode: difference;
+          background: #FFFFFF; mix-blend-mode: difference;
           pointer-events: none;
           transition: width .25s ease, height .25s ease, transform .05s linear;
         }
@@ -655,7 +655,7 @@ function TrackArrow({ direction, onClick }: { direction: "left" | "right"; onCli
     <button
       onClick={onClick}
       aria-label={direction === "left" ? "Zurück" : "Weiter"}
-      className="flex h-11 w-11 items-center justify-center border border-[rgba(12,12,14,.28)] bg-white text-[#0C0C0E] transition-colors hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+      className="flex h-11 w-11 items-center justify-center border border-[rgba(0,0,0,.28)] bg-white text-[#000000] transition-colors hover:bg-[#000000] hover:text-[#FFFFFF]"
     >
       <span className="text-lg leading-none">{direction === "left" ? "←" : "→"}</span>
     </button>
@@ -669,7 +669,7 @@ function CornerSquare({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
     bl: "left-[-4px] bottom-[-4px]",
     br: "right-[-4px] bottom-[-4px]",
   };
-  return <span className={`absolute h-2 w-2 bg-[#F1EEE7] ${map[pos]}`} aria-hidden />;
+  return <span className={`absolute h-2 w-2 bg-[#FFFFFF] ${map[pos]}`} aria-hidden />;
 }
 
 function PlaqueRow({ label, labelNode, value }: { label?: string; labelNode?: React.ReactNode; value: React.ReactNode }) {

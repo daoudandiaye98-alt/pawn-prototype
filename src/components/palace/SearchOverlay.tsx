@@ -56,10 +56,10 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[#F1EEE7]">
-      <div className="flex items-center justify-between border-b border-[rgba(12,12,14,.13)] px-6 py-5 md:px-14">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-[#FFFFFF]">
+      <div className="flex items-center justify-between border-b border-[rgba(0,0,0,.18)] px-6 py-5 md:px-14">
         <span className="palace-eyebrow">Suche</span>
-        <button aria-label="Schließen" onClick={onClose} className="text-[#0C0C0E]"><X className="h-5 w-5" strokeWidth={1.2} /></button>
+        <button aria-label="Schließen" onClick={onClose} className="text-[#000000]"><X className="h-5 w-5" strokeWidth={1.2} /></button>
       </div>
       <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-6 py-16 md:px-0">
         <input
@@ -67,7 +67,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Stücke, Ateliers, Welten …"
-          className="w-full border-0 border-b border-[rgba(12,12,14,.28)] bg-transparent pb-4 palace-serif text-[clamp(1.8rem,4vw,3rem)] font-light text-[#0C0C0E] placeholder:text-[#7C7972] focus:outline-none"
+          className="w-full border-0 border-b border-[rgba(0,0,0,.28)] bg-transparent pb-4 palace-serif text-[clamp(1.8rem,4vw,3rem)] font-light text-[#000000] placeholder:text-[#7C7972] focus:outline-none"
         />
         <div className="mt-10 space-y-2">
           {q.trim().length < 2 && (
@@ -78,10 +78,10 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
               key={`${h.kind}:${h.slug}`}
               to={h.kind === "product" ? `/product/${h.slug}` : `/designer/${h.slug}`}
               onClick={onClose}
-              className="flex items-baseline justify-between border-b border-[rgba(12,12,14,.09)] py-4 hover:bg-[#0C0C0E]/[.03]"
+              className="flex items-baseline justify-between border-b border-[rgba(0,0,0,.14)] py-4 hover:bg-[#000000]/[.03]"
             >
               <div>
-                <p className="font-serif text-[1.4rem] text-[#0C0C0E]">{h.title}</p>
+                <p className="font-serif text-[1.4rem] text-[#000000]">{h.title}</p>
                 {h.subtitle && <p className="palace-eyebrow mt-1 text-[#7C7972]">{h.subtitle}</p>}
               </div>
               <span className="palace-eyebrow text-[#7C7972]">{h.kind === "product" ? "Stück" : "Atelier"} →</span>

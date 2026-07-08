@@ -99,7 +99,7 @@ export function PalaceHeader() {
                 to={item.to}
                 className={({ isActive }) =>
                   `whitespace-nowrap text-[0.68rem] uppercase tracking-[0.28em] transition-colors duration-300 ${
-                    isActive ? "text-[#0C0C0E]" : "text-[#55534E] hover:text-[#0C0C0E]"
+                    isActive ? "text-[#000000]" : "text-[#55534E] hover:text-[#000000]"
                   }`
                 }
               >
@@ -113,23 +113,23 @@ export function PalaceHeader() {
               type="button"
               aria-label="Suche"
               onClick={() => setSearchOpen(true)}
-              className="hidden text-[#55534E] hover:text-[#0C0C0E] md:inline-flex"
+              className="hidden text-[#55534E] hover:text-[#000000] md:inline-flex"
             >
               <PawnSearchIcon className="h-5 w-5" />
             </button>
 
             <button
               onClick={() => setChatOpen(true)}
-              className="hidden items-center gap-2 whitespace-nowrap border border-[rgba(12,12,14,.32)] px-3 py-2 text-[0.62rem] uppercase tracking-[0.3em] text-[#0C0C0E] transition-colors duration-300 hover:bg-[#0C0C0E] hover:text-[#F1EEE7] xl:flex xl:px-4"
+              className="hidden items-center gap-2 whitespace-nowrap border border-[rgba(0,0,0,.85)] px-3 py-2 text-[0.62rem] uppercase tracking-[0.3em] text-[#000000] transition-colors duration-300 hover:bg-[#000000] hover:text-[#FFFFFF] xl:flex xl:px-4"
             >
-              <span className="h-[6px] w-[6px] rounded-full bg-[#0C0C0E]" />
+              <span className="h-[6px] w-[6px] rounded-full bg-[#000000]" />
               {t("nav.frag")}
             </button>
 
             <button
               type="button"
               onClick={() => setLocale(locale === "de" ? "en" : "de")}
-              className="hidden whitespace-nowrap text-[0.6rem] uppercase tracking-[0.28em] text-[#55534E] hover:text-[#0C0C0E] xl:inline"
+              className="hidden whitespace-nowrap text-[0.6rem] uppercase tracking-[0.28em] text-[#55534E] hover:text-[#000000] xl:inline"
               aria-label="Sprache wechseln"
             >
               {locale.toUpperCase()} · {locale === "de" ? "EN" : "DE"}
@@ -141,15 +141,15 @@ export function PalaceHeader() {
                   type="button"
                   aria-label="Konto"
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="text-[#55534E] hover:text-[#0C0C0E]"
+                  className="text-[#55534E] hover:text-[#000000]"
                 >
                   <PawnProfileIcon className="h-5 w-5" />
                 </button>
                 {accountOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(12,12,14,.10)] bg-white shadow-[0_20px_60px_-30px_rgba(12,12,14,0.4)]">
-                    <div className="border-b border-[rgba(12,12,14,.09)] px-5 py-4">
+                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(0,0,0,.18)] bg-white shadow-[0_20px_60px_-30px_rgba(0,0,0,0.4)]">
+                    <div className="border-b border-[rgba(0,0,0,.14)] px-5 py-4">
                       <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#55534E]">Zutritt</p>
-                      <p className="mt-1 font-serif italic text-[0.95rem] text-[#0C0C0E]" style={{ fontWeight: 500 }}>
+                      <p className="mt-1 font-serif italic text-[0.95rem] text-[#000000]" style={{ fontWeight: 500 }}>
                         {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
                       </p>
                     </div>
@@ -162,7 +162,7 @@ export function PalaceHeader() {
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="block w-full border-t border-[rgba(12,12,14,.09)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#0C0C0E] hover:text-white"
+                      className="block w-full border-t border-[rgba(0,0,0,.14)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#000000] hover:text-white"
                     >
                       Abmelden
                     </button>
@@ -174,7 +174,7 @@ export function PalaceHeader() {
               <Link
                 to="/auth"
                 aria-label="Anmelden"
-                className="hidden text-[#55534E] hover:text-[#0C0C0E] xl:inline-flex"
+                className="hidden text-[#55534E] hover:text-[#000000] xl:inline-flex"
               >
                 <PawnProfileIcon className="h-5 w-5" />
               </Link>
@@ -183,7 +183,7 @@ export function PalaceHeader() {
             <Link
               to="/cart"
               aria-label={`Warenkorb${cartCount > 0 ? ` (${cartCount})` : ""}`}
-              className="text-[#55534E] hover:text-[#0C0C0E]"
+              className="text-[#55534E] hover:text-[#000000]"
             >
               <PawnBagIcon count={cartCount} className="h-5 w-5" />
             </Link>
@@ -192,7 +192,7 @@ export function PalaceHeader() {
               type="button"
               aria-label="Menü öffnen"
               onClick={() => setMenuOpen(true)}
-              className="text-[#0C0C0E] xl:hidden"
+              className="text-[#000000] xl:hidden"
             >
               <PawnMenuIcon className="h-5 w-5" />
             </button>
@@ -213,7 +213,7 @@ export function PalaceHeader() {
             type="button"
             aria-label="Menü schließen"
             onClick={() => setMenuOpen(false)}
-            className="text-[#0C0C0E]"
+            className="text-[#000000]"
           >
             <PawnCloseIcon className="h-5 w-5" />
           </button>
@@ -224,7 +224,7 @@ export function PalaceHeader() {
               key={item.label}
               to={item.to}
               onClick={() => setMenuOpen(false)}
-              className="whitespace-nowrap font-serif text-[2.4rem] leading-[0.98] text-[#0C0C0E]"
+              className="whitespace-nowrap font-serif text-[2.4rem] leading-[0.98] text-[#000000]"
               style={{ fontWeight: 500 }}
             >
               {item.label}
@@ -233,23 +233,23 @@ export function PalaceHeader() {
           <button
             type="button"
             onClick={() => { setMenuOpen(false); setChatOpen(true); }}
-            className="mt-6 text-left font-serif italic text-[1.4rem] leading-tight text-[#0C0C0E]/80"
+            className="mt-6 text-left font-serif italic text-[1.4rem] leading-tight text-[#000000]/80"
             style={{ fontWeight: 500 }}
           >
             Frag PAWN →
           </button>
         </nav>
-        <div className="space-y-2 border-t border-[rgba(12,12,14,.10)] px-8 py-6">
+        <div className="space-y-2 border-t border-[rgba(0,0,0,.18)] px-8 py-6">
           {user ? (
             <>
-              <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Konto</Link>
-              {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Mein Studio</Link>}
-              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Bewerbungsstatus</Link>}
-              {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Admin-Cockpit</Link>}
+              <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Mein Konto</Link>
+              {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Mein Studio</Link>}
+              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Bewerbungsstatus</Link>}
+              {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Admin-Cockpit</Link>}
               <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#55534E]">Abmelden</button>
             </>
           ) : (
-            <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Anmelden</Link>
+            <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Anmelden</Link>
           )}
         </div>
       </div>
@@ -267,7 +267,7 @@ function MenuItem({ to, onClick, children }: { to: string; onClick?: () => void;
     <Link
       to={to}
       onClick={onClick}
-      className="block px-5 py-3 text-[0.68rem] uppercase tracking-[0.32em] text-[#0C0C0E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+      className="block px-5 py-3 text-[0.68rem] uppercase tracking-[0.32em] text-[#000000] hover:bg-[#000000] hover:text-[#FFFFFF]"
     >
       {children}
     </Link>

@@ -59,14 +59,14 @@ const Shop = () => {
   return (
     <PalaceLayout transparentHeader={false}>
       {/* Hero */}
-      <section className="border-b border-[rgba(12,12,14,.13)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
+      <section className="border-b border-[rgba(0,0,0,.18)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
         <div className="mx-auto max-w-[1600px]">
           <Reveal>
             <Editable as="p" contentKey="shop_eyebrow" className="palace-eyebrow">
               Boutique · Aktuelles Kapitel
             </Editable>
             <h1
-              className="palace-serif mt-8 font-light text-[#0C0C0E]"
+              className="palace-serif mt-8 font-light text-[#000000]"
               style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.94, letterSpacing: "-0.025em" }}
             >
               <Editable as="span" contentKey="shop_headline_a">Alles, was gerade </Editable>
@@ -75,7 +75,7 @@ const Shop = () => {
             <Editable
               as="p"
               contentKey="shop_subline"
-              className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/70"
+              className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#000000]/70"
               multiline
             >
               Kuratierte Stücke aus den Ateliers, die PAWN sammelt.
@@ -91,7 +91,7 @@ const Shop = () => {
             placeholder="Boutique durchsuchen"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-[rgba(12,12,14,.28)] bg-transparent px-3 py-2 text-sm text-[#0C0C0E] placeholder:text-[#7C7972] focus:border-[#0C0C0E] focus:outline-none"
+            className="w-full border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-2 text-sm text-[#000000] placeholder:text-[#7C7972] focus:border-[#000000] focus:outline-none"
           />
           <FilterGroup title="DNA-Richtung">
             {DNA_DIRECTIONS.map((d) => (
@@ -126,16 +126,16 @@ const Shop = () => {
               step={50}
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
-              className="w-full accent-[#0C0C0E]"
+              className="w-full accent-[#000000]"
             />
           </FilterGroup>
         </aside>
 
         {/* Grid */}
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[rgba(12,12,14,.13)] pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[rgba(0,0,0,.18)] pb-4">
             <p className="palace-eyebrow">{filtered.length} Stücke</p>
-            <select className="border border-[rgba(12,12,14,.28)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-[#0C0C0E]">
+            <select className="border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-[#000000]">
               <option>Kurator-Auswahl</option>
               <option>Preis · aufsteigend</option>
               <option>Preis · absteigend</option>
@@ -149,17 +149,17 @@ const Shop = () => {
                   <EditorialImage seed={`shop-${p.slug}`} ratio="4/5" />
                   <div className="mt-4 flex items-baseline justify-between gap-4">
                     <div>
-                      <p className="palace-serif italic text-[1.1rem] leading-tight text-[#0C0C0E]">{p.name}</p>
+                      <p className="palace-serif italic text-[1.1rem] leading-tight text-[#000000]">{p.name}</p>
                       <p className="palace-eyebrow mt-2">{p.designer}</p>
                     </div>
-                    <p className="palace-eyebrow text-[#0C0C0E]">€{p.price.toLocaleString("de-DE")}</p>
+                    <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
                   </div>
                 </Link>
               </Reveal>
             ))}
           </div>
           {filtered.length === 0 && (
-            <p className="mt-16 text-center font-serif italic text-[1rem] text-[#0C0C0E]/70">Nichts passt zu deinen Filtern — noch.</p>
+            <p className="mt-16 text-center font-serif italic text-[1rem] text-[#000000]/70">Nichts passt zu deinen Filtern — noch.</p>
           )}
         </div>
       </section>
@@ -183,8 +183,8 @@ function FilterPill({ children, active, onClick }: { children: React.ReactNode; 
       onClick={onClick}
       className={
         active
-          ? "block border border-[#0C0C0E] bg-[#0C0C0E] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#F1EEE7]"
-          : "block border border-[rgba(12,12,14,.22)] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#0C0C0E] transition-colors hover:border-[#0C0C0E]"
+          ? "block border border-[#000000] bg-[#000000] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#FFFFFF]"
+          : "block border border-[rgba(0,0,0,.22)] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#000000] transition-colors hover:border-[#000000]"
       }
     >
       {children}

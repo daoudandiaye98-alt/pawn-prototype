@@ -24,7 +24,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
 
   return (
     <section
-      className="relative w-full overflow-hidden bg-[#F1EEE7]"
+      className="relative w-full overflow-hidden bg-[#FFFFFF]"
       style={{ minHeight: "clamp(78vh, 110vh, 118vh)" }}
     >
       {/* Eyebrow — top-left */}
@@ -39,7 +39,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
         {/* Back text */}
         <h1
           aria-hidden
-          className="palace-serif absolute inset-x-0 top-1/2 -translate-y-1/2 select-none text-center font-light text-[#0C0C0E]"
+          className="palace-serif absolute inset-x-0 top-1/2 -translate-y-1/2 select-none text-center font-light text-[#000000]"
           style={{
             fontSize: "clamp(6rem, 14vw, 15rem)",
             lineHeight: 0.86,
@@ -60,7 +60,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
         {/* Front text — same headline, clipped to a horizontal band that matches image height (~28% of viewport) */}
         <h1
           aria-hidden
-          className="palace-serif absolute inset-x-0 top-1/2 -translate-y-1/2 select-none text-center font-light text-[#0C0C0E]"
+          className="palace-serif absolute inset-x-0 top-1/2 -translate-y-1/2 select-none text-center font-light text-[#000000]"
           style={{
             fontSize: "clamp(6rem, 14vw, 15rem)",
             lineHeight: 0.86,
@@ -78,7 +78,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
       {/* Mobile: stacked, legible */}
       <div className="relative z-20 flex flex-col items-center gap-8 px-6 pt-56 pb-16 text-center md:hidden">
         <h1
-          className="palace-serif font-light text-[#0C0C0E]"
+          className="palace-serif font-light text-[#000000]"
           style={{ fontSize: "clamp(3.6rem, 22vw, 6.4rem)", lineHeight: 0.9, letterSpacing: "-0.035em" }}
         >
           {label}
@@ -93,7 +93,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
         <Editable
           as="p"
           contentKey={`world_${world}_hero_subline`}
-          className="block font-serif italic text-[1rem] leading-relaxed text-[#0C0C0E]/75 md:text-[1.1rem]"
+          className="block font-serif italic text-[1rem] leading-relaxed text-[#000000]/75 md:text-[1.1rem]"
           multiline
         >
           {subline}
@@ -103,7 +103,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
       {/* Scroll cue */}
       <div className="absolute bottom-8 right-6 z-30 hidden flex-col items-center gap-3 md:flex md:right-14">
         <span className="palace-eyebrow text-[#55534E]">Scroll</span>
-        <span className="palace-drip block h-12 w-px bg-[#0C0C0E]" />
+        <span className="palace-drip block h-12 w-px bg-[#000000]" />
       </div>
     </section>
   );

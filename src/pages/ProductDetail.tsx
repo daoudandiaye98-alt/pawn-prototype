@@ -142,19 +142,19 @@ const ProductDetail = () => {
               <Reveal>
                 <p className="palace-eyebrow">{product.world} · {product.category}</p>
                 <h1
-                  className="palace-serif mt-6 font-light text-[#0C0C0E]"
+                  className="palace-serif mt-6 font-light text-[#000000]"
                   style={{ fontSize: "clamp(2rem, 4vw, 3.4rem)", lineHeight: 1.02, letterSpacing: "-0.01em" }}
                 >
                   {product.name}
                 </h1>
                 <Link
                   to={`/designer/${product.designerSlug}`}
-                  className="palace-eyebrow uline mt-4 inline-block text-[#0C0C0E]"
+                  className="palace-eyebrow uline mt-4 inline-block text-[#000000]"
                 >
                   {product.designer} →
                 </Link>
                 <div className="mt-8 flex items-baseline gap-3">
-                  <p className="palace-serif text-[1.4rem] tabular-nums text-[#0C0C0E]">
+                  <p className="palace-serif text-[1.4rem] tabular-nums text-[#000000]">
                     €{(dbProduct?.price ?? product.price).toLocaleString("de-DE")}
                   </p>
                   {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
@@ -165,19 +165,19 @@ const ProductDetail = () => {
                 {/* Availability badges */}
                 <div className="mt-4 flex flex-wrap gap-2">
                   {isMto && (
-                    <span className="border border-[rgba(12,12,14,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#0C0C0E]">
+                    <span className="border border-[rgba(0,0,0,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#000000]">
                       Auf Anfertigung{dbProduct?.lead_time_days ? ` · ca. ${dbProduct.lead_time_days} Tage` : ""}
                     </span>
                   )}
                   {!isMto && soldOut && (
-                    <span className="border border-[#0C0C0E] bg-[#0C0C0E] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#F1EEE7]">Ausverkauft</span>
+                    <span className="border border-[#000000] bg-[#000000] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#FFFFFF]">Ausverkauft</span>
                   )}
                   {!isMto && lowStock && (
-                    <span className="border border-[rgba(12,12,14,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#0C0C0E]">Noch {stock} verfügbar</span>
+                    <span className="border border-[rgba(0,0,0,.22)] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#000000]">Noch {stock} verfügbar</span>
                   )}
                 </div>
 
-                <p className="mt-8 max-w-md text-[0.98rem] leading-relaxed text-[#0C0C0E]/80">
+                <p className="mt-8 max-w-md text-[0.98rem] leading-relaxed text-[#000000]/80">
                   {dbProduct?.description || product.description}
                 </p>
 
@@ -189,7 +189,7 @@ const ProductDetail = () => {
                         <p className="palace-eyebrow">{v.name}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {v.options.map((o) => (
-                            <button key={o} type="button" className="border border-[rgba(12,12,14,.22)] px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] text-[#0C0C0E] hover:border-[#0C0C0E]">
+                            <button key={o} type="button" className="border border-[rgba(0,0,0,.22)] px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] text-[#000000] hover:border-[#000000]">
                               {o}
                             </button>
                           ))}
@@ -202,9 +202,9 @@ const ProductDetail = () => {
 
                 {/* Provenance */}
                 {(dnaReason || match.percent > 0) && (
-                  <div className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6">
+                  <div className="mt-10 border-t border-[rgba(0,0,0,.18)] pt-6">
                     <p className="palace-eyebrow">Ausgewählt für dich, weil</p>
-                    <p className="mt-3 font-serif italic text-[1.05rem] leading-snug text-[#0C0C0E]/80">
+                    <p className="mt-3 font-serif italic text-[1.05rem] leading-snug text-[#000000]/80">
                       {dnaReason ?? match.rationale}
                     </p>
                   </div>
@@ -214,7 +214,7 @@ const ProductDetail = () => {
                 {/* Color */}
                 {product.colors.length > 1 && (
                   <div className="mt-10">
-                    <p className="palace-eyebrow">Farbe · <span className="text-[#0C0C0E]">{color}</span></p>
+                    <p className="palace-eyebrow">Farbe · <span className="text-[#000000]">{color}</span></p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {product.colors.map((c) => (
                         <button
@@ -223,8 +223,8 @@ const ProductDetail = () => {
                           className={cn(
                             "border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300",
                             c === color
-                              ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]"
-                              : "border-[rgba(12,12,14,.22)] text-[#0C0C0E] hover:border-[#0C0C0E]",
+                              ? "border-[#000000] bg-[#000000] text-[#FFFFFF]"
+                              : "border-[rgba(0,0,0,.22)] text-[#000000] hover:border-[#000000]",
                           )}
                         >
                           {c}
@@ -237,7 +237,7 @@ const ProductDetail = () => {
                 {/* Size */}
                 {product.sizes.length > 1 && (
                   <div className="mt-6">
-                    <p className="palace-eyebrow">Format · <span className="text-[#0C0C0E]">{size}</span></p>
+                    <p className="palace-eyebrow">Format · <span className="text-[#000000]">{size}</span></p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {product.sizes.map((s) => (
                         <button
@@ -246,8 +246,8 @@ const ProductDetail = () => {
                           className={cn(
                             "border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300",
                             s === size
-                              ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]"
-                              : "border-[rgba(12,12,14,.22)] text-[#0C0C0E] hover:border-[#0C0C0E]",
+                              ? "border-[#000000] bg-[#000000] text-[#FFFFFF]"
+                              : "border-[rgba(0,0,0,.22)] text-[#000000] hover:border-[#000000]",
                           )}
                         >
                           {s}
@@ -262,7 +262,7 @@ const ProductDetail = () => {
                     type="button"
                     onClick={addToBag}
                     disabled={soldOut && !isMto}
-                    className="palace-btn flex-1 justify-center text-center hover:bg-[#0C0C0E] hover:text-[#F1EEE7] disabled:opacity-40"
+                    className="palace-btn flex-1 justify-center text-center hover:bg-[#000000] hover:text-[#FFFFFF] disabled:opacity-40"
                   >
                     {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
                   </button>
@@ -270,7 +270,7 @@ const ProductDetail = () => {
                     type="button"
                     onClick={onSave}
                     aria-label="Merken"
-                    className={cn("palace-btn justify-center text-center", (saved || wished) ? "bg-[#0C0C0E] text-[#F1EEE7]" : "")}
+                    className={cn("palace-btn justify-center text-center", (saved || wished) ? "bg-[#000000] text-[#FFFFFF]" : "")}
                   >
                     <Heart className={cn("mr-2 inline h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
                     {(saved || wished) ? "Gemerkt" : "Merken"}
@@ -281,14 +281,14 @@ const ProductDetail = () => {
                   <button
                     type="button"
                     onClick={() => setReqOpen(true)}
-                    className="mt-4 inline-flex text-[0.62rem] uppercase tracking-[0.32em] text-[#0C0C0E] underline underline-offset-4 hover:text-[#0C0C0E]/70"
+                    className="mt-4 inline-flex text-[0.62rem] uppercase tracking-[0.32em] text-[#000000] underline underline-offset-4 hover:text-[#000000]/70"
                   >
                     Individuelle Anfrage stellen →
                   </button>
                 )}
 
 
-                <p className="mt-10 border-t border-[rgba(12,12,14,.13)] pt-6 text-[0.8rem] leading-relaxed text-[#0C0C0E]/60">
+                <p className="mt-10 border-t border-[rgba(0,0,0,.18)] pt-6 text-[0.8rem] leading-relaxed text-[#000000]/60">
                   Versichert weltweit versendet · Rückgabe innerhalb von 14 Tagen · Direkt aus dem Atelier.
                 </p>
               </Reveal>
@@ -301,23 +301,23 @@ const ProductDetail = () => {
 
       {reqOpen && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 md:items-center md:p-6" onClick={() => setReqOpen(false)}>
-          <div className="w-full max-w-lg border border-[rgba(12,12,14,.13)] bg-[#F1EEE7] p-8" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg border border-[rgba(0,0,0,.18)] bg-[#FFFFFF] p-8" onClick={(e) => e.stopPropagation()}>
             <p className="palace-eyebrow">Individuelle Anfrage</p>
-            <h3 className="palace-serif mt-3 text-[1.8rem] font-light leading-tight text-[#0C0C0E]">{dbProduct?.name}</h3>
+            <h3 className="palace-serif mt-3 text-[1.8rem] font-light leading-tight text-[#000000]">{dbProduct?.name}</h3>
             <p className="mt-3 text-[0.9rem] text-[#7C7972]">
               Deine Nachricht geht direkt an die Designer:in. Beschreibe, was du dir vorstellst — Maße, Materialien, Anlass.
             </p>
             <label className="mt-6 block">
               <span className="palace-eyebrow">Wunsch</span>
-              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="mt-2 w-full border border-[rgba(12,12,14,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
+              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="mt-2 w-full border border-[rgba(0,0,0,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#000000]" />
             </label>
             <label className="mt-4 block">
               <span className="palace-eyebrow">Budget (optional)</span>
-              <input value={reqBudget} onChange={(e) => setReqBudget(e.target.value)} placeholder="z.B. 800–1200 €" className="mt-2 w-full border border-[rgba(12,12,14,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
+              <input value={reqBudget} onChange={(e) => setReqBudget(e.target.value)} placeholder="z.B. 800–1200 €" className="mt-2 w-full border border-[rgba(0,0,0,.28)] bg-transparent p-3 text-[0.95rem] focus:outline-none focus:border-[#000000]" />
             </label>
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={() => setReqOpen(false)} className="palace-btn">Abbrechen</button>
-              <button type="button" onClick={submitRequest} disabled={reqBusy} className="palace-btn bg-[#0C0C0E] text-[#F1EEE7] disabled:opacity-50">
+              <button type="button" onClick={submitRequest} disabled={reqBusy} className="palace-btn bg-[#000000] text-[#FFFFFF] disabled:opacity-50">
                 {reqBusy ? "Sende …" : "Anfrage senden"}
               </button>
             </div>
