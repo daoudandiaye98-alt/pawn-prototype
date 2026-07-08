@@ -54,6 +54,7 @@ import Interior from "./pages/palace/Interior.tsx";
 import Kunst from "./pages/palace/Kunst.tsx";
 import Neu from "./pages/palace/Neu.tsx";
 import Style from "./pages/Style.tsx";
+import Kontakt from "./pages/Kontakt.tsx";
 
 import AdminOverview from "./pages/admin/AdminOverview.tsx";
 import AdminDNA from "./pages/admin/AdminDNA.tsx";
