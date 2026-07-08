@@ -12,6 +12,7 @@ import {
   Newspaper,
   Megaphone,
   BarChart3,
+  TrendingUp,
   Bot,
   Settings,
 } from "lucide-react";
