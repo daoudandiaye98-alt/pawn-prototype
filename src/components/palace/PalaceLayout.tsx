@@ -25,10 +25,42 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
         </div>
         <div className="mx-auto grid max-w-[1600px] grid-cols-2 gap-0 border-t-[1.5px] border-black md:grid-cols-4">
           {[
-            { title: "Häuser", links: ["Mode", "Interior", "Kunst", "Designer"] },
-            { title: "Für Sie", links: ["Neu", "DNA", "Style", "Warenkorb"] },
-            { title: "Für Designer", links: ["Bewerben", "Studio", "Copilot", "Kampagnen"] },
-            { title: "Haus", links: ["Kontakt", "Versand", "AGB", "Impressum"] },
+            {
+              title: "Häuser",
+              links: [
+                { label: "Mode", to: "/mode" },
+                { label: "Interior", to: "/interior" },
+                { label: "Kunst", to: "/kunst" },
+                { label: "Designer", to: "/designers" },
+              ],
+            },
+            {
+              title: "Für Sie",
+              links: [
+                { label: "Neu", to: "/neu" },
+                { label: "DNA", to: "/dna" },
+                { label: "Style", to: "/style" },
+                { label: "Warenkorb", to: "/cart" },
+              ],
+            },
+            {
+              title: "Für Designer",
+              links: [
+                { label: "Bewerben", to: "/apply" },
+                { label: "Studio", to: "/studio" },
+                { label: "Copilot", to: "/studio/copilot" },
+                { label: "Kampagnen", to: "/studio/kampagnen" },
+              ],
+            },
+            {
+              title: "Haus",
+              links: [
+                { label: "Kontakt", to: "/kontakt" },
+                { label: "Versand", to: "/versand" },
+                { label: "AGB", to: "/agb" },
+                { label: "Impressum", to: "/impressum" },
+              ],
+            },
           ].map((col, i) => (
             <div
               key={col.title}
@@ -37,8 +69,13 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
               <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">{col.title}</p>
               <ul className="mt-4 space-y-2">
                 {col.links.map((l) => (
-                  <li key={l}>
-                    <span className="inline-block cursor-default border-b border-transparent text-[0.85rem] text-black transition-colors hover:border-black">{l}</span>
+                  <li key={l.label}>
+                    <Link
+                      to={l.to}
+                      className="inline-block border-b border-transparent text-[0.85rem] text-black transition-colors hover:border-black"
+                    >
+                      {l.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
