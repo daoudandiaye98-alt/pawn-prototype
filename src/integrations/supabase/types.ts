@@ -839,6 +839,39 @@ export type Database = {
           },
         ]
       }
+      fashion_ontology: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["ontology_kind"]
+          parent_term: string | null
+          synonyms: string[]
+          term: string
+          updated_at: string
+          world: string[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["ontology_kind"]
+          parent_term?: string | null
+          synonyms?: string[]
+          term: string
+          updated_at?: string
+          world?: string[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["ontology_kind"]
+          parent_term?: string | null
+          synonyms?: string[]
+          term?: string
+          updated_at?: string
+          world?: string[]
+        }
+        Relationships: []
+      }
       message_threads: {
         Row: {
           category: Database["public"]["Enums"]["message_category"]
@@ -1128,6 +1161,66 @@ export type Database = {
         }
         Relationships: []
       }
+      trend_snapshots: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          likes: number
+          purchases: number
+          saves: number
+          score: number
+          term: string
+          views: number
+          world: string
+        }
+        Insert: {
+          created_at?: string
+          day?: string
+          id?: string
+          likes?: number
+          purchases?: number
+          saves?: number
+          score?: number
+          term: string
+          views?: number
+          world: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          likes?: number
+          purchases?: number
+          saves?: number
+          score?: number
+          term?: string
+          views?: number
+          world?: string
+        }
+        Relationships: []
+      }
+      user_memory: {
+        Row: {
+          facts: Json
+          preferences: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          facts?: Json
+          preferences?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          facts?: Json
+          preferences?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1224,6 +1317,19 @@ export type Database = {
         Returns: undefined
       }
       slugify: { Args: { txt: string }; Returns: string }
+      trend_momentum: {
+        Args: { _world: string }
+        Returns: {
+          ema7: number
+          forecast14: number
+          history: number[]
+          latest_score: number
+          momentum: string
+          slope: number
+          term: string
+          world: string
+        }[]
+      }
     }
     Enums: {
       ai_integration_kind: "gmail" | "instagram" | "webhook" | "custom"
@@ -1245,6 +1351,13 @@ export type Database = {
         | "produkt"
         | "technik"
       message_status: "open" | "closed"
+      ontology_kind:
+        | "category"
+        | "silhouette"
+        | "material"
+        | "color"
+        | "attribute"
+        | "style"
       order_status: "pending" | "paid" | "failed" | "refunded"
       product_status: "draft" | "published" | "archived"
       product_world: "Mode" | "Interior" | "Kunst"
@@ -1396,6 +1509,14 @@ export const Constants = {
         "technik",
       ],
       message_status: ["open", "closed"],
+      ontology_kind: [
+        "category",
+        "silhouette",
+        "material",
+        "color",
+        "attribute",
+        "style",
+      ],
       order_status: ["pending", "paid", "failed", "refunded"],
       product_status: ["draft", "published", "archived"],
       product_world: ["Mode", "Interior", "Kunst"],

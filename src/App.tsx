@@ -62,6 +62,7 @@ import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminAI from "./pages/admin/AdminAI.tsx";
 import AdminApplications from "./pages/admin/AdminApplications.tsx";
 import AdminKI from "./pages/admin/AdminKI.tsx";
+import AdminTrends from "./pages/admin/AdminTrends.tsx";
 
 import PortalOverview from "./pages/portal/PortalOverview.tsx";
 import PortalEditor from "./pages/portal/PortalEditor.tsx";
@@ -129,6 +130,7 @@ const App = () => (
                 <Route path="/admin/kampagnen" element={<RoleGate role="admin"><AdminCampaigns /></RoleGate>} />
                 <Route path="/admin/ai" element={<RoleGate role="admin"><AdminAI /></RoleGate>} />
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
+                <Route path="/admin/trends" element={<RoleGate role="admin"><AdminTrends /></RoleGate>} />
                 <Route path="/admin/nachrichten" element={<RoleGate role="admin"><AdminMessages /></RoleGate>} />
                 <Route path="/admin/zahlungen" element={<RoleGate role="admin"><AdminPayments /></RoleGate>} />
                 <Route path="/admin/inhalte" element={<AdminInhalte />} />
