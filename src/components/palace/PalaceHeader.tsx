@@ -207,8 +207,8 @@ export function PalaceHeader() {
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-[rgba(12,12,14,.10)] px-6 py-5">
-          <span className="whitespace-nowrap font-serif text-[0.95rem] uppercase tracking-[0.42em] text-[#0C0C0E]">PAWN</span>
+        <div className="flex items-center justify-between border-b-[1.5px] border-black px-6 py-4">
+          <PawnWordmark className="text-[1.6rem] text-black" />
           <button
             type="button"
             aria-label="Menü schließen"
