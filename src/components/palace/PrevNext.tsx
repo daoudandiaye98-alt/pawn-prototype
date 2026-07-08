@@ -21,7 +21,7 @@ export function PrevNext({
           to={prev.to}
           aria-label={prev.label ?? "Vorheriges"}
           title={prev.label ?? "Vorheriges"}
-          className="palace-btn h-9 w-9 justify-center bg-[#F1EEE7] p-0 text-[#0C0C0E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+          className="palace-btn h-9 w-9 justify-center bg-[#FFFFFF] p-0 text-[#000000] hover:bg-[#000000] hover:text-[#FFFFFF]"
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.4} />
         </Link>
@@ -33,7 +33,7 @@ export function PrevNext({
           to={next.to}
           aria-label={next.label ?? "Nächstes"}
           title={next.label ?? "Nächstes"}
-          className="palace-btn h-9 w-9 justify-center bg-[#F1EEE7] p-0 text-[#0C0C0E] hover:bg-[#0C0C0E] hover:text-[#F1EEE7]"
+          className="palace-btn h-9 w-9 justify-center bg-[#FFFFFF] p-0 text-[#000000] hover:bg-[#000000] hover:text-[#FFFFFF]"
         >
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.4} />
         </Link>

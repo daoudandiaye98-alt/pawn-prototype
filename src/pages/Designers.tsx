@@ -63,30 +63,30 @@ export default function Designers() {
         <div className="mx-auto max-w-[1400px] text-center">
           <Reveal>
             <p className="palace-eyebrow">Atelier · Verzeichnis</p>
-            <h1 className="palace-serif mt-10 text-[#0C0C0E]"
+            <h1 className="palace-serif mt-10 text-[#000000]"
               style={{ fontSize: "clamp(2.6rem, 7vw, 6.2rem)", lineHeight: 0.96, letterSpacing: "-0.02em", fontWeight: 500 }}>
               Wer diesen Raum <span className="italic">füllt.</span>
             </h1>
-            <p className="mx-auto mt-8 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#0C0C0E]/75">
+            <p className="mx-auto mt-8 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#000000]/75">
               {designers.length} unabhängige Studios · Häuser aus {cities.length} {cities.length === 1 ? "Stadt" : "Städten"}
-              {cities.length > 0 && <span className="block mt-2 text-[0.72rem] not-italic uppercase tracking-[0.3em] text-[#0C0C0E]/50">{cities.slice(0, 12).join(" · ")}</span>}
+              {cities.length > 0 && <span className="block mt-2 text-[0.72rem] not-italic uppercase tracking-[0.3em] text-[#000000]/50">{cities.slice(0, 12).join(" · ")}</span>}
             </p>
           </Reveal>
 
           <div className="mx-auto mt-12 flex flex-wrap items-center justify-center gap-2 text-[0.62rem] uppercase tracking-[0.28em]">
             {WORLDS.map((w) => (
               <button key={w} onClick={() => setWorldFilter(w)}
-                className={`border px-3 py-1.5 transition ${worldFilter === w ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]" : "border-[rgba(12,12,14,.2)] text-[#0C0C0E]/70 hover:border-[#0C0C0E]"}`}>
+                className={`border px-3 py-1.5 transition ${worldFilter === w ? "border-[#000000] bg-[#000000] text-[#FFFFFF]" : "border-[rgba(0,0,0,.2)] text-[#000000]/70 hover:border-[#000000]"}`}>
                 {w}
               </button>
             ))}
-            <span className="mx-2 text-[#0C0C0E]/30">·</span>
+            <span className="mx-2 text-[#000000]/30">·</span>
             <select value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}
-              className="border border-[rgba(12,12,14,.2)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em]">
+              className="border border-[rgba(0,0,0,.2)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em]">
               {countries.map((c) => <option key={c} value={c}>{c === "Alle" ? "Land · Alle" : c}</option>)}
             </select>
             <button onClick={() => setNewOnly((v) => !v)}
-              className={`border px-3 py-1.5 transition ${newOnly ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]" : "border-[rgba(12,12,14,.2)] text-[#0C0C0E]/70 hover:border-[#0C0C0E]"}`}>
+              className={`border px-3 py-1.5 transition ${newOnly ? "border-[#000000] bg-[#000000] text-[#FFFFFF]" : "border-[rgba(0,0,0,.2)] text-[#000000]/70 hover:border-[#000000]"}`}>
               Neu im Haus
             </button>
           </div>
@@ -95,7 +95,7 @@ export default function Designers() {
 
       <section ref={wallRef} className="relative px-6 py-24 md:px-14 md:py-32" onMouseMove={onMove}>
         {hover && (
-          <div className="pointer-events-none absolute z-30 hidden overflow-hidden border border-[rgba(12,12,14,.28)] bg-[#F1EEE7] shadow-[0_20px_60px_-30px_rgba(12,12,14,0.5)] transition-opacity duration-300 md:block"
+          <div className="pointer-events-none absolute z-30 hidden overflow-hidden border border-[rgba(0,0,0,.28)] bg-[#FFFFFF] shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)] transition-opacity duration-300 md:block"
             style={{ left: pos.x + 20, top: pos.y - 90, width: 200, height: 260, opacity: hover.src ? 1 : 0.5 }}>
             {hover.src ? (
               <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover"
@@ -106,7 +106,7 @@ export default function Designers() {
           </div>
         )}
 
-        <ul className="mx-auto max-w-[1400px] divide-y divide-[rgba(12,12,14,.13)]">
+        <ul className="mx-auto max-w-[1400px] divide-y divide-[rgba(0,0,0,.18)]">
           {filtered.map((d, i) => {
             const world = (d.tags?.[0]) || worldBySlug.get(d.slug) || "Atelier";
             const preview = d.hero_image_url ?? d.banner_url;
@@ -115,15 +115,15 @@ export default function Designers() {
               <Reveal key={d.id} delay={Math.min(400, i * 40)}>
                 <li onMouseEnter={() => setHover({ src: preview ?? undefined, brand: d.brand_name })} onMouseLeave={() => setHover(null)}>
                   <Link to={`/designer/${d.slug}`} className="group flex flex-col items-center gap-3 py-10 text-center transition-colors duration-500 md:py-14">
-                    <span className="palace-eyebrow text-[#8F8B82] group-hover:text-[#0C0C0E]">
+                    <span className="palace-eyebrow text-[#8F8B82] group-hover:text-[#000000]">
                       № {String(i + 1).padStart(3, "0")}
-                      {fresh && <span className="ml-3 border border-[#0C0C0E]/40 px-1.5 py-0.5 text-[0.55rem]">Neu</span>}
+                      {fresh && <span className="ml-3 border border-[#000000]/40 px-1.5 py-0.5 text-[0.55rem]">Neu</span>}
                     </span>
-                    <span className="palace-serif text-[#0C0C0E]/85 transition-colors duration-500 group-hover:text-[#0C0C0E]"
+                    <span className="palace-serif text-[#000000]/85 transition-colors duration-500 group-hover:text-[#000000]"
                       style={{ fontSize: "clamp(2.4rem, 7.4vw, 6.6rem)", lineHeight: 1, letterSpacing: "-0.025em", fontWeight: 500 }}>
                       {d.brand_name}
                     </span>
-                    <span className="palace-eyebrow text-[#6B6862] group-hover:text-[#0C0C0E]">
+                    <span className="palace-eyebrow text-[#6B6862] group-hover:text-[#000000]">
                       {world} · {d.location ?? "—"}
                     </span>
                   </Link>
@@ -131,13 +131,13 @@ export default function Designers() {
               </Reveal>
             );
           })}
-          {filtered.length === 0 && <li className="py-24 text-center text-sm text-[#0C0C0E]/60">Keine Häuser passend zum Filter.</li>}
+          {filtered.length === 0 && <li className="py-24 text-center text-sm text-[#000000]/60">Keine Häuser passend zum Filter.</li>}
         </ul>
       </section>
 
-      <section className="border-t border-[rgba(12,12,14,.13)] px-6 py-20 md:px-14">
+      <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-20 md:px-14">
         <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-6 md:flex-row">
-          <p className="palace-serif italic text-[1.3rem] text-[#0C0C0E]">Ist dein Atelier hier noch nicht?</p>
+          <p className="palace-serif italic text-[1.3rem] text-[#000000]">Ist dein Atelier hier noch nicht?</p>
           <Link to="/apply" className="palace-btn">Als Designer bewerben →</Link>
         </div>
       </section>

@@ -13,7 +13,7 @@ export default function Style() {
           <Reveal>
             <Editable as="p" contentKey="style_eyebrow" className="palace-eyebrow">Deine Handschrift</Editable>
             <h1
-              className="palace-serif mt-8 font-light text-[#0C0C0E]"
+              className="palace-serif mt-8 font-light text-[#000000]"
               style={{ fontSize: "clamp(2.6rem, 8vw, 6.4rem)", lineHeight: 0.94, letterSpacing: "-0.028em" }}
             >
               <Editable as="span" contentKey="style_headline_a">Swipe, was dich </Editable>

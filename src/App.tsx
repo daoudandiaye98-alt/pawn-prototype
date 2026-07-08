@@ -54,6 +54,7 @@ import Interior from "./pages/palace/Interior.tsx";
 import Kunst from "./pages/palace/Kunst.tsx";
 import Neu from "./pages/palace/Neu.tsx";
 import Style from "./pages/Style.tsx";
+import Kontakt from "./pages/Kontakt.tsx";
 
 import AdminOverview from "./pages/admin/AdminOverview.tsx";
 import AdminDNA from "./pages/admin/AdminDNA.tsx";
@@ -112,6 +113,7 @@ const App = () => (
                 <Route path="/impressum" element={<Impressum />} />
                 <Route path="/versand" element={<Versand />} />
                 <Route path="/agb" element={<AGB />} />
+                <Route path="/kontakt" element={<Kontakt />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />

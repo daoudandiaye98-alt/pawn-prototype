@@ -81,7 +81,7 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
         <div className="mx-auto max-w-[1600px]">
           <Reveal>
             <h2
-              className="palace-serif font-light text-[#0C0C0E]"
+              className="palace-serif font-light text-[#000000]"
               style={{ fontSize: "clamp(2rem, 4.5vw, 3.6rem)", lineHeight: 0.98, letterSpacing: "-0.02em" }}
             >
               {headline}
@@ -95,8 +95,8 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
                 onClick={() => setActive(null)}
                 className={`border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300 ${
                   active === null
-                    ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]"
-                    : "border-[rgba(12,12,14,.22)] text-[#0C0C0E] hover:border-[#0C0C0E]"
+                    ? "border-[#000000] bg-[#000000] text-[#FFFFFF]"
+                    : "border-[rgba(0,0,0,.22)] text-[#000000] hover:border-[#000000]"
                 }`}
               >
                 Alles
@@ -108,8 +108,8 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
                   onClick={() => setActive(c)}
                   className={`border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300 ${
                     active === c
-                      ? "border-[#0C0C0E] bg-[#0C0C0E] text-[#F1EEE7]"
-                      : "border-[rgba(12,12,14,.22)] text-[#0C0C0E] hover:border-[#0C0C0E]"
+                      ? "border-[#000000] bg-[#000000] text-[#FFFFFF]"
+                      : "border-[rgba(0,0,0,.22)] text-[#000000] hover:border-[#000000]"
                   }`}
                 >
                   {c}
@@ -122,7 +122,7 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
 
       {/* ── Featured designer band ───────────────────────── */}
       {featured && (
-        <section className="mt-24 border-y border-[rgba(12,12,14,.13)] bg-[#F1EEE7] md:mt-32">
+        <section className="mt-24 border-y border-[rgba(0,0,0,.18)] bg-[#FFFFFF] md:mt-32">
           <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 md:grid-cols-[1fr_1fr] md:min-h-[72vh]">
             <Reveal className="relative">
               <EditorialImage
@@ -138,14 +138,14 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
                 {featured.brand_name}. <span className="italic">Eine Handschrift, die man wiederkennt.</span>
               </h2>
               {featured.story && (
-                <p className="max-w-md text-[0.95rem] leading-relaxed text-[#0C0C0E]/80">{featured.story}</p>
+                <p className="max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80">{featured.story}</p>
               )}
               {featured.quote && (
-                <blockquote className="max-w-md border-l border-[rgba(12,12,14,.28)] pl-5">
-                  <p className="palace-serif italic text-[1.3rem] leading-snug text-[#0C0C0E]">„{featured.quote}"</p>
+                <blockquote className="max-w-md border-l border-[rgba(0,0,0,.28)] pl-5">
+                  <p className="palace-serif italic text-[1.3rem] leading-snug text-[#000000]">„{featured.quote}"</p>
                 </blockquote>
               )}
-              <Link to={`/designer/${featured.slug}`} className="palace-eyebrow uline w-fit text-[#0C0C0E]">
+              <Link to={`/designer/${featured.slug}`} className="palace-eyebrow uline w-fit text-[#000000]">
                 Zum Atelier →
               </Link>
             </Reveal>
@@ -179,10 +179,10 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
                       <EditorialImage seed={`${world}-${p.slug}`} ratio={l.ratio} />
                       <div className="mt-4 flex items-baseline justify-between gap-4">
                         <div>
-                          <p className="palace-serif italic text-[1.15rem] leading-tight text-[#0C0C0E]">{p.name}</p>
+                          <p className="palace-serif italic text-[1.15rem] leading-tight text-[#000000]">{p.name}</p>
                           <p className="palace-eyebrow mt-2">{p.category} · {p.designer}</p>
                         </div>
-                        <p className="palace-eyebrow text-[#0C0C0E]">€{p.price.toLocaleString("de-DE")}</p>
+                        <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
                       </div>
                     </Link>
                   </Reveal>
@@ -194,9 +194,9 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
       </section>
 
       {/* ── Designer CTA ─────────────────────────────────── */}
-      <section className="border-t border-[rgba(12,12,14,.13)] px-6 py-20 md:px-14">
+      <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-20 md:px-14">
         <div className="mx-auto flex max-w-[1600px] flex-col items-center justify-between gap-6 md:flex-row">
-          <p className="palace-serif italic text-[1.3rem] text-[#0C0C0E]">
+          <p className="palace-serif italic text-[1.3rem] text-[#000000]">
             Du arbeitest in dieser Welt? Zeig uns dein Atelier.
           </p>
           <Link to="/apply" className="palace-btn">Als Designer bewerben →</Link>

@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.seed-admin]
 verify_jwt = false
+
+[functions.seed-testaccounts]
+verify_jwt = false
+
+[functions.submit-contact]
+verify_jwt = false
+
+[functions.submit-application]
+verify_jwt = false

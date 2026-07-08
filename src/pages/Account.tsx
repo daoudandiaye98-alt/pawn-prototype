@@ -33,7 +33,7 @@ const Account = () => {
           <p className="palace-eyebrow">Konto · Mitglied seit {memberSince}</p>
           <div className="mt-8 flex flex-wrap items-end justify-between gap-8">
             <h1
-              className="palace-serif font-light text-[#0C0C0E]"
+              className="palace-serif font-light text-[#000000]"
               style={{ fontSize: "clamp(2.4rem, 5vw, 4.2rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
             >
               <span className="capitalize">{firstName}</span>.
@@ -41,9 +41,9 @@ const Account = () => {
             <div className="flex items-center gap-6">
               <p className="palace-eyebrow">
                 {user.email}
-                {roles.length > 0 && <span className="ml-3 text-[#0C0C0E]">· {roles.join(" / ")}</span>}
+                {roles.length > 0 && <span className="ml-3 text-[#000000]">· {roles.join(" / ")}</span>}
               </p>
-              <button type="button" onClick={signOut} className="palace-eyebrow uline text-[#0C0C0E]">
+              <button type="button" onClick={signOut} className="palace-eyebrow uline text-[#000000]">
                 Abmelden
               </button>
             </div>
@@ -53,7 +53,7 @@ const Account = () => {
 
       <section className="px-6 py-16 md:px-14 md:py-24">
         <div className="mx-auto grid max-w-[1400px] gap-12 lg:grid-cols-[220px_1fr]">
-          <nav className="flex flex-row flex-wrap gap-2 border-t border-[rgba(12,12,14,.13)] pt-6 lg:flex-col lg:border-t-0 lg:pt-0">
+          <nav className="flex flex-row flex-wrap gap-2 border-t border-[rgba(0,0,0,.18)] pt-6 lg:flex-col lg:border-t-0 lg:pt-0">
             {TABS.map((t) => (
               <button
                 key={t}
@@ -61,7 +61,7 @@ const Account = () => {
                 onClick={() => setTab(t)}
                 className={cn(
                   "palace-eyebrow py-2 text-left transition-colors duration-300",
-                  tab === t ? "text-[#0C0C0E]" : "text-[#7C7972] hover:text-[#0C0C0E]",
+                  tab === t ? "text-[#000000]" : "text-[#7C7972] hover:text-[#000000]",
                 )}
               >
                 {t}
@@ -87,10 +87,10 @@ const Account = () => {
 function Overview({ name }: { name: string }) {
   return (
     <div className="space-y-8">
-      <p className="palace-serif italic text-[1.15rem] text-[#0C0C0E]/80">
+      <p className="palace-serif italic text-[1.15rem] text-[#000000]/80">
         Willkommen zurück, {name}. Der Raum hat sich gemerkt, wo du zuletzt warst.
       </p>
-      <p className="text-[0.95rem] text-[#0C0C0E]/70 max-w-lg">
+      <p className="text-[0.95rem] text-[#000000]/70 max-w-lg">
         Über die Reiter oben erreichst du deine Bestellungen, individuellen Anfragen an Ateliers, den Merkzettel
         und deine Daten.
       </p>
@@ -118,17 +118,17 @@ function Requests() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
-      <aside className="border-t border-[rgba(12,12,14,.13)]">
-        <ul className="divide-y divide-[rgba(12,12,14,.09)]">
+      <aside className="border-t border-[rgba(0,0,0,.18)]">
+        <ul className="divide-y divide-[rgba(0,0,0,.14)]">
           {threads.map((t) => (
             <li key={t.id}>
               <button onClick={() => setActiveId(t.id)}
-                className={`block w-full px-1 py-4 text-left ${activeId === t.id ? "bg-[rgba(12,12,14,.04)]" : ""}`}>
+                className={`block w-full px-1 py-4 text-left ${activeId === t.id ? "bg-[rgba(0,0,0,.04)]" : ""}`}>
                 <p className="palace-eyebrow">
                   {t.designer?.brand_name ?? "Atelier"}
-                  {t.category === "produkt" && <span className="ml-2 border border-[rgba(12,12,14,.28)] px-1.5 py-0.5 text-[0.5rem] tracking-[0.28em]">PRODUKT</span>}
+                  {t.category === "produkt" && <span className="ml-2 border border-[rgba(0,0,0,.28)] px-1.5 py-0.5 text-[0.5rem] tracking-[0.28em]">PRODUKT</span>}
                 </p>
-                <p className="palace-serif mt-1 text-[1.1rem] italic text-[#0C0C0E]">{t.subject}</p>
+                <p className="palace-serif mt-1 text-[1.1rem] italic text-[#000000]">{t.subject}</p>
                 {t.product && <p className="mt-1 text-[0.75rem] text-[#7C7972]">→ {t.product.name}</p>}
                 <p className="mt-1 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{new Date(t.last_message_at).toLocaleDateString("de-DE")} · {t.status}</p>
               </button>
@@ -136,30 +136,30 @@ function Requests() {
           ))}
         </ul>
       </aside>
-      <section className="border border-[rgba(12,12,14,.13)] p-6 min-h-[50vh] flex flex-col">
+      <section className="border border-[rgba(0,0,0,.18)] p-6 min-h-[50vh] flex flex-col">
         {!active ? (
           <p className="palace-eyebrow text-[#7C7972]">Wähle eine Anfrage.</p>
         ) : (
           <>
-            <header className="border-b border-[rgba(12,12,14,.09)] pb-4">
+            <header className="border-b border-[rgba(0,0,0,.14)] pb-4">
               <p className="palace-eyebrow">{active.category} · {active.status}</p>
-              <h3 className="palace-serif mt-1 text-[1.4rem] text-[#0C0C0E]">{active.subject}</h3>
+              <h3 className="palace-serif mt-1 text-[1.4rem] text-[#000000]">{active.subject}</h3>
               {active.product && <Link to={`/product/${active.product.slug}`} className="palace-eyebrow uline mt-2 inline-block">Zum Produkt →</Link>}
             </header>
             <div ref={listRef} className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
               {messages.map((m) => (
                 <div key={m.id} className={m.sender_id === user?.id ? "text-right" : ""}>
                   <p className="text-[0.55rem] uppercase tracking-[0.28em] text-[#7C7972]">{m.sender_id === user?.id ? "Du" : active.designer?.brand_name ?? "Atelier"}</p>
-                  <p className="mt-1 text-[0.95rem] text-[#0C0C0E]">{m.body}</p>
+                  <p className="mt-1 text-[0.95rem] text-[#000000]">{m.body}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-4 border-t border-[rgba(12,12,14,.09)] pt-3">
+            <div className="mt-4 border-t border-[rgba(0,0,0,.14)] pt-3">
               <div className="flex gap-2">
                 <textarea rows={2} value={reply} onChange={(e) => setReply(e.target.value)}
                   placeholder="Antworten …"
-                  className="flex-1 border border-[rgba(12,12,14,.22)] bg-transparent p-2 text-[0.95rem] focus:outline-none focus:border-[#0C0C0E]" />
-                <button onClick={send} disabled={!reply.trim()} className="palace-btn bg-[#0C0C0E] text-[#F1EEE7] disabled:opacity-40">Senden</button>
+                  className="flex-1 border border-[rgba(0,0,0,.22)] bg-transparent p-2 text-[0.95rem] focus:outline-none focus:border-[#000000]" />
+                <button onClick={send} disabled={!reply.trim()} className="palace-btn bg-[#000000] text-[#FFFFFF] disabled:opacity-40">Senden</button>
               </div>
             </div>
           </>
@@ -176,16 +176,16 @@ function Orders() {
     return <Empty title="Noch keine Bestellungen." to="/neu" cta="Ausstellung ansehen" />;
   }
   return (
-    <ul className="divide-y divide-[rgba(12,12,14,.13)]">
+    <ul className="divide-y divide-[rgba(0,0,0,.18)]">
       {customerOrders.map((o) => (
         <li key={o.id} className="grid grid-cols-1 gap-6 py-10 md:grid-cols-[120px_1fr_auto] md:items-center">
           <EditorialImage seed={`order-${o.id}`} ratio="1/1" className="w-24" />
           <div>
             <p className="palace-eyebrow">{o.id} · {o.date}</p>
-            <p className="palace-serif mt-2 text-[1.4rem] italic text-[#0C0C0E]">
+            <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">
               €{o.total.toLocaleString("de-DE")}
             </p>
-            <p className="mt-2 font-serif italic text-[#0C0C0E]/70">{o.items.length} Stück · {o.status}</p>
+            <p className="mt-2 font-serif italic text-[#000000]/70">{o.items.length} Stück · {o.status}</p>
           </div>
           <span className="palace-eyebrow">{o.status}</span>
         </li>
@@ -243,10 +243,10 @@ function MyData() {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <div className="border border-[rgba(12,12,14,.13)] p-8">
+      <div className="border border-[rgba(0,0,0,.18)] p-8">
         <p className="palace-eyebrow">Daten exportieren</p>
-        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#0C0C0E]">Alles, was wir über dich wissen — als JSON.</p>
-        <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">
+        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#000000]">Alles, was wir über dich wissen — als JSON.</p>
+        <p className="mt-3 text-[0.95rem] text-[#000000]/70">
           Profil, Ereignisse, Geschmackssignale und Chat-Sessions.
         </p>
         <button type="button" onClick={exportData} disabled={busy}
@@ -256,8 +256,8 @@ function MyData() {
       </div>
       <div className="border border-destructive/40 p-8">
         <p className="palace-eyebrow text-destructive">Konto löschen</p>
-        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#0C0C0E]">Das ist endgültig.</p>
-        <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">
+        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#000000]">Das ist endgültig.</p>
+        <p className="mt-3 text-[0.95rem] text-[#000000]/70">
           Wir entfernen dein Profil, deine Bewerbung, Consents, Sessions und Benachrichtigungen. Bestellungen und Buchhaltungsdaten
           bleiben — anonymisiert — aus gesetzlichen Gründen erhalten.
         </p>
@@ -280,7 +280,7 @@ function MyData() {
         )}
       </div>
       <p className="palace-eyebrow">
-        <Link to="/datenschutz" className="uline text-[#0C0C0E]">Datenschutzhinweise</Link>
+        <Link to="/datenschutz" className="uline text-[#000000]">Datenschutzhinweise</Link>
       </p>
     </div>
   );
@@ -288,18 +288,18 @@ function MyData() {
 
 function Settings() {
   return (
-    <div className="max-w-xl border border-[rgba(12,12,14,.13)] p-8">
+    <div className="max-w-xl border border-[rgba(0,0,0,.18)] p-8">
       <p className="palace-eyebrow">Präferenzen</p>
-      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#0C0C0E]">Ruhig, aufmerksam, nie aufdringlich.</p>
-      <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">Sprache, Benachrichtigungen und Datenschutz.</p>
+      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#000000]">Ruhig, aufmerksam, nie aufdringlich.</p>
+      <p className="mt-3 text-[0.95rem] text-[#000000]/70">Sprache, Benachrichtigungen und Datenschutz.</p>
     </div>
   );
 }
 
 function Empty({ title, to, cta }: { title: string; to: string; cta: string }) {
   return (
-    <div className="flex flex-col items-start gap-6 border-t border-[rgba(12,12,14,.13)] pt-16">
-      <p className="palace-serif text-[1.5rem] italic text-[#0C0C0E]">{title}</p>
+    <div className="flex flex-col items-start gap-6 border-t border-[rgba(0,0,0,.18)] pt-16">
+      <p className="palace-serif text-[1.5rem] italic text-[#000000]">{title}</p>
       <Link to={to} className="palace-btn">{cta} →</Link>
     </div>
   );
@@ -307,10 +307,10 @@ function Empty({ title, to, cta }: { title: string; to: string; cta: string }) {
 
 function PaymentTab() {
   return (
-    <div className="max-w-xl border border-[rgba(12,12,14,.13)] p-8">
+    <div className="max-w-xl border border-[rgba(0,0,0,.18)] p-8">
       <p className="palace-eyebrow">Zahlungsmethoden</p>
-      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#0C0C0E]">Noch keine hinterlegt.</p>
-      <p className="mt-3 text-[0.95rem] text-[#0C0C0E]/70">Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.</p>
+      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#000000]">Noch keine hinterlegt.</p>
+      <p className="mt-3 text-[0.95rem] text-[#000000]/70">Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.</p>
     </div>
   );
 }
