@@ -1498,6 +1498,7 @@ export type Database = {
         | "color"
         | "attribute"
         | "style"
+        | "mood"
       order_status: "pending" | "paid" | "failed" | "refunded"
       posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
       posting_status: "queued" | "posted" | "failed" | "cancelled"
@@ -1675,6 +1676,7 @@ export const Constants = {
         "color",
         "attribute",
         "style",
+        "mood",
       ],
       order_status: ["pending", "paid", "failed", "refunded"],
       posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],
