@@ -172,13 +172,16 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     if (!user) { setProfile({ ...EMPTY, correctedIds: loadCorrected() }); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("domain_events")
-        .select("id, at, payload")
-        .eq("type", "ai.taste_signal")
-        .contains("payload", { user_id: user.id })
-        .order("at", { ascending: false })
-        .limit(200);
+      const [{ data, error }, memRes] = await Promise.all([
+        supabase
+          .from("domain_events")
+          .select("id, at, payload")
+          .eq("type", "ai.taste_signal")
+          .contains("payload", { user_id: user.id })
+          .order("at", { ascending: false })
+          .limit(200),
+        supabase.from("user_memory" as never).select("preferences").eq("user_id", user.id).maybeSingle(),
+      ]);
       if (error) throw error;
       const corrected = loadCorrected();
       const signals = (data ?? [])
@@ -186,10 +189,25 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
         .filter((s): s is Signal => s !== null)
         .filter((s) => !corrected.has(s.id));
       const agg = aggregate(signals);
-      const next = { ...agg, correctedIds: corrected };
+      // Merge user_memory.preferences → world / mood / preferredTags
+      const prefs = ((memRes.data as { preferences?: Record<string, unknown> } | null)?.preferences) ?? {};
+      const memWorld = typeof prefs.welt === "string" ? (prefs.welt as World) : null;
+      const memMood = typeof prefs.stimmung === "string" ? (prefs.stimmung as Mood) : null;
+      const memTags: string[] = [];
+      for (const [k, v] of Object.entries(prefs)) {
+        if (k.startsWith("mag:") && typeof v === "string") memTags.push(v);
+      }
+      const merged: PersonalizationProfile = {
+        ...agg,
+        hasSignals: agg.hasSignals || memWorld !== null || memMood !== null || memTags.length > 0,
+        world: agg.world ?? memWorld,
+        mood: agg.mood !== "neutral" ? agg.mood : (memMood ?? "neutral"),
+        preferredTags: Array.from(new Set([...agg.preferredTags, ...memTags])).slice(0, 12),
+      };
+      const next = { ...merged, correctedIds: corrected };
       setProfile(next);
       if (allowsPersistence) {
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...agg, correctedIds: [] })); } catch { /* noop */ }
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...merged, correctedIds: [] })); } catch { /* noop */ }
       } else {
         try { localStorage.removeItem(CACHE_KEY); } catch { /* noop */ }
       }

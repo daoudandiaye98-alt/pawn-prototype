@@ -215,16 +215,27 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
     if (mode === "chat") {
       const messages = (body.messages ?? []).slice(-12);
       const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? body.question ?? "";
-      // Load lightweight store stats for context
+      // Load lightweight store stats + trend momentum for designer's worlds
       const [pRes, oRes] = await Promise.all([
-        admin.from("products").select("id, name, status").eq("designer_id", designer.id),
+        admin.from("products").select("id, name, status, world").eq("designer_id", designer.id),
         admin.from("orders").select("id, created_at").gte("created_at", new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()),
       ]);
       const products = pRes.data ?? [];
       const published = products.filter((p) => p.status === "published").length;
-      const contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht), ${(oRes.data ?? []).length} Bestellungen in 30 Tagen. Story: ${designer.story ?? "—"}.`;
+      const worlds = Array.from(new Set(products.map((p) => (p as { world?: string }).world).filter(Boolean))) as string[];
+      const trendBits: string[] = [];
+      for (const w of worlds.slice(0, 2)) {
+        const { data } = await admin.rpc("trend_momentum" as never, { _world: w } as never);
+        const top = (((data as unknown) as { term: string; momentum: string }[] | null) ?? [])
+          .filter((r) => r.momentum === "steigend")
+          .slice(0, 3)
+          .map((r) => r.term);
+        if (top.length) trendBits.push(`${w}: ${top.join(", ")}`);
+      }
+      const trendHint = trendBits.length ? `Aktuelle Aufwärtstrends → ${trendBits.join(" | ")}.` : "";
+      const contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht), ${(oRes.data ?? []).length} Bestellungen in 30 Tagen. Story: ${designer.story ?? "—"}. ${trendHint}`;
       const reply = (await ai(system + "\n\n" + contextHint, messages))
-        ?? `Aktuell: ${products.length} Produkte, ${published} veröffentlicht. Erzähl mir, wo du gerade stehst — dann kann ich helfen.`;
+        ?? `Aktuell: ${products.length} Produkte, ${published} veröffentlicht.${trendHint ? " " + trendHint : ""} Erzähl mir, wo du gerade stehst — dann kann ich helfen.`;
       await logResponse(admin, user_id, mode, designer.id, lastUser, reply, provider);
       return new Response(JSON.stringify({ reply, provider }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

@@ -170,15 +170,16 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
         ) : (
           <>
             {next && (
-              <div className="absolute inset-0 translate-y-2 scale-[.96] border border-[rgba(0,0,0,.18)] bg-white shadow-[0_20px_60px_-30px_rgba(0,0,0,.25)]">
+              <div className="absolute inset-0 translate-y-2 scale-[.96] border-[1.5px] border-black bg-white">
                 <EditorialImage seed={`style-${next.slug}`} ratio="3/4" className="h-full w-full" />
               </div>
             )}
             <div
-              className="absolute inset-0 border border-[rgba(0,0,0,.28)] bg-white shadow-[0_30px_80px_-30px_rgba(0,0,0,.4)] transition-transform duration-200"
+              className="absolute inset-0 border-[1.5px] border-black bg-white transition-transform duration-200"
               style={{
                 transform: `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`,
                 cursor: dragX ? "grabbing" : "grab",
+                boxShadow: "8px 8px 0 #000",
               }}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
@@ -192,10 +193,10 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
                   <p className="mt-1 text-[0.7rem] uppercase tracking-[0.32em] text-white/80">{current.designer} · {current.world}</p>
                 </div>
                 {dragX > 40 && (
-                  <div className="pointer-events-none absolute left-6 top-6 border border-[#000000] bg-white px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-[#000000]">Gefällt</div>
+                  <div className="pointer-events-none absolute left-6 top-6 border-[1.5px] border-black bg-white px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-black">Gefällt</div>
                 )}
                 {dragX < -40 && (
-                  <div className="pointer-events-none absolute right-6 top-6 border border-white bg-[#000000] px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-white">Weiter</div>
+                  <div className="pointer-events-none absolute right-6 top-6 border-[1.5px] border-white bg-black px-3 py-1 text-[0.65rem] uppercase tracking-[0.32em] text-white">Weiter</div>
                 )}
               </div>
             </div>
@@ -209,9 +210,9 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
           aria-label="Weiter"
           disabled={!current}
           onClick={() => current && react("skip", current)}
-          className="grid h-16 w-16 place-items-center rounded-full border border-[rgba(0,0,0,.35)] bg-white text-[#000000] transition-all duration-300 hover:scale-105 hover:bg-[#000000] hover:text-white disabled:opacity-40"
+          className="grid h-[54px] w-[54px] place-items-center border-[1.5px] border-black bg-white text-black transition-colors duration-200 hover:bg-black hover:text-white disabled:opacity-40"
         >
-          <X className="h-6 w-6" strokeWidth={1.4} />
+          <X className="h-6 w-6" strokeWidth={1.5} />
         </button>
         <p className="min-w-[220px] text-center palace-eyebrow text-[#55534E]">
           {count > 0 ? `${count} Reaktionen · deine Auswahl wird persönlicher` : "Deine ersten Reaktionen formen die Handschrift"}
@@ -221,9 +222,9 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
           aria-label="Gefällt"
           disabled={!current}
           onClick={() => current && react("like", current)}
-          className="grid h-16 w-16 place-items-center rounded-full border border-[#000000] bg-[#000000] text-white transition-all duration-300 hover:scale-105 hover:bg-white hover:text-[#000000] disabled:opacity-40"
+          className="grid h-[54px] w-[54px] place-items-center border-[1.5px] border-black bg-black text-white transition-colors duration-200 hover:bg-white hover:text-black disabled:opacity-40"
         >
-          <Heart className="h-6 w-6" strokeWidth={1.4} />
+          <Heart className="h-6 w-6" strokeWidth={1.5} />
         </button>
       </div>
     </div>

@@ -29,24 +29,22 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    // Softer, farther fog so the room has depth without eating the pieces.
-    scene.fog = new THREE.FogExp2(0xf6f3ec, 0.032);
+    // Neutral white horizon fog — no warm cast.
+    scene.fog = new THREE.FogExp2(0xffffff, 0.022);
     const initialFov = 38;
     const camera = new THREE.PerspectiveCamera(initialFov, container.clientWidth / container.clientHeight, 0.1, 100);
     camera.position.set(0, 2.1, 10.5);
     camera.lookAt(0, 0, 0);
 
-    // Lights — gallery-key + warm rim + soft under-fill so the black pieces
-    // never sink into the fog.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const key = new THREE.DirectionalLight(0xffffff, 1.05);
+    // Hard gallery lighting — neutral only.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const key = new THREE.DirectionalLight(0xffffff, 1.15);
     key.position.set(4, 6, 4);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0xffe9c9, 0.75);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.55);
     rim.position.set(-4, 3, -2);
     scene.add(rim);
-    // Extra fill from below for rim on the pawn's underside.
-    const fill = new THREE.DirectionalLight(0xd9d5cc, 0.35);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.3);
     fill.position.set(0, -4, 3);
     scene.add(fill);
 
@@ -74,8 +72,8 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
     const N = isMobile ? 13 : 21;
     const size = 0.62;
     const tileGeom = new THREE.BoxGeometry(size, 0.06, size);
-    const matLight = new THREE.MeshStandardMaterial({ color: 0xf6f3ec, roughness: 0.9 });
-    const matDark = new THREE.MeshStandardMaterial({ color: 0x0d0d0f, roughness: 0.85 });
+    const matLight = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+    const matDark = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.85 });
     const tiles: { mesh: THREE.Mesh; base: number; dist: number }[] = [];
     for (let i = 0; i < N; i++) {
       for (let j = 0; j < N; j++) {
@@ -105,7 +103,9 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
     const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false });
     const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), shadowMat);
     shadowMesh.rotation.x = -Math.PI / 2;
-    shadowMesh.position.y = -2.15;
+    // Sit above the board top so we avoid z-fighting on both mobile & desktop GPUs.
+    shadowMesh.position.y = -2.1;
+    shadowMesh.renderOrder = 2;
     scene.add(shadowMesh);
 
     // Pawn silhouette (lathe).
@@ -115,16 +115,20 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
       [0.42, 0.44], [0.42, 0.56], [0.24, 0.66], [0, 0.66],
     ].map(([x, y]) => new THREE.Vector2(x, y));
     const pawnGeom = new THREE.LatheGeometry(pawnProfile, 64);
-    const pieceMat = new THREE.MeshStandardMaterial({
-      color: 0x0c0c0e, roughness: 0.32, metalness: 0.15,
-      envMap, envMapIntensity: 0.55,
+    // Separate materials per figure so opacity fades are independent + safe.
+    const pawnMat = new THREE.MeshStandardMaterial({
+      color: 0x000000, roughness: 0.32, metalness: 0.15,
+      envMap, envMapIntensity: 0.55, transparent: true, opacity: 1,
     });
-    const pawnMesh = new THREE.Mesh(pawnGeom, pieceMat);
-    const pawnHead = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 32), pieceMat);
+    const queenMat = new THREE.MeshStandardMaterial({
+      color: 0x000000, roughness: 0.32, metalness: 0.15,
+      envMap, envMapIntensity: 0.55, transparent: true, opacity: 0,
+    });
+    const pawnMesh = new THREE.Mesh(pawnGeom, pawnMat);
+    const pawnHead = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 32), pawnMat);
     pawnHead.position.y = 1;
     const pawnGroup = new THREE.Group();
     pawnGroup.add(pawnMesh, pawnHead);
-    // Entrance animation start position (skipped if reduced motion).
     if (!reducedMotion) pawnGroup.position.y = 3.5;
     scene.add(pawnGroup);
 
@@ -135,19 +139,21 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
       [0.5, 0.8], [0.5, 0.92], [0.3, 1.02], [0.34, 1.28], [0.16, 1.36], [0, 1.36],
     ].map(([x, y]) => new THREE.Vector2(x, y));
     const queenGeom = new THREE.LatheGeometry(queenProfile, 64);
-    const queenMesh = new THREE.Mesh(queenGeom, pieceMat);
-    const queenOrb = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), pieceMat);
+    const queenMesh = new THREE.Mesh(queenGeom, queenMat);
+    const queenOrb = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), queenMat);
     queenOrb.position.y = 1.55;
     const crownGroup = new THREE.Group();
     for (let i = 0; i < 7; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.28, 12), pieceMat);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.28, 12), queenMat);
       const a = (i / 7) * Math.PI * 2;
       spike.position.set(Math.cos(a) * 0.34, 1.55, Math.sin(a) * 0.34);
       crownGroup.add(spike);
     }
     const queenGroup = new THREE.Group();
     queenGroup.add(queenMesh, queenOrb, crownGroup);
-    queenGroup.scale.setScalar(0);
+    // Start invisible but at a tiny non-zero scale to keep normals valid.
+    queenGroup.scale.setScalar(0.0001);
+    queenGroup.visible = false;
     scene.add(queenGroup);
 
     // Interaction.
@@ -199,12 +205,18 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
       pawnGroup.rotation.y = t * 0.2;
       queenGroup.rotation.y = t * 0.2 + stateRef.current.finale * Math.PI * 3;
 
-      // Morph.
-      const f = stateRef.current.finale;
-      pawnGroup.scale.setScalar(Math.max(0, 1 - f));
-      (pawnMesh.material as THREE.MeshStandardMaterial).opacity = 1 - f;
-      (pawnMesh.material as THREE.MeshStandardMaterial).transparent = true;
-      queenGroup.scale.setScalar(f);
+      // Morph — clamp everything into safe ranges so nothing flickers, inverts,
+      // or negatives out. Below 0.02 the queen is hidden entirely (no invalid geometry).
+      const f = Math.max(0, Math.min(1, stateRef.current.finale));
+      const pawnScale = Math.max(0.0001, 1 - f);
+      pawnGroup.scale.setScalar(pawnScale);
+      pawnMat.opacity = Math.max(0, Math.min(1, 1 - f));
+      pawnGroup.visible = pawnScale > 0.02;
+
+      const queenScale = Math.max(0.0001, f);
+      queenGroup.scale.setScalar(queenScale);
+      queenMat.opacity = Math.max(0, Math.min(1, f));
+      queenGroup.visible = f > 0.02;
 
       // Camera parallax + dolly-zoom (fov shrinks as finale approaches).
       const targetFov = initialFov - f * 6;
@@ -233,7 +245,8 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
       matDark.dispose();
       pawnGeom.dispose();
       queenGeom.dispose();
-      pieceMat.dispose();
+      pawnMat.dispose();
+      queenMat.dispose();
       shadowTex.dispose();
       shadowMat.dispose();
       envMap?.dispose();

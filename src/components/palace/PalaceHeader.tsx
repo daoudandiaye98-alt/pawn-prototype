@@ -80,26 +80,25 @@ export function PalaceHeader() {
         className="fixed inset-x-0 top-0 z-50 border-b-[1.5px] border-black bg-white"
         style={{ transitionTimingFunction: "cubic-bezier(.76,0,.18,1)" }}
       >
-
-        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_1fr_auto] items-center gap-8 px-6 py-3 md:px-10 md:py-4 xl:gap-14 xl:px-14">
-          {/* Wordmark */}
+        <div className="mx-auto flex h-14 max-w-[1600px] items-stretch">
+          {/* Logo cell */}
           <Link
             to="/"
             aria-label="PAWN"
-            className="whitespace-nowrap text-black"
+            className="flex items-center whitespace-nowrap border-r-[1.5px] border-black px-5 text-black md:px-7 hover-invert"
           >
-            <PawnWordmark className="text-[1.5rem] md:text-[1.6rem]" />
+            <PawnWordmark className="text-[1.35rem] md:text-[1.5rem]" />
           </Link>
 
-          {/* Desktop nav — collapses to burger below the lg breakpoint (1024px) */}
-          <nav className="hidden min-w-0 items-center justify-center gap-6 xl:flex xl:gap-9">
+          {/* Nav cells */}
+          <nav className="hidden min-w-0 flex-1 items-stretch xl:flex">
             {NAV.map((item) => (
               <NavLink
                 key={item.label}
                 to={item.to}
                 className={({ isActive }) =>
-                  `whitespace-nowrap text-[0.68rem] uppercase tracking-[0.28em] transition-colors duration-300 ${
-                    isActive ? "text-[#000000]" : "text-[#55534E] hover:text-[#000000]"
+                  `flex items-center whitespace-nowrap border-r border-[rgba(0,0,0,.18)] px-5 text-[0.66rem] uppercase tracking-[0.3em] transition-colors duration-200 hover:bg-black hover:text-white ${
+                    isActive ? "bg-black text-white" : "text-[#111]"
                   }`
                 }
               >
@@ -108,46 +107,50 @@ export function PalaceHeader() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3 justify-self-end md:gap-5">
+          <div className="ml-auto flex items-stretch xl:ml-0">
+            {/* Frag PAWN — solid black cell with blinking dot */}
+            <button
+              onClick={() => setChatOpen(true)}
+              className="hidden items-center gap-2 whitespace-nowrap border-l-[1.5px] border-black bg-black px-4 text-[0.62rem] uppercase tracking-[0.32em] text-white transition-colors duration-200 hover:bg-white hover:text-black xl:flex xl:px-5"
+            >
+              <span className="inline-block h-[6px] w-[6px] animate-pulse rounded-full bg-current" />
+              {t("nav.frag")}
+            </button>
+
+            {/* Search cell */}
             <button
               type="button"
               aria-label="Suche"
               onClick={() => setSearchOpen(true)}
-              className="hidden text-[#55534E] hover:text-[#000000] md:inline-flex"
+              className="hidden items-center border-l-[1.5px] border-black px-4 text-[#111] hover:bg-black hover:text-white md:inline-flex"
             >
               <PawnSearchIcon className="h-5 w-5" />
             </button>
 
-            <button
-              onClick={() => setChatOpen(true)}
-              className="hidden items-center gap-2 whitespace-nowrap border border-[rgba(0,0,0,.85)] px-3 py-2 text-[0.62rem] uppercase tracking-[0.3em] text-[#000000] transition-colors duration-300 hover:bg-[#000000] hover:text-[#FFFFFF] xl:flex xl:px-4"
-            >
-              <span className="h-[6px] w-[6px] rounded-full bg-[#000000]" />
-              {t("nav.frag")}
-            </button>
-
+            {/* Locale cell */}
             <button
               type="button"
               onClick={() => setLocale(locale === "de" ? "en" : "de")}
-              className="hidden whitespace-nowrap text-[0.6rem] uppercase tracking-[0.28em] text-[#55534E] hover:text-[#000000] xl:inline"
+              className="hidden items-center whitespace-nowrap border-l border-[rgba(0,0,0,.18)] px-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#111] hover:bg-black hover:text-white xl:inline-flex"
               aria-label="Sprache wechseln"
             >
-              {locale.toUpperCase()} · {locale === "de" ? "EN" : "DE"}
+              {locale.toUpperCase()}
             </button>
 
+            {/* Account cell */}
             {user ? (
-              <div ref={accountRef} className="relative hidden xl:block">
+              <div ref={accountRef} className="relative hidden border-l-[1.5px] border-black xl:block">
                 <button
                   type="button"
                   aria-label="Konto"
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="text-[#55534E] hover:text-[#000000]"
+                  className="flex h-full items-center px-4 text-[#111] hover:bg-black hover:text-white"
                 >
                   <PawnProfileIcon className="h-5 w-5" />
                 </button>
                 {accountOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-64 border border-[rgba(0,0,0,.18)] bg-white shadow-[0_20px_60px_-30px_rgba(0,0,0,0.4)]">
-                    <div className="border-b border-[rgba(0,0,0,.14)] px-5 py-4">
+                  <div className="absolute right-0 top-full w-64 border-[1.5px] border-black bg-white shadow-[6px_6px_0_#000]">
+                    <div className="border-b-[1.5px] border-black px-5 py-4">
                       <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#55534E]">Zutritt</p>
                       <p className="mt-1 font-serif italic text-[0.95rem] text-[#000000]" style={{ fontWeight: 500 }}>
                         {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
@@ -158,47 +161,48 @@ export function PalaceHeader() {
                     {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>Mein Studio</MenuItem>}
                     {!isDesigner && isApplicant && <MenuItem to="/apply" onClick={() => setAccountOpen(false)}>Bewerbungsstatus</MenuItem>}
                     {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>Admin-Cockpit</MenuItem>}
-
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="block w-full border-t border-[rgba(0,0,0,.14)] px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-[#000000] hover:text-white"
+                      className="block w-full border-t-[1.5px] border-black px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-black hover:text-white"
                     >
                       Abmelden
                     </button>
                   </div>
                 )}
-
               </div>
             ) : (
               <Link
                 to="/auth"
                 aria-label="Anmelden"
-                className="hidden text-[#55534E] hover:text-[#000000] xl:inline-flex"
+                className="hidden items-center border-l-[1.5px] border-black px-4 text-[#111] hover:bg-black hover:text-white xl:inline-flex"
               >
                 <PawnProfileIcon className="h-5 w-5" />
               </Link>
             )}
 
+            {/* Cart cell */}
             <Link
               to="/cart"
               aria-label={`Warenkorb${cartCount > 0 ? ` (${cartCount})` : ""}`}
-              className="text-[#55534E] hover:text-[#000000]"
+              className="flex items-center border-l-[1.5px] border-black px-4 text-[#111] hover:bg-black hover:text-white"
             >
               <PawnBagIcon count={cartCount} className="h-5 w-5" />
             </Link>
 
+            {/* Burger */}
             <button
               type="button"
               aria-label="Menü öffnen"
               onClick={() => setMenuOpen(true)}
-              className="text-[#000000] xl:hidden"
+              className="flex items-center border-l-[1.5px] border-black px-4 text-[#000000] hover:bg-black hover:text-white xl:hidden"
             >
               <PawnMenuIcon className="h-5 w-5" />
             </button>
           </div>
         </div>
       </header>
+
 
 
       {/* Mobile / tablet fullscreen menu */}

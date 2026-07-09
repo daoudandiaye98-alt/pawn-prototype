@@ -220,12 +220,56 @@ Deno.serve(async (req) => {
     }
     turns += 1;
 
+    // --- Ontology-aware term extraction from user message -----------------
+    let ontologyTerms: { term: string; kind: string }[] = [];
+    if (admin && lastUser) {
+      const { data: ont } = await admin
+        .from("fashion_ontology")
+        .select("term, kind, synonyms")
+        .limit(400);
+      const rows = (ont ?? []) as { term: string; kind: string; synonyms: string[] | null }[];
+      const t = lastUser.toLowerCase();
+      const seen = new Set<string>();
+      for (const r of rows) {
+        const tokens = [r.term, ...(r.synonyms ?? [])].filter(Boolean).map((s) => s.toLowerCase());
+        for (const tok of tokens) {
+          if (tok.length >= 3 && t.includes(tok) && !seen.has(r.term)) {
+            seen.add(r.term);
+            ontologyTerms.push({ term: r.term, kind: r.kind });
+            break;
+          }
+        }
+        if (ontologyTerms.length >= 8) break;
+      }
+    }
+
+    // --- Load user_memory for signed-in users -----------------------------
+    interface UserMemory { preferences: Record<string, unknown>; facts: string[] }
+    let memory: UserMemory = { preferences: {}, facts: [] };
+    if (admin && user_id) {
+      const { data: mem } = await admin.from("user_memory").select("preferences, facts").eq("user_id", user_id).maybeSingle();
+      if (mem) {
+        memory = {
+          preferences: (mem.preferences as Record<string, unknown>) ?? {},
+          facts: Array.isArray(mem.facts) ? (mem.facts as string[]) : [],
+        };
+      }
+    }
+
     if (admin && lastUser) {
       await admin.from("ai_sessions").upsert({ session_id, user_id, extracted: extracted as unknown as Record<string, unknown>, turns });
       await admin.from("domain_events").insert({
         id: crypto.randomUUID(), type: "ai.taste_signal",
         actor: user_id ? "user" : "anon",
-        payload: { raw: lastUser, session_id, world: extracted.world ?? null, mood: extracted.mood ?? null, occasion: extracted.occasion ?? null, ...(user_id ? { user_id } : {}) },
+        payload: {
+          raw: lastUser,
+          session_id,
+          world: extracted.world ?? null,
+          mood: extracted.mood ?? null,
+          occasion: extracted.occasion ?? null,
+          terms: ontologyTerms,
+          ...(user_id ? { user_id } : {}),
+        },
         schema_version: 1,
       });
     }
@@ -234,10 +278,31 @@ Deno.serve(async (req) => {
     let action: Action | null = null;
     const cards: Card[] = [];
     let contextHint = "";
+    let trendCards: Card[] = [];
+    let trendReplyPrefix = "";
     if (admin) {
       const cand = await loadCandidates(admin, extracted.world);
       action = detectNavAction(lastUser, { designers: cand.allDesigners, products: cand.allProducts });
-      // Designer-Kontext: Studio-Fragen an den Copilot verweisen
+
+      // Trend intent: "was ist im trend / trends / momentum"
+      const trendIntent = /\b(trend|trends|im trend|momentum|angesagt|gerade beliebt)\b/i.test(lastUser);
+      if (trendIntent) {
+        const worldForTrends = extracted.world ?? "Mode";
+        const { data: mo } = await admin.rpc("trend_momentum" as never, { _world: worldForTrends } as never);
+        const top3 = (((mo as unknown) as { term: string; momentum: string; latest_score: number }[] | null) ?? [])
+          .filter((r) => r.momentum === "steigend")
+          .slice(0, 3);
+        if (top3.length) {
+          // Grab 2 products whose tags overlap with any of these terms
+          const wantedTerms = new Set(top3.map((r) => r.term.toLowerCase()));
+          const matches = cand.products.filter((p) => (p as unknown as { tags?: string[] }).tags?.some((tag) => wantedTerms.has(tag.toLowerCase()))).slice(0, 2);
+          for (const p of matches) {
+            trendCards.push({ kind: "product", title: p.name, subtitle: p.world ?? undefined, href: `/product/${p.slug}`, reason: "Gerade im Aufwärtstrend." });
+          }
+          trendReplyPrefix = `Aktuell im Aufwärtstrend in ${worldForTrends}: ${top3.map((r) => r.term).join(", ")}.`;
+        }
+      }
+
       if (!action && user_id && /\b(mein store|studio|copilot|kollektion|meine produkte|umsatz|verkäufe|kampagne)\b/i.test(lastUser)) {
         const { data: d } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
         if (d) action = { type: "navigate", path: "/studio/copilot", label: "Zum Copilot im Studio" };
@@ -252,8 +317,45 @@ Deno.serve(async (req) => {
     }
     if (action) contextHint = `Der Nutzer hat gerade nach Navigation gefragt: ${action.label}. Antworte in EINEM kurzen warmen Satz, bestätige dass du ihn hinbringst. Keine Fragen.`;
 
+    // Weave memory into the system prompt
+    let memoryHint = "";
+    if (memory.facts.length || Object.keys(memory.preferences).length) {
+      const factList = memory.facts.slice(-4).join(" · ");
+      const prefList = Object.entries(memory.preferences).slice(0, 6).map(([k, v]) => `${k}: ${String(v)}`).join(" · ");
+      memoryHint = `Was PAWN sich über diese Person merkt${factList ? ` · Notizen: ${factList}` : ""}${prefList ? ` · Präferenzen: ${prefList}` : ""}. Verbinde deine Antwort dezent damit, ohne es explizit vorzulesen.`;
+    }
+    if (trendReplyPrefix) contextHint = `${trendReplyPrefix} ${contextHint}`.trim();
+
     const system = admin ? await loadSystemPrompt(admin) : DEFAULT_SYSTEM;
-    const reply = (await callProvider(system, messages, contextHint)) ?? fallbackReply(extracted, cards, turns, action);
+    const fullContextHint = [memoryHint, contextHint].filter(Boolean).join("\n\n");
+    const rawReply = (await callProvider(system, messages, fullContextHint)) ?? fallbackReply(extracted, cards, turns, action);
+    const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
+
+    // --- Upsert user_memory: extract simple facts / preferences -----------
+    if (admin && user_id && lastUser) {
+      const nextPrefs = { ...memory.preferences };
+      if (extracted.world) nextPrefs.welt = extracted.world;
+      if (extracted.mood) nextPrefs.stimmung = extracted.mood;
+      if (extracted.occasion) nextPrefs.anlass = extracted.occasion;
+      for (const t of ontologyTerms.slice(0, 3)) {
+        const key = `mag:${t.kind}`;
+        nextPrefs[key] = t.term;
+      }
+      // Simple fact extraction: "ich bin/heiße/arbeite/wohne … " sentences
+      const newFacts: string[] = [];
+      const factRegex = /(ich (?:bin|heiße|arbeite als|wohne in|mag|liebe|hasse|trage|suche)[^.!?\n]{3,80})/gi;
+      let m;
+      while ((m = factRegex.exec(lastUser)) !== null && newFacts.length < 2) {
+        newFacts.push(m[1].trim().slice(0, 120));
+      }
+      const mergedFacts = [...memory.facts, ...newFacts].slice(-20);
+      await admin.from("user_memory").upsert({
+        user_id,
+        preferences: nextPrefs,
+        facts: mergedFacts,
+        updated_at: new Date().toISOString(),
+      });
+    }
 
     const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
     if (admin) {
@@ -264,7 +366,8 @@ Deno.serve(async (req) => {
         schema_version: 1,
       });
     }
-    return new Response(JSON.stringify({ reply, cards, action, session_id, provider }), {
+    const allCards = [...cards, ...trendCards].slice(0, 4);
+    return new Response(JSON.stringify({ reply, cards: allCards, action, session_id, provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch {
