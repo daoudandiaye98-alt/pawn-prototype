@@ -573,22 +573,50 @@ export default function StudioCampaignNew() {
           ) : (
             <div className="grid gap-8 lg:grid-cols-[1fr_.6fr]">
               <div className="border border-border bg-black p-4">
-                <div ref={previewMountRef} className="mx-auto aspect-[9/16] w-full max-w-sm bg-black" />
+                <div ref={previewMountRef} className={`mx-auto ${format === "1:1" ? "aspect-square" : "aspect-[9/16]"} w-full max-w-sm bg-black`} />
                 {videoUrl && (
-                  <video src={videoUrl} controls playsInline className="mx-auto mt-4 aspect-[9/16] w-full max-w-sm bg-black" />
+                  <video src={videoUrl} controls playsInline className={`mx-auto mt-4 ${format === "1:1" ? "aspect-square" : "aspect-[9/16]"} w-full max-w-sm bg-black`} />
                 )}
               </div>
               <div className="space-y-4">
-                <p className="editorial-eyebrow">Produktion</p>
+                <p className="editorial-eyebrow">Format</p>
+                <div className="flex gap-2">
+                  {(["9:16", "1:1"] as Format[]).map((f) => (
+                    <button key={f} onClick={() => setFormat(f)}
+                      className={`border px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] ${format === f ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                      {f === "9:16" ? "Reel · 9:16" : "Feed · 1:1"}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="editorial-eyebrow pt-2">Produktion</p>
+                {cinematic && cinematicStage && cinematicStage !== "ready" && (
+                  <div className="border border-foreground bg-white p-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Wand2 className="h-4 w-4" />
+                      <span>
+                        {cinematicStage === "submitting" && "Übergabe an die Kamera…"}
+                        {cinematicStage === "polling" && "Die Kamera arbeitet — das kann 1–3 Minuten dauern."}
+                        {cinematicStage === "failed" && "Die Kamera hatte einen schlechten Tag — es wird die Editorial-Fassung."}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {!videoBlob ? (
                   <>
                     <p className="text-sm text-muted-foreground">
                       Der Renderer läuft direkt in deinem Browser. Etwa 15 Sekunden. Kein Ton — Musik fügst du beim Posten hinzu.
                     </p>
-                    <button onClick={doRender} disabled={renderBusy}
-                      className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
-                      {renderBusy ? `PAWN produziert… ${renderPct}%` : "PAWN produziert"}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={doRender} disabled={renderBusy}
+                        className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
+                        {renderBusy ? `PAWN produziert… ${renderPct}%` : "PAWN produziert"}
+                      </button>
+                      <button onClick={() => setSeed(randomSeed())} disabled={renderBusy}
+                        className="flex items-center gap-2 border border-border bg-white px-4 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:border-foreground disabled:opacity-40">
+                        <Shuffle className="h-3 w-3" /> Neu würfeln
+                      </button>
+                    </div>
                     {renderBusy && (
                       <div className="h-1 w-full border border-border bg-white">
                         <div className="h-full bg-foreground transition-all" style={{ width: `${renderPct}%` }} />
@@ -599,9 +627,9 @@ export default function StudioCampaignNew() {
                   <>
                     <p className="text-sm">Fertig. Sieh dir das Ergebnis an.</p>
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={doRender}
-                        className="border border-border bg-white px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-muted">
-                        Neu produzieren
+                      <button onClick={() => { setSeed(randomSeed()); void doRender(); }}
+                        className="flex items-center gap-2 border border-border bg-white px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-muted">
+                        <Shuffle className="h-3 w-3" /> Neu produzieren
                       </button>
                       <button onClick={saveForApproval}
                         className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background">
@@ -612,10 +640,12 @@ export default function StudioCampaignNew() {
                       <Music className="mt-0.5 h-3 w-3 shrink-0" />
                       Bewusst ohne Ton: Musik wählst du direkt in Reels oder TikTok — dort ist sie lizenzsicher.
                     </p>
+                    <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Seed · {seed}</p>
                   </>
                 )}
               </div>
             </div>
+
           )}
           <div className="flex items-center justify-between">
             <button onClick={() => setStep(2)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
