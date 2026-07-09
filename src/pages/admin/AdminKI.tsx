@@ -536,3 +536,62 @@ function SuggestionDiff({ sugg, onAccept, onDismiss }: { sugg: { key: string; ol
     </div>
   );
 }
+
+function ProviderStatusCards() {
+  const [falCost, setFalCost] = useState<number | null>(null);
+  const [falCount, setFalCount] = useState<number>(0);
+
+  useEffect(() => {
+    (async () => {
+      const since = new Date(); since.setDate(since.getDate() - 30);
+      const { data } = await supabase.from("generation_requests")
+        .select("cost_estimate, status")
+        .eq("provider", "fal")
+        .gte("created_at", since.toISOString());
+      const rows = (data ?? []) as Array<{ cost_estimate: number | null; status: string }>;
+      setFalCount(rows.length);
+      setFalCost(rows.reduce((sum, r) => sum + Number(r.cost_estimate ?? 0), 0));
+    })();
+  }, []);
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="border-[1.5px] border-foreground bg-white p-5">
+        <div className="flex items-center justify-between">
+          <p className="font-serif text-lg">fal.ai · Kinematischer Modus</p>
+          <span className="border border-foreground px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.28em]">Bild→Video</span>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Modell: <span className="tabular-nums">fal-ai/kling-video/v2.1/standard/image-to-video</span>
+        </p>
+        <p className="mt-2 text-sm">
+          Letzte 30 Tage: <span className="tabular-nums font-medium">{falCount}</span> Aufträge · Kosten-Einheiten <span className="tabular-nums font-medium">{falCost ?? "—"}</span>
+        </p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Aktivieren: fal.ai-Konto anlegen → API-Key erzeugen → als <code>FAL_KEY</code> in Project Settings → Secrets speichern. Ohne Key ist die Option im Funnel deaktiviert.
+        </p>
+      </div>
+
+      <div className="border-[1.5px] border-border bg-white p-5 opacity-90">
+        <div className="flex items-center justify-between">
+          <p className="font-serif text-lg">Pinterest</p>
+          <span className="border border-border px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.28em]">Bald</span>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Board-Direktposts kommen im nächsten Zyklus. Felder werden dann hier freigeschaltet.
+        </p>
+        <div className="mt-3 grid gap-2 text-sm">
+          <label className="flex flex-col gap-1">
+            <span className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">Board-ID</span>
+            <input disabled className="border border-border bg-muted p-2 text-sm" placeholder="wird noch nicht ausgelesen" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">API-Token</span>
+            <input disabled type="password" className="border border-border bg-muted p-2 text-sm" placeholder="folgt" />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
