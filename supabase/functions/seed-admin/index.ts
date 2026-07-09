@@ -4,7 +4,9 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const EMAIL = "dodondiaye99@gmail.com";
-const PASSWORD = "123456";
+// Note: leaked-password protection (HIBP) rejects weak passwords like "123456".
+// Use a strong password by default; body { password } can override.
+const PASSWORD = "Pawn!Admin2026";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
