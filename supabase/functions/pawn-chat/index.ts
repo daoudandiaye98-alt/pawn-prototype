@@ -383,7 +383,53 @@ Deno.serve(async (req) => {
     const directiveBlock = directives.length ? `Direktiven (immer beachten):\n- ${directives.join("\n- ")}` : "";
     const system = [persona, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [memoryHint, contextHint].filter(Boolean).join("\n\n");
-    const rawReply = (await callProvider(system, messages, fullContextHint)) ?? fallbackReply(extracted, cards, turns, action);
+
+    // Model tier je nach Rolle/Plan
+    let tier: Tier = "standard";
+    if (admin && user_id && role === "designer") {
+      try {
+        const { data: d } = await admin.from("designers").select("plan").eq("user_id", user_id).maybeSingle();
+        const p = (d as { plan?: string } | null)?.plan;
+        if (p && PLAN_TIER[p]) tier = PLAN_TIER[p];
+      } catch { /* soft */ }
+    }
+    const model = admin ? await loadModelForTier(admin, tier) : "gpt-4o-mini";
+
+    // Pinterest board pickup
+    if (admin && user_id && body.pinterest_board) {
+      try {
+        const nextPrefs = { ...(memory.preferences ?? {}), pinterest_board: body.pinterest_board };
+        await admin.from("user_memory").upsert({ user_id, preferences: nextPrefs, facts: memory.facts, updated_at: new Date().toISOString() });
+        await admin.from("domain_events").insert({
+          id: crypto.randomUUID(), type: "ai.taste_signal", actor: "user",
+          payload: { source: "pinterest", session_id, user_id, board: body.pinterest_board },
+          schema_version: 1,
+        });
+      } catch { /* soft */ }
+    }
+
+    // Vision-Aufruf bei Bild
+    let imageTerms: string[] = [];
+    if (body.image_url && Deno.env.get("OPENAI_API_KEY")) {
+      const visionRaw = await callOpenAI(
+        "Du bist PAWN. Analysiere Modebilder/Moodboards: extrahiere 4-8 kurze Terme zu Silhouette, Material, Farbpalette, Stimmung (kommagetrennt), dann EIN warmer Satz auf Deutsch.",
+        [], "", body.image_url, "gpt-4o-mini"
+      );
+      if (visionRaw) {
+        const line = visionRaw.split(/[\n.]/)[0] ?? "";
+        imageTerms = line.split(",").map((s) => s.trim().toLowerCase()).filter((s) => s.length >= 3 && s.length <= 40).slice(0, 8);
+      }
+    }
+    if (admin && body.image_url) {
+      await admin.from("domain_events").insert({
+        id: crypto.randomUUID(), type: "ai.taste_signal",
+        actor: user_id ? "user" : "anon",
+        payload: { source: "image", session_id, user_id: user_id ?? null, image_url: body.image_url, terms: imageTerms },
+        schema_version: 1,
+      });
+    }
+
+    const rawReply = (await callProvider(system, messages, fullContextHint, body.image_url, model)) ?? fallbackReply(extracted, cards, turns, action);
     const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
 
     // --- Upsert user_memory: extract simple facts / preferences -----------
