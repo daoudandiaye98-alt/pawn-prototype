@@ -496,7 +496,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Product DNA — Moleküle */}
-          <Section title="DNA deines Stücks" help="Vier kurze Antworten helfen PAWN, dein Stück den richtigen Menschen zu zeigen. Wähle aus der Palette — was fehlt, kannst du in den Tags frei ergänzen.">
+          <Section title="DNA deines Stücks" help="Vier kurze Antworten helfen PAWN, dein Stück den richtigen Menschen zu zeigen. Wähle aus der Palette — was fehlt, kannst du in den Tags frei ergänzen." anchorId="dna">
             <ProductDNAEditor
               dna={local.product_dna ?? emptyDNA()}
               world={local.world ?? "Mode"}
