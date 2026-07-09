@@ -1,4 +1,8 @@
-// Generative B-Roll (Stufe 2/3) — Provider-Interface. Ohne Key: sauberer Fehler.
+/**
+ * Kinematischer Modus — Bild-zu-Video via fal.ai Queue-API.
+ * Body: { campaign_id, image_urls: string[], motion_prompt?: string }
+ * Ohne FAL_KEY → 402 mit klarem Text.
+ */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -10,45 +14,103 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
+const DEFAULT_MODEL = "fal-ai/kling-video/v2.1/standard/image-to-video";
+const DEFAULT_TEMPLATE =
+  "subtle fabric movement, slow cinematic camera push-in, monochrome high-fashion editorial, soft studio light, {designer_prompt}";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const user_id = jwtSub(req.headers.get("Authorization"));
-    if (!user_id) return new Response(JSON.stringify({ error: "auth required" }), { status: 401, headers: corsHeaders });
+    if (!user_id) return json({ error: "auth_required" }, 401);
 
-    const { campaign_id, tier, provider } = await req.json() as { campaign_id?: string; tier?: "accent" | "full"; provider?: string };
-    if (!campaign_id) return new Response(JSON.stringify({ error: "campaign_id required" }), { status: 400, headers: corsHeaders });
+    const FAL_KEY = Deno.env.get("FAL_KEY");
+    if (!FAL_KEY) {
+      return json({
+        error: "provider_not_configured",
+        message: "Der kinematische Modus wird vom Haus aktiviert. Bitte FAL_KEY in Project Settings → Secrets hinterlegen.",
+      }, 402);
+    }
+
+    const body = await req.json().catch(() => ({})) as {
+      campaign_id?: string; image_urls?: string[]; motion_prompt?: string;
+    };
+    if (!body.campaign_id) return json({ error: "campaign_id_required" }, 400);
+    const images = (body.image_urls ?? []).filter((u) => typeof u === "string" && u.length > 0).slice(0, 4);
+    if (images.length === 0) return json({ error: "image_urls_required" }, 400);
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, svc, { auth: { persistSession: false } });
 
-    const p = (provider ?? "kling").toLowerCase();
-    const key = p === "runway" ? Deno.env.get("RUNWAY_API_KEY") : Deno.env.get("KLING_API_KEY");
-    if (!key) {
-      return new Response(JSON.stringify({
-        error: "provider_not_configured",
-        message: `Provider ${p} ist noch nicht eingerichtet. Bitte API-Key hinterlegen.`,
-      }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Load campaign to verify designer + ownership.
+    const { data: camp } = await admin.from("campaigns")
+      .select("id, designer_id, designers!inner(id, user_id, brand_dna, plan)")
+      .eq("id", body.campaign_id).maybeSingle();
+    const designer = (camp as { designers?: { user_id: string; brand_dna?: Record<string, unknown> | null; plan?: string } })?.designers;
+    if (!camp || !designer) return json({ error: "campaign_not_found" }, 404);
+
+    // Admin bypass; else designer must own.
+    const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user_id, _role: "admin" });
+    if (!isAdmin && designer.user_id !== user_id) return json({ error: "forbidden" }, 403);
+
+    // Config
+    const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "video_provider").maybeSingle();
+    const model = (cfg?.value as { model?: string } | null)?.model ?? DEFAULT_MODEL;
+    const { data: tpl } = await admin.from("ai_config").select("value").eq("key", "video_motion_prompt_template").maybeSingle();
+    const template = (tpl?.value as { template?: string } | null)?.template ?? DEFAULT_TEMPLATE;
+    const prompt = template.replace("{designer_prompt}", body.motion_prompt ?? "");
+
+    const { data: limits } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
+    const costUnits = ((limits?.value as { accent_cost_units?: number } | null)?.accent_cost_units) ?? 2;
+
+    // Submit each image to fal Queue.
+    const submissions = [];
+    for (const image_url of images) {
+      try {
+        const r = await fetch(`https://queue.fal.run/${model}`, {
+          method: "POST",
+          headers: { "Authorization": `Key ${FAL_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ image_url, prompt, duration: 5 }),
+        });
+        const rj = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          submissions.push({ image_url, error: rj?.detail || rj?.error || r.statusText });
+          continue;
+        }
+        const request_id: string = rj.request_id ?? rj.requestId ?? "";
+        const status_url: string = rj.status_url ?? rj.statusUrl ?? "";
+        const response_url: string = rj.response_url ?? rj.responseUrl ?? "";
+        const { data: row } = await admin.from("generation_requests").insert({
+          campaign_id: body.campaign_id,
+          tier: "accent",
+          provider: "fal",
+          status: "running",
+          cost_estimate: costUnits,
+          requested_by: user_id,
+          error: null,
+          result_url: null,
+        } as never).select("id").single();
+        // Store fal handles inside error field is ugly; use campaigns.content instead? Simpler: patch result_url later.
+        // Persist provider handles in a side field: campaigns table has no free jsonb per request; use campaigns.content or a temp map.
+        // We piggyback on `error` column repurposed for handles until polling completes.
+        await admin.from("generation_requests").update({
+          error: JSON.stringify({ request_id, status_url, response_url, image_url }),
+        } as never).eq("id", (row as { id: string }).id);
+        submissions.push({ id: (row as { id: string }).id, request_id, image_url });
+      } catch (e) {
+        submissions.push({ image_url, error: String((e as Error).message) });
+      }
     }
 
-    // Insert request row
-    const { data: row, error } = await admin.from("generation_requests").insert({
-      campaign_id, tier: tier ?? "accent", provider: p, status: "requested", requested_by: user_id,
-    } as never).select("id").single();
-    if (error) throw error;
-
-    // TODO: Provider-Call:
-    //   Kling: POST https://api.kling.ai/v1/videos/generate  (Bearer $KLING_API_KEY)
-    //   Runway: POST https://api.runwayml.com/v1/text_to_video
-    // Bei Erfolg: generation_requests.status='done', result_url
-
-    return new Response(JSON.stringify({ id: (row as { id: string }).id, status: "requested", provider: p }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ ok: true, model, prompt, cost_units: costUnits * submissions.filter((s) => "id" in s).length, submissions }, 200);
   } catch (e) {
-    return new Response(JSON.stringify({ error: String((e as Error)?.message ?? e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
 });
+
+function json(obj: unknown, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
