@@ -22,14 +22,25 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
-async function callOpenAI(system: string, messages: Msg[]): Promise<string | null> {
+type Tier = "standard" | "plus" | "max";
+const PLAN_TO_TIER: Record<string, Tier> = { haus: "standard", atelier: "plus", maison: "max" };
+
+async function loadModelForTier(admin: SupabaseClient, tier: Tier): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "model_tiers").maybeSingle();
+    const v = data?.value as Record<Tier, { model?: string }> | undefined;
+    return v?.[tier]?.model ?? (tier === "standard" ? "gpt-4o-mini" : "gpt-4o");
+  } catch { return tier === "standard" ? "gpt-4o-mini" : "gpt-4o"; }
+}
+
+async function callOpenAI(model: string, system: string, messages: Msg[]): Promise<string | null> {
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) return null;
   try {
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.6, messages: [{ role: "system", content: system }, ...messages] }),
+      body: JSON.stringify({ model, temperature: 0.6, messages: [{ role: "system", content: system }, ...messages] }),
     });
     if (!r.ok) return null;
     const d = await r.json();
@@ -50,8 +61,8 @@ async function callGateway(system: string, messages: Msg[]): Promise<string | nu
     return d.choices?.[0]?.message?.content ?? null;
   } catch { return null; }
 }
-async function ai(system: string, messages: Msg[]): Promise<string | null> {
-  return (await callOpenAI(system, messages)) ?? (await callGateway(system, messages));
+async function ai(model: string, system: string, messages: Msg[]): Promise<string | null> {
+  return (await callOpenAI(model, system, messages)) ?? (await callGateway(system, messages));
 }
 
 async function loadPrompt(admin: SupabaseClient): Promise<string> {
@@ -77,7 +88,7 @@ async function logResponse(admin: SupabaseClient, actor: string, mode: Mode, des
   } catch { /* swallow */ }
 }
 
-interface Designer { id: string; brand_name: string; slug: string; story: string | null; tags: string[] | null; user_id: string }
+interface Designer { id: string; brand_name: string; slug: string; story: string | null; tags: string[] | null; user_id: string; plan?: string }
 
 function providerName(): string {
   if (Deno.env.get("OPENAI_API_KEY")) return "openai";
@@ -116,11 +127,13 @@ Deno.serve(async (req) => {
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, key, { auth: { persistSession: false } });
 
-    const { data: dRow } = await admin.from("designers").select("id, brand_name, slug, story, tags, user_id").eq("user_id", user_id).maybeSingle();
+    const { data: dRow } = await admin.from("designers").select("id, brand_name, slug, story, tags, user_id, plan").eq("user_id", user_id).maybeSingle();
     const designer = (dRow as Designer | null) ?? null;
     if (!designer) return ok({ ...fallbackFor(), error: "no_designer" });
 
     const personaText = await loadPrompt(admin);
+    const tier: Tier = PLAN_TO_TIER[designer.plan ?? "haus"] ?? "standard";
+    const model = await loadModelForTier(admin, tier);
     const system = personaText;
     const provider = providerName();
 
