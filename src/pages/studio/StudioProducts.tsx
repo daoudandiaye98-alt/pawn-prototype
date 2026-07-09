@@ -6,11 +6,19 @@ import { toast } from "sonner";
 import { Plus, Upload, X, Sparkles, Megaphone, HelpCircle, Check, ImageIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { TagInput } from "@/features/ontology/TagInput";
+import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology";
 
 type World = "Mode" | "Interior" | "Kunst";
 type Status = "draft" | "published" | "archived";
 type InventoryMode = "stock" | "made_to_order";
 type Variant = { name: string; options: string[] };
+
+interface ProductDNA {
+  materials: string[];
+  silhouette: string[];
+  colors: string[];
+  mood: string[];
+}
 
 interface ProductRow {
   id: string;
@@ -30,12 +38,16 @@ interface ProductRow {
   variants: Variant[];
   weight_grams: number | null;
   lead_time_days: number | null;
+  product_dna: ProductDNA;
 }
+
+const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
 
 const emptyEdit = (): Partial<ProductRow> => ({
   world: "Mode", status: "draft", price: 0, tags: [], name: "", description: "",
   inventory_mode: "stock", stock_quantity: 0, allow_custom_requests: false,
   variants: [], compare_at_price: null, sku: "", weight_grams: null, lead_time_days: null,
+  product_dna: emptyDNA(),
 });
 
 function slugify(s: string) {
