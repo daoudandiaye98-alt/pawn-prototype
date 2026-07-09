@@ -1164,6 +1164,7 @@ export type Database = {
           lead_time_days: number | null
           name: string
           price: number
+          product_dna: Json
           sku: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
@@ -1186,6 +1187,7 @@ export type Database = {
           lead_time_days?: number | null
           name: string
           price?: number
+          product_dna?: Json
           sku?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -1208,6 +1210,7 @@ export type Database = {
           lead_time_days?: number | null
           name?: string
           price?: number
+          product_dna?: Json
           sku?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
