@@ -22,14 +22,25 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
-async function callOpenAI(system: string, messages: Msg[]): Promise<string | null> {
+type Tier = "standard" | "plus" | "max";
+const PLAN_TO_TIER: Record<string, Tier> = { haus: "standard", atelier: "plus", maison: "max" };
+
+async function loadModelForTier(admin: SupabaseClient, tier: Tier): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "model_tiers").maybeSingle();
+    const v = data?.value as Record<Tier, { model?: string }> | undefined;
+    return v?.[tier]?.model ?? (tier === "standard" ? "gpt-4o-mini" : "gpt-4o");
+  } catch { return tier === "standard" ? "gpt-4o-mini" : "gpt-4o"; }
+}
+
+async function callOpenAI(model: string, system: string, messages: Msg[]): Promise<string | null> {
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) return null;
   try {
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.6, messages: [{ role: "system", content: system }, ...messages] }),
+      body: JSON.stringify({ model, temperature: 0.6, messages: [{ role: "system", content: system }, ...messages] }),
     });
     if (!r.ok) return null;
     const d = await r.json();
@@ -50,8 +61,8 @@ async function callGateway(system: string, messages: Msg[]): Promise<string | nu
     return d.choices?.[0]?.message?.content ?? null;
   } catch { return null; }
 }
-async function ai(system: string, messages: Msg[]): Promise<string | null> {
-  return (await callOpenAI(system, messages)) ?? (await callGateway(system, messages));
+async function ai(model: string, system: string, messages: Msg[]): Promise<string | null> {
+  return (await callOpenAI(model, system, messages)) ?? (await callGateway(system, messages));
 }
 
 async function loadPrompt(admin: SupabaseClient): Promise<string> {
@@ -77,7 +88,7 @@ async function logResponse(admin: SupabaseClient, actor: string, mode: Mode, des
   } catch { /* swallow */ }
 }
 
-interface Designer { id: string; brand_name: string; slug: string; story: string | null; tags: string[] | null; user_id: string }
+interface Designer { id: string; brand_name: string; slug: string; story: string | null; tags: string[] | null; user_id: string; plan?: string }
 
 function providerName(): string {
   if (Deno.env.get("OPENAI_API_KEY")) return "openai";
@@ -116,11 +127,13 @@ Deno.serve(async (req) => {
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, key, { auth: { persistSession: false } });
 
-    const { data: dRow } = await admin.from("designers").select("id, brand_name, slug, story, tags, user_id").eq("user_id", user_id).maybeSingle();
+    const { data: dRow } = await admin.from("designers").select("id, brand_name, slug, story, tags, user_id, plan").eq("user_id", user_id).maybeSingle();
     const designer = (dRow as Designer | null) ?? null;
     if (!designer) return ok({ ...fallbackFor(), error: "no_designer" });
 
     const personaText = await loadPrompt(admin);
+    const tier: Tier = PLAN_TO_TIER[designer.plan ?? "haus"] ?? "standard";
+    const model = await loadModelForTier(admin, tier);
     const system = personaText;
     const provider = providerName();
 
@@ -135,7 +148,7 @@ Story: ${designer.story ?? "—"}
 Produkt: ${p.name}
 Welt: ${p.world}
 Tags: ${tags}`;
-      const generated = (await ai(system, [{ role: "user", content: promptUser }]))
+      const generated = (await ai(model, system, [{ role: "user", content: promptUser }]))
         ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
       await logResponse(admin, user_id, mode, designer.id, promptUser, generated, provider);
       return ok({ text: generated, provider });
@@ -186,11 +199,24 @@ Tags: ${tags}`;
         if (t.wish >= 4 && stats.orders_count === 0) { suggestion = `„${t.name}" wird gemerkt, aber selten gekauft — prüfe den Preis oder die Lieferzeit.`; break; }
       }
 
-      const summary = `Diese Woche: ${stats.views_total} Ansichten, ${stats.wish_total} Merkzettel-Zugänge, ${stats.orders_count} Verkäufe (€${stats.revenue_eur}). ${suggestion}`;
-      const generated = (await ai(system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}` }])) ?? summary;
+      // Trend-Block für atelier/maison
+      let trendBlock: { world: string; rising: string[] } | null = null;
+      if (tier !== "standard") {
+        try {
+          const worldKey = ((designer.tags ?? []).find((t) => ["Mode","Interior","Kunst"].includes(t))) ?? "Mode";
+          const { data: mo } = await admin.rpc("trend_momentum" as never, { _world: worldKey } as never);
+          const rising = (((mo as unknown) as { term: string; momentum: string }[] | null) ?? [])
+            .filter((r) => r.momentum === "steigend").slice(0, 3).map((r) => r.term);
+          if (rising.length) trendBlock = { world: worldKey, rising };
+        } catch { /* soft */ }
+      }
+      const trendLine = trendBlock ? ` Trend im Blick (${trendBlock.world}): ${trendBlock.rising.join(", ")}.` : "";
+
+      const summary = `Diese Woche: ${stats.views_total} Ansichten, ${stats.wish_total} Merkzettel-Zugänge, ${stats.orders_count} Verkäufe (€${stats.revenue_eur}). ${suggestion}${trendLine}`;
+      const generated = (await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}.${trendLine}` }])) ?? summary;
 
       await logResponse(admin, user_id, mode, designer.id, JSON.stringify(stats), generated, provider);
-      return ok({ text: generated, stats, provider });
+      return ok({ text: generated, stats, tier, trend: trendBlock, provider });
     }
 
     if (mode === "campaign_draft") {
@@ -215,7 +241,7 @@ Tags: ${tags}`;
 Marke: ${designer.brand_name} · Story: ${designer.story ?? "—"}
 Produkt: ${p.name} · Welt: ${p.world} · Tags: ${(p.tags as string[] | null)?.join(", ") ?? "—"}
 Format: {"caption":"…","hashtags":["#..","#.."]}`;
-      const raw = await ai(system, [{ role: "user", content: promptUser }]);
+      const raw = await ai(model, system, [{ role: "user", content: promptUser }]);
       let caption = `${p.name} — aus dem Atelier ${designer.brand_name}.`;
       let hashtags = ["#pawn", `#${designer.slug.replace(/-/g, "")}`, `#${(p.world ?? "").toLowerCase()}`, "#independentdesign"];
       if (raw) {
@@ -258,7 +284,7 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
         const published = products.filter((p) => (p as { status?: string }).status === "published").length;
         contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht). Story: ${designer.story ?? "—"}.`;
       } catch { /* soft */ }
-      const reply = (await ai(system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]))
+      const reply = (await ai(model, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]))
         ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
       await logResponse(admin, user_id, mode, designer.id, lastUser, reply, provider);
       return ok({ reply, provider });

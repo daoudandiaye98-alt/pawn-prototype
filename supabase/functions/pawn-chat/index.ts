@@ -158,22 +158,28 @@ function fallbackReply(ex: Extracted, cards: Card[], turns: number, action: Acti
   return `Alles klar, ${ex.world} mit ${ex.mood === "ruhig" ? "ruhiger" : "kantiger"} Handschrift. Wofür?`;
 }
 
-async function callOpenAI(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+async function callOpenAI(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model = "gpt-4o-mini"): Promise<string | null> {
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) return null;
   try {
+    const wire: unknown[] = [
+      { role: "system", content: system },
+      ...(contextHint ? [{ role: "system", content: contextHint }] : []),
+      ...messages,
+    ];
+    if (imageUrl) {
+      wire.push({
+        role: "user",
+        content: [
+          { type: "text", text: "Beschreibe Stil, Farbpalette, Silhouetten und Stimmung dieses Bildes als 4-8 kurze Ontologie-Terme, kommagetrennt. Danach ein warmer, empathischer Satz auf Deutsch." },
+          { type: "image_url", image_url: { url: imageUrl } },
+        ],
+      });
+    }
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        messages: [
-          { role: "system", content: system },
-          ...(contextHint ? [{ role: "system", content: contextHint }] : []),
-          ...messages,
-        ],
-      }),
+      body: JSON.stringify({ model, temperature: 0.7, messages: wire }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -181,7 +187,7 @@ async function callOpenAI(system: string, messages: Msg[], contextHint: string):
   } catch { return null; }
 }
 
-async function callGateway(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+async function callGateway(system: string, messages: Msg[], contextHint: string, model = "google/gemini-3-flash-preview"): Promise<string | null> {
   const key = Deno.env.get("LOVABLE_API_KEY");
   if (!key) return null;
   try {
@@ -189,7 +195,7 @@ async function callGateway(system: string, messages: Msg[], contextHint: string)
       method: "POST",
       headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model,
         messages: [
           { role: "system", content: system },
           ...(contextHint ? [{ role: "system", content: contextHint }] : []),
@@ -203,11 +209,20 @@ async function callGateway(system: string, messages: Msg[], contextHint: string)
   } catch { return null; }
 }
 
-async function callProvider(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
-  // Prefer OpenAI when configured, silently fall back to the Lovable gateway.
-  const openai = await callOpenAI(system, messages, contextHint);
+async function callProvider(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model?: string): Promise<string | null> {
+  const openai = await callOpenAI(system, messages, contextHint, imageUrl, model);
   if (openai) return openai;
   return await callGateway(system, messages, contextHint);
+}
+
+type Tier = "standard" | "plus" | "max";
+const PLAN_TIER: Record<string, Tier> = { haus: "standard", atelier: "plus", maison: "max" };
+async function loadModelForTier(admin: SupabaseClient, tier: Tier): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "model_tiers").maybeSingle();
+    const v = data?.value as Record<Tier, { model?: string }> | undefined;
+    return v?.[tier]?.model ?? (tier === "standard" ? "gpt-4o-mini" : "gpt-4o");
+  } catch { return tier === "standard" ? "gpt-4o-mini" : "gpt-4o"; }
 }
 
 
@@ -224,7 +239,7 @@ function extractUserIdFromJWT(auth: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const body = (await req.json()) as { messages: Msg[]; session_id?: string; probe?: boolean };
+    const body = (await req.json()) as { messages: Msg[]; session_id?: string; probe?: boolean; image_url?: string; pinterest_board?: string };
 
     // Provider probe (used by /admin/ki status badge) — no side effects.
     if (body.probe) {
@@ -368,7 +383,53 @@ Deno.serve(async (req) => {
     const directiveBlock = directives.length ? `Direktiven (immer beachten):\n- ${directives.join("\n- ")}` : "";
     const system = [persona, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [memoryHint, contextHint].filter(Boolean).join("\n\n");
-    const rawReply = (await callProvider(system, messages, fullContextHint)) ?? fallbackReply(extracted, cards, turns, action);
+
+    // Model tier je nach Rolle/Plan
+    let tier: Tier = "standard";
+    if (admin && user_id && role === "designer") {
+      try {
+        const { data: d } = await admin.from("designers").select("plan").eq("user_id", user_id).maybeSingle();
+        const p = (d as { plan?: string } | null)?.plan;
+        if (p && PLAN_TIER[p]) tier = PLAN_TIER[p];
+      } catch { /* soft */ }
+    }
+    const model = admin ? await loadModelForTier(admin, tier) : "gpt-4o-mini";
+
+    // Pinterest board pickup
+    if (admin && user_id && body.pinterest_board) {
+      try {
+        const nextPrefs = { ...(memory.preferences ?? {}), pinterest_board: body.pinterest_board };
+        await admin.from("user_memory").upsert({ user_id, preferences: nextPrefs, facts: memory.facts, updated_at: new Date().toISOString() });
+        await admin.from("domain_events").insert({
+          id: crypto.randomUUID(), type: "ai.taste_signal", actor: "user",
+          payload: { source: "pinterest", session_id, user_id, board: body.pinterest_board },
+          schema_version: 1,
+        });
+      } catch { /* soft */ }
+    }
+
+    // Vision-Aufruf bei Bild
+    let imageTerms: string[] = [];
+    if (body.image_url && Deno.env.get("OPENAI_API_KEY")) {
+      const visionRaw = await callOpenAI(
+        "Du bist PAWN. Analysiere Modebilder/Moodboards: extrahiere 4-8 kurze Terme zu Silhouette, Material, Farbpalette, Stimmung (kommagetrennt), dann EIN warmer Satz auf Deutsch.",
+        [], "", body.image_url, "gpt-4o-mini"
+      );
+      if (visionRaw) {
+        const line = visionRaw.split(/[\n.]/)[0] ?? "";
+        imageTerms = line.split(",").map((s) => s.trim().toLowerCase()).filter((s) => s.length >= 3 && s.length <= 40).slice(0, 8);
+      }
+    }
+    if (admin && body.image_url) {
+      await admin.from("domain_events").insert({
+        id: crypto.randomUUID(), type: "ai.taste_signal",
+        actor: user_id ? "user" : "anon",
+        payload: { source: "image", session_id, user_id: user_id ?? null, image_url: body.image_url, terms: imageTerms },
+        schema_version: 1,
+      });
+    }
+
+    const rawReply = (await callProvider(system, messages, fullContextHint, body.image_url, model)) ?? fallbackReply(extracted, cards, turns, action);
     const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
 
     // --- Upsert user_memory: extract simple facts / preferences -----------
@@ -407,7 +468,7 @@ Deno.serve(async (req) => {
       });
     }
     const allCards = [...cards, ...trendCards].slice(0, 4);
-    return new Response(JSON.stringify({ reply, cards: allCards, action, session_id, provider }), {
+    return new Response(JSON.stringify({ reply, cards: allCards, action, session_id, provider, tier, image_terms: imageTerms }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch {

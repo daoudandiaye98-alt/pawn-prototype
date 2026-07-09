@@ -4,6 +4,7 @@ import { useThreads, useThreadMessages, sendMessage } from "@/features/messages/
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useInternalHandles } from "@/lib/handles";
 
 const CATEGORY_FILTERS = ["alle", "allgemein", "auszahlung", "kampagne", "produkt", "technik"] as const;
 const STATUS_FILTERS = ["alle", "open", "closed"] as const;
@@ -21,6 +22,26 @@ export default function AdminMessages() {
     (catFilter === "alle" || t.category === catFilter) &&
     (statusFilter === "alle" || t.status === statusFilter)), [threads, catFilter, statusFilter]);
   const activeThread = useMemo(() => threads.find((t) => t.id === active), [threads, active]);
+
+  // Beteiligte User-IDs pseudonymisieren (Kunde + Designer)
+  const [designerUsers, setDesignerUsers] = useState<Map<string, string>>(new Map());
+  useMemo(() => {
+    const designerIds = Array.from(new Set(threads.map((t) => t.designer_id).filter(Boolean)));
+    if (!designerIds.length) return;
+    supabase.from("designers").select("id, user_id").in("id", designerIds).then(({ data }) => {
+      const m = new Map<string, string>();
+      ((data ?? []) as Array<{ id: string; user_id: string }>).forEach((r) => m.set(r.id, r.user_id));
+      setDesignerUsers(m);
+    });
+  }, [threads]);
+  const allUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    threads.forEach((t) => { if (t.created_by) ids.add(t.created_by); });
+    designerUsers.forEach((uid) => ids.add(uid));
+    messages.forEach((m) => { if (m.sender_id) ids.add(m.sender_id); });
+    return Array.from(ids);
+  }, [threads, designerUsers, messages]);
+  const handles = useInternalHandles(allUserIds);
 
   const send = async () => {
     if (!active || !user || !reply.trim()) return;
@@ -55,17 +76,20 @@ export default function AdminMessages() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[320px_1fr]">
         <aside className="border border-border max-h-[75vh] overflow-y-auto">
           {filtered.length === 0 && <p className="p-6 text-xs text-muted-foreground">Keine Threads.</p>}
-          {filtered.map((t) => (
-            <button key={t.id} onClick={() => setActive(t.id)}
-              className={`block w-full border-b border-border px-4 py-3 text-left hover:bg-secondary ${active === t.id ? "bg-secondary" : ""}`}>
-              <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
-                {t.category} · {t.status}
-                {t.category === "produkt" && <span className="ml-2 border border-foreground/60 px-1.5 py-0.5 text-[0.5rem] text-foreground">PRODUKT</span>}
-              </p>
-              <p className="mt-1 font-serif text-sm">{t.subject}</p>
-              <p className="mt-1 text-[0.62rem] text-muted-foreground">{new Date(t.last_message_at).toLocaleString("de-DE")}</p>
-            </button>
-          ))}
+          {filtered.map((t) => {
+            const kunde = handles.get(t.created_by) ?? "User —";
+            const designer = handles.get(designerUsers.get(t.designer_id) ?? "") ?? "Designer —";
+            return (
+              <button key={t.id} onClick={() => setActive(t.id)}
+                className={`block w-full border-b border-border px-4 py-3 text-left hover:bg-secondary ${active === t.id ? "bg-secondary" : ""}`}>
+                <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
+                  {kunde} → {designer} · {t.category}
+                </p>
+                <p className="mt-1 font-serif text-sm">{t.subject}</p>
+                <p className="mt-1 text-[0.62rem] text-muted-foreground">{new Date(t.last_message_at).toLocaleString("de-DE")}</p>
+              </button>
+            );
+          })}
         </aside>
 
         <section className="min-h-[60vh] border border-border">
@@ -73,7 +97,9 @@ export default function AdminMessages() {
             <div className="flex h-[75vh] flex-col">
               <header className="flex items-center justify-between border-b border-border px-6 py-4">
                 <div>
-                  <p className="editorial-eyebrow">{activeThread.category} · {activeThread.status}</p>
+                  <p className="editorial-eyebrow">
+                    {(handles.get(activeThread.created_by) ?? "User —")} → {(handles.get(designerUsers.get(activeThread.designer_id) ?? "") ?? "Designer —")} · {activeThread.category}
+                  </p>
                   <h2 className="font-serif text-xl mt-1">{activeThread.subject}</h2>
                 </div>
                 {activeThread.status === "open" && (
@@ -83,7 +109,9 @@ export default function AdminMessages() {
               <div ref={listRef} className="flex-1 space-y-4 overflow-y-auto p-6">
                 {messages.map((m) => (
                   <div key={m.id} className={m.sender_id === user?.id ? "text-right" : ""}>
-                    <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">{m.sender_id === user?.id ? "PAWN" : "Designer"}</p>
+                    <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
+                      {m.sender_id === user?.id ? "PAWN (Admin)" : (handles.get(m.sender_id) ?? "User —")}
+                    </p>
                     <p className="mt-1 text-sm">{m.body}</p>
                     <p className="text-[0.6rem] text-muted-foreground">{new Date(m.created_at).toLocaleString("de-DE")}</p>
                   </div>

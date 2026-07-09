@@ -1164,6 +1164,7 @@ export type Database = {
           lead_time_days: number | null
           name: string
           price: number
+          product_dna: Json
           sku: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
@@ -1186,6 +1187,7 @@ export type Database = {
           lead_time_days?: number | null
           name: string
           price?: number
+          product_dna?: Json
           sku?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -1208,6 +1210,7 @@ export type Database = {
           lead_time_days?: number | null
           name?: string
           price?: number
+          product_dna?: Json
           sku?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -1498,6 +1501,7 @@ export type Database = {
         | "color"
         | "attribute"
         | "style"
+        | "mood"
       order_status: "pending" | "paid" | "failed" | "refunded"
       posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
       posting_status: "queued" | "posted" | "failed" | "cancelled"
@@ -1675,6 +1679,7 @@ export const Constants = {
         "color",
         "attribute",
         "style",
+        "mood",
       ],
       order_status: ["pending", "paid", "failed", "refunded"],
       posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],

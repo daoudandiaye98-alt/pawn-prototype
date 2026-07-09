@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useInternalHandles } from "@/lib/handles";
 
 interface Order {
   id: string; user_id: string | null; amount_total: number; currency: string;
@@ -229,34 +230,62 @@ export default function AdminPayments() {
         <span className="ml-auto text-xs text-muted-foreground">{filteredOrders.length} Bestellungen</span>
       </div>
 
-      <div className="overflow-x-auto border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-secondary">
-            <tr className="text-left text-[0.68rem] uppercase tracking-[0.24em] text-muted-foreground">
-              <th className="px-4 py-3">Datum</th>
-              <th className="px-4 py-3">Bestellung</th>
-              <th className="px-4 py-3">Betrag</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Stripe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredOrders.map((o) => (
+      <OrdersTable orders={filteredOrders} designerById={designerById} productBySlug={productBySlug} commissionPct={commissionPct} />
+    </AdminShell>
+  );
+}
+
+function OrdersTable({
+  orders, designerById, productBySlug, commissionPct,
+}: {
+  orders: Order[];
+  designerById: Map<string, DesignerLite>;
+  productBySlug: Map<string, ProductLite>;
+  commissionPct: number;
+}) {
+  const userIds = useMemo(() => Array.from(new Set(orders.map((o) => o.user_id).filter(Boolean) as string[])), [orders]);
+  const handles = useInternalHandles(userIds);
+  return (
+    <div className="overflow-x-auto border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-secondary">
+          <tr className="text-left text-[0.68rem] uppercase tracking-[0.24em] text-muted-foreground">
+            <th className="px-4 py-3">Datum</th>
+            <th className="px-4 py-3">Bestellung</th>
+            <th className="px-4 py-3">Von → an</th>
+            <th className="px-4 py-3">Betrag</th>
+            <th className="px-4 py-3">PAWN-Anteil</th>
+            <th className="px-4 py-3">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((o) => {
+            const items = Array.isArray(o.items) ? o.items as Array<Record<string, unknown>> : [];
+            const designerIds = new Set(items.map((it) => productBySlug.get(String(it.slug ?? ""))?.designer_id).filter(Boolean) as string[]);
+            const designerLabels = Array.from(designerIds).map((id) => {
+              const d = designerById.get(id);
+              return d ? (d.house_number != null ? `Designer ${d.house_number}` : d.brand_name) : "Designer —";
+            }).join(", ") || "—";
+            const handle = o.user_id ? (handles.get(o.user_id) ?? "User —") : "Gast";
+            const amount = o.amount_total / 100;
+            const platform = amount * (commissionPct / 100);
+            return (
               <tr key={o.id} className="border-t border-border">
                 <td className="px-4 py-3">{new Date(o.created_at).toLocaleString("de-DE")}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.id.slice(0, 8)}</td>
-                <td className="px-4 py-3 tabular-nums">€ {(o.amount_total / 100).toLocaleString("de-DE")}</td>
+                <td className="px-4 py-3">{handle} <span className="text-muted-foreground">an</span> {designerLabels}</td>
+                <td className="px-4 py-3 tabular-nums">€ {amount.toLocaleString("de-DE")}</td>
+                <td className="px-4 py-3 tabular-nums text-muted-foreground">€ {platform.toLocaleString("de-DE", { maximumFractionDigits: 2 })} <span className="text-[0.55rem] uppercase">({commissionPct}%)</span></td>
                 <td className="px-4 py-3 uppercase tracking-widest text-xs">{o.status}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.stripe_session_id?.slice(0, 20) ?? "—"}</td>
               </tr>
-            ))}
-            {filteredOrders.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">Keine Bestellungen im Filter.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </AdminShell>
+            );
+          })}
+          {orders.length === 0 && (
+            <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">Keine Bestellungen im Filter.</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

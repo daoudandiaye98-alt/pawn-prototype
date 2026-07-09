@@ -6,11 +6,19 @@ import { toast } from "sonner";
 import { Plus, Upload, X, Sparkles, Megaphone, HelpCircle, Check, ImageIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { TagInput } from "@/features/ontology/TagInput";
+import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology";
 
 type World = "Mode" | "Interior" | "Kunst";
 type Status = "draft" | "published" | "archived";
 type InventoryMode = "stock" | "made_to_order";
 type Variant = { name: string; options: string[] };
+
+interface ProductDNA {
+  materials: string[];
+  silhouette: string[];
+  colors: string[];
+  mood: string[];
+}
 
 interface ProductRow {
   id: string;
@@ -30,12 +38,16 @@ interface ProductRow {
   variants: Variant[];
   weight_grams: number | null;
   lead_time_days: number | null;
+  product_dna: ProductDNA;
 }
+
+const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
 
 const emptyEdit = (): Partial<ProductRow> => ({
   world: "Mode", status: "draft", price: 0, tags: [], name: "", description: "",
   inventory_mode: "stock", stock_quantity: 0, allow_custom_requests: false,
   variants: [], compare_at_price: null, sku: "", weight_grams: null, lead_time_days: null,
+  product_dna: emptyDNA(),
 });
 
 function slugify(s: string) {
@@ -65,7 +77,7 @@ export default function StudioProducts() {
     const from = page * PAGE;
     const to = from + PAGE - 1;
     const { data, count } = await supabase.from("products")
-      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days", { count: "exact" })
+      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna", { count: "exact" })
       .eq("designer_id", designer.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -95,6 +107,7 @@ export default function StudioProducts() {
     variants: (e.variants ?? []) as unknown as never,
     weight_grams: e.weight_grams != null ? Number(e.weight_grams) : null,
     lead_time_days: e.lead_time_days != null ? Number(e.lead_time_days) : null,
+    product_dna: (e.product_dna ?? emptyDNA()) as unknown as never,
   });
 
   const save = async () => {
@@ -482,6 +495,15 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             <button type="button" onClick={addVariant} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ Variante hinzufügen</button>
           </Section>
 
+          {/* Product DNA — Moleküle */}
+          <Section title="DNA deines Stücks" help="Vier kurze Antworten helfen PAWN, dein Stück den richtigen Menschen zu zeigen. Wähle aus der Palette — was fehlt, kannst du in den Tags frei ergänzen.">
+            <ProductDNAEditor
+              dna={local.product_dna ?? emptyDNA()}
+              world={local.world ?? "Mode"}
+              onChange={(dna) => patch({ product_dna: dna })}
+            />
+          </Section>
+
           {/* Tags + SKU */}
           <Section title="Details" help={'Tags helfen PAWN, dein Stück zu den richtigen Kunden zu bringen. Tippe los — Vorschläge kommen aus unserer Modewelt-Ontologie und werden normalisiert.'}>
             <Field label="Tags" hint="Enter oder Komma zum Bestätigen">
@@ -552,5 +574,73 @@ function Field({ label, hint, required, missing, children }: { label: string; hi
       <div className="mt-1.5">{children}</div>
       {hint && <span className="mt-1 block text-[0.68rem] text-muted-foreground">{hint}</span>}
     </label>
+  );
+}
+
+interface DNAEditorProps { dna: ProductDNA; world: World; onChange: (d: ProductDNA) => void }
+
+function ProductDNAEditor({ dna, world, onChange }: DNAEditorProps) {
+  const { terms } = useOntology(world);
+  const materials = terms.filter((t) => t.kind === "material");
+  const silhouettes = terms.filter((t) => t.kind === "silhouette");
+  const colors = terms.filter((t) => t.kind === "color");
+  const moods = terms.filter((t) => t.kind === "mood");
+  // Wenn Ontologie noch keine mood-Terme hat, kurze Startliste anbieten
+  const fallbackMoods = ["ruhig", "streng", "romantisch", "spannungsvoll", "warm", "verspielt"];
+  const moodOptions = moods.length ? moods.map((t) => t.term) : fallbackMoods;
+
+  const toggle = (group: keyof ProductDNA, term: string, max: number) => {
+    const cur = dna[group] ?? [];
+    if (cur.includes(term)) {
+      onChange({ ...dna, [group]: cur.filter((x) => x !== term) });
+    } else if (cur.length < max) {
+      onChange({ ...dna, [group]: [...cur, term] });
+    }
+  };
+
+  const complete = (dna.materials?.length ?? 0) > 0
+    && (dna.silhouette?.length ?? 0) > 0
+    && (dna.colors?.length ?? 0) > 0
+    && (dna.mood?.length ?? 0) > 0;
+
+  return (
+    <div className="space-y-6">
+      {!complete && (
+        <p className="border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs">
+          Kurze DNA — ein bis zwei Klicks pro Zeile reichen. Kann später ergänzt werden.
+        </p>
+      )}
+      <DNAChipRow label={`Material · mehrfach (${dna.materials.length})`}
+        options={materials.length ? materials.map((t) => t.term) : ["baumwolle","leinen","seide","wolle","kaschmir","leder","recycelt"]}
+        selected={dna.materials} onToggle={(t) => toggle("materials", t, 6)} />
+      <DNAChipRow label={`Silhouette · 1-2 (${dna.silhouette.length}/2)`}
+        options={silhouettes.length ? silhouettes.map((t) => t.term) : ["oversized","tailliert","fließend","strukturiert","cropped","column"]}
+        selected={dna.silhouette} onToggle={(t) => toggle("silhouette", t, 2)} />
+      <DNAChipRow label={`Farbregister · 1-3 (${dna.colors.length}/3)`}
+        options={colors.map((t) => t.term)}
+        selected={dna.colors} onToggle={(t) => toggle("colors", t, 3)} />
+      <DNAChipRow label={`Stimmung · 1-2 (${dna.mood.length}/2)`}
+        options={moodOptions}
+        selected={dna.mood} onToggle={(t) => toggle("mood", t, 2)} />
+    </div>
+  );
+}
+
+function DNAChipRow({ label, options, selected, onToggle }: { label: string; options: string[]; selected: string[]; onToggle: (t: string) => void }) {
+  return (
+    <div>
+      <p className="mb-2 text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.slice(0, 24).map((term) => {
+          const active = selected.includes(term);
+          return (
+            <button key={term} type="button" onClick={() => onToggle(term)}
+              className={`border px-3 py-1.5 text-xs transition-all ${active ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+              {term}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

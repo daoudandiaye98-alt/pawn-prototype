@@ -4,6 +4,7 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useThreads, useThreadMessages, sendMessage, createThread, type MessageCategory } from "@/features/messages/useMessages";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { useInternalHandles } from "@/lib/handles";
 
 const CATEGORIES: { value: MessageCategory; label: string }[] = [
   { value: "allgemein", label: "Allgemein" },
@@ -25,6 +26,8 @@ export default function StudioMessages() {
   const [reply, setReply] = useState("");
   const { messages, listRef } = useThreadMessages(active);
   const activeThread = useMemo(() => threads.find((t) => t.id === active), [threads, active]);
+  const customerIds = useMemo(() => Array.from(new Set(threads.map((t) => t.created_by).filter(Boolean))), [threads]);
+  const handles = useInternalHandles(customerIds);
 
   const startThread = async () => {
     if (!designer || !user || !subject.trim() || !body.trim()) return;
@@ -54,20 +57,22 @@ export default function StudioMessages() {
           </div>
           <ul className="max-h-[70vh] overflow-y-auto">
             {threads.length === 0 && <li className="px-4 py-6 text-xs text-muted-foreground">Noch keine Threads.</li>}
-            {threads.map((t) => (
-              <li key={t.id}>
-                <button
-                  onClick={() => setActive(t.id)}
-                  className={`w-full border-b border-border px-4 py-3 text-left hover:bg-secondary ${active === t.id ? "bg-secondary" : ""}`}
-                >
-                  <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
-                    {t.category} · {t.status}
-                    {t.category === "produkt" && <span className="ml-2 border border-foreground/60 px-1.5 py-0.5 text-[0.5rem] text-foreground">PRODUKT</span>}
-                  </p>
-                  <p className="mt-1 font-serif text-sm">{t.subject}</p>
-                </button>
-              </li>
-            ))}
+            {threads.map((t) => {
+              const kunde = handles.get(t.created_by) ?? "User —";
+              return (
+                <li key={t.id}>
+                  <button
+                    onClick={() => setActive(t.id)}
+                    className={`w-full border-b border-border px-4 py-3 text-left hover:bg-secondary ${active === t.id ? "bg-secondary" : ""}`}
+                  >
+                    <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
+                      {kunde} · {t.category}
+                    </p>
+                    <p className="mt-1 font-serif text-sm">{t.subject}</p>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </aside>
 

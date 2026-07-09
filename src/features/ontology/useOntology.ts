@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type OntologyKind = "category" | "silhouette" | "material" | "color" | "attribute" | "style";
+export type OntologyKind = "category" | "silhouette" | "material" | "color" | "attribute" | "style" | "mood";
 export interface OntologyTerm {
   term: string;
   kind: OntologyKind;
