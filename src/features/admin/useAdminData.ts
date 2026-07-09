@@ -26,6 +26,26 @@ export interface AdminSystemStats {
   loading: boolean;
 }
 
+export interface AdminPlatformKpis {
+  loading: boolean;
+  revenue30d: number;        // EUR (integer)
+  revenue30dDelta: number;   // % vs previous 30d (rounded)
+  orders30d: number;
+  ordersDelta: number;       // absolute diff vs previous 30d
+  aov30d: number;            // EUR
+  aovDelta: number;          // % vs previous 30d
+  newUsers30d: number;
+  newUsersDelta: number;     // % vs previous 30d
+  activeDesigners: number;
+  pendingApplications: number;
+  dnaCoverage: number;       // % of active designers with brand_dna.product_count > 0
+  dnaCoverageDelta: number;  // pt vs 30d ago snapshot proxy (0 when unknown)
+  eventsLast24h: number;
+  revenueSeries: number[];   // last 30 daily buckets in EUR
+  orderSeries: number[];     // last 30 daily counts
+  dayLabels: string[];       // short DE labels for the last 30 days
+}
+
 function maskEmail(email: string | null | undefined): string {
   if (!email) return "Gast";
   const [local, domain] = email.split("@");
