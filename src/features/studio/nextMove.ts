@@ -30,15 +30,17 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
   const [pendingCampaign, setPendingCampaign] = useState<{ id: string; title: string } | null>(null);
   const [openThread, setOpenThread] = useState<{ id: string; subject: string } | null>(null);
   const [trendTerm, setTrendTerm] = useState<string | null>(null);
+  const [dnaGap, setDnaGap] = useState<{ id: string; name: string; total: number } | null>(null);
 
   useEffect(() => {
     if (!designerId) return;
     let alive = true;
     (async () => {
-      const [ords, camps, msgs] = await Promise.all([
+      const [ords, camps, msgs, prods] = await Promise.all([
         supabase.from("orders").select("id, created_at").eq("status", "paid").in("fulfillment_status", ["new", "in_progress"]).order("created_at", { ascending: true }).limit(5),
         supabase.from("campaigns").select("id, title").eq("designer_id", designerId).eq("status", "proposed").order("created_at", { ascending: true }).limit(1),
         supabase.from("message_threads").select("id, subject").eq("designer_id", designerId).eq("status", "open").order("last_message_at", { ascending: false }).limit(1),
+        supabase.from("products").select("id, name, product_dna, status").eq("designer_id", designerId).eq("status", "published"),
       ]);
       if (!alive) return;
       const order = (ords.data ?? [])[0] ?? null;
@@ -47,6 +49,15 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
       setPendingCampaign(c ? { id: c.id as string, title: c.title as string } : null);
       const t = (msgs.data ?? [])[0] ?? null;
       setOpenThread(t ? { id: t.id as string, subject: t.subject as string } : null);
+
+      const products = (prods.data ?? []) as { id: string; name: string; product_dna: Record<string, unknown> | null }[];
+      const isEmpty = (p: typeof products[number]) => {
+        const dna = p.product_dna ?? {};
+        const arr = (k: string) => Array.isArray((dna as Record<string, unknown>)[k]) ? ((dna as Record<string, unknown>)[k] as unknown[]).length : 0;
+        return arr("materials") + arr("silhouette") + arr("colors") + arr("mood") === 0;
+      };
+      const missing = products.filter(isEmpty);
+      setDnaGap(missing.length > 0 ? { id: missing[0].id, name: missing[0].name, total: missing.length } : null);
 
       // Trend-Vorschlag: erster steigender Term in "Mode"
       try {
