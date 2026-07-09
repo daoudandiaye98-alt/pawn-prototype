@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
