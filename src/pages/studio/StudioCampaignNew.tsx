@@ -53,7 +53,9 @@ async function uploadFile(userId: string, file: File | Blob, ext: string): Promi
 }
 
 export default function StudioCampaignNew() {
-  const { user, profile } = useAuth();
+  const { user, profile, hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
+
   const { designer, loading } = useMyDesigner();
   const nav = useNavigate();
   const [step, setStep] = useState<Step>(0);
