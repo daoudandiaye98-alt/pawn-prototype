@@ -671,10 +671,13 @@ export type Database = {
           hero_image_url: string | null
           house_number: number | null
           id: string
+          image_usage_consent: boolean
+          image_usage_consent_at: string | null
           instagram: string | null
           is_featured: boolean
           location: string | null
           manifesto: string | null
+          plan: Database["public"]["Enums"]["designer_plan"]
           portrait_url: string | null
           published: boolean
           quote: string | null
@@ -702,10 +705,13 @@ export type Database = {
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
+          image_usage_consent?: boolean
+          image_usage_consent_at?: string | null
           instagram?: string | null
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
+          plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           published?: boolean
           quote?: string | null
@@ -733,10 +739,13 @@ export type Database = {
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
+          image_usage_consent?: boolean
+          image_usage_consent_at?: string | null
           instagram?: string | null
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
+          plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           published?: boolean
           quote?: string | null
@@ -871,6 +880,56 @@ export type Database = {
           world?: string[]
         }
         Relationships: []
+      }
+      generation_requests: {
+        Row: {
+          campaign_id: string
+          cost_estimate: number | null
+          created_at: string
+          error: string | null
+          id: string
+          provider: string
+          requested_by: string | null
+          result_url: string | null
+          status: Database["public"]["Enums"]["generation_status"]
+          tier: Database["public"]["Enums"]["generation_tier"]
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          cost_estimate?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          provider?: string
+          requested_by?: string | null
+          result_url?: string | null
+          status?: Database["public"]["Enums"]["generation_status"]
+          tier?: Database["public"]["Enums"]["generation_tier"]
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          cost_estimate?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          provider?: string
+          requested_by?: string | null
+          result_url?: string | null
+          status?: Database["public"]["Enums"]["generation_status"]
+          tier?: Database["public"]["Enums"]["generation_tier"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_requests_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_threads: {
         Row: {
@@ -1029,6 +1088,53 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      posting_queue: {
+        Row: {
+          campaign_id: string
+          channel: Database["public"]["Enums"]["posting_channel"]
+          created_at: string
+          error: string | null
+          id: string
+          posted_at: string | null
+          posted_url: string | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["posting_status"]
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          channel?: Database["public"]["Enums"]["posting_channel"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          posted_at?: string | null
+          posted_url?: string | null
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["posting_status"]
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          channel?: Database["public"]["Enums"]["posting_channel"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          posted_at?: string | null
+          posted_url?: string | null
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["posting_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posting_queue_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -1343,6 +1449,9 @@ export type Database = {
         | "approved"
         | "published"
         | "declined"
+      designer_plan: "haus" | "atelier" | "maison"
+      generation_status: "requested" | "running" | "done" | "failed"
+      generation_tier: "accent" | "full"
       inventory_mode: "stock" | "made_to_order"
       message_category:
         | "allgemein"
@@ -1359,6 +1468,8 @@ export type Database = {
         | "attribute"
         | "style"
       order_status: "pending" | "paid" | "failed" | "refunded"
+      posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
+      posting_status: "queued" | "posted" | "failed" | "cancelled"
       product_status: "draft" | "published" | "archived"
       product_world: "Mode" | "Interior" | "Kunst"
     }
@@ -1500,6 +1611,9 @@ export const Constants = {
         "published",
         "declined",
       ],
+      designer_plan: ["haus", "atelier", "maison"],
+      generation_status: ["requested", "running", "done", "failed"],
+      generation_tier: ["accent", "full"],
       inventory_mode: ["stock", "made_to_order"],
       message_category: [
         "allgemein",
@@ -1518,6 +1632,8 @@ export const Constants = {
         "style",
       ],
       order_status: ["pending", "paid", "failed", "refunded"],
+      posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],
+      posting_status: ["queued", "posted", "failed", "cancelled"],
       product_status: ["draft", "published", "archived"],
       product_world: ["Mode", "Interior", "Kunst"],
     },

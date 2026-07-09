@@ -1,9 +1,18 @@
-// Stripe Checkout Session. Graceful degrade if STRIPE_SECRET_KEY is missing.
+// Stripe Checkout Session. Supports one-off and subscription mode.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
 
 interface Line { name: string; unit_amount: number; qty: number; product_id?: string; size?: string; slug?: string }
+interface Body {
+  items?: Line[];
+  success_url?: string;
+  cancel_url?: string;
+  customer_email?: string;
+  mode?: "payment" | "subscription";
+  price_id?: string;
+  plan?: "atelier" | "maison";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -13,10 +22,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "not_configured", message: "Zahlung wird gerade eingerichtet." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 });
     }
-    const body = await req.json() as { items: Line[]; success_url?: string; cancel_url?: string; customer_email?: string };
-    const items = (body.items ?? []).filter((i) => i.name && i.unit_amount > 0 && i.qty > 0);
-    if (items.length === 0) throw new Error("empty_cart");
-
+    const body = await req.json() as Body;
     const stripe = new Stripe(secret, { apiVersion: "2024-04-10" });
 
     // Extract user
@@ -30,15 +36,32 @@ Deno.serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") ?? "http://localhost";
+
+    // === Subscription mode ===
+    if (body.mode === "subscription") {
+      if (!body.price_id) throw new Error("price_id required");
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        line_items: [{ price: body.price_id, quantity: 1 }],
+        success_url: body.success_url ?? `${origin}/studio/plan?upgraded=1`,
+        cancel_url: body.cancel_url ?? `${origin}/studio/plan`,
+        customer_email: body.customer_email,
+        metadata: { plan: body.plan ?? "", user_id: user_id ?? "" },
+        subscription_data: { metadata: { plan: body.plan ?? "", user_id: user_id ?? "" } },
+      });
+      return new Response(JSON.stringify({ url: session.url, id: session.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // === One-off payment ===
+    const items = (body.items ?? []).filter((i) => i.name && i.unit_amount > 0 && i.qty > 0);
+    if (items.length === 0) throw new Error("empty_cart");
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       line_items: items.map((i) => ({
-        price_data: {
-          currency: "eur",
-          product_data: { name: i.name },
-          unit_amount: i.unit_amount,
-        },
+        price_data: { currency: "eur", product_data: { name: i.name }, unit_amount: i.unit_amount },
         quantity: i.qty,
       })),
       success_url: body.success_url ?? `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,

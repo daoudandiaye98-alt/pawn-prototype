@@ -199,15 +199,21 @@ export default function StudioOverview() {
   return (
     <StudioShell title="Bühne" eyebrow="Bühne">
       {/* Greeting */}
-      <section className="mb-8">
-        <h1 className="font-serif text-3xl font-medium md:text-4xl">
-          {greetingByHour()}, <span className="capitalize">{firstName}</span>.
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {visitorsYesterday !== null && visitorsYesterday > 0
-            ? `Deine Bühne hatte gestern ${visitorsYesterday} Besucher${visitorsYesterday === 1 ? "" : ""}.`
-            : "Willkommen zurück auf deiner Bühne."}
-        </p>
+      <section className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-medium md:text-4xl">
+            {greetingByHour()}, <span className="capitalize">{firstName}</span>.
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {visitorsYesterday !== null && visitorsYesterday > 0
+              ? `Deine Bühne hatte gestern ${visitorsYesterday} Besucher${visitorsYesterday === 1 ? "" : ""}.`
+              : "Willkommen zurück auf deiner Bühne."}
+          </p>
+        </div>
+        <Link to="/studio/kampagnen/neu"
+          className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:opacity-90">
+          + Neue Kampagne
+        </Link>
       </section>
 
       {/* World filter chips */}

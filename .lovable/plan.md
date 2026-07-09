@@ -1,97 +1,63 @@
-# ZUG C — Das Fashion-Gehirn
+# Zug 2 — Kampagnen-Studio
 
-Ein zusammenhängender Datenstrom: **Ontologie → Signale → DNA → Trends → Gedächtnis**. Alles typecheck-sauber, RLS-korrekt, ehrlich in Prognosen.
+Grosser Zug. Ich baue ihn in einem Durchgang, aber in klaren Blöcken. Wenn du zustimmst, geht's los.
 
-## 1. Wissensbasis (Fashionpedia-Ontologie)
+## 1. Datenbank (eine Migration)
+- `designers.plan` enum `haus|atelier|maison` (default `haus`).
+- `posting_queue`: campaign_id FK, channel enum (`pawn_instagram|pawn_tiktok|pawn_youtube`), scheduled_at, status (`queued|posted|failed`), posted_url, posted_at. RLS: Designer liest eigene über Join, Admin alles. Grants inkl. service_role.
+- `generation_requests`: campaign_id, tier (`accent|full`), provider, status, cost_estimate, result_url. RLS Designer read own, Admin all.
+- Storage-Bucket `campaign-assets` (public read) via Tool.
+- Seed `ai_config` Keys: `plan_limits`, `plan_prices`.
 
-**Migration 1 — `fashion_ontology`:**
-- Enum `ontology_kind`: `category | silhouette | material | color | attribute | style`
-- Spalten: `id uuid pk`, `term text unique`, `kind ontology_kind`, `world text[] default '{mode}'`, `parent_term text null`, `synonyms text[] default '{}'`, `created_at`
-- GRANT anon+authenticated SELECT; service_role ALL; admin write via policy
-- **Seed 120+ Terme deutsch/englisch** in derselben Migration (Kategorien Mode/Interior/Kunst, Silhouetten, Materialien, Farben, Attribute)
+## 2. Video-Renderer (client, kein Server)
+`src/features/campaign/renderer.ts`
+- Canvas 1080×1920, 30fps, MediaRecorder (`video/mp4` → Fallback `webm;codecs=vp9` → `webm`).
+- Szenen: Intro 2s (Brandname Playfair + "Haus № X") → 2–4 Fotos je 2.5–3s (grayscale+contrast, Ken-Burns alternierend, 2-Frame-Weißblitz Cut, Typo-Overlay) → Outro 2.5s (Wordmark, "Haus № X · pawn").
+- Tempo `ruhig|spannungsvoll` steuert Shot-Dauer + Zoom-Delta.
+- Kein Audio (UI-Hinweis: Musik im Kanal hinzufügen).
+- Progress-Callback + Live-Canvas-Preview.
 
-**Verwendung:**
-- `src/features/ontology/useOntology.ts` — lädt einmal, cached in-memory; `suggest(input)` und `normalize(rawTag)` mit Synonym-Match
-- **Produkt-Editor** (`StudioProducts.tsx`): Tag-Input mit Autocomplete-Dropdown aus Ontologie; freie Eingabe wird auf ontology-Term normalisiert
-- **`pawn-chat/parseSignal`**: baut Term-Index aus Ontologie (over-fetch beim Function-Start); Nutzertext-Tokens → matched terms mit `kind` — persistiert `taste_signal` mit `{term, kind, world}` statt Freitext
-- **`/admin/ki`** Tab "Wissensbasis": Term-Liste, Suche, Anlegen, Synonyme editieren (nur admin)
+## 3. Funnel `/studio/kampagnen/neu`
+4 Schritte, plus Schritt 0 Erklärung:
+- Schritt 0: 4 Akte, image_usage-Consent-Check (Inline-Zustimmung sonst), Kontingent-Zeile.
+- Schritt 1: Eigenes Produkt wählen (Karten) oder 2–4 Fotos hochladen (Drag&Drop → `campaign-assets`).
+- Schritt 2: Prompt-Feld + 3 DNA-Preset-Chips. `studio-ai` liefert Hook/Caption/Hashtags (nutzt Brand-DNA + Trend-Terme). Editierbar. Tempo-Auswahl.
+- Schritt 3: Renderer läuft sichtbar, danach `<video>`-Preview, "Neu produzieren" (Variation) / "Zur Freigabe". Upload → `campaigns` row (kind `video`, status `proposed`, content-JSON).
+- Schritt 4: bestehende Detailkarte auf `/studio/kampagnen` erweitert (Player, Freigeben/Ändern, nach Freigabe Download + Musik-Hinweis).
 
-## 2. Trend-Engine
+Prominenter "Neue Kampagne"-CTA im Studio-Dashboard und auf `/studio/kampagnen`.
 
-**Migration 2 — `trend_snapshots`:**
-- `id, day date, term text, world text, views int, likes int, saves int, purchases int, score numeric, created_at`
-- Unique `(day, term, world)`; RLS admin read; service write
-- SQL-Function `public.trend_momentum(_world text)` returns table: term, ema7 numeric, slope numeric, momentum text, forecast14 numeric — berechnet 7-Tage-EMA je Term + lineare Fortschreibung
+## 4. Posting-Queue
+- Bei Kampagnen-Freigabe (`status=approved`) via Trigger: Eintrag `posting_queue` für `pawn_instagram`, `scheduled_at` = nächster freier Slot (max 3/Tag global, FIFO).
+- `/admin/posting` (Route + AdminShell-Nav): Liste mit Video-Preview + Status + "Als gepostet markieren" (URL-Feld) + Doku-Kasten der nötigen Secrets. Ehrlich gelabelt.
+- Edge Function `post-to-social` als Dispatcher-Stub (Provider-Interface, loggt `integration.dispatched`).
+- Designer-Ansicht: Status-Zeile pro Kampagne ("In Warteschlange · voraussichtlich Do" bzw. "Veröffentlicht → Link").
 
-**Edge Function `compute-trends`:**
-- Aggregiert der letzten 24h aus `domain_events` (views/saves aus payload), `orders` (purchases via order-items → product tags → ontology-normalized), `taste_signals`
-- Für jeden term×world: score = views + likes*3 + saves*4 + purchases*10
-- Upsert in `trend_snapshots` für today
-- Ruft `merge-integrations` nicht — reiner Batch, gibt JSON mit Zusammenfassung zurück
+## 5. Pläne + Kontingente
+- Zählung: `campaigns` kind=video im Kalendermonat.
+- Studio-Dashboard + Funnel Schritt 0: Zeile "Kampagnen diesen Monat: X von Y".
+- Bei Limit: Upgrade-Karte in Schritt 3, Rendering blockiert.
+- `/studio/plan`: 3 Karten Palace-Stil (Haus / Atelier 19€ / Maison 79€). Upgrade → `create-checkout` (subscription-mode) mit `plan_prices` aus ai_config. Fehlt Stripe-Setup: Karte "Bald buchbar — schreib uns" → erzeugt Message-Thread.
+- `stripe-webhook` erweitert: subscription-Events → `designers.plan` setzen + Notification + `domain_events` Event.
 
-**pg_cron** (via `supabase--insert` da user-spezifisch): täglich 03:00 UTC via `net.http_post` mit anon key.
+## 6. Stufe 2/3 vorbereiten
+- Edge Function `generate-broll`: Provider-Interface, sauberer Fehler wenn `KLING_API_KEY`/`RUNWAY_API_KEY` fehlen; TODO-Block für Call.
+- Funnel Schritt 2: für atelier/maison ausgegraute Option "✦ Generativer Akzent-Shot (bald)".
+- `/admin/ki` bekommt Status-Zeile Video-Provider.
 
-**UI:**
-- `/admin/trends` (neue Seite in AdminShell): Welt-Tabs (Mode/Interior/Kunst) → Termliste mit Score, Mini-SVG-Sparkline (7 Tage), Momentum-Pfeil (↑ →↓), Forecast-Spalte; Button "Jetzt neu berechnen"
-- Studio-Copilot (`studio-ai`): system-prompt bekommt Top-Momentum-Terme der Designer-Welten injiziert; Wochenspiegel-Antwort nutzt sie
-- `pawn-chat`: neue Intent-Erkennung "was ist gefragt/trend" → antwortet mit Top-3 Momentum-Terme + passende Produkte
+## 7. QA
+- image_usage-Consent-Check vor Schritt 1.
+- MediaRecorder-Format-Fallback getestet.
+- Playwright-Testlauf als `test-designer@pawn.test`: Funnel → Video → Freigabe → Queue-Sichtung → Screenshot.
+- Typecheck.
 
-## 3. Lernendes Gedächtnis
+## Reihenfolge der Ausführung
+1) Migration + Bucket
+2) Renderer-Modul (pure TS, unit-testbar durch Aufruf)
+3) Funnel-Seiten + Studio/Admin-Integration
+4) Queue-Trigger + `/admin/posting` + Dispatcher-Stub
+5) Plan-Seite + Stripe-Webhook-Erweiterung + Kontingent-Guard
+6) generate-broll-Stub + AdminKI-Statusreihe
+7) Playwright-Selbsttest + Screenshots
 
-**Migration 3 — `user_memory`:**
-- `user_id uuid pk references auth.users`, `preferences jsonb default '{}'` (Struktur: `{ category: {mantel: 3, blazer: 1}, material: {...}, ... }`), `facts jsonb default '[]'` (max 20 Einträge `{fact, at}`), `updated_at`
-- RLS: owner select/update/delete; service_role ALL
-- Trigger `set_updated_at`
-
-**pawn-chat Erweiterung:**
-- Bei Session-Ende (letzte Assistant-Message pro Request): kurzer zweiter LLM-Call "extrahiere Präferenzen (ontology-Terme mit +1/+2) und ggf. einen Merksatz zu Anlass". Ergebnis: `preferences` mergen (kappen bei sinnvoller Größe), `facts` prepend + kappen auf 20
-- Beim Start jeder Session: `user_memory` lesen → System-Prompt bekommt "Was PAWN sich merkt"-Block
-- Persist nur wenn eingeloggt (`user_id`)
-
-**Frontend:**
-- `usePersonalization`: lädt zusätzlich `user_memory.preferences` bei Login und merged in aggregiertes Profil (Boost für gespeicherte Präferenzen)
-- `/dna`-Seite: neue Sektion "PAWN erinnert sich" — jede fact-Karte mit ✕-Button → Event `ai.memory_deleted` + Fact aus Array entfernen
-- `delete-account`-Function: zusätzlich `user_memory` löschen
-
-## 4. Qualität & Ehrlichkeit
-
-- Nach Migrationen: `compute-trends` einmal manuell ausführen → echte (auch dünne) Snapshots
-- `/admin/trends` leerer Zustand: „Noch zu wenig Daten für Prognosen — der Strom wächst mit jedem Besucher."
-- Forecast-Labels konsequent „Prognose auf Basis des Verlaufs" — nie Gewissheit
-- Kein Mock-Datenpunkt
-
-## Technische Details
-
-**Neue Dateien:**
-- `src/features/ontology/useOntology.ts`
-- `src/features/ontology/TagInput.tsx` (Autocomplete-Input)
-- `src/pages/admin/AdminTrends.tsx`
-- `src/pages/admin/tabs/OntologyManager.tsx` (in AdminKI eingebunden)
-- `supabase/functions/compute-trends/index.ts`
-- 3 Migrationen (Ontologie+Seed, Trends+View, Memory)
-
-**Editierte Dateien:**
-- `supabase/functions/pawn-chat/index.ts` — parseSignal mit Ontologie, Memory read/write, Trend-Intent
-- `supabase/functions/studio-ai/index.ts` — Trend-Injection
-- `supabase/functions/delete-account/index.ts` — user_memory cleanup
-- `src/pages/studio/StudioProducts.tsx` — TagInput einsetzen
-- `src/pages/admin/AdminKI.tsx` — Tab Wissensbasis
-- `src/pages/DNA.tsx` — "PAWN erinnert sich"
-- `src/features/personalization/index.tsx` — user_memory-Merge
-- `src/App.tsx` — Route `/admin/trends`
-- `src/components/pawn/AdminShell.tsx` — Nav-Eintrag Trends
-
-## Ausführungsreihenfolge
-
-1. Migration 1 (Ontologie + Seed) → warten auf Approval → Types-Regen
-2. Migration 2 (Trends + Funktion) → Approval → Types-Regen
-3. Migration 3 (Memory) → Approval → Types-Regen
-4. Edge Function `compute-trends` + einmal ausführen
-5. Edge Function `pawn-chat`/`studio-ai`/`delete-account` erweitern
-6. Frontend: Ontologie-Hook + TagInput → Produkt-Editor
-7. AdminTrends-Seite + AdminKI-Tab + Route/Nav
-8. DNA-Seite Memory-Sektion + Personalization-Merge
-9. pg_cron einrichten (via insert-tool, wegen anon-key)
-10. Typecheck, Selbsttest
-
-Umfang groß, aber jede Ebene liefert eigenständigen Nutzen — auch bei knapper Datenlage ehrliche Zustände.
+Umfang groß — ich schreibe fokussiert und ohne Dekoration. Bestätige mit "Los", dann startet die Migration und der Rest folgt in schneller Abfolge.
