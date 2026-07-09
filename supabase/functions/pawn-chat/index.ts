@@ -468,7 +468,7 @@ Deno.serve(async (req) => {
       });
     }
     const allCards = [...cards, ...trendCards].slice(0, 4);
-    return new Response(JSON.stringify({ reply, cards: allCards, action, session_id, provider }), {
+    return new Response(JSON.stringify({ reply, cards: allCards, action, session_id, provider, tier, image_terms: imageTerms }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch {
