@@ -199,11 +199,24 @@ Tags: ${tags}`;
         if (t.wish >= 4 && stats.orders_count === 0) { suggestion = `„${t.name}" wird gemerkt, aber selten gekauft — prüfe den Preis oder die Lieferzeit.`; break; }
       }
 
-      const summary = `Diese Woche: ${stats.views_total} Ansichten, ${stats.wish_total} Merkzettel-Zugänge, ${stats.orders_count} Verkäufe (€${stats.revenue_eur}). ${suggestion}`;
-      const generated = (await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}` }])) ?? summary;
+      // Trend-Block für atelier/maison
+      let trendBlock: { world: string; rising: string[] } | null = null;
+      if (tier !== "standard") {
+        try {
+          const worldKey = ((designer.tags ?? []).find((t) => ["Mode","Interior","Kunst"].includes(t))) ?? "Mode";
+          const { data: mo } = await admin.rpc("trend_momentum" as never, { _world: worldKey } as never);
+          const rising = (((mo as unknown) as { term: string; momentum: string }[] | null) ?? [])
+            .filter((r) => r.momentum === "steigend").slice(0, 3).map((r) => r.term);
+          if (rising.length) trendBlock = { world: worldKey, rising };
+        } catch { /* soft */ }
+      }
+      const trendLine = trendBlock ? ` Trend im Blick (${trendBlock.world}): ${trendBlock.rising.join(", ")}.` : "";
+
+      const summary = `Diese Woche: ${stats.views_total} Ansichten, ${stats.wish_total} Merkzettel-Zugänge, ${stats.orders_count} Verkäufe (€${stats.revenue_eur}). ${suggestion}${trendLine}`;
+      const generated = (await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}.${trendLine}` }])) ?? summary;
 
       await logResponse(admin, user_id, mode, designer.id, JSON.stringify(stats), generated, provider);
-      return ok({ text: generated, stats, provider });
+      return ok({ text: generated, stats, tier, trend: trendBlock, provider });
     }
 
     if (mode === "campaign_draft") {
