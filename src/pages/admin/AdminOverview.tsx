@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats, requestAdminAction,
+  useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats,
+  useAdminPlatformKpis, requestAdminAction,
 } from "@/features/admin/useAdminData";
+import { useDisplayName } from "@/lib/displayName";
 
 /* ─────────────────────── Cockpit primitives ─────────────────────── */
 
@@ -170,39 +172,19 @@ function EngineRow({ k, state }: { k: EngineKey; state: EngineState }) {
 /* ─────────────────────── Command Deck (OS body) ─────────────────────── */
 
 function CommandDeck() {
-  const { revenueSeries, months, kpis } = useStore(adminSelectors.getPlatformOverview);
+  const { revenueSeries: seedRevenueSeries, months } = useStore(adminSelectors.getPlatformOverview);
+  void seedRevenueSeries; void months;
   const { feed, engines, pulse, fire } = useOsBus();
   const navigate = useNavigate();
   const { rows: recentOrders, loading: ordersLoading } = useAdminRecentOrders(6);
   const { rows: topDesigners, loading: topLoading } = useAdminTopDesigners(5);
   const sysStats = useAdminSystemStats();
+  const kpis = useAdminPlatformKpis();
+  const { firstName } = useDisplayName();
   const [actionDialog, setActionDialog] = useState<null | { action: string; title: string; description: string }>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = window.setInterval(() => setTick((v) => v + 1), 15_000); return () => window.clearInterval(t); }, []);
   void tick;
-
-  // Real pending-review count from the DB (submitted + in_review)
-  const [pendingApplications, setPendingApplications] = useState<number | null>(null);
-  const [activeDesignerCount, setActiveDesignerCount] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [{ count: pending }, { count: active }] = await Promise.all([
-        supabase
-          .from("designer_applications")
-          .select("*", { count: "exact", head: true })
-          .in("status", ["submitted", "in_review"]),
-        supabase
-          .from("designers")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "active"),
-      ]);
-      if (cancelled) return;
-      setPendingApplications(pending ?? 0);
-      setActiveDesignerCount(active ?? 0);
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   // Numbers that visibly react to the causal chain (owner-only "operating state")
   const [derivedKpi, setDerivedKpi] = useState({ designers: 0, forecast: 0, dnaCoverage: 0 });
@@ -217,7 +199,7 @@ function CommandDeck() {
   }, [feed]);
 
   const attention = useMemo(() => {
-    const pending = pendingApplications ?? 0;
+    const pending = kpis.pendingApplications;
     return [
       pending > 0
         ? { id: "designers", label: `${pending} Designer warten auf Freigabe`, sub: "Bewerbungen · Kuratoren-Inbox", weight: "high" as const, action: "designer.approve" as OsAction, actionLabel: "Inbox öffnen", route: "/admin/designers" }
@@ -226,7 +208,7 @@ function CommandDeck() {
       { id: "logistics", label: "23 Bestellungen warten auf Versand", sub: "SLA-Grenze in 6 h", weight: "medium" as const, action: "broadcast.send" as OsAction, actionLabel: "Auto-Versand" },
       { id: "prompt", label: "Prompt v18 · CTR −3.1 %", sub: "A/B unter Baseline", weight: "medium" as const, action: "prompt.rollback" as OsAction, actionLabel: "Rollback v17" },
     ];
-  }, [pendingApplications]);
+  }, [kpis.pendingApplications]);
 
 
   const insights = [
@@ -263,7 +245,7 @@ function CommandDeck() {
             Operating System · Identity · Intelligence · Marketplace
           </p>
           <h2 className="mt-2 font-serif text-3xl leading-tight text-[hsl(36_28%_94%)]">
-            Guten Abend, Alexander.
+            Guten Tag, {firstName}.
             <span className="ml-3 text-[hsl(36_15%_55%)]">
               PAWN läuft · {Object.values(engines).filter((e) => e.status !== "idle").length} Engines aktiv · {feed.length} Ereignisse in dieser Session
             </span>
@@ -279,30 +261,49 @@ function CommandDeck() {
         </div>
       </div>
 
-      {/* KPI row — reacts to chain */}
+      {/* KPI row — real 30d data + live-reactive derived deltas */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCell
-          label="Umsatz (Monat)"
-          value={`€${((kpis.revenue || 482910) + derivedKpi.forecast).toLocaleString("de-DE")}`}
-          delta={derivedKpi.forecast ? `+€${derivedKpi.forecast.toLocaleString("de-DE")} live` : "+12.4 %"}
-          trend="up" series={revenueSeries} pulseKey={pulse}
-          why={["Rick Owens Launch: +€38k", "Recommender v18 aktiv", "Newsletter #18 CVR +9 %"]}
+          label="Umsatz · 30 T"
+          value={kpis.loading ? "…" : `€${(kpis.revenue30d + derivedKpi.forecast).toLocaleString("de-DE")}`}
+          delta={derivedKpi.forecast ? `+€${derivedKpi.forecast.toLocaleString("de-DE")} live` : `${kpis.revenue30dDelta >= 0 ? "+" : ""}${kpis.revenue30dDelta} %`}
+          trend={kpis.revenue30dDelta >= 0 ? "up" : "down"} series={kpis.revenueSeries} pulseKey={pulse}
+          why={[
+            `Bezahlte Bestellungen: ${kpis.orders30d}`,
+            `Ø Bestellwert: €${kpis.aov30d.toLocaleString("de-DE")}`,
+            kpis.revenue30d === 0 ? "Noch keine Verkäufe — der erste kommt." : "Live aus orders (paid, 30 T).",
+          ]}
         />
-        <KpiCell label="Bestellungen" value={String(kpis.ordersCount || 1284)} delta="+186" trend="up"
-          series={[10, 14, 12, 20, 22, 24, 30, 34, 33, 40, 44, 48]} accent="emerald" pulseKey={pulse}
-          why={["23 warten auf Versand", "4 Zahlungen fehlgeschlagen"]} />
-        <KpiCell label="Ø Bestellwert" value="€376" delta="−2.1 %" trend="down"
-          series={[42, 40, 41, 39, 40, 38, 37, 38, 37, 36, 37, 37]} accent="amber" pulseKey={pulse}
-          why={["Rabatt-Kampagne aktiv", "Kleinere Warenkörbe im Sale"]} />
-        <KpiCell label="Neue Kunden" value="312" delta="+18 %" trend="up"
-          series={[8, 9, 12, 11, 14, 16, 18, 22, 25, 27, 30, 34]} accent="emerald" pulseKey={pulse}
-          why={["Referral +42 %", "Editorial Vogue DE"]} />
-        <KpiCell label="DNA Coverage" value={`${Math.min(100, 94 + derivedKpi.dnaCoverage)} %`} delta={derivedKpi.dnaCoverage ? `+${derivedKpi.dnaCoverage} pt live` : "+3.2 pt"}
-          trend="up" series={[70, 74, 78, 82, 85, 87, 89, 91, 92, 93, 94, 94]} pulseKey={pulse}
-          why={["284 Identitäten neu vermessen", "Cold-Start auf 6 %"]} />
-        <KpiCell label="Aktive Designer" value={String((activeDesignerCount ?? kpis.designerCount ?? 0) + derivedKpi.designers)} delta={derivedKpi.designers ? `+${derivedKpi.designers} live` : (pendingApplications ? `${pendingApplications} in Prüfung` : "Inbox leer")}
-          trend="up" series={[120, 122, 125, 128, 131, 133, 135, 137, 138, 140, 141, 142]} accent="emerald" pulseKey={pulse}
-          why={[`${pendingApplications ?? 0} warten auf Review`, "Live aus Governance-Inbox"]} />
+        <KpiCell label="Bestellungen · 30 T"
+          value={kpis.loading ? "…" : String(kpis.orders30d)}
+          delta={kpis.ordersDelta >= 0 ? `+${kpis.ordersDelta}` : String(kpis.ordersDelta)}
+          trend={kpis.ordersDelta >= 0 ? "up" : "down"}
+          series={kpis.orderSeries} accent="emerald" pulseKey={pulse}
+          why={kpis.orders30d === 0 ? ["Keine bezahlten Bestellungen in den letzten 30 Tagen."] : [`${kpis.orders30d} bezahlt`, "Tages-Buckets aus orders"]} />
+        <KpiCell label="Ø Bestellwert"
+          value={kpis.loading ? "…" : (kpis.aov30d > 0 ? `€${kpis.aov30d.toLocaleString("de-DE")}` : "—")}
+          delta={kpis.aov30d > 0 ? `${kpis.aovDelta >= 0 ? "+" : ""}${kpis.aovDelta} %` : "keine Basis"}
+          trend={kpis.aovDelta >= 0 ? "up" : "down"}
+          series={kpis.revenueSeries.map((v, i) => (kpis.orderSeries[i] > 0 ? Math.round(v / kpis.orderSeries[i]) : 0))}
+          accent="amber" pulseKey={pulse}
+          why={kpis.aov30d === 0 ? ["Noch kein bezahlter Warenkorb."] : ["Umsatz / bezahlte Bestellungen (30 T)"]} />
+        <KpiCell label="Neue Nutzer · 30 T"
+          value={kpis.loading ? "…" : String(kpis.newUsers30d)}
+          delta={`${kpis.newUsersDelta >= 0 ? "+" : ""}${kpis.newUsersDelta} %`}
+          trend={kpis.newUsersDelta >= 0 ? "up" : "down"}
+          series={kpis.orderSeries.map((_, i) => Math.max(0, Math.round(kpis.newUsers30d / 30) + (i - 15) * 0))}
+          accent="emerald" pulseKey={pulse}
+          why={kpis.newUsers30d === 0 ? ["Noch keine neuen Konten in den letzten 30 Tagen."] : ["profiles.created_at, letzte 30 T"]} />
+        <KpiCell label="DNA Coverage"
+          value={kpis.loading ? "…" : `${Math.min(100, kpis.dnaCoverage + derivedKpi.dnaCoverage)} %`}
+          delta={derivedKpi.dnaCoverage ? `+${derivedKpi.dnaCoverage} pt live` : (kpis.activeDesigners > 0 ? `${kpis.activeDesigners} aktiv` : "keine Designer")}
+          trend="up" series={kpis.orderSeries} pulseKey={pulse}
+          why={kpis.activeDesigners === 0 ? ["Noch keine aktiven Designer."] : [`Designer mit brand_dna: ${Math.round((kpis.dnaCoverage/100) * kpis.activeDesigners)} / ${kpis.activeDesigners}`]} />
+        <KpiCell label="Aktive Designer"
+          value={String((kpis.activeDesigners) + derivedKpi.designers)}
+          delta={derivedKpi.designers ? `+${derivedKpi.designers} live` : (kpis.pendingApplications ? `${kpis.pendingApplications} in Prüfung` : "Inbox leer")}
+          trend="up" series={kpis.orderSeries.map(() => kpis.activeDesigners)} accent="emerald" pulseKey={pulse}
+          why={[`${kpis.pendingApplications} warten auf Review`, "Live aus designers (status=active)"]} />
       </div>
 
       {/* Row: Backend engines + Live feed + Decision queue */}
@@ -381,24 +382,28 @@ function CommandDeck() {
         </Panel>
       </div>
 
-      {/* Row: Revenue with causal annotations + AI Insights (with propagating actions) */}
+      {/* Row: Revenue (real 30d buckets) + AI Insights (with propagating actions) */}
       <div className="mt-4 grid gap-3 xl:grid-cols-[1.55fr_1fr]">
-        <Panel title="Umsatzentwicklung" eyebrow="12 Monate · mit Ursachen"
-          action={<div className="flex gap-1.5"><Btn>12M</Btn><Btn>90T</Btn><Btn>30T</Btn></div>}>
+        <Panel title="Umsatzentwicklung" eyebrow="30 Tage · echte Buckets"
+          action={<span className="text-[0.6rem] uppercase tracking-[0.22em] text-[hsl(36_15%_55%)]">EUR / Tag</span>}>
           <div className="relative px-4 pb-4 pt-2">
-            <ChartPlaceholder series={revenueSeries} labels={months} tone="dark" variant="area" height={240} />
-            <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
-              {[
-                { m: "Sep", cause: "Recommender v17 deployed", tone: "emerald" },
-                { m: "Okt", cause: "Rick Owens Launch", tone: "wine" },
-                { m: "Nov", cause: "Newsletter #18 · +9 % CVR", tone: "emerald" },
-              ].map((c) => (
-                <div key={c.m} className="flex items-start gap-2 border-l border-white/10 pl-2 text-[hsl(36_20%_74%)]">
-                  <span className={cn("mt-1 h-1.5 w-1.5 rounded-full", c.tone === "emerald" ? "bg-emerald-400" : "bg-[hsl(350_55%_55%)]")} />
-                  <span><span className="text-[hsl(36_15%_55%)]">{c.m} · </span>{c.cause}</span>
+            {kpis.loading ? (
+              <div className="flex h-[240px] items-center justify-center text-[11px] text-[hsl(36_15%_55%)]">Lade …</div>
+            ) : kpis.revenueSeries.every((v) => v === 0) ? (
+              <div className="flex h-[240px] flex-col items-center justify-center gap-2 text-center text-[12px] text-[hsl(36_18%_66%)]">
+                <p className="font-serif text-[16px] text-[hsl(36_28%_92%)]">Noch keine Verkäufe — der erste kommt.</p>
+                <p className="text-[11px] text-[hsl(36_15%_55%)]">Chart erscheint, sobald bezahlte Bestellungen eingehen.</p>
+              </div>
+            ) : (
+              <>
+                <ChartPlaceholder series={kpis.revenueSeries} labels={kpis.dayLabels.filter((_, i) => i % 5 === 0)} tone="dark" variant="area" height={240} />
+                <div className="mt-3 flex items-center justify-between text-[11px] text-[hsl(36_20%_74%)]">
+                  <span>Summe 30 T: <span className="text-[hsl(36_28%_94%)] tabular-nums">€{kpis.revenue30d.toLocaleString("de-DE")}</span></span>
+                  <span>Bestellungen: <span className="text-[hsl(36_28%_94%)] tabular-nums">{kpis.orders30d}</span></span>
+                  <span>Ø: <span className="text-[hsl(36_28%_94%)] tabular-nums">€{kpis.aov30d.toLocaleString("de-DE")}</span></span>
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
         </Panel>
 
