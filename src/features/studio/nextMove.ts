@@ -144,6 +144,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
         to: `/studio/produkte?dna=${dnaGap.id}`,
         urgency: "sanft",
       };
+    }
     if (trendTerm && level?.level !== "dame") {
       return {
         key: "trend_upload",
