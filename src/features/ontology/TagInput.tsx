@@ -18,6 +18,7 @@ const KIND_LABEL: Record<OntologyTerm["kind"], string> = {
   color: "Farbe",
   attribute: "Merkmal",
   style: "Stil",
+  mood: "Stimmung",
 };
 
 export function TagInput({ value, onChange, world, placeholder }: Props) {
