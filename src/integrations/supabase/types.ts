@@ -1237,6 +1237,7 @@ export type Database = {
           display_name: string
           id: string
           locale: string
+          member_number: number | null
           updated_at: string
         }
         Insert: {
@@ -1247,6 +1248,7 @@ export type Database = {
           display_name?: string
           id: string
           locale?: string
+          member_number?: number | null
           updated_at?: string
         }
         Update: {
@@ -1257,6 +1259,7 @@ export type Database = {
           display_name?: string
           id?: string
           locale?: string
+          member_number?: number | null
           updated_at?: string
         }
         Relationships: []
