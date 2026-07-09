@@ -43,7 +43,7 @@ export default function AdminPayments() {
       setProducts((p.data ?? []) as ProductLite[]);
       const pct = Number(((cCommission.data?.value ?? {}) as { pct?: number }).pct ?? 7);
       setCommissionPct(pct); setCommissionInput(String(pct));
-      setPayout((cBusiness.data?.value ?? null) as BusinessProfile | null);
+      setPayout((cBusiness.data?.value ?? null) as unknown as BusinessProfile | null);
       setLoading(false);
     })();
   }, []);
