@@ -183,6 +183,7 @@ function CommandDeck() {
   const sysStats = useAdminSystemStats();
   const kpis = useAdminPlatformKpis();
   const { firstName } = useDisplayName();
+  const { move: adminMove } = useAdminNextMove();
   const [actionDialog, setActionDialog] = useState<null | { action: string; title: string; description: string }>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = window.setInterval(() => setTick((v) => v + 1), 15_000); return () => window.clearInterval(t); }, []);
