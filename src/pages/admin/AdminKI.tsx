@@ -296,6 +296,8 @@ export default function AdminKI() {
 
       {tab === "integrationen" && (
         <section className="space-y-6">
+          <ProviderStatusCards />
+
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">Externe Dienste, die PAWN auf Events auslöst (webhooks jetzt, Gmail / Instagram als Stub bis Credentials da sind).</p>
             <button onClick={() => setNewIntegration({ kind: "webhook", label: "", config: {}, enabled: true, event_types: [] })}
@@ -303,6 +305,7 @@ export default function AdminKI() {
               <Plus className="h-3 w-3" /> Neue Integration
             </button>
           </div>
+
 
           <ul className="divide-y divide-border border border-border bg-card">
             {integrations.map((i) => (
