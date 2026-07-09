@@ -148,7 +148,7 @@ Story: ${designer.story ?? "—"}
 Produkt: ${p.name}
 Welt: ${p.world}
 Tags: ${tags}`;
-      const generated = (await ai(system, [{ role: "user", content: promptUser }]))
+      const generated = (await ai(model, system, [{ role: "user", content: promptUser }]))
         ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
       await logResponse(admin, user_id, mode, designer.id, promptUser, generated, provider);
       return ok({ text: generated, provider });
@@ -200,7 +200,7 @@ Tags: ${tags}`;
       }
 
       const summary = `Diese Woche: ${stats.views_total} Ansichten, ${stats.wish_total} Merkzettel-Zugänge, ${stats.orders_count} Verkäufe (€${stats.revenue_eur}). ${suggestion}`;
-      const generated = (await ai(system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}` }])) ?? summary;
+      const generated = (await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}` }])) ?? summary;
 
       await logResponse(admin, user_id, mode, designer.id, JSON.stringify(stats), generated, provider);
       return ok({ text: generated, stats, provider });
@@ -228,7 +228,7 @@ Tags: ${tags}`;
 Marke: ${designer.brand_name} · Story: ${designer.story ?? "—"}
 Produkt: ${p.name} · Welt: ${p.world} · Tags: ${(p.tags as string[] | null)?.join(", ") ?? "—"}
 Format: {"caption":"…","hashtags":["#..","#.."]}`;
-      const raw = await ai(system, [{ role: "user", content: promptUser }]);
+      const raw = await ai(model, system, [{ role: "user", content: promptUser }]);
       let caption = `${p.name} — aus dem Atelier ${designer.brand_name}.`;
       let hashtags = ["#pawn", `#${designer.slug.replace(/-/g, "")}`, `#${(p.world ?? "").toLowerCase()}`, "#independentdesign"];
       if (raw) {
@@ -271,7 +271,7 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
         const published = products.filter((p) => (p as { status?: string }).status === "published").length;
         contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht). Story: ${designer.story ?? "—"}.`;
       } catch { /* soft */ }
-      const reply = (await ai(system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]))
+      const reply = (await ai(model, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]))
         ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
       await logResponse(admin, user_id, mode, designer.id, lastUser, reply, provider);
       return ok({ reply, provider });
