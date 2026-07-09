@@ -180,17 +180,23 @@ export default function StudioOverview() {
   };
 
   const checklist = useMemo(() => {
+    const dnaMissing = products.filter((p) => p.status === "published").find((p) => {
+      const dna = (p as unknown as { product_dna?: Record<string, unknown[]> }).product_dna ?? {};
+      const n = (k: string) => Array.isArray(dna[k]) ? dna[k]!.length : 0;
+      return n("materials") + n("silhouette") + n("colors") + n("mood") === 0;
+    });
     const items = [
       { label: "Porträt hochladen", done: !!designer?.avatar_url || !!designer?.hero_image_url, to: "/studio/brand" },
       { label: "Manifest schreiben", done: !!designer?.story && designer.story.length > 40, to: "/studio/brand" },
       { label: "Erstes Stück anlegen", done: products.length > 0, to: "/studio/produkte" },
       { label: "Stück veröffentlichen", done: products.some((p) => p.status === "published"), to: "/studio/produkte" },
+      { label: "DNA deiner Stücke vervollständigen", done: !dnaMissing, to: dnaMissing ? `/studio/produkte?dna=${dnaMissing.id}` : "/studio/produkte" },
       { label: "Auszahlungsdaten hinterlegen", done: false, to: "/studio/auszahlung" },
     ];
     return items;
   }, [designer, products]);
   const doneCount = checklist.filter((i) => i.done).length;
-  const showChecklist = doneCount < 5;
+  const showChecklist = doneCount < checklist.length;
 
   if (loading) return <StudioShell title="Bühne"><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
 
