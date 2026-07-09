@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { ReactNode } from "react";
+import { useCopilot } from "./CopilotDrawer";
 import {
   LayoutGrid,
   Activity,
@@ -15,6 +16,7 @@ import {
   TrendingUp,
   Bot,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
