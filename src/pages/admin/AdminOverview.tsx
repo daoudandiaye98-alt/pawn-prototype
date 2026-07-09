@@ -382,24 +382,28 @@ function CommandDeck() {
         </Panel>
       </div>
 
-      {/* Row: Revenue with causal annotations + AI Insights (with propagating actions) */}
+      {/* Row: Revenue (real 30d buckets) + AI Insights (with propagating actions) */}
       <div className="mt-4 grid gap-3 xl:grid-cols-[1.55fr_1fr]">
-        <Panel title="Umsatzentwicklung" eyebrow="12 Monate · mit Ursachen"
-          action={<div className="flex gap-1.5"><Btn>12M</Btn><Btn>90T</Btn><Btn>30T</Btn></div>}>
+        <Panel title="Umsatzentwicklung" eyebrow="30 Tage · echte Buckets"
+          action={<span className="text-[0.6rem] uppercase tracking-[0.22em] text-[hsl(36_15%_55%)]">EUR / Tag</span>}>
           <div className="relative px-4 pb-4 pt-2">
-            <ChartPlaceholder series={revenueSeries} labels={months} tone="dark" variant="area" height={240} />
-            <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
-              {[
-                { m: "Sep", cause: "Recommender v17 deployed", tone: "emerald" },
-                { m: "Okt", cause: "Rick Owens Launch", tone: "wine" },
-                { m: "Nov", cause: "Newsletter #18 · +9 % CVR", tone: "emerald" },
-              ].map((c) => (
-                <div key={c.m} className="flex items-start gap-2 border-l border-white/10 pl-2 text-[hsl(36_20%_74%)]">
-                  <span className={cn("mt-1 h-1.5 w-1.5 rounded-full", c.tone === "emerald" ? "bg-emerald-400" : "bg-[hsl(350_55%_55%)]")} />
-                  <span><span className="text-[hsl(36_15%_55%)]">{c.m} · </span>{c.cause}</span>
+            {kpis.loading ? (
+              <div className="flex h-[240px] items-center justify-center text-[11px] text-[hsl(36_15%_55%)]">Lade …</div>
+            ) : kpis.revenueSeries.every((v) => v === 0) ? (
+              <div className="flex h-[240px] flex-col items-center justify-center gap-2 text-center text-[12px] text-[hsl(36_18%_66%)]">
+                <p className="font-serif text-[16px] text-[hsl(36_28%_92%)]">Noch keine Verkäufe — der erste kommt.</p>
+                <p className="text-[11px] text-[hsl(36_15%_55%)]">Chart erscheint, sobald bezahlte Bestellungen eingehen.</p>
+              </div>
+            ) : (
+              <>
+                <ChartPlaceholder series={kpis.revenueSeries} labels={kpis.dayLabels.filter((_, i) => i % 5 === 0)} tone="dark" variant="area" height={240} />
+                <div className="mt-3 flex items-center justify-between text-[11px] text-[hsl(36_20%_74%)]">
+                  <span>Summe 30 T: <span className="text-[hsl(36_28%_94%)] tabular-nums">€{kpis.revenue30d.toLocaleString("de-DE")}</span></span>
+                  <span>Bestellungen: <span className="text-[hsl(36_28%_94%)] tabular-nums">{kpis.orders30d}</span></span>
+                  <span>Ø: <span className="text-[hsl(36_28%_94%)] tabular-nums">€{kpis.aov30d.toLocaleString("de-DE")}</span></span>
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
         </Panel>
 
