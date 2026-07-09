@@ -7,6 +7,8 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCopilot } from "./CopilotDrawer";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
+import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
+
 import { useDisplayName } from "@/lib/displayName";
 
 /* Hairline inline icons (stroke 1.25) — quiet, monogram-like */
