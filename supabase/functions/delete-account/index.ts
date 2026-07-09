@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
     // Cascade cleanup (best-effort; CASCADE FKs handle most)
     await admin.from("notifications").delete().eq("user_id", userId);
     await admin.from("ai_sessions").delete().eq("user_id", userId);
+    await admin.from("user_memory").delete().eq("user_id", userId);
+    await admin.from("user_roles").delete().eq("user_id", userId);
     await admin.from("designer_consents").delete().eq("user_id", userId);
     await admin.from("designer_applications").delete().eq("user_id", userId);
     // Anonymize domain events instead of deleting (auditable)

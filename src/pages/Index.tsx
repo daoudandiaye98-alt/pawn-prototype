@@ -33,6 +33,15 @@ function useScrollProgress(ref: React.RefObject<HTMLElement>) {
   return p;
 }
 
+function ChapterMark({ index, label }: { index: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="inline-block h-[9px] w-[9px] border-[1.5px] border-black" />
+      <p className="palace-eyebrow">{index} / {label}</p>
+    </div>
+  );
+}
+
 const Index = () => {
   const { designers } = usePublicDesigners();
   const collection = useActiveCollection();
@@ -74,7 +83,10 @@ const Index = () => {
     let raf = 0;
     const loop = () => {
       currentOpacityRef.current += (targetOpacityRef.current - currentOpacityRef.current) * 0.08;
-      setCanvasOpacity(currentOpacityRef.current);
+      // Clamp — the delta lerp can drift past [0,1] on fp corners and cause flicker.
+      const clamped = Math.max(0, Math.min(1, currentOpacityRef.current));
+      currentOpacityRef.current = clamped;
+      setCanvasOpacity(clamped);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -249,7 +261,7 @@ const Index = () => {
         <div className="mx-auto max-w-[1600px]">
           <div className="mb-16 flex items-end justify-between gap-8">
             <div>
-              <p className="palace-eyebrow">Diese Woche neu</p>
+              <ChapterMark index="01" label="Diese Woche neu" />
               <h2 className="palace-serif mt-4 font-light text-[clamp(2rem,4vw,3.4rem)] leading-[1.02]">
                 Frisch aus <span className="italic">den Ateliers.</span>
               </h2>
@@ -257,9 +269,8 @@ const Index = () => {
             <Link to="/neu" className="palace-eyebrow uline text-[#000000]">Alles Neue →</Link>
           </div>
 
-          <div className="grid grid-cols-12 gap-6 md:gap-8">
+          <div className="grid grid-cols-12 border-l-[1.5px] border-t-[1.5px] border-black">
             {editorialTiles.map((p, i) => {
-              // Alternating monumental row shapes
               const layouts = [
                 { span: "col-span-12 md:col-span-5", ratio: "3/4" as const },
                 { span: "col-span-12 md:col-span-4", ratio: "4/5" as const },
@@ -269,10 +280,17 @@ const Index = () => {
                 { span: "col-span-12 md:col-span-5", ratio: "3/2" as const },
               ];
               const l = layouts[i % layouts.length];
+              const worldLetter = (p.world ?? "M").charAt(0).toUpperCase();
+              const idx = String(i + 1).padStart(2, "0");
               return (
-                <Reveal key={p.id} delay={i * 60} className={l.span}>
-                  <Link to={`/product/${p.slug}`} className="group block">
-                    <EditorialImage seed={`prod-${p.slug}`} ratio={l.ratio} />
+                <Reveal key={p.id} delay={i * 60} className={`${l.span} border-r-[1.5px] border-b-[1.5px] border-black`}>
+                  <Link to={`/product/${p.slug}`} className="group block p-3 md:p-4">
+                    <div className="relative">
+                      <EditorialImage seed={`prod-${p.slug}`} ratio={l.ratio} />
+                      <span className="absolute left-3 top-3 border-[1.5px] border-black bg-white px-2 py-1 text-[0.55rem] font-medium uppercase tracking-[0.32em] text-black">
+                        {worldLetter}–{idx}
+                      </span>
+                    </div>
                     <div className="mt-4">
                       <p className="palace-serif italic text-[1.15rem] leading-tight text-[#000000]">{p.name}</p>
                       <p className="palace-eyebrow mt-2">Mode · {p.designer}</p>
@@ -284,6 +302,7 @@ const Index = () => {
           </div>
         </div>
       </section>
+
 
       {/* ── 05 STATEMENT BANNER — rotates through featured designers ── */}
       <DynamicBanner />
@@ -462,14 +481,14 @@ function HeroPrompt() {
     const text = value.trim();
     if (!text) return;
     window.dispatchEvent(new CustomEvent("palace:open-chat"));
-    // Give the drawer a beat to mount before we hand off the message.
     setTimeout(() => window.dispatchEvent(new CustomEvent("palace:chat-send", { detail: { message: text } })), 220);
     setValue("");
   };
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); send(); }}
-      className="mx-auto mt-10 flex h-12 w-full max-w-[520px] items-stretch rounded-[10px] border border-[rgba(0,0,0,.35)] bg-white p-1 shadow-[0_10px_30px_-18px_rgba(0,0,0,.35)]"
+      className="mx-auto mt-10 flex h-14 w-full max-w-[520px] items-stretch border-[1.5px] border-black bg-white"
+      style={{ boxShadow: "6px 6px 0 #000" }}
     >
       <input
         value={value}
@@ -480,11 +499,10 @@ function HeroPrompt() {
       />
       <button
         type="submit"
-        className="whitespace-nowrap rounded-[8px] bg-[#000000] px-5 text-[0.62rem] uppercase tracking-[0.28em] text-[#FFFFFF] transition-colors duration-300 hover:bg-[#3A3A3C]"
+        className="whitespace-nowrap border-l-[1.5px] border-black bg-[#000000] px-6 text-[0.7rem] uppercase tracking-[0.32em] text-white transition-colors duration-200 hover:bg-white hover:text-black"
       >
         Fragen →
       </button>
-
     </form>
   );
 }

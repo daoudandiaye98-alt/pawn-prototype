@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { HelixScene } from "@/components/palace/HelixScene";
@@ -6,6 +6,8 @@ import { Reveal } from "@/components/palace/Reveal";
 import { Editable } from "@/components/palace/Editable";
 import { useAuth } from "@/lib/auth";
 import { usePersonalization, type Signal } from "@/features/personalization";
+import { supabase } from "@/integrations/supabase/client";
+import { X } from "lucide-react";
 
 /**
  * /dna — the living, correctable identity dossier.
@@ -104,8 +106,30 @@ export default function DNA() {
   const { user } = useAuth();
   const { hasSignals, world, mood, signals, correct, loading, refresh } = usePersonalization();
   const heroRef = useRef<HTMLElement | null>(null);
+  const [facts, setFacts] = useState<string[]>([]);
 
   useEffect(() => { document.title = "Deine DNA — PAWN"; }, []);
+
+  const loadFacts = useCallback(async () => {
+    if (!user) { setFacts([]); return; }
+    const { data } = await supabase.from("user_memory" as never).select("facts").eq("user_id", user.id).maybeSingle();
+    const f = ((data as { facts?: string[] } | null)?.facts) ?? [];
+    setFacts(Array.isArray(f) ? f : []);
+  }, [user]);
+  useEffect(() => { void loadFacts(); }, [loadFacts]);
+
+  const deleteFact = async (fact: string) => {
+    if (!user) return;
+    const next = facts.filter((f) => f !== fact);
+    setFacts(next);
+    await supabase.from("user_memory" as never).update({ facts: next, updated_at: new Date().toISOString() }).eq("user_id", user.id);
+    await supabase.from("domain_events").insert({
+      type: "ai.memory_deleted",
+      actor: user.id,
+      payload: { fact, user_id: user.id },
+    } as never);
+  };
+
 
   return (
     <PalaceLayout>

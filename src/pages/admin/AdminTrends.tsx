@@ -86,10 +86,10 @@ export default function AdminTrends() {
   return (
     <AdminShell title="Trends" eyebrow="Momentum · Prognose · Bewegung">
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="flex border border-border">
+        <div className="flex border-[1.5px] border-black">
           {(["Mode", "Interior", "Kunst"] as World[]).map((w) => (
             <button key={w} onClick={() => setWorld(w)}
-              className={`px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] ${world === w ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+              className={`border-r border-black/20 px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] last:border-r-0 ${world === w ? "bg-foreground text-background" : "hover:bg-muted"}`}>
               {w}
             </button>
           ))}
@@ -97,12 +97,17 @@ export default function AdminTrends() {
         <span className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">
           Letzter Snapshot: {lastSnapshot ?? "—"}
         </span>
+        <span className="inline-flex items-center gap-1.5 border-[1.5px] border-black bg-white px-2 py-1 text-[0.55rem] uppercase tracking-[0.28em] text-black">
+          <span className="inline-block h-[6px] w-[6px] rounded-full bg-emerald-600" />
+          Automatik: täglich 03:15 UTC
+        </span>
         <button onClick={recompute} disabled={computing}
-          className="ml-auto inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black disabled:opacity-50">
+          className="ml-auto inline-flex items-center gap-2 border-[1.5px] border-black bg-black px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-white hover:bg-white hover:text-black disabled:opacity-50">
           <RefreshCw className={`h-3 w-3 ${computing ? "animate-spin" : ""}`} />
           {computing ? "Berechne…" : "Jetzt neu berechnen"}
         </button>
       </div>
+
 
       <section className="border border-border bg-card">
         {fetching ? (
