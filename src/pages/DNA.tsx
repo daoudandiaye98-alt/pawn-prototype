@@ -122,7 +122,7 @@ export default function DNA() {
     if (!user) return;
     const next = facts.filter((f) => f !== fact);
     setFacts(next);
-    await supabase.from("user_memory" as never).update({ facts: next, updated_at: new Date().toISOString() }).eq("user_id", user.id);
+    await supabase.from("user_memory" as never).update({ facts: next, updated_at: new Date().toISOString() } as never).eq("user_id", user.id);
     await supabase.from("domain_events").insert({
       type: "ai.memory_deleted",
       actor: user.id,
