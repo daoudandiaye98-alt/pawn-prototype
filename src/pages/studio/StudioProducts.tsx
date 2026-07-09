@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +87,20 @@ export default function StudioProducts() {
   };
 
   useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [designer?.id, page]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const dnaId = searchParams.get("dna");
+    if (!dnaId || items.length === 0) return;
+    const p = items.find((x) => x.id === dnaId);
+    if (!p) return;
+    setEditing(p);
+    setTimeout(() => {
+      document.getElementById("dna")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 250);
+    searchParams.delete("dna");
+    setSearchParams(searchParams, { replace: true });
+  }, [items, searchParams, setSearchParams]);
 
   const startNew = () => setEditing(emptyEdit());
 
@@ -496,7 +511,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Product DNA — Moleküle */}
-          <Section title="DNA deines Stücks" help="Vier kurze Antworten helfen PAWN, dein Stück den richtigen Menschen zu zeigen. Wähle aus der Palette — was fehlt, kannst du in den Tags frei ergänzen.">
+          <Section title="DNA deines Stücks" help="Vier kurze Antworten helfen PAWN, dein Stück den richtigen Menschen zu zeigen. Wähle aus der Palette — was fehlt, kannst du in den Tags frei ergänzen." anchorId="dna">
             <ProductDNAEditor
               dna={local.product_dna ?? emptyDNA()}
               world={local.world ?? "Mode"}
@@ -544,10 +559,10 @@ function AutosaveBadge({ saving, savedAt }: { saving: boolean; savedAt: Date | n
   return null;
 }
 
-function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
+function Section({ title, help, children, anchorId }: { title: string; help?: string; children: React.ReactNode; anchorId?: string }) {
   const [showHelp, setShowHelp] = useState(false);
   return (
-    <section>
+    <section id={anchorId}>
       <div className="mb-3 flex items-center gap-2">
         <h3 className="font-serif text-lg font-medium">{title}</h3>
         {help && (

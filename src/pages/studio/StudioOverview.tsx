@@ -106,7 +106,7 @@ export default function StudioOverview() {
     if (!designer) return;
     (async () => {
       const [prods, msgs, camp, visitEvs] = await Promise.all([
-        supabase.from("products").select("id, name, slug, world, price, image_url, status, inventory_mode, stock_quantity, lead_time_days").eq("designer_id", designer.id).order("created_at", { ascending: false }),
+        supabase.from("products").select("id, name, slug, world, price, image_url, status, inventory_mode, stock_quantity, lead_time_days, product_dna").eq("designer_id", designer.id).order("created_at", { ascending: false }),
         supabase.from("message_threads").select("id, subject, last_message_at, status").eq("designer_id", designer.id).order("last_message_at", { ascending: false }).limit(3),
         supabase.from("campaigns").select("id, title, content, status").eq("designer_id", designer.id).eq("status", "proposed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("domain_events").select("id").eq("type", "designer.view").eq("payload->>designer_id", designer.id)
@@ -180,17 +180,23 @@ export default function StudioOverview() {
   };
 
   const checklist = useMemo(() => {
+    const dnaMissing = products.filter((p) => p.status === "published").find((p) => {
+      const dna = (p as unknown as { product_dna?: Record<string, unknown[]> }).product_dna ?? {};
+      const n = (k: string) => Array.isArray(dna[k]) ? dna[k]!.length : 0;
+      return n("materials") + n("silhouette") + n("colors") + n("mood") === 0;
+    });
     const items = [
       { label: "Porträt hochladen", done: !!designer?.avatar_url || !!designer?.hero_image_url, to: "/studio/brand" },
       { label: "Manifest schreiben", done: !!designer?.story && designer.story.length > 40, to: "/studio/brand" },
       { label: "Erstes Stück anlegen", done: products.length > 0, to: "/studio/produkte" },
       { label: "Stück veröffentlichen", done: products.some((p) => p.status === "published"), to: "/studio/produkte" },
+      { label: "DNA deiner Stücke vervollständigen", done: !dnaMissing, to: dnaMissing ? `/studio/produkte?dna=${dnaMissing.id}` : "/studio/produkte" },
       { label: "Auszahlungsdaten hinterlegen", done: false, to: "/studio/auszahlung" },
     ];
     return items;
   }, [designer, products]);
   const doneCount = checklist.filter((i) => i.done).length;
-  const showChecklist = doneCount < 5;
+  const showChecklist = doneCount < checklist.length;
 
   if (loading) return <StudioShell title="Bühne"><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
 
