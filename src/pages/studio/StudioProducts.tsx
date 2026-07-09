@@ -644,5 +644,3 @@ function DNAChipRow({ label, options, selected, onToggle }: { label: string; opt
     </div>
   );
 }
-  );
-}
