@@ -1436,12 +1436,20 @@ export type Database = {
         Args: { _body: string; _link: string; _title: string; _type: string }
         Returns: undefined
       }
+      plan_priority: {
+        Args: { _plan: Database["public"]["Enums"]["designer_plan"] }
+        Returns: number
+      }
       recompute_brand_dna: {
         Args: { _designer_id: string }
         Returns: undefined
       }
       reject_designer: {
         Args: { _application_id: string; _reason: string }
+        Returns: undefined
+      }
+      resequence_posting_queue_day: {
+        Args: { _day: string }
         Returns: undefined
       }
       slugify: { Args: { txt: string }; Returns: string }
