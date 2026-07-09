@@ -233,6 +233,37 @@ export default function DNA() {
         </div>
       </section>
 
+      {/* 02b · PAWN erinnert sich */}
+      {user && facts.length > 0 && (
+        <section className="border-t-[1.5px] border-black bg-white px-6 py-20 md:px-14 md:py-28">
+          <div className="mx-auto max-w-[1200px]">
+            <p className="palace-eyebrow">PAWN erinnert sich</p>
+            <h2 className="palace-serif mt-6 font-light text-[clamp(1.8rem,3.5vw,3rem)] leading-[1.05] text-black">
+              Was aus deinen <span className="italic">Sätzen blieb.</span>
+            </h2>
+            <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-black/70">
+              Kleine Notizen, die PAWN aus deinen Gesprächen mitgenommen hat. Alles einzeln löschbar.
+            </p>
+            <div className="mt-10 grid gap-4 md:grid-cols-2">
+              {facts.map((f) => (
+                <div key={f} className="relative border-[1.5px] border-black bg-white p-6" style={{ boxShadow: "6px 6px 0 #000" }}>
+                  <p className="palace-serif italic text-[1.05rem] leading-[1.5] text-black pr-8">„{f}"</p>
+                  <button
+                    type="button"
+                    onClick={() => void deleteFact(f)}
+                    aria-label="Merksatz löschen"
+                    className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center border-[1.5px] border-black bg-white text-black hover:bg-black hover:text-white"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={1.6} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+
       {/* 03 · Wie PAWN mit dir umgeht */}
       <section className="border-t border-[rgba(0,0,0,.18)] bg-[#000000] px-6 py-24 text-[#FFFFFF] md:px-14 md:py-32">
         <div className="mx-auto grid max-w-[1200px] gap-16 md:grid-cols-[1fr_1.4fr]">
