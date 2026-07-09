@@ -544,10 +544,10 @@ function AutosaveBadge({ saving, savedAt }: { saving: boolean; savedAt: Date | n
   return null;
 }
 
-function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
+function Section({ title, help, children, anchorId }: { title: string; help?: string; children: React.ReactNode; anchorId?: string }) {
   const [showHelp, setShowHelp] = useState(false);
   return (
-    <section>
+    <section id={anchorId}>
       <div className="mb-3 flex items-center gap-2">
         <h3 className="font-serif text-lg font-medium">{title}</h3>
         {help && (
