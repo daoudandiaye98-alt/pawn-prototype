@@ -196,21 +196,92 @@ export default function StudioCampaignNew() {
     }
   };
 
+  // Cinematic mode: submit fal.ai jobs and poll until clips ready or timeout.
+  const runCinematic = async (): Promise<string[] | null> => {
+    if (!designer) return null;
+    // Create a temp campaign row? No — we just want clip URLs. We reuse an
+    // ephemeral campaigns row by inserting a draft first.
+    const { data: campRow, error: campErr } = await supabase.from("campaigns").insert({
+      designer_id: designer.id,
+      title: `${designer.brand_name} · Draft`,
+      kind: "video",
+      status: "draft",
+      content: { image_urls: chosenImages, cinematic: true } as unknown as Record<string, unknown>,
+      created_by: user?.id ?? null,
+    } as never).select("id").single();
+    if (campErr || !campRow) { toast.error(campErr?.message ?? "Draft konnte nicht angelegt werden."); return null; }
+    const campaign_id = (campRow as { id: string }).id;
+
+    setCinematicStage("submitting");
+    const { data: submitData, error: submitErr } = await supabase.functions.invoke("generate-broll", {
+      body: { campaign_id, image_urls: chosenImages.slice(0, 3), motion_prompt: prompt },
+    });
+    if (submitErr) {
+      const msg = submitErr.message ?? String(submitErr);
+      toast.error(msg.includes("provider_not_configured") ? "Kinematischer Modus ist nicht eingerichtet." : `Fehler: ${msg}`);
+      setCinematicStage("failed");
+      return null;
+    }
+    type Sub = { id: string; request_id?: string } | { image_url: string; error: string };
+    const submissions = ((submitData as { submissions?: Sub[] })?.submissions ?? []).filter((s): s is { id: string; request_id?: string } => "id" in s);
+    if (submissions.length === 0) {
+      toast.error("Der Provider hat keine Aufträge angenommen.");
+      setCinematicStage("failed");
+      return null;
+    }
+
+    setCinematicStage("polling");
+    const requestIds = submissions.map((s) => s.id);
+    const deadline = Date.now() + 6 * 60 * 1000;
+    let clips: string[] = [];
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 4000));
+      const { data: pollData } = await supabase.functions.invoke("poll-broll", { body: { request_ids: requestIds } });
+      const results = (pollData as { results?: Array<{ id: string; status: string; result_url?: string }> })?.results ?? [];
+      if (results.every((r) => r.status === "done" || r.status === "failed")) {
+        clips = results.filter((r) => r.status === "done" && r.result_url).map((r) => r.result_url!);
+        break;
+      }
+    }
+    if (clips.length === 0) {
+      setCinematicStage("failed");
+      return null;
+    }
+    setCinematicClips(clips);
+    setCinematicStage("ready");
+    return clips;
+  };
+
   // Render video
   const doRender = async () => {
     if (!designer) return;
-    if (chosenImages.length < 2) { toast.error("Mindestens 2 Bilder."); return; }
+    if (chosenImages.length < 1) { toast.error("Mindestens 1 Bild."); return; }
     setRenderBusy(true); setRenderPct(0); setVideoBlob(null); setVideoUrl(null);
+
+    let clipUrls: string[] | undefined;
+    if (cinematic) {
+      const clips = await runCinematic();
+      if (!clips || clips.length === 0) {
+        toast.message("Die Kamera hatte einen schlechten Tag — hier ist die Editorial-Fassung.");
+        clipUrls = undefined;
+      } else {
+        clipUrls = clips;
+      }
+    }
+
     try {
       const houseNo = (designer as unknown as { house_number?: number | null })?.house_number ?? null;
       const result = await renderCampaign({
         brandName: designer.brand_name,
         houseNumber: houseNo,
         hookLine: hook || null,
-        imageUrls: chosenImages.slice(0, 4),
+        imageUrls: clipUrls ? undefined : chosenImages.slice(0, 4),
+        clipUrls,
         tempo,
         productLabel: chosenProduct ? `${chosenProduct.world} · ${designer.brand_name}` : designer.brand_name,
         productName: chosenProduct?.name ?? designer.brand_name,
+        format,
+        seed,
       }, {
         onProgress: (p) => setRenderPct(Math.round(p.fraction * 100)),
         onCanvas: (c) => {
@@ -233,6 +304,7 @@ export default function StudioCampaignNew() {
     } finally {
       setRenderBusy(false);
     }
+
   };
 
   const saveForApproval = async () => {
