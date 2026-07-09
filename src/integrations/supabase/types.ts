@@ -1454,7 +1454,13 @@ export type Database = {
       }
     }
     Enums: {
-      ai_integration_kind: "gmail" | "instagram" | "webhook" | "custom"
+      ai_integration_kind:
+        | "gmail"
+        | "instagram"
+        | "webhook"
+        | "custom"
+        | "tiktok"
+        | "pinterest"
       app_role: "customer" | "designer" | "admin" | "designer_applicant"
       campaign_kind: "video" | "post" | "text"
       campaign_status:
@@ -1621,7 +1627,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      ai_integration_kind: ["gmail", "instagram", "webhook", "custom"],
+      ai_integration_kind: [
+        "gmail",
+        "instagram",
+        "webhook",
+        "custom",
+        "tiktok",
+        "pinterest",
+      ],
       app_role: ["customer", "designer", "admin", "designer_applicant"],
       campaign_kind: ["video", "post", "text"],
       campaign_status: [
