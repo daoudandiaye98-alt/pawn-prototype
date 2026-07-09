@@ -81,16 +81,21 @@ export default function StudioCampaigns() {
 
   return (
     <StudioShell title="Kampagnen" eyebrow="Nichts geht ohne deine Freigabe raus">
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Aus deinen Produkten entstehen Kampagnenvorschläge — als Video, Post oder Text. Du entscheidest,
-        was veröffentlicht wird. Jeder Änderungswunsch fließt in die nächste Runde.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Aus deinen Produkten entstehen Kampagnenvorschläge — als Video, Post oder Text. Du entscheidest,
+          was veröffentlicht wird. Jeder Änderungswunsch fließt in die nächste Runde.
+        </p>
+        <a href="/studio/kampagnen/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:opacity-90">
+          + Neue Kampagne
+        </a>
+      </div>
 
       {items.length === 0 ? (
         <div className="mt-8 border border-dashed border-border p-12 text-center">
           <p className="editorial-eyebrow">Ruhig</p>
           <p className="mt-3 font-serif text-2xl">Noch keine Kampagnenvorschläge.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Sobald wir etwas für dich vorbereiten, findest du es hier.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Starte deine erste Kampagne — dein Reel entsteht in wenigen Minuten.</p>
         </div>
       ) : (
         <ul className="mt-8 divide-y divide-border border border-border bg-card">
@@ -124,7 +129,11 @@ export default function StudioCampaigns() {
 
             <section className="mt-6 space-y-4 border-t border-border pt-6">
               {active.content.asset_url && (
-                <img src={active.content.asset_url} alt="" className="w-full grayscale" />
+                active.kind === "video" ? (
+                  <video src={active.content.asset_url} controls playsInline className="mx-auto max-h-[70vh] w-full max-w-md bg-black" />
+                ) : (
+                  <img src={active.content.asset_url} alt="" className="w-full grayscale" />
+                )
               )}
               {active.content.script && (
                 <div>
@@ -139,7 +148,15 @@ export default function StudioCampaigns() {
                 </div>
               )}
               {active.content.hashtags && active.content.hashtags.length > 0 && (
-                <p className="text-xs text-muted-foreground">{active.content.hashtags.map((h) => `#${h}`).join(" ")}</p>
+                <p className="text-xs text-muted-foreground">{active.content.hashtags.map((h) => h.startsWith("#") ? h : `#${h}`).join(" ")}</p>
+              )}
+              {active.status === "approved" && active.content.asset_url && (
+                <div className="border border-border bg-muted/40 p-4">
+                  <a href={active.content.asset_url} download className="border border-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
+                    Für deinen eigenen Kanal herunterladen
+                  </a>
+                  <p className="mt-3 text-xs text-muted-foreground">Musik fügst du direkt in Reels oder TikTok hinzu — dort ist sie lizenzsicher.</p>
+                </div>
               )}
             </section>
 

@@ -68,6 +68,32 @@ Deno.serve(async (req) => {
     } else if (event.type === "checkout.session.expired" || event.type === "payment_intent.payment_failed") {
       const session = event.data.object as { id?: string };
       if (session.id) await admin.from("orders").update({ status: "failed" }).eq("stripe_session_id", session.id);
+    } else if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted"
+    ) {
+      const sub = event.data.object as Stripe.Subscription & { metadata?: Record<string, string> };
+      const plan = (sub.metadata?.plan ?? "").toLowerCase();
+      const user_id = sub.metadata?.user_id;
+      const cancelled = event.type === "customer.subscription.deleted" || sub.status === "canceled" || sub.status === "incomplete_expired";
+      const targetPlan = cancelled ? "haus" : (plan === "atelier" || plan === "maison" ? plan : null);
+      if (user_id && targetPlan) {
+        const { data: designer } = await admin.from("designers").update({ plan: targetPlan }).eq("user_id", user_id).select("id, user_id").maybeSingle();
+        if (designer) {
+          await admin.from("notifications").insert({
+            user_id: designer.user_id,
+            type: "plan.updated",
+            title: cancelled ? "Dein Plan wurde beendet." : `Willkommen im Plan ${targetPlan}.`,
+            body: cancelled ? "Du bist zurück im Haus-Plan." : "Deine neuen Kontingente sind sofort aktiv.",
+            link: "/studio/plan",
+          });
+          await admin.from("domain_events").insert({
+            id: crypto.randomUUID(), type: cancelled ? "plan.downgraded" : "plan.upgraded",
+            actor: user_id, payload: { plan: targetPlan, subscription_id: sub.id }, schema_version: 1,
+          });
+        }
+      }
     }
 
     return new Response(JSON.stringify({ received: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

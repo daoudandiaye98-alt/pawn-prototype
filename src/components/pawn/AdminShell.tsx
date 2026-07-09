@@ -31,6 +31,7 @@ const ITEMS = [
   { to: "/admin/inhalte", label: "Inhalte", icon: Newspaper },
   { to: "/admin/marketing", label: "Marketing", icon: Megaphone },
   { to: "/admin/kampagnen", label: "Kampagnen", icon: Megaphone },
+  { to: "/admin/posting", label: "Posting", icon: Megaphone },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/trends", label: "Trends", icon: TrendingUp },
   { to: "/admin/ai", label: "AI Center", icon: Bot },

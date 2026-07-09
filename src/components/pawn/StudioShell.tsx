@@ -83,6 +83,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     { to: "/studio/kampagnen", label: "Kampagnen", icon: ICampaigns, badge: badges.campaigns },
     { to: "/studio/nachrichten", label: "Nachrichten", icon: IMessages, badge: badges.messages },
     { to: "/studio/brand", label: "Retrospektive", icon: IRetro },
+    { to: "/studio/plan", label: "Plan", icon: IPayout },
     { to: "/studio/auszahlung", label: "Auszahlung", icon: IPayout },
     { to: "/studio/einstellungen", label: "Einstellungen", icon: ISettings },
   ];
