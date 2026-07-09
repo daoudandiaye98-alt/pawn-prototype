@@ -51,10 +51,38 @@ async function ai(system: string, messages: Msg[]): Promise<string | null> {
 }
 
 async function loadPrompt(admin: SupabaseClient): Promise<string> {
+  // Prefer new persona_designer key; fall back to legacy copilot_prompt.
+  const { data: p } = await admin.from("ai_config").select("value").eq("key", "persona_designer").maybeSingle();
+  const pv = p?.value as { system_prompt?: string } | undefined;
+  if (pv?.system_prompt?.trim()) return pv.system_prompt.trim();
   const { data } = await admin.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle();
   const v = data?.value as { system_prompt?: string } | undefined;
   return v?.system_prompt?.trim() || DEFAULT_PROMPT;
 }
+
+async function loadDirectives(admin: SupabaseClient): Promise<string[]> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "directives").maybeSingle();
+    const v = data?.value as { items?: string[] } | undefined;
+    return Array.isArray(v?.items) ? v!.items.filter((x) => typeof x === "string" && x.trim()) : [];
+  } catch { return []; }
+}
+
+async function nextMoveHint(admin: SupabaseClient, designer_id: string): Promise<string> {
+  try {
+    const [ords, camps, msgs] = await Promise.all([
+      admin.from("orders").select("id, created_at").eq("status", "paid").in("fulfillment_status", ["new", "in_progress"]).order("created_at", { ascending: true }).limit(1),
+      admin.from("campaigns").select("id, title").eq("designer_id", designer_id).eq("status", "proposed").limit(1),
+      admin.from("message_threads").select("id, subject").eq("designer_id", designer_id).eq("status", "open").limit(1),
+    ]);
+    const bits: string[] = [];
+    if ((ords.data ?? [])[0]) bits.push("eine bezahlte Bestellung wartet auf Versand");
+    if ((camps.data ?? [])[0]) bits.push(`Kampagne „${(camps.data as {title:string}[])[0].title}" wartet auf Freigabe`);
+    if ((msgs.data ?? [])[0]) bits.push("eine Kundenanfrage ist offen");
+    return bits.length ? `Nächste offene Züge des Designers: ${bits.join("; ")}.` : "";
+  } catch { return ""; }
+}
+
 
 async function logResponse(admin: SupabaseClient, actor: string, mode: Mode, designer_id: string | null, prompt: string, reply: string, provider: string) {
   await admin.from("domain_events").insert({
@@ -98,7 +126,12 @@ Deno.serve(async (req) => {
 
     const body = await req.json() as { mode: Mode; product_id?: string; question?: string; messages?: Msg[] };
     const mode = body.mode;
-    const system = await loadPrompt(admin);
+    const personaText = await loadPrompt(admin);
+    const directives = await loadDirectives(admin);
+    const nextHint = await nextMoveHint(admin, designer.id);
+    const directiveBlock = directives.length ? `\n\nDirektiven (immer beachten):\n- ${directives.join("\n- ")}` : "";
+    const nextBlock = nextHint ? `\n\nKontext-Signal · ${nextHint}` : "";
+    const system = `${personaText}${directiveBlock}${nextBlock}`;
     const provider = providerName();
 
     if (mode === "product_text") {

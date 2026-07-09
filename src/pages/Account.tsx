@@ -9,22 +9,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMyRequestThreads } from "@/features/commerce/hooks";
 import { useThreadMessages, sendMessage } from "@/features/messages/useMessages";
+import { useDisplayName, friendlyRoleLine } from "@/lib/displayName";
+import { useMyDesigner } from "@/features/studio/useMyDesigner";
 
 const TABS = ["Übersicht", "Bestellungen", "Anfragen", "Merkzettel", "Zahlung", "Meine Daten", "Einstellungen"] as const;
 type Tab = typeof TABS[number];
 
 const Account = () => {
   const [tab, setTab] = useState<Tab>("Übersicht");
-  const { user, profile, loading, signOut, roles } = useAuth();
+  const { user, loading, signOut, roles } = useAuth();
+  const { designer } = useMyDesigner();
+  const { displayName, firstName } = useDisplayName();
 
   if (loading) return null;
   if (!user) return <Navigate to="/auth" replace />;
 
-  const rawName = (profile?.displayName || "").trim();
-  const displayName = rawName || (user.email ? user.email.split("@")[0] : "Gast");
-  const firstName = displayName.split(/\s+/)[0];
+  // Designer landen immer im Studio.
+  if (roles.includes("designer")) return <Navigate to="/studio" replace />;
 
   const memberSince = new Date(user.created_at).getFullYear();
+  const roleLine = friendlyRoleLine(roles, designer?.house_number ?? null);
 
   return (
     <PalaceLayout transparentHeader={false}>
@@ -39,10 +43,7 @@ const Account = () => {
               <span className="capitalize">{firstName}</span>.
             </h1>
             <div className="flex items-center gap-6">
-              <p className="palace-eyebrow">
-                {user.email}
-                {roles.length > 0 && <span className="ml-3 text-[#000000]">· {roles.join(" / ")}</span>}
-              </p>
+              <p className="palace-eyebrow text-[#000000]">{roleLine}</p>
               <button type="button" onClick={signOut} className="palace-eyebrow uline text-[#000000]">
                 Abmelden
               </button>
@@ -85,15 +86,26 @@ const Account = () => {
 };
 
 function Overview({ name }: { name: string }) {
+  const firstName = name.split(/\s+/)[0];
+  const tiles = [
+    { title: "Deine Bestellungen", body: "Verfolge, was unterwegs ist.", to: "#", tab: "Bestellungen" },
+    { title: "Merkzettel", body: "Stücke, die du dir gemerkt hast.", to: "/dna", tab: "Merkzettel" },
+    { title: "Deine Daten", body: "Konto, Datenschutz, Export.", to: "#", tab: "Meine Daten" },
+  ];
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <p className="palace-serif italic text-[1.15rem] text-[#000000]/80">
-        Willkommen zurück, {name}. Der Raum hat sich gemerkt, wo du zuletzt warst.
+        Schön dich zu sehen, <span className="capitalize">{firstName}</span>. Ruhig hier — genau richtig zum Stöbern.
       </p>
-      <p className="text-[0.95rem] text-[#000000]/70 max-w-lg">
-        Über die Reiter oben erreichst du deine Bestellungen, individuellen Anfragen an Ateliers, den Merkzettel
-        und deine Daten.
-      </p>
+      <div className="grid gap-4 md:grid-cols-3">
+        {tiles.map((t) => (
+          <Link key={t.title} to={t.to} className="block border-[1.5px] border-[#000000] bg-white p-6 transition-colors hover:bg-[#000000] hover:text-white">
+            <p className="palace-eyebrow">{t.tab}</p>
+            <p className="palace-serif mt-3 text-[1.2rem]">{t.title}</p>
+            <p className="mt-2 text-sm opacity-80">{t.body}</p>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

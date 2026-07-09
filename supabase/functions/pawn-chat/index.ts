@@ -48,13 +48,49 @@ function fuzzyIncludes(hay: string, needle: string) {
 interface DBDesigner { brand_name: string; slug: string; story?: string | null; tags?: string[] | null }
 interface DBProduct { name: string; slug: string; description?: string | null; world?: string | null; designer_id?: string | null }
 
-async function loadSystemPrompt(admin: SupabaseClient): Promise<string> {
+type PersonaRole = "customer" | "designer" | "admin";
+
+async function loadPersonaForRole(admin: SupabaseClient, role: PersonaRole): Promise<string> {
+  const keys: Record<PersonaRole, string> = {
+    customer: "persona_customer",
+    designer: "persona_designer",
+    admin: "persona_admin",
+  };
   try {
-    const { data } = await admin.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle();
+    const { data } = await admin.from("ai_config").select("value").eq("key", keys[role]).maybeSingle();
     const v = data?.value as { system_prompt?: string } | undefined;
-    return v?.system_prompt?.trim() || DEFAULT_SYSTEM;
-  } catch { return DEFAULT_SYSTEM; }
+    if (v?.system_prompt?.trim()) return v.system_prompt.trim();
+  } catch { /* ignore */ }
+  // Fallback to legacy key for customer role
+  if (role === "customer") {
+    try {
+      const { data } = await admin.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle();
+      const v = data?.value as { system_prompt?: string } | undefined;
+      if (v?.system_prompt?.trim()) return v.system_prompt.trim();
+    } catch { /* ignore */ }
+  }
+  return DEFAULT_SYSTEM;
 }
+
+async function loadDirectives(admin: SupabaseClient): Promise<string[]> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "directives").maybeSingle();
+    const v = data?.value as { items?: string[] } | undefined;
+    return Array.isArray(v?.items) ? v!.items.filter((x) => typeof x === "string" && x.trim().length > 0) : [];
+  } catch { return []; }
+}
+
+async function resolveRole(admin: SupabaseClient, user_id: string | null): Promise<PersonaRole> {
+  if (!user_id) return "customer";
+  try {
+    const { data } = await admin.from("user_roles").select("role").eq("user_id", user_id);
+    const roles = ((data ?? []) as { role: string }[]).map((r) => r.role);
+    if (roles.includes("admin")) return "admin";
+    if (roles.includes("designer")) return "designer";
+  } catch { /* ignore */ }
+  return "customer";
+}
+
 async function loadCandidates(admin: SupabaseClient, world: World | undefined) {
   const [prod, des] = await Promise.all([
     admin.from("products").select("name, slug, description, world, designer_id").eq("status", "published").limit(40),
@@ -326,7 +362,11 @@ Deno.serve(async (req) => {
     }
     if (trendReplyPrefix) contextHint = `${trendReplyPrefix} ${contextHint}`.trim();
 
-    const system = admin ? await loadSystemPrompt(admin) : DEFAULT_SYSTEM;
+    const role = admin ? await resolveRole(admin, user_id) : "customer";
+    const persona = admin ? await loadPersonaForRole(admin, role) : DEFAULT_SYSTEM;
+    const directives = admin ? await loadDirectives(admin) : [];
+    const directiveBlock = directives.length ? `Direktiven (immer beachten):\n- ${directives.join("\n- ")}` : "";
+    const system = [persona, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [memoryHint, contextHint].filter(Boolean).join("\n\n");
     const rawReply = (await callProvider(system, messages, fullContextHint)) ?? fallbackReply(extracted, cards, turns, action);
     const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
