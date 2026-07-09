@@ -163,5 +163,5 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
       to: "/studio/kampagnen/neu",
       urgency: "sanft",
     };
-  }, [openOrder, pendingCampaign, openThread, hasPortrait, hasStory, publishedCount, trendTerm, level?.level]);
+  }, [openOrder, pendingCampaign, openThread, hasPortrait, hasStory, publishedCount, trendTerm, dnaGap, level?.level]);
 }
