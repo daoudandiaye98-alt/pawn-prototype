@@ -166,6 +166,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
   const nav = useNavigate();
   const copilot = useCopilot();
   const [unread, setUnread] = useState(0);
+  const plusActive = designer?.plan === "atelier" || designer?.plan === "maison";
 
   useEffect(() => {
     if (!user) return;
