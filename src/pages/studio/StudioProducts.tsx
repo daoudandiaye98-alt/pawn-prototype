@@ -77,7 +77,7 @@ export default function StudioProducts() {
     const from = page * PAGE;
     const to = from + PAGE - 1;
     const { data, count } = await supabase.from("products")
-      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days", { count: "exact" })
+      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna", { count: "exact" })
       .eq("designer_id", designer.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -107,6 +107,7 @@ export default function StudioProducts() {
     variants: (e.variants ?? []) as unknown as never,
     weight_grams: e.weight_grams != null ? Number(e.weight_grams) : null,
     lead_time_days: e.lead_time_days != null ? Number(e.lead_time_days) : null,
+    product_dna: (e.product_dna ?? emptyDNA()) as unknown as never,
   });
 
   const save = async () => {
