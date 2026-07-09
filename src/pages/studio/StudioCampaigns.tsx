@@ -82,6 +82,16 @@ export default function StudioCampaigns() {
 
   return (
     <StudioShell title="Kampagnen" eyebrow="Nichts geht ohne deine Freigabe raus">
+      <HowItWorks
+        storageKey="campaigns"
+        title="Kampagnen"
+        intro="Eine Kampagne ist ein kurzes Video oder Bild, das ein Stück auf PAWN und – sobald verbunden – auf sozialen Kanälen zeigt. Du siehst jeden Vorschlag zuerst und gibst ihn frei."
+        steps={[
+          "PAWN oder du entwerft eine Kampagne zu einem Stück.",
+          "Prüf den Vorschlag, gib frei oder wünsche Änderungen.",
+          "Freigegebene Kampagnen landen in der Warteschlange und werden geplant.",
+        ]}
+      />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <p className="max-w-2xl text-sm text-muted-foreground">
           Aus deinen Produkten entstehen Kampagnenvorschläge — als Video, Post oder Text. Du entscheidest,
