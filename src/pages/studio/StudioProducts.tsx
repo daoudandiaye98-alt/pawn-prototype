@@ -88,6 +88,20 @@ export default function StudioProducts() {
 
   useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [designer?.id, page]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const dnaId = searchParams.get("dna");
+    if (!dnaId || items.length === 0) return;
+    const p = items.find((x) => x.id === dnaId);
+    if (!p) return;
+    setEditing(p);
+    setTimeout(() => {
+      document.getElementById("dna")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 250);
+    searchParams.delete("dna");
+    setSearchParams(searchParams, { replace: true });
+  }, [items, searchParams, setSearchParams]);
+
   const startNew = () => setEditing(emptyEdit());
 
   const buildPayload = (e: Partial<ProductRow>) => ({
