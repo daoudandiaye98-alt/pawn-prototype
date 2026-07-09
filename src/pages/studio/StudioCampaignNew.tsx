@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { renderCampaign, blobPreviewUrl, type Tempo } from "@/features/campaign/renderer";
 import { useCampaignQuota, planLabel, type Plan } from "@/features/campaign/quota";
-import { Check, Upload, Sparkles, Music, Info, ArrowRight } from "lucide-react";
+import { Check, Upload, Sparkles, Music, ArrowRight } from "lucide-react";
 
 interface ProductLite {
   id: string; name: string; slug: string; world: string;
