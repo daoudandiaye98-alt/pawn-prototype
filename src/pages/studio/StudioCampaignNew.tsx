@@ -498,12 +498,31 @@ export default function StudioCampaignNew() {
               ))}
             </div>
 
-            {plan !== "haus" && (
-              <div className="mt-8 border border-dashed border-border p-4 text-sm text-muted-foreground">
-                <p className="editorial-eyebrow">✦ Generativer Akzent-Shot (bald)</p>
-                <p className="mt-2">Kurze KI-generierte Zwischensequenzen in deiner Handschrift — folgt in Kürze für {planLabel(plan)}.</p>
-              </div>
-            )}
+            <p className="editorial-eyebrow mt-8">✦ Kinematischer Modus</p>
+            <div className={`mt-3 border ${cinematic ? "border-foreground" : "border-border"} bg-white p-4`}>
+              <label className={`flex items-start gap-3 ${cinematicAllowed ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
+                <input
+                  type="checkbox"
+                  checked={cinematic}
+                  disabled={!cinematicAllowed}
+                  onChange={(e) => setCinematic(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-foreground"
+                />
+                <div>
+                  <p className="font-serif text-base">Echte KI-Bewegung statt Standbildern.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    PAWN erzeugt für jedes Foto einen kurzen Clip (fal.ai · Kling), schneidet sie in deiner Regie.
+                    {cinematicAllowed
+                      ? ` Verbraucht ${quota.accentCostUnits} deiner ${Number.isFinite(quota.limit) ? quota.limit : "∞"} Kampagnen.`
+                      : " Verfügbar ab Atelier."}
+                  </p>
+                  {!cinematicAllowed && (
+                    <Link to="/studio/plan" className="mt-2 inline-block text-xs underline">Plan ansehen</Link>
+                  )}
+                </div>
+              </label>
+            </div>
+
           </section>
 
           <aside className="border border-border bg-white p-5">
