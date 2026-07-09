@@ -16,7 +16,9 @@ import {
   useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats,
   useAdminPlatformKpis, requestAdminAction,
 } from "@/features/admin/useAdminData";
+import { useAdminNextMove } from "@/features/admin/useAdminNextMove";
 import { useDisplayName } from "@/lib/displayName";
+import { ArrowRight } from "lucide-react";
 
 /* ─────────────────────── Cockpit primitives ─────────────────────── */
 
