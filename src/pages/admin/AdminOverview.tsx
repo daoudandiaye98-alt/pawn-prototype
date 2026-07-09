@@ -16,7 +16,9 @@ import {
   useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats,
   useAdminPlatformKpis, requestAdminAction,
 } from "@/features/admin/useAdminData";
+import { useAdminNextMove } from "@/features/admin/useAdminNextMove";
 import { useDisplayName } from "@/lib/displayName";
+import { ArrowRight } from "lucide-react";
 
 /* ─────────────────────── Cockpit primitives ─────────────────────── */
 
@@ -181,6 +183,7 @@ function CommandDeck() {
   const sysStats = useAdminSystemStats();
   const kpis = useAdminPlatformKpis();
   const { firstName } = useDisplayName();
+  const { move: adminMove } = useAdminNextMove();
   const [actionDialog, setActionDialog] = useState<null | { action: string; title: string; description: string }>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = window.setInterval(() => setTick((v) => v + 1), 15_000); return () => window.clearInterval(t); }, []);
@@ -260,6 +263,30 @@ function CommandDeck() {
           </button>
         </div>
       </div>
+
+      {/* DEIN NÄCHSTER ZUG — ganz oben, ein klarer Impuls */}
+      <section className="mt-6 border-[1.5px] border-[hsl(350_55%_45%)] bg-[hsl(18_10%_6%)] p-6 md:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0 max-w-2xl">
+            <p className="flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(36_15%_58%)]">
+              <ArrowRight className="h-3 w-3" /> Dein nächster Zug
+              {adminMove.urgency === "hoch" && (
+                <span className="border border-red-500/40 px-1.5 text-red-200">jetzt</span>
+              )}
+            </p>
+            <h2 className="mt-3 font-serif text-2xl leading-tight text-[hsl(36_28%_94%)] md:text-[26px]">
+              {adminMove.headline}
+            </h2>
+            <p className="mt-3 text-[13px] text-[hsl(36_20%_74%)]">{adminMove.reason}</p>
+          </div>
+          <button
+            onClick={() => navigate(adminMove.to)}
+            className="inline-flex items-center gap-2 border border-[hsl(350_55%_45%)] bg-[hsl(350_55%_28%)] px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-[hsl(36_28%_94%)] hover:bg-[hsl(350_55%_34%)]"
+          >
+            {adminMove.cta} <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </section>
 
       {/* KPI row — real 30d data + live-reactive derived deltas */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

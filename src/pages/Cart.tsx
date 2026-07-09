@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Minus, Plus, X, ShieldCheck } from "lucide-react";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
+import { PaymentLogos } from "@/components/pawn/PaymentLogos";
 import { useCart } from "@/store/cart";
 import { useCartWardrobeImpact } from "@/features/dna/hooks";
 import { Insight } from "@/components/pawn/primitives";
@@ -142,9 +143,10 @@ const Cart = () => {
                   to="/checkout"
                   className="palace-btn mt-8 w-full justify-center border-[#000000] bg-[#000000] text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-[#000000]"
                 >
-                  Zur Kasse
+                  Zur Kasse — Express
                 </Link>
-                <p className="mt-4 flex items-center justify-center gap-2 text-[0.75rem] text-[#55534E]">
+                <PaymentLogos className="mt-4" />
+                <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-[#55534E]">
                   <ShieldCheck className="h-3.5 w-3.5 text-[#000000]" /> Sichere Bezahlung · verschlüsselt
                 </p>
               </div>

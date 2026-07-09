@@ -14,12 +14,18 @@ export default function StudioPayout() {
   const { designer } = useMyDesigner();
   const [profile, setProfile] = useState<PayoutProfile | null>(null);
   const [busy, setBusy] = useState(false);
+  const [commissionPct, setCommissionPct] = useState<number>(7);
 
   useEffect(() => {
     if (!designer) return;
     void supabase.from("designer_payout_profiles").select("*").eq("designer_id", designer.id).maybeSingle()
       .then(({ data }) => {
         setProfile(data as PayoutProfile ?? { designer_id: designer.id, account_holder: "", iban: "", bic: "", tax_id: "" });
+      });
+    void supabase.from("ai_config").select("value").eq("key", "platform_commission").maybeSingle()
+      .then(({ data }) => {
+        const pct = Number(((data?.value ?? {}) as { pct?: number }).pct ?? 7);
+        setCommissionPct(pct);
       });
   }, [designer]);
 
@@ -54,6 +60,15 @@ export default function StudioPayout() {
         ]}
       />
       <div className="max-w-xl space-y-6">
+        <div className="border border-foreground bg-white p-5">
+          <p className="editorial-eyebrow">Dein Anteil</p>
+          <p className="mt-2 font-serif text-2xl">
+            Du erhältst <span className="tabular-nums">{100 - commissionPct} %</span> jedes Verkaufs.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            PAWN nimmt {commissionPct} % — bewusst weit unter Galerien und klassischen Marktplätzen. Kein Aufpreis für Rückgaben, keine Listing-Gebühr.
+          </p>
+        </div>
         <p className="text-sm text-muted-foreground">
           Deine Auszahlungsdaten werden für kommende automatische Abrechnungen genutzt. Deine Daten sind nur für dich und PAWN sichtbar.
         </p>

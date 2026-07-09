@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { supabase } from "@/integrations/supabase/client";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { toast } from "@/components/ui/sonner";
@@ -73,6 +74,40 @@ const ProductDetail = () => {
     cart.add(product, size);
     push(`${product.name} betritt das Brett.`);
     toast.success("Zur Tasche hinzugefügt.");
+  }
+
+  const [buyBusy, setBuyBusy] = useState(false);
+  async function buyNow() {
+    if (soldOut && !isMto) { toast.error("Ausverkauft."); return; }
+    setBuyBusy(true);
+    try {
+      const price = dbProduct?.price ?? product.price;
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          mode: "payment",
+          items: [{
+            name: product.name,
+            unit_amount: Math.round(price * 100),
+            qty: 1,
+            slug: product.slug,
+            size,
+          }],
+          customer_email: user?.email ?? undefined,
+        },
+      });
+      if (error) throw error;
+      const url = (data as { url?: string })?.url;
+      if (!url) {
+        const msg = (data as { message?: string })?.message ?? "Zahlung ist gerade nicht verfügbar.";
+        toast.message(msg);
+        return;
+      }
+      window.location.href = url;
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Fehler beim Checkout.");
+    } finally {
+      setBuyBusy(false);
+    }
   }
 
   function onSave() {
@@ -260,6 +295,14 @@ const ProductDetail = () => {
                 <div className="mt-10 flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
+                    onClick={buyNow}
+                    disabled={buyBusy || (soldOut && !isMto)}
+                    className="palace-btn flex-1 justify-center border-[#000000] bg-[#000000] text-center text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-[#000000] disabled:opacity-40"
+                  >
+                    {buyBusy ? "Öffne Kasse…" : soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
+                  </button>
+                  <button
+                    type="button"
                     onClick={addToBag}
                     disabled={soldOut && !isMto}
                     className="palace-btn flex-1 justify-center text-center hover:bg-[#000000] hover:text-[#FFFFFF] disabled:opacity-40"
@@ -276,6 +319,9 @@ const ProductDetail = () => {
                     {(saved || wished) ? "Gemerkt" : "Merken"}
                   </button>
                 </div>
+                <p className="mt-3 text-[0.62rem] uppercase tracking-[0.24em] text-[#55534E]">
+                  Apple Pay · Google Pay · PayPal · Klarna · Karte
+                </p>
 
                 {canRequest && (
                   <button
