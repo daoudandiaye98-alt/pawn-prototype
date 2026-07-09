@@ -295,6 +295,14 @@ const ProductDetail = () => {
                 <div className="mt-10 flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
+                    onClick={buyNow}
+                    disabled={buyBusy || (soldOut && !isMto)}
+                    className="palace-btn flex-1 justify-center border-[#000000] bg-[#000000] text-center text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-[#000000] disabled:opacity-40"
+                  >
+                    {buyBusy ? "Öffne Kasse…" : soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
+                  </button>
+                  <button
+                    type="button"
                     onClick={addToBag}
                     disabled={soldOut && !isMto}
                     className="palace-btn flex-1 justify-center text-center hover:bg-[#000000] hover:text-[#FFFFFF] disabled:opacity-40"
@@ -311,6 +319,9 @@ const ProductDetail = () => {
                     {(saved || wished) ? "Gemerkt" : "Merken"}
                   </button>
                 </div>
+                <p className="mt-3 text-[0.62rem] uppercase tracking-[0.24em] text-[#55534E]">
+                  Apple Pay · Google Pay · PayPal · Klarna · Karte
+                </p>
 
                 {canRequest && (
                   <button
