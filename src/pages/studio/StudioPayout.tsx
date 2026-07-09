@@ -43,6 +43,16 @@ export default function StudioPayout() {
 
   return (
     <StudioShell title="Auszahlung" eyebrow="Zahlung">
+      <HowItWorks
+        storageKey="payout"
+        title="Auszahlungen"
+        intro="Hier hinterlegst du, wohin deine Verkaufserlöse fließen. Wir überweisen automatisch, sobald der Mindestbetrag erreicht ist – abzüglich der PAWN-Provision."
+        steps={[
+          "Trage einmalig IBAN und Rechnungsadresse ein.",
+          "Speichern – wir bestätigen per Bestätigungs-Mail.",
+          "Verkäufe sammeln sich; du siehst Auszahlungen in deiner Übersicht.",
+        ]}
+      />
       <div className="max-w-xl space-y-6">
         <p className="text-sm text-muted-foreground">
           Deine Auszahlungsdaten werden für kommende automatische Abrechnungen genutzt. Deine Daten sind nur für dich und PAWN sichtbar.
