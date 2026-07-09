@@ -172,39 +172,19 @@ function EngineRow({ k, state }: { k: EngineKey; state: EngineState }) {
 /* ─────────────────────── Command Deck (OS body) ─────────────────────── */
 
 function CommandDeck() {
-  const { revenueSeries, months, kpis } = useStore(adminSelectors.getPlatformOverview);
+  const { revenueSeries: seedRevenueSeries, months } = useStore(adminSelectors.getPlatformOverview);
+  void seedRevenueSeries; void months;
   const { feed, engines, pulse, fire } = useOsBus();
   const navigate = useNavigate();
   const { rows: recentOrders, loading: ordersLoading } = useAdminRecentOrders(6);
   const { rows: topDesigners, loading: topLoading } = useAdminTopDesigners(5);
   const sysStats = useAdminSystemStats();
+  const kpis = useAdminPlatformKpis();
+  const { firstName } = useDisplayName();
   const [actionDialog, setActionDialog] = useState<null | { action: string; title: string; description: string }>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = window.setInterval(() => setTick((v) => v + 1), 15_000); return () => window.clearInterval(t); }, []);
   void tick;
-
-  // Real pending-review count from the DB (submitted + in_review)
-  const [pendingApplications, setPendingApplications] = useState<number | null>(null);
-  const [activeDesignerCount, setActiveDesignerCount] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [{ count: pending }, { count: active }] = await Promise.all([
-        supabase
-          .from("designer_applications")
-          .select("*", { count: "exact", head: true })
-          .in("status", ["submitted", "in_review"]),
-        supabase
-          .from("designers")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "active"),
-      ]);
-      if (cancelled) return;
-      setPendingApplications(pending ?? 0);
-      setActiveDesignerCount(active ?? 0);
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   // Numbers that visibly react to the causal chain (owner-only "operating state")
   const [derivedKpi, setDerivedKpi] = useState({ designers: 0, forecast: 0, dnaCoverage: 0 });
@@ -219,7 +199,7 @@ function CommandDeck() {
   }, [feed]);
 
   const attention = useMemo(() => {
-    const pending = pendingApplications ?? 0;
+    const pending = kpis.pendingApplications;
     return [
       pending > 0
         ? { id: "designers", label: `${pending} Designer warten auf Freigabe`, sub: "Bewerbungen · Kuratoren-Inbox", weight: "high" as const, action: "designer.approve" as OsAction, actionLabel: "Inbox öffnen", route: "/admin/designers" }
@@ -228,7 +208,7 @@ function CommandDeck() {
       { id: "logistics", label: "23 Bestellungen warten auf Versand", sub: "SLA-Grenze in 6 h", weight: "medium" as const, action: "broadcast.send" as OsAction, actionLabel: "Auto-Versand" },
       { id: "prompt", label: "Prompt v18 · CTR −3.1 %", sub: "A/B unter Baseline", weight: "medium" as const, action: "prompt.rollback" as OsAction, actionLabel: "Rollback v17" },
     ];
-  }, [pendingApplications]);
+  }, [kpis.pendingApplications]);
 
 
   const insights = [
