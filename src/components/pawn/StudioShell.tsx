@@ -252,6 +252,7 @@ function Inner({ children, title, eyebrow }: Props) {
           <p className="ml-3 font-serif">Studio</p>
         </div>
         <Topbar title={title} section={eyebrow ?? title} />
+        {designer && <ContractV2Banner />}
         <main className="flex-1 p-6 md:p-10">{children}</main>
       </div>
     </div>
