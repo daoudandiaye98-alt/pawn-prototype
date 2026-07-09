@@ -3,16 +3,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type Plan = "haus" | "atelier" | "maison";
 
+interface PlanEntry { videos_per_month: number; tier: number }
 export interface PlanLimits {
-  haus: { videos_per_month: number; tier: number };
-  atelier: { videos_per_month: number; tier: number };
-  maison: { videos_per_month: number; tier: number };
+  haus: PlanEntry;
+  atelier: PlanEntry;
+  maison: PlanEntry;
+  accent_cost_units?: number;
+  unlimited_plans?: Plan[];
 }
 
 const DEFAULT_LIMITS: PlanLimits = {
   haus:    { videos_per_month: 2,  tier: 1 },
   atelier: { videos_per_month: 10, tier: 2 },
   maison:  { videos_per_month: 30, tier: 3 },
+  accent_cost_units: 2,
+  unlimited_plans: ["maison"],
 };
 
 export interface QuotaStatus {
@@ -22,10 +27,12 @@ export interface QuotaStatus {
   remaining: number;
   atLimit: boolean;
   loading: boolean;
+  unlimited: boolean;
+  accentCostUnits: number;
   refresh: () => Promise<void>;
 }
 
-export function useCampaignQuota(designerId?: string | null, plan: Plan = "haus"): QuotaStatus {
+export function useCampaignQuota(designerId?: string | null, plan: Plan = "haus", isAdmin = false): QuotaStatus {
   const [limits, setLimits] = useState<PlanLimits>(DEFAULT_LIMITS);
   const [used, setUsed] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -52,9 +59,16 @@ export function useCampaignQuota(designerId?: string | null, plan: Plan = "haus"
 
   useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [designerId]);
 
-  const limit = limits[plan]?.videos_per_month ?? DEFAULT_LIMITS[plan].videos_per_month;
-  const remaining = Math.max(0, limit - used);
-  return { plan, used, limit, remaining, atLimit: remaining === 0, loading, refresh };
+  const unlimited = isAdmin || (limits.unlimited_plans ?? []).includes(plan);
+  const limit = unlimited ? Infinity : (limits[plan]?.videos_per_month ?? DEFAULT_LIMITS[plan].videos_per_month);
+  const remaining = unlimited ? Infinity : Math.max(0, limit - used);
+  return {
+    plan, used, limit, remaining,
+    atLimit: !unlimited && remaining === 0,
+    loading, unlimited,
+    accentCostUnits: limits.accent_cost_units ?? 2,
+    refresh,
+  };
 }
 
 export function planLabel(plan: Plan): string {
