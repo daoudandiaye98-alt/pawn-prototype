@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats, requestAdminAction,
+  useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats,
+  useAdminPlatformKpis, requestAdminAction,
 } from "@/features/admin/useAdminData";
+import { useDisplayName } from "@/lib/displayName";
 
 /* ─────────────────────── Cockpit primitives ─────────────────────── */
 
