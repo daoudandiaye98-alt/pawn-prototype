@@ -133,6 +133,17 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
         urgency: "mittel",
       };
     }
+    if (dnaGap) {
+      return {
+        key: "complete_dna",
+        headline: dnaGap.total > 1
+          ? `Vervollständige die DNA von „${dnaGap.name}" (${dnaGap.total} Stücke offen).`
+          : `Vervollständige die DNA von „${dnaGap.name}".`,
+        reason: "Vier kurze Antworten (Material, Silhouette, Farbe, Stimmung) — dann findet PAWN die richtigen Menschen für dein Stück.",
+        cta: "DNA vervollständigen",
+        to: `/studio/produkte?dna=${dnaGap.id}`,
+        urgency: "sanft",
+      };
     if (trendTerm && level?.level !== "dame") {
       return {
         key: "trend_upload",
