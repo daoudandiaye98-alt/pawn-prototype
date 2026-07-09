@@ -7,6 +7,8 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCopilot } from "./CopilotDrawer";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
+import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
+
 import { useDisplayName } from "@/lib/displayName";
 
 /* Hairline inline icons (stroke 1.25) — quiet, monogram-like */
@@ -215,8 +217,10 @@ interface Props { children: ReactNode; title: string; eyebrow?: string }
 
 function Inner({ children, title, eyebrow }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { designer } = useMyDesigner();
   return (
     <div className="flex min-h-screen bg-[#F7F5F0]">
+      <LevelUpOverlay designerId={designer?.id} />
       {/* Desktop sidebar */}
       <div className="hidden lg:block sticky top-0 h-screen">
         <Sidebar />
@@ -243,6 +247,7 @@ function Inner({ children, title, eyebrow }: Props) {
     </div>
   );
 }
+
 
 export function StudioShell(props: Props) {
   return <Inner {...props} />;
