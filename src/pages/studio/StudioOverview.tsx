@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { StudioShell, firstNameOf } from "@/components/pawn/StudioShell";
+import { StudioShell } from "@/components/pawn/StudioShell";
+import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useCopilot } from "@/components/pawn/CopilotDrawer";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders } from "@/features/studio/useDesignerOrders";
-import { useAuth } from "@/lib/auth";
+import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
+import { useNextMove } from "@/features/studio/nextMove";
+import { useDisplayName } from "@/lib/displayName";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Sparkles, Plus, AlertTriangle } from "lucide-react";
+import { Sparkles, Plus, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, Check } from "lucide-react";
 
 type World = "Mode" | "Interior" | "Kunst";
 
@@ -83,11 +86,14 @@ function Sparkline({ data, className }: { data: number[]; className?: string }) 
 }
 
 export default function StudioOverview() {
-  const { user, profile } = useAuth();
   const { designer, loading } = useMyDesigner();
   const { lines } = useDesignerOrders(designer?.id);
+  const { level } = useDesignerLevel(designer?.id);
+  const { firstName } = useDisplayName();
   const copilot = useCopilot();
   const { series, ordersSeries, wishSeries } = useDaySeries(designer?.id);
+  const [showKpi, setShowKpi] = useState(false);
+  const [showLower, setShowLower] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -142,7 +148,10 @@ export default function StudioOverview() {
   const wishTotal = useMemo(() => wishSeries.reduce((s, n) => s + n, 0), [wishSeries]);
   const criticalStock = useMemo(() => filteredProducts.filter((p) => p.inventory_mode === "stock" && p.stock_quantity < 3).length, [filteredProducts]);
 
-  const firstName = firstNameOf({ displayName: profile?.displayName }, designer?.brand_name, user?.email);
+  const hasStory = !!designer?.story && designer.story.length > 40;
+  const hasPortrait = !!designer?.avatar_url || !!designer?.hero_image_url;
+  const publishedCount = products.filter((p) => p.status === "published").length;
+  const nextMove = useNextMove({ designerId: designer?.id, level, hasStory, hasPortrait, publishedCount });
 
   const togglePublish = async (p: Product) => {
     const next = p.status === "published" ? "draft" : "published";
@@ -199,55 +208,77 @@ export default function StudioOverview() {
   return (
     <StudioShell title="Bühne" eyebrow="Bühne">
       {/* Greeting */}
-      <section className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl font-medium md:text-4xl">
             {greetingByHour()}, <span className="capitalize">{firstName}</span>.
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {visitorsYesterday !== null && visitorsYesterday > 0
-              ? `Deine Bühne hatte gestern ${visitorsYesterday} Besucher${visitorsYesterday === 1 ? "" : ""}.`
-              : "Willkommen zurück auf deiner Bühne."}
+          <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="font-serif text-lg text-foreground leading-none">{level.glyph}</span>
+            {level.label}
+            {visitorsYesterday !== null && visitorsYesterday > 0 && (
+              <> · gestern {visitorsYesterday} Besucher</>
+            )}
           </p>
         </div>
-        <Link to="/studio/kampagnen/neu"
-          className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:opacity-90">
-          + Neue Kampagne
-        </Link>
       </section>
+
+      {/* DEIN NÄCHSTER ZUG — die grösste Karte */}
+      <section className="mb-6 border-[1.5px] border-foreground bg-white p-8">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0 max-w-2xl">
+            <p className="flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
+              <ArrowRight className="h-3 w-3" /> Dein nächster Zug
+              {nextMove.urgency === "hoch" && <span className="border-[1.5px] border-destructive px-1.5 text-destructive">jetzt</span>}
+            </p>
+            <h2 className="mt-3 font-serif text-2xl leading-tight md:text-3xl">{nextMove.headline}</h2>
+            <p className="mt-3 text-sm text-foreground/70">{nextMove.reason}</p>
+          </div>
+          <Link
+            to={nextMove.to}
+            className="inline-flex items-center gap-2 border-[1.5px] border-foreground bg-foreground px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:bg-background hover:text-foreground"
+          >
+            {nextMove.cta} <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Züge — max 3 kleine Aufgaben */}
+      {showChecklist && (
+        <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Züge · {doneCount} von {checklist.length}</p>
+          <ol className="mt-4 space-y-2">
+            {checklist.filter((c) => !c.done).slice(0, 3).map((it) => (
+              <li key={it.label}>
+                <Link to={it.to} className="group flex items-center justify-between gap-4 border-[1.5px] border-border px-4 py-3 hover:border-foreground">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center border-[1.5px] border-foreground text-[0.6rem]">·</span>
+                    <span className="text-sm">{it.label}</span>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </li>
+            ))}
+            {checklist.filter((c) => c.done).slice(-2).map((it) => (
+              <li key={it.label} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground">
+                <span className="flex h-5 w-5 items-center justify-center border-[1.5px] border-foreground bg-foreground text-background"><Check className="h-3 w-3" /></span>
+                <span className="line-through">{it.label}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {/* World filter chips */}
       {availableWorlds.length > 1 && (
         <div className="mb-6 flex flex-wrap gap-2">
           {(["all", ...availableWorlds] as const).map((w) => (
             <button key={w} onClick={() => setWorldFilter(w as "all" | World)}
-              className={`border px-3 py-1.5 text-[0.68rem] tracking-wide ${worldFilter === w ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:bg-muted"}`}>
+              className={`border-[1.5px] px-3 py-1.5 text-[0.68rem] tracking-wide ${worldFilter === w ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:bg-muted"}`}>
               {w === "all" ? "Alle" : w}
             </button>
           ))}
         </div>
-      )}
-
-      {/* Onboarding checklist */}
-      {showChecklist && (
-        <section className="mb-6 border border-border bg-white p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Erste Schritte</p>
-              <p className="mt-1 font-serif text-lg">Alles bereit für deinen Auftritt — {doneCount}/5</p>
-            </div>
-          </div>
-          <ol className="mt-5 grid gap-2 md:grid-cols-5">
-            {checklist.map((it, i) => (
-              <Link key={it.label} to={it.to} className="border border-border bg-white p-3 hover:bg-muted">
-                <div className="flex items-center gap-2">
-                  <span className={`flex h-5 w-5 items-center justify-center border ${it.done ? "border-foreground bg-foreground text-background" : "border-border"} text-[0.6rem]`}>{it.done ? "✓" : i + 1}</span>
-                </div>
-                <p className={`mt-2 text-xs leading-snug ${it.done ? "text-muted-foreground line-through" : ""}`}>{it.label}</p>
-              </Link>
-            ))}
-          </ol>
-        </section>
       )}
 
       {/* Copilot weekly mirror — black */}
@@ -270,13 +301,22 @@ export default function StudioOverview() {
         </div>
       </section>
 
-      {/* KPIs */}
-      <section className="mb-8 grid gap-3 md:grid-cols-4">
-        <KpiCard label="Umsatz 30T" value={`€ ${revenue30.toLocaleString("de-DE", { maximumFractionDigits: 0 })}`} sparkline={series} />
-        <KpiCard label="Bestellungen 30T" value={String(orderCount)} sparkline={ordersSeries} link="/studio/bestellungen" />
-        <KpiCard label="Merkzettel-Zugänge" value={String(wishTotal)} sparkline={wishSeries} />
-        <KpiCard label="Bestand kritisch" value={String(criticalStock)} link="/studio/produkte" highlight={criticalStock > 0} />
+      {/* KPIs — einklappbar */}
+      <section className="mb-6 border-[1.5px] border-border bg-white">
+        <button type="button" onClick={() => setShowKpi((v) => !v)} className="flex w-full items-center justify-between px-5 py-3">
+          <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Zahlen · Woche</span>
+          {showKpi ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {showKpi && (
+          <div className="grid gap-3 border-t border-border p-4 md:grid-cols-4">
+            <KpiCard label="Umsatz 30T" value={`€ ${revenue30.toLocaleString("de-DE", { maximumFractionDigits: 0 })}`} sparkline={series} />
+            <KpiCard label="Bestellungen 30T" value={String(orderCount)} sparkline={ordersSeries} link="/studio/bestellungen" />
+            <KpiCard label="Merkzettel-Zugänge" value={String(wishTotal)} sparkline={wishSeries} />
+            <KpiCard label="Bestand kritisch" value={String(criticalStock)} link="/studio/produkte" highlight={criticalStock > 0} />
+          </div>
+        )}
       </section>
+
 
       {/* Collection grid */}
       <section className="mb-8">
@@ -319,8 +359,16 @@ export default function StudioOverview() {
         </div>
       </section>
 
-      {/* Bottom two-column */}
+      {/* Bottom two-column — einklappbar */}
+      <section className="mb-2 border-[1.5px] border-border bg-white">
+        <button type="button" onClick={() => setShowLower((v) => !v)} className="flex w-full items-center justify-between px-5 py-3">
+          <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Bestellungen · Kampagnen · Nachrichten</span>
+          {showLower ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </section>
+      {showLower && (
       <section className="grid gap-6 lg:grid-cols-2">
+
         {/* Orders */}
         <div className="border border-border bg-white p-6">
           <div className="mb-4 flex items-baseline justify-between">
@@ -404,6 +452,7 @@ export default function StudioOverview() {
           )}
         </div>
       </section>
+      )}
     </StudioShell>
   );
 }

@@ -1,11 +1,13 @@
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { ReactNode, useEffect, useState } from "react";
-import { LogOut, Menu, X, Bell, ExternalLink, Sparkles } from "lucide-react";
+import { LogOut, Menu, Bell, ExternalLink, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCopilot } from "./CopilotDrawer";
+import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
+import { useDisplayName } from "@/lib/displayName";
 
 /* Hairline inline icons (stroke 1.25) — quiet, monogram-like */
 const IStage = (p: React.SVGProps<SVGSVGElement>) => (
@@ -66,6 +68,30 @@ function firstNameOf(u: { displayName?: string | null }, brand?: string | null, 
 
 export { firstNameOf };
 
+function LevelPlaque({ designerId }: { designerId?: string }) {
+  const { level } = useDesignerLevel(designerId);
+  if (!designerId) return null;
+  const pct = Math.max(0, Math.min(1, level.progress));
+  return (
+    <div className="mx-6 mb-6 border-[1.5px] border-white/25 p-4">
+      <div className="flex items-center gap-3">
+        <span className="font-serif text-2xl leading-none">{level.glyph}</span>
+        <div className="min-w-0">
+          <p className="font-serif text-sm leading-none">{level.label}</p>
+          <p className="mt-1 text-[0.58rem] uppercase tracking-[0.22em] text-white/45">
+            {level.level === "dame" ? "Höchster Rang" : `Nächster Rang · ${level.next}`}
+          </p>
+        </div>
+      </div>
+      {level.level !== "dame" && (
+        <div className="mt-3 h-[3px] w-full bg-white/10">
+          <div className="h-full bg-white transition-all duration-500" style={{ width: `${Math.round(pct * 100)}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { designer } = useMyDesigner();
   const badges = useStudioBadges(designer?.id);
@@ -73,8 +99,6 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const brand = designer?.brand_name ?? "Studio";
   const initials = initialsOf(brand);
-  const houseNo = (designer as unknown as { house_number?: number | null })?.house_number ?? null;
-  const memberSince = (designer as unknown as { created_at?: string })?.created_at;
 
   const items: NavItem[] = [
     { to: "/studio", label: "Bühne", icon: IStage, end: true },
@@ -128,25 +152,15 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         Zur Ausstellung →
       </Link>
 
-      {designer && (
-        <div className="mx-6 mb-6 border border-white/12 p-4">
-          <div className="flex items-baseline gap-2">
-            <span className="font-serif text-lg">♟</span>
-            <p className="font-serif text-sm">Haus № {houseNo ?? "—"}</p>
-          </div>
-          <p className="mt-2 text-[0.62rem] uppercase tracking-[0.22em] text-white/45">
-            Im Haus seit {memberSince ? new Date(memberSince).toLocaleDateString("de-DE", { month: "long", year: "numeric" }) : "—"}
-          </p>
-          <p className="mt-2 text-[0.6rem] uppercase tracking-[0.22em] text-white/35">Ausgabe</p>
-        </div>
-      )}
+      {designer && <LevelPlaque designerId={designer.id} />}
     </aside>
   );
 }
 
 function Topbar({ title, section }: { title: string; section?: string }) {
-  const { user, profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { designer } = useMyDesigner();
+  const { firstName } = useDisplayName();
   const nav = useNavigate();
   const copilot = useCopilot();
   const [unread, setUnread] = useState(0);
@@ -159,7 +173,6 @@ function Topbar({ title, section }: { title: string; section?: string }) {
     })();
   }, [user]);
 
-  const firstName = firstNameOf({ displayName: profile?.displayName }, designer?.brand_name, user?.email);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white/85 px-6 backdrop-blur-md">

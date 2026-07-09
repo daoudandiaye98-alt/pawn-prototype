@@ -1053,37 +1053,52 @@ export type Database = {
       orders: {
         Row: {
           amount_total: number
+          carrier: string | null
           created_at: string
           currency: string
           customer_email: string | null
+          delivered_at: string | null
+          fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
           id: string
           items: Json
+          shipped_at: string | null
           status: Database["public"]["Enums"]["order_status"]
           stripe_session_id: string | null
+          tracking_number: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
           amount_total?: number
+          carrier?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
+          delivered_at?: string | null
+          fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           items?: Json
+          shipped_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           stripe_session_id?: string | null
+          tracking_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           amount_total?: number
+          carrier?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
+          delivered_at?: string | null
+          fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           items?: Json
+          shipped_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           stripe_session_id?: string | null
+          tracking_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1395,6 +1410,7 @@ export type Database = {
         Args: { _product_id: string; _qty: number }
         Returns: undefined
       }
+      designer_level: { Args: { _designer_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1450,6 +1466,12 @@ export type Database = {
         | "published"
         | "declined"
       designer_plan: "haus" | "atelier" | "maison"
+      fulfillment_status:
+        | "new"
+        | "in_progress"
+        | "packed"
+        | "shipped"
+        | "delivered"
       generation_status: "requested" | "running" | "done" | "failed"
       generation_tier: "accent" | "full"
       inventory_mode: "stock" | "made_to_order"
@@ -1612,6 +1634,13 @@ export const Constants = {
         "declined",
       ],
       designer_plan: ["haus", "atelier", "maison"],
+      fulfillment_status: [
+        "new",
+        "in_progress",
+        "packed",
+        "shipped",
+        "delivered",
+      ],
       generation_status: ["requested", "running", "done", "failed"],
       generation_tier: ["accent", "full"],
       inventory_mode: ["stock", "made_to_order"],

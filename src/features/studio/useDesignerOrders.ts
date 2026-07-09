@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type FulfillmentStatus = "new" | "in_progress" | "packed" | "shipped" | "delivered";
+
 export interface DesignerOrderLine {
   order_id: string;
   order_created_at: string;
   order_status: string;
+  fulfillment_status: FulfillmentStatus;
+  tracking_number: string | null;
+  carrier: string | null;
   customer_email: string | null;
   customer_country: string | null;
   customer_first_name: string | null;
@@ -20,12 +25,16 @@ interface RawOrder {
   id: string;
   created_at: string;
   status: string;
+  fulfillment_status: FulfillmentStatus | null;
+  tracking_number: string | null;
+  carrier: string | null;
   customer_email: string | null;
   amount_total: number;
   items: unknown;
   user_id: string | null;
 }
 interface RawProduct { id: string; slug: string; name: string; designer_id: string; price: number; }
+
 
 /**
  * Loads all orders that contain products of the given designer.
@@ -50,7 +59,7 @@ export function useDesignerOrders(designerId: string | undefined) {
       if (slugSet.size === 0) { if (alive) { setLines([]); setLoading(false); } return; }
 
       const { data: ords } = await supabase.from("orders")
-        .select("id, created_at, status, customer_email, amount_total, items, user_id")
+        .select("id, created_at, status, fulfillment_status, tracking_number, carrier, customer_email, amount_total, items, user_id")
         .order("created_at", { ascending: false })
         .limit(500);
       const rows = ((ords ?? []) as RawOrder[]);
@@ -81,6 +90,9 @@ export function useDesignerOrders(designerId: string | undefined) {
             order_id: o.id,
             order_created_at: o.created_at,
             order_status: o.status,
+            fulfillment_status: (o.fulfillment_status ?? "new") as FulfillmentStatus,
+            tracking_number: o.tracking_number ?? null,
+            carrier: o.carrier ?? null,
             customer_email: o.customer_email,
             customer_country: (it.country as string | undefined) ?? null,
             customer_first_name: firstName,

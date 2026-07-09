@@ -19,13 +19,19 @@ const DEFAULT_PROMPT =
 const DEFAULT_COPILOT =
   "Du bist PAWN Copilot — ein leiser, präziser Partner für unabhängige Designer. Antworte auf Deutsch, sachlich, ohne Marketing-Floskeln. Baue jede Antwort auf den konkreten Store-Daten des Designers auf. Ein Vorschlag pro Antwort, wenn möglich.";
 
-type Tab = "persona" | "signale" | "responses" | "integrationen";
+type Tab = "denklogik" | "persona" | "signale" | "responses" | "integrationen";
 
 export default function AdminKI() {
   const { user, roles, loading } = useAuth();
-  const [tab, setTab] = useState<Tab>("persona");
+  const [tab, setTab] = useState<Tab>("denklogik");
   const [prompt, setPrompt] = useState("");
   const [copilotPrompt, setCopilotPrompt] = useState("");
+  const [personaCustomer, setPersonaCustomer] = useState("");
+  const [personaDesigner, setPersonaDesigner] = useState("");
+  const [personaAdmin, setPersonaAdmin] = useState("");
+  const [directives, setDirectives] = useState<string[]>([]);
+  const [suggestion, setSuggestion] = useState<{ key: string; oldText: string; newText: string } | null>(null);
+  const [suggestBusy, setSuggestBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [signals, setSignals] = useState<SignalRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -37,9 +43,13 @@ export default function AdminKI() {
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, sig, ses, resp, usageAll, ints] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, sig, ses, resp, usageAll, ints] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "persona_designer").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "persona_admin").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "directives").maybeSingle(),
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.taste_signal").order("at", { ascending: false }).limit(50),
       supabase.from("ai_sessions").select("session_id, user_id, turns, extracted, updated_at").order("updated_at", { ascending: false }).limit(50),
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.response_logged").order("at", { ascending: false }).limit(20),
@@ -48,6 +58,10 @@ export default function AdminKI() {
     ]);
     setPrompt(((cfg.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_PROMPT);
     setCopilotPrompt(((cfgCopilot.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_COPILOT);
+    setPersonaCustomer(((pc.data?.value as { system_prompt?: string })?.system_prompt) ?? "");
+    setPersonaDesigner(((pd.data?.value as { system_prompt?: string })?.system_prompt) ?? "");
+    setPersonaAdmin(((pa.data?.value as { system_prompt?: string })?.system_prompt) ?? "");
+    setDirectives(((dir.data?.value as { items?: string[] })?.items) ?? []);
     setSignals((sig.data ?? []) as SignalRow[]);
     setSessions((ses.data ?? []) as SessionRow[]);
     setResponses((resp.data ?? []) as ResponseRow[]);
@@ -76,11 +90,46 @@ export default function AdminKI() {
   if (loading) return null;
   if (!user || !roles.includes("admin")) return <Navigate to="/auth" replace />;
 
-  const savePrompt = async (key: "pawn_chat_persona" | "copilot_prompt", value: string) => {
+  const savePrompt = async (key: "pawn_chat_persona" | "copilot_prompt" | "persona_customer" | "persona_designer" | "persona_admin", value: string) => {
     setBusy(true);
     const { error } = await supabase.from("ai_config").upsert({ key, value: { system_prompt: value }, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else toast.success("Gespeichert.");
+  };
+
+  const saveDirectives = async (items: string[]) => {
+    setBusy(true);
+    const clean = items.map((s) => s.trim()).filter(Boolean);
+    const { error } = await supabase.from("ai_config").upsert({ key: "directives", value: { items: clean }, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Direktiven aktualisiert."); setDirectives(clean); }
+  };
+
+  const requestSuggestion = async (personaKey: "persona_customer" | "persona_designer" | "persona_admin", currentText: string, instruction: string) => {
+    if (!instruction.trim()) return toast.error("Bitte kurz beschreiben, was PAWN verbessern soll.");
+    setSuggestBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-improve-prompt", {
+        body: { persona_key: personaKey, current: currentText, instruction: instruction.trim() },
+      });
+      if (error) throw error;
+      const next = (data as { suggestion?: string })?.suggestion?.trim();
+      if (!next) throw new Error("Keine Antwort erhalten.");
+      setSuggestion({ key: personaKey, oldText: currentText, newText: next });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fehler beim Vorschlag.");
+    } finally {
+      setSuggestBusy(false);
+    }
+  };
+
+  const acceptSuggestion = async () => {
+    if (!suggestion) return;
+    await savePrompt(suggestion.key as "persona_customer" | "persona_designer" | "persona_admin", suggestion.newText);
+    if (suggestion.key === "persona_customer") setPersonaCustomer(suggestion.newText);
+    if (suggestion.key === "persona_designer") setPersonaDesigner(suggestion.newText);
+    if (suggestion.key === "persona_admin") setPersonaAdmin(suggestion.newText);
+    setSuggestion(null);
   };
 
   const saveIntegration = async (i: Partial<IntegrationRow>) => {
@@ -128,18 +177,58 @@ export default function AdminKI() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-1 border-b border-border">
-        {(["persona","signale","responses","integrationen"] as Tab[]).map((t) => (
+        {(["denklogik","persona","signale","responses","integrationen"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`border-b-2 px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] ${tab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-            {t === "persona" ? "Persona" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
+            {t === "denklogik" ? "Denklogik" : t === "persona" ? "Persona (Legacy)" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
           </button>
         ))}
       </div>
 
+      {tab === "denklogik" && (
+        <div className="space-y-8">
+          <DirectivesEditor value={directives} onSave={saveDirectives} busy={busy} />
+          <PersonaWithSuggestion
+            keyName="persona_customer"
+            label="Kunden-Persona"
+            description="Berater & Guide durchs Kollektiv — versteht Geschmack. Antwortet Kund:innen im öffentlichen Chat."
+            value={personaCustomer}
+            setValue={setPersonaCustomer}
+            onSave={() => savePrompt("persona_customer", personaCustomer)}
+            onSuggest={(inst) => requestSuggestion("persona_customer", personaCustomer, inst)}
+            busy={busy}
+            suggestBusy={suggestBusy}
+          />
+          <PersonaWithSuggestion
+            keyName="persona_designer"
+            label="Designer-Persona (Copilot)"
+            description="Organisations-Begleiter — kennt den nächsten Zug, erklärt in einfachen Schritten, feiert Fortschritte."
+            value={personaDesigner}
+            setValue={setPersonaDesigner}
+            onSave={() => savePrompt("persona_designer", personaDesigner)}
+            onSuggest={(inst) => requestSuggestion("persona_designer", personaDesigner, inst)}
+            busy={busy}
+            suggestBusy={suggestBusy}
+          />
+          <PersonaWithSuggestion
+            keyName="persona_admin"
+            label="Admin-Persona"
+            description="Voller Zugriff · zeigt auf Nachfrage aktives Kontextpaket und Direktiven offen an."
+            value={personaAdmin}
+            setValue={setPersonaAdmin}
+            onSave={() => savePrompt("persona_admin", personaAdmin)}
+            onSuggest={(inst) => requestSuggestion("persona_admin", personaAdmin, inst)}
+            busy={busy}
+            suggestBusy={suggestBusy}
+          />
+          {suggestion && <SuggestionDiff sugg={suggestion} onAccept={acceptSuggestion} onDismiss={() => setSuggestion(null)} />}
+        </div>
+      )}
+
       {tab === "persona" && (
         <div className="grid gap-6 xl:grid-cols-2">
-          <PromptEditor label="Frag PAWN (Chat)" description="Diese Stimme antwortet Kund:innen im öffentlichen Chat." value={prompt} setValue={setPrompt} onSave={() => savePrompt("pawn_chat_persona", prompt)} onReset={() => setPrompt(DEFAULT_PROMPT)} busy={busy} />
-          <PromptEditor label="PAWN Copilot (Studio)" description="Diese Stimme unterstützt Designer im Studio." value={copilotPrompt} setValue={setCopilotPrompt} onSave={() => savePrompt("copilot_prompt", copilotPrompt)} onReset={() => setCopilotPrompt(DEFAULT_COPILOT)} busy={busy} />
+          <PromptEditor label="Frag PAWN (Chat, Legacy)" description={'Legacy-Prompt. Der neue Kunden-Persona-Text unter „Denklogik" hat Vorrang.'} value={prompt} setValue={setPrompt} onSave={() => savePrompt("pawn_chat_persona", prompt)} onReset={() => setPrompt(DEFAULT_PROMPT)} busy={busy} />
+          <PromptEditor label="PAWN Copilot (Studio, Legacy)" description={'Legacy-Prompt. Der neue Designer-Persona-Text unter „Denklogik" hat Vorrang.'} value={copilotPrompt} setValue={setCopilotPrompt} onSave={() => savePrompt("copilot_prompt", copilotPrompt)} onReset={() => setCopilotPrompt(DEFAULT_COPILOT)} busy={busy} />
         </div>
       )}
 
@@ -346,6 +435,99 @@ function IntegrationDialog({ value, onCancel, onSave }: { value: Partial<Integra
             <button onClick={onCancel} className="border border-border px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em]">Abbrechen</button>
             <button onClick={() => onSave(i)} className="border border-accent bg-accent px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-accent-foreground">Speichern</button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DirectivesEditor({ value, onSave, busy }: { value: string[]; onSave: (items: string[]) => void; busy: boolean }) {
+  const [items, setItems] = useState<string[]>(value.length ? value : [""]);
+  useEffect(() => { setItems(value.length ? value : [""]); }, [value]);
+  return (
+    <section className="border-[1.5px] border-foreground bg-card p-8">
+      <p className="editorial-eyebrow">Direktiven — Leitplanken jeder Antwort</p>
+      <p className="mt-2 text-sm text-muted-foreground">Werden in JEDEN Persona-Prompt injiziert. Kurze, klare Regeln (ein Satz je Zeile).</p>
+      <ul className="mt-4 space-y-2">
+        {items.map((it, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <span className="mt-2 flex h-5 w-5 shrink-0 items-center justify-center border-[1.5px] border-foreground text-[0.6rem] tabular-nums">{i + 1}</span>
+            <textarea rows={2} value={it} onChange={(e) => setItems(items.map((x, j) => (j === i ? e.target.value : x)))}
+              className="flex-1 border-[1.5px] border-border bg-background p-2 text-sm" />
+            <button type="button" onClick={() => setItems(items.filter((_, j) => j !== i))} className="mt-2 text-destructive"><Trash2 className="h-4 w-4" /></button>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 flex items-center justify-between">
+        <button type="button" onClick={() => setItems([...items, ""])} className="border-[1.5px] border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] hover:border-foreground">+ Direktive</button>
+        <button type="button" onClick={() => onSave(items)} disabled={busy}
+          className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+          {busy ? "…" : "Direktiven speichern"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function PersonaWithSuggestion(props: {
+  keyName: string; label: string; description: string;
+  value: string; setValue: (v: string) => void;
+  onSave: () => void; onSuggest: (instruction: string) => void;
+  busy: boolean; suggestBusy: boolean;
+}) {
+  const [instruction, setInstruction] = useState("");
+  return (
+    <section className="border-[1.5px] border-foreground bg-card p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="editorial-eyebrow">{props.label}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{props.description}</p>
+        </div>
+        <code className="text-[0.55rem] uppercase tracking-[0.28em] text-muted-foreground">{props.keyName}</code>
+      </div>
+      <textarea value={props.value} onChange={(e) => props.setValue(e.target.value)} rows={10}
+        className="mt-6 w-full border-[1.5px] border-border bg-background p-4 font-mono text-[0.85rem] leading-relaxed focus:outline-none focus:border-foreground" />
+      <div className="mt-4 flex items-center justify-end">
+        <button onClick={props.onSave} disabled={props.busy}
+          className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+          {props.busy ? "…" : "Speichern"}
+        </button>
+      </div>
+      <div className="mt-6 border-t border-border pt-4">
+        <p className="editorial-eyebrow">Vorschlag von PAWN</p>
+        <p className="mt-1 text-xs text-muted-foreground">Beschreibe, was verbessert werden soll — PAWN entwirft eine neue Version zum Prüfen.</p>
+        <div className="mt-3 flex gap-2">
+          <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
+            placeholder={"z. B. mach die Persona neugieriger"}
+            className="flex-1 border-[1.5px] border-border bg-background p-2 text-sm" />
+          <button onClick={() => props.onSuggest(instruction)} disabled={props.suggestBusy}
+            className="border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background disabled:opacity-50">
+            {props.suggestBusy ? "…" : "Vorschlag anfragen"}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SuggestionDiff({ sugg, onAccept, onDismiss }: { sugg: { key: string; oldText: string; newText: string }; onAccept: () => void; onDismiss: () => void }) {
+  return (
+    <div className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-5xl border-[1.5px] border-foreground bg-white shadow-2xl">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <p className="text-[0.62rem] uppercase tracking-[0.28em]">Vorschlag · {sugg.key}</p>
+        <div className="flex gap-2">
+          <button onClick={onDismiss} className="px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">Verwerfen</button>
+          <button onClick={onAccept} className="border-[1.5px] border-foreground bg-foreground px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-background">Übernehmen</button>
+        </div>
+      </div>
+      <div className="grid gap-0 md:grid-cols-2">
+        <div className="border-r border-border p-4">
+          <p className="text-[0.58rem] uppercase tracking-[0.28em] text-muted-foreground">Alt</p>
+          <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap font-mono text-xs text-muted-foreground">{sugg.oldText || "—"}</pre>
+        </div>
+        <div className="p-4">
+          <p className="text-[0.58rem] uppercase tracking-[0.28em] text-foreground">Neu</p>
+          <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap font-mono text-xs">{sugg.newText}</pre>
         </div>
       </div>
     </div>

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.designer_level(uuid) FROM PUBLIC, anon;
