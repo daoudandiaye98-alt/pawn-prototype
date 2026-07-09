@@ -286,11 +286,12 @@ interface ScoreItem {
   designerSlug?: string;
   slug?: string;
   id?: string;
+  product_dna?: { materials?: string[]; silhouette?: string[]; colors?: string[]; mood?: string[] } | null;
 }
 
 /**
  * Score = world_match × 2 + tag_overlap + designer_dna_bonus + 20% discovery noise.
- * Fully stable per (item.id, session) — no re-shuffle on re-render.
+ * DNA-Moleküle je Kind gewichtet: mood ×2, silhouette ×1.5, material/colors ×1.
  */
 export function scoreForPersonalization<T extends ScoreItem>(
   item: T,
@@ -303,11 +304,19 @@ export function scoreForPersonalization<T extends ScoreItem>(
   if (pref.length && item.category && pref.includes(item.category)) s += 1;
   if (pref.length && item.tags?.some((t) => pref.includes(t))) s += 1;
 
+  // DNA-Moleküle (falls vorhanden): kind-gewichtet
+  const dnaMol = item.product_dna;
+  if (dnaMol && pref.length) {
+    const moodHit = (dnaMol.mood ?? []).filter((t) => pref.includes(t)).length;
+    const silHit = (dnaMol.silhouette ?? []).filter((t) => pref.includes(t)).length;
+    const matHit = (dnaMol.materials ?? []).filter((t) => pref.includes(t)).length;
+    const colHit = (dnaMol.colors ?? []).filter((t) => pref.includes(t)).length;
+    s += moodHit * 2 + silHit * 1.5 + matHit + colHit;
+  }
+
   const dna = item.designerSlug ? designerDna.get(item.designerSlug) : undefined;
   if (dna) {
-    // world match via brand_dna weight
     if (profile.world && dna.worlds[profile.world as World]) s += (dna.worlds[profile.world as World] ?? 0) * 2;
-    // tag overlap with designer signals
     if (pref.length && dna.signals.length) {
       const overlap = dna.signals.filter((sig) => pref.includes(sig)).length;
       s += Math.min(3, overlap);
@@ -316,8 +325,7 @@ export function scoreForPersonalization<T extends ScoreItem>(
   }
 
   const seed = item.id ?? item.slug ?? "x";
-  s += hashUnit(seed) * 0.4; // 20% discovery: bounded random tiebreaker
-
+  s += hashUnit(seed) * 0.4;
   return s;
 }
 
