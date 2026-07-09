@@ -495,6 +495,15 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             <button type="button" onClick={addVariant} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ Variante hinzufügen</button>
           </Section>
 
+          {/* Product DNA — Moleküle */}
+          <Section title="DNA deines Stücks" help="Vier kurze Antworten helfen PAWN, dein Stück den richtigen Menschen zu zeigen. Wähle aus der Palette — was fehlt, kannst du in den Tags frei ergänzen.">
+            <ProductDNAEditor
+              dna={local.product_dna ?? emptyDNA()}
+              world={local.world ?? "Mode"}
+              onChange={(dna) => patch({ product_dna: dna })}
+            />
+          </Section>
+
           {/* Tags + SKU */}
           <Section title="Details" help={'Tags helfen PAWN, dein Stück zu den richtigen Kunden zu bringen. Tippe los — Vorschläge kommen aus unserer Modewelt-Ontologie und werden normalisiert.'}>
             <Field label="Tags" hint="Enter oder Komma zum Bestätigen">
