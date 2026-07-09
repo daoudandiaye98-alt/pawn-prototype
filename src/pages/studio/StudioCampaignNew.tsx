@@ -84,11 +84,18 @@ export default function StudioCampaignNew() {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoMime, setVideoMime] = useState<string>("video/webm");
+  const [format, setFormat] = useState<Format>("9:16");
+  const [seed, setSeed] = useState<number>(() => randomSeed());
+  const [cinematic, setCinematic] = useState(false);
+  const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
+  const [cinematicClips, setCinematicClips] = useState<string[]>([]);
   const previewMountRef = useRef<HTMLDivElement | null>(null);
 
   // Quota
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const quota = useCampaignQuota(designer?.id, plan);
+  const quota = useCampaignQuota(designer?.id, plan, isAdmin);
+  const cinematicAllowed = isAdmin || plan === "atelier" || plan === "maison";
+
 
   // Load consent + products.
   useEffect(() => {
