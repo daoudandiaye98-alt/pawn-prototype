@@ -579,6 +579,37 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         </div>
       </div>
 
+      {shotResult && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setShotResult(null)}>
+          <div className="w-full max-w-4xl border border-border bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-serif text-xl">Vorher · Nachher</h3>
+              <button onClick={() => setShotResult(null)} aria-label="Schließen" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <figure>
+                <img src={shotResult.source} alt="Original" className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-muted-foreground">Original</figcaption>
+              </figure>
+              <figure>
+                <img src={shotResult.result} alt="Studio-Foto" className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-foreground">PAWN Studio-Foto</figcaption>
+              </figure>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setShotResult(null)} className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Verwerfen</button>
+              <button
+                onClick={() => { patch({ image_url: shotResult.result }); setShotResult(null); toast.success("Studio-Foto übernommen."); }}
+                className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-black">
+                Übernehmen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
       <style>{`.inp { width:100%; border:1px solid hsl(var(--border)); background:#fff; padding: 0.65rem 0.85rem; font-size: 0.9rem; transition: border-color .15s; }
       .inp:focus { outline: none; border-color: hsl(var(--foreground)); }`}</style>
     </div>
