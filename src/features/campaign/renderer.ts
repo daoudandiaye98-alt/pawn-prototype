@@ -39,8 +39,10 @@ export interface RenderCallbacks {
 const FPS = 30;
 
 function pickMimeType(): string {
+  // Safari bevorzugt mp4/avc1, Chromium bevorzugt webm/vp9. Bewusst mp4 zuerst.
   const c = [
     "video/mp4;codecs=avc1.42E01E",
+    "video/mp4;codecs=avc1",
     "video/mp4",
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
@@ -51,15 +53,23 @@ function pickMimeType(): string {
   return "video/webm";
 }
 
+export function mimeToExt(mime: string): string {
+  if (mime.includes("mp4")) return "mp4";
+  return "webm";
+}
+
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
     const img = new Image();
+    // Muss VOR src gesetzt sein — sonst kein CORS-Request, Canvas wird tainted.
     img.crossOrigin = "anonymous";
+    img.referrerPolicy = "no-referrer";
     img.onload = () => res(img);
     img.onerror = () => rej(new Error(`image_load_failed: ${url}`));
     img.src = url;
   });
 }
+
 
 function loadVideo(url: string): Promise<HTMLVideoElement> {
   return new Promise((res, rej) => {
