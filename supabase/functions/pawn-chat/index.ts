@@ -268,8 +268,14 @@ Deno.serve(async (req) => {
 
     // Provider probe (used by /admin/ki status badge) — no side effects.
     if (body.probe) {
-      const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
-      return new Response(JSON.stringify({ provider }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const providers = {
+        openai: !!Deno.env.get("OPENAI_API_KEY"),
+        anthropic: !!Deno.env.get("ANTHROPIC_API_KEY"),
+        lovable_gateway: !!Deno.env.get("LOVABLE_API_KEY"),
+      };
+      const chain = ["openai","anthropic","lovable_gateway"].filter((p) => providers[p as keyof typeof providers]);
+      const provider = chain[0] ?? "fallback";
+      return new Response(JSON.stringify({ provider, providers, chain }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
