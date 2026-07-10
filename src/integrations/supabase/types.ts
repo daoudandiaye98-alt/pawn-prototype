@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_actions_log: {
+        Row: {
+          action: string
+          actor: string | null
+          after: Json | null
+          before: Json | null
+          created_at: string
+          error: string | null
+          id: string
+          params: Json
+          source: string
+          status: string
+          undone_at: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          params?: Json
+          source: string
+          status?: string
+          undone_at?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          params?: Json
+          source?: string
+          status?: string
+          undone_at?: string | null
+        }
+        Relationships: []
+      }
       ai_config: {
         Row: {
           created_at: string
@@ -853,6 +895,7 @@ export type Database = {
           created_at: string
           id: string
           kind: Database["public"]["Enums"]["ontology_kind"]
+          learned: boolean
           parent_term: string | null
           synonyms: string[]
           term: string
@@ -863,6 +906,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind: Database["public"]["Enums"]["ontology_kind"]
+          learned?: boolean
           parent_term?: string | null
           synonyms?: string[]
           term: string
@@ -873,6 +917,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: Database["public"]["Enums"]["ontology_kind"]
+          learned?: boolean
           parent_term?: string | null
           synonyms?: string[]
           term?: string
