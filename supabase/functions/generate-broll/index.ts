@@ -14,7 +14,10 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
-const DEFAULT_MODEL = "fal-ai/kling-video/v2.1/standard/image-to-video";
+// Standard: kostengünstiges Modell (wan-2.2). Premium-Alternative:
+//   fal-ai/kling-video/v2.1/standard/image-to-video (in ai_config setzen).
+const DEFAULT_MODEL = "fal-ai/wan/v2.2-a14b/image-to-video/lora";
+
 const DEFAULT_TEMPLATE =
   "subtle fabric movement, slow cinematic camera push-in, monochrome high-fashion editorial, soft studio light, {designer_prompt}";
 
