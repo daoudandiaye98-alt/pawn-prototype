@@ -25,20 +25,16 @@ const ITEMS = [
   { to: "/admin", label: "Kontrollhub", icon: LayoutGrid, end: true },
   { to: "/admin/dna", label: "Global DNA", icon: Activity },
   { to: "/admin/products", label: "Produkte", icon: Package },
-  { to: "/admin/orders", label: "Bestellungen", icon: ClipboardList },
   { to: "/admin/zahlungen", label: "Zahlungen", icon: ClipboardList },
   { to: "/admin/nachrichten", label: "Nachrichten", icon: FileSignature },
   { to: "/admin/designers", label: "Bewerbungen", icon: FileSignature },
-  { to: "/admin/customers", label: "Kunden", icon: UserCircle2 },
   { to: "/admin/inhalte", label: "Inhalte", icon: Newspaper },
-  { to: "/admin/marketing", label: "Marketing", icon: Megaphone },
+  { to: "/admin/werbung", label: "Werbung", icon: Megaphone },
   { to: "/admin/kampagnen", label: "Kampagnen", icon: Megaphone },
   { to: "/admin/posting", label: "Posting", icon: Megaphone },
-  { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/trends", label: "Trends", icon: TrendingUp },
-  { to: "/admin/ai", label: "AI Center", icon: Bot },
   { to: "/admin/ki", label: "KI Cockpit", icon: Bot },
-  { to: "/admin/settings", label: "Einstellungen", icon: Settings },
+  { to: "/admin/aktionen", label: "Aktionen", icon: Sparkles },
 ];
 
 export function AdminSidebar() {
