@@ -7,15 +7,11 @@ import {
   Activity,
   Package,
   ClipboardList,
-  Users,
   FileSignature,
-  UserCircle2,
   Newspaper,
   Megaphone,
-  BarChart3,
   TrendingUp,
   Bot,
-  Settings,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
