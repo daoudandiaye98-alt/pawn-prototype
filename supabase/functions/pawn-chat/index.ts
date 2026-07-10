@@ -460,7 +460,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const rawReply = (await callProvider(system, messages, fullContextHint, body.image_url, model)) ?? fallbackReply(extracted, cards, turns, action);
+    // Load provider chain from ai_config (default: openai → anthropic → lovable → fallback)
+    let chain: string[] | undefined;
+    if (admin) {
+      try {
+        const { data } = await admin.from("ai_config").select("value").eq("key", "provider_priority").maybeSingle();
+        const c = (data?.value as { chain?: string[] } | undefined)?.chain;
+        if (Array.isArray(c) && c.length) chain = c;
+      } catch { /* soft */ }
+    }
+    const providerResult = await callProvider(system, messages, fullContextHint, body.image_url, model, chain);
+    const rawReply = providerResult.text ?? fallbackReply(extracted, cards, turns, action);
     const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
 
     // --- Upsert user_memory: extract simple facts / preferences -----------
