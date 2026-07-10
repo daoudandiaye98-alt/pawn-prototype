@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
     const tier: Tier = PLAN_TO_TIER[designer.plan ?? "haus"] ?? "standard";
     const model = await loadModelForTier(admin, tier);
     const system = personaText;
-    const provider = providerName();
+    void providerName; // provider is now derived from ai() return value
 
     if (mode === "product_text") {
       if (!body.product_id) return ok({ ...fallbackFor(), error: "missing_product_id" });
