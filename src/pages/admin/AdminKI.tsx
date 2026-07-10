@@ -40,6 +40,7 @@ export default function AdminKI() {
   const [integrations, setIntegrations] = useState<IntegrationRow[]>([]);
   const [newIntegration, setNewIntegration] = useState<Partial<IntegrationRow> | null>(null);
   const [provider, setProvider] = useState<"openai" | "fallback" | "unknown">("unknown");
+  const [providerChain, setProviderChain] = useState<string[]>([]);
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
