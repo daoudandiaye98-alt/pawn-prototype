@@ -40,6 +40,13 @@ interface ProductRow {
   weight_grams: number | null;
   lead_time_days: number | null;
   product_dna: ProductDNA;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
+  care_instructions: string | null;
+  made_in: string | null;
+  edition_info: string | null;
+  designer_note: string | null;
 }
 
 const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
@@ -49,6 +56,8 @@ const emptyEdit = (): Partial<ProductRow> => ({
   inventory_mode: "stock", stock_quantity: 0, allow_custom_requests: false,
   variants: [], compare_at_price: null, sku: "", weight_grams: null, lead_time_days: null,
   product_dna: emptyDNA(),
+  length_cm: null, width_cm: null, height_cm: null,
+  care_instructions: "", made_in: "", edition_info: "", designer_note: "",
 });
 
 function slugify(s: string) {
