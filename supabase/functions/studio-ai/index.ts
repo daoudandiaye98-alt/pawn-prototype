@@ -61,8 +61,33 @@ async function callGateway(system: string, messages: Msg[]): Promise<string | nu
     return d.choices?.[0]?.message?.content ?? null;
   } catch { return null; }
 }
-async function ai(model: string, system: string, messages: Msg[]): Promise<string | null> {
-  return (await callOpenAI(model, system, messages)) ?? (await callGateway(system, messages));
+async function callAnthropic(system: string, messages: Msg[]): Promise<string | null> {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) return null;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1024,
+        system,
+        messages: messages.filter((m) => m.role !== "system").map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
+      }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d?.content?.[0]?.text ?? null;
+  } catch { return null; }
+}
+async function ai(model: string, system: string, messages: Msg[], chain?: string[]): Promise<{ text: string | null; provider: string }> {
+  const order = chain ?? ["openai", "anthropic", "lovable_gateway"];
+  for (const p of order) {
+    if (p === "openai") { const t = await callOpenAI(model, system, messages); if (t) return { text: t, provider: "openai" }; }
+    else if (p === "anthropic") { const t = await callAnthropic(system, messages); if (t) return { text: t, provider: "anthropic" }; }
+    else if (p === "lovable_gateway") { const t = await callGateway(system, messages); if (t) return { text: t, provider: "lovable_gateway" }; }
+  }
+  return { text: null, provider: "fallback" };
 }
 
 async function loadPrompt(admin: SupabaseClient): Promise<string> {
