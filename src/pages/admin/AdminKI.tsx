@@ -83,7 +83,9 @@ export default function AdminKI() {
     (async () => {
       try {
         const { data } = await supabase.functions.invoke("pawn-chat", { body: { probe: true, messages: [] } });
-        setProvider((data as { provider?: string })?.provider === "openai" ? "openai" : "fallback");
+        const d = (data ?? {}) as { provider?: string; chain?: string[] };
+        setProvider(d.provider === "openai" ? "openai" : "fallback");
+        setProviderChain(Array.isArray(d.chain) ? d.chain : []);
       } catch { setProvider("fallback"); }
     })();
   }, [user, roles]);
