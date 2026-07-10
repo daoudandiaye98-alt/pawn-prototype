@@ -311,10 +311,10 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
         const published = products.filter((p) => (p as { status?: string }).status === "published").length;
         contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht). Story: ${designer.story ?? "—"}.`;
       } catch { /* soft */ }
-      const reply = (await ai(model, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]))
-        ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
-      await logResponse(admin, user_id, mode, designer.id, lastUser, reply, provider);
-      return ok({ reply, provider });
+      const aiRes = await ai(model, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]);
+      const reply = aiRes.text ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
+      await logResponse(admin, user_id, mode, designer.id, lastUser, reply, aiRes.provider);
+      return ok({ reply, provider: aiRes.provider });
     }
 
     return ok({ ...fallbackFor(), error: "unknown_mode" });
