@@ -264,7 +264,7 @@ function extractUserIdFromJWT(auth: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const body = (await req.json()) as { messages: Msg[]; session_id?: string; probe?: boolean; image_url?: string; pinterest_board?: string };
+    const body = (await req.json()) as { messages: Msg[]; session_id?: string; probe?: boolean; image_url?: string; pinterest_board?: string; page_context?: { route?: string; product_slug?: string } };
 
     // Provider probe (used by /admin/ki status badge) — no side effects.
     if (body.probe) {
