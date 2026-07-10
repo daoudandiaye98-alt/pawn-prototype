@@ -4,7 +4,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-type Mode = "product_text" | "weekly_mirror" | "campaign_draft" | "chat";
+type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft" | "chat";
 type Msg = { role: "user" | "assistant" | "system"; content: string };
 
 const DEFAULT_PROMPT = `Du bist PAWN Copilot — ein leiser, präziser Partner für unabhängige Designer. Antworte auf Deutsch, sachlich, ohne Marketing-Floskeln.`;
