@@ -56,7 +56,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     window.setTimeout(() => setUploadPct(null), 400);
   };
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, opts?: { page_context?: { route?: string; product_slug?: string } }) => {
     const hasImage = !!pendingImage;
     if ((!text.trim() && !hasImage) || busy) return;
     setBusy(true);
@@ -68,7 +68,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     setPendingImage(null);
     try {
       const { data, error } = await supabase.functions.invoke("pawn-chat", {
-        body: { messages: wire, session_id: sessionId, image_url: imageUrl },
+        body: { messages: wire, session_id: sessionId, image_url: imageUrl, page_context: opts?.page_context },
       });
       const payload = (data ?? {}) as { reply?: string; cards?: Card[]; action?: Action | null; image_terms?: string[] };
       const reply = payload.reply ?? (error ? "Kurz — ich sammle einen Gedanken." : "…");
@@ -104,8 +104,8 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ message?: string }>).detail;
-      if (detail?.message) void sendMessage(detail.message);
+      const detail = (e as CustomEvent<{ message?: string; page_context?: { route?: string; product_slug?: string } }>).detail;
+      if (detail?.message) void sendMessage(detail.message, { page_context: detail.page_context });
     };
     window.addEventListener("palace:chat-send", handler as EventListener);
     return () => window.removeEventListener("palace:chat-send", handler as EventListener);

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type DbProduct = Database["public"]["Tables"]["products"]["Row"] & {
-  designers?: { id: string; slug: string; brand_name: string; user_id: string } | null;
+  designers?: { id: string; slug: string; brand_name: string; user_id: string; house_number: number | null } | null;
 };
 
 export function useDbProductBySlug(slug: string | undefined) {
@@ -16,7 +16,7 @@ export function useDbProductBySlug(slug: string | undefined) {
     (async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, designers ( id, slug, brand_name, user_id )")
+        .select("*, designers ( id, slug, brand_name, user_id, house_number )")
         .eq("slug", slug)
         .eq("status", "published")
         .maybeSingle();

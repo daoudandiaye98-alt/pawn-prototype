@@ -34,26 +34,26 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [apps, queue, camps, content, cfg] = await Promise.all([
+      const [apps, queue, camps, content, secretsRes] = await Promise.all([
         supabase.from("designer_applications").select("id", { count: "exact", head: true }).in("status", ["submitted", "in_review"]),
         supabase.from("posting_queue").select("id", { count: "exact", head: true }).eq("status", "queued"),
         supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("status", "proposed"),
         supabase.from("site_content").select("value").limit(50),
-        supabase.from("ai_config").select("key, value").eq("key", "missing_secrets").maybeSingle(),
+        supabase.functions.invoke("check-secrets", { body: {} }).catch(() => ({ data: null })),
       ]);
       if (!alive) return;
-      // Empty content check: any site_content whose value is missing text
       const empties = ((content.data ?? []) as Array<{ value: unknown }>).filter((r) => {
         const v = r.value as { text?: string; body?: string } | null;
         return !v || !(v.text?.trim() || v.body?.trim());
       }).length;
-      const cfgVal = (cfg.data?.value as { missing?: string[] } | undefined)?.missing ?? [];
+      const missingFromApi = ((secretsRes as { data?: { missing?: string[] } })?.data?.missing ?? [])
+        .filter((s) => KNOWN_SECRETS.includes(s));
       setSignals({
         pendingApplications: apps.count ?? 0,
         queuedPosts: queue.count ?? 0,
         campaignsInReview: camps.count ?? 0,
         emptyContent: empties,
-        missingSecrets: cfgVal.filter((s) => KNOWN_SECRETS.includes(s)),
+        missingSecrets: missingFromApi,
       });
     })();
     return () => { alive = false; };

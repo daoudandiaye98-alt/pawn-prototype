@@ -4,7 +4,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-type Mode = "product_text" | "weekly_mirror" | "campaign_draft" | "chat";
+type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft" | "chat";
 type Msg = { role: "user" | "assistant" | "system"; content: string };
 
 const DEFAULT_PROMPT = `Du bist PAWN Copilot — ein leiser, präziser Partner für unabhängige Designer. Antworte auf Deutsch, sachlich, ohne Marketing-Floskeln.`;
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
     if (mode === "campaign_draft") {
       return { caption: "Ein Stück, das sich langsam liest.", hashtags: ["#pawn", "#independentdesign", "#slowfashion", "#craft"], provider: "fallback", fallback: true };
     }
-    if (mode === "product_text") {
+    if (mode === "product_text" || mode === "product_note") {
       return { text: "Ein Stück, das seine Geschichte selbst erzählt.", provider: "fallback", fallback: true };
     }
     return { reply: "Ich bin gerade kurz still — versuch's in einem Moment noch einmal.", provider: "fallback", fallback: true };
@@ -162,19 +162,29 @@ Deno.serve(async (req) => {
     const system = personaText;
     void providerName; // provider is now derived from ai() return value
 
-    if (mode === "product_text") {
+    if (mode === "product_text" || mode === "product_note") {
       if (!body.product_id) return ok({ ...fallbackFor(), error: "missing_product_id" });
-      const { data: p } = await admin.from("products").select("id, name, world, tags, description, price").eq("id", body.product_id).eq("designer_id", designer.id).maybeSingle();
+      const { data: p } = await admin.from("products").select("id, name, world, tags, description, price, designer_note, product_dna").eq("id", body.product_id).eq("designer_id", designer.id).maybeSingle();
       if (!p) return ok({ ...fallbackFor(), error: "not_found" });
       const tags = (p.tags as string[] | null)?.join(", ") ?? "";
-      const promptUser = `Schreibe eine kurze editoriale Produktbeschreibung im PAWN-Ton (max. 3 Sätze, deutsch, keine Floskeln).
+      const isNote = mode === "product_note";
+      const promptUser = isNote
+        ? `Schreibe "Der Gedanke dahinter" — persönlich, erste Person, warum dieses Stück existiert. Auf Deutsch, max. 3 Sätze, ruhig, warm, ohne Marketing.
+Marke: ${designer.brand_name}
+Story der Marke: ${designer.story ?? "—"}
+Produkt: ${p.name} (${p.world})
+Tags: ${tags}
+Beschreibung (Kontext): ${p.description ?? "—"}`
+        : `Schreibe eine kurze editoriale Produktbeschreibung im PAWN-Ton (max. 3 Sätze, deutsch, keine Floskeln).
 Marke: ${designer.brand_name}
 Story: ${designer.story ?? "—"}
 Produkt: ${p.name}
 Welt: ${p.world}
 Tags: ${tags}`;
       const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
-      const generated = aiRes.text ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
+      const generated = aiRes.text ?? (isNote
+        ? `Dieses Stück ist entstanden, weil ich ${p.name.toLowerCase()} anders denken wollte — leiser, ehrlicher.`
+        : `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim());
       await logResponse(admin, user_id, mode, designer.id, promptUser, generated, aiRes.provider);
       return ok({ text: generated, provider: aiRes.provider });
     }

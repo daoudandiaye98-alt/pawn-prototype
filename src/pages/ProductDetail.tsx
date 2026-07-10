@@ -216,6 +216,40 @@ const ProductDetail = () => {
                   {dbProduct?.description || product.description}
                 </p>
 
+                {/* Der Gedanke dahinter */}
+                {dbProduct?.designer_note?.trim() && (
+                  <div className="mt-10 border-t border-[rgba(0,0,0,.18)] pt-8">
+                    <p className="palace-eyebrow">Der Gedanke dahinter</p>
+                    <p className="mt-4 palace-serif italic text-[#000000]" style={{ fontSize: "1.15rem", lineHeight: 1.55, maxWidth: "55ch" }}>
+                      {dbProduct.designer_note}
+                    </p>
+                    <p className="mt-3 text-[0.62rem] uppercase tracking-[0.32em] text-[#7C7972]">
+                      — {product.designer}
+                      {dbProduct?.designers && "house_number" in (dbProduct.designers as Record<string, unknown>)
+                        ? `, Haus № ${(dbProduct.designers as { house_number?: number }).house_number ?? ""}` : ""}
+                    </p>
+                  </div>
+                )}
+
+                {/* Detail-Tabelle */}
+                <ProductDetailsTable dbProduct={dbProduct} />
+
+                {/* Frag PAWN zu diesem Stück */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const msg = `Ich schaue mir gerade ${product.name} von ${product.designer} an.`;
+                    window.dispatchEvent(new CustomEvent("palace:open-chat"));
+                    setTimeout(() => window.dispatchEvent(new CustomEvent("palace:chat-send", {
+                      detail: { message: msg, page_context: { route: "/product/" + product.slug, product_slug: product.slug } }
+                    })), 220);
+                  }}
+                  className="mt-6 inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.32em] text-[#000000] underline underline-offset-4 hover:text-[#000000]/70"
+                >
+                  Frag PAWN zu diesem Stück →
+                </button>
+
+
                 {/* DB variants */}
                 {dbVariants.length > 0 && (
                   <div className="mt-8 space-y-6">
@@ -381,4 +415,41 @@ function PrevNextForProduct({ slug }: { slug: string }) {
   return <PrevNext prev={prev} next={next} />;
 }
 
+function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDbProductBySlug>["product"] }) {
+  if (!dbProduct) return null;
+  const dims = [
+    dbProduct.length_cm && `L ${dbProduct.length_cm} cm`,
+    dbProduct.width_cm && `B ${dbProduct.width_cm} cm`,
+    dbProduct.height_cm && `H ${dbProduct.height_cm} cm`,
+  ].filter(Boolean).join(" × ");
+  const dna = (dbProduct.product_dna ?? {}) as { materials?: string[] };
+  const materials = Array.isArray(dna.materials) && dna.materials.length ? dna.materials.join(", ") : null;
+  const weight = dbProduct.weight_grams ? `${dbProduct.weight_grams} g` : null;
+  const rows: [string, string | null][] = [
+    ["Maße", dims || null],
+    ["Gewicht", weight],
+    ["Material", materials],
+    ["Pflege", dbProduct.care_instructions ?? null],
+    ["Gefertigt in", dbProduct.made_in ?? null],
+    ["Edition", dbProduct.edition_info ?? null],
+    ["Lieferzeit (Anfertigung)", dbProduct.inventory_mode === "made_to_order" && dbProduct.lead_time_days ? `ca. ${dbProduct.lead_time_days} Tage` : null],
+  ];
+  const filled = rows.filter(([, v]) => v && String(v).trim() !== "");
+  if (filled.length === 0) return null;
+  return (
+    <div className="mt-10 border-t border-[rgba(0,0,0,.18)] pt-8">
+      <p className="palace-eyebrow">Details</p>
+      <dl className="mt-4 divide-y divide-[rgba(0,0,0,.12)] border-y border-[rgba(0,0,0,.12)]">
+        {filled.map(([label, value]) => (
+          <div key={label} className="grid grid-cols-[140px_1fr] items-baseline gap-4 py-3">
+            <dt className="text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{label}</dt>
+            <dd className="text-[0.92rem] leading-relaxed text-[#000000]/85 whitespace-pre-line">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 export default ProductDetail;
+

@@ -40,6 +40,13 @@ interface ProductRow {
   weight_grams: number | null;
   lead_time_days: number | null;
   product_dna: ProductDNA;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
+  care_instructions: string | null;
+  made_in: string | null;
+  edition_info: string | null;
+  designer_note: string | null;
 }
 
 const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
@@ -49,6 +56,8 @@ const emptyEdit = (): Partial<ProductRow> => ({
   inventory_mode: "stock", stock_quantity: 0, allow_custom_requests: false,
   variants: [], compare_at_price: null, sku: "", weight_grams: null, lead_time_days: null,
   product_dna: emptyDNA(),
+  length_cm: null, width_cm: null, height_cm: null,
+  care_instructions: "", made_in: "", edition_info: "", designer_note: "",
 });
 
 function slugify(s: string) {
@@ -78,7 +87,7 @@ export default function StudioProducts() {
     const from = page * PAGE;
     const to = from + PAGE - 1;
     const { data, count } = await supabase.from("products")
-      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna", { count: "exact" })
+      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note", { count: "exact" })
       .eq("designer_id", designer.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -123,6 +132,13 @@ export default function StudioProducts() {
     weight_grams: e.weight_grams != null ? Number(e.weight_grams) : null,
     lead_time_days: e.lead_time_days != null ? Number(e.lead_time_days) : null,
     product_dna: (e.product_dna ?? emptyDNA()) as unknown as never,
+    length_cm: e.length_cm != null && !isNaN(Number(e.length_cm)) ? Number(e.length_cm) : null,
+    width_cm: e.width_cm != null && !isNaN(Number(e.width_cm)) ? Number(e.width_cm) : null,
+    height_cm: e.height_cm != null && !isNaN(Number(e.height_cm)) ? Number(e.height_cm) : null,
+    care_instructions: e.care_instructions?.trim() || null,
+    made_in: e.made_in?.trim() || null,
+    edition_info: e.edition_info?.trim() || null,
+    designer_note: e.designer_note?.trim() || null,
   });
 
   const save = async () => {
@@ -354,6 +370,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   };
 
   // ---- Text von PAWN ----
+  const [autoNote, setAutoNote] = useState(false);
   const generateText = async () => {
     if (!draftIdRef.current) { toast.error("Bitte zuerst einen Namen eingeben — dann speichere ich einen Entwurf."); return; }
     setAutoText(true);
@@ -362,6 +379,15 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
     if (error) return toast.error(error.message);
     const t = (data as { text?: string })?.text;
     if (t) { patch({ description: t }); toast.success("Vorschlag eingefügt."); }
+  };
+  const generateNote = async () => {
+    if (!draftIdRef.current) { toast.error("Bitte zuerst einen Namen eingeben."); return; }
+    setAutoNote(true);
+    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_note", product_id: draftIdRef.current } });
+    setAutoNote(false);
+    if (error) return toast.error(error.message);
+    const t = (data as { text?: string })?.text;
+    if (t) { patch({ designer_note: t }); toast.success("Gedanke eingefügt."); }
   };
 
   const setVariant = (i: number, p: Partial<Variant>) => {
@@ -492,6 +518,25 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               placeholder="Ein Satz reicht zum Anfangen…"
               className="inp min-h-32" />
           </Section>
+
+          {/* Der Gedanke dahinter */}
+          <Section title="Der Gedanke dahinter" help="Warum existiert dieses Stück? Ein persönlicher Satz macht den Unterschied — Menschen kaufen Geschichten.">
+            <button type="button" onClick={generateNote} disabled={autoNote}
+              className="mb-2 inline-flex items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
+              <Sparkles className="h-3 w-3" /> {autoNote ? "PAWN denkt…" : "Text von PAWN"}
+            </button>
+            <textarea value={local.designer_note ?? ""} onChange={(e) => patch({ designer_note: e.target.value })}
+              placeholder="Erzähl die Geschichte oder Idee dieses Stücks — persönlich, erste Person."
+              rows={3}
+              className="inp min-h-24" />
+            <p className="mt-1 text-[0.62rem] text-muted-foreground">Erscheint auf deiner Produktseite als eigener Abschnitt.</p>
+          </Section>
+
+          {/* Details & Maße */}
+          <DetailsSection
+            local={local}
+            patch={patch}
+          />
 
           {/* Inventory */}
           <Section title="Verfügbarkeit" help="Lagerbestand ist gezählt — kann ausverkauft sein. Auf Anfertigung bedeutet: du fertigst nach Bestellung. Beides zusammen ist möglich, wenn du Anfragen erlaubst.">
@@ -726,5 +771,46 @@ function DNAChipRow({ label, options, selected, onToggle }: { label: string; opt
         })}
       </div>
     </div>
+  );
+}
+
+function DetailsSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
+  const [open, setOpen] = useState(false);
+  const filled = [local.length_cm, local.width_cm, local.height_cm, local.care_instructions, local.made_in, local.edition_info]
+    .filter((v) => v != null && String(v).trim() !== "").length;
+  return (
+    <section>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between border border-border bg-white px-4 py-3 text-left hover:border-foreground">
+        <span className="font-serif text-lg font-medium">Details & Maße {filled > 0 && <span className="ml-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{filled} ausgefüllt</span>}</span>
+        <span className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{open ? "Schließen" : "Öffnen"}</span>
+      </button>
+      {open && (
+        <div className="mt-4 space-y-4 border border-border bg-white p-5">
+          <p className="text-xs text-muted-foreground">Alles optional — je genauer, desto weniger Rückfragen.</p>
+          <Field label="Wie groß ist das Stück? (L × B × H in cm)" hint="Nur ausfüllen, was passt.">
+            <div className="grid grid-cols-3 gap-2">
+              <input type="number" min={0} step="0.1" placeholder="Länge" value={local.length_cm ?? ""}
+                onChange={(e) => patch({ length_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
+              <input type="number" min={0} step="0.1" placeholder="Breite" value={local.width_cm ?? ""}
+                onChange={(e) => patch({ width_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
+              <input type="number" min={0} step="0.1" placeholder="Höhe" value={local.height_cm ?? ""}
+                onChange={(e) => patch({ height_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
+            </div>
+          </Field>
+          <Field label="Wie pflegt man es?" hint="z. B. Handwäsche kalt, nicht bügeln.">
+            <textarea rows={2} value={local.care_instructions ?? ""} onChange={(e) => patch({ care_instructions: e.target.value })} className="inp" />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Wo gefertigt?" hint="Ort oder Land.">
+              <input value={local.made_in ?? ""} onChange={(e) => patch({ made_in: e.target.value })} placeholder="z. B. Berlin, Deutschland" className="inp" />
+            </Field>
+            <Field label="Unikat oder Edition?" hint='z. B. "Unikat" oder "Edition von 8".'>
+              <input value={local.edition_info ?? ""} onChange={(e) => patch({ edition_info: e.target.value })} placeholder="Unikat" className="inp" />
+            </Field>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

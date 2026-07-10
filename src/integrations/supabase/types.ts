@@ -1259,14 +1259,20 @@ export type Database = {
       products: {
         Row: {
           allow_custom_requests: boolean
+          care_instructions: string | null
           compare_at_price: number | null
           created_at: string
           description: string | null
           designer_id: string
+          designer_note: string | null
+          edition_info: string | null
+          height_cm: number | null
           id: string
           image_url: string | null
           inventory_mode: Database["public"]["Enums"]["inventory_mode"]
           lead_time_days: number | null
+          length_cm: number | null
+          made_in: string | null
           name: string
           price: number
           product_dna: Json
@@ -1278,18 +1284,25 @@ export type Database = {
           updated_at: string
           variants: Json
           weight_grams: number | null
+          width_cm: number | null
           world: Database["public"]["Enums"]["product_world"]
         }
         Insert: {
           allow_custom_requests?: boolean
+          care_instructions?: string | null
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
           designer_id: string
+          designer_note?: string | null
+          edition_info?: string | null
+          height_cm?: number | null
           id?: string
           image_url?: string | null
           inventory_mode?: Database["public"]["Enums"]["inventory_mode"]
           lead_time_days?: number | null
+          length_cm?: number | null
+          made_in?: string | null
           name: string
           price?: number
           product_dna?: Json
@@ -1301,18 +1314,25 @@ export type Database = {
           updated_at?: string
           variants?: Json
           weight_grams?: number | null
+          width_cm?: number | null
           world?: Database["public"]["Enums"]["product_world"]
         }
         Update: {
           allow_custom_requests?: boolean
+          care_instructions?: string | null
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
           designer_id?: string
+          designer_note?: string | null
+          edition_info?: string | null
+          height_cm?: number | null
           id?: string
           image_url?: string | null
           inventory_mode?: Database["public"]["Enums"]["inventory_mode"]
           lead_time_days?: number | null
+          length_cm?: number | null
+          made_in?: string | null
           name?: string
           price?: number
           product_dna?: Json
@@ -1324,6 +1344,7 @@ export type Database = {
           updated_at?: string
           variants?: Json
           weight_grams?: number | null
+          width_cm?: number | null
           world?: Database["public"]["Enums"]["product_world"]
         }
         Relationships: [
