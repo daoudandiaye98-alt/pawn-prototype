@@ -439,7 +439,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               onDragLeave={() => setDragOver(false)}
               onDrop={onDrop}
               className={`relative flex flex-col items-center justify-center gap-3 border-2 border-dashed p-8 text-center transition-colors ${dragOver ? "border-foreground bg-muted" : imageMissing ? "border-destructive/50 bg-white" : "border-border bg-white"}`}>
-              {local.image_url ? (
+              {local.image_url && (
                 <>
                   <img src={local.image_url} alt="" className="max-h-64 w-auto object-contain" />
                   <div className="flex flex-wrap justify-center gap-2">
