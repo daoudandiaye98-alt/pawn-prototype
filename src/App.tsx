@@ -15,6 +15,8 @@ import { EditModeProvider } from "@/lib/editMode";
 import { CopilotProvider } from "@/components/pawn/CopilotDrawer";
 
 import AdminInhalte from "./pages/admin/AdminInhalte.tsx";
+import AdminWerbung from "./pages/admin/AdminWerbung.tsx";
+import AdminAktionen from "./pages/admin/AdminAktionen.tsx";
 
 
 import Index from "./pages/Index.tsx";
