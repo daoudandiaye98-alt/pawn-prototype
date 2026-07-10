@@ -132,6 +132,13 @@ export default function StudioProducts() {
     weight_grams: e.weight_grams != null ? Number(e.weight_grams) : null,
     lead_time_days: e.lead_time_days != null ? Number(e.lead_time_days) : null,
     product_dna: (e.product_dna ?? emptyDNA()) as unknown as never,
+    length_cm: e.length_cm != null && !isNaN(Number(e.length_cm)) ? Number(e.length_cm) : null,
+    width_cm: e.width_cm != null && !isNaN(Number(e.width_cm)) ? Number(e.width_cm) : null,
+    height_cm: e.height_cm != null && !isNaN(Number(e.height_cm)) ? Number(e.height_cm) : null,
+    care_instructions: e.care_instructions?.trim() || null,
+    made_in: e.made_in?.trim() || null,
+    edition_info: e.edition_info?.trim() || null,
+    designer_note: e.designer_note?.trim() || null,
   });
 
   const save = async () => {
