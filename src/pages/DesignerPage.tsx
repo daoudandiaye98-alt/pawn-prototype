@@ -162,6 +162,30 @@ const DesignerPage = () => {
     return () => { cancelled = true; };
   }, [dbDesigner]);
 
+  // Freigegebene Video-Kampagnen laden — nur mit asset_url.
+  useEffect(() => {
+    if (!dbDesigner) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("campaigns")
+        .select("id, title, status, kind, content, created_at")
+        .eq("designer_id", dbDesigner.id)
+        .in("status", ["approved", "published"])
+        .eq("kind", "video")
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (cancelled) return;
+      const rows = (data ?? []) as Array<{ id: string; title: string; content: { asset_url?: string } | null }>;
+      const clips = rows
+        .map((r) => ({ id: r.id, title: r.title, asset_url: r.content?.asset_url ?? "" }))
+        .filter((r) => !!r.asset_url);
+      setCampaignVideos(clips);
+    })();
+    return () => { cancelled = true; };
+  }, [dbDesigner]);
+
+
   const coreDesigner = useStore((s) => marketplaceSelectors.getDesignerBySlug(s, activeSlug) ?? marketplaceSelectors.getAllDesigners(s)[0]);
   const coreProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreDesigner.id));
 
