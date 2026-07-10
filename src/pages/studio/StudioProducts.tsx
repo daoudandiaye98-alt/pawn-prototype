@@ -266,6 +266,8 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [autoText, setAutoText] = useState(false);
+  const [shotBusy, setShotBusy] = useState(false);
+  const [shotResult, setShotResult] = useState<{ source: string; result: string } | null>(null);
   const draftIdRef = useRef<string | undefined>(initial.id);
   const firstRender = useRef(true);
 
@@ -273,6 +275,29 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   useEffect(() => { setEditing(local); /* eslint-disable-next-line */ }, [local]);
 
   const patch = useCallback((p: Partial<ProductRow>) => setLocal((prev) => ({ ...prev, ...p })), []);
+
+  const requestStudioShot = async () => {
+    if (!local.image_url) { toast.error("Zuerst ein Bild hochladen."); return; }
+    if (!draftIdRef.current) { toast.error("Bitte kurz warten, bis der Entwurf gespeichert ist."); return; }
+    setShotBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-shot", {
+        body: { product_id: draftIdRef.current, source_url: local.image_url },
+      });
+      if (error) throw error;
+      const r = data as { result_url?: string; error?: string; message?: string } | null;
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "PAWN konnte kein Studio-Foto erzeugen.");
+      setShotResult({ source: local.image_url!, result: r.result_url });
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      toast.error(/guthaben|402|credit/i.test(msg)
+        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+        : msg || "Fehler");
+    } finally {
+      setShotBusy(false);
+    }
+  };
+
 
   // ---- Autosave (debounced) ----
   useEffect(() => {
@@ -414,19 +439,26 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               onDragLeave={() => setDragOver(false)}
               onDrop={onDrop}
               className={`relative flex flex-col items-center justify-center gap-3 border-2 border-dashed p-8 text-center transition-colors ${dragOver ? "border-foreground bg-muted" : imageMissing ? "border-destructive/50 bg-white" : "border-border bg-white"}`}>
-              {local.image_url ? (
+              {local.image_url && (
                 <>
                   <img src={local.image_url} alt="" className="max-h-64 w-auto object-contain" />
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap justify-center gap-2">
                     <label className="cursor-pointer border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">
                       Bild ersetzen
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
                     </label>
                     <button type="button" onClick={() => patch({ image_url: null })} className="border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">Entfernen</button>
+                    <button type="button" onClick={requestStudioShot} disabled={shotBusy}
+                      className="inline-flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
+                      <Sparkles className="h-3 w-3" /> {shotBusy ? "PAWN denkt…" : "Studio-Foto von PAWN"}
+                    </button>
                   </div>
+                  <p className="text-[0.6rem] text-muted-foreground">Kostet pro Aufruf einen kleinen Betrag fal.ai-Guthaben.</p>
                 </>
-              ) : (
+              )}
+              {!local.image_url && (
                 <>
+
                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm">Zieh dein Bild hier hinein — oder</p>
                   <label className="cursor-pointer border border-foreground bg-white px-4 py-2 text-[0.68rem] hover:bg-foreground hover:text-background">
@@ -546,6 +578,37 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </div>
         </div>
       </div>
+
+      {shotResult && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setShotResult(null)}>
+          <div className="w-full max-w-4xl border border-border bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-serif text-xl">Vorher · Nachher</h3>
+              <button onClick={() => setShotResult(null)} aria-label="Schließen" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <figure>
+                <img src={shotResult.source} alt="Original" className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-muted-foreground">Original</figcaption>
+              </figure>
+              <figure>
+                <img src={shotResult.result} alt="Studio-Foto" className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-foreground">PAWN Studio-Foto</figcaption>
+              </figure>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setShotResult(null)} className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Verwerfen</button>
+              <button
+                onClick={() => { patch({ image_url: shotResult.result }); setShotResult(null); toast.success("Studio-Foto übernommen."); }}
+                className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-black">
+                Übernehmen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
       <style>{`.inp { width:100%; border:1px solid hsl(var(--border)); background:#fff; padding: 0.65rem 0.85rem; font-size: 0.9rem; transition: border-color .15s; }
       .inp:focus { outline: none; border-color: hsl(var(--foreground)); }`}</style>

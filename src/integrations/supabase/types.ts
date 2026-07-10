@@ -1151,6 +1151,66 @@ export type Database = {
           },
         ]
       }
+      product_shot_requests: {
+        Row: {
+          created_at: string
+          designer_id: string
+          error: string | null
+          id: string
+          product_id: string
+          provider: string | null
+          request_handle: Json | null
+          requested_by: string | null
+          result_url: string | null
+          source_url: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          designer_id: string
+          error?: string | null
+          id?: string
+          product_id: string
+          provider?: string | null
+          request_handle?: Json | null
+          requested_by?: string | null
+          result_url?: string | null
+          source_url: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          designer_id?: string
+          error?: string | null
+          id?: string
+          product_id?: string
+          provider?: string | null
+          request_handle?: Json | null
+          requested_by?: string | null
+          result_url?: string | null
+          source_url?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_shot_requests_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_shot_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           allow_custom_requests: boolean

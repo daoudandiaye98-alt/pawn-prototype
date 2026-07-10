@@ -222,13 +222,19 @@ export default function StudioCampaignNew() {
       setCinematicStage("failed");
       return null;
     }
-    type Sub = { id: string; request_id?: string } | { image_url: string; error: string };
-    const submissions = ((submitData as { submissions?: Sub[] })?.submissions ?? []).filter((s): s is { id: string; request_id?: string } => "id" in s);
+    type Sub = { id: string; request_id?: string } | { image_url: string; error: string; status?: number };
+    const allSubs = ((submitData as { submissions?: Sub[] })?.submissions ?? []);
+    const submissions = allSubs.filter((s): s is { id: string; request_id?: string } => "id" in s);
     if (submissions.length === 0) {
-      toast.error("Der Provider hat keine Aufträge angenommen.");
+      const firstErr = allSubs.find((s): s is { image_url: string; error: string; status?: number } => "error" in s);
+      const isCredit = firstErr && (firstErr.status === 402 || /guthaben|credit|402|insufficient/i.test(firstErr.error));
+      toast.error(isCredit
+        ? "fal.ai-Guthaben fehlt — bitte im fal.ai-Konto Credits aufladen und erneut versuchen."
+        : `Provider hat keine Aufträge angenommen. ${firstErr?.error ?? ""}`);
       setCinematicStage("failed");
       return null;
     }
+
 
     setCinematicStage("polling");
     const requestIds = submissions.map((s) => s.id);

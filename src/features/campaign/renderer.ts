@@ -39,8 +39,10 @@ export interface RenderCallbacks {
 const FPS = 30;
 
 function pickMimeType(): string {
+  // Safari bevorzugt mp4/avc1, Chromium bevorzugt webm/vp9. Bewusst mp4 zuerst.
   const c = [
     "video/mp4;codecs=avc1.42E01E",
+    "video/mp4;codecs=avc1",
     "video/mp4",
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
@@ -51,15 +53,23 @@ function pickMimeType(): string {
   return "video/webm";
 }
 
+export function mimeToExt(mime: string): string {
+  if (mime.includes("mp4")) return "mp4";
+  return "webm";
+}
+
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
     const img = new Image();
+    // Muss VOR src gesetzt sein — sonst kein CORS-Request, Canvas wird tainted.
     img.crossOrigin = "anonymous";
+    img.referrerPolicy = "no-referrer";
     img.onload = () => res(img);
     img.onerror = () => rej(new Error(`image_load_failed: ${url}`));
     img.src = url;
   });
 }
+
 
 function loadVideo(url: string): Promise<HTMLVideoElement> {
   return new Promise((res, rej) => {
@@ -139,9 +149,27 @@ export async function renderCampaign(input: RendererInput, cb: RenderCallbacks =
   if (!ctx2d) throw new Error("no_canvas_context");
   cb.onCanvas?.(canvas);
 
-  const layers: SourceLayer[] = clips.length > 0
-    ? (await Promise.all(clips.map(loadVideo))).map((v) => ({ video: v }))
-    : (await Promise.all(stills.map(loadImage))).map((img) => ({ img }));
+  // Bild-Ladefehler einzeln abfangen (Skip statt Abbruch).
+  const layers: SourceLayer[] = [];
+  const skipped: string[] = [];
+  if (clips.length > 0) {
+    for (const c of clips) {
+      try { layers.push({ video: await loadVideo(c) }); }
+      catch { skipped.push(c); }
+    }
+  } else {
+    for (const s of stills) {
+      try { layers.push({ img: await loadImage(s) }); }
+      catch { skipped.push(s); }
+    }
+  }
+  if (layers.length === 0) {
+    throw new Error(
+      "no_usable_source: Alle Bilder blockieren Cross-Origin. Prüfe die Bild-URLs (Signed URLs müssen frisch sein).",
+    );
+  }
+  if (skipped.length > 0) console.warn("[renderCampaign] übersprungene Quellen:", skipped);
+
 
   const seed = input.seed ?? randomSeed();
   const { scenes } = buildStoryboard(input, layers, seed);

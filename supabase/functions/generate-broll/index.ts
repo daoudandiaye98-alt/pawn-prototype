@@ -14,7 +14,10 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
-const DEFAULT_MODEL = "fal-ai/kling-video/v2.1/standard/image-to-video";
+// Standard: kostengünstiges Modell (wan-2.2). Premium-Alternative:
+//   fal-ai/kling-video/v2.1/standard/image-to-video (in ai_config setzen).
+const DEFAULT_MODEL = "fal-ai/wan/v2.2-a14b/image-to-video/lora";
+
 const DEFAULT_TEMPLATE =
   "subtle fabric movement, slow cinematic camera push-in, monochrome high-fashion editorial, soft studio light, {designer_prompt}";
 
@@ -75,9 +78,13 @@ Deno.serve(async (req) => {
         });
         const rj = await r.json().catch(() => ({}));
         if (!r.ok) {
-          submissions.push({ image_url, error: rj?.detail || rj?.error || r.statusText });
+          const friendly = r.status === 402
+            ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+            : (rj?.detail || rj?.error || r.statusText);
+          submissions.push({ image_url, error: String(friendly), status: r.status });
           continue;
         }
+
         const request_id: string = rj.request_id ?? rj.requestId ?? "";
         const status_url: string = rj.status_url ?? rj.statusUrl ?? "";
         const response_url: string = rj.response_url ?? rj.responseUrl ?? "";
