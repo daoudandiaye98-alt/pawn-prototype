@@ -165,6 +165,8 @@ export default function AdminKI() {
 
   return (
     <AdminShell title="KI Cockpit" eyebrow="Persona · Copilot · Signale · Integrationen">
+      <SecretsPanel />
+
       <div className="mb-6 flex flex-wrap items-center gap-3 border border-border bg-card p-4">
         <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Provider</span>
         <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.65rem] uppercase tracking-[0.28em] ${provider === "openai" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600"}`}>
