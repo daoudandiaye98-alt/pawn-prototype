@@ -209,10 +209,35 @@ async function callGateway(system: string, messages: Msg[], contextHint: string,
   } catch { return null; }
 }
 
-async function callProvider(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model?: string): Promise<string | null> {
-  const openai = await callOpenAI(system, messages, contextHint, imageUrl, model);
-  if (openai) return openai;
-  return await callGateway(system, messages, contextHint);
+async function callAnthropic(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) return null;
+  try {
+    const sys = [system, contextHint].filter(Boolean).join("\n\n");
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1024,
+        system: sys,
+        messages: messages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.content?.[0]?.text ?? null;
+  } catch { return null; }
+}
+
+async function callProvider(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model?: string, chain?: string[]): Promise<{ text: string | null; provider: string }> {
+  const order = chain ?? ["openai", "anthropic", "lovable_gateway", "fallback"];
+  for (const p of order) {
+    if (p === "openai") { const t = await callOpenAI(system, messages, contextHint, imageUrl, model); if (t) return { text: t, provider: "openai" }; }
+    else if (p === "anthropic") { const t = await callAnthropic(system, messages, contextHint); if (t) return { text: t, provider: "anthropic" }; }
+    else if (p === "lovable_gateway") { const t = await callGateway(system, messages, contextHint); if (t) return { text: t, provider: "lovable_gateway" }; }
+  }
+  return { text: null, provider: "fallback" };
 }
 
 type Tier = "standard" | "plus" | "max";
