@@ -114,6 +114,8 @@ const DesignerPage = () => {
   const [dbDesigner, setDbDesigner] = useState<DbDesigner | null>(null);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [nextDesigner, setNextDesigner] = useState<{ slug: string; brand_name: string } | null>(null);
+  const [campaignVideos, setCampaignVideos] = useState<Array<{ id: string; title: string; asset_url: string }>>([]);
+
 
   useEffect(() => {
     let cancelled = false;
