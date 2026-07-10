@@ -547,6 +547,51 @@ const DesignerPage = () => {
           </div>
         </section>
 
+        {/* AKT III.5 — KAMPAGNEN (Videos, nur wenn vorhanden) */}
+        {campaignVideos.length > 0 && (
+          <section className="relative bg-[#FFFFFF] px-6 py-24 md:px-14 md:py-32">
+            <div className="mb-10 flex items-baseline justify-between gap-6">
+              <div>
+                <p className="palace-eyebrow">Akt III½ · Kampagnen</p>
+                <h3
+                  className="palace-serif mt-3 font-light text-[#000000]"
+                  style={{ fontSize: "clamp(1.6rem, 3vw, 2.6rem)", lineHeight: 1.05 }}
+                >
+                  Bewegte Bilder aus dem Haus.
+                </h3>
+              </div>
+            </div>
+            <div className="flex snap-x snap-mandatory gap-6 overflow-x-auto pb-6" style={{ scrollbarWidth: "thin" }}>
+              {campaignVideos.map((c) => (
+                <div
+                  key={c.id}
+                  className="relative flex-none snap-start border border-[rgba(0,0,0,.18)] bg-[#F1EEE7]"
+                  style={{ width: "min(62vw, 320px)", aspectRatio: "9 / 16" }}
+                >
+                  <video
+                    src={c.asset_url}
+                    className="h-full w-full object-cover"
+                    playsInline
+                    muted
+                    loop
+                    preload="metadata"
+                    onMouseEnter={(e) => { void (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLVideoElement).pause(); }}
+                    onClick={(e) => {
+                      const v = e.currentTarget as HTMLVideoElement;
+                      if (v.paused) void v.play().catch(() => {}); else v.pause();
+                    }}
+                    controls={false}
+                  />
+                  <p className="palace-eyebrow absolute bottom-3 left-3 text-white mix-blend-difference">{c.title}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+
+
         {/* AKT IV — ATELIER */}
         <section
           ref={actIVRef as React.RefObject<HTMLElement>}
