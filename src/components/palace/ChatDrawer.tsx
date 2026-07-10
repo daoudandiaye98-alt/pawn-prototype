@@ -104,8 +104,8 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ message?: string }>).detail;
-      if (detail?.message) void sendMessage(detail.message);
+      const detail = (e as CustomEvent<{ message?: string; page_context?: { route?: string; product_slug?: string } }>).detail;
+      if (detail?.message) void sendMessage(detail.message, { page_context: detail.page_context });
     };
     window.addEventListener("palace:chat-send", handler as EventListener);
     return () => window.removeEventListener("palace:chat-send", handler as EventListener);
