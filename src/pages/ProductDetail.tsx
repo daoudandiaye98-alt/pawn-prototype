@@ -216,6 +216,40 @@ const ProductDetail = () => {
                   {dbProduct?.description || product.description}
                 </p>
 
+                {/* Der Gedanke dahinter */}
+                {dbProduct?.designer_note?.trim() && (
+                  <div className="mt-10 border-t border-[rgba(0,0,0,.18)] pt-8">
+                    <p className="palace-eyebrow">Der Gedanke dahinter</p>
+                    <p className="mt-4 palace-serif italic text-[#000000]" style={{ fontSize: "1.15rem", lineHeight: 1.55, maxWidth: "55ch" }}>
+                      {dbProduct.designer_note}
+                    </p>
+                    <p className="mt-3 text-[0.62rem] uppercase tracking-[0.32em] text-[#7C7972]">
+                      — {product.designer}
+                      {dbProduct?.designers && "house_number" in (dbProduct.designers as Record<string, unknown>)
+                        ? `, Haus № ${(dbProduct.designers as { house_number?: number }).house_number ?? ""}` : ""}
+                    </p>
+                  </div>
+                )}
+
+                {/* Detail-Tabelle */}
+                <ProductDetailsTable dbProduct={dbProduct} />
+
+                {/* Frag PAWN zu diesem Stück */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const msg = `Ich schaue mir gerade ${product.name} von ${product.designer} an.`;
+                    window.dispatchEvent(new CustomEvent("palace:open-chat"));
+                    setTimeout(() => window.dispatchEvent(new CustomEvent("palace:chat-send", {
+                      detail: { message: msg, page_context: { route: "/product/" + product.slug, product_slug: product.slug } }
+                    })), 220);
+                  }}
+                  className="mt-6 inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.32em] text-[#000000] underline underline-offset-4 hover:text-[#000000]/70"
+                >
+                  Frag PAWN zu diesem Stück →
+                </button>
+
+
                 {/* DB variants */}
                 {dbVariants.length > 0 && (
                   <div className="mt-8 space-y-6">
