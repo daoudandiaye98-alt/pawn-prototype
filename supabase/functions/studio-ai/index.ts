@@ -162,19 +162,29 @@ Deno.serve(async (req) => {
     const system = personaText;
     void providerName; // provider is now derived from ai() return value
 
-    if (mode === "product_text") {
+    if (mode === "product_text" || mode === "product_note") {
       if (!body.product_id) return ok({ ...fallbackFor(), error: "missing_product_id" });
-      const { data: p } = await admin.from("products").select("id, name, world, tags, description, price").eq("id", body.product_id).eq("designer_id", designer.id).maybeSingle();
+      const { data: p } = await admin.from("products").select("id, name, world, tags, description, price, designer_note, product_dna").eq("id", body.product_id).eq("designer_id", designer.id).maybeSingle();
       if (!p) return ok({ ...fallbackFor(), error: "not_found" });
       const tags = (p.tags as string[] | null)?.join(", ") ?? "";
-      const promptUser = `Schreibe eine kurze editoriale Produktbeschreibung im PAWN-Ton (max. 3 Sätze, deutsch, keine Floskeln).
+      const isNote = mode === "product_note";
+      const promptUser = isNote
+        ? `Schreibe "Der Gedanke dahinter" — persönlich, erste Person, warum dieses Stück existiert. Auf Deutsch, max. 3 Sätze, ruhig, warm, ohne Marketing.
+Marke: ${designer.brand_name}
+Story der Marke: ${designer.story ?? "—"}
+Produkt: ${p.name} (${p.world})
+Tags: ${tags}
+Beschreibung (Kontext): ${p.description ?? "—"}`
+        : `Schreibe eine kurze editoriale Produktbeschreibung im PAWN-Ton (max. 3 Sätze, deutsch, keine Floskeln).
 Marke: ${designer.brand_name}
 Story: ${designer.story ?? "—"}
 Produkt: ${p.name}
 Welt: ${p.world}
 Tags: ${tags}`;
       const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
-      const generated = aiRes.text ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
+      const generated = aiRes.text ?? (isNote
+        ? `Dieses Stück ist entstanden, weil ich ${p.name.toLowerCase()} anders denken wollte — leiser, ehrlicher.`
+        : `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim());
       await logResponse(admin, user_id, mode, designer.id, promptUser, generated, aiRes.provider);
       return ok({ text: generated, provider: aiRes.provider });
     }
