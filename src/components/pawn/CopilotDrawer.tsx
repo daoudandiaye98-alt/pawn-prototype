@@ -196,11 +196,13 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
                     </div>
                   );
                 }
+                if (m.role !== "action_result") return null;
+                const res = m;
                 return (
-                  <div key={i} className={`border px-3 py-2 text-sm ${m.ok ? "border-emerald-500/40 bg-emerald-50" : "border-red-500/40 bg-red-50"}`}>
-                    {m.ok ? <>✓ Aktion „{m.action}" ausgeführt.</> : <>✕ Fehler: {m.error}</>}
-                    {m.ok && m.id && (
-                      <button onClick={() => m.id && undoAction(m.id)} className="ml-3 inline-flex items-center gap-1 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground underline hover:text-foreground">
+                  <div key={i} className={`border px-3 py-2 text-sm ${res.ok ? "border-emerald-500/40 bg-emerald-50" : "border-red-500/40 bg-red-50"}`}>
+                    {res.ok ? <>✓ Aktion „{res.action}" ausgeführt.</> : <>✕ Fehler: {res.error}</>}
+                    {res.ok && res.id && (
+                      <button onClick={() => res.id && undoAction(res.id)} className="ml-3 inline-flex items-center gap-1 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground underline hover:text-foreground">
                         <Undo2 className="h-3 w-3" /> Rückgängig
                       </button>
                     )}
