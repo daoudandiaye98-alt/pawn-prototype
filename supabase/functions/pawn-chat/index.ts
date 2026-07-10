@@ -499,7 +499,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+    const provider = providerResult.provider;
     if (admin) {
       await admin.from("domain_events").insert({
         id: crypto.randomUUID(), type: "ai.response_logged",
