@@ -238,10 +238,11 @@ Tags: ${tags}`;
       const trendLine = trendBlock ? ` Trend im Blick (${trendBlock.world}): ${trendBlock.rising.join(", ")}.` : "";
 
       const summary = `Diese Woche: ${stats.views_total} Ansichten, ${stats.wish_total} Merkzettel-Zugänge, ${stats.orders_count} Verkäufe (€${stats.revenue_eur}). ${suggestion}${trendLine}`;
-      const generated = (await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}.${trendLine}` }])) ?? summary;
+      const aiRes = await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}.${trendLine}` }]);
+      const generated = aiRes.text ?? summary;
 
-      await logResponse(admin, user_id, mode, designer.id, JSON.stringify(stats), generated, provider);
-      return ok({ text: generated, stats, tier, trend: trendBlock, provider });
+      await logResponse(admin, user_id, mode, designer.id, JSON.stringify(stats), generated, aiRes.provider);
+      return ok({ text: generated, stats, tier, trend: trendBlock, provider: aiRes.provider });
     }
 
     if (mode === "campaign_draft") {
