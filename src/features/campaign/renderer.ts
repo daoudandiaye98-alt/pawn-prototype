@@ -149,9 +149,27 @@ export async function renderCampaign(input: RendererInput, cb: RenderCallbacks =
   if (!ctx2d) throw new Error("no_canvas_context");
   cb.onCanvas?.(canvas);
 
-  const layers: SourceLayer[] = clips.length > 0
-    ? (await Promise.all(clips.map(loadVideo))).map((v) => ({ video: v }))
-    : (await Promise.all(stills.map(loadImage))).map((img) => ({ img }));
+  // Bild-Ladefehler einzeln abfangen (Skip statt Abbruch).
+  const layers: SourceLayer[] = [];
+  const skipped: string[] = [];
+  if (clips.length > 0) {
+    for (const c of clips) {
+      try { layers.push({ video: await loadVideo(c) }); }
+      catch { skipped.push(c); }
+    }
+  } else {
+    for (const s of stills) {
+      try { layers.push({ img: await loadImage(s) }); }
+      catch { skipped.push(s); }
+    }
+  }
+  if (layers.length === 0) {
+    throw new Error(
+      "no_usable_source: Alle Bilder blockieren Cross-Origin. Prüfe die Bild-URLs (Signed URLs müssen frisch sein).",
+    );
+  }
+  if (skipped.length > 0) console.warn("[renderCampaign] übersprungene Quellen:", skipped);
+
 
   const seed = input.seed ?? randomSeed();
   const { scenes } = buildStoryboard(input, layers, seed);
