@@ -87,7 +87,7 @@ export default function StudioProducts() {
     const from = page * PAGE;
     const to = from + PAGE - 1;
     const { data, count } = await supabase.from("products")
-      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna", { count: "exact" })
+      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note", { count: "exact" })
       .eq("designer_id", designer.id)
       .order("created_at", { ascending: false })
       .range(from, to);
