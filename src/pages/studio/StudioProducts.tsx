@@ -442,16 +442,23 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               {local.image_url ? (
                 <>
                   <img src={local.image_url} alt="" className="max-h-64 w-auto object-contain" />
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap justify-center gap-2">
                     <label className="cursor-pointer border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">
                       Bild ersetzen
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
                     </label>
                     <button type="button" onClick={() => patch({ image_url: null })} className="border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">Entfernen</button>
+                    <button type="button" onClick={requestStudioShot} disabled={shotBusy}
+                      className="inline-flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
+                      <Sparkles className="h-3 w-3" /> {shotBusy ? "PAWN denkt…" : "Studio-Foto von PAWN"}
+                    </button>
                   </div>
+                  <p className="text-[0.6rem] text-muted-foreground">Kostet pro Aufruf einen kleinen Betrag fal.ai-Guthaben.</p>
                 </>
-              ) : (
+              )}
+              {!local.image_url && (
                 <>
+
                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm">Zieh dein Bild hier hinein — oder</p>
                   <label className="cursor-pointer border border-foreground bg-white px-4 py-2 text-[0.68rem] hover:bg-foreground hover:text-background">
