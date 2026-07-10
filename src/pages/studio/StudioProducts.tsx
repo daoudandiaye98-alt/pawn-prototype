@@ -266,6 +266,8 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [autoText, setAutoText] = useState(false);
+  const [shotBusy, setShotBusy] = useState(false);
+  const [shotResult, setShotResult] = useState<{ source: string; result: string } | null>(null);
   const draftIdRef = useRef<string | undefined>(initial.id);
   const firstRender = useRef(true);
 
@@ -273,6 +275,29 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   useEffect(() => { setEditing(local); /* eslint-disable-next-line */ }, [local]);
 
   const patch = useCallback((p: Partial<ProductRow>) => setLocal((prev) => ({ ...prev, ...p })), []);
+
+  const requestStudioShot = async () => {
+    if (!local.image_url) { toast.error("Zuerst ein Bild hochladen."); return; }
+    if (!draftIdRef.current) { toast.error("Bitte kurz warten, bis der Entwurf gespeichert ist."); return; }
+    setShotBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-shot", {
+        body: { product_id: draftIdRef.current, source_url: local.image_url },
+      });
+      if (error) throw error;
+      const r = data as { result_url?: string; error?: string; message?: string } | null;
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "PAWN konnte kein Studio-Foto erzeugen.");
+      setShotResult({ source: local.image_url!, result: r.result_url });
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      toast.error(/guthaben|402|credit/i.test(msg)
+        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+        : msg || "Fehler");
+    } finally {
+      setShotBusy(false);
+    }
+  };
+
 
   // ---- Autosave (debounced) ----
   useEffect(() => {
