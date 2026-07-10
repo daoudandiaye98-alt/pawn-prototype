@@ -603,3 +603,56 @@ function ProviderStatusCards() {
   );
 }
 
+
+const SECRET_INFO: { key: string; unlocks: string; where: string }[] = [
+  { key: "OPENAI_API_KEY", unlocks: "PAWN Chat & Copilot mit GPT-4o.", where: "OpenAI Dashboard → API Keys → als OPENAI_API_KEY in Projekt-Einstellungen → Secrets." },
+  { key: "ANTHROPIC_API_KEY", unlocks: "Claude als Fallback / Premium-Modell.", where: "console.anthropic.com → API Keys → als ANTHROPIC_API_KEY hinterlegen." },
+  { key: "STRIPE_SECRET_KEY", unlocks: "Zahlungen & Checkout.", where: "Stripe Dashboard → Entwickler → API-Keys → sk_live_… als STRIPE_SECRET_KEY hinterlegen." },
+  { key: "FAL_KEY", unlocks: "Kinematischer Kampagnen-Modus & Studio-Foto.", where: "fal.ai → API Keys → als FAL_KEY hinterlegen." },
+  { key: "META_ACCESS_TOKEN", unlocks: "Instagram-Posts aus der Queue.", where: "Meta for Developers → Graph API Token → als META_ACCESS_TOKEN hinterlegen." },
+  { key: "TIKTOK_CLIENT_KEY", unlocks: "TikTok-Publishing (folgt).", where: "developers.tiktok.com → App anlegen → Client Key als TIKTOK_CLIENT_KEY hinterlegen." },
+];
+
+function SecretsPanel() {
+  const [present, setPresent] = useState<Record<string, boolean> | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("check-secrets", { body: {} });
+        const d = (data ?? {}) as { present?: Record<string, boolean> };
+        setPresent(d.present ?? {});
+      } catch { setPresent({}); }
+      setLoading(false);
+    })();
+  }, []);
+  return (
+    <section className="mb-6 border-[1.5px] border-foreground bg-card p-6">
+      <div className="flex items-baseline justify-between">
+        <div>
+          <p className="editorial-eyebrow">Schlüssel & Verbindungen</p>
+          <p className="mt-1 text-sm text-muted-foreground">Existenz-Check — Werte werden nie angezeigt.</p>
+        </div>
+        {loading && <span className="text-xs text-muted-foreground">prüfe…</span>}
+      </div>
+      <ul className="mt-5 divide-y divide-border border border-border bg-background">
+        {SECRET_INFO.map((s) => {
+          const ok = !!present?.[s.key];
+          return (
+            <li key={s.key} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3">
+              <span className={`h-2.5 w-2.5 rounded-full ${ok ? "bg-emerald-500" : "bg-amber-500"}`} title={ok ? "vorhanden" : "fehlt"} />
+              <div className="min-w-0">
+                <p className="font-mono text-[0.78rem] text-foreground">{s.key}</p>
+                <p className="text-xs text-muted-foreground">{s.unlocks}</p>
+                {!ok && !loading && <p className="mt-1 text-[0.7rem] text-amber-700">So einrichten: {s.where}</p>}
+              </div>
+              <span className={`text-[0.6rem] uppercase tracking-[0.28em] ${ok ? "text-emerald-600" : "text-amber-600"}`}>
+                {ok ? "Vorhanden" : "Fehlt"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
