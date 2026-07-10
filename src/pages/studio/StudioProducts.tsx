@@ -519,6 +519,25 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               className="inp min-h-32" />
           </Section>
 
+          {/* Der Gedanke dahinter */}
+          <Section title="Der Gedanke dahinter" help="Warum existiert dieses Stück? Ein persönlicher Satz macht den Unterschied — Menschen kaufen Geschichten.">
+            <button type="button" onClick={generateNote} disabled={autoNote}
+              className="mb-2 inline-flex items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
+              <Sparkles className="h-3 w-3" /> {autoNote ? "PAWN denkt…" : "Text von PAWN"}
+            </button>
+            <textarea value={local.designer_note ?? ""} onChange={(e) => patch({ designer_note: e.target.value })}
+              placeholder="Erzähl die Geschichte oder Idee dieses Stücks — persönlich, erste Person."
+              rows={3}
+              className="inp min-h-24" />
+            <p className="mt-1 text-[0.62rem] text-muted-foreground">Erscheint auf deiner Produktseite als eigener Abschnitt.</p>
+          </Section>
+
+          {/* Details & Maße */}
+          <DetailsSection
+            local={local}
+            patch={patch}
+          />
+
           {/* Inventory */}
           <Section title="Verfügbarkeit" help="Lagerbestand ist gezählt — kann ausverkauft sein. Auf Anfertigung bedeutet: du fertigst nach Bestellung. Beides zusammen ist möglich, wenn du Anfragen erlaubst.">
             <div className="flex flex-col gap-3 sm:flex-row">
