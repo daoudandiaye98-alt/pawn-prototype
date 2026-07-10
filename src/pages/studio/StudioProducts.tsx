@@ -773,3 +773,44 @@ function DNAChipRow({ label, options, selected, onToggle }: { label: string; opt
     </div>
   );
 }
+
+function DetailsSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
+  const [open, setOpen] = useState(false);
+  const filled = [local.length_cm, local.width_cm, local.height_cm, local.care_instructions, local.made_in, local.edition_info]
+    .filter((v) => v != null && String(v).trim() !== "").length;
+  return (
+    <section>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between border border-border bg-white px-4 py-3 text-left hover:border-foreground">
+        <span className="font-serif text-lg font-medium">Details & Maße {filled > 0 && <span className="ml-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{filled} ausgefüllt</span>}</span>
+        <span className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{open ? "Schließen" : "Öffnen"}</span>
+      </button>
+      {open && (
+        <div className="mt-4 space-y-4 border border-border bg-white p-5">
+          <p className="text-xs text-muted-foreground">Alles optional — je genauer, desto weniger Rückfragen.</p>
+          <Field label="Wie groß ist das Stück? (L × B × H in cm)" hint="Nur ausfüllen, was passt.">
+            <div className="grid grid-cols-3 gap-2">
+              <input type="number" min={0} step="0.1" placeholder="Länge" value={local.length_cm ?? ""}
+                onChange={(e) => patch({ length_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
+              <input type="number" min={0} step="0.1" placeholder="Breite" value={local.width_cm ?? ""}
+                onChange={(e) => patch({ width_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
+              <input type="number" min={0} step="0.1" placeholder="Höhe" value={local.height_cm ?? ""}
+                onChange={(e) => patch({ height_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
+            </div>
+          </Field>
+          <Field label="Wie pflegt man es?" hint="z. B. Handwäsche kalt, nicht bügeln.">
+            <textarea rows={2} value={local.care_instructions ?? ""} onChange={(e) => patch({ care_instructions: e.target.value })} className="inp" />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Wo gefertigt?" hint="Ort oder Land.">
+              <input value={local.made_in ?? ""} onChange={(e) => patch({ made_in: e.target.value })} placeholder="z. B. Berlin, Deutschland" className="inp" />
+            </Field>
+            <Field label="Unikat oder Edition?" hint='z. B. "Unikat" oder "Edition von 8".'>
+              <input value={local.edition_info ?? ""} onChange={(e) => patch({ edition_info: e.target.value })} placeholder="Unikat" className="inp" />
+            </Field>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
