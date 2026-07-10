@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
     if (mode === "campaign_draft") {
       return { caption: "Ein Stück, das sich langsam liest.", hashtags: ["#pawn", "#independentdesign", "#slowfashion", "#craft"], provider: "fallback", fallback: true };
     }
-    if (mode === "product_text") {
+    if (mode === "product_text" || mode === "product_note") {
       return { text: "Ein Stück, das seine Geschichte selbst erzählt.", provider: "fallback", fallback: true };
     }
     return { reply: "Ich bin gerade kurz still — versuch's in einem Moment noch einmal.", provider: "fallback", fallback: true };
