@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type DbProduct = Database["public"]["Tables"]["products"]["Row"] & {
-  designers?: { id: string; slug: string; brand_name: string; user_id: string } | null;
+  designers?: { id: string; slug: string; brand_name: string; user_id: string; house_number: number | null } | null;
 };
 
 export function useDbProductBySlug(slug: string | undefined) {
