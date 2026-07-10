@@ -370,6 +370,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   };
 
   // ---- Text von PAWN ----
+  const [autoNote, setAutoNote] = useState(false);
   const generateText = async () => {
     if (!draftIdRef.current) { toast.error("Bitte zuerst einen Namen eingeben — dann speichere ich einen Entwurf."); return; }
     setAutoText(true);
@@ -378,6 +379,15 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
     if (error) return toast.error(error.message);
     const t = (data as { text?: string })?.text;
     if (t) { patch({ description: t }); toast.success("Vorschlag eingefügt."); }
+  };
+  const generateNote = async () => {
+    if (!draftIdRef.current) { toast.error("Bitte zuerst einen Namen eingeben."); return; }
+    setAutoNote(true);
+    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_note", product_id: draftIdRef.current } });
+    setAutoNote(false);
+    if (error) return toast.error(error.message);
+    const t = (data as { text?: string })?.text;
+    if (t) { patch({ designer_note: t }); toast.success("Gedanke eingefügt."); }
   };
 
   const setVariant = (i: number, p: Partial<Variant>) => {
