@@ -137,6 +137,12 @@ export default function StudioProducts() {
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Gespeichert.");
+    // Fire-and-forget: let PAWN classify any unknown tags into the ontology.
+    const world = String((editing as { world?: string }).world ?? "Mode");
+    const tags = ((editing as { tags?: string[] }).tags ?? []).filter((t) => typeof t === "string" && t.length >= 2);
+    for (const term of tags.slice(0, 12)) {
+      supabase.functions.invoke("classify-term", { body: { term, world } }).catch(() => { /* soft */ });
+    }
     setEditing(null);
     void refresh();
   };

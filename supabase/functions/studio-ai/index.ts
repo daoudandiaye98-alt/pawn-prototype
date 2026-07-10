@@ -61,8 +61,33 @@ async function callGateway(system: string, messages: Msg[]): Promise<string | nu
     return d.choices?.[0]?.message?.content ?? null;
   } catch { return null; }
 }
-async function ai(model: string, system: string, messages: Msg[]): Promise<string | null> {
-  return (await callOpenAI(model, system, messages)) ?? (await callGateway(system, messages));
+async function callAnthropic(system: string, messages: Msg[]): Promise<string | null> {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) return null;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1024,
+        system,
+        messages: messages.filter((m) => m.role !== "system").map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
+      }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d?.content?.[0]?.text ?? null;
+  } catch { return null; }
+}
+async function ai(model: string, system: string, messages: Msg[], chain?: string[]): Promise<{ text: string | null; provider: string }> {
+  const order = chain ?? ["openai", "anthropic", "lovable_gateway"];
+  for (const p of order) {
+    if (p === "openai") { const t = await callOpenAI(model, system, messages); if (t) return { text: t, provider: "openai" }; }
+    else if (p === "anthropic") { const t = await callAnthropic(system, messages); if (t) return { text: t, provider: "anthropic" }; }
+    else if (p === "lovable_gateway") { const t = await callGateway(system, messages); if (t) return { text: t, provider: "lovable_gateway" }; }
+  }
+  return { text: null, provider: "fallback" };
 }
 
 async function loadPrompt(admin: SupabaseClient): Promise<string> {
@@ -135,7 +160,7 @@ Deno.serve(async (req) => {
     const tier: Tier = PLAN_TO_TIER[designer.plan ?? "haus"] ?? "standard";
     const model = await loadModelForTier(admin, tier);
     const system = personaText;
-    const provider = providerName();
+    void providerName; // provider is now derived from ai() return value
 
     if (mode === "product_text") {
       if (!body.product_id) return ok({ ...fallbackFor(), error: "missing_product_id" });
@@ -148,10 +173,10 @@ Story: ${designer.story ?? "—"}
 Produkt: ${p.name}
 Welt: ${p.world}
 Tags: ${tags}`;
-      const generated = (await ai(model, system, [{ role: "user", content: promptUser }]))
-        ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
-      await logResponse(admin, user_id, mode, designer.id, promptUser, generated, provider);
-      return ok({ text: generated, provider });
+      const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
+      const generated = aiRes.text ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
+      await logResponse(admin, user_id, mode, designer.id, promptUser, generated, aiRes.provider);
+      return ok({ text: generated, provider: aiRes.provider });
     }
 
     if (mode === "weekly_mirror") {
@@ -213,10 +238,11 @@ Tags: ${tags}`;
       const trendLine = trendBlock ? ` Trend im Blick (${trendBlock.world}): ${trendBlock.rising.join(", ")}.` : "";
 
       const summary = `Diese Woche: ${stats.views_total} Ansichten, ${stats.wish_total} Merkzettel-Zugänge, ${stats.orders_count} Verkäufe (€${stats.revenue_eur}). ${suggestion}${trendLine}`;
-      const generated = (await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}.${trendLine}` }])) ?? summary;
+      const aiRes = await ai(model, system, [{ role: "user", content: `Fasse diese Wochendaten in 2 präzisen Sätzen zusammen und gib einen konkreten Vorschlag: ${JSON.stringify(stats)}. Vorschlag-Kern: ${suggestion}.${trendLine}` }]);
+      const generated = aiRes.text ?? summary;
 
-      await logResponse(admin, user_id, mode, designer.id, JSON.stringify(stats), generated, provider);
-      return ok({ text: generated, stats, tier, trend: trendBlock, provider });
+      await logResponse(admin, user_id, mode, designer.id, JSON.stringify(stats), generated, aiRes.provider);
+      return ok({ text: generated, stats, tier, trend: trendBlock, provider: aiRes.provider });
     }
 
     if (mode === "campaign_draft") {
@@ -241,7 +267,8 @@ Tags: ${tags}`;
 Marke: ${designer.brand_name} · Story: ${designer.story ?? "—"}
 Produkt: ${p.name} · Welt: ${p.world} · Tags: ${(p.tags as string[] | null)?.join(", ") ?? "—"}
 Format: {"caption":"…","hashtags":["#..","#.."]}`;
-      const raw = await ai(model, system, [{ role: "user", content: promptUser }]);
+      const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
+      const raw = aiRes.text;
       let caption = `${p.name} — aus dem Atelier ${designer.brand_name}.`;
       let hashtags = ["#pawn", `#${designer.slug.replace(/-/g, "")}`, `#${(p.world ?? "").toLowerCase()}`, "#independentdesign"];
       if (raw) {
@@ -270,8 +297,8 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
         if (!cErr && campaign) campaign_id = (campaign as { id: string }).id;
       } catch { /* swallow */ }
 
-      await logResponse(admin, user_id, mode, designer.id, promptUser, caption, provider);
-      return ok({ campaign_id, caption, hashtags, provider });
+      await logResponse(admin, user_id, mode, designer.id, promptUser, caption, aiRes.provider);
+      return ok({ campaign_id, caption, hashtags, provider: aiRes.provider });
     }
 
     if (mode === "chat") {
@@ -284,10 +311,10 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
         const published = products.filter((p) => (p as { status?: string }).status === "published").length;
         contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht). Story: ${designer.story ?? "—"}.`;
       } catch { /* soft */ }
-      const reply = (await ai(model, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]))
-        ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
-      await logResponse(admin, user_id, mode, designer.id, lastUser, reply, provider);
-      return ok({ reply, provider });
+      const aiRes = await ai(model, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]);
+      const reply = aiRes.text ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
+      await logResponse(admin, user_id, mode, designer.id, lastUser, reply, aiRes.provider);
+      return ok({ reply, provider: aiRes.provider });
     }
 
     return ok({ ...fallbackFor(), error: "unknown_mode" });

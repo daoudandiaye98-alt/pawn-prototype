@@ -209,10 +209,35 @@ async function callGateway(system: string, messages: Msg[], contextHint: string,
   } catch { return null; }
 }
 
-async function callProvider(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model?: string): Promise<string | null> {
-  const openai = await callOpenAI(system, messages, contextHint, imageUrl, model);
-  if (openai) return openai;
-  return await callGateway(system, messages, contextHint);
+async function callAnthropic(system: string, messages: Msg[], contextHint: string): Promise<string | null> {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) return null;
+  try {
+    const sys = [system, contextHint].filter(Boolean).join("\n\n");
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1024,
+        system: sys,
+        messages: messages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.content?.[0]?.text ?? null;
+  } catch { return null; }
+}
+
+async function callProvider(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model?: string, chain?: string[]): Promise<{ text: string | null; provider: string }> {
+  const order = chain ?? ["openai", "anthropic", "lovable_gateway", "fallback"];
+  for (const p of order) {
+    if (p === "openai") { const t = await callOpenAI(system, messages, contextHint, imageUrl, model); if (t) return { text: t, provider: "openai" }; }
+    else if (p === "anthropic") { const t = await callAnthropic(system, messages, contextHint); if (t) return { text: t, provider: "anthropic" }; }
+    else if (p === "lovable_gateway") { const t = await callGateway(system, messages, contextHint); if (t) return { text: t, provider: "lovable_gateway" }; }
+  }
+  return { text: null, provider: "fallback" };
 }
 
 type Tier = "standard" | "plus" | "max";
@@ -243,8 +268,14 @@ Deno.serve(async (req) => {
 
     // Provider probe (used by /admin/ki status badge) — no side effects.
     if (body.probe) {
-      const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
-      return new Response(JSON.stringify({ provider }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const providers = {
+        openai: !!Deno.env.get("OPENAI_API_KEY"),
+        anthropic: !!Deno.env.get("ANTHROPIC_API_KEY"),
+        lovable_gateway: !!Deno.env.get("LOVABLE_API_KEY"),
+      };
+      const chain = ["openai","anthropic","lovable_gateway"].filter((p) => providers[p as keyof typeof providers]);
+      const provider = chain[0] ?? "fallback";
+      return new Response(JSON.stringify({ provider, providers, chain }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
@@ -429,7 +460,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const rawReply = (await callProvider(system, messages, fullContextHint, body.image_url, model)) ?? fallbackReply(extracted, cards, turns, action);
+    // Load provider chain from ai_config (default: openai → anthropic → lovable → fallback)
+    let chain: string[] | undefined;
+    if (admin) {
+      try {
+        const { data } = await admin.from("ai_config").select("value").eq("key", "provider_priority").maybeSingle();
+        const c = (data?.value as { chain?: string[] } | undefined)?.chain;
+        if (Array.isArray(c) && c.length) chain = c;
+      } catch { /* soft */ }
+    }
+    const providerResult = await callProvider(system, messages, fullContextHint, body.image_url, model, chain);
+    const rawReply = providerResult.text ?? fallbackReply(extracted, cards, turns, action);
     const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
 
     // --- Upsert user_memory: extract simple facts / preferences -----------
@@ -458,7 +499,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const provider = Deno.env.get("OPENAI_API_KEY") ? "openai" : (Deno.env.get("LOVABLE_API_KEY") ? "lovable_gateway" : "fallback");
+    const provider = providerResult.provider;
     if (admin) {
       await admin.from("domain_events").insert({
         id: crypto.randomUUID(), type: "ai.response_logged",
