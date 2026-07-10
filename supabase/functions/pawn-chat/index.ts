@@ -412,8 +412,52 @@ Deno.serve(async (req) => {
     const persona = admin ? await loadPersonaForRole(admin, role) : DEFAULT_SYSTEM;
     const directives = admin ? await loadDirectives(admin) : [];
     const directiveBlock = directives.length ? `Direktiven (immer beachten):\n- ${directives.join("\n- ")}` : "";
+
+    // --- Page context: if user is on a product page, load rich detail so
+    // PAWN can answer concrete questions about the piece in front of them.
+    let pageContextHint = "";
+    const pc = body.page_context;
+    if (admin && pc?.product_slug) {
+      try {
+        const { data: pr } = await admin
+          .from("products")
+          .select("name, world, description, designer_note, product_dna, tags, price, made_in, care_instructions, edition_info, lead_time_days, length_cm, width_cm, height_cm, designers ( brand_name )")
+          .eq("slug", pc.product_slug)
+          .maybeSingle();
+        if (pr) {
+          const p = pr as unknown as {
+            name: string; world: string | null; description: string | null; designer_note: string | null;
+            product_dna: Record<string, string[]> | null; tags: string[] | null; price: number | null;
+            made_in: string | null; care_instructions: string | null; edition_info: string | null; lead_time_days: number | null;
+            length_cm: number | null; width_cm: number | null; height_cm: number | null;
+            designers: { brand_name: string } | null;
+          };
+          const dna = p.product_dna ?? {};
+          const dnaBits = ["materials","silhouette","colors","mood"]
+            .map((k) => Array.isArray(dna[k]) && dna[k].length ? `${k}: ${dna[k].join(", ")}` : null)
+            .filter(Boolean).join(" · ");
+          const dims = [p.length_cm && `L ${p.length_cm}cm`, p.width_cm && `B ${p.width_cm}cm`, p.height_cm && `H ${p.height_cm}cm`].filter(Boolean).join(" × ");
+          pageContextHint = [
+            `AKTUELLE SEITE: Produktdetail von "${p.name}"${p.designers?.brand_name ? ` von ${p.designers.brand_name}` : ""}.`,
+            p.world && `Welt: ${p.world}.`,
+            p.price != null && `Preis: €${p.price}.`,
+            p.description && `Beschreibung: ${p.description}`,
+            p.designer_note && `Gedanke der Designer:in: ${p.designer_note}`,
+            dnaBits && `DNA: ${dnaBits}.`,
+            p.tags?.length && `Tags: ${p.tags.slice(0,8).join(", ")}.`,
+            dims && `Maße: ${dims}.`,
+            p.made_in && `Gefertigt in: ${p.made_in}.`,
+            p.care_instructions && `Pflege: ${p.care_instructions}`,
+            p.edition_info && `Edition: ${p.edition_info}.`,
+            p.lead_time_days && `Lieferzeit Anfertigung: ~${p.lead_time_days} Tage.`,
+            `Antworte konkret auf Fragen zu genau diesem Stück — nutze diese Fakten, spekuliere nicht.`,
+          ].filter(Boolean).join(" ");
+        }
+      } catch { /* soft */ }
+    }
+
     const system = [persona, directiveBlock].filter(Boolean).join("\n\n");
-    const fullContextHint = [memoryHint, contextHint].filter(Boolean).join("\n\n");
+    const fullContextHint = [pageContextHint, memoryHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan
     let tier: Tier = "standard";
