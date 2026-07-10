@@ -20,9 +20,9 @@ export default function AdminAktionen() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = async () => {
-    let q = supabase.from("ai_actions_log" as never).select("*").order("created_at", { ascending: false }).limit(100);
-    if (filter !== "all") q = (q as unknown as { eq: (k: string, v: string) => typeof q }).eq("source", filter);
-    const { data } = await q;
+    const base = supabase.from("ai_actions_log" as never).select("*").order("created_at", { ascending: false }).limit(100);
+    const query = filter === "all" ? base : (base as unknown as { eq: (k: string, v: string) => typeof base }).eq("source", filter);
+    const { data } = await query;
     setRows(((data ?? []) as unknown) as ActionRow[]);
   };
   useEffect(() => { if (user && roles.includes("admin")) void load(); }, [user, roles, filter]);
