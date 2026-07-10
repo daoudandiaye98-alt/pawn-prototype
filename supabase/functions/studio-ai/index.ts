@@ -267,7 +267,8 @@ Tags: ${tags}`;
 Marke: ${designer.brand_name} · Story: ${designer.story ?? "—"}
 Produkt: ${p.name} · Welt: ${p.world} · Tags: ${(p.tags as string[] | null)?.join(", ") ?? "—"}
 Format: {"caption":"…","hashtags":["#..","#.."]}`;
-      const raw = await ai(model, system, [{ role: "user", content: promptUser }]);
+      const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
+      const raw = aiRes.text;
       let caption = `${p.name} — aus dem Atelier ${designer.brand_name}.`;
       let hashtags = ["#pawn", `#${designer.slug.replace(/-/g, "")}`, `#${(p.world ?? "").toLowerCase()}`, "#independentdesign"];
       if (raw) {
@@ -296,8 +297,8 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
         if (!cErr && campaign) campaign_id = (campaign as { id: string }).id;
       } catch { /* swallow */ }
 
-      await logResponse(admin, user_id, mode, designer.id, promptUser, caption, provider);
-      return ok({ campaign_id, caption, hashtags, provider });
+      await logResponse(admin, user_id, mode, designer.id, promptUser, caption, aiRes.provider);
+      return ok({ campaign_id, caption, hashtags, provider: aiRes.provider });
     }
 
     if (mode === "chat") {
