@@ -173,10 +173,10 @@ Story: ${designer.story ?? "—"}
 Produkt: ${p.name}
 Welt: ${p.world}
 Tags: ${tags}`;
-      const generated = (await ai(model, system, [{ role: "user", content: promptUser }]))
-        ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
-      await logResponse(admin, user_id, mode, designer.id, promptUser, generated, provider);
-      return ok({ text: generated, provider });
+      const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
+      const generated = aiRes.text ?? `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim();
+      await logResponse(admin, user_id, mode, designer.id, promptUser, generated, aiRes.provider);
+      return ok({ text: generated, provider: aiRes.provider });
     }
 
     if (mode === "weekly_mirror") {
