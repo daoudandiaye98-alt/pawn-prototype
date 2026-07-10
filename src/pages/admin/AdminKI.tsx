@@ -171,7 +171,10 @@ export default function AdminKI() {
           <span className={`h-1.5 w-1.5 rounded-full ${provider === "openai" ? "bg-emerald-500" : "bg-amber-500"}`} />
           {provider === "openai" ? "OpenAI aktiv" : provider === "unknown" ? "prüfe…" : "Fallback aktiv"}
         </span>
-        <span className="text-xs text-muted-foreground">Secret <code>OPENAI_API_KEY</code> in den Edge-Function-Secrets hinterlegen.</span>
+        <span className="text-xs text-muted-foreground">
+          Kette: {providerChain.length ? providerChain.join(" → ") : "—"} → Fallback ·
+          Secret <code>ANTHROPIC_API_KEY</code> für Claude, <code>OPENAI_API_KEY</code> für OpenAI hinterlegen.
+        </span>
         <div className="ml-auto flex items-center gap-4 text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">
           <span>Chat 7T: <b className="text-foreground">{usage.chat}</b></span>
           <span>Copilot 7T: <b className="text-foreground">{usage.copilot}</b></span>
