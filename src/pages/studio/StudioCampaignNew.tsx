@@ -90,6 +90,7 @@ export default function StudioCampaignNew() {
   const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
   const [cinematicClips, setCinematicClips] = useState<string[]>([]);
   const previewMountRef = useRef<HTMLDivElement | null>(null);
+  const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
 
   // Quota
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
