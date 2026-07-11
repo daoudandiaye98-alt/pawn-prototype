@@ -90,6 +90,7 @@ export default function StudioCampaignNew() {
   const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
   const [cinematicClips, setCinematicClips] = useState<string[]>([]);
   const previewMountRef = useRef<HTMLDivElement | null>(null);
+  const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
 
   // Quota
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
@@ -109,6 +110,16 @@ export default function StudioCampaignNew() {
       setProducts((prods ?? []) as ProductLite[]);
     })();
   }, [designer]);
+
+  // Instagram-Handle aus ai_config.business_profile lesen (Fallback bleibt 'hausofpawn').
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("ai_config").select("value").eq("key", "business_profile").maybeSingle();
+      const v = (data as { value?: { instagram?: string } } | null)?.value;
+      const raw = v?.instagram?.trim();
+      if (raw) setInstagramHandle(raw.replace(/^@/, ""));
+    })();
+  }, []);
 
   const grantConsent = async () => {
     if (!designer || !user) return;
@@ -288,6 +299,7 @@ export default function StudioCampaignNew() {
         productName: chosenProduct?.name ?? designer.brand_name,
         format,
         seed,
+        instagramHandle,
       }, {
         onProgress: (p) => setRenderPct(Math.round(p.fraction * 100)),
         onCanvas: (c) => {
@@ -464,6 +476,13 @@ export default function StudioCampaignNew() {
               )}
             </div>
           </section>
+
+          {chosenImages.length === 1 && (
+            <p className="text-xs italic text-muted-foreground">
+              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos führt PAWN echte Regie. Tipp: erst ✨ Studio-Foto veredeln.
+            </p>
+          )}
+
 
           <div className="flex items-center justify-between">
             <button onClick={() => setStep(0)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
