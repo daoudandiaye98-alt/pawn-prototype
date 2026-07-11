@@ -101,7 +101,7 @@ export default function StudioCampaignNew() {
   // Quota
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = useCampaignQuota(designer?.id, plan, isAdmin);
-  const cinematicAllowed = isAdmin || plan === "atelier" || plan === "maison";
+  const cinematicAllowed = true;
 
 
   // Load consent + products.
@@ -605,25 +605,18 @@ export default function StudioCampaignNew() {
 
             <p className="editorial-eyebrow mt-8">✦ Kinematischer Modus</p>
             <div className={`mt-3 border ${cinematic ? "border-foreground" : "border-border"} bg-white p-4`}>
-              <label className={`flex items-start gap-3 ${cinematicAllowed ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
+              <label className="flex cursor-pointer items-start gap-3">
                 <input
                   type="checkbox"
                   checked={cinematic}
-                  disabled={!cinematicAllowed}
                   onChange={(e) => setCinematic(e.target.checked)}
                   className="mt-1 h-4 w-4 accent-foreground"
                 />
                 <div>
                   <p className="font-serif text-base">Echte KI-Bewegung statt Standbildern.</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    PAWN erzeugt für jedes Foto einen kurzen Clip (fal.ai · Kling), schneidet sie in deiner Regie.
-                    {cinematicAllowed
-                      ? ` Verbraucht ${quota.accentCostUnits} deiner ${Number.isFinite(quota.limit) ? quota.limit : "∞"} Kampagnen.`
-                      : " Verfügbar ab Atelier."}
+                    PAWN erzeugt für jedes Foto einen kurzen Clip (fal.ai · Kling), schneidet sie in deiner Regie. Verbraucht {quota.accentCostUnits} deiner {Number.isFinite(quota.limit) ? quota.limit : "∞"} Kampagnen.
                   </p>
-                  {!cinematicAllowed && (
-                    <Link to="/studio/plan" className="mt-2 inline-block text-xs underline">Plan ansehen</Link>
-                  )}
                 </div>
               </label>
             </div>
