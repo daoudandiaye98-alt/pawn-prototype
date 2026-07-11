@@ -84,6 +84,15 @@ function loadVideo(url: string): Promise<HTMLVideoElement> {
   });
 }
 
+const BEAT_MS = 800;
+const MIN_SCENE_MS = 1600;
+
+/** Quantize to nearest positive multiple of BEAT_MS, floor at MIN_SCENE_MS. */
+function quantizeBeat(ms: number): number {
+  const beats = Math.max(2, Math.round(ms / BEAT_MS));
+  return Math.max(MIN_SCENE_MS, beats * BEAT_MS);
+}
+
 function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: number): { scenes: Scene[]; ctx: SceneCtx } {
   const layout: Layout = input.format === "1:1" ? FEED : REEL;
   const ctx: SceneCtx = {
@@ -94,45 +103,67 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
     productName: input.productName ?? null,
     productLabel: input.productLabel ?? input.brandName,
     houseNumber: input.houseNumber ?? null,
+    instagramHandle: input.instagramHandle ?? null,
   };
   const rnd = mulberry32(seed);
   const n = layers.length;
-  const scenes: Scene[] = [intro(ctx)];
+  const scenes: Scene[] = [];
 
-  const shotTypes = input.tempo === "ruhig"
-    ? ["parallax-duo", "mask-reveal", "ken-burns"] as const
-    : ["split-frame", "detail-punch", "kinetic-typo", "ken-burns"] as const;
+  // Hook-First: Video öffnet mit Hook-Zeile (oder Produktname als Fallback).
+  const hookText = (input.hookLine && input.hookLine.trim())
+    || input.productName
+    || input.brandName;
+  scenes.push(hookTypo(hookText));
 
-  const shotCount = Math.max(3, Math.min(5, n + 1));
-  let iLayer = 0;
-  for (let i = 0; i < shotCount; i++) {
-    const type = shotTypes[Math.floor(rnd() * shotTypes.length)];
-    const a = iLayer % Math.max(1, n);
-    const b = (iLayer + 1) % Math.max(1, n);
-    let scene: Scene;
-    switch (type) {
-      case "parallax-duo": scene = parallaxDuo(i, a); break;
-      case "split-frame": scene = n >= 2 ? splitFrame(a, b) : kenBurns(a, i % 2 === 0 ? 1 : -1); break;
-      case "kinetic-typo": scene = kineticTypo(input.hookLine || input.brandName); break;
-      case "mask-reveal": scene = maskReveal(a); break;
-      case "detail-punch": scene = detailPunch(a); break;
-      default: scene = kenBurns(a, i % 2 === 0 ? 1 : -1);
-    }
-    // Tempo shortens shots slightly
-    if (input.tempo === "spannungsvoll") scene.durationMs = Math.round(scene.durationMs * 0.75);
-    scenes.push(scene);
-    iLayer = (iLayer + 1) % Math.max(1, n);
-    // transition
-    if (i < shotCount - 1) {
-      const r = rnd();
-      if (r < 0.5) scenes.push(whiteFlash());
-      else if (r < 0.8 && n >= 2) scenes.push(wipeLeft(a, b));
-      // else: hard cut (no filler scene)
+  const pushCut = (allowFlash: boolean) => {
+    if (allowFlash && n >= 3 && rnd() < 0.5) scenes.push(whiteFlash());
+    // sonst: harter Cut, keine Übergangsszene
+  };
+
+  if (n === 1) {
+    // Teaser: 1 Foto-Szene (deterministisch gewählt), keine Wiederholung.
+    const type = rnd() < 0.5 ? "ken-burns" : "detail-punch";
+    scenes.push(type === "ken-burns" ? kenBurns(0, 1) : detailPunch(0));
+  } else if (n === 2) {
+    scenes.push(splitFrame(0, 1));
+    pushCut(false);
+    scenes.push(kenBurns(rnd() < 0.5 ? 0 : 1, 1));
+  } else {
+    // 3-4+ Fotos: volle Regie, kein Bild direkt hintereinander.
+    const shotTypesRuhig = ["parallax-duo", "mask-reveal", "ken-burns"] as const;
+    const shotTypesSchnell = ["split-frame", "detail-punch", "parallax-duo", "ken-burns"] as const;
+    const shotTypes = input.tempo === "ruhig" ? shotTypesRuhig : shotTypesSchnell;
+    const shotCount = Math.min(5, n + 1);
+    let last = -1;
+    for (let i = 0; i < shotCount; i++) {
+      let a = i % n;
+      if (a === last) a = (a + 1) % n;
+      const b = (a + 1) % n;
+      const type = shotTypes[Math.floor(rnd() * shotTypes.length)];
+      let scene: Scene;
+      switch (type) {
+        case "parallax-duo": scene = parallaxDuo(i, a); break;
+        case "split-frame": scene = splitFrame(a, b); break;
+        case "mask-reveal": scene = maskReveal(a); break;
+        case "detail-punch": scene = detailPunch(a); break;
+        default: scene = kenBurns(a, i % 2 === 0 ? 1 : -1);
+      }
+      scenes.push(scene);
+      last = a;
+      if (i < shotCount - 1) pushCut(true);
     }
   }
+
   scenes.push(outro(ctx));
+
+  // Taktraster: alle regulären Szenen auf 0.8s quantisieren (Transitions bleiben kurz).
+  for (const sc of scenes) {
+    if (sc.type === "white-flash") continue;
+    sc.durationMs = quantizeBeat(sc.durationMs);
+  }
   return { scenes, ctx };
 }
+
 
 export async function renderCampaign(input: RendererInput, cb: RenderCallbacks = {}): Promise<RenderResult> {
   const stills = input.imageUrls ?? [];
