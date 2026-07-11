@@ -5,8 +5,8 @@
  */
 
 import {
-  REEL, FEED, intro, outro, whiteFlash, wipeLeft,
-  parallaxDuo, splitFrame, kineticTypo, maskReveal, detailPunch, kenBurns,
+  REEL, FEED, hookTypo, outro, whiteFlash,
+  parallaxDuo, splitFrame, maskReveal, detailPunch, kenBurns,
   type Scene, type SceneCtx, type SourceLayer, type Layout,
 } from "./scenes";
 import { mulberry32, randomSeed } from "./prng";
