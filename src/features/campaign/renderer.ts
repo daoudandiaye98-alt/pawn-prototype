@@ -27,6 +27,8 @@ export interface RendererInput {
   productName?: string | null;
   format?: Format;
   seed?: number;
+  /** Instagram-Handle für CTA-Outro; Fallback 'hausofpawn'. */
+  instagramHandle?: string | null;
 }
 
 export interface RenderResult { blob: Blob; mimeType: string; durationMs: number; seed: number }
