@@ -111,6 +111,16 @@ export default function StudioCampaignNew() {
     })();
   }, [designer]);
 
+  // Instagram-Handle aus ai_config.business_profile lesen (Fallback bleibt 'hausofpawn').
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("ai_config").select("value").eq("key", "business_profile").maybeSingle();
+      const v = (data as { value?: { instagram?: string } } | null)?.value;
+      const raw = v?.instagram?.trim();
+      if (raw) setInstagramHandle(raw.replace(/^@/, ""));
+    })();
+  }, []);
+
   const grantConsent = async () => {
     if (!designer || !user) return;
     setConsentBusy(true);
