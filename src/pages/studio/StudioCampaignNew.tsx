@@ -92,6 +92,12 @@ export default function StudioCampaignNew() {
   const previewMountRef = useRef<HTMLDivElement | null>(null);
   const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
 
+  // Try-On
+  const [tryonBusy, setTryonBusy] = useState(false);
+  const [tryonReplacement, setTryonReplacement] = useState<string | null>(null);
+  const [tryonDisclosure, setTryonDisclosure] = useState<string>("Visualisierung mit KI-Model");
+  const [tryonStyle, setTryonStyle] = useState<"weiblich"|"männlich"|"divers">("weiblich");
+
   // Quota
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = useCampaignQuota(designer?.id, plan, isAdmin);
