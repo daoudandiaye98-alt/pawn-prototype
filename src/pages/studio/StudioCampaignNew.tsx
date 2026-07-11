@@ -127,6 +127,38 @@ export default function StudioCampaignNew() {
     })();
   }, []);
 
+  // Try-On Disclosure aus Config.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle();
+      const d = (data as { value?: { shot_disclosure?: string } } | null)?.value?.shot_disclosure;
+      if (d) setTryonDisclosure(d);
+    })();
+  }, []);
+
+  const requestTryonForChosen = async () => {
+    if (!chosenProduct?.id || !chosenProduct.image_url) return;
+    setTryonBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-tryon", {
+        body: { product_id: chosenProduct.id, source_image_url: chosenProduct.image_url, mode: "shot", model_style: tryonStyle },
+      });
+      if (error) throw error;
+      const r = data as { result_url?: string; error?: string; message?: string } | null;
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      setTryonReplacement(r.result_url);
+      toast.success("KI-Model-Shot bereit — wird als Material genutzt.");
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      toast.error(/guthaben|402|credit/i.test(msg)
+        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+        : msg || "Fehler");
+    } finally {
+      setTryonBusy(false);
+    }
+  };
+
+
   const grantConsent = async () => {
     if (!designer || !user) return;
     setConsentBusy(true);
@@ -164,9 +196,10 @@ export default function StudioCampaignNew() {
 
   // Selected images
   const chosenImages = useMemo(() => {
-    if (chosenProduct?.image_url) return [chosenProduct.image_url];
+    if (chosenProduct?.image_url) return [tryonReplacement ?? chosenProduct.image_url];
     return uploaded.map((u) => u.url);
-  }, [chosenProduct, uploaded]);
+  }, [chosenProduct, uploaded, tryonReplacement]);
+
 
   const canProceedFromStep1 =
     (chosenProduct && !!chosenProduct.image_url) || uploaded.length >= 2;
