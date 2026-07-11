@@ -477,6 +477,13 @@ export default function StudioCampaignNew() {
             </div>
           </section>
 
+          {chosenImages.length === 1 && (
+            <p className="text-xs italic text-muted-foreground">
+              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos führt PAWN echte Regie. Tipp: erst ✨ Studio-Foto veredeln.
+            </p>
+          )}
+
+
           <div className="flex items-center justify-between">
             <button onClick={() => setStep(0)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
             <button onClick={() => setStep(2)} disabled={!canProceedFromStep1}
