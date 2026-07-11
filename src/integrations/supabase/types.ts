@@ -1202,6 +1202,8 @@ export type Database = {
           designer_id: string
           error: string | null
           id: string
+          mode: string
+          model_style: string | null
           product_id: string
           provider: string | null
           request_handle: Json | null
@@ -1216,6 +1218,8 @@ export type Database = {
           designer_id: string
           error?: string | null
           id?: string
+          mode?: string
+          model_style?: string | null
           product_id: string
           provider?: string | null
           request_handle?: Json | null
@@ -1230,6 +1234,8 @@ export type Database = {
           designer_id?: string
           error?: string | null
           id?: string
+          mode?: string
+          model_style?: string | null
           product_id?: string
           provider?: string | null
           request_handle?: Json | null

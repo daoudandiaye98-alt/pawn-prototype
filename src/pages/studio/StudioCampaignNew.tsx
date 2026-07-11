@@ -92,6 +92,12 @@ export default function StudioCampaignNew() {
   const previewMountRef = useRef<HTMLDivElement | null>(null);
   const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
 
+  // Try-On
+  const [tryonBusy, setTryonBusy] = useState(false);
+  const [tryonReplacement, setTryonReplacement] = useState<string | null>(null);
+  const [tryonDisclosure, setTryonDisclosure] = useState<string>("Visualisierung mit KI-Model");
+  const [tryonStyle, setTryonStyle] = useState<"weiblich"|"männlich"|"divers">("weiblich");
+
   // Quota
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = useCampaignQuota(designer?.id, plan, isAdmin);
@@ -120,6 +126,38 @@ export default function StudioCampaignNew() {
       if (raw) setInstagramHandle(raw.replace(/^@/, ""));
     })();
   }, []);
+
+  // Try-On Disclosure aus Config.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle();
+      const d = (data as { value?: { shot_disclosure?: string } } | null)?.value?.shot_disclosure;
+      if (d) setTryonDisclosure(d);
+    })();
+  }, []);
+
+  const requestTryonForChosen = async () => {
+    if (!chosenProduct?.id || !chosenProduct.image_url) return;
+    setTryonBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-tryon", {
+        body: { product_id: chosenProduct.id, source_image_url: chosenProduct.image_url, mode: "shot", model_style: tryonStyle },
+      });
+      if (error) throw error;
+      const r = data as { result_url?: string; error?: string; message?: string } | null;
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      setTryonReplacement(r.result_url);
+      toast.success("KI-Model-Shot bereit — wird als Material genutzt.");
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      toast.error(/guthaben|402|credit/i.test(msg)
+        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+        : msg || "Fehler");
+    } finally {
+      setTryonBusy(false);
+    }
+  };
+
 
   const grantConsent = async () => {
     if (!designer || !user) return;
@@ -158,9 +196,10 @@ export default function StudioCampaignNew() {
 
   // Selected images
   const chosenImages = useMemo(() => {
-    if (chosenProduct?.image_url) return [chosenProduct.image_url];
+    if (chosenProduct?.image_url) return [tryonReplacement ?? chosenProduct.image_url];
     return uploaded.map((u) => u.url);
-  }, [chosenProduct, uploaded]);
+  }, [chosenProduct, uploaded, tryonReplacement]);
+
 
   const canProceedFromStep1 =
     (chosenProduct && !!chosenProduct.image_url) || uploaded.length >= 2;
@@ -330,11 +369,15 @@ export default function StudioCampaignNew() {
     try {
       const ext = videoMime.includes("mp4") ? "mp4" : "webm";
       const { path, signedUrl } = await uploadFile(user.id, videoBlob, ext);
+      const hasTryon = !!tryonReplacement;
+      const finalCaption = hasTryon && !caption.includes(tryonDisclosure)
+        ? `${caption}${caption.trim() ? "\n\n" : ""}${tryonDisclosure}`
+        : caption;
       const content: DraftContent = {
         asset_url: signedUrl,
         asset_path: path,
         mime: videoMime,
-        caption, hashtags, hook, prompt, tempo,
+        caption: finalCaption, hashtags, hook, prompt, tempo,
         product_id: chosenProduct?.id ?? null,
         image_urls: chosenImages,
       };
@@ -347,7 +390,7 @@ export default function StudioCampaignNew() {
         title,
         kind: "video",
         status: "proposed",
-        content: content as unknown as Record<string, unknown>,
+        content: { ...content, tryon: hasTryon } as unknown as Record<string, unknown>,
         created_by: user.id,
       } as never);
       if (error) throw error;
@@ -477,11 +520,48 @@ export default function StudioCampaignNew() {
             </div>
           </section>
 
-          {chosenImages.length === 1 && (
+          {chosenProduct && (
+            <div className="border border-border bg-white p-4">
+              <p className="editorial-eyebrow">✦ KI-Model-Shot</p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">
+                    Aus deinem Foto wird ein Model-Shot — mit KI-Model, das dein Stück trägt. Das Ergebnis ersetzt das gewählte Foto im Material.
+                  </p>
+                  <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{tryonDisclosure}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(["weiblich","männlich","divers"] as const).map((s) => (
+                    <button key={s} type="button" onClick={() => setTryonStyle(s)} disabled={tryonBusy}
+                      className={`border px-3 py-1 text-[0.68rem] ${tryonStyle === s ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>
+                  ))}
+                  <button type="button" onClick={requestTryonForChosen} disabled={tryonBusy}
+                    className="border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] uppercase tracking-widest text-background disabled:opacity-60">
+                    {tryonBusy ? "KI arbeitet…" : (tryonReplacement ? "Neu erzeugen" : "Shot erzeugen")}
+                  </button>
+                </div>
+              </div>
+              {tryonReplacement && (
+                <div className="mt-4 flex items-center gap-4">
+                  <img src={tryonReplacement} alt="KI-Model-Shot" className="h-32 w-32 border border-foreground object-cover" />
+                  <div className="flex-1 text-xs">
+                    <span className="inline-block border border-foreground bg-white px-2 py-0.5 text-[0.55rem] uppercase tracking-widest">KI-Model</span>
+                    <p className="mt-2 text-muted-foreground">Wird als Material für diese Kampagne verwendet. Die Disclosure wird automatisch an die Caption angehängt.</p>
+                    <button type="button" onClick={() => setTryonReplacement(null)} className="mt-2 text-[0.62rem] uppercase tracking-widest text-muted-foreground hover:text-foreground">Verwerfen · Originalfoto nutzen</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {chosenImages.length === 1 && !tryonReplacement && (
             <p className="text-xs italic text-muted-foreground">
-              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos führt PAWN echte Regie. Tipp: erst ✨ Studio-Foto veredeln.
+              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos führt PAWN echte Regie. Tipp: erst ✨ Studio-Foto veredeln oder ✦ KI-Model-Shot machen.
             </p>
           )}
+
 
 
           <div className="flex items-center justify-between">
