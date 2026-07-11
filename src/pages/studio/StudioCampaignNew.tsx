@@ -299,6 +299,7 @@ export default function StudioCampaignNew() {
         productName: chosenProduct?.name ?? designer.brand_name,
         format,
         seed,
+        instagramHandle,
       }, {
         onProgress: (p) => setRenderPct(Math.round(p.fraction * 100)),
         onCanvas: (c) => {
