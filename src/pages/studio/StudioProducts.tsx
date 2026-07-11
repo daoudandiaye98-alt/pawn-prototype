@@ -289,12 +289,22 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const [dragOver, setDragOver] = useState(false);
   const [autoText, setAutoText] = useState(false);
   const [shotBusy, setShotBusy] = useState(false);
-  const [shotResult, setShotResult] = useState<{ source: string; result: string } | null>(null);
+  const [shotResult, setShotResult] = useState<{ source: string; result: string; isTryon?: boolean; style?: string } | null>(null);
+  const [tryonPickerOpen, setTryonPickerOpen] = useState(false);
+  const [shotDisclosure, setShotDisclosure] = useState<string>("Visualisierung mit KI-Model");
   const draftIdRef = useRef<string | undefined>(initial.id);
   const firstRender = useRef(true);
 
   // Sync back to parent so save() (which reads `editing`) has fresh data.
   useEffect(() => { setEditing(local); /* eslint-disable-next-line */ }, [local]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle();
+      const v = (data as { value?: { shot_disclosure?: string } } | null)?.value;
+      if (v?.shot_disclosure) setShotDisclosure(v.shot_disclosure);
+    })();
+  }, []);
 
   const patch = useCallback((p: Partial<ProductRow>) => setLocal((prev) => ({ ...prev, ...p })), []);
 
@@ -310,6 +320,29 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
       const r = data as { result_url?: string; error?: string; message?: string } | null;
       if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "PAWN konnte kein Studio-Foto erzeugen.");
       setShotResult({ source: local.image_url!, result: r.result_url });
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      toast.error(/guthaben|402|credit/i.test(msg)
+        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+        : msg || "Fehler");
+    } finally {
+      setShotBusy(false);
+    }
+  };
+
+  const requestTryonShot = async (style: "weiblich" | "männlich" | "divers") => {
+    if (!local.image_url) { toast.error("Zuerst ein Bild hochladen."); return; }
+    if (!draftIdRef.current) { toast.error("Bitte kurz warten, bis der Entwurf gespeichert ist."); return; }
+    setTryonPickerOpen(false);
+    setShotBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-tryon", {
+        body: { product_id: draftIdRef.current, source_image_url: local.image_url, mode: "shot", model_style: style },
+      });
+      if (error) throw error;
+      const r = data as { result_url?: string; error?: string; message?: string } | null;
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      setShotResult({ source: local.image_url!, result: r.result_url, isTryon: true, style });
     } catch (e) {
       const msg = (e as Error).message ?? "";
       toast.error(/guthaben|402|credit/i.test(msg)
@@ -482,10 +515,25 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                     <button type="button" onClick={() => patch({ image_url: null })} className="border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">Entfernen</button>
                     <button type="button" onClick={requestStudioShot} disabled={shotBusy}
                       className="inline-flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
-                      <Sparkles className="h-3 w-3" /> {shotBusy ? "PAWN denkt…" : "Studio-Foto von PAWN"}
+                      <Sparkles className="h-3 w-3" /> {shotBusy ? "PAWN denkt…" : "Weiße Wand"}
+                    </button>
+                    <button type="button" onClick={() => setTryonPickerOpen((v) => !v)} disabled={shotBusy}
+                      className="inline-flex items-center gap-1.5 border border-foreground bg-white px-3 py-1.5 text-[0.68rem] tracking-wide text-foreground hover:bg-muted disabled:opacity-60">
+                      ✦ Mit KI-Model <span className="text-[0.55rem] uppercase tracking-widest text-muted-foreground">Beta</span>
                     </button>
                   </div>
-                  <p className="text-[0.6rem] text-muted-foreground">Kostet pro Aufruf einen kleinen Betrag fal.ai-Guthaben.</p>
+                  {tryonPickerOpen && (
+                    <div className="mt-2 flex flex-wrap justify-center gap-2 border border-border bg-white px-3 py-2">
+                      <span className="self-center text-[0.62rem] uppercase tracking-widest text-muted-foreground">Model-Stil:</span>
+                      {(["weiblich", "männlich", "divers"] as const).map((s) => (
+                        <button key={s} type="button" onClick={() => requestTryonShot(s)}
+                          className="border border-border bg-white px-3 py-1 text-[0.68rem] hover:border-foreground">
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[0.6rem] text-muted-foreground">Studio-Foto: weiße Wand · KI-Model: dein Stück auf einem virtuellen Model. Beides via fal.ai.</p>
                 </>
               )}
               {!local.image_url && (
@@ -642,15 +690,32 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                 <img src={shotResult.source} alt="Original" className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
                 <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-muted-foreground">Original</figcaption>
               </figure>
-              <figure>
-                <img src={shotResult.result} alt="Studio-Foto" className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
-                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-foreground">PAWN Studio-Foto</figcaption>
+              <figure className="relative">
+                <img src={shotResult.result} alt={shotResult.isTryon ? "KI-Model-Shot" : "Studio-Foto"} className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                {shotResult.isTryon && (
+                  <span className="absolute right-2 top-2 border border-foreground bg-white px-2 py-0.5 text-[0.55rem] uppercase tracking-widest">KI-Model</span>
+                )}
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-foreground">
+                  {shotResult.isTryon ? `KI-Model-Shot (${shotResult.style})` : "PAWN Studio-Foto"}
+                </figcaption>
+                {shotResult.isTryon && (
+                  <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{shotDisclosure}</p>
+                )}
               </figure>
             </div>
-            <div className="mt-6 flex justify-end gap-3">
+            {shotResult.isTryon && (
+              <p className="mt-4 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                Prüfe: Sitzt dein Stück exakt? Bei Abweichung bitte neu erzeugen.
+              </p>
+            )}
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button onClick={() => setShotResult(null)} className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Verwerfen</button>
+              {shotResult.isTryon && shotResult.style && (
+                <button onClick={() => { const s = shotResult.style as "weiblich"|"männlich"|"divers"; setShotResult(null); void requestTryonShot(s); }}
+                  className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Neu erzeugen</button>
+              )}
               <button
-                onClick={() => { patch({ image_url: shotResult.result }); setShotResult(null); toast.success("Studio-Foto übernommen."); }}
+                onClick={() => { patch({ image_url: shotResult.result }); setShotResult(null); toast.success(shotResult.isTryon ? "KI-Model-Shot übernommen." : "Studio-Foto übernommen."); }}
                 className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-black">
                 Übernehmen
               </button>
