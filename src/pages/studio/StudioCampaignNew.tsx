@@ -369,11 +369,15 @@ export default function StudioCampaignNew() {
     try {
       const ext = videoMime.includes("mp4") ? "mp4" : "webm";
       const { path, signedUrl } = await uploadFile(user.id, videoBlob, ext);
+      const hasTryon = !!tryonReplacement;
+      const finalCaption = hasTryon && !caption.includes(tryonDisclosure)
+        ? `${caption}${caption.trim() ? "\n\n" : ""}${tryonDisclosure}`
+        : caption;
       const content: DraftContent = {
         asset_url: signedUrl,
         asset_path: path,
         mime: videoMime,
-        caption, hashtags, hook, prompt, tempo,
+        caption: finalCaption, hashtags, hook, prompt, tempo,
         product_id: chosenProduct?.id ?? null,
         image_urls: chosenImages,
       };
@@ -386,7 +390,7 @@ export default function StudioCampaignNew() {
         title,
         kind: "video",
         status: "proposed",
-        content: content as unknown as Record<string, unknown>,
+        content: { ...content, tryon: hasTryon } as unknown as Record<string, unknown>,
         created_by: user.id,
       } as never);
       if (error) throw error;
