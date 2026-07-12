@@ -14,14 +14,17 @@ import { mulberry32, randomSeed } from "./prng";
 export type Tempo = "ruhig" | "spannungsvoll";
 export type Format = "9:16" | "1:1";
 
+export interface MixedSource { clip?: string; image?: string }
 export interface RendererInput {
   brandName: string;
   houseNumber: number | null;
   hookLine?: string | null;
-  /** Stills (Stufe 1). Ignoriert, wenn `clips` gesetzt. */
+  /** Stills (Stufe 1). Ignoriert, wenn `clipUrls` oder `sources` gesetzt. */
   imageUrls?: string[];
-  /** Kinematischer Modus (Stufe 2): erwartet vorbereitete Clip-URLs. */
+  /** Kinematischer Modus (Stufe 2): reine Clip-URLs. */
   clipUrls?: string[];
+  /** Gemischte Quellen (Teil-Erfolg im kinematischen Modus): pro Slot Clip ODER Foto. */
+  sources?: MixedSource[];
   tempo: Tempo;
   productLabel?: string | null;
   productName?: string | null;
