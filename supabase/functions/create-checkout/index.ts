@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
         cancel_url: body.cancel_url ?? `${origin}/studio/plan`,
         customer_email: body.customer_email,
         locale: "de",
-        automatic_payment_methods: { enabled: true },
+      
         metadata: { plan: body.plan ?? "", user_id: user_id ?? "" },
         subscription_data: { metadata: { plan: body.plan ?? "", user_id: user_id ?? "" } },
       });
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       // KEIN payment_method_types — dann greift automatic_payment_methods (Apple/Google Pay, PayPal, Klarna, Karte)
-      automatic_payment_methods: { enabled: true },
+      
       locale: "de",
       shipping_address_collection: { allowed_countries: ["DE", "AT", "CH", "FR", "IT", "NL", "BE", "LU", "ES", "DK", "SE", "FI", "IE", "PT"] },
       billing_address_collection: "auto",
