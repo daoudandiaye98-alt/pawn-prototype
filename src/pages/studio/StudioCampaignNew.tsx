@@ -741,9 +741,18 @@ export default function StudioCampaignNew() {
                     <div className="flex items-center gap-2">
                       <Wand2 className="h-4 w-4" />
                       <span>
-                        {cinematicStage === "submitting" && "Übergabe an die Kamera…"}
-                        {cinematicStage === "polling" && "Die Kamera arbeitet — das kann 1–3 Minuten dauern."}
-                        {cinematicStage === "failed" && "Die Kamera hatte einen schlechten Tag — es wird die Editorial-Fassung."}
+                        {cinematicStage === "submitting" && "✦ Übergabe an die Kamera…"}
+                        {cinematicStage === "polling" && (
+                          <>
+                            ✦ Aufnahmen entstehen — ca. 1–2 Minuten
+                            {cinematicProgress.total > 0 && (
+                              <span className="ml-2 tabular-nums text-muted-foreground">
+                                ({cinematicProgress.done}/{cinematicProgress.total} fertig)
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {cinematicStage === "failed" && "Kinematischer Modus fehlgeschlagen — Details in der Meldung oben."}
                       </span>
                     </div>
                   </div>
