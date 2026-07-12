@@ -88,6 +88,7 @@ export default function StudioCampaignNew() {
   const [seed, setSeed] = useState<number>(() => randomSeed());
   const [cinematic, setCinematic] = useState(false);
   const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
+  const [cinematicProgress, setCinematicProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [cinematicClips, setCinematicClips] = useState<string[]>([]);
   const previewMountRef = useRef<HTMLDivElement | null>(null);
   const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
@@ -143,13 +144,17 @@ export default function StudioCampaignNew() {
       const { data, error } = await supabase.functions.invoke("generate-tryon", {
         body: { product_id: chosenProduct.id, source_image_url: chosenProduct.image_url, mode: "shot", model_style: tryonStyle },
       });
-      if (error) throw error;
-      const r = data as { result_url?: string; error?: string; message?: string } | null;
-      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      if (error) { console.error("[generate-tryon] invoke error:", error); throw error; }
+      const r = data as { result_url?: string; error?: string; message?: string; stage?: string; status?: number } | null;
+      if (!r?.result_url) {
+        console.error("[generate-tryon] no result_url:", r);
+        throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      }
       setTryonReplacement(r.result_url);
       toast.success("KI-Model-Shot bereit — wird als Material genutzt.");
     } catch (e) {
       const msg = (e as Error).message ?? "";
+      console.error("[generate-tryon] failed:", e);
       toast.error(/guthaben|402|credit/i.test(msg)
         ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
         : msg || "Fehler");
@@ -246,66 +251,94 @@ export default function StudioCampaignNew() {
     }
   };
 
-  // Cinematic mode: submit fal.ai jobs and poll until clips ready or timeout.
-  const runCinematic = async (): Promise<string[] | null> => {
-    if (!designer) return null;
-    // Create a temp campaign row? No — we just want clip URLs. We reuse an
-    // ephemeral campaigns row by inserting a draft first.
+  // Cinematic mode: submit fal.ai jobs, poll live, return one entry per input image
+  // (clip URL when done, null when failed). Throws with real reason on hard failure.
+  const runCinematic = async (inputImages: string[]): Promise<Array<string | null>> => {
+    if (!designer) throw new Error("no_designer");
     const { data: campRow, error: campErr } = await supabase.from("campaigns").insert({
       designer_id: designer.id,
       title: `${designer.brand_name} · Draft`,
       kind: "video",
       status: "draft",
-      content: { image_urls: chosenImages, cinematic: true } as unknown as Record<string, unknown>,
+      content: { image_urls: inputImages, cinematic: true } as unknown as Record<string, unknown>,
       created_by: user?.id ?? null,
     } as never).select("id").single();
-    if (campErr || !campRow) { toast.error(campErr?.message ?? "Draft konnte nicht angelegt werden."); return null; }
+    if (campErr || !campRow) {
+      console.error("[runCinematic] draft campaign insert failed:", campErr);
+      throw new Error(campErr?.message ?? "Kampagnen-Draft konnte nicht angelegt werden.");
+    }
     const campaign_id = (campRow as { id: string }).id;
 
     setCinematicStage("submitting");
+    setCinematicProgress({ done: 0, total: inputImages.length });
     const { data: submitData, error: submitErr } = await supabase.functions.invoke("generate-broll", {
-      body: { campaign_id, image_urls: chosenImages.slice(0, 3), motion_prompt: prompt },
+      body: { campaign_id, image_urls: inputImages, motion_prompt: prompt },
     });
     if (submitErr) {
       const msg = submitErr.message ?? String(submitErr);
-      toast.error(msg.includes("provider_not_configured") ? "Kinematischer Modus ist nicht eingerichtet." : `Fehler: ${msg}`);
+      console.error("[generate-broll] invoke error:", submitErr);
       setCinematicStage("failed");
-      return null;
+      throw new Error(msg.includes("provider_not_configured")
+        ? "Kinematischer Modus ist nicht eingerichtet (FAL_KEY fehlt)."
+        : `generate-broll: ${msg}`);
     }
-    type Sub = { id: string; request_id?: string } | { image_url: string; error: string; status?: number };
+    type SubOK = { id: string; request_id?: string; image_url?: string };
+    type SubErr = { image_url: string; error: string; status?: number };
+    type Sub = SubOK | SubErr;
     const allSubs = ((submitData as { submissions?: Sub[] })?.submissions ?? []);
-    const submissions = allSubs.filter((s): s is { id: string; request_id?: string } => "id" in s);
+    const submissions = allSubs.filter((s): s is SubOK => "id" in s);
+    const failedSubs = allSubs.filter((s): s is SubErr => "error" in s);
+    if (failedSubs.length > 0) console.error("[generate-broll] partial submit failures:", failedSubs);
     if (submissions.length === 0) {
-      const firstErr = allSubs.find((s): s is { image_url: string; error: string; status?: number } => "error" in s);
-      const isCredit = firstErr && (firstErr.status === 402 || /guthaben|credit|402|insufficient/i.test(firstErr.error));
-      toast.error(isCredit
-        ? "fal.ai-Guthaben fehlt — bitte im fal.ai-Konto Credits aufladen und erneut versuchen."
-        : `Provider hat keine Aufträge angenommen. ${firstErr?.error ?? ""}`);
       setCinematicStage("failed");
-      return null;
+      const firstErr = failedSubs[0];
+      const isCredit = firstErr && (firstErr.status === 402 || /guthaben|credit|402|insufficient/i.test(firstErr.error));
+      throw new Error(isCredit
+        ? "fal.ai-Guthaben fehlt — bitte im fal.ai-Konto Credits aufladen und erneut versuchen."
+        : `Provider hat keine Aufträge angenommen: ${firstErr?.error ?? "unbekannter Fehler"}`);
     }
-
 
     setCinematicStage("polling");
+    // Map image_url → clip result (null while pending/failed).
+    const perImageClip = new Map<string, string | null>();
+    const idToImage = new Map<string, string>();
+    for (const s of submissions) if (s.image_url) idToImage.set(s.id, s.image_url);
+
     const requestIds = submissions.map((s) => s.id);
-    const deadline = Date.now() + 6 * 60 * 1000;
-    let clips: string[] = [];
+    const perClipTimeoutMs = 120_000;
+    const deadline = Date.now() + Math.max(180_000, perClipTimeoutMs + 60_000);
+    let doneCount = 0;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 4000));
-      const { data: pollData } = await supabase.functions.invoke("poll-broll", { body: { request_ids: requestIds } });
-      const results = (pollData as { results?: Array<{ id: string; status: string; result_url?: string }> })?.results ?? [];
-      if (results.every((r) => r.status === "done" || r.status === "failed")) {
-        clips = results.filter((r) => r.status === "done" && r.result_url).map((r) => r.result_url!);
-        break;
+      const { data: pollData, error: pollErr } = await supabase.functions.invoke("poll-broll", {
+        body: { request_ids: requestIds },
+      });
+      if (pollErr) { console.error("[poll-broll] invoke error:", pollErr); continue; }
+      const results = (pollData as { results?: Array<{ id: string; status: string; result_url?: string; error?: string }> })?.results ?? [];
+      doneCount = results.filter((r) => r.status === "done" || r.status === "failed").length;
+      setCinematicProgress({ done: doneCount, total: requestIds.length });
+      for (const r of results) {
+        const img = idToImage.get(r.id);
+        if (!img) continue;
+        if (r.status === "done" && r.result_url) perImageClip.set(img, r.result_url);
+        else if (r.status === "failed") {
+          console.error("[poll-broll] clip failed:", r);
+          perImageClip.set(img, null);
+        }
       }
+      if (results.every((r) => r.status === "done" || r.status === "failed")) break;
     }
-    if (clips.length === 0) {
+
+    // Align result with input order.
+    const aligned = inputImages.map((img) => perImageClip.get(img) ?? null);
+    const successful = aligned.filter((c) => !!c).length;
+    if (successful === 0) {
       setCinematicStage("failed");
-      return null;
+      throw new Error("Keine der Aufnahmen ist gelungen. Prüfe später erneut oder wechsle in die Editorial-Fassung.");
     }
-    setCinematicClips(clips);
+    setCinematicClips(aligned.filter((c): c is string => !!c));
     setCinematicStage("ready");
-    return clips;
+    return aligned;
   };
 
   // Render video
@@ -314,14 +347,28 @@ export default function StudioCampaignNew() {
     if (chosenImages.length < 1) { toast.error("Mindestens 1 Bild."); return; }
     setRenderBusy(true); setRenderPct(0); setVideoBlob(null); setVideoUrl(null);
 
-    let clipUrls: string[] | undefined;
+    const baseImages = chosenImages.slice(0, 4);
+    let sources: Array<{ image?: string; clip?: string }> | undefined;
+
     if (cinematic) {
-      const clips = await runCinematic();
-      if (!clips || clips.length === 0) {
-        toast.message("Die Kamera hatte einen schlechten Tag — hier ist die Editorial-Fassung.");
-        clipUrls = undefined;
-      } else {
-        clipUrls = clips;
+      try {
+        const aligned = await runCinematic(baseImages.slice(0, 3));
+        const succeeded = aligned.filter((c) => !!c).length;
+        const attempted = aligned.length;
+        sources = baseImages.map((img, i) => {
+          const clip = i < aligned.length ? aligned[i] : null;
+          return clip ? { clip, image: img } : { image: img };
+        });
+        if (succeeded < attempted) {
+          toast.message(`${succeeded} von ${attempted} Aufnahmen gelungen — Rest als Editorial-Szene.`);
+        } else {
+          toast.success(`${succeeded} kinematische Aufnahmen bereit.`);
+        }
+      } catch (e) {
+        console.error("[doRender] cinematic failed:", e);
+        toast.error((e as Error).message ?? "Kinematischer Modus fehlgeschlagen.");
+        setRenderBusy(false);
+        return;
       }
     }
 
@@ -331,8 +378,8 @@ export default function StudioCampaignNew() {
         brandName: designer.brand_name,
         houseNumber: houseNo,
         hookLine: hook || null,
-        imageUrls: clipUrls ? undefined : chosenImages.slice(0, 4),
-        clipUrls,
+        imageUrls: sources ? undefined : baseImages,
+        sources,
         tempo,
         productLabel: chosenProduct ? `${chosenProduct.world} · ${designer.brand_name}` : designer.brand_name,
         productName: chosenProduct?.name ?? designer.brand_name,
@@ -357,6 +404,7 @@ export default function StudioCampaignNew() {
       setVideoUrl(blobPreviewUrl(result.blob));
       toast.success("Video steht.");
     } catch (e) {
+      console.error("[renderCampaign] failed:", e);
       toast.error((e as Error).message);
     } finally {
       setRenderBusy(false);
@@ -693,9 +741,18 @@ export default function StudioCampaignNew() {
                     <div className="flex items-center gap-2">
                       <Wand2 className="h-4 w-4" />
                       <span>
-                        {cinematicStage === "submitting" && "Übergabe an die Kamera…"}
-                        {cinematicStage === "polling" && "Die Kamera arbeitet — das kann 1–3 Minuten dauern."}
-                        {cinematicStage === "failed" && "Die Kamera hatte einen schlechten Tag — es wird die Editorial-Fassung."}
+                        {cinematicStage === "submitting" && "✦ Übergabe an die Kamera…"}
+                        {cinematicStage === "polling" && (
+                          <>
+                            ✦ Aufnahmen entstehen — ca. 1–2 Minuten
+                            {cinematicProgress.total > 0 && (
+                              <span className="ml-2 tabular-nums text-muted-foreground">
+                                ({cinematicProgress.done}/{cinematicProgress.total} fertig)
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {cinematicStage === "failed" && "Kinematischer Modus fehlgeschlagen — Details in der Meldung oben."}
                       </span>
                     </div>
                   </div>

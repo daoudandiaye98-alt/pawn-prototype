@@ -14,14 +14,17 @@ import { mulberry32, randomSeed } from "./prng";
 export type Tempo = "ruhig" | "spannungsvoll";
 export type Format = "9:16" | "1:1";
 
+export interface MixedSource { clip?: string; image?: string }
 export interface RendererInput {
   brandName: string;
   houseNumber: number | null;
   hookLine?: string | null;
-  /** Stills (Stufe 1). Ignoriert, wenn `clips` gesetzt. */
+  /** Stills (Stufe 1). Ignoriert, wenn `clipUrls` oder `sources` gesetzt. */
   imageUrls?: string[];
-  /** Kinematischer Modus (Stufe 2): erwartet vorbereitete Clip-URLs. */
+  /** Kinematischer Modus (Stufe 2): reine Clip-URLs. */
   clipUrls?: string[];
+  /** Gemischte Quellen (Teil-Erfolg im kinematischen Modus): pro Slot Clip ODER Foto. */
+  sources?: MixedSource[];
   tempo: Tempo;
   productLabel?: string | null;
   productName?: string | null;
@@ -170,7 +173,10 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
 export async function renderCampaign(input: RendererInput, cb: RenderCallbacks = {}): Promise<RenderResult> {
   const stills = input.imageUrls ?? [];
   const clips = input.clipUrls ?? [];
-  const sourceCount = clips.length > 0 ? clips.length : stills.length;
+  const mixed = input.sources ?? [];
+  const sourceCount = mixed.length > 0
+    ? mixed.length
+    : clips.length > 0 ? clips.length : stills.length;
   if (sourceCount < 1) throw new Error("min_1_source");
   if (sourceCount > 6) throw new Error("max_6_sources");
 
@@ -185,7 +191,20 @@ export async function renderCampaign(input: RendererInput, cb: RenderCallbacks =
   // Bild-Ladefehler einzeln abfangen (Skip statt Abbruch).
   const layers: SourceLayer[] = [];
   const skipped: string[] = [];
-  if (clips.length > 0) {
+  if (mixed.length > 0) {
+    for (const m of mixed) {
+      if (m.clip) {
+        try { layers.push({ video: await loadVideo(m.clip) }); continue; }
+        catch (e) { console.warn("[renderCampaign] clip failed, falling back to image:", m.clip, e); }
+      }
+      if (m.image) {
+        try { layers.push({ img: await loadImage(m.image) }); continue; }
+        catch (e) { skipped.push(m.image); console.warn("[renderCampaign] image failed:", m.image, e); }
+      } else {
+        skipped.push(m.clip ?? "unknown");
+      }
+    }
+  } else if (clips.length > 0) {
     for (const c of clips) {
       try { layers.push({ video: await loadVideo(c) }); }
       catch { skipped.push(c); }
@@ -202,6 +221,7 @@ export async function renderCampaign(input: RendererInput, cb: RenderCallbacks =
     );
   }
   if (skipped.length > 0) console.warn("[renderCampaign] übersprungene Quellen:", skipped);
+
 
 
   const seed = input.seed ?? randomSeed();
