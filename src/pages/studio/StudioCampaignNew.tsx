@@ -88,6 +88,7 @@ export default function StudioCampaignNew() {
   const [seed, setSeed] = useState<number>(() => randomSeed());
   const [cinematic, setCinematic] = useState(false);
   const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
+  const [cinematicProgress, setCinematicProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [cinematicClips, setCinematicClips] = useState<string[]>([]);
   const previewMountRef = useRef<HTMLDivElement | null>(null);
   const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
