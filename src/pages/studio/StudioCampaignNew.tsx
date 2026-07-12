@@ -144,13 +144,17 @@ export default function StudioCampaignNew() {
       const { data, error } = await supabase.functions.invoke("generate-tryon", {
         body: { product_id: chosenProduct.id, source_image_url: chosenProduct.image_url, mode: "shot", model_style: tryonStyle },
       });
-      if (error) throw error;
-      const r = data as { result_url?: string; error?: string; message?: string } | null;
-      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      if (error) { console.error("[generate-tryon] invoke error:", error); throw error; }
+      const r = data as { result_url?: string; error?: string; message?: string; stage?: string; status?: number } | null;
+      if (!r?.result_url) {
+        console.error("[generate-tryon] no result_url:", r);
+        throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      }
       setTryonReplacement(r.result_url);
       toast.success("KI-Model-Shot bereit — wird als Material genutzt.");
     } catch (e) {
       const msg = (e as Error).message ?? "";
+      console.error("[generate-tryon] failed:", e);
       toast.error(/guthaben|402|credit/i.test(msg)
         ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
         : msg || "Fehler");
