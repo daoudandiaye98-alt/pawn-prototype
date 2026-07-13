@@ -34,7 +34,7 @@ function publish(key: string, v: unknown) {
   memListeners.get(key)?.forEach((fn) => fn(v));
 }
 
-function useContentValue(key: string, fallback: string): string {
+export function useContentValue(key: string, fallback = ""): string {
   const [v, setV] = useState<string>(() => {
     const cached = memCache.get(key);
     return typeof cached === "string" ? cached : fallback;
