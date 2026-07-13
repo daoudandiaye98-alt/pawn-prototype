@@ -5,6 +5,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { WorldHero } from "@/components/palace/WorldHero";
+import { useContentValue } from "@/components/palace/Editable";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
@@ -65,7 +66,7 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
     if (!firstProd) return designers[0];
     return designers.find((d) => d.slug === firstProd.designerSlug) ?? designers[0];
   }, [designers, world, worldProducts]);
-
+const worldHeroImage = useContentValue(`world_${world}_hero_image`);
   return (
     <PalaceLayout transparentHeader={false}>
       {/* ── Monumental world entrance ──────────────────── */}
@@ -73,7 +74,7 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
         world={world}
         eyebrow={eyebrow}
         subline={intro}
-        image={featured?.hero_image_url ?? featured?.banner_url ?? null}
+        image={worldHeroImage || featured?.hero_image_url || featured?.banner_url || null}
       />
 
       {/* ── Kuratierte Headline + Kategorie-Chips ──────── */}
