@@ -54,7 +54,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
           style={{ width: "min(58vw, 780px)", aspectRatio: "16 / 9" }}
         >
-          <EditorialImage seed={seed} src={image ?? null} ratio="16/9" className="h-full w-full" priority />
+          <EditorialImage seed={seed} src={image ?? null} ratio="16/9" className="h-full w-full" color />
         </div>
 
         {/* Front text — same headline, clipped to a horizontal band that matches image height (~28% of viewport) */}
@@ -84,7 +84,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
           {label}
         </h1>
         <div className="w-full" style={{ aspectRatio: "4 / 5", maxWidth: "22rem" }}>
-          <EditorialImage seed={seed} src={image ?? null} ratio="4/5" className="h-full w-full" priority />
+          <EditorialImage seed={seed} src={image ?? null} ratio="4/5" className="h-full w-full" color />
         </div>
       </div>
 
