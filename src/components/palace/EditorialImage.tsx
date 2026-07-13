@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 interface Props {
   src?: string | null;
   seed: string;
@@ -11,36 +9,33 @@ interface Props {
   priority?: boolean;
 }
 
-const RATIO_TO_DIM: Record<string, [number, number]> = {
-  "3/4": [900, 1200],
-  "4/5": [800, 1000],
-  "3/2": [1200, 800],
-  "1/1": [1000, 1000],
-  "16/9": [1600, 900],
-  "5/4": [1000, 800],
-};
+export function EditorialImage({
+  src,
+  ratio = "3/4",
+  className = "",
+  alt = "",
+  priority,
+}: Props) {
+  const hasSrc = typeof src === "string" && src.trim().length > 0;
 
-/**
- * EditorialImage — grayscale, hairline, calm hover-scale.
- * Falls back to a stable picsum seed when no DB image exists.
- */
-export function EditorialImage({ src, seed, ratio = "3/4", className = "", alt = "", width, height, priority }: Props) {
-  const [dim] = useState(() => RATIO_TO_DIM[ratio] ?? [1000, 1200]);
-  const w = width ?? dim[0];
-  const h = height ?? dim[1];
-  const url = src && src.length > 0 ? src : `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
   return (
     <div
-      className={`palace-image relative overflow-hidden bg-[#e8e5de] ${className}`}
+      className={`palace-image relative overflow-hidden bg-[#FFFFFF] ${className}`}
       style={{ aspectRatio: ratio.replace("/", " / ") }}
     >
-      <img
-        src={url}
-        alt={alt}
-        loading={priority ? "eager" : "lazy"}
-        className="palace-image-inner absolute inset-0 h-full w-full object-cover"
-        draggable={false}
-      />
+      {hasSrc ? (
+        <img
+          src={src}
+          alt={alt}
+          loading={priority ? "eager" : "lazy"}
+          className="palace-image-inner absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center border-[1.5px] border-black bg-[#FFFFFF]">
+          <span className="palace-eyebrow text-[#000000]">Ohne Bild</span>
+        </div>
+      )}
     </div>
   );
 }
