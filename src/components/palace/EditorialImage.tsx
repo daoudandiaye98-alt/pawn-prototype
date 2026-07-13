@@ -7,6 +7,7 @@ interface Props {
   width?: number;
   height?: number;
   priority?: boolean;
+  color?: boolean;
 }
 
 export function EditorialImage({
@@ -15,6 +16,7 @@ export function EditorialImage({
   className = "",
   alt = "",
   priority,
+color = false,
 }: Props) {
   const hasSrc = typeof src === "string" && src.trim().length > 0;
 
@@ -29,6 +31,7 @@ export function EditorialImage({
           alt={alt}
           loading={priority ? "eager" : "lazy"}
           className="palace-image-inner absolute inset-0 h-full w-full object-cover"
+          style={color ? { filter: "none" } : undefined}
           draggable={false}
         />
       ) : (
