@@ -76,10 +76,20 @@ interface EditableProps {
   multiline?: boolean;
 }
 
+function extractText(node: ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (typeof node === "object" && "props" in (node as { props?: { children?: ReactNode } })) {
+    return extractText((node as { props?: { children?: ReactNode } }).props?.children);
+  }
+  return "";
+}
+
 export function Editable({ contentKey, children, as, className, multiline = false }: EditableProps) {
   const { enabled } = useEditMode();
   const Tag = (as ?? "span") as ElementType;
-  const fallback = typeof children === "string" ? children : "";
+  const fallback = extractText(children);
   const value = useContentValue(contentKey, fallback);
   const ref = useRef<HTMLElement>(null);
   const lastSaved = useRef(value);
