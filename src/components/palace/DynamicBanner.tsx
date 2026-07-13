@@ -43,8 +43,8 @@ export function DynamicBanner({
     }).sort((a, b) => b.s - a.s);
     // 80% pick from top match, 20% random discovery
     const source = personalization.hasSignals && Math.random() < 0.8 ? scored.slice(0, Math.max(1, Math.floor(scored.length / 3))) : scored;
-    const picked = source[Math.floor(Math.random() * source.length)].d;
-    setPick(picked);
+    const picked = source[Math.floor(Math.random() * source.length)]?.d ?? pool[0];
+    if (picked) setPick(picked);
   }, [pool, personalization.world, personalization.preferredTags, personalization.designerDna, personalization.hasSignals]);
 
 

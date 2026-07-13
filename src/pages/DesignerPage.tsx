@@ -392,7 +392,7 @@ const DesignerPage = () => {
               </div>
               <div className="text-right">
                 <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.7)" }}>
-                  {designer.tags[0] ?? "Welt"} {designer.collectionTitle ? `· ${designer.collectionTitle}` : ""}
+                  {designer.tags?.[0] ?? "Welt"} {designer.collectionTitle ? `· ${designer.collectionTitle}` : ""}
                 </p>
                 <p className="palace-serif mt-2 italic text-[1rem] text-[#FFFFFF]">Aktuelle Ausstellung</p>
               </div>
@@ -657,7 +657,7 @@ const DesignerPage = () => {
                 <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_house">Haus №</Editable>} value={`${houseLabel} von ${totalLabel}`} />
                 <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_since">Im Haus seit</Editable>} value={houseSince} />
                 <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_curator">Kuratiert von</Editable>} value={`PAWN · Ausgabe ${edition}`} />
-                <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_world">Welt · Stadt</Editable>} value={`${designer.tags[0] ?? "—"} · ${designer.location}`} />
+                <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_world">Welt · Stadt</Editable>} value={`${designer.tags?.[0] ?? "—"} · ${designer.location ?? "—"}`} />
               </dl>
             </div>
           </div>
