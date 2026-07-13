@@ -269,7 +269,17 @@ const Index = () => {
             <Link to="/neu" className="palace-eyebrow uline text-[#000000]">Alles Neue →</Link>
           </div>
 
-          <div className="grid grid-cols-12 border-l-[1.5px] border-t-[1.5px] border-black">
+          {editorialTiles.length === 0 ? (
+  <div className="py-20 text-center">
+    <h2 className="palace-serif italic text-[clamp(2rem,4vw,3.4rem)] leading-[1.02] text-[#000000]">
+  Die ersten Häuser ziehen ein.
+</h2>
+<p className="mt-4 palace-eyebrow text-[#000000]">
+  Bald zeigen wir hier die neuesten Stücke.
+</p>
+</div>
+) : (
+<div className="grid grid-cols-12 border-l-[1.5px] border-t-[1.5px] border-black">
             {editorialTiles.map((p, i) => {
               const layouts = [
                 { span: "col-span-12 md:col-span-5", ratio: "3/4" as const },
@@ -286,7 +296,7 @@ const Index = () => {
                 <Reveal key={p.id} delay={i * 60} className={`${l.span} border-r-[1.5px] border-b-[1.5px] border-black`}>
                   <Link to={`/product/${p.slug}`} className="group block p-3 md:p-4">
                     <div className="relative">
-                      <EditorialImage seed={`prod-${p.slug}`} ratio={l.ratio} />
+                      <EditorialImage src={p.image_url} seed={`prod-${p.slug}`} ratio={l.ratio} />
                       <span className="absolute left-3 top-3 border-[1.5px] border-black bg-white px-2 py-1 text-[0.55rem] font-medium uppercase tracking-[0.32em] text-black">
                         {worldLetter}–{idx}
                       </span>
@@ -300,6 +310,7 @@ const Index = () => {
               );
             })}
           </div>
+      )}
         </div>
       </section>
 
@@ -313,6 +324,7 @@ const Index = () => {
       </section>
 
       {/* ── 06 CURATED COLLECTION · horizontal scroll ─────── */}
+      {collection.items.length > 0 && (
       <section ref={trackSectionRef} className="relative z-10 bg-[#FFFFFF]" style={{ height: "320vh" }}>
         <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
           <div className="px-6 pt-24 md:px-14">
@@ -333,7 +345,11 @@ const Index = () => {
                 return (
                   <Reveal key={`${it.product_slug}-${i}`} delay={i * 40} className="w-[74vw] shrink-0 md:w-[36vw] lg:w-[28vw]">
                     <div className="relative">
-                      <EditorialImage seed={`col-${it.product_slug}`} ratio="3/4" />
+                      <EditorialImage
+  src={productBySlug.get(it.product_slug)?.image_url}
+  seed={`col-${it.product_slug}`}
+  ratio="3/4"
+/>
                       <span
                         className="absolute left-4 top-4 palace-eyebrow text-white"
                         style={{ mixBlendMode: "difference" }}
@@ -360,7 +376,7 @@ const Index = () => {
           </div>
         </div>
       </section>
-
+)}
       {/* ── 07 ATELIER FEATURE ──────────────────────────────── */}
       <section className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-24">
