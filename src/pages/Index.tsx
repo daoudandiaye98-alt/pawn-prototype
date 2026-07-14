@@ -346,7 +346,6 @@ const Index = () => {
                   <Reveal key={`${it.product_slug}-${i}`} delay={i * 40} className="w-[74vw] shrink-0 md:w-[36vw] lg:w-[28vw]">
                     <div className="relative">
                       <EditorialImage
-  src={productBySlug.get(it.product_slug)?.image_url}
   seed={`col-${it.product_slug}`}
   ratio="3/4"
 />
