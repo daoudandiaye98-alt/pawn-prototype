@@ -296,7 +296,7 @@ const Index = () => {
                 <Reveal key={p.id} delay={i * 60} className={`${l.span} border-r-[1.5px] border-b-[1.5px] border-black`}>
                   <Link to={`/product/${p.slug}`} className="group block p-3 md:p-4">
                     <div className="relative">
-                      <EditorialImage src={p.image_url} seed={`prod-${p.slug}`} ratio={l.ratio} />
+                      <EditorialImage seed={`prod-${p.slug}`} ratio={l.ratio} />
                       <span className="absolute left-3 top-3 border-[1.5px] border-black bg-white px-2 py-1 text-[0.55rem] font-medium uppercase tracking-[0.32em] text-black">
                         {worldLetter}–{idx}
                       </span>
