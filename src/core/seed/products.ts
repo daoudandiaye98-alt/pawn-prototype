@@ -29,5 +29,5 @@ export const seedProducts: Product[] = raw.map((r, i) => ({
 }));
 
 export function productIdBySlug(slug: string) {
-  return seedProducts.find((p) => p.slug === slug)?.id ?? seedProducts[0].id;
+  return seedProducts.find((p) => p.slug === slug)?.id;
 }
