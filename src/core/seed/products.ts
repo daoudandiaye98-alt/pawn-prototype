@@ -15,7 +15,7 @@ export const seedProducts: Product[] = raw.map((r, i) => ({
   id: asProductId(`prd_${(i + 1).toString().padStart(3, "0")}`),
   slug: r.slug,
   name: r.name,
-  designerId: designerIdBySlug(r.designerSlug),
+  designerId: designerIdBySlug(r.designerSlug)!,
   brandId: asBrandId(`brand_${r.designerSlug}`),
   price: r.price,
   category: r.category,
