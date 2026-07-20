@@ -54,8 +54,8 @@ function maskEmail(email: string | null | undefined): string {
   return `${shown}${local.length > 2 ? "…" : ""}@${domain}`;
 }
 
-/** Loads the last N orders (admins see all via RLS). */
-export function useAdminRecentOrders(limit = 6) {
+/** Loads the last N orders (admins see all via RLS). Refetches whenever refreshKey changes. */
+export function useAdminRecentOrders(limit = 6, refreshKey: number | string = 0) {
   const [rows, setRows] = useState<AdminOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -80,12 +80,12 @@ export function useAdminRecentOrders(limit = 6) {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [limit]);
+  }, [limit, refreshKey]);
   return { rows, loading };
 }
 
-/** Aggregates paid-order revenue per designer in the last 30 days. */
-export function useAdminTopDesigners(limit = 5) {
+/** Aggregates paid-order revenue per designer in the last 30 days. Refetches whenever refreshKey changes. */
+export function useAdminTopDesigners(limit = 5, refreshKey: number | string = 0) {
   const [rows, setRows] = useState<AdminTopDesigner[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -130,12 +130,12 @@ export function useAdminTopDesigners(limit = 5) {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [limit]);
+  }, [limit, refreshKey]);
   return { rows, loading };
 }
 
-/** Real 24h operational counters from domain_events / ai_logs / orders. */
-export function useAdminSystemStats(): AdminSystemStats {
+/** Real 24h operational counters from domain_events / ai_logs / orders. Refetches whenever refreshKey changes. */
+export function useAdminSystemStats(refreshKey: number | string = 0): AdminSystemStats {
   const [stats, setStats] = useState<AdminSystemStats>({
     eventsLast24h: 0, aiRequestsLast24h: 0, ordersLast24h: 0, paidOrdersLast24h: 0, designerCount: 0, loading: true,
   });
@@ -160,7 +160,8 @@ export function useAdminSystemStats(): AdminSystemStats {
         loading: false,
       });
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [refreshKey]);
   return stats;
 }
 
@@ -191,7 +192,7 @@ function pctDelta(cur: number, prev: number): number {
   return Math.round(((cur - prev) / prev) * 100);
 }
 
-export function useAdminPlatformKpis(): AdminPlatformKpis {
+export function useAdminPlatformKpis(refreshKey: number | string = 0): AdminPlatformKpis {
   const [state, setState] = useState<AdminPlatformKpis>({
     loading: true,
     revenue30d: 0, revenue30dDelta: 0,
@@ -294,7 +295,136 @@ export function useAdminPlatformKpis(): AdminPlatformKpis {
       });
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshKey]);
+
+  return state;
+}
+
+/* ---------- Akquise-Puls: Pipeline + Tagesaufgaben aus acquisition_leads ---------- */
+
+export interface AcquisitionPulse {
+  loading: boolean;
+  stageCounts: Record<"neu" | "angewaermt" | "kontaktiert" | "antwort" | "registriert" | "aktiviert", number>;
+  worldCounts: Record<"Mode" | "Kunst" | "Interior", number>;
+  toWarmUp: number;
+  toContact: number;
+  followupDue: number;
+}
+
+const ACQUISITION_STAGES = ["neu", "angewaermt", "kontaktiert", "antwort", "registriert", "aktiviert"] as const;
+
+function daysSinceIso(iso: string | null): number | null {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
+export function useAcquisitionPulse(refreshKey: number | string = 0): AcquisitionPulse {
+  const [state, setState] = useState<AcquisitionPulse>({
+    loading: true,
+    stageCounts: { neu: 0, angewaermt: 0, kontaktiert: 0, antwort: 0, registriert: 0, aktiviert: 0 },
+    worldCounts: { Mode: 0, Kunst: 0, Interior: 0 },
+    toWarmUp: 0, toContact: 0, followupDue: 0,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("acquisition_leads")
+        .select("status, world, warmed_at, contacted_at, followup_at")
+        .limit(5000);
+      if (cancelled) return;
+      const rows = data ?? [];
+      const stageCounts = { neu: 0, angewaermt: 0, kontaktiert: 0, antwort: 0, registriert: 0, aktiviert: 0 };
+      const worldCounts = { Mode: 0, Kunst: 0, Interior: 0 };
+      let toWarmUp = 0, toContact = 0, followupDue = 0;
+      for (const r of rows) {
+        const status = r.status as string;
+        if (status in stageCounts) stageCounts[status as keyof typeof stageCounts] += 1;
+        if (r.world === "Mode" || r.world === "Kunst" || r.world === "Interior") worldCounts[r.world] += 1;
+        if (status === "neu") toWarmUp += 1;
+        if (status === "angewaermt" && (daysSinceIso(r.warmed_at) ?? 0) >= 2) toContact += 1;
+        if (status === "kontaktiert" && !r.followup_at && (daysSinceIso(r.contacted_at) ?? 0) >= 5) followupDue += 1;
+      }
+      setState({ loading: false, stageCounts, worldCounts, toWarmUp, toContact, followupDue });
+    })();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  return state;
+}
+
+/* ---------- Ereignis-Ticker: letzte domain_events, real ---------- */
+
+export interface DomainEventRow {
+  id: string;
+  type: string;
+  at: string;
+}
+
+export function useDomainEventsTicker(limit = 15, refreshKey: number | string = 0) {
+  const [rows, setRows] = useState<DomainEventRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("domain_events")
+        .select("id, type, at")
+        .order("at", { ascending: false })
+        .limit(limit);
+      if (cancelled) return;
+      setRows((data ?? []) as DomainEventRow[]);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [limit, refreshKey]);
+  return { rows, loading };
+}
+
+/* ---------- System-Herzschlag: Secrets + Trend-Frische ---------- */
+
+export interface SystemHeartbeat {
+  loading: boolean;
+  payments: boolean;
+  ai: boolean;
+  imageGen: boolean;
+  social: boolean;
+  trendsFresh: boolean;
+  trendAgeDays: number | null;
+  secretsAvailable: boolean;
+}
+
+export function useSystemHeartbeat(refreshKey: number | string = 0): SystemHeartbeat {
+  const [state, setState] = useState<SystemHeartbeat>({
+    loading: true, payments: false, ai: false, imageGen: false, social: false,
+    trendsFresh: false, trendAgeDays: null, secretsAvailable: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [secretsRes, trendRes] = await Promise.all([
+        supabase.functions.invoke("check-secrets", { body: {} }).catch(() => ({ data: null, error: true })),
+        supabase.from("trend_snapshots").select("day").order("day", { ascending: false }).limit(1),
+      ]);
+      if (cancelled) return;
+      const present = (secretsRes as { data?: { present?: Record<string, boolean> } } | null)?.data?.present;
+      const lastDay = (trendRes.data as { day?: string }[] | null)?.[0]?.day ?? null;
+      const trendAgeDays = lastDay ? Math.floor((Date.now() - new Date(lastDay).getTime()) / 86_400_000) : null;
+      setState({
+        loading: false,
+        secretsAvailable: !!present,
+        payments: !!present?.STRIPE_SECRET_KEY,
+        ai: !!(present?.OPENAI_API_KEY || present?.ANTHROPIC_API_KEY),
+        imageGen: !!present?.FAL_KEY,
+        social: !!(present?.META_ACCESS_TOKEN || present?.TIKTOK_CLIENT_KEY),
+        trendsFresh: trendAgeDays !== null && trendAgeDays <= 1,
+        trendAgeDays,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
   return state;
 }

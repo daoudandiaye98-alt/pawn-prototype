@@ -3,7 +3,7 @@
  * Reines Frontend gegen die bereits bestehende Tabelle `acquisition_leads`.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -64,19 +64,20 @@ const ACTION_STATUSES: Status[] = [
   "angewaermt", "kontaktiert", "antwort", "registriert", "aktiviert", "spaeter", "nein", "ghost",
 ];
 
-// TODO: Platzhalter-Rekonstruktion aus dem Screenshot (Text war durch die Tastatur abgeschnitten) —
-// bitte den exakten Wortlaut von Daouda bestätigen lassen und hier ersetzen.
 function buildMessage(personalLine: string) {
   return `Hey, ich bin Daouda aus Köln. ${personalLine}
 
-Ich hab mir erlaubt, aus deinen Fotos zwei kurze Kampagnen-Clips zu bauen.
+Ich baue gerade PAWN — eine kuratierte Ausstellung für unabhängige Designer aus Mode, Interior und Kunst. Kein Katalog, kein Marktplatz-Grau: ein ruhiger Raum, in dem jedes Haus seine eigene Geschichte erzählt und gesehen wird.
 
-Welche fühlt sich mehr nach dir an?
+Für dich entstehen keine Kosten. Keine Grundgebühr, keine Mindestlaufzeit. Du lädst deine Stücke einmal hoch — die Fotos hast du ja längst — und wir kümmern uns darum, dass man dich sieht. Wenn etwas verkauft wird, bleiben 93% bei dir.
 
-Gebaut mit PAWN — der kuratierten Ausstellung für unabhängige Designer.`;
+Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
+
+Wenn's nichts für dich ist — auch gut, mach weiter so.`;
 }
 
-const FOLLOWUP_MESSAGE = `Kein Stress — wollte nur sichergehen, dass die zwei Clips angekommen sind.`;
+// TODO: Screenshot schneidet den Text nach "dass meine Nac…" ab — exakten Wortlaut von Daouda bestätigen lassen und hier ersetzen.
+const FOLLOWUP_MESSAGE = `Kein Stress — wollte nur sichergehen, dass meine Nachricht bei dir angekommen ist.`;
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -492,9 +493,13 @@ type SortField = "created_at" | "followers";
 
 export default function AdminAkquise() {
   const { user, roles, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get("status");
   const [rows, setRows] = useState<Lead[]>([]);
   const [fetching, setFetching] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">(
+    initialStatus && STATUSES.includes(initialStatus as Status) ? (initialStatus as Status) : "all",
+  );
   const [worldFilter, setWorldFilter] = useState<World | "all">("all");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("created_at");

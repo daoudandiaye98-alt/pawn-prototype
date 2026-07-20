@@ -21,6 +21,8 @@ interface Signals {
   campaignsInReview: number;
   emptyContent: number;
   missingSecrets: string[];
+  followupDue: number;
+  warmedWaiting: number;
 }
 
 const KNOWN_SECRETS = ["STRIPE_SECRET_KEY", "OPENAI_API_KEY", "FAL_KEY"];
@@ -28,18 +30,22 @@ const KNOWN_SECRETS = ["STRIPE_SECRET_KEY", "OPENAI_API_KEY", "FAL_KEY"];
 export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
   const [signals, setSignals] = useState<Signals>({
     pendingApplications: 0, queuedPosts: 0, campaignsInReview: 0, emptyContent: 0,
-    missingSecrets: [],
+    missingSecrets: [], followupDue: 0, warmedWaiting: 0,
   });
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [apps, queue, camps, content, secretsRes] = await Promise.all([
+      const fiveDaysAgo = new Date(Date.now() - 5 * 86_400_000).toISOString();
+      const [apps, queue, camps, content, secretsRes, followups, warmed] = await Promise.all([
         supabase.from("designer_applications").select("id", { count: "exact", head: true }).in("status", ["submitted", "in_review"]),
         supabase.from("posting_queue").select("id", { count: "exact", head: true }).eq("status", "queued"),
         supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("status", "proposed"),
         supabase.from("site_content").select("value").limit(50),
         supabase.functions.invoke("check-secrets", { body: {} }).catch(() => ({ data: null })),
+        supabase.from("acquisition_leads").select("id", { count: "exact", head: true })
+          .eq("status", "kontaktiert").is("followup_at", null).lte("contacted_at", fiveDaysAgo),
+        supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).eq("status", "angewaermt"),
       ]);
       if (!alive) return;
       const empties = ((content.data ?? []) as Array<{ value: unknown }>).filter((r) => {
@@ -54,6 +60,8 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
         campaignsInReview: camps.count ?? 0,
         emptyContent: empties,
         missingSecrets: missingFromApi,
+        followupDue: followups.count ?? 0,
+        warmedWaiting: warmed.count ?? 0,
       });
     })();
     return () => { alive = false; };
@@ -67,6 +75,18 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
         reason: "Prüfe kurz — genehmigen, ablehnen oder Notizen hinterlassen. Zwei Minuten pro Bewerbung.",
         cta: "Bewerbungen öffnen",
         to: "/admin/designers",
+        urgency: "hoch",
+      };
+    }
+    if (signals.followupDue > 0 || signals.warmedWaiting > 10) {
+      return {
+        key: "acquisition",
+        headline: signals.followupDue > 0
+          ? `${signals.followupDue} Follow-up${signals.followupDue === 1 ? "" : "s"} in der Akquise fällig.`
+          : `${signals.warmedWaiting} Leads warten seit Tagen auf den nächsten Kontakt.`,
+        reason: "Kurzes Zeitfenster, bevor der Kontakt kalt wird — jetzt nachfassen oder anschreiben.",
+        cta: "Akquise-Cockpit öffnen",
+        to: "/admin/akquise",
         urgency: "hoch",
       };
     }

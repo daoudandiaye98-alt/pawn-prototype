@@ -10,11 +10,13 @@ import { OsBusProvider, useOsBus, type EngineKey, type EngineState, type OsActio
 import {
   Activity, AlertTriangle, ArrowUpRight, Bot, CircleDot, Cpu, Dna, Package,
   Sparkles, TrendingUp, UserPlus, Zap, Layers, BookOpen, ShieldCheck, Send, Radio,
+  Rss, HeartPulse,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   useAdminRecentOrders, useAdminTopDesigners, useAdminSystemStats,
   useAdminPlatformKpis, requestAdminAction,
+  useAcquisitionPulse, useDomainEventsTicker, useSystemHeartbeat,
 } from "@/features/admin/useAdminData";
 import { useAdminNextMove } from "@/features/admin/useAdminNextMove";
 import { useDisplayName } from "@/lib/displayName";
@@ -171,6 +173,222 @@ function EngineRow({ k, state }: { k: EngineKey; state: EngineState }) {
   );
 }
 
+/* ─────────────────────── Live-Puls: schmale Statusleiste ─────────────────────── */
+
+function LivePulseBar({ lastUpdated }: { lastUpdated: Date }) {
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setNowTick((v) => v + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const secondsAgo = Math.max(0, Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+  const label = secondsAgo < 60 ? `vor ${secondsAgo}s` : `vor ${Math.floor(secondsAgo / 60)}m`;
+  return (
+    <div className="mt-3 flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.24em] text-[hsl(36_15%_55%)]">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      </span>
+      Letzte Aktualisierung: {label}
+    </div>
+  );
+}
+
+/* ─────────────────────── Ereignis-Ticker: echte domain_events ─────────────────────── */
+
+const EVENT_SENTENCES: Record<string, string> = {
+  "order.placed": "Eine Bestellung wurde aufgegeben",
+  "order.received": "Eine Bestellung ist eingegangen",
+  "order.paid": "Eine Bestellung wurde bezahlt",
+  "plan.updated": "Ein Plan wurde geändert",
+  "designer.application_submitted": "Neue Bewerbung eingegangen",
+  "designer.onboarding_completed": "Ein Designer hat das Onboarding abgeschlossen",
+  "designer.consent_accepted": "Zustimmung erteilt",
+  "consent.revoked": "Zustimmung widerrufen",
+  "designer.level_up": "Ein Designer ist aufgestiegen",
+  "designer.followed": "Ein Designer wurde gefolgt",
+  "designer.registered": "Ein Designer wurde registriert",
+  "product.viewed": "Ein Produkt wurde angesehen",
+  "product.saved": "Ein Produkt wurde gemerkt",
+  "product.registered": "Ein Produkt wurde angelegt",
+  "cart.item_added": "Etwas wurde in den Warenkorb gelegt",
+  "cart.item_removed": "Etwas wurde aus dem Warenkorb entfernt",
+  "cart.cleared": "Ein Warenkorb wurde geleert",
+  "mutation.proposed": "Eine DNA-Änderung wurde vorgeschlagen",
+  "mutation.ratified": "Eine DNA-Änderung wurde bestätigt",
+  "mutation.rejected": "Eine DNA-Änderung wurde abgelehnt",
+  "dna.updated": "DNA wurde aktualisiert",
+  "ai.prompt_updated": "Ein Prompt wurde aktualisiert",
+  "ai.taste_signal": "Ein Geschmackssignal wurde erfasst",
+  "ai.signal_corrected": "Ein Geschmackssignal wurde korrigiert",
+  "ai.memory_deleted": "Eine Erinnerung wurde gelöscht",
+  "ai.response_logged": "Eine KI-Antwort wurde protokolliert",
+  "ai.tool_enabled": "Ein KI-Werkzeug wurde aktiviert",
+  "ai.tool_disabled": "Ein KI-Werkzeug wurde deaktiviert",
+  "plugin.enabled": "Ein Plugin wurde aktiviert",
+  "plugin.disabled": "Ein Plugin wurde deaktiviert",
+  "plugin.registered": "Ein Plugin wurde registriert",
+  "content.updated": "Ein Inhalt wurde geändert",
+  "campaign.broll_ready": "B-Roll für eine Kampagne ist fertig",
+  "integration.dispatched": "Eine Integration wurde ausgelöst",
+  "integration.failed": "Eine Integration ist fehlgeschlagen",
+  "admin.action_requested": "Eine Admin-Aktion wurde angefordert",
+  "identity.created": "Eine neue Identität wurde angelegt",
+  "policy.updated": "Eine Policy wurde aktualisiert",
+  "brand.registered": "Eine Marke wurde registriert",
+};
+
+function eventSentence(type: string): string {
+  return EVENT_SENTENCES[type] ?? `Ereignis: ${type}`;
+}
+
+function EventTicker({ rows, loading }: { rows: { id: string; type: string; at: string }[]; loading: boolean }) {
+  if (loading) return <EmptyRow text="Lade …" />;
+  if (rows.length === 0) return <EmptyRow text="Noch ist es still. Der erste Zug kommt." />;
+  return (
+    <ul className="max-h-[360px] divide-y divide-white/[0.06] overflow-y-auto">
+      {rows.map((e) => (
+        <li key={e.id} className="px-5 py-3 text-[12px] animate-in fade-in slide-in-from-top-1 duration-500">
+          <p className="text-[hsl(36_25%_86%)]">{eventSentence(e.type)}</p>
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.2em] text-[hsl(36_15%_45%)]">
+            {timeAgo(new Date(e.at).getTime())} · {e.type}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ─────────────────────── System-Herzschlag: Ampel ohne Farben ─────────────────────── */
+
+function HeartbeatDot({ ok }: { ok: boolean }) {
+  return (
+    <span className={cn(
+      "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
+      ok ? "border-[hsl(36_28%_94%)] bg-[hsl(36_28%_94%)]" : "border-white/25 bg-transparent",
+    )} />
+  );
+}
+
+function SystemHeartbeatPanel({ hb }: { hb: ReturnType<typeof useSystemHeartbeat> }) {
+  const rows: { label: string; ok: boolean; sub: string }[] = [];
+  if (hb.secretsAvailable) {
+    rows.push({ label: "Zahlungen", ok: hb.payments, sub: "Stripe-Key" });
+    rows.push({ label: "KI", ok: hb.ai, sub: "OpenAI / Anthropic" });
+    rows.push({ label: "Bildgenerierung", ok: hb.imageGen, sub: "FAL" });
+    rows.push({ label: "Social-Anbindung", ok: hb.social, sub: "Meta / TikTok" });
+  }
+  rows.push({
+    label: "Trend-Berechnung",
+    ok: hb.trendsFresh,
+    sub: hb.trendAgeDays === null ? "noch kein Snapshot" : `letzter Snapshot vor ${hb.trendAgeDays} T`,
+  });
+  return (
+    <ul className="divide-y divide-white/[0.05]">
+      {hb.loading ? (
+        <EmptyRow text="Lade …" />
+      ) : rows.map((r) => (
+        <li key={r.label} className="flex items-center gap-3 px-5 py-3">
+          <HeartbeatDot ok={r.ok} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[12.5px] text-[hsl(36_28%_92%)]">{r.label}</p>
+            <p className="text-[10.5px] text-[hsl(36_15%_55%)]">{r.sub}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ─────────────────────── Akquise-Puls ─────────────────────── */
+
+const PULSE_STAGES = ["neu", "angewaermt", "kontaktiert", "antwort", "registriert", "aktiviert"] as const;
+const PULSE_STAGE_LABELS: Record<(typeof PULSE_STAGES)[number], string> = {
+  neu: "Neu", angewaermt: "Angewärmt", kontaktiert: "Kontaktiert",
+  antwort: "Antwort", registriert: "Registriert", aktiviert: "Aktiviert",
+};
+const ACQUISITION_GOALS = { Mode: 500, Kunst: 250, Interior: 250 } as const;
+
+function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof useAcquisitionPulse>; navigate: (to: string) => void }) {
+  const total = PULSE_STAGES.reduce((sum, s) => sum + pulse.stageCounts[s], 0);
+  const tasks = [
+    { label: "anzuwärmen", count: pulse.toWarmUp, status: "neu" },
+    { label: "zu kontaktieren", count: pulse.toContact, status: "angewaermt" },
+    { label: "Follow-up fällig", count: pulse.followupDue, status: "kontaktiert" },
+  ];
+  return (
+    <div className="grid gap-0 sm:grid-cols-[1.5fr_1fr]">
+      <div className="border-b border-white/[0.06] p-5 sm:border-b-0 sm:border-r">
+        {pulse.loading ? (
+          <EmptyRow text="Lade …" />
+        ) : total === 0 ? (
+          <EmptyRow text="Die Pipeline ist noch leer. Die ersten Kandidaten ziehen ein." />
+        ) : (
+          <div className="flex h-6 w-full overflow-hidden border border-white/10">
+            {PULSE_STAGES.map((s) => {
+              const count = pulse.stageCounts[s];
+              if (count === 0) return null;
+              return (
+                <div
+                  key={s}
+                  title={`${PULSE_STAGE_LABELS[s]}: ${count}`}
+                  className="flex items-center justify-center border-r border-white/10 bg-white/[0.04] text-[9px] uppercase tracking-[0.1em] text-[hsl(36_20%_78%)] last:border-r-0"
+                  style={{ width: `${(count / total) * 100}%` }}
+                >
+                  {count}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9.5px] uppercase tracking-[0.14em] text-[hsl(36_15%_50%)]">
+          {PULSE_STAGES.map((s) => (
+            <span key={s}>{PULSE_STAGE_LABELS[s]} · {pulse.loading ? "…" : pulse.stageCounts[s]}</span>
+          ))}
+        </div>
+
+        <ul className="mt-4 divide-y divide-white/[0.05]">
+          {tasks.map((t) => (
+            <li key={t.label} className="flex items-center justify-between py-2 text-[12.5px]">
+              <span className="text-[hsl(36_25%_86%)]">
+                <span className="font-serif text-[16px] tabular-nums text-[hsl(36_28%_94%)]">{pulse.loading ? "…" : t.count}</span>{" "}
+                {t.label}
+              </span>
+              <button
+                onClick={() => navigate(`/admin/akquise?status=${t.status}`)}
+                className="text-[0.6rem] uppercase tracking-[0.2em] text-[hsl(36_20%_74%)] hover:text-[hsl(36_28%_94%)]"
+              >
+                Öffnen →
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="p-5">
+        <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">Fortschritt gegen Ziel</p>
+        <div className="mt-3 space-y-3">
+          {(Object.keys(ACQUISITION_GOALS) as (keyof typeof ACQUISITION_GOALS)[]).map((w) => {
+            const goal = ACQUISITION_GOALS[w];
+            const count = pulse.worldCounts[w];
+            const pct = Math.min(100, Math.round((count / goal) * 100));
+            return (
+              <div key={w}>
+                <div className="flex items-center justify-between text-[10.5px] text-[hsl(36_15%_55%)]">
+                  <span className="uppercase tracking-[0.18em]">{w}</span>
+                  <span className="tabular-nums">{count} / {goal}</span>
+                </div>
+                <div className="mt-1 h-1 w-full bg-white/[0.06]">
+                  <div className="h-full bg-white/40" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────── Command Deck (OS body) ─────────────────────── */
 
 function CommandDeck() {
@@ -178,16 +396,26 @@ function CommandDeck() {
   void seedRevenueSeries; void months;
   const { feed, engines, pulse, fire } = useOsBus();
   const navigate = useNavigate();
-  const { rows: recentOrders, loading: ordersLoading } = useAdminRecentOrders(6);
-  const { rows: topDesigners, loading: topLoading } = useAdminTopDesigners(5);
-  const sysStats = useAdminSystemStats();
-  const kpis = useAdminPlatformKpis();
+
+  // Live-Puls: die ganze Seite lädt ihre Daten alle 30 Sekunden neu.
+  const [tick, setTick] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((v) => v + 1), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  useEffect(() => { setLastUpdated(new Date()); }, [tick]);
+
+  const { rows: recentOrders, loading: ordersLoading } = useAdminRecentOrders(6, tick);
+  const { rows: topDesigners, loading: topLoading } = useAdminTopDesigners(5, tick);
+  const sysStats = useAdminSystemStats(tick);
+  const kpis = useAdminPlatformKpis(tick);
+  const acquisitionPulse = useAcquisitionPulse(tick);
+  const { rows: eventRows, loading: eventsLoading } = useDomainEventsTicker(15, tick);
+  const heartbeat = useSystemHeartbeat(tick);
   const { firstName } = useDisplayName();
   const { move: adminMove } = useAdminNextMove();
   const [actionDialog, setActionDialog] = useState<null | { action: string; title: string; description: string }>(null);
-  const [tick, setTick] = useState(0);
-  useEffect(() => { const t = window.setInterval(() => setTick((v) => v + 1), 15_000); return () => window.clearInterval(t); }, []);
-  void tick;
 
   // Numbers that visibly react to the causal chain (owner-only "operating state")
   const [derivedKpi, setDerivedKpi] = useState({ designers: 0, forecast: 0, dnaCoverage: 0 });
@@ -263,6 +491,7 @@ function CommandDeck() {
           </button>
         </div>
       </div>
+      <LivePulseBar lastUpdated={lastUpdated} />
 
       {/* DEIN NÄCHSTER ZUG — ganz oben, ein klarer Impuls */}
       <section className="mt-6 border-[1.5px] border-[hsl(350_55%_45%)] bg-[hsl(18_10%_6%)] p-6 md:p-7">
@@ -288,13 +517,18 @@ function CommandDeck() {
         </div>
       </section>
 
+      {/* AKQUISE-PULS — prominent, direkt unter dem nächsten Zug */}
+      <Panel title="Akquise-Puls" eyebrow="Designer gewinnen · täglich" className="mt-4" live>
+        <AcquisitionPulsePanel pulse={acquisitionPulse} navigate={navigate} />
+      </Panel>
+
       {/* KPI row — real 30d data + live-reactive derived deltas */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCell
           label="Umsatz · 30 T"
           value={kpis.loading ? "…" : `€${(kpis.revenue30d + derivedKpi.forecast).toLocaleString("de-DE")}`}
           delta={derivedKpi.forecast ? `+€${derivedKpi.forecast.toLocaleString("de-DE")} live` : `${kpis.revenue30dDelta >= 0 ? "+" : ""}${kpis.revenue30dDelta} %`}
-          trend={kpis.revenue30dDelta >= 0 ? "up" : "down"} series={kpis.revenueSeries} pulseKey={pulse}
+          trend={kpis.revenue30dDelta >= 0 ? "up" : "down"} series={kpis.revenueSeries} pulseKey={pulse + tick}
           why={[
             `Bezahlte Bestellungen: ${kpis.orders30d}`,
             `Ø Bestellwert: €${kpis.aov30d.toLocaleString("de-DE")}`,
@@ -305,31 +539,31 @@ function CommandDeck() {
           value={kpis.loading ? "…" : String(kpis.orders30d)}
           delta={kpis.ordersDelta >= 0 ? `+${kpis.ordersDelta}` : String(kpis.ordersDelta)}
           trend={kpis.ordersDelta >= 0 ? "up" : "down"}
-          series={kpis.orderSeries} accent="emerald" pulseKey={pulse}
+          series={kpis.orderSeries} accent="emerald" pulseKey={pulse + tick}
           why={kpis.orders30d === 0 ? ["Keine bezahlten Bestellungen in den letzten 30 Tagen."] : [`${kpis.orders30d} bezahlt`, "Tages-Buckets aus orders"]} />
         <KpiCell label="Ø Bestellwert"
           value={kpis.loading ? "…" : (kpis.aov30d > 0 ? `€${kpis.aov30d.toLocaleString("de-DE")}` : "—")}
           delta={kpis.aov30d > 0 ? `${kpis.aovDelta >= 0 ? "+" : ""}${kpis.aovDelta} %` : "keine Basis"}
           trend={kpis.aovDelta >= 0 ? "up" : "down"}
           series={kpis.revenueSeries.map((v, i) => (kpis.orderSeries[i] > 0 ? Math.round(v / kpis.orderSeries[i]) : 0))}
-          accent="amber" pulseKey={pulse}
+          accent="amber" pulseKey={pulse + tick}
           why={kpis.aov30d === 0 ? ["Noch kein bezahlter Warenkorb."] : ["Umsatz / bezahlte Bestellungen (30 T)"]} />
         <KpiCell label="Neue Nutzer · 30 T"
           value={kpis.loading ? "…" : String(kpis.newUsers30d)}
           delta={`${kpis.newUsersDelta >= 0 ? "+" : ""}${kpis.newUsersDelta} %`}
           trend={kpis.newUsersDelta >= 0 ? "up" : "down"}
           series={kpis.orderSeries.map((_, i) => Math.max(0, Math.round(kpis.newUsers30d / 30) + (i - 15) * 0))}
-          accent="emerald" pulseKey={pulse}
+          accent="emerald" pulseKey={pulse + tick}
           why={kpis.newUsers30d === 0 ? ["Noch keine neuen Konten in den letzten 30 Tagen."] : ["profiles.created_at, letzte 30 T"]} />
         <KpiCell label="DNA Coverage"
           value={kpis.loading ? "…" : `${Math.min(100, kpis.dnaCoverage + derivedKpi.dnaCoverage)} %`}
           delta={derivedKpi.dnaCoverage ? `+${derivedKpi.dnaCoverage} pt live` : (kpis.activeDesigners > 0 ? `${kpis.activeDesigners} aktiv` : "keine Designer")}
-          trend="up" series={kpis.orderSeries} pulseKey={pulse}
+          trend="up" series={kpis.orderSeries} pulseKey={pulse + tick}
           why={kpis.activeDesigners === 0 ? ["Noch keine aktiven Designer."] : [`Designer mit brand_dna: ${Math.round((kpis.dnaCoverage/100) * kpis.activeDesigners)} / ${kpis.activeDesigners}`]} />
         <KpiCell label="Aktive Designer"
           value={String((kpis.activeDesigners) + derivedKpi.designers)}
           delta={derivedKpi.designers ? `+${derivedKpi.designers} live` : (kpis.pendingApplications ? `${kpis.pendingApplications} in Prüfung` : "Inbox leer")}
-          trend="up" series={kpis.orderSeries.map(() => kpis.activeDesigners)} accent="emerald" pulseKey={pulse}
+          trend="up" series={kpis.orderSeries.map(() => kpis.activeDesigners)} accent="emerald" pulseKey={pulse + tick}
           why={[`${kpis.pendingApplications} warten auf Review`, "Live aus designers (status=active)"]} />
       </div>
 
@@ -406,6 +640,19 @@ function CommandDeck() {
               </li>
             ))}
           </ul>
+        </Panel>
+      </div>
+
+      {/* Row: Ereignis-Ticker (echte domain_events) + System-Herzschlag */}
+      <div className="mt-4 grid gap-3 xl:grid-cols-[1.6fr_1fr]">
+        <Panel title="Ereignis-Ticker" eyebrow="letzte 15 · domain_events" live
+          action={<span className="inline-flex items-center gap-1.5 text-[0.6rem] uppercase tracking-[0.22em] text-[hsl(36_20%_74%)]"><Rss className="h-3 w-3" /> real</span>}>
+          <EventTicker rows={eventRows} loading={eventsLoading} />
+        </Panel>
+
+        <Panel title="System-Herzschlag" eyebrow="vorhanden / fehlt"
+          action={<HeartPulse className="h-3.5 w-3.5 text-[hsl(36_20%_74%)]" />}>
+          <SystemHeartbeatPanel hb={heartbeat} />
         </Panel>
       </div>
 
