@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      acquisition_leads: {
+        Row: {
+          bio: string | null
+          clips: Json | null
+          contacted_at: string | null
+          created_at: string
+          followers: number | null
+          followup_at: string | null
+          handle: string
+          id: string
+          notes: string | null
+          personal_line: string | null
+          source: string | null
+          status: string
+          updated_at: string
+          warmed_at: string | null
+          world: string
+        }
+        Insert: {
+          bio?: string | null
+          clips?: Json | null
+          contacted_at?: string | null
+          created_at?: string
+          followers?: number | null
+          followup_at?: string | null
+          handle: string
+          id?: string
+          notes?: string | null
+          personal_line?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          warmed_at?: string | null
+          world: string
+        }
+        Update: {
+          bio?: string | null
+          clips?: Json | null
+          contacted_at?: string | null
+          created_at?: string
+          followers?: number | null
+          followup_at?: string | null
+          handle?: string
+          id?: string
+          notes?: string | null
+          personal_line?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          warmed_at?: string | null
+          world?: string
+        }
+        Relationships: []
+      }
       ai_actions_log: {
         Row: {
           action: string
