@@ -1805,6 +1805,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      jarvis_heartbeat_sql: { Args: never; Returns: Json }
       mark_application_in_review: {
         Args: { _application_id: string }
         Returns: undefined
