@@ -52,8 +52,24 @@ interface JarvisPendingAction {
   expires_at: string;
 }
 
+interface JarvisExperiment {
+  id: string;
+  hypothesis: string;
+  changed_key: string;
+  metric: string;
+  baseline: number | null;
+  result: number | null;
+  status: string;
+  started_at: string;
+  evaluated_at: string | null;
+}
+
 const KIND_LABELS: Record<string, string> = {
-  morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort",
+  morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort", diagnose: "Diagnose",
+};
+
+const EXPERIMENT_STATUS_LABELS: Record<string, string> = {
+  laufend: "Läuft", behalten: "Behalten", verworfen: "Verworfen",
 };
 
 const SpeechRecognitionCtor: (new () => any) | null =
@@ -91,12 +107,15 @@ export default function AdminJarvis() {
   const [reports, setReports] = useState<JarvisReport[]>([]);
   const [notices, setNotices] = useState<JarvisNotice[]>([]);
   const [pending, setPending] = useState<JarvisPendingAction[]>([]);
+  const [experiments, setExperiments] = useState<JarvisExperiment[]>([]);
   const [rawConfig, setRawConfig] = useState<Record<string, unknown> | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [monthlyLimit, setMonthlyLimit] = useState(20);
   const [fetching, setFetching] = useState(true);
   const [command, setCommand] = useState("");
   const [busy, setBusy] = useState<null | "befehl" | "morgenbericht" | "wochenbericht" | "recherche">(null);
+  const [diagnoseBusy, setDiagnoseBusy] = useState(false);
+  const [evolutionBusy, setEvolutionBusy] = useState(false);
   const [resolving, setResolving] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -106,17 +125,19 @@ export default function AdminJarvis() {
   const load = async () => {
     setFetching(true);
     try {
-      const [runsRes, reportsRes, noticesRes, pendingRes, configRes] = await Promise.allSettled([
+      const [runsRes, reportsRes, noticesRes, pendingRes, experimentsRes, configRes] = await Promise.allSettled([
         supabase.from("jarvis_runs").select("*").order("started_at", { ascending: false }).limit(20),
         supabase.from("jarvis_reports").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("jarvis_notices").select("*").order("created_at", { ascending: false }).limit(30),
         supabase.from("jarvis_pending_actions").select("*").eq("status", "pending").order("created_at", { ascending: false }),
+        supabase.from("jarvis_experiments").select("*").order("started_at", { ascending: false }).limit(20),
         supabase.from("ai_config").select("value").eq("key", "jarvis_config").maybeSingle(),
       ]);
       if (runsRes.status === "fulfilled") setRuns((runsRes.value.data as JarvisRun[]) ?? []);
       if (reportsRes.status === "fulfilled") setReports((reportsRes.value.data as JarvisReport[]) ?? []);
       if (noticesRes.status === "fulfilled") setNotices((noticesRes.value.data as JarvisNotice[]) ?? []);
       if (pendingRes.status === "fulfilled") setPending((pendingRes.value.data as JarvisPendingAction[]) ?? []);
+      if (experimentsRes.status === "fulfilled") setExperiments((experimentsRes.value.data as JarvisExperiment[]) ?? []);
       if (configRes.status === "fulfilled") {
         const cfgValue = (configRes.value.data?.value as Record<string, unknown>) ?? null;
         setRawConfig(cfgValue);
@@ -195,6 +216,38 @@ export default function AdminJarvis() {
     }
   }
 
+  async function runDiagnoseNow() {
+    setDiagnoseBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "diagnose" } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string };
+      if (!result.ok) { toast.error(result.error ?? "Diagnose konnte nicht laufen."); return; }
+      toast.success("Diagnose fertig.");
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDiagnoseBusy(false);
+    }
+  }
+
+  async function runEvolutionNow() {
+    setEvolutionBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "evolution" } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string; summary?: string };
+      if (!result.ok) { toast.error(result.error ?? "Auswertung konnte nicht laufen."); return; }
+      toast.success(result.summary ?? "Auswertung fertig.");
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setEvolutionBusy(false);
+    }
+  }
+
   async function dismissNotice(id: string) {
     const now = new Date().toISOString();
     setNotices((prev) => prev.map((n) => (n.id === id ? { ...n, dismissed_at: now } : n)));
@@ -216,6 +269,9 @@ export default function AdminJarvis() {
   }
 
   const unseenNotices = notices.filter((n) => !n.dismissed_at);
+  const latestDiagnose = reports.find((r) => r.kind === "diagnose") ?? null;
+  const issueNotices = notices.filter((n) => n.kind === "github_issue");
+  const runningExperiment = experiments.find((e) => e.status === "laufend") ?? null;
 
   return (
     <AdminShell title="Jarvis" eyebrow="Die interne KI-Instanz von PAWN">
@@ -327,6 +383,29 @@ export default function AdminJarvis() {
         </p>
       </section>
 
+      <section className="mb-8 border-[1.5px] border-black p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="editorial-eyebrow">Diagnose</p>
+          <Button
+            onClick={runDiagnoseNow}
+            disabled={diagnoseBusy}
+            variant="outline"
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {diagnoseBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {diagnoseBusy ? "Jarvis prüft PAWN…" : "Jetzt prüfen"}
+          </Button>
+        </div>
+        {latestDiagnose ? (
+          <div className="mt-3 whitespace-pre-line text-sm text-foreground/80">
+            <p className="mb-1 text-xs text-muted-foreground">Letzter Heilungsbericht · {timeAgo(latestDiagnose.created_at)}</p>
+            {latestDiagnose.body}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">Noch keine Diagnose gelaufen.</p>
+        )}
+      </section>
+
       {pending.length > 0 && (
         <section className="mb-8 border-[1.5px] border-black">
           <header className="border-b-[1.5px] border-black px-5 py-3">
@@ -396,6 +475,84 @@ export default function AdminJarvis() {
           </ul>
         </section>
       )}
+
+      <section className="mb-8 border-[1.5px] border-black">
+        <header className="flex items-center justify-between border-b-[1.5px] border-black px-5 py-3">
+          <p className="editorial-eyebrow">Experimente</p>
+          <Button
+            onClick={runEvolutionNow}
+            disabled={evolutionBusy}
+            variant="outline"
+            size="sm"
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {evolutionBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Jetzt auswerten
+          </Button>
+        </header>
+        {experiments.length === 0 ? (
+          <div className="p-10 text-center text-sm text-muted-foreground">
+            Noch kein Experiment. {runningExperiment ? "" : "Der Herzschlag startet automatisch eines pro Woche."}
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {experiments.map((e) => (
+              <li key={e.id} className="px-5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className={cn(
+                    "inline-block border px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em]",
+                    e.status === "behalten" && "border-black bg-black text-white",
+                    e.status === "verworfen" && "border-black text-foreground",
+                    e.status === "laufend" && "border-border text-muted-foreground",
+                  )}>
+                    {EXPERIMENT_STATUS_LABELS[e.status] ?? e.status}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {e.result != null ? `${e.result} vs. ${e.baseline ?? 0}` : `Ausgangswert ${e.baseline ?? 0}`}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm">{e.hypothesis}</p>
+                <p className="text-xs text-muted-foreground">Gestartet {timeAgo(e.started_at)}{e.evaluated_at ? ` · ausgewertet ${timeAgo(e.evaluated_at)}` : ""}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {issueNotices.length > 0 && (
+        <section className="mb-8 border-[1.5px] border-black">
+          <header className="border-b-[1.5px] border-black px-5 py-3">
+            <p className="editorial-eyebrow">Issues an Claude Code</p>
+          </header>
+          <ul className="divide-y divide-border">
+            {issueNotices.map((n) => (
+              <li key={n.id} className="px-5 py-3">
+                <p className="font-serif text-base">{n.title}</p>
+                <p className="text-sm text-muted-foreground">{n.body}</p>
+                <p className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="mb-8 border-[1.5px] border-black p-5">
+        <p className="editorial-eyebrow mb-3">Zonen-Übersicht</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="border border-border p-4">
+            <p className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">Grün · läuft frei</p>
+            <p className="mt-2 text-sm">Ontologie anlegen/zusammenführen, Trends berechnen, Benachrichtigungen an Admins, Merksätze.</p>
+          </div>
+          <div className="border border-border p-4">
+            <p className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">Gelb · läuft, meldet sich</p>
+            <p className="mt-2 text-sm">Texte korrigieren, Direktiven/Personas nachschärfen, Lead-Einstiegssätze schreiben.</p>
+          </div>
+          <div className="border border-border p-4">
+            <p className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">Rot · fragt zuerst</p>
+            <p className="mt-2 text-sm">Alles mit Geld, Plänen, Veröffentlichung, Löschung oder Außenwirkung — siehe "Wartet auf dich".</p>
+          </div>
+        </div>
+      </section>
 
       <section className="mb-8 border-[1.5px] border-black">
         <header className="border-b-[1.5px] border-black px-5 py-3">
