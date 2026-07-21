@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Bot,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -24,6 +25,7 @@ const ITEMS = [
   { to: "/admin/zahlungen", label: "Zahlungen", icon: ClipboardList },
   { to: "/admin/nachrichten", label: "Nachrichten", icon: FileSignature },
   { to: "/admin/designers", label: "Bewerbungen", icon: FileSignature },
+  { to: "/admin/akquise", label: "Akquise", icon: UserPlus },
   { to: "/admin/inhalte", label: "Inhalte", icon: Newspaper },
   { to: "/admin/werbung", label: "Werbung", icon: Megaphone },
   { to: "/admin/kampagnen", label: "Kampagnen", icon: Megaphone },
