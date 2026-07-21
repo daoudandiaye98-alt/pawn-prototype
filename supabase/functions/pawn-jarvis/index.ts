@@ -1450,7 +1450,7 @@ Deno.serve(async (req) => {
     if (mode === "heartbeat") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "cron", status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
-      const result = await runHeartbeat(admin);
+      const result = await runHeartbeat(admin, runId);
       const parts = [result.skipped ? `Herzschlag übersprungen (${result.skipped})` : `Herzschlag: ${result.created ?? 0} neue Meldung(en)`];
       if (result.evolution) parts.push(result.evolution);
       if (runId) await admin.from("jarvis_runs").update({
