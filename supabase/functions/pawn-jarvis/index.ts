@@ -505,7 +505,7 @@ interface NoticeCandidate { kind: string; title: string; body: string }
 async function checkAkquise(admin: SupabaseClient): Promise<NoticeCandidate[]> {
   const cutoff = new Date(Date.now() - 72 * 3600_000).toISOString();
   const { count } = await admin.from("acquisition_leads").select("id", { count: "exact", head: true })
-    .eq("status", "new").lt("created_at", cutoff);
+    .eq("status", "neu").lt("created_at", cutoff);
   if (!count) return [];
   return [{
     kind: "akquise_wartend", title: "Akquise wartet",
@@ -669,7 +669,7 @@ async function runEvolution(admin: SupabaseClient): Promise<{ summary: string }>
   return { summary: `Neues Experiment gestartet: ${next.hypothesis}` };
 }
 
-async function runHeartbeat(admin: SupabaseClient): Promise<{ skipped?: string; created?: number; evolution?: string }> {
+async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): Promise<{ skipped?: string; created?: number; evolution?: string }> {
   // Sicherheitsnetz: nie ewig auf einen Menschen warten — abgelaufene Aktionen automatisch sicher verwerfen.
   await admin.from("jarvis_pending_actions")
     .update({ status: "expired", resolved_at: new Date().toISOString() })
@@ -678,7 +678,9 @@ async function runHeartbeat(admin: SupabaseClient): Promise<{ skipped?: string; 
   const config = await loadJarvisConfig(admin);
   if (!config.enabled) return { skipped: "pausiert" };
 
-  const { data: runningRows } = await admin.from("jarvis_runs").select("id").eq("trigger", "cron").eq("status", "running");
+  let q = admin.from("jarvis_runs").select("id").eq("trigger", "cron").eq("status", "running");
+  if (selfRunId) q = q.neq("id", selfRunId);
+  const { data: runningRows } = await q;
   if (runningRows && runningRows.length > 0) return { skipped: "laeuft_bereits" };
 
   const evolutionResult = await runEvolution(admin).catch(() => ({ summary: "" }));
@@ -1448,7 +1450,7 @@ Deno.serve(async (req) => {
     if (mode === "heartbeat") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "cron", status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
-      const result = await runHeartbeat(admin);
+      const result = await runHeartbeat(admin, runId);
       const parts = [result.skipped ? `Herzschlag übersprungen (${result.skipped})` : `Herzschlag: ${result.created ?? 0} neue Meldung(en)`];
       if (result.evolution) parts.push(result.evolution);
       if (runId) await admin.from("jarvis_runs").update({
