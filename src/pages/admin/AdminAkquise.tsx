@@ -76,8 +76,7 @@ Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
 Wenn's nichts für dich ist — auch gut, mach weiter so.`;
 }
 
-// TODO: Screenshot schneidet den Text nach "dass meine Nac…" ab — exakten Wortlaut von Daouda bestätigen lassen und hier ersetzen.
-const FOLLOWUP_MESSAGE = `Kein Stress — wollte nur sichergehen, dass meine Nachricht bei dir angekommen ist.`;
+const FOLLOWUP_MESSAGE = `Kein Stress — wollte nur sichergehen, dass meine Nachricht nicht im Anfragen-Ordner versackt ist. Falls du reinschauen magst: pawn.vision. Kostet nichts, und Ausgabe 08 hat noch Platz. Wenn nicht, ist das auch völlig okay.`;
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
