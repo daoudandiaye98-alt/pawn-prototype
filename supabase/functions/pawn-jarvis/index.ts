@@ -669,7 +669,7 @@ async function runEvolution(admin: SupabaseClient): Promise<{ summary: string }>
   return { summary: `Neues Experiment gestartet: ${next.hypothesis}` };
 }
 
-async function runHeartbeat(admin: SupabaseClient): Promise<{ skipped?: string; created?: number; evolution?: string }> {
+async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): Promise<{ skipped?: string; created?: number; evolution?: string }> {
   // Sicherheitsnetz: nie ewig auf einen Menschen warten — abgelaufene Aktionen automatisch sicher verwerfen.
   await admin.from("jarvis_pending_actions")
     .update({ status: "expired", resolved_at: new Date().toISOString() })
@@ -678,7 +678,9 @@ async function runHeartbeat(admin: SupabaseClient): Promise<{ skipped?: string; 
   const config = await loadJarvisConfig(admin);
   if (!config.enabled) return { skipped: "pausiert" };
 
-  const { data: runningRows } = await admin.from("jarvis_runs").select("id").eq("trigger", "cron").eq("status", "running");
+  let q = admin.from("jarvis_runs").select("id").eq("trigger", "cron").eq("status", "running");
+  if (selfRunId) q = q.neq("id", selfRunId);
+  const { data: runningRows } = await q;
   if (runningRows && runningRows.length > 0) return { skipped: "laeuft_bereits" };
 
   const evolutionResult = await runEvolution(admin).catch(() => ({ summary: "" }));
