@@ -43,6 +43,17 @@ export interface DesignerDna {
   signals: string[];
 }
 
+export interface MatchingWeights {
+  mood: number;
+  silhouette: number;
+  material: number;
+  colors: number;
+}
+
+// Startwerte, falls ai_config.matching_weights (noch) nicht gesetzt ist. Jarvis kann diese über den
+// Evolutions-Kreislauf testweise anpassen.
+export const DEFAULT_MATCHING_WEIGHTS: MatchingWeights = { mood: 2, silhouette: 1.5, material: 1, colors: 1 };
+
 const EMPTY: PersonalizationProfile = {
   hasSignals: false,
   world: null,
@@ -60,6 +71,7 @@ interface Ctx extends PersonalizationProfile {
   correct: (signalId: string) => Promise<void>;
   loading: boolean;
   designerDna: Map<string, DesignerDna>;
+  matchingWeights: MatchingWeights;
 }
 
 const PersonalizationContext = createContext<Ctx | null>(null);
@@ -167,6 +179,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(false);
   const [designerDna, setDesignerDna] = useState<Map<string, DesignerDna>>(new Map());
+  const [matchingWeights, setMatchingWeights] = useState<MatchingWeights>(DEFAULT_MATCHING_WEIGHTS);
 
   const refresh = async () => {
     if (!user) { setProfile({ ...EMPTY, correctedIds: loadCorrected() }); return; }
@@ -241,6 +254,18 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     return () => { alive = false; };
   }, []);
 
+  // Matching-Gewichte aus ai_config — Jarvis kann sie über den Evolutions-Kreislauf testweise anpassen.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.from("ai_config" as never).select("value").eq("key", "matching_weights").maybeSingle();
+      if (!alive) return;
+      const v = (data as { value?: Partial<MatchingWeights> } | null)?.value;
+      if (v) setMatchingWeights({ ...DEFAULT_MATCHING_WEIGHTS, ...v });
+    })();
+    return () => { alive = false; };
+  }, []);
+
   const correct = async (signalId: string) => {
     const next = new Set(profile.correctedIds);
     next.add(signalId);
@@ -258,14 +283,20 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
   useEffect(() => { applyCssVars(profile); }, [profile]);
 
-  const value = useMemo<Ctx>(() => ({ ...profile, refresh, correct, loading, designerDna }), [profile, loading, designerDna]);
+  const value = useMemo<Ctx>(
+    () => ({ ...profile, refresh, correct, loading, designerDna, matchingWeights }),
+    [profile, loading, designerDna, matchingWeights],
+  );
   return <PersonalizationContext.Provider value={value}>{children}</PersonalizationContext.Provider>;
 }
 
 export function usePersonalization(): Ctx {
   const ctx = useContext(PersonalizationContext);
   if (!ctx) {
-    return { ...EMPTY, refresh: async () => {}, correct: async () => {}, loading: false, designerDna: new Map() };
+    return {
+      ...EMPTY, refresh: async () => {}, correct: async () => {}, loading: false,
+      designerDna: new Map(), matchingWeights: DEFAULT_MATCHING_WEIGHTS,
+    };
   }
   return ctx;
 }
@@ -291,11 +322,13 @@ interface ScoreItem {
 
 /**
  * Score = world_match × 2 + tag_overlap + designer_dna_bonus + 20% discovery noise.
- * DNA-Moleküle je Kind gewichtet: mood ×2, silhouette ×1.5, material/colors ×1.
+ * DNA-Moleküle je Kind gewichtet nach matchingWeights (Startwert: mood ×2, silhouette ×1.5,
+ * material/colors ×1) — kommt aus ai_config.matching_weights, damit der Evolutions-Kreislauf
+ * echte Geschmacks-Parameter testen kann.
  */
 export function scoreForPersonalization<T extends ScoreItem>(
   item: T,
-  profile: Pick<PersonalizationProfile, "world" | "preferredTags" | "hasSignals" | "preferredDesigners">,
+  profile: Pick<PersonalizationProfile, "world" | "preferredTags" | "hasSignals" | "preferredDesigners"> & { matchingWeights?: MatchingWeights },
   designerDna: Map<string, DesignerDna>,
 ): number {
   let s = 0;
@@ -305,13 +338,14 @@ export function scoreForPersonalization<T extends ScoreItem>(
   if (pref.length && item.tags?.some((t) => pref.includes(t))) s += 1;
 
   // DNA-Moleküle (falls vorhanden): kind-gewichtet
+  const weights = profile.matchingWeights ?? DEFAULT_MATCHING_WEIGHTS;
   const dnaMol = item.product_dna;
   if (dnaMol && pref.length) {
     const moodHit = (dnaMol.mood ?? []).filter((t) => pref.includes(t)).length;
     const silHit = (dnaMol.silhouette ?? []).filter((t) => pref.includes(t)).length;
     const matHit = (dnaMol.materials ?? []).filter((t) => pref.includes(t)).length;
     const colHit = (dnaMol.colors ?? []).filter((t) => pref.includes(t)).length;
-    s += moodHit * 2 + silHit * 1.5 + matHit + colHit;
+    s += moodHit * weights.mood + silHit * weights.silhouette + matHit * weights.material + colHit * weights.colors;
   }
 
   const dna = item.designerSlug ? designerDna.get(item.designerSlug) : undefined;
