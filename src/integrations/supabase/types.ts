@@ -17,15 +17,24 @@ export type Database = {
       acquisition_leads: {
         Row: {
           bio: string | null
+          channel: string | null
           clips: Json | null
           contacted_at: string | null
           created_at: string | null
+          email: string | null
           followers: number | null
           followup_at: string | null
           handle: string
           id: string
+          kurator_score: number | null
+          message_draft: string | null
+          next_touch_at: string | null
           notes: string | null
+          opt_out: boolean
           personal_line: string | null
+          qc_passed: boolean | null
+          score_reasons: Json | null
+          scrape_images: Json | null
           source: string | null
           status: string
           updated_at: string | null
@@ -34,15 +43,24 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
+          channel?: string | null
           clips?: Json | null
           contacted_at?: string | null
           created_at?: string | null
+          email?: string | null
           followers?: number | null
           followup_at?: string | null
           handle: string
           id?: string
+          kurator_score?: number | null
+          message_draft?: string | null
+          next_touch_at?: string | null
           notes?: string | null
+          opt_out?: boolean
           personal_line?: string | null
+          qc_passed?: boolean | null
+          score_reasons?: Json | null
+          scrape_images?: Json | null
           source?: string | null
           status?: string
           updated_at?: string | null
@@ -51,15 +69,24 @@ export type Database = {
         }
         Update: {
           bio?: string | null
+          channel?: string | null
           clips?: Json | null
           contacted_at?: string | null
           created_at?: string | null
+          email?: string | null
           followers?: number | null
           followup_at?: string | null
           handle?: string
           id?: string
+          kurator_score?: number | null
+          message_draft?: string | null
+          next_touch_at?: string | null
           notes?: string | null
+          opt_out?: boolean
           personal_line?: string | null
+          qc_passed?: boolean | null
+          score_reasons?: Json | null
+          scrape_images?: Json | null
           source?: string | null
           status?: string
           updated_at?: string | null

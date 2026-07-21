@@ -18,8 +18,8 @@ import {
 
 type World = "Mode" | "Kunst" | "Interior";
 type Status =
-  | "neu" | "angewaermt" | "kontaktiert" | "antwort"
-  | "registriert" | "aktiviert" | "spaeter" | "nein" | "ghost";
+  | "neu" | "qualifiziert" | "aussortiert" | "angewaermt" | "kontaktiert" | "antwort"
+  | "registriert" | "aktiviert" | "spaeter" | "nein" | "ghost" | "ruhe";
 
 interface Lead {
   id: string;
@@ -37,18 +37,28 @@ interface Lead {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  kurator_score: number | null;
+  score_reasons: Record<string, unknown> | null;
+  email: string | null;
+  channel: string | null;
+  message_draft: string | null;
+  qc_passed: boolean | null;
+  next_touch_at: string | null;
+  opt_out: boolean;
 }
 
 const WORLDS: World[] = ["Mode", "Kunst", "Interior"];
 const GOALS: Record<World, number> = { Mode: 500, Kunst: 250, Interior: 250 };
 
 const STATUSES: Status[] = [
-  "neu", "angewaermt", "kontaktiert", "antwort",
-  "registriert", "aktiviert", "spaeter", "nein", "ghost",
+  "neu", "qualifiziert", "aussortiert", "angewaermt", "kontaktiert", "antwort",
+  "registriert", "aktiviert", "spaeter", "nein", "ghost", "ruhe",
 ];
 
 const STATUS_LABELS: Record<Status, string> = {
   neu: "Neu",
+  qualifiziert: "Qualifiziert",
+  aussortiert: "Aussortiert",
   angewaermt: "Angewärmt",
   kontaktiert: "Kontaktiert",
   antwort: "Antwort",
@@ -57,6 +67,7 @@ const STATUS_LABELS: Record<Status, string> = {
   spaeter: "Später",
   nein: "Nein",
   ghost: "Ghost",
+  ruhe: "Ruhe",
 };
 
 // Aktions-Knöpfe im Detail-Panel — "Neu" ist der Startzustand, kein Klick-Ziel.
@@ -221,7 +232,24 @@ function LeadDrawer({
             {lead.followers != null && (
               <span className="text-xs text-muted-foreground">{lead.followers.toLocaleString("de-DE")} Follower</span>
             )}
+            {lead.channel && (
+              <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Kanal: {lead.channel}</span>
+            )}
           </div>
+
+          {lead.kurator_score != null && (
+            <section className="border-[1.5px] border-black p-4">
+              <p className="editorial-eyebrow mb-2">Kurator-Bewertung</p>
+              <p className="font-serif text-2xl leading-none tabular-nums">{lead.kurator_score}<span className="text-sm text-muted-foreground"> / 100</span></p>
+              {lead.score_reasons && (
+                <ul className="mt-3 space-y-1 text-sm text-foreground/80">
+                  {Object.entries(lead.score_reasons).map(([k, v]) => (
+                    <li key={k}><span className="text-muted-foreground">{k}:</span> {String(v)}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
           {lead.bio && (
             <section>
@@ -486,6 +514,106 @@ function ImportPanel({ onImported }: { onImported: () => void }) {
   );
 }
 
+/* ─────────────────────── Sende-Stapel (DM, nie automatisiert) ─────────────────────── */
+
+interface StapelItem {
+  lead: Lead;
+  kind: "erstkontakt" | "followup";
+  text: string;
+}
+
+function buildStapel(rows: Lead[]): StapelItem[] {
+  const now = Date.now();
+  const items: StapelItem[] = [];
+  for (const r of rows) {
+    if (r.channel !== "dm" || r.opt_out) continue;
+    if (r.status === "qualifiziert" && r.message_draft) {
+      items.push({ lead: r, kind: "erstkontakt", text: r.message_draft });
+    } else if (r.status === "kontaktiert" && !r.followup_at && r.next_touch_at && new Date(r.next_touch_at).getTime() <= now) {
+      items.push({ lead: r, kind: "followup", text: FOLLOWUP_MESSAGE });
+    }
+  }
+  return items.sort((a, b) => {
+    const da = a.kind === "followup" ? new Date(a.lead.next_touch_at ?? 0).getTime() : new Date(a.lead.created_at).getTime();
+    const db = b.kind === "followup" ? new Date(b.lead.next_touch_at ?? 0).getTime() : new Date(b.lead.created_at).getTime();
+    return da - db;
+  });
+}
+
+function SendeStapel({ rows, onChange }: { rows: Lead[]; onChange: (id: string, patch: Partial<Lead>) => void }) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const items = useMemo(() => buildStapel(rows), [rows]);
+
+  async function copyText(text: string) {
+    await navigator.clipboard.writeText(text);
+    toast.success("Nachricht kopiert.");
+  }
+
+  async function markSent(item: StapelItem) {
+    setBusyId(item.lead.id);
+    const now = new Date().toISOString();
+    const patch: { status: string; updated_at: string; contacted_at?: string; next_touch_at?: string; followup_at?: string } =
+      item.kind === "erstkontakt"
+        ? { status: "kontaktiert", contacted_at: now, next_touch_at: new Date(Date.now() + 5 * 86_400_000).toISOString(), updated_at: now }
+        : { status: "ruhe", followup_at: now, updated_at: now };
+    const { error } = await supabase.from("acquisition_leads").update(patch).eq("id", item.lead.id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    onChange(item.lead.id, patch);
+    toast.success("Als gesendet markiert.");
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <section className="mb-8 border-[1.5px] border-black">
+      <header className="border-b-[1.5px] border-black px-5 py-3">
+        <p className="editorial-eyebrow">Sende-Stapel · DM heute · {items.length}</p>
+      </header>
+      <ul className="divide-y divide-border">
+        {items.map((item) => (
+          <li key={`${item.lead.id}-${item.kind}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <a
+                  href={`https://instagram.com/${item.lead.handle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-serif text-base underline-offset-4 hover:underline"
+                >
+                  @{item.lead.handle}
+                </a>
+                <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">
+                  {item.kind === "erstkontakt" ? "Erstkontakt" : "Follow-up"}
+                </span>
+              </div>
+              <p className="mt-1 truncate text-sm text-muted-foreground">{item.text}</p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => copyText(item.text)}
+                className="rounded-none border-black hover:bg-black hover:text-white"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                disabled={busyId === item.lead.id}
+                onClick={() => markSent(item)}
+                className="rounded-none bg-black text-white hover:bg-white hover:text-black"
+              >
+                {busyId === item.lead.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gesendet"}
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /* ─────────────────────── Hauptseite ─────────────────────── */
 
 type SortField = "created_at" | "followers";
@@ -565,6 +693,8 @@ export default function AdminAkquise() {
           <strong className="text-foreground">So funktioniert's:</strong> anwärmen → 2 Tage warten → DM mit Clips → nach 5 Tagen einmal nachfassen → dann Ruhe.
         </p>
       </div>
+
+      <SendeStapel rows={rows} onChange={patchRow} />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <DayCell label="Heute anzuwärmen" value={kpis.toWarmUp} />
