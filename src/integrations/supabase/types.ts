@@ -1116,6 +1116,72 @@ export type Database = {
           },
         ]
       }
+      jarvis_reports: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json
+          id: string
+          kind: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          data?: Json
+          id?: string
+          kind: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      jarvis_runs: {
+        Row: {
+          cost_estimate: number | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: string
+          summary: string | null
+          tokens_used: number
+          trigger: string
+        }
+        Insert: {
+          cost_estimate?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          tokens_used?: number
+          trigger: string
+        }
+        Update: {
+          cost_estimate?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          tokens_used?: number
+          trigger?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null

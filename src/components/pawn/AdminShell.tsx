@@ -14,6 +14,7 @@ import {
   Bot,
   Sparkles,
   UserPlus,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -32,6 +33,7 @@ const ITEMS = [
   { to: "/admin/posting", label: "Posting", icon: Megaphone },
   { to: "/admin/trends", label: "Trends", icon: TrendingUp },
   { to: "/admin/ki", label: "KI Cockpit", icon: Bot },
+  { to: "/admin/jarvis", label: "Jarvis", icon: Brain },
   { to: "/admin/aktionen", label: "Aktionen", icon: Sparkles },
 ];
 

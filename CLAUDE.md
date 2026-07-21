@@ -31,8 +31,11 @@ Du arbeitest am Repo **pawn-prototype**: PAWN (pawn.vision) — kuratierter Mark
 - `src/pages/studio/` — Designer-Studio (Bühne mit „Nächster Zug", Kollektion, Kampagnen-Funnel `StudioCampaignNew.tsx`, Bestellungen mit Versand-Kette, Plan, Retrospektive)
 - `src/pages/admin/` — Admin-Cockpit (Overview mit Nächster-Zug, KI/Denklogik, Trends, Posting, Zahlungen, Aktionen-Log)
 - `src/features/campaign/renderer.ts` — Browser-Video-Renderer (Canvas + MediaRecorder; Szenen: Hook-Typo, Ken-Burns, Split, Parallax; Reel-Safe-Zones oben 14%/unten 20%; adaptive Szenenzahl nach Fotoanzahl)
-- Wichtige Edge Functions: `create-checkout` (Stripe, KEIN automatic_payment_methods-Parameter!), `stripe-webhook`, `generate-broll` (fal i2v), `generate-tryon` (Kolors Try-On, Model-Pool), `generate-product-shot`, `pawn-chat`, `studio-ai`, `pawn-actions` (Aktionsschicht mit Undo), `compute-trends`
-- Datenmodell-Kern: designers (house_number, plan haus/atelier/maison, brand_dna), products (product_dna jsonb, designer_note, Maße), campaigns, posting_queue, generation_requests, product_shot_requests, fashion_ontology (lernend, `learned`-Flag), user_memory, ai_actions_log, acquisition_leads (Akquise-Pipeline), site_content, ai_config
+- Wichtige Edge Functions: `create-checkout` (Stripe, KEIN automatic_payment_methods-Parameter!), `stripe-webhook`, `generate-broll` (fal i2v), `generate-tryon` (Kolors Try-On, Model-Pool), `generate-product-shot`, `pawn-chat`, `studio-ai`, `pawn-actions` (Aktionsschicht mit Undo), `compute-trends`, `pawn-jarvis` (interne KI-Instanz, s.u.)
+- Datenmodell-Kern: designers (house_number, plan haus/atelier/maison, brand_dna), products (product_dna jsonb, designer_note, Maße), campaigns, posting_queue, generation_requests, product_shot_requests, fashion_ontology (lernend, `learned`-Flag), user_memory, ai_actions_log, acquisition_leads (Akquise-Pipeline), jarvis_runs, jarvis_reports, site_content, ai_config
+
+## PAWN Jarvis
+Interne KI-Instanz für Daouda (nicht kundenseitig). Edge Function `pawn-jarvis` (admin-only, Modell `claude-sonnet-4-5`) mit drei Werkzeugen: `web_search` (nativ), `query_pawn` (liest Kennzahlen aus der DB), `pawn_action` (ruft `pawn-actions` mit der echten Admin-Session auf — nur dessen bestehende Whitelist, keine neuen Aktionen). Modi: `morgenbericht`, `wochenbericht`, `recherche`, `befehl`. Jeder Lauf schreibt eine Zeile in `jarvis_runs` und einen Bericht in `jarvis_reports`. Admin-Seite: `/admin/jarvis`. System-Prompt kommt aus `ai_config.persona_jarvis`, sonst Default im Code. Fehler landen nie als 500, immer 200 mit Klartext-Fehlermeldung.
 
 ## Arbeitsweise
 - Kleine, fokussierte Commits mit deutschen Messages („Fix: …", „Feature: …").
