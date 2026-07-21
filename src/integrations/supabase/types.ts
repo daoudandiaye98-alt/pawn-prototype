@@ -1030,6 +1030,48 @@ export type Database = {
           },
         ]
       }
+      jarvis_experiments: {
+        Row: {
+          after: Json | null
+          baseline: number | null
+          before: Json | null
+          changed_key: string
+          evaluated_at: string | null
+          hypothesis: string
+          id: string
+          metric: string
+          result: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          after?: Json | null
+          baseline?: number | null
+          before?: Json | null
+          changed_key: string
+          evaluated_at?: string | null
+          hypothesis: string
+          id?: string
+          metric: string
+          result?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          after?: Json | null
+          baseline?: number | null
+          before?: Json | null
+          changed_key?: string
+          evaluated_at?: string | null
+          hypothesis?: string
+          id?: string
+          metric?: string
+          result?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       jarvis_memory: {
         Row: {
           content: string
