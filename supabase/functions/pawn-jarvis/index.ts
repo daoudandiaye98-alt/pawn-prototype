@@ -58,7 +58,7 @@ Zonen-Regel für pawn_action: Zone Grün (Ontologie anlegen/zusammenführen, Tre
 type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
-  | "diagnose" | "evolution";
+  | "diagnose" | "evolution" | "wissen";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -66,16 +66,19 @@ interface JarvisConfig {
   enabled: boolean;
   monthly_limit_usd: number;
   quiet_hours: { start: number; end: number };
-  checks: { akquise: boolean; bestellungen: boolean; system: boolean };
+  checks: { akquise: boolean; bestellungen: boolean; system: boolean; nachrichten: boolean };
   pending_action_expiry_hours: number;
 }
 const DEFAULT_JARVIS_CONFIG: JarvisConfig = {
   enabled: true,
   monthly_limit_usd: 20,
   quiet_hours: { start: 22, end: 8 },
-  checks: { akquise: true, bestellungen: true, system: true },
+  checks: { akquise: true, bestellungen: true, system: true, nachrichten: true },
   pending_action_expiry_hours: 24,
 };
+
+// Läuft die Provider-Komponente usePersonalization ohne eigenen ai_config-Wert, gelten diese Startwerte.
+const DEFAULT_MATCHING_WEIGHTS = { mood: 2, silhouette: 1.5, material: 1, colors: 1 };
 
 function ok(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -262,6 +265,81 @@ async function tuneAi(admin: SupabaseClient, input: { key?: string; value?: unkn
   return { ok: true };
 }
 
+function guessMessageCategory(text: string): string {
+  const t = text.toLowerCase();
+  if (/fehler|bug|kaputt|geht nicht|funktioniert nicht|absturz|crash/.test(t)) return "bug_verdacht";
+  if (/wunsch|wäre schön|könnte man|feature|vorschlag/.test(t)) return "wunsch";
+  if (/\?|wie |warum |wo |wann /.test(t)) return "frage";
+  return "sonstiges";
+}
+
+/** read_support_inbox — Volltext für Threads mit Admin-Beteiligung, sonst nur ein anonymisiertes Signal-Raster. */
+async function readSupportInbox(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: adminRows } = await admin.from("user_roles").select("user_id").eq("role", "admin");
+  const adminSet = new Set((adminRows ?? []).map((r: { user_id: string }) => r.user_id));
+
+  const { data: threads } = await admin.from("message_threads")
+    .select("id, designer_id, subject, category, status, last_message_at, created_by")
+    .order("last_message_at", { ascending: false }).limit(50);
+  const threadIds = (threads ?? []).map((t: { id: string }) => t.id);
+
+  const { data: msgs } = threadIds.length
+    ? await admin.from("messages").select("thread_id, sender_id, body, created_at").in("thread_id", threadIds)
+    : { data: [] as { thread_id: string; sender_id: string; body: string; created_at: string }[] };
+  const byThread = new Map<string, { sender_id: string; body: string; created_at: string }[]>();
+  for (const m of (msgs ?? []) as { thread_id: string; sender_id: string; body: string; created_at: string }[]) {
+    const arr = byThread.get(m.thread_id) ?? [];
+    arr.push(m);
+    byThread.set(m.thread_id, arr);
+  }
+
+  const designerIds = [...new Set((threads ?? []).map((t: { designer_id: string }) => t.designer_id))];
+  const { data: designerRows } = designerIds.length
+    ? await admin.from("designers").select("id, house_number").in("id", designerIds)
+    : { data: [] as { id: string; house_number: number | null }[] };
+  const houseByDesigner = new Map((designerRows ?? []).map((d: { id: string; house_number: number | null }) => [d.id, d.house_number]));
+
+  const adminThreads: Record<string, unknown>[] = [];
+  const signalRaster: Record<string, unknown>[] = [];
+
+  for (const t of (threads ?? []) as { id: string; designer_id: string; subject: string; category: string; status: string; last_message_at: string; created_by: string }[]) {
+    const threadMsgs = byThread.get(t.id) ?? [];
+    const adminInvolved = adminSet.has(t.created_by) || threadMsgs.some((m) => adminSet.has(m.sender_id));
+    if (adminInvolved) {
+      adminThreads.push({
+        thread_id: t.id, betreff: t.subject, kategorie: t.category, status: t.status,
+        nachrichten: threadMsgs.map((m) => ({ von: adminSet.has(m.sender_id) ? "admin" : "designer", text: m.body, zeit: m.created_at })),
+      });
+    } else {
+      const combined = threadMsgs.map((m) => m.body).join(" ");
+      signalRaster.push({
+        haus: houseByDesigner.get(t.designer_id) ?? null,
+        kategorie: guessMessageCategory(combined),
+        letzte_nachricht: t.last_message_at, status: t.status,
+      });
+    }
+  }
+  return { admin_threads: adminThreads, signal_raster: signalRaster };
+}
+
+/** suggest_action (Werkzeug) — schlägt eine Aktion vor, ohne sie auszuführen. Immer freiwillig, auch für Grün/Gelb. */
+async function suggestAction(
+  admin: SupabaseClient,
+  input: { action?: string; params?: Record<string, unknown>; reason?: string },
+): Promise<Record<string, unknown>> {
+  const action = String(input?.action ?? "");
+  if (!PAWN_ACTIONS.has(action)) return { ok: false, error: `Aktion '${action}' ist nicht in der Whitelist von pawn-actions.` };
+  const params = input?.params ?? {};
+  const zone = zoneForAction(action, params);
+  const reason = input?.reason ? String(input.reason) : "Jarvis hat einen Vorschlag, ohne selbst zu handeln.";
+  const { data, error } = await admin.from("jarvis_notices").insert({
+    kind: "vorschlag", title: `Vorschlag: ${action}`, body: reason,
+    suggested_action: { action, params, zone },
+  }).select("id").single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, notice_id: (data as { id: string }).id, zone };
+}
+
 /** create_issue — schreibt ein GitHub-Issue für ein Problem, das nur im Code lösbar ist. Kein Commit, kein Push. */
 async function createIssue(input: { title?: string; body?: string; files?: string[] }): Promise<Record<string, unknown>> {
   const title = String(input?.title ?? "").trim();
@@ -423,6 +501,33 @@ async function checkSystem(): Promise<NoticeCandidate[]> {
   return [{ kind: "system_secret_fehlt", title: "System-Secret fehlt", body: `Diese Secrets fehlen: ${missing.join(", ")}.` }];
 }
 
+/** Offene Threads, deren letzte Nachricht seit über 24h nicht von einem Admin beantwortet wurde. */
+async function checkNachrichten(admin: SupabaseClient): Promise<NoticeCandidate[]> {
+  const { data: adminRows } = await admin.from("user_roles").select("user_id").eq("role", "admin");
+  const adminSet = new Set((adminRows ?? []).map((r: { user_id: string }) => r.user_id));
+
+  const cutoff = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { data: threads } = await admin.from("message_threads").select("id").eq("status", "open").lt("last_message_at", cutoff);
+  const threadIds = (threads ?? []).map((t: { id: string }) => t.id);
+  if (!threadIds.length) return [];
+
+  const { data: msgs } = await admin.from("messages").select("thread_id, sender_id, created_at")
+    .in("thread_id", threadIds).order("created_at", { ascending: false });
+  const latestByThread = new Map<string, { sender_id: string }>();
+  for (const m of (msgs ?? []) as { thread_id: string; sender_id: string }[]) {
+    if (!latestByThread.has(m.thread_id)) latestByThread.set(m.thread_id, m);
+  }
+  const waiting = threadIds.filter((id) => {
+    const last = latestByThread.get(id);
+    return last && !adminSet.has(last.sender_id);
+  });
+  if (!waiting.length) return [];
+  return [{
+    kind: "nachrichten_offen", title: "Nachrichten warten",
+    body: `${waiting.length} offene Nachricht${waiting.length === 1 ? "" : "en"} seit über 24 Stunden ohne Admin-Antwort.`,
+  }];
+}
+
 /** Legt neue Meldungen nur an, wenn sich der Inhalt gegenüber der noch offenen Meldung gleicher Art geändert hat. */
 async function upsertNotices(admin: SupabaseClient, candidates: NoticeCandidate[]): Promise<number> {
   let created = 0;
@@ -438,18 +543,39 @@ async function upsertNotices(admin: SupabaseClient, candidates: NoticeCandidate[
 
 // --- Evolutions-Kreislauf: läuft als Teil des Herzschlags, damit kein eigener Cron-Auth-Pfad nötig ist ---
 
-const EXPERIMENT_CATALOG: { hypothesis: string; directive: string }[] = [
+interface ExperimentCandidate {
+  hypothesis: string;
+  changed_key: "directives" | "matching_weights";
+  /** Berechnet den neuen Wert aus dem aktuellen (oder Default-)Wert. */
+  apply: (before: Record<string, unknown>) => Record<string, unknown>;
+  /** Überspringen, wenn diese Änderung schon Teil des aktuellen Werts ist. */
+  alreadyApplied: (before: Record<string, unknown>) => boolean;
+}
+
+const EXPERIMENT_CATALOG: ExperimentCandidate[] = [
   {
     hypothesis: "Eine Direktive, die den Kunden-Chat bittet, aktiv nach der bevorzugten Welt (Mode/Interior/Kunst) zu fragen, erhöht die Anzahl gespeicherter Geschmacks-Signale.",
-    directive: "Frage im Gespräch aktiv nach der bevorzugten Welt (Mode, Interior oder Kunst), wenn sie nicht klar ist.",
+    changed_key: "directives",
+    apply: (before) => ({ items: [...(Array.isArray(before.items) ? before.items as string[] : []), "Frage im Gespräch aktiv nach der bevorzugten Welt (Mode, Interior oder Kunst), wenn sie nicht klar ist."] }),
+    alreadyApplied: (before) => (Array.isArray(before.items) ? before.items as string[] : []).includes("Frage im Gespräch aktiv nach der bevorzugten Welt (Mode, Interior oder Kunst), wenn sie nicht klar ist."),
   },
   {
     hypothesis: "Eine Direktive, die den Kunden-Chat bittet, nach jedem Vorschlag eine Rückfrage zu stellen, erhöht die Anzahl gespeicherter Geschmacks-Signale.",
-    directive: "Stelle nach jedem Stil-Vorschlag eine kurze Rückfrage, um mehr über den Geschmack zu erfahren.",
+    changed_key: "directives",
+    apply: (before) => ({ items: [...(Array.isArray(before.items) ? before.items as string[] : []), "Stelle nach jedem Stil-Vorschlag eine kurze Rückfrage, um mehr über den Geschmack zu erfahren."] }),
+    alreadyApplied: (before) => (Array.isArray(before.items) ? before.items as string[] : []).includes("Stelle nach jedem Stil-Vorschlag eine kurze Rückfrage, um mehr über den Geschmack zu erfahren."),
   },
   {
     hypothesis: "Eine Direktive, die den Kunden-Chat bittet, die Haltung des Designers zu erwähnen, erhöht die Anzahl gespeicherter Geschmacks-Signale.",
-    directive: "Erwähne bei Produktvorschlägen kurz die Geschichte oder Haltung des Designers dahinter.",
+    changed_key: "directives",
+    apply: (before) => ({ items: [...(Array.isArray(before.items) ? before.items as string[] : []), "Erwähne bei Produktvorschlägen kurz die Geschichte oder Haltung des Designers dahinter."] }),
+    alreadyApplied: (before) => (Array.isArray(before.items) ? before.items as string[] : []).includes("Erwähne bei Produktvorschlägen kurz die Geschichte oder Haltung des Designers dahinter."),
+  },
+  {
+    hypothesis: "Eine leichte Erhöhung des Silhouette-Gewichts (×1.5 → ×1.8) in der Produktempfehlung erhöht die Anzahl gespeicherter Geschmacks-Signale.",
+    changed_key: "matching_weights",
+    apply: (before) => ({ ...DEFAULT_MATCHING_WEIGHTS, ...before, silhouette: 1.8 }),
+    alreadyApplied: (before) => (before.silhouette as number | undefined) === 1.8,
   },
 ];
 const EVOLUTION_METRIC = "domain_events_ai_taste_signal_7d";
@@ -492,19 +618,18 @@ async function runEvolution(admin: SupabaseClient): Promise<{ summary: string }>
   const next = EXPERIMENT_CATALOG.find((c) => !tried.has(c.hypothesis));
   if (!next) return { summary: "Alle Hypothesen aus dem Katalog wurden bereits getestet." };
 
-  const { data: cfgRow } = await admin.from("ai_config").select("value").eq("key", "directives").maybeSingle();
-  const before = (cfgRow?.value as { items?: string[] } | undefined) ?? { items: [] };
-  const items = Array.isArray(before.items) ? before.items : [];
-  if (items.includes(next.directive)) return { summary: "Nächste Hypothese ist bereits Teil der Direktiven — überspringe." };
-  const after = { items: [...items, next.directive] };
+  const { data: cfgRow } = await admin.from("ai_config").select("value").eq("key", next.changed_key).maybeSingle();
+  const before = (cfgRow?.value as Record<string, unknown> | undefined) ?? (next.changed_key === "matching_weights" ? DEFAULT_MATCHING_WEIGHTS : { items: [] });
+  if (next.alreadyApplied(before)) return { summary: "Nächste Hypothese ist bereits aktiv — überspringe." };
+  const after = next.apply(before);
 
   const nowIso = new Date().toISOString();
   const weekAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const baseline = await countTasteSignals(admin, weekAgoIso, nowIso);
 
-  await admin.from("ai_config").upsert({ key: "directives", value: after as never });
+  await admin.from("ai_config").upsert({ key: next.changed_key, value: after as never });
   await admin.from("jarvis_experiments").insert({
-    hypothesis: next.hypothesis, changed_key: "directives", before: before as never, after: after as never,
+    hypothesis: next.hypothesis, changed_key: next.changed_key, before: before as never, after: after as never,
     metric: EVOLUTION_METRIC, baseline,
   });
   await admin.from("jarvis_notices").insert({
@@ -534,6 +659,7 @@ async function runHeartbeat(admin: SupabaseClient): Promise<{ skipped?: string; 
     ...(config.checks.akquise ? await checkAkquise(admin) : []),
     ...(config.checks.bestellungen ? await checkBestellungen(admin) : []),
     ...(config.checks.system ? await checkSystem() : []),
+    ...(config.checks.nachrichten ? await checkNachrichten(admin) : []),
   ];
   const created = await upsertNotices(admin, candidates);
   return { created, evolution: evolutionResult.summary };
@@ -685,6 +811,24 @@ async function runDiagnose(admin: SupabaseClient, asCaller: SupabaseClient, apiK
     if (mismatch) needed.push("plan_limits und plan_prices haben unterschiedliche Plan-Schlüssel — braucht deine Bestätigung (Zone Rot, betrifft Geld).");
   }
 
+  // 10) Bug-Verdachtsfälle im Postfach bündeln — nur anonymisiertes Signal, keine Nachrichteninhalte.
+  const inbox = await readSupportInbox(admin);
+  const signalRaster = (inbox.signal_raster ?? []) as { kategorie: string }[];
+  const bugCount = signalRaster.filter((s) => s.kategorie === "bug_verdacht").length;
+  if (bugCount > 0) {
+    await admin.from("jarvis_notices").insert({
+      kind: "bug_verdacht", title: "Mögliche Bugs im Postfach",
+      body: `${bugCount} Nachricht${bugCount === 1 ? "" : "en"} sehen nach einem technischen Problem aus — einmal in "Nachrichten" reinschauen.`,
+    });
+    needed.push(`${bugCount} möglicher Bug-Verdacht im Postfach — braucht deinen Blick in "Nachrichten".`);
+    if (bugCount >= 3) {
+      await createIssue({
+        title: `Postfach: ${bugCount} mögliche Bug-Meldungen häufen sich`,
+        body: `Jarvis hat beim Diagnoselauf ${bugCount} Nachrichten gefunden, die nach einem technischen Problem klingen (anonymisiert erkannt, ohne Namen oder Nachrichteninhalte). Bitte in /admin/nachrichten prüfen, ob ein gemeinsames Muster erkennbar ist.`,
+      });
+    }
+  }
+
   return { healed, needed, tokensUsed };
 }
 
@@ -765,6 +909,24 @@ const TOOLS = [
       required: ["title", "body"],
     },
   },
+  {
+    name: "read_support_inbox",
+    description: "Liest das Nachrichten-Postfach. Für Threads, an denen ein Admin beteiligt ist, gibt es den Volltext. Für alle anderen Threads nur ein anonymisiertes Signal-Raster (Haus-Nummer, Zeitstempel, erkannte Kategorie bug_verdacht/frage/wunsch/sonstiges) — nie Klarnamen oder Nachrichteninhalte Dritter.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "suggest_action",
+    description: "Schlägt eine Aktion vor, OHNE sie auszuführen — landet unter 'Jarvis schlägt vor' zur freiwilligen Prüfung durch Daouda. Nutze das, wenn du dir bei einer an sich erlaubten (Grün/Gelb-)Aktion nicht sicher genug bist, um sie direkt mit pawn_action auszuführen.",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Name der Aktion, muss aus der Whitelist stammen." },
+        params: { type: "object", description: "Parameter für die Aktion, je nach action-Typ." },
+        reason: { type: "string", description: "Begründung für den Vorschlag." },
+      },
+      required: ["action", "reason"],
+    },
+  },
 ];
 
 interface AnthropicResponse {
@@ -794,11 +956,12 @@ async function callClaude(
 
 async function runAgentLoop(
   apiKey: string, admin: SupabaseClient, asCaller: SupabaseClient, system: string, userMessage: string,
+  maxTurns: number = MAX_TOOL_TURNS,
 ): Promise<{ text: string; tokensUsed: number; error: string | null }> {
   const messages: unknown[] = [{ role: "user", content: userMessage }];
   let tokensUsed = 0;
 
-  for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+  for (let turn = 0; turn < maxTurns; turn++) {
     const { data, error } = await callClaude(apiKey, system, messages);
     if (error || !data) return { text: "", tokensUsed, error: error ?? "keine Antwort von Claude" };
     tokensUsed += (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
@@ -820,6 +983,8 @@ async function runAgentLoop(
         else if (block.name === "read_ai_state") result = await readAiState(admin);
         else if (block.name === "tune_ai") result = await tuneAi(admin, block.input ?? {});
         else if (block.name === "pawn_action") result = await handlePawnAction(admin, asCaller, block.input ?? {});
+        else if (block.name === "read_support_inbox") result = await readSupportInbox(admin);
+        else if (block.name === "suggest_action") result = await suggestAction(admin, block.input ?? {});
         else if (block.name === "create_issue") {
           result = await createIssue(block.input ?? {});
           const r = result as { ok: boolean; issue_url?: string; filed_as_notice?: boolean };
@@ -857,6 +1022,12 @@ function promptForMode(mode: Mode, prompt?: string): { userMessage: string; repo
       reportKind: "woche", title: `Wochenbericht · ${today}`,
     };
   }
+  if (mode === "wissen") {
+    return {
+      userMessage: `Heute ist ${today}. Das ist dein Wissenslauf: Schau dir mit query_pawn (topic: "ontology") an, welche Welt (Mode, Interior, Kunst) am wenigsten Ontologie-Begriffe hat — das ist die größte Lücke. Wähle EIN konkretes Thema in dieser Lücke (z.B. "aktuelle Materialtrends Interior", "Preispsychologie bei Unikaten", "aufkommende Slow-Fashion-Ästhetiken" — oder ein eigenes, passenderes Thema). Recherchiere es mit web_search. Prüfe danach mit query_pawn (topic: "ontology") gründlich, welche Begriffe und Synonyme schon existieren — lege nie einen Begriff doppelt an: existiert er schon, ergänze nur fehlende Synonyme über upsert_ontology_term (dieselbe Aktion, mit dem bestehenden Begriff und einer erweiterten Synonymliste); existiert er nicht, lege ihn neu an. Ziel: 5 bis 15 neue oder erweiterte Ontologie-Begriffe (kind, world, synonyms, learned=true). Merke dir außerdem mit remember 3 bis 7 kurze, konkrete Erkenntnisse über Stil, Geschmack oder Kaufpsychologie aus der Recherche — jede mit kurzer Quellenangabe im Text. Fasse am Ende in einfachem Deutsch zusammen, welches Thema du gewählt hast, was du gelernt hast und welche Begriffe/Erkenntnisse neu sind. Maximal 250 Wörter Fließtext (die Werkzeug-Aufrufe zählen nicht mit).`,
+      reportKind: "wissen", title: `Wissenslauf · ${today}`,
+    };
+  }
   if (mode === "recherche") {
     const topic = (prompt ?? "").trim() || "aktuelle Trends für unabhängige Designer";
     return {
@@ -881,7 +1052,6 @@ Deno.serve(async (req) => {
   let runId: string | null = null;
   try {
     const authHeader = req.headers.get("Authorization");
-    const rawBearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     const user_id = jwtSub(authHeader);
     const isAdmin = await requireAdmin(admin, user_id);
 
@@ -889,17 +1059,19 @@ Deno.serve(async (req) => {
     const mode = String(body.mode ?? "") as Mode;
     const validModes: Mode[] = [
       "morgenbericht", "wochenbericht", "recherche", "befehl",
-      "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution",
+      "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen",
     ];
     if (!validModes.includes(mode)) {
-      return ok({ ok: false, error: "mode muss morgenbericht, wochenbericht, recherche, befehl, heartbeat, confirm_action, reject_action, diagnose oder evolution sein." });
+      return ok({ ok: false, error: "mode muss morgenbericht, wochenbericht, recherche, befehl, heartbeat, confirm_action, reject_action, diagnose, evolution oder wissen sein." });
     }
 
-    // Nur der Herzschlag darf auch vom pg_cron-Job ausgelöst werden — entweder mit dem Service-Role-Key
-    // als Bearer-Token, oder mit demselben Schlüssel als "secret"-Feld im Body. Alle anderen Modi bleiben admin-only.
-    const isServiceRoleCaller = !!rawBearer && rawBearer === serviceKey;
-    const isSharedSecretCaller = typeof body.secret === "string" && body.secret === serviceKey;
-    const authorized = mode === "heartbeat" ? (isAdmin || isServiceRoleCaller || isSharedSecretCaller) : isAdmin;
+    // Geplante KI-Läufe ohne Admin-Login: diese Modi dürfen auch von pg_cron mit dem geteilten
+    // JARVIS_CRON_SECRET ausgelöst werden (Body-Feld "secret"). Befehle vom Menschen (befehl, recherche,
+    // confirm_action, reject_action, wochenbericht) bleiben strikt admin-only.
+    const CRON_TRIGGERABLE_MODES: Mode[] = ["heartbeat", "wissen", "diagnose", "evolution", "morgenbericht"];
+    const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
+    const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
+    const authorized = CRON_TRIGGERABLE_MODES.includes(mode) ? (isAdmin || isCronSecretCaller) : isAdmin;
     if (!authorized) return ok({ ok: false, error: "forbidden" });
 
     // --- Herzschlag: eigener, kostenloser Pfad ohne LLM-Aufruf (enthält auch den Evolutions-Kreislauf) ---
@@ -985,7 +1157,9 @@ Deno.serve(async (req) => {
     const system = basePrompt + memoryBlock(memories);
     const { userMessage, reportKind, title } = promptForMode(mode, prompt);
 
-    const { text, tokensUsed, error } = await runAgentLoop(apiKey, admin, asCaller, system, userMessage);
+    // Der Wissenslauf braucht deutlich mehr Werkzeug-Aufrufe (viele einzelne Ontologie-Begriffe/Merksätze).
+    const maxTurns = mode === "wissen" ? 14 : MAX_TOOL_TURNS;
+    const { text, tokensUsed, error } = await runAgentLoop(apiKey, admin, asCaller, system, userMessage, maxTurns);
     const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
 
     if (error) {

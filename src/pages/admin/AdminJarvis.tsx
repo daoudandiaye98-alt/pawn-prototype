@@ -40,6 +40,7 @@ interface JarvisNotice {
   body: string;
   created_at: string;
   dismissed_at: string | null;
+  suggested_action: { action: string; params: Record<string, unknown>; zone: string } | null;
 }
 
 interface JarvisPendingAction {
@@ -65,7 +66,8 @@ interface JarvisExperiment {
 }
 
 const KIND_LABELS: Record<string, string> = {
-  morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort", diagnose: "Diagnose",
+  morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort",
+  diagnose: "Diagnose", wissen: "Wissenslauf",
 };
 
 const EXPERIMENT_STATUS_LABELS: Record<string, string> = {
@@ -116,7 +118,9 @@ export default function AdminJarvis() {
   const [busy, setBusy] = useState<null | "befehl" | "morgenbericht" | "wochenbericht" | "recherche">(null);
   const [diagnoseBusy, setDiagnoseBusy] = useState(false);
   const [evolutionBusy, setEvolutionBusy] = useState(false);
+  const [wissenBusy, setWissenBusy] = useState(false);
   const [resolving, setResolving] = useState<string | null>(null);
+  const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
@@ -248,11 +252,47 @@ export default function AdminJarvis() {
     }
   }
 
+  async function runWissenNow() {
+    setWissenBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "wissen" } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string };
+      if (!result.ok) { toast.error(result.error ?? "Wissenslauf konnte nicht laufen."); return; }
+      toast.success("Wissenslauf fertig.");
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setWissenBusy(false);
+    }
+  }
+
   async function dismissNotice(id: string) {
     const now = new Date().toISOString();
     setNotices((prev) => prev.map((n) => (n.id === id ? { ...n, dismissed_at: now } : n)));
     const { error } = await supabase.from("jarvis_notices").update({ dismissed_at: now }).eq("id", id);
     if (error) toast.error(error.message);
+  }
+
+  async function applySuggestion(notice: JarvisNotice) {
+    if (!notice.suggested_action) return;
+    setSuggestionBusy(notice.id);
+    try {
+      const { action, params } = notice.suggested_action;
+      const { data, error } = await supabase.functions.invoke("pawn-actions", {
+        body: { mode: "execute", action, params, source: "admin_chat" },
+      });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string };
+      if (!result.ok) { toast.error(result.error ?? "Konnte nicht umgesetzt werden."); return; }
+      toast.success("Umgesetzt.");
+      await dismissNotice(notice.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSuggestionBusy(null);
+    }
   }
 
   async function togglePause() {
@@ -272,6 +312,7 @@ export default function AdminJarvis() {
   const latestDiagnose = reports.find((r) => r.kind === "diagnose") ?? null;
   const issueNotices = notices.filter((n) => n.kind === "github_issue");
   const runningExperiment = experiments.find((e) => e.status === "laufend") ?? null;
+  const suggestionNotices = notices.filter((n) => n.kind === "vorschlag" && !n.dismissed_at);
 
   return (
     <AdminShell title="Jarvis" eyebrow="Die interne KI-Instanz von PAWN">
@@ -386,15 +427,26 @@ export default function AdminJarvis() {
       <section className="mb-8 border-[1.5px] border-black p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="editorial-eyebrow">Diagnose</p>
-          <Button
-            onClick={runDiagnoseNow}
-            disabled={diagnoseBusy}
-            variant="outline"
-            className="rounded-none border-black hover:bg-black hover:text-white"
-          >
-            {diagnoseBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {diagnoseBusy ? "Jarvis prüft PAWN…" : "Jetzt prüfen"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={runWissenNow}
+              disabled={wissenBusy}
+              variant="outline"
+              className="rounded-none border-black hover:bg-black hover:text-white"
+            >
+              {wissenBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {wissenBusy ? "Jarvis lernt…" : "Wissen erweitern"}
+            </Button>
+            <Button
+              onClick={runDiagnoseNow}
+              disabled={diagnoseBusy}
+              variant="outline"
+              className="rounded-none border-black hover:bg-black hover:text-white"
+            >
+              {diagnoseBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {diagnoseBusy ? "Jarvis prüft PAWN…" : "Jetzt prüfen"}
+            </Button>
+          </div>
         </div>
         {latestDiagnose ? (
           <div className="mt-3 whitespace-pre-line text-sm text-foreground/80">
@@ -405,6 +457,46 @@ export default function AdminJarvis() {
           <p className="mt-3 text-sm text-muted-foreground">Noch keine Diagnose gelaufen.</p>
         )}
       </section>
+
+      {suggestionNotices.length > 0 && (
+        <section className="mb-8 border-[1.5px] border-black">
+          <header className="border-b-[1.5px] border-black px-5 py-3">
+            <p className="editorial-eyebrow">Jarvis schlägt vor</p>
+          </header>
+          <ul className="divide-y divide-border">
+            {suggestionNotices.map((n) => (
+              <li key={n.id} className="flex flex-wrap items-center justify-between gap-3 bg-secondary/30 px-5 py-3">
+                <div className="min-w-0">
+                  <p className="font-serif text-base">{n.title}</p>
+                  <p className="text-sm text-muted-foreground">{n.body}</p>
+                  <p className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {n.suggested_action && n.suggested_action.zone !== "rot" && (
+                    <Button
+                      size="sm"
+                      disabled={suggestionBusy === n.id}
+                      onClick={() => applySuggestion(n)}
+                      className="rounded-none bg-black text-white hover:bg-white hover:text-black"
+                    >
+                      {suggestionBusy === n.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Umsetzen"}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={suggestionBusy === n.id}
+                    onClick={() => dismissNotice(n.id)}
+                    className="rounded-none border-black hover:bg-black hover:text-white"
+                  >
+                    Verwerfen
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {pending.length > 0 && (
         <section className="mb-8 border-[1.5px] border-black">

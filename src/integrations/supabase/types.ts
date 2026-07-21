@@ -1100,6 +1100,7 @@ export type Database = {
           dismissed_at: string | null
           id: string
           kind: string
+          suggested_action: Json | null
           title: string
         }
         Insert: {
@@ -1108,6 +1109,7 @@ export type Database = {
           dismissed_at?: string | null
           id?: string
           kind: string
+          suggested_action?: Json | null
           title: string
         }
         Update: {
@@ -1116,6 +1118,7 @@ export type Database = {
           dismissed_at?: string | null
           id?: string
           kind?: string
+          suggested_action?: Json | null
           title?: string
         }
         Relationships: []
