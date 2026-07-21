@@ -505,7 +505,7 @@ interface NoticeCandidate { kind: string; title: string; body: string }
 async function checkAkquise(admin: SupabaseClient): Promise<NoticeCandidate[]> {
   const cutoff = new Date(Date.now() - 72 * 3600_000).toISOString();
   const { count } = await admin.from("acquisition_leads").select("id", { count: "exact", head: true })
-    .eq("status", "new").lt("created_at", cutoff);
+    .eq("status", "neu").lt("created_at", cutoff);
   if (!count) return [];
   return [{
     kind: "akquise_wartend", title: "Akquise wartet",
