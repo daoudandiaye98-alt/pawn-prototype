@@ -1,7 +1,7 @@
 /**
  * PAWN Jarvis — die interne KI-Instanz. Ruft die pawn-jarvis Edge Function auf.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Mic, Check, X } from "lucide-react";
 
 interface JarvisRun {
   id: string;
@@ -33,9 +33,31 @@ interface JarvisReport {
   read_at: string | null;
 }
 
+interface JarvisNotice {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  created_at: string;
+  dismissed_at: string | null;
+}
+
+interface JarvisPendingAction {
+  id: string;
+  action: string;
+  params: Record<string, unknown>;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  expires_at: string;
+}
+
 const KIND_LABELS: Record<string, string> = {
   morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort",
 };
+
+const SpeechRecognitionCtor: (new () => any) | null =
+  typeof window !== "undefined" ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? null) : null;
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";
@@ -67,20 +89,43 @@ export default function AdminJarvis() {
   const { user, roles, loading } = useAuth();
   const [runs, setRuns] = useState<JarvisRun[]>([]);
   const [reports, setReports] = useState<JarvisReport[]>([]);
+  const [notices, setNotices] = useState<JarvisNotice[]>([]);
+  const [pending, setPending] = useState<JarvisPendingAction[]>([]);
+  const [rawConfig, setRawConfig] = useState<Record<string, unknown> | null>(null);
+  const [enabled, setEnabled] = useState(true);
+  const [monthlyLimit, setMonthlyLimit] = useState(20);
   const [fetching, setFetching] = useState(true);
   const [command, setCommand] = useState("");
   const [busy, setBusy] = useState<null | "befehl" | "morgenbericht" | "wochenbericht" | "recherche">(null);
+  const [resolving, setResolving] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [pauseBusy, setPauseBusy] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const load = async () => {
     setFetching(true);
-    const [runsRes, reportsRes] = await Promise.all([
-      supabase.from("jarvis_runs").select("*").order("started_at", { ascending: false }).limit(20),
-      supabase.from("jarvis_reports").select("*").order("created_at", { ascending: false }).limit(50),
-    ]);
-    setRuns((runsRes.data as JarvisRun[]) ?? []);
-    setReports((reportsRes.data as JarvisReport[]) ?? []);
-    setFetching(false);
+    try {
+      const [runsRes, reportsRes, noticesRes, pendingRes, configRes] = await Promise.allSettled([
+        supabase.from("jarvis_runs").select("*").order("started_at", { ascending: false }).limit(20),
+        supabase.from("jarvis_reports").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase.from("jarvis_notices").select("*").order("created_at", { ascending: false }).limit(30),
+        supabase.from("jarvis_pending_actions").select("*").eq("status", "pending").order("created_at", { ascending: false }),
+        supabase.from("ai_config").select("value").eq("key", "jarvis_config").maybeSingle(),
+      ]);
+      if (runsRes.status === "fulfilled") setRuns((runsRes.value.data as JarvisRun[]) ?? []);
+      if (reportsRes.status === "fulfilled") setReports((reportsRes.value.data as JarvisReport[]) ?? []);
+      if (noticesRes.status === "fulfilled") setNotices((noticesRes.value.data as JarvisNotice[]) ?? []);
+      if (pendingRes.status === "fulfilled") setPending((pendingRes.value.data as JarvisPendingAction[]) ?? []);
+      if (configRes.status === "fulfilled") {
+        const cfgValue = (configRes.value.data?.value as Record<string, unknown>) ?? null;
+        setRawConfig(cfgValue);
+        setEnabled((cfgValue?.enabled as boolean | undefined) ?? true);
+        setMonthlyLimit((cfgValue?.monthly_limit_usd as number | undefined) ?? 20);
+      }
+    } finally {
+      setFetching(false);
+    }
   };
 
   useEffect(() => { if (user && roles.includes("admin")) void load(); }, [user, roles]);
@@ -111,8 +156,85 @@ export default function AdminJarvis() {
     }
   }
 
+  function startListening() {
+    if (!SpeechRecognitionCtor || busy) return;
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "de-DE";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onresult = (e: any) => {
+      const transcript = e.results?.[0]?.[0]?.transcript ?? "";
+      if (transcript.trim()) {
+        setCommand(transcript);
+        void trigger("befehl", transcript);
+      }
+    };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    try { recognition.start(); setListening(true); } catch { setListening(false); }
+  }
+  function stopListening() {
+    recognitionRef.current?.stop();
+    setListening(false);
+  }
+
+  async function resolveAction(id: string, actionMode: "confirm_action" | "reject_action") {
+    setResolving(id);
+    try {
+      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: actionMode, pending_action_id: id } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string };
+      if (!result.ok) { toast.error(result.error ?? "Konnte nicht verarbeitet werden."); return; }
+      toast.success(actionMode === "confirm_action" ? "Aktion ausgeführt." : "Aktion abgelehnt.");
+      setPending((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setResolving(null);
+    }
+  }
+
+  async function dismissNotice(id: string) {
+    const now = new Date().toISOString();
+    setNotices((prev) => prev.map((n) => (n.id === id ? { ...n, dismissed_at: now } : n)));
+    const { error } = await supabase.from("jarvis_notices").update({ dismissed_at: now }).eq("id", id);
+    if (error) toast.error(error.message);
+  }
+
+  async function togglePause() {
+    if (!user) return;
+    setPauseBusy(true);
+    const next = !enabled;
+    const nextValue = { ...(rawConfig ?? {}), enabled: next };
+    const { error } = await supabase.from("ai_config").upsert({ key: "jarvis_config", value: nextValue, updated_by: user.id });
+    setPauseBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setEnabled(next);
+    setRawConfig(nextValue);
+    toast.success(next ? "Jarvis ist wieder aktiv." : "Jarvis ist pausiert.");
+  }
+
+  const unseenNotices = notices.filter((n) => !n.dismissed_at);
+
   return (
     <AdminShell title="Jarvis" eyebrow="Die interne KI-Instanz von PAWN">
+      <div className="mb-4 flex items-center justify-between border-[1.5px] border-black px-5 py-3">
+        <div>
+          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Jarvis-Status</p>
+          <p className="mt-1 font-serif text-lg leading-none">{enabled ? "Aktiv" : "Pausiert"}</p>
+        </div>
+        <Button
+          onClick={togglePause}
+          disabled={pauseBusy}
+          variant="outline"
+          className="rounded-none border-black hover:bg-black hover:text-white"
+        >
+          {pauseBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {enabled ? "Jarvis pausieren" : "Jarvis fortsetzen"}
+        </Button>
+      </div>
+
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="border-[1.5px] border-black p-5">
           <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Zuletzt aktiv</p>
@@ -127,7 +249,9 @@ export default function AdminJarvis() {
         </div>
         <div className="border-[1.5px] border-black p-5">
           <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Geschätzte Kosten · diesen Monat</p>
-          <p className="mt-3 font-serif text-2xl leading-none tabular-nums">${costThisMonth.toFixed(2)}</p>
+          <p className="mt-3 font-serif text-2xl leading-none tabular-nums">
+            ${costThisMonth.toFixed(2)} <span className="text-sm text-muted-foreground">/ ${monthlyLimit.toFixed(2)}</span>
+          </p>
         </div>
       </div>
 
@@ -149,6 +273,25 @@ export default function AdminJarvis() {
             {busy === "befehl" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
             {busy === "befehl" ? "Jarvis denkt nach…" : "Senden"}
           </Button>
+          {SpeechRecognitionCtor && (
+            <Button
+              type="button"
+              disabled={busy !== null}
+              onMouseDown={startListening}
+              onMouseUp={stopListening}
+              onMouseLeave={stopListening}
+              onTouchStart={startListening}
+              onTouchEnd={stopListening}
+              variant="outline"
+              title="Gedrückt halten und sprechen"
+              className={cn(
+                "rounded-none border-black hover:bg-black hover:text-white",
+                listening && "bg-black text-white",
+              )}
+            >
+              <Mic className="h-4 w-4" />
+            </Button>
+          )}
           <span className="mx-1 text-muted-foreground">·</span>
           <Button
             onClick={() => trigger("morgenbericht")}
@@ -180,8 +323,79 @@ export default function AdminJarvis() {
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           "Recherche starten" nutzt den Text oben als Thema. Ohne Text wählt Jarvis ein naheliegendes Thema.
+          {SpeechRecognitionCtor && " Mikrofon gedrückt halten, sprechen, loslassen — wird wie ein Befehl gesendet."}
         </p>
       </section>
+
+      {pending.length > 0 && (
+        <section className="mb-8 border-[1.5px] border-black">
+          <header className="border-b-[1.5px] border-black px-5 py-3">
+            <p className="editorial-eyebrow">Wartet auf dich</p>
+          </header>
+          <ul className="divide-y divide-border">
+            {pending.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <div className="min-w-0">
+                  <p className="font-serif text-base">{p.action}</p>
+                  {p.reason && <p className="text-sm text-muted-foreground">{p.reason}</p>}
+                  <p className="text-xs text-muted-foreground">Vorgeschlagen {timeAgo(p.created_at)} · läuft ab {timeAgo(p.expires_at)}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    size="sm"
+                    disabled={resolving === p.id}
+                    onClick={() => resolveAction(p.id, "confirm_action")}
+                    className="rounded-none bg-black text-white hover:bg-white hover:text-black"
+                  >
+                    {resolving === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={resolving === p.id}
+                    onClick={() => resolveAction(p.id, "reject_action")}
+                    className="rounded-none border-black hover:bg-black hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {notices.length > 0 && (
+        <section className="mb-8 border-[1.5px] border-black">
+          <header className="border-b-[1.5px] border-black px-5 py-3">
+            <p className="editorial-eyebrow">Meldungen{unseenNotices.length > 0 ? ` · ${unseenNotices.length} neu` : ""}</p>
+          </header>
+          <ul className="divide-y divide-border">
+            {notices.map((n) => (
+              <li key={n.id} className={cn("flex items-start justify-between gap-3 px-5 py-3", !n.dismissed_at && "bg-secondary/30")}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {!n.dismissed_at && <span className="h-2 w-2 shrink-0 rounded-full bg-black" title="Ungesehen" />}
+                    <p className="font-serif text-base">{n.title}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{n.body}</p>
+                  <p className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</p>
+                </div>
+                {!n.dismissed_at && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => dismissNotice(n.id)}
+                    className="shrink-0 rounded-none border-black hover:bg-black hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mb-8 border-[1.5px] border-black">
         <header className="border-b-[1.5px] border-black px-5 py-3">
