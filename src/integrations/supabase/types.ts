@@ -1030,6 +1030,93 @@ export type Database = {
           },
         ]
       }
+      jarvis_memory: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+        }
+        Relationships: []
+      }
+      jarvis_notices: {
+        Row: {
+          body: string
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          kind: string
+          title: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          kind: string
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          kind?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      jarvis_pending_actions: {
+        Row: {
+          action: string
+          created_at: string
+          expires_at: string
+          id: string
+          params: Json
+          reason: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          result: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          params?: Json
+          reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          result?: Json | null
+          status?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          params?: Json
+          reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          result?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
       jarvis_reports: {
         Row: {
           body: string
