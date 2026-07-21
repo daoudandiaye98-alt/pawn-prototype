@@ -19,7 +19,7 @@ export type Database = {
           bio: string | null
           clips: Json | null
           contacted_at: string | null
-          created_at: string
+          created_at: string | null
           followers: number | null
           followup_at: string | null
           handle: string
@@ -28,15 +28,15 @@ export type Database = {
           personal_line: string | null
           source: string | null
           status: string
-          updated_at: string
+          updated_at: string | null
           warmed_at: string | null
-          world: string
+          world: string | null
         }
         Insert: {
           bio?: string | null
           clips?: Json | null
           contacted_at?: string | null
-          created_at?: string
+          created_at?: string | null
           followers?: number | null
           followup_at?: string | null
           handle: string
@@ -45,15 +45,15 @@ export type Database = {
           personal_line?: string | null
           source?: string | null
           status?: string
-          updated_at?: string
+          updated_at?: string | null
           warmed_at?: string | null
-          world: string
+          world?: string | null
         }
         Update: {
           bio?: string | null
           clips?: Json | null
           contacted_at?: string | null
-          created_at?: string
+          created_at?: string | null
           followers?: number | null
           followup_at?: string | null
           handle?: string
@@ -62,9 +62,9 @@ export type Database = {
           personal_line?: string | null
           source?: string | null
           status?: string
-          updated_at?: string
+          updated_at?: string | null
           warmed_at?: string | null
-          world?: string
+          world?: string | null
         }
         Relationships: []
       }
@@ -1030,6 +1030,72 @@ export type Database = {
           },
         ]
       }
+      jarvis_reports: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json | null
+          id: string
+          kind: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          kind: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      jarvis_runs: {
+        Row: {
+          cost_estimate: number | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: string
+          summary: string | null
+          tokens_used: number | null
+          trigger: string
+        }
+        Insert: {
+          cost_estimate?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          tokens_used?: number | null
+          trigger?: string
+        }
+        Update: {
+          cost_estimate?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          tokens_used?: number | null
+          trigger?: string
+        }
+        Relationships: []
+      }
       message_threads: {
         Row: {
           category: Database["public"]["Enums"]["message_category"]
@@ -1115,72 +1181,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      jarvis_reports: {
-        Row: {
-          body: string
-          created_at: string
-          data: Json
-          id: string
-          kind: string
-          read_at: string | null
-          title: string
-        }
-        Insert: {
-          body: string
-          created_at?: string
-          data?: Json
-          id?: string
-          kind: string
-          read_at?: string | null
-          title: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          data?: Json
-          id?: string
-          kind?: string
-          read_at?: string | null
-          title?: string
-        }
-        Relationships: []
-      }
-      jarvis_runs: {
-        Row: {
-          cost_estimate: number | null
-          error: string | null
-          finished_at: string | null
-          id: string
-          started_at: string
-          status: string
-          summary: string | null
-          tokens_used: number
-          trigger: string
-        }
-        Insert: {
-          cost_estimate?: number | null
-          error?: string | null
-          finished_at?: string | null
-          id?: string
-          started_at?: string
-          status?: string
-          summary?: string | null
-          tokens_used?: number
-          trigger: string
-        }
-        Update: {
-          cost_estimate?: number | null
-          error?: string | null
-          finished_at?: string | null
-          id?: string
-          started_at?: string
-          status?: string
-          summary?: string | null
-          tokens_used?: number
-          trigger?: string
-        }
-        Relationships: []
       }
       notifications: {
         Row: {
