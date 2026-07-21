@@ -58,7 +58,8 @@ Zonen-Regel für pawn_action: Zone Grün (Ontologie anlegen/zusammenführen, Tre
 type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
-  | "diagnose" | "evolution" | "wissen";
+  | "diagnose" | "evolution" | "wissen"
+  | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -119,6 +120,32 @@ async function loadJarvisConfig(admin: SupabaseClient): Promise<JarvisConfig> {
     };
   } catch {
     return DEFAULT_JARVIS_CONFIG;
+  }
+}
+
+interface AkquiseConfig {
+  apify_actor_id: string;
+  default_world: string;
+  min_score: number;
+  email_daily_cap: number;
+  autosend_email: boolean;
+  email_from: string;
+  email_reply_to: string;
+  followup_after_days: number;
+  max_touches: number;
+}
+const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
+  apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
+  autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "pawnstudio.co@gmail.com",
+  followup_after_days: 5, max_touches: 2,
+};
+async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
+    const v = (data?.value ?? {}) as Partial<AkquiseConfig>;
+    return { ...DEFAULT_AKQUISE_CONFIG, ...v };
+  } catch {
+    return DEFAULT_AKQUISE_CONFIG;
   }
 }
 
@@ -443,7 +470,10 @@ async function confirmPendingAction(
     await admin.from("jarvis_pending_actions").update({ status: "expired", resolved_at: new Date().toISOString() }).eq("id", pendingActionId);
     return { ok: false, error: "Aktion ist abgelaufen und wurde automatisch verworfen (sicherer Standard)." };
   }
-  const result = await executePawnAction(asCaller, pending.action, pending.params ?? {});
+  // akquise_send_batch ist keine pawn-actions-Whitelist-Aktion, sondern der Akquise-Autopilot selbst.
+  const result = pending.action === "akquise_send_batch"
+    ? await sendAkquiseBatch(admin, (pending.params?.lead_ids as string[]) ?? [])
+    : await executePawnAction(asCaller, pending.action, pending.params ?? {});
   await admin.from("jarvis_pending_actions").update({
     status: result.ok ? "confirmed" : "failed", result, resolved_at: new Date().toISOString(), resolved_by: userId,
   }).eq("id", pendingActionId);
@@ -690,6 +720,49 @@ function extractJson(text: string): unknown | null {
   try { return JSON.parse(match[0]); } catch { return null; }
 }
 
+async function fetchImageAsBase64(url: string): Promise<{ data: string; media_type: string } | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const contentType = (res.headers.get("content-type") ?? "image/jpeg").split(";")[0];
+    if (!contentType.startsWith("image/")) return null;
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return { data: btoa(binary), media_type: contentType };
+  } catch {
+    return null;
+  }
+}
+
+/** Ruft Claude mit Bildern + Text auf und erwartet reines JSON als Antwort. Ohne ladbare Bilder: null. */
+async function claudeVisionJson(
+  apiKey: string, prompt: string, images: string[], maxTokens = 500,
+): Promise<{ json: Record<string, unknown> | null; tokens: number }> {
+  const content: Record<string, unknown>[] = [];
+  for (const url of images.slice(0, 4)) {
+    const img = await fetchImageAsBase64(url);
+    if (img) content.push({ type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } });
+  }
+  if (content.length === 0) return { json: null, tokens: 0 };
+  content.push({ type: "text", text: prompt });
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, messages: [{ role: "user", content }] }),
+    });
+    if (!res.ok) return { json: null, tokens: 0 };
+    const data = await res.json();
+    const text = (data.content ?? []).filter((b: { type: string }) => b.type === "text").map((b: { text?: string }) => b.text ?? "").join("\n");
+    const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
+    return { json: extractJson(text) as Record<string, unknown> | null, tokens };
+  } catch {
+    return { json: null, tokens: 0 };
+  }
+}
+
 async function runDiagnose(admin: SupabaseClient, asCaller: SupabaseClient, apiKey: string): Promise<{ healed: string[]; needed: string[]; tokensUsed: number }> {
   const healed: string[] = [];
   const needed: string[] = [];
@@ -830,6 +903,299 @@ async function runDiagnose(admin: SupabaseClient, asCaller: SupabaseClient, apiK
   }
 
   return { healed, needed, tokensUsed };
+}
+
+// --- Akquise-Autopilot ---
+
+function extractBusinessEmail(item: Record<string, unknown>, bio: string | null): string | null {
+  const direct = item.businessEmail ?? item.publicEmail ?? item.email;
+  if (typeof direct === "string" && direct.includes("@")) return direct.trim();
+  if (bio) {
+    const match = bio.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+    if (match) return match[0];
+  }
+  return null;
+}
+
+function extractScrapeImages(item: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  const profilePic = item.profilePicUrlHD ?? item.profilePicUrl ?? item.avatarUrl;
+  if (typeof profilePic === "string") out.push(profilePic);
+  const posts = Array.isArray(item.latestPosts) ? item.latestPosts : Array.isArray(item.posts) ? item.posts : [];
+  for (const p of posts.slice(0, 4)) {
+    const img = (p as Record<string, unknown>)?.displayUrl ?? (p as Record<string, unknown>)?.imageUrl;
+    if (typeof img === "string") out.push(img);
+  }
+  return out.slice(0, 5);
+}
+
+/** akquise_import — zieht den letzten erfolgreichen Apify-Lauf und legt neue Leads als 'neu' an. */
+async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const token = Deno.env.get("APIFY_TOKEN");
+  if (!token) return { ok: true, imported: 0, skipped: 0, message: "Kein APIFY_TOKEN hinterlegt — Import übersprungen." };
+  const config = await loadAkquiseConfig(admin);
+  if (!config.apify_actor_id.trim()) {
+    return { ok: true, imported: 0, skipped: 0, message: "Kein Apify-Actor in ai_config.akquise_config.apify_actor_id konfiguriert." };
+  }
+
+  const url = `https://api.apify.com/v2/acts/${encodeURIComponent(config.apify_actor_id)}/runs/last/dataset/items?token=${encodeURIComponent(token)}&status=SUCCEEDED&limit=200`;
+  let items: Record<string, unknown>[];
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return { ok: false, error: `Apify ${res.status}: konnte letzten Lauf nicht lesen.` };
+    items = await res.json();
+  } catch (e) {
+    return { ok: false, error: `Apify nicht erreichbar: ${(e as Error).message}` };
+  }
+
+  const rows = items.map((item) => {
+    const handle = String(item.username ?? item.handle ?? item.ownerUsername ?? "").replace(/^@/, "").trim().toLowerCase();
+    const followersRaw = item.followersCount ?? item.followers ?? (item.edge_followed_by as { count?: number } | undefined)?.count;
+    const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
+    const bio = String(item.biography ?? item.bio ?? "").trim() || null;
+    const email = extractBusinessEmail(item, bio);
+    return {
+      handle, world: config.default_world, source: "apify", followers, bio,
+      email, channel: email ? "email" : "dm", scrape_images: extractScrapeImages(item), status: "neu",
+    };
+  }).filter((r) => r.handle);
+
+  if (!rows.length) return { ok: true, imported: 0, skipped: 0, message: "Letzter Apify-Lauf enthielt keine verwertbaren Zeilen." };
+
+  const { data, error } = await admin.from("acquisition_leads")
+    .upsert(rows as never, { onConflict: "handle", ignoreDuplicates: true })
+    .select("id");
+  if (error) return { ok: false, error: error.message };
+  const imported = data?.length ?? 0;
+  return { ok: true, imported, skipped: rows.length - imported };
+}
+
+/** akquise_kuratieren — bewertet bis zu 20 neue Leads per Bild-Analyse (Claude Vision). */
+async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const config = await loadAkquiseConfig(admin);
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, world, bio, scrape_images").eq("status", "neu").limit(20);
+
+  let qualified = 0, sortedOut = 0, tokensUsed = 0;
+  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; scrape_images: unknown }[]) {
+    const images = Array.isArray(lead.scrape_images) ? (lead.scrape_images as string[]) : [];
+    const prompt = `Bewerte dieses Instagram-Konto als möglichen PAWN-Designer (kuratierter Marktplatz für unabhängige Designer aus Mode, Interior, Kunst). Handle: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}. Bewerte anhand der Bilder: Handwerk/Qualität der Arbeit, kohärente Bildsprache über die Posts hinweg, Foto-Qualität, Anzeichen von Unabhängigkeit (kein Großlabel, kein reines Dropshipping), Passung zur Welt "${lead.world}". Antworte NUR mit JSON: {"score": <0-100>, "handwerk": "...", "bildsprache": "...", "foto_qualitaet": "...", "unabhaengigkeit": "...", "welt_passung": "..."}`;
+    const { json: result, tokens } = images.length ? await claudeVisionJson(apiKey, prompt, images) : { json: null, tokens: 0 };
+    tokensUsed += tokens;
+    const scoreRaw = typeof result?.score === "number" ? result.score : Number(result?.score);
+    const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(100, Math.round(scoreRaw))) : 0;
+    const reasons = result ?? { hinweis: "Keine auswertbaren Bilder vom Scrape gefunden." };
+    const qualifies = result != null && score >= config.min_score;
+    await admin.from("acquisition_leads").update({
+      kurator_score: score, score_reasons: reasons, qc_passed: qualifies,
+      status: qualifies ? "qualifiziert" : "aussortiert",
+    }).eq("id", lead.id);
+    if (qualifies) qualified++; else sortedOut++;
+  }
+  return { ok: true, processed: (leads ?? []).length, qualified, sorted_out: sortedOut, tokensUsed };
+}
+
+/** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
+async function researchAndDraftLead(
+  apiKey: string, lead: { handle: string; world: string; bio: string | null },
+): Promise<{ personal_line: string; message: string; tokens: number } | null> {
+  const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision. Halte dich STRIKT an diesen bestätigten Ton und diese Struktur (nur <personal_line> ersetzt du durch einen warmen, konkreten Satz ohne Anführungszeichen und ohne Grußwort):
+
+"Hey, ich bin Daouda aus Köln. <personal_line>
+
+Ich baue gerade PAWN — eine kuratierte Ausstellung für unabhängige Designer aus Mode, Interior und Kunst. Kein Katalog, kein Marktplatz-Grau: ein ruhiger Raum, in dem jedes Haus seine eigene Geschichte erzählt und gesehen wird.
+
+Für dich entstehen keine Kosten. Keine Grundgebühr, keine Mindestlaufzeit. Du lädst deine Stücke einmal hoch — die Fotos hast du ja längst — und wir kümmern uns darum, dass man dich sieht. Wenn etwas verkauft wird, bleiben 93% bei dir.
+
+Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
+
+Wenn's nichts für dich ist — auch gut, mach weiter so."
+
+Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — nutze das für personal_line, damit klar wird, dass die Arbeit wirklich angesehen wurde. Antworte am Ende NUR mit JSON: {"personal_line": "...", "message": "<vollständige Nachricht mit eingesetzter personal_line>"}`;
+  const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
+  const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
+  let tokens = 0;
+
+  for (let turn = 0; turn < 5; turn++) {
+    let data: AnthropicResponse;
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: MODEL, max_tokens: 700, system, tools: minimalTools, messages }),
+      });
+      if (!res.ok) return null;
+      data = await res.json();
+    } catch {
+      return null;
+    }
+    tokens += (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
+    if (data.stop_reason !== "tool_use") {
+      const text = data.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
+      const json = extractJson(text) as { personal_line?: string; message?: string } | null;
+      if (json?.personal_line && json?.message) return { personal_line: json.personal_line, message: json.message, tokens };
+      return null;
+    }
+    messages.push({ role: "assistant", content: data.content });
+    const toolResults = data.content
+      .filter((b) => b.type === "tool_use")
+      .map((b) => ({ type: "tool_result", tool_use_id: (b as { id?: string }).id, content: "kein Werkzeug verfügbar" }));
+    messages.push({ role: "user", content: toolResults.length ? toolResults : [{ type: "text", text: "(fahre fort)" }] });
+  }
+  return null;
+}
+
+/** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
+async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, world, bio, email").eq("status", "qualifiziert").is("message_draft", null).limit(10);
+
+  let ready = 0, tokensUsed = 0;
+  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null }[]) {
+    const draft = await researchAndDraftLead(apiKey, lead);
+    if (!draft) continue;
+    tokensUsed += draft.tokens;
+    await admin.from("acquisition_leads").update({
+      personal_line: draft.personal_line, message_draft: draft.message, channel: lead.email ? "email" : "dm",
+    }).eq("id", lead.id);
+    ready++;
+  }
+  return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
+}
+
+const FOLLOWUP_EMAIL_TEXT = `Kein Stress — wollte nur sichergehen, dass meine Nachricht nicht im Anfragen-Ordner versackt ist. Falls du reinschauen magst: pawn.vision. Kostet nichts, und Ausgabe 08 hat noch Platz. Wenn nicht, ist das auch völlig okay.`;
+
+async function sendResendEmail(
+  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
+      body: JSON.stringify({
+        from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
+        text: `${text}\n\n—\nDu bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio erkennbar war. Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe.`,
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      return { ok: false, error: `Resend ${res.status}: ${t.slice(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/** Versendet eine bestätigte Tages-Sendeliste (Erstkontakt + Follow-up, nur Kanal E-Mail). */
+async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promise<Record<string, unknown>> {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) return { ok: false, error: "Kein RESEND_API_KEY hinterlegt." };
+  if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
+  const config = await loadAkquiseConfig(admin);
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, email, message_draft, status, opt_out").in("id", leadIds);
+
+  let sent = 0;
+  const failed: string[] = [];
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean }[]) {
+    if (lead.opt_out || !lead.email || !lead.message_draft) continue;
+    const isFollowup = lead.status === "kontaktiert";
+    const subject = isFollowup ? "Kurz nachgefragt — PAWN" : "PAWN — eine Ausstellung für unabhängige Designer";
+    const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
+    const result = await sendResendEmail(resendKey, config, lead.email, subject, text);
+    if (!result.ok) { failed.push(lead.handle); continue; }
+    sent++;
+    const now = new Date().toISOString();
+    if (isFollowup) {
+      await admin.from("acquisition_leads").update({ followup_at: now, status: "ruhe", updated_at: now }).eq("id", lead.id);
+    } else {
+      const nextTouch = new Date(Date.now() + config.followup_after_days * 86_400_000).toISOString();
+      await admin.from("acquisition_leads").update({
+        status: "kontaktiert", contacted_at: now, next_touch_at: nextTouch, updated_at: now,
+      }).eq("id", lead.id);
+    }
+  }
+  return { ok: true, sent, failed };
+}
+
+/**
+ * akquise_senden — Kanal E-Mail: Erstkontakt (qualifiziert, Entwurf fertig) + fällige Follow-ups.
+ * Zone Rot (Standard): eine Sendeliste als jarvis_pending_actions-Eintrag, ein Tipp bestätigt den ganzen Stapel.
+ * Zone Gelb (autosend_email=true): Jarvis versendet direkt und meldet es.
+ * DM-Kanal wird hier NIE automatisiert — der bleibt vollständig im Sende-Stapel von AdminAkquise.
+ */
+async function runAkquiseSenden(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const config = await loadAkquiseConfig(admin);
+  const nowIso = new Date().toISOString();
+
+  const { data: firstTouch } = await admin.from("acquisition_leads")
+    .select("id").eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
+    .not("message_draft", "is", null).not("email", "is", null)
+    .order("created_at", { ascending: true }).limit(config.email_daily_cap);
+
+  const remainingCap = Math.max(0, config.email_daily_cap - (firstTouch?.length ?? 0));
+  const { data: followups } = remainingCap > 0 && config.max_touches >= 2
+    ? await admin.from("acquisition_leads").select("id")
+      .eq("status", "kontaktiert").eq("channel", "email").eq("opt_out", false)
+      .is("followup_at", null).lte("next_touch_at", nowIso).limit(remainingCap)
+    : { data: [] as { id: string }[] };
+
+  const candidateIds = [...(firstTouch ?? []).map((r: { id: string }) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
+  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden." };
+
+  if (config.autosend_email) {
+    const result = await sendAkquiseBatch(admin, candidateIds);
+    const sentCount = (result as { sent?: number }).sent ?? 0;
+    const failedList = (result as { failed?: string[] }).failed ?? [];
+    await admin.from("jarvis_notices").insert({
+      kind: "akquise_gesendet", title: "Akquise-Mails verschickt",
+      body: `${sentCount} E-Mail(s) verschickt${failedList.length ? `, ${failedList.length} fehlgeschlagen (${failedList.join(", ")})` : ""} — Zone Gelb, automatisch.`,
+    });
+    return { ok: true, mode: "autosend", ...result };
+  }
+
+  const expiresAt = new Date(Date.now() + 48 * 3600_000).toISOString();
+  const { data: pendingRow } = await admin.from("jarvis_pending_actions").insert({
+    action: "akquise_send_batch", params: { lead_ids: candidateIds },
+    reason: `${candidateIds.length} E-Mail(s) bereit zum Versand (Erstkontakt + Follow-up).`,
+    expires_at: expiresAt,
+  }).select("id").single();
+  return { ok: true, mode: "queued", pending_action_id: (pendingRow as { id: string } | null)?.id, count: candidateIds.length };
+}
+
+/** bewerbung_pruefen — bewertet neue Bewerbungen per Vision gegen denselben Kurator-Standard wie Akquise-Leads. */
+async function runBewerbungPruefen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: apps } = await admin.from("designer_applications")
+    .select("id, brand_name, story, tags, portfolio_paths, avatar_path, banner_path")
+    .eq("status", "submitted").is("ai_review_summary", null).limit(5);
+
+  let processed = 0, tokensUsed = 0;
+  for (const app of (apps ?? []) as { id: string; brand_name: string; story: string | null; tags: string[] | null; portfolio_paths: string[] | null; avatar_path: string | null; banner_path: string | null }[]) {
+    const paths = [
+      ...(app.avatar_path ? [app.avatar_path] : []),
+      ...(app.banner_path ? [app.banner_path] : []),
+      ...((app.portfolio_paths ?? []).slice(0, 4)),
+    ];
+    const images: string[] = [];
+    for (const p of paths) {
+      const { data } = await admin.storage.from("designer-applications").createSignedUrl(p, 3600);
+      if (data?.signedUrl) images.push(data.signedUrl);
+    }
+    const prompt = `Bewerbung als PAWN-Designer: "${app.brand_name}". Geschichte: ${app.story ?? "keine"}. Tags: ${(app.tags ?? []).join(", ") || "keine"}. Bewerte anhand der Bilder nach demselben Maßstab wie bei der Akquise: Handwerk, kohärente Bildsprache, Foto-Qualität, Unabhängigkeit. Antworte NUR mit JSON: {"score": <0-100>, "empfehlung": "aufnehmen"|"ablehnen"|"rueckfragen", "begruendung": "...", "antwortentwurf": "kurzer, freundlicher Antworttext an die Bewerbung"}`;
+    const { json: result, tokens } = images.length ? await claudeVisionJson(apiKey, prompt, images, 600) : { json: null, tokens: 0 };
+    tokensUsed += tokens;
+    const summary = result ?? { hinweis: "Keine auswertbaren Bilder gefunden.", empfehlung: "rueckfragen" };
+    await admin.from("designer_applications").update({ ai_review_summary: summary as never }).eq("id", app.id);
+
+    const empfehlung = String((summary as { empfehlung?: string }).empfehlung ?? "rueckfragen");
+    await admin.from("jarvis_notices").insert({
+      kind: "bewerbung_gutachten", title: `Gutachten: ${app.brand_name} → ${empfehlung}`,
+      body: `${(summary as { begruendung?: string }).begruendung ?? ""}\n\nAntwort-Entwurf:\n${(summary as { antwortentwurf?: string }).antwortentwurf ?? "(kein Entwurf)"}`,
+    });
+    processed++;
+  }
+  return { ok: true, processed, tokensUsed };
 }
 
 const TOOLS = [
@@ -1060,15 +1426,19 @@ Deno.serve(async (req) => {
     const validModes: Mode[] = [
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen",
+      "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
     ];
     if (!validModes.includes(mode)) {
-      return ok({ ok: false, error: "mode muss morgenbericht, wochenbericht, recherche, befehl, heartbeat, confirm_action, reject_action, diagnose, evolution oder wissen sein." });
+      return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
     }
 
     // Geplante KI-Läufe ohne Admin-Login: diese Modi dürfen auch von pg_cron mit dem geteilten
     // JARVIS_CRON_SECRET ausgelöst werden (Body-Feld "secret"). Befehle vom Menschen (befehl, recherche,
     // confirm_action, reject_action, wochenbericht) bleiben strikt admin-only.
-    const CRON_TRIGGERABLE_MODES: Mode[] = ["heartbeat", "wissen", "diagnose", "evolution", "morgenbericht"];
+    const CRON_TRIGGERABLE_MODES: Mode[] = [
+      "heartbeat", "wissen", "diagnose", "evolution", "morgenbericht",
+      "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+    ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
     const authorized = CRON_TRIGGERABLE_MODES.includes(mode) ? (isAdmin || isCronSecretCaller) : isAdmin;
@@ -1116,6 +1486,23 @@ Deno.serve(async (req) => {
       return ok({ ok: true, run_id: runId, ...result });
     }
 
+    // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
+    if (mode === "akquise_import" || mode === "akquise_senden") {
+      const trig = body.trigger === "cron" ? "cron" : "manual";
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = mode === "akquise_import" ? await runAkquiseImport(admin) : await runAkquiseSenden(admin);
+      const summary = mode === "akquise_import"
+        ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
+        : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
+      if (runId) await admin.from("jarvis_runs").update({
+        finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
+        summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
+        tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
+    }
+
     const spent = await monthlyCostSoFar(admin);
     if (spent >= config.monthly_limit_usd) {
       return ok({ ok: false, error: `Monatslimit erreicht ($${spent.toFixed(2)} von $${config.monthly_limit_usd.toFixed(2)}). Jarvis antwortet erst wieder nächsten Monat, oder wenn das Limit erhöht wird.` });
@@ -1146,6 +1533,30 @@ Deno.serve(async (req) => {
       }).eq("id", runId);
 
       return ok({ ok: true, run_id: runId, report: reportRow });
+    }
+
+    if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+
+      const result = mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
+        : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
+        : await runBewerbungPruefen(admin, apiKey);
+
+      const summary = mode === "akquise_kuratieren"
+        ? `Kuratiert: ${(result as { qualified?: number }).qualified ?? 0} qualifiziert, ${(result as { sorted_out?: number }).sorted_out ?? 0} aussortiert`
+        : mode === "akquise_verfassen"
+        ? `Verfasst: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : `Bewerbungen geprüft: ${(result as { processed?: number }).processed ?? 0}`;
+
+      const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
+      const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
+      if (runId) await admin.from("jarvis_runs").update({
+        finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
+        summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
+      }).eq("id", runId);
+
+      return ok({ run_id: runId, ...result });
     }
 
     // --- Berichte / Befehle: normaler LLM-Pfad ---
