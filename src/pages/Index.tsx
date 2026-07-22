@@ -8,6 +8,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PickYourStyle } from "@/components/palace/PickYourStyle";
+import { PremiereSection } from "@/components/palace/PremiereSection";
 import { Editable, EditableImage } from "@/components/palace/Editable";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
@@ -322,6 +323,9 @@ const Index = () => {
       <section className="relative z-10 border-y border-[rgba(0,0,0,.18)] bg-[#FFFFFF] py-24 md:py-32">
         <PickYourStyle />
       </section>
+
+      {/* ── 05c PREMIÈRE — kuratierte Designer-Videos ─────── */}
+      <PremiereSection />
 
       {/* ── 06 CURATED COLLECTION · horizontal scroll ─────── */}
       {collection.items.length > 0 && (

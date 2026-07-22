@@ -800,6 +800,7 @@ export type Database = {
           is_featured: boolean
           location: string | null
           manifesto: string | null
+          media_rights_granted_at: string | null
           plan: Database["public"]["Enums"]["designer_plan"]
           portrait_url: string | null
           published: boolean
@@ -837,6 +838,7 @@ export type Database = {
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
+          media_rights_granted_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           published?: boolean
@@ -874,6 +876,7 @@ export type Database = {
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
+          media_rights_granted_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           published?: boolean
@@ -897,6 +900,63 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "designer_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_assets: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          designer_id: string
+          id: string
+          performance: Json
+          premiere: boolean
+          rights_granted: boolean
+          source: Database["public"]["Enums"]["video_source"]
+          thumb: string | null
+          url: string
+          video_dna: Json
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id: string
+          id?: string
+          performance?: Json
+          premiere?: boolean
+          rights_granted?: boolean
+          source?: Database["public"]["Enums"]["video_source"]
+          thumb?: string | null
+          url: string
+          video_dna?: Json
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id?: string
+          id?: string
+          performance?: Json
+          premiere?: boolean
+          rights_granted?: boolean
+          source?: Database["public"]["Enums"]["video_source"]
+          thumb?: string | null
+          url?: string
+          video_dna?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_assets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_assets_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
             referencedColumns: ["id"]
           },
         ]
@@ -1838,6 +1898,10 @@ export type Database = {
         Args: { _application_id: string }
         Returns: undefined
       }
+      bump_video_metric: {
+        Args: { p_asset_id: string; p_metric: string }
+        Returns: undefined
+      }
       decrement_stock_for_order: {
         Args: { _product_id: string; _qty: number }
         Returns: undefined
@@ -1942,6 +2006,7 @@ export type Database = {
       posting_status: "queued" | "posted" | "failed" | "cancelled"
       product_status: "draft" | "published" | "archived"
       product_world: "Mode" | "Interior" | "Kunst"
+      video_source: "designer" | "edition" | "jarvis"
     }
     CompositeTypes: {
       [_ in never]: never

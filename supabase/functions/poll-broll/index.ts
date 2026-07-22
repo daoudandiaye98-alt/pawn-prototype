@@ -31,15 +31,15 @@ Deno.serve(async (req) => {
     const admin = createClient(url, svc, { auth: { persistSession: false } });
 
     const { data: rows } = await admin.from("generation_requests")
-      .select("id, status, error, campaign_id, created_at, campaigns!inner(designer_id, designers!inner(user_id))")
+      .select("id, status, error, tier, campaign_id, created_at, campaigns!inner(designer_id, designers!inner(user_id, media_rights_granted_at))")
       .in("id", request_ids);
     if (!rows) return json({ ok: true, results: [] });
 
     const results: Array<{ id: string; status: string; result_url?: string; error?: string }> = [];
 
     for (const r of rows as unknown as Array<{
-      id: string; status: string; error: string | null; campaign_id: string; created_at: string;
-      campaigns: { designer_id: string; designers: { user_id: string } };
+      id: string; status: string; error: string | null; tier: string; campaign_id: string; created_at: string;
+      campaigns: { designer_id: string; designers: { user_id: string; media_rights_granted_at: string | null } };
     }>) {
       if (r.status === "done" || r.status === "failed") {
         results.push({ id: r.id, status: r.status });
@@ -94,6 +94,14 @@ Deno.serve(async (req) => {
           await admin.from("generation_requests").update({
             status: "done", result_url: finalUrl, error: null,
           } as never).eq("id", r.id);
+          await admin.from("video_assets").insert({
+            designer_id: r.campaigns.designer_id,
+            campaign_id: r.campaign_id,
+            url: finalUrl,
+            source: "designer",
+            video_dna: { provider: "fal", tier: r.tier },
+            rights_granted: !!r.campaigns.designers.media_rights_granted_at,
+          } as never);
           await admin.from("notifications").insert({
             user_id: r.campaigns.designers.user_id,
             type: "campaign.broll_ready",

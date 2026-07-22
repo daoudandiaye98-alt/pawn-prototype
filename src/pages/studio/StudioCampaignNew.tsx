@@ -63,6 +63,8 @@ export default function StudioCampaignNew() {
   // Step 0
   const [consentOk, setConsentOk] = useState<boolean | null>(null);
   const [consentBusy, setConsentBusy] = useState(false);
+  const [mediaRightsGranted, setMediaRightsGranted] = useState<boolean | null>(null);
+  const [mediaRightsBusy, setMediaRightsBusy] = useState(false);
 
   // Step 1
   const [products, setProducts] = useState<ProductLite[]>([]);
@@ -110,10 +112,12 @@ export default function StudioCampaignNew() {
     if (!designer) return;
     (async () => {
       const [{ data: d }, { data: prods }] = await Promise.all([
-        supabase.from("designers").select("image_usage_consent").eq("id", designer.id).maybeSingle(),
+        supabase.from("designers").select("image_usage_consent, media_rights_granted_at").eq("id", designer.id).maybeSingle(),
         supabase.from("products").select("id, name, slug, world, image_url").eq("designer_id", designer.id).order("created_at", { ascending: false }),
       ]);
-      setConsentOk(((d as unknown as { image_usage_consent?: boolean } | null)?.image_usage_consent) === true);
+      const dd = d as unknown as { image_usage_consent?: boolean; media_rights_granted_at?: string | null } | null;
+      setConsentOk(dd?.image_usage_consent === true);
+      setMediaRightsGranted(!!dd?.media_rights_granted_at);
       setProducts((prods ?? []) as ProductLite[]);
     })();
   }, [designer]);
@@ -174,6 +178,18 @@ export default function StudioCampaignNew() {
     if (error) return toast.error(error.message);
     setConsentOk(true);
     toast.success("Einwilligung gespeichert.");
+  };
+
+  const grantMediaRights = async () => {
+    if (!designer || !user) return;
+    setMediaRightsBusy(true);
+    const { error } = await supabase.from("designers")
+      .update({ media_rights_granted_at: new Date().toISOString() } as never)
+      .eq("id", designer.id);
+    setMediaRightsBusy(false);
+    if (error) return toast.error(error.message);
+    setMediaRightsGranted(true);
+    toast.success("Rechte-Haken gesetzt.");
   };
 
   // Upload handlers
@@ -432,7 +448,7 @@ export default function StudioCampaignNew() {
       const title = chosenProduct
         ? `${chosenProduct.name} · Kampagne`
         : `${designer.brand_name} · Reel`;
-      const { error } = await supabase.from("campaigns").insert({
+      const { data: campRow, error } = await supabase.from("campaigns").insert({
         designer_id: designer.id,
         product_id: chosenProduct?.id ?? null,
         title,
@@ -440,8 +456,19 @@ export default function StudioCampaignNew() {
         status: "proposed",
         content: { ...content, tryon: hasTryon } as unknown as Record<string, unknown>,
         created_by: user.id,
-      } as never);
+      } as never).select("id").single();
       if (error) throw error;
+
+      const rightsGranted = mediaRightsGranted === true;
+      await supabase.from("video_assets").insert({
+        designer_id: designer.id,
+        campaign_id: (campRow as { id: string } | null)?.id ?? null,
+        url: signedUrl,
+        source: "designer",
+        video_dna: { tempo, seed, format, cinematic, source: "client-renderer" } as unknown as Record<string, unknown>,
+        rights_granted: rightsGranted,
+      } as never);
+
       toast.success("Zur Freigabe gespeichert.");
       nav("/studio/kampagnen");
     } catch (e) {
@@ -508,12 +535,29 @@ export default function StudioCampaignNew() {
                   </div>
                 )}
             </div>
+            <div className="border border-border bg-white p-5">
+              <p className="editorial-eyebrow">Medien-Rechte</p>
+              {mediaRightsGranted === null ? <p className="mt-2 text-sm text-muted-foreground">wird geprüft…</p> :
+                mediaRightsGranted ? (
+                  <p className="mt-2 flex items-center gap-2 text-sm text-emerald-700"><Check className="h-4 w-4" /> Rechte-Haken gesetzt.</p>
+                ) : (
+                  <div className="mt-2 space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      PAWN darf ausgewählte Videos mit Credit und Verlinkung auf der Plattform und den PAWN-Kanälen zeigen.
+                    </p>
+                    <button onClick={grantMediaRights} disabled={mediaRightsBusy}
+                      className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
+                      {mediaRightsBusy ? "Speichere…" : "Ich stimme zu"}
+                    </button>
+                  </div>
+                )}
+            </div>
           </aside>
 
           <div className="lg:col-span-2 flex justify-end">
             <button
               onClick={() => setStep(1)}
-              disabled={consentOk !== true || quota.atLimit}
+              disabled={consentOk !== true || mediaRightsGranted !== true || quota.atLimit}
               className="flex items-center gap-2 border border-foreground bg-foreground px-6 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40"
             >
               Weiter zu Material <ArrowRight className="h-3.5 w-3.5" />
