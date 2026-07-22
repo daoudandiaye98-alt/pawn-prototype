@@ -36,6 +36,7 @@ export default function AGB() {
           </S>
           <S title="3. Zahlungsabwicklung via Stripe">
             <p>Zahlungen werden über Stripe abgewickelt. PAWN erhält die Zahlung im Namen der Designer:in als Zahlungsvermittler und leitet den Nettobetrag (abzüglich der Plattform-Provision) monatlich an die Designer:in weiter. Verfügbar sind Karte, Apple Pay, Google Pay, PayPal, Klarna (je nach Land).</p>
+            <p>Kaufpreiszahlungen fließen über den Zahlungsdienstleister Stripe unmittelbar an den jeweiligen Designer; PAWN erhält eine Vermittlungsprovision von 7%.</p>
           </S>
           <S title="4. Plattform-Provision">
             <p><strong>PAWN behält 7% des Bruttoverkaufspreises</strong> je Bestellung als Vermittlungsprovision. Der Provisions-Satz ist auf jeder Produktseite implizit — <em>7% bleiben immer 7%</em>, unabhängig vom gewählten Designer-Plan.</p>

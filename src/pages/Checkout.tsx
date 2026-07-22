@@ -48,6 +48,12 @@ const Checkout = () => {
         window.location.href = data.url as string;
         return;
       }
+      // mixed_cart / designer_not_ready sind bewusste Sperren, kein technischer Ausfall —
+      // hier NICHT auf das interne Ledger zurückfallen, sondern die Meldung zeigen.
+      if (!error && (data?.error === "mixed_cart" || data?.error === "designer_not_ready")) {
+        toast.error(data.message ?? "Kauf gerade nicht möglich.");
+        return;
+      }
       if (error) toast.message("Zahlung wird gerade eingerichtet — deine Bestellung wird direkt vermerkt.");
     } catch { /* fall through to internal ledger */ }
 

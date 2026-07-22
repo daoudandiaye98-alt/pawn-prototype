@@ -9,7 +9,10 @@ interface Order {
   status: string; stripe_session_id: string | null; customer_email: string | null;
   created_at: string; items: unknown;
 }
-interface DesignerLite { id: string; brand_name: string; slug: string; revenue_share_pct: number; house_number: number | null }
+interface DesignerLite {
+  id: string; brand_name: string; slug: string; revenue_share_pct: number; house_number: number | null;
+  stripe_account_id: string | null; stripe_charges_enabled: boolean; stripe_details_submitted: boolean;
+}
 interface ProductLite { id: string; slug: string; designer_id: string; price: number; name: string }
 
 interface BusinessProfile {
@@ -34,7 +37,7 @@ export default function AdminPayments() {
     (async () => {
       const [o, d, p, cCommission, cBusiness] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(500),
-        supabase.from("designers").select("id, brand_name, slug, revenue_share_pct, house_number").eq("status", "active").order("brand_name"),
+        supabase.from("designers").select("id, brand_name, slug, revenue_share_pct, house_number, stripe_account_id, stripe_charges_enabled, stripe_details_submitted").eq("status", "active").order("brand_name"),
         supabase.from("products").select("id, slug, designer_id, price, name"),
         supabase.from("ai_config").select("value").eq("key", "platform_commission").maybeSingle(),
         supabase.from("ai_config").select("value").eq("key", "business_profile").maybeSingle(),
@@ -182,6 +185,7 @@ export default function AdminPayments() {
             <thead>
               <tr className="text-left text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">
                 <th className="px-4 py-3">Designer</th>
+                <th className="px-4 py-3">Connect</th>
                 <th className="px-4 py-3">Bestellungen</th>
                 <th className="px-4 py-3">Stück</th>
                 <th className="px-4 py-3">Umsatz</th>
@@ -206,6 +210,7 @@ export default function AdminPayments() {
                           <span className="ml-2 text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">Designer {designer!.house_number}</span>
                         )}
                       </td>
+                      <td className="px-4 py-3"><ConnectStatus designer={designer!} /></td>
                       <td className="px-4 py-3 tabular-nums">{r.orders.size}</td>
                       <td className="px-4 py-3 tabular-nums">{r.qty}</td>
                       <td className="px-4 py-3 tabular-nums">€ {r.revenue.toLocaleString("de-DE", { maximumFractionDigits: 2 })}</td>
@@ -286,6 +291,22 @@ function OrdersTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function ConnectStatus({ designer }: { designer: DesignerLite }) {
+  const label = designer.stripe_charges_enabled ? "Verbunden"
+    : designer.stripe_details_submitted ? "In Prüfung"
+    : "Fehlt";
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs">
+      <span className={
+        designer.stripe_charges_enabled ? "h-2 w-2 rounded-full bg-foreground"
+          : designer.stripe_details_submitted ? "h-2 w-2 rounded-full border border-foreground"
+          : "h-2 w-2 rounded-full border border-muted-foreground"
+      } />
+      <span className={designer.stripe_charges_enabled ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+    </span>
   );
 }
 
