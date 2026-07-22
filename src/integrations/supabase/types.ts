@@ -137,6 +137,38 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_budget_ledger: {
+        Row: {
+          designer_id: string
+          id: string
+          month: string
+          spent_cents: number
+          updated_at: string
+        }
+        Insert: {
+          designer_id: string
+          id?: string
+          month: string
+          spent_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          designer_id?: string
+          id?: string
+          month?: string
+          spent_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_budget_ledger_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_config: {
         Row: {
           created_at: string
@@ -1897,6 +1929,10 @@ export type Database = {
       archive_application: {
         Args: { _application_id: string }
         Returns: undefined
+      }
+      book_ai_spend: {
+        Args: { _cents: number; _designer_id: string }
+        Returns: Json
       }
       bump_video_metric: {
         Args: { p_asset_id: string; p_metric: string }

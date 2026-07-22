@@ -9,6 +9,7 @@ import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PickYourStyle } from "@/components/palace/PickYourStyle";
 import { PremiereSection } from "@/components/palace/PremiereSection";
+import { PlanFunnel } from "@/components/pawn/PlanFunnel";
 import { Editable, EditableImage } from "@/components/palace/Editable";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
@@ -466,6 +467,12 @@ const Index = () => {
                   <Editable as="span" contentKey="cta_card_b">Zur laufenden<br/>Ausstellung.</Editable>
                 </p>
               </Link>
+            </Reveal>
+          </div>
+
+          <div className="mx-auto mt-16 max-w-xl text-left">
+            <Reveal delay={200}>
+              <PlanFunnel context="landing" />
             </Reveal>
           </div>
         </div>

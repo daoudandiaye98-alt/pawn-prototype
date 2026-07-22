@@ -32,6 +32,8 @@ export interface RendererInput {
   seed?: number;
   /** Instagram-Handle für CTA-Outro; Fallback 'hausofpawn'. */
   instagramHandle?: string | null;
+  /** Haus-Plan zeigt das PAWN-Emblem im Abspann; Atelier/Maison nicht. Default true. */
+  showEmblem?: boolean;
 }
 
 export interface RenderResult { blob: Blob; mimeType: string; durationMs: number; seed: number }
@@ -109,6 +111,7 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
     productLabel: input.productLabel ?? input.brandName,
     houseNumber: input.houseNumber ?? null,
     instagramHandle: input.instagramHandle ?? null,
+    showEmblem: input.showEmblem ?? true,
   };
   const rnd = mulberry32(seed);
   const n = layers.length;

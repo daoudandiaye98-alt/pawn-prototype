@@ -365,8 +365,9 @@ export default function StudioCampaignNew() {
 
     const baseImages = chosenImages.slice(0, 4);
     let sources: Array<{ image?: string; clip?: string }> | undefined;
+    const useCinematic = cinematic && quota.kinematicAllowed && !quota.kinematicAtLimit;
 
-    if (cinematic) {
+    if (useCinematic) {
       try {
         const aligned = await runCinematic(baseImages.slice(0, 3));
         const succeeded = aligned.filter((c) => !!c).length;
@@ -402,6 +403,7 @@ export default function StudioCampaignNew() {
         format,
         seed,
         instagramHandle,
+        showEmblem: plan === "haus",
       }, {
         onProgress: (p) => setRenderPct(Math.round(p.fraction * 100)),
         onCanvas: (c) => {
@@ -696,22 +698,42 @@ export default function StudioCampaignNew() {
             </div>
 
             <p className="editorial-eyebrow mt-8">✦ Kinematischer Modus</p>
-            <div className={`mt-3 border ${cinematic ? "border-foreground" : "border-border"} bg-white p-4`}>
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={cinematic}
-                  onChange={(e) => setCinematic(e.target.checked)}
-                  className="mt-1 h-4 w-4 accent-foreground"
-                />
-                <div>
-                  <p className="font-serif text-base">Echte KI-Bewegung statt Standbildern.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    PAWN erzeugt für jedes Foto einen kurzen Clip (fal.ai · Kling), schneidet sie in deiner Regie. Verbraucht {quota.accentCostUnits} deiner {Number.isFinite(quota.limit) ? quota.limit : "∞"} Kampagnen.
-                  </p>
-                </div>
-              </label>
-            </div>
+            {!quota.kinematicAllowed ? (
+              <div className="mt-3 border border-foreground bg-white p-4">
+                <p className="font-serif text-base">Ab Atelier: echte KI-Bewegung statt Standbildern.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Der Haus-Plan produziert in der ruhigen Editorial-Regie. Kinematische Clips (fal.ai) sind ab Atelier dabei.
+                </p>
+                <Link to="/studio/plan" className="mt-3 inline-block border border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.22em] text-background">
+                  Plan ansehen
+                </Link>
+              </div>
+            ) : quota.kinematicAtLimit ? (
+              <div className="mt-3 border border-foreground bg-white p-4">
+                <p className="font-serif text-base">Kinematisches Kontingent diesen Monat aufgebraucht.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {quota.kinematicUsed} von {quota.kinematicLimit} kinematischen Clips verbraucht. Restliche Videos entstehen in der Editorial-Regie.
+                </p>
+              </div>
+            ) : (
+              <div className={`mt-3 border ${cinematic ? "border-foreground" : "border-border"} bg-white p-4`}>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={cinematic}
+                    onChange={(e) => setCinematic(e.target.checked)}
+                    className="mt-1 h-4 w-4 accent-foreground"
+                  />
+                  <div>
+                    <p className="font-serif text-base">Echte KI-Bewegung statt Standbildern.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      PAWN erzeugt für jedes Foto einen kurzen Clip (fal.ai · Kling), schneidet sie in deiner Regie.
+                      {quota.kinematicLimit !== Infinity && ` Noch ${quota.kinematicLimit - quota.kinematicUsed} von ${quota.kinematicLimit} kinematische Clips diesen Monat.`}
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
 
           </section>
 

@@ -114,6 +114,27 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user_id, _role: "admin" });
     if (!isAdmin && p.designers.user_id !== user_id) return json({ error: "forbidden" }, 403);
 
+    // Monats-Kontingent prüfen (Haus/Atelier begrenzt, Maison = -1 = unbegrenzt).
+    if (!isAdmin) {
+      const plan = p.designers.plan ?? "haus";
+      const { data: planLimitsRow } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
+      const tryonLimit = ((planLimitsRow?.value as Record<string, { tryon_shots_per_month?: number }> | null)?.[plan]?.tryon_shots_per_month) ?? 5;
+      if (tryonLimit >= 0) {
+        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+        const { count } = await admin.from("product_shot_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("designer_id", p.designer_id)
+          .in("mode", ["tryon", "tryon_clip"])
+          .gte("created_at", monthStart.toISOString());
+        if ((count ?? 0) >= tryonLimit) {
+          return json({
+            error: "quota_exceeded",
+            message: `Dein Try-On-Kontingent für diesen Monat (${tryonLimit}) ist aufgebraucht. Mehr geht mit einem größeren Plan.`,
+          }, 200);
+        }
+      }
+    }
+
     // Load config
     const { data: cfgRow } = await admin.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle();
     const cfg = ((cfgRow?.value ?? {}) as TryonConfig);
@@ -238,7 +259,11 @@ Deno.serve(async (req) => {
       error: null,
     } as never).eq("id", request_id);
 
+    const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
+    const costs = (costsCfg?.value as { tryon_shot?: number; tryon_clip?: number } | null) ?? {};
+
     if (mode === "shot") {
+      try { await admin.rpc("book_ai_spend", { _designer_id: p.designer_id, _cents: costs.tryon_shot ?? 12 }); } catch { /* noop */ }
       return json({ ok: true, request_id, result_url: shotUrl, mode: "shot", model_style: style });
     }
 
@@ -288,6 +313,8 @@ Deno.serve(async (req) => {
       requested_by: user_id,
       error: JSON.stringify({ request_id: requestIdFal, status_url: statusUrl, response_url: responseUrl, image_url: shotUrl }),
     } as never).select("id").single();
+
+    try { await admin.rpc("book_ai_spend", { _designer_id: p.designer_id, _cents: costs.tryon_clip ?? 45 }); } catch { /* noop */ }
 
     return json({
       ok: true, request_id, result_url: shotUrl, mode: "clip",

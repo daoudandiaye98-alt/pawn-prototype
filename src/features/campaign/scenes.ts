@@ -39,6 +39,8 @@ export interface SceneCtx {
   productLabel?: string | null;
   houseNumber?: number | null;
   instagramHandle?: string | null;
+  /** Haus-Plan zeigt das PAWN-Emblem im Abspann; Atelier/Maison nicht. Default true. */
+  showEmblem?: boolean;
 }
 
 export interface Scene {
@@ -379,10 +381,12 @@ export function outro(sc: SceneCtx): Scene {
       const handle = (sc.instagramHandle && sc.instagramHandle.trim()) || "hausofpawn";
       const productName = sc.productName ?? sc.brandName;
 
-      // Kleines P♟WN oben als Rahmen
-      drawText(ctx, "P♟WN", cx, top + 60, {
-        size: 44, family: serif, weight: 600, color: "#000", align: "center", alpha: alpha * 0.85,
-      });
+      // Kleines P♟WN oben als Rahmen — nur auf dem Haus-Plan (Atelier/Maison ohne Emblem).
+      if (sc.showEmblem !== false) {
+        drawText(ctx, "P♟WN", cx, top + 60, {
+          size: 44, family: serif, weight: 600, color: "#000", align: "center", alpha: alpha * 0.85,
+        });
+      }
 
       // Designer-Brand als Star, groß & mittig
       const brand = sc.brandName;
