@@ -41,6 +41,7 @@ import StudioCopilot from "./pages/studio/StudioCopilot.tsx";
 import StudioSettings from "./pages/studio/StudioSettings.tsx";
 import StudioCampaignNew from "./pages/studio/StudioCampaignNew.tsx";
 import StudioPlan from "./pages/studio/StudioPlan.tsx";
+import StudioVideothek from "./pages/studio/StudioVideothek.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
@@ -71,6 +72,7 @@ import AdminKI from "./pages/admin/AdminKI.tsx";
 import AdminTrends from "./pages/admin/AdminTrends.tsx";
 import AdminAkquise from "./pages/admin/AdminAkquise.tsx";
 import AdminJarvis from "./pages/admin/AdminJarvis.tsx";
+import AdminArchiv from "./pages/admin/AdminArchiv.tsx";
 
 import PortalOverview from "./pages/portal/PortalOverview.tsx";
 import PortalEditor from "./pages/portal/PortalEditor.tsx";
@@ -146,6 +148,7 @@ const App = () => (
                 <Route path="/admin/zahlungen" element={<RoleGate role="admin"><AdminPayments /></RoleGate>} />
                 <Route path="/admin/inhalte" element={<AdminInhalte />} />
                 <Route path="/admin/posting" element={<RoleGate role="admin"><AdminPosting /></RoleGate>} />
+                <Route path="/admin/archiv" element={<RoleGate role="admin"><AdminArchiv /></RoleGate>} />
                 <Route path="/admin/werbung" element={<RoleGate role="admin"><AdminWerbung /></RoleGate>} />
                 <Route path="/admin/aktionen" element={<RoleGate role="admin"><AdminAktionen /></RoleGate>} />
 
@@ -154,6 +157,7 @@ const App = () => (
                 <Route path="/studio/bestellungen" element={<RoleGate role="designer"><StudioOrders /></RoleGate>} />
                 <Route path="/studio/kampagnen" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
                 <Route path="/studio/kampagnen/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />
+                <Route path="/studio/videothek" element={<RoleGate role="designer"><StudioVideothek /></RoleGate>} />
                 <Route path="/studio/plan" element={<RoleGate role="designer"><StudioPlan /></RoleGate>} />
                 <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/nachrichten" element={<RoleGate role="designer"><StudioMessages /></RoleGate>} />

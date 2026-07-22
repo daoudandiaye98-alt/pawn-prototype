@@ -37,6 +37,9 @@ const IPayout = (p: React.SVGProps<SVGSVGElement>) => (
 const ISettings = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><circle cx="10" cy="10" r="2.5" /><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" /></svg>
 );
+const IVideothek = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="5" width="14" height="10" /><path d="M8.5 8l4 2-4 2V8z" /></svg>
+);
 
 type NavItem = { to: string; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; end?: boolean; badge?: number };
 
@@ -108,6 +111,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     { to: "/studio/produkte", label: "Kollektion", icon: ICollection },
     { to: "/studio/bestellungen", label: "Bestellungen", icon: IOrders, badge: badges.orders },
     { to: "/studio/kampagnen", label: "Kampagnen", icon: ICampaigns, badge: badges.campaigns },
+    { to: "/studio/videothek", label: "Videothek", icon: IVideothek },
     { to: "/studio/nachrichten", label: "Nachrichten", icon: IMessages, badge: badges.messages },
     { to: "/studio/brand", label: "Retrospektive", icon: IRetro },
     { to: "/studio/plan", label: "Plan", icon: IPayout },
