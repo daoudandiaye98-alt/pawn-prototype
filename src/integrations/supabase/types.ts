@@ -808,10 +808,10 @@ export type Database = {
           revenue_share_pct: number
           slug: string
           status: string
+          story: string | null
           stripe_account_id: string | null
           stripe_charges_enabled: boolean
           stripe_details_submitted: boolean
-          story: string | null
           tags: string[] | null
           updated_at: string
           user_id: string
@@ -845,10 +845,10 @@ export type Database = {
           revenue_share_pct?: number
           slug: string
           status?: string
+          story?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
-          story?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id: string
@@ -882,10 +882,10 @@ export type Database = {
           revenue_share_pct?: number
           slug?: string
           status?: string
+          story?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
-          story?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string
