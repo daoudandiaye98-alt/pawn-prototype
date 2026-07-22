@@ -67,14 +67,14 @@ interface JarvisConfig {
   enabled: boolean;
   monthly_limit_usd: number;
   quiet_hours: { start: number; end: number };
-  checks: { akquise: boolean; bestellungen: boolean; system: boolean; nachrichten: boolean };
+  checks: { akquise: boolean; bestellungen: boolean; system: boolean; nachrichten: boolean; connect: boolean };
   pending_action_expiry_hours: number;
 }
 const DEFAULT_JARVIS_CONFIG: JarvisConfig = {
   enabled: true,
   monthly_limit_usd: 20,
   quiet_hours: { start: 22, end: 8 },
-  checks: { akquise: true, bestellungen: true, system: true, nachrichten: true },
+  checks: { akquise: true, bestellungen: true, system: true, nachrichten: true, connect: true },
   pending_action_expiry_hours: 24,
 };
 
@@ -531,6 +531,27 @@ async function checkSystem(): Promise<NoticeCandidate[]> {
   return [{ kind: "system_secret_fehlt", title: "System-Secret fehlt", body: `Diese Secrets fehlen: ${missing.join(", ")}.` }];
 }
 
+/** Published Designer mit Produkten, die seit über 3 Tagen kein aktives Stripe-Connect-Konto haben — können nicht verkaufen. */
+async function checkConnect(admin: SupabaseClient): Promise<NoticeCandidate[]> {
+  const cutoff = new Date(Date.now() - 3 * 24 * 3600_000).toISOString();
+  const { data: designers } = await admin.from("designers")
+    .select("id, brand_name, house_number")
+    .eq("published", true).eq("stripe_charges_enabled", false).lt("created_at", cutoff);
+  if (!designers?.length) return [];
+
+  const ids = designers.map((d: { id: string }) => d.id);
+  const { data: withProducts } = await admin.from("products").select("designer_id").in("designer_id", ids);
+  const idsWithProducts = new Set((withProducts ?? []).map((p: { designer_id: string }) => p.designer_id));
+  const affected = designers.filter((d: { id: string }) => idsWithProducts.has(d.id)) as { id: string; brand_name: string; house_number: number | null }[];
+  if (!affected.length) return [];
+
+  const names = affected.slice(0, 5).map((d) => d.house_number != null ? `Haus №${d.house_number}` : d.brand_name).join(", ");
+  return [{
+    kind: "connect_fehlt", title: "Auszahlungskonto fehlt",
+    body: `${affected.length} veröffentlichte Haus/Häuser mit Produkten können nicht verkaufen, weil kein Stripe-Connect-Konto aktiv ist: ${names}${affected.length > 5 ? ", …" : ""}.`,
+  }];
+}
+
 /** Offene Threads, deren letzte Nachricht seit über 24h nicht von einem Admin beantwortet wurde. */
 async function checkNachrichten(admin: SupabaseClient): Promise<NoticeCandidate[]> {
   const { data: adminRows } = await admin.from("user_roles").select("user_id").eq("role", "admin");
@@ -692,6 +713,7 @@ async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): P
     ...(config.checks.bestellungen ? await checkBestellungen(admin) : []),
     ...(config.checks.system ? await checkSystem() : []),
     ...(config.checks.nachrichten ? await checkNachrichten(admin) : []),
+    ...(config.checks.connect ? await checkConnect(admin) : []),
   ];
   const created = await upsertNotices(admin, candidates);
   return { created, evolution: evolutionResult.summary };

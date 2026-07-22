@@ -1,62 +1,81 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Loader2, Check } from "lucide-react";
 
-interface PayoutProfile {
-  id?: string; designer_id: string;
-  account_holder: string; iban: string; bic: string | null; tax_id: string | null;
-}
+type ConnectState = "none" | "pending" | "active" | "error";
+
+interface ConnectStatus { connected: boolean; charges_enabled: boolean; details_submitted: boolean }
 
 export default function StudioPayout() {
-  const { designer } = useMyDesigner();
-  const [profile, setProfile] = useState<PayoutProfile | null>(null);
+  const { designer, refresh } = useMyDesigner();
+  const [searchParams] = useSearchParams();
+  const [status, setStatus] = useState<ConnectStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
   const [commissionPct, setCommissionPct] = useState<number>(7);
 
   useEffect(() => {
-    if (!designer) return;
-    void supabase.from("designer_payout_profiles").select("*").eq("designer_id", designer.id).maybeSingle()
-      .then(({ data }) => {
-        setProfile(data as PayoutProfile ?? { designer_id: designer.id, account_holder: "", iban: "", bic: "", tax_id: "" });
-      });
     void supabase.from("ai_config").select("value").eq("key", "platform_commission").maybeSingle()
       .then(({ data }) => {
         const pct = Number(((data?.value ?? {}) as { pct?: number }).pct ?? 7);
         setCommissionPct(pct);
       });
-  }, [designer]);
+  }, []);
 
-  const save = async () => {
-    if (!profile) return;
+  useEffect(() => {
+    if (!designer) return;
+    setLoadingStatus(true);
+    void supabase.functions.invoke("stripe-connect", { body: { action: "status" } })
+      .then(({ data, error }) => {
+        if (error) { toast.error(error.message); setLoadingStatus(false); return; }
+        const result = data as { error?: string; message?: string } & ConnectStatus;
+        if (result?.error) { toast.error(result.message ?? "Status konnte nicht geladen werden."); setLoadingStatus(false); return; }
+        setStatus(result);
+        setLoadingStatus(false);
+        void refresh();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designer?.id]);
+
+  async function connect() {
     setBusy(true);
-    const { error } = await supabase.from("designer_payout_profiles").upsert({
-      designer_id: profile.designer_id,
-      account_holder: profile.account_holder.trim(),
-      iban: profile.iban.replace(/\s/g, ""),
-      bic: profile.bic?.trim() || null,
-      tax_id: profile.tax_id?.trim() || null,
-    }, { onConflict: "designer_id" });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Auszahlungsdaten gespeichert.");
-  };
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "onboard" } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { error?: string; message?: string; url?: string };
+      if (result?.error) { toast.error(result.message ?? "Verbindung konnte nicht gestartet werden."); return; }
+      if (result?.url) window.location.href = result.url;
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (!designer) return <StudioShell title="Auszahlung"><p className="text-muted-foreground">Lädt…</p></StudioShell>;
-  if (!profile) return null;
+
+  const retryParam = searchParams.get("connect") === "retry";
+  const state: ConnectState = retryParam ? "error"
+    : loadingStatus ? "none"
+    : !status?.connected ? "none"
+    : status.charges_enabled ? "active"
+    : "pending";
 
   return (
     <StudioShell title="Auszahlung" eyebrow="Zahlung">
       <HowItWorks
-        storageKey="payout"
+        storageKey="payout-connect"
         title="Auszahlungen"
-        intro="Hier hinterlegst du, wohin deine Verkaufserlöse fließen. Wir überweisen automatisch, sobald der Mindestbetrag erreicht ist – abzüglich der PAWN-Provision."
+        intro="Dein Verkaufserlös fließt direkt auf dein eigenes Konto — PAWN berührt das Geld nie."
         steps={[
-          "Trage einmalig IBAN und Rechnungsadresse ein.",
-          "Speichern – wir bestätigen per Bestätigungs-Mail.",
-          "Verkäufe sammeln sich; du siehst Auszahlungen in deiner Übersicht.",
+          "Auszahlungskonto bei unserem Zahlungspartner Stripe verbinden (5 Minuten).",
+          "Stripe prüft deine Angaben.",
+          "Sobald aktiv: jeder Verkauf fließt automatisch und direkt zu dir.",
         ]}
       />
       <div className="max-w-xl space-y-6">
@@ -69,31 +88,68 @@ export default function StudioPayout() {
             PAWN nimmt {commissionPct} % — bewusst weit unter Galerien und klassischen Marktplätzen. Kein Aufpreis für Rückgaben, keine Listing-Gebühr.
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Deine Auszahlungsdaten werden für kommende automatische Abrechnungen genutzt. Deine Daten sind nur für dich und PAWN sichtbar.
-        </p>
-        <Field label="Kontoinhaber:in" value={profile.account_holder} onChange={(v) => setProfile({ ...profile, account_holder: v })} />
-        <Field label="IBAN" value={profile.iban} onChange={(v) => setProfile({ ...profile, iban: v })} />
-        <Field label="BIC" value={profile.bic ?? ""} onChange={(v) => setProfile({ ...profile, bic: v })} />
-        <Field label="USt-ID (optional)" value={profile.tax_id ?? ""} onChange={(v) => setProfile({ ...profile, tax_id: v })} />
-        <button onClick={save} disabled={busy || !profile.account_holder || !profile.iban}
-          className="px-6 py-3 bg-foreground text-background text-[0.72rem] uppercase tracking-[0.24em] disabled:opacity-40">
-          {busy ? "Speichert…" : "Speichern"}
-        </button>
-        <p className="text-xs text-muted-foreground border-t border-border pt-4">
-          Automatische Abrechnung folgt in Kürze. Bis dahin erfolgt die Auszahlung monatlich manuell.
-        </p>
+
+        {loadingStatus ? (
+          <div className="flex items-center gap-2 border border-border p-5 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Lädt Status…
+          </div>
+        ) : state === "none" ? (
+          <div className="border-[1.5px] border-black p-6">
+            <button
+              onClick={connect}
+              disabled={busy}
+              className="w-full bg-black px-6 py-4 text-[0.72rem] uppercase tracking-[0.24em] text-white disabled:opacity-40"
+            >
+              {busy ? "Öffnet Stripe…" : "Auszahlungskonto verbinden"}
+            </button>
+            <p className="mt-4 text-sm text-muted-foreground">
+              5 Minuten bei unserem Zahlungspartner Stripe: Name, IBAN, Ausweis. Danach fließt dein Geld direkt zu dir — PAWN berührt es nie. Du erhältst {100 - commissionPct}% jedes Verkaufs.
+            </p>
+          </div>
+        ) : state === "pending" ? (
+          <div className="border-[1.5px] border-black p-6">
+            <p className="editorial-eyebrow">Status</p>
+            <p className="mt-2 font-serif text-xl">In Prüfung</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Stripe prüft gerade deine Angaben. Das dauert normalerweise nur kurz — sobald es fertig ist, kannst du direkt verkaufen.
+            </p>
+          </div>
+        ) : state === "active" ? (
+          <div className="border-[1.5px] border-black p-6">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center bg-black text-white">
+                <Check className="h-4 w-4" />
+              </span>
+              <p className="font-serif text-xl">Aktiv</p>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Dein Konto ist verbunden. Jeder Verkauf fließt automatisch direkt zu dir.
+            </p>
+            <button
+              onClick={connect}
+              disabled={busy}
+              className="mt-4 border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
+            >
+              {busy ? "Öffnet Stripe…" : "Konto verwalten"}
+            </button>
+          </div>
+        ) : (
+          <div className="border-[1.5px] border-black p-6">
+            <p className="editorial-eyebrow">Status</p>
+            <p className="mt-2 font-serif text-xl">Es gab ein Problem</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Die Verbindung zu Stripe wurde nicht abgeschlossen. Versuch es noch einmal.
+            </p>
+            <button
+              onClick={connect}
+              disabled={busy}
+              className="mt-4 bg-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] text-white disabled:opacity-40"
+            >
+              {busy ? "Öffnet Stripe…" : "Erneut versuchen"}
+            </button>
+          </div>
+        )}
       </div>
     </StudioShell>
-  );
-}
-
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="block">
-      <span className="editorial-eyebrow">{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full border-b border-border bg-transparent py-2 focus:outline-none" />
-    </label>
   );
 }

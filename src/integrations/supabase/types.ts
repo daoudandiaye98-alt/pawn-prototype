@@ -808,6 +808,9 @@ export type Database = {
           revenue_share_pct: number
           slug: string
           status: string
+          stripe_account_id: string | null
+          stripe_charges_enabled: boolean
+          stripe_details_submitted: boolean
           story: string | null
           tags: string[] | null
           updated_at: string
@@ -842,6 +845,9 @@ export type Database = {
           revenue_share_pct?: number
           slug: string
           status?: string
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
           story?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -876,6 +882,9 @@ export type Database = {
           revenue_share_pct?: number
           slug?: string
           status?: string
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
           story?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -1377,11 +1386,13 @@ export type Database = {
       orders: {
         Row: {
           amount_total: number
+          application_fee_cents: number | null
           carrier: string | null
           created_at: string
           currency: string
           customer_email: string | null
           delivered_at: string | null
+          destination_account: string | null
           fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
           id: string
           items: Json
@@ -1394,11 +1405,13 @@ export type Database = {
         }
         Insert: {
           amount_total?: number
+          application_fee_cents?: number | null
           carrier?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
           delivered_at?: string | null
+          destination_account?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           items?: Json
@@ -1411,11 +1424,13 @@ export type Database = {
         }
         Update: {
           amount_total?: number
+          application_fee_cents?: number | null
           carrier?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
           delivered_at?: string | null
+          destination_account?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           items?: Json
