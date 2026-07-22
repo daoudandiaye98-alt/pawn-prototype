@@ -34,6 +34,37 @@ export interface RendererInput {
   instagramHandle?: string | null;
   /** Haus-Plan zeigt das PAWN-Emblem im Abspann; Atelier/Maison nicht. Default true. */
   showEmblem?: boolean;
+  /** Signatur-Rezept (aus house_signatures) — Freitext von Licht/Palette/Kamerafahrt/Schnittrhythmus. */
+  signatureRecipe?: SignatureRecipe | null;
+}
+
+export interface SignatureRecipe {
+  licht?: string; palette?: string; kamerafahrt?: string;
+  schnittrhythmus?: string; typo?: string; musik_tempo?: string;
+}
+
+/** Übersetzt das Freitext-Rezept einer Signatur in konkrete Renderer-Parameter. */
+function recipeToParams(recipe: SignatureRecipe | null | undefined): { filter?: string; beatMultiplier: number; preferredShots: string[] } {
+  if (!recipe) return { beatMultiplier: 1, preferredShots: [] };
+  const licht = `${recipe.licht ?? ""} ${recipe.palette ?? ""}`.toLowerCase();
+  const schnitt = (recipe.schnittrhythmus ?? "").toLowerCase();
+  const kamera = (recipe.kamerafahrt ?? "").toLowerCase();
+
+  let filter: string | undefined;
+  if (/hart|kontrast|dramatisch|schwarz/.test(licht)) filter = "grayscale(1) contrast(1.5) brightness(0.92)";
+  else if (/weich|soft|sanft|hell/.test(licht)) filter = "grayscale(1) contrast(1.1) brightness(1.04)";
+
+  let beatMultiplier = 1;
+  if (/schnell|dynamisch|rasant|treibend/.test(schnitt)) beatMultiplier = 0.75;
+  else if (/langsam|ruhig|meditativ/.test(schnitt)) beatMultiplier = 1.3;
+
+  const preferredShots: string[] = [];
+  if (/parallax|tiefe|schicht/.test(kamera)) preferredShots.push("parallax-duo");
+  if (/nah|detail|makro|punch/.test(kamera)) preferredShots.push("detail-punch");
+  if (/schwenk|pan|weit|push/.test(kamera)) preferredShots.push("ken-burns");
+  if (/split|geteilt/.test(kamera)) preferredShots.push("split-frame");
+
+  return { filter, beatMultiplier, preferredShots };
 }
 
 export interface RenderResult { blob: Blob; mimeType: string; durationMs: number; seed: number }
@@ -95,13 +126,14 @@ const BEAT_MS = 800;
 const MIN_SCENE_MS = 1600;
 
 /** Quantize to nearest positive multiple of BEAT_MS, floor at MIN_SCENE_MS. */
-function quantizeBeat(ms: number): number {
-  const beats = Math.max(2, Math.round(ms / BEAT_MS));
-  return Math.max(MIN_SCENE_MS, beats * BEAT_MS);
+function quantizeBeat(ms: number, beatMs: number = BEAT_MS): number {
+  const beats = Math.max(2, Math.round(ms / beatMs));
+  return Math.max(MIN_SCENE_MS, beats * beatMs);
 }
 
 function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: number): { scenes: Scene[]; ctx: SceneCtx } {
   const layout: Layout = input.format === "1:1" ? FEED : REEL;
+  const { filter, beatMultiplier, preferredShots } = recipeToParams(input.signatureRecipe);
   const ctx: SceneCtx = {
     layout,
     layers,
@@ -112,6 +144,7 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
     houseNumber: input.houseNumber ?? null,
     instagramHandle: input.instagramHandle ?? null,
     showEmblem: input.showEmblem ?? true,
+    filter,
   };
   const rnd = mulberry32(seed);
   const n = layers.length;
@@ -140,7 +173,10 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
     // 3-4+ Fotos: volle Regie, kein Bild direkt hintereinander.
     const shotTypesRuhig = ["parallax-duo", "mask-reveal", "ken-burns"] as const;
     const shotTypesSchnell = ["split-frame", "detail-punch", "parallax-duo", "ken-burns"] as const;
-    const shotTypes = input.tempo === "ruhig" ? shotTypesRuhig : shotTypesSchnell;
+    const baseShotTypes = input.tempo === "ruhig" ? shotTypesRuhig : shotTypesSchnell;
+    // Signatur-Kamerafahrt bevorzugt bestimmte Einstellungen, wenn welche zur Auswahl passen.
+    const biased = preferredShots.length > 0 ? baseShotTypes.filter((t) => preferredShots.includes(t)) : [];
+    const shotTypes = biased.length > 0 ? biased : baseShotTypes;
     const shotCount = Math.min(5, n + 1);
     let last = -1;
     for (let i = 0; i < shotCount; i++) {
@@ -164,10 +200,11 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
 
   scenes.push(outro(ctx));
 
-  // Taktraster: alle regulären Szenen auf 0.8s quantisieren (Transitions bleiben kurz).
+  // Taktraster: alle regulären Szenen auf 0.8s quantisieren (Transitions bleiben kurz);
+  // Signatur-Schnittrhythmus kann das Beat-Raster stauchen/strecken.
   for (const sc of scenes) {
     if (sc.type === "white-flash") continue;
-    sc.durationMs = quantizeBeat(sc.durationMs);
+    sc.durationMs = quantizeBeat(sc.durationMs, BEAT_MS * beatMultiplier);
   }
   return { scenes, ctx };
 }
@@ -261,6 +298,7 @@ export async function renderCampaign(input: RendererInput, cb: RenderCallbacks =
         productName: input.productName ?? null,
         productLabel: input.productLabel ?? input.brandName,
         houseNumber: input.houseNumber ?? null,
+        filter: recipeToParams(input.signatureRecipe).filter,
       });
       cb.onProgress?.({ scene: idx + 1, totalScenes: scenes.length, fraction: elapsed / totalMs });
       requestAnimationFrame(step);

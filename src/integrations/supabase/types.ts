@@ -848,6 +848,7 @@ export type Database = {
           tags: string[] | null
           updated_at: string
           user_id: string
+          video_taste_weights: Json
           website: string | null
         }
         Insert: {
@@ -886,6 +887,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id: string
+          video_taste_weights?: Json
           website?: string | null
         }
         Update: {
@@ -924,6 +926,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id?: string
+          video_taste_weights?: Json
           website?: string | null
         }
         Relationships: [
@@ -1072,6 +1075,94 @@ export type Database = {
           },
         ]
       }
+      edition_participants: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          designer_id: string
+          edition_id: string
+          error: string | null
+          id: string
+          status: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id: string
+          edition_id: string
+          error?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id?: string
+          edition_id?: string
+          error?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edition_participants_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edition_participants_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edition_participants_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "editions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      editions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          status: string
+          theme: string
+          updated_at: string
+          world: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          status?: string
+          theme: string
+          updated_at?: string
+          world?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          status?: string
+          theme?: string
+          updated_at?: string
+          world?: string | null
+        }
+        Relationships: []
+      }
       fashion_ontology: {
         Row: {
           created_at: string
@@ -1154,6 +1245,41 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      house_signatures: {
+        Row: {
+          created_at: string
+          designer_id: string
+          id: string
+          name: string
+          preview_url: string | null
+          recipe: Json
+        }
+        Insert: {
+          created_at?: string
+          designer_id: string
+          id?: string
+          name: string
+          preview_url?: string | null
+          recipe?: Json
+        }
+        Update: {
+          created_at?: string
+          designer_id?: string
+          id?: string
+          name?: string
+          preview_url?: string | null
+          recipe?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_signatures_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
             referencedColumns: ["id"]
           },
         ]

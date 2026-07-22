@@ -59,7 +59,8 @@ type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen"
-  | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen";
+  | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
+  | "kampagnen_regie";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -1222,6 +1223,96 @@ async function runBewerbungPruefen(admin: SupabaseClient, apiKey: string): Promi
   return { ok: true, processed, tokensUsed };
 }
 
+/**
+ * Lernschleife (wöchentlich): liest Première-Views/Shop-Klicks je Haus, destilliert
+ * "Was zieht"-Gewichte (video_taste_weights, analog ai_config.matching_weights aber pro Haus),
+ * schreibt einen kurzen Bericht und schlägt bei Gelegenheit eine Edition vor (nur als Entwurf, Zone Gelb).
+ */
+async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+  const { data: designers } = await admin.from("designers")
+    .select("id, brand_name, plan").eq("published", true).limit(100);
+
+  const perHouseSummaries: Array<{ designer_id: string; brand_name: string; total_views: number; total_clicks: number; weights: Record<string, number> }> = [];
+  let weightedHouses = 0;
+
+  for (const d of (designers ?? []) as { id: string; brand_name: string; plan: string }[]) {
+    const { data: videos } = await admin.from("video_assets")
+      .select("video_dna, performance").eq("designer_id", d.id).gte("created_at", since);
+    const rows = (videos ?? []) as Array<{ video_dna: { signatur?: string; tempo?: string } | null; performance: { premiere_views?: number; shop_clicks?: number } | null }>;
+    if (rows.length === 0) continue;
+
+    const byKey = new Map<string, { views: number; clicks: number }>();
+    let totalViews = 0, totalClicks = 0;
+    for (const r of rows) {
+      const key = r.video_dna?.signatur ?? r.video_dna?.tempo ?? "standard";
+      const views = r.performance?.premiere_views ?? 0;
+      const clicks = r.performance?.shop_clicks ?? 0;
+      totalViews += views; totalClicks += clicks;
+      const cur = byKey.get(key) ?? { views: 0, clicks: 0 };
+      byKey.set(key, { views: cur.views + views, clicks: cur.clicks + clicks });
+    }
+    if (totalViews === 0 && totalClicks === 0) continue;
+
+    const scores = Array.from(byKey.entries()).map(([k, v]) => [k, v.views + v.clicks * 3] as const);
+    const avg = scores.reduce((s, [, sc]) => s + sc, 0) / Math.max(1, scores.length);
+    const weights: Record<string, number> = {};
+    for (const [k, sc] of scores) weights[k] = avg > 0 ? Math.round((sc / avg) * 100) / 100 : 1;
+
+    await admin.from("designers").update({ video_taste_weights: weights }).eq("id", d.id);
+    weightedHouses++;
+    perHouseSummaries.push({ designer_id: d.id, brand_name: d.brand_name, total_views: totalViews, total_clicks: totalClicks, weights });
+  }
+
+  const memories = await loadMemories(admin);
+  const memoText = memories.length ? memories.map((m) => `- ${m.content}`).join("\n") : "keine";
+  const topHouses = perHouseSummaries
+    .sort((a, b) => (b.total_views + b.total_clicks * 3) - (a.total_views + a.total_clicks * 3))
+    .slice(0, 8);
+
+  const dataSummary = topHouses.length
+    ? topHouses.map((h) => `${h.brand_name}: ${h.total_views} Aufrufe, ${h.total_clicks} Shop-Klicks, Gewichte ${JSON.stringify(h.weights)}`).join("\n")
+    : "Noch keine auswertbaren Performance-Daten diesen Monat.";
+
+  const prompt = `Wöchentliche Kampagnen-Regie-Auswertung bei PAWN. Performance je Haus (letzte 30 Tage):\n${dataSummary}\n\nHandeingaben/Notizen von Daouda:\n${memoText}\n\nSchreibe einen kurzen Bericht (3-5 Sätze, Deutsch, für Daouda) darüber, was gerade zieht. Falls die Daten ein gutes gemeinsames Thema für eine häuserübergreifende "Edition" nahelegen (mehrere Häuser mit ähnlich guter Performance, gleiche Welt), schlage sie vor.\n\nAntworte NUR mit JSON: {"bericht": "...", "edition_vorschlag": null oder {"theme": "kurzer Titel", "world": "Mode|Interior|Kunst", "brand_names": ["..."]}}`;
+
+  const { text, tokens } = await claudeComplete(apiKey, "Du bist der Regisseur bei PAWN — knapp, konkret, ehrlich.", prompt, 700);
+  const parsed = extractJson(text) as { bericht?: string; edition_vorschlag?: { theme?: string; world?: string; brand_names?: string[] } | null } | null;
+  const berichtText = parsed?.bericht ?? "Keine auswertbare Antwort erhalten.";
+
+  let editionId: string | null = null;
+  const vorschlag = parsed?.edition_vorschlag;
+  if (vorschlag?.theme && Array.isArray(vorschlag.brand_names) && vorschlag.brand_names.length >= 2) {
+    const matched = (designers ?? []).filter((d: { brand_name: string }) => vorschlag.brand_names!.includes(d.brand_name)) as { id: string; brand_name: string }[];
+    if (matched.length >= 2) {
+      const { data: edRow } = await admin.from("editions").insert({
+        theme: vorschlag.theme, world: vorschlag.world ?? null, status: "draft",
+      }).select("id").single();
+      editionId = (edRow as { id: string } | null)?.id ?? null;
+      if (editionId) {
+        await admin.from("edition_participants").insert(
+          matched.map((d) => ({ edition_id: editionId, designer_id: d.id, status: "pending" })),
+        );
+        await admin.from("jarvis_notices").insert({
+          kind: "edition_vorschlag", title: `Edition vorgeschlagen: ${vorschlag.theme}`,
+          body: `Jarvis hat "${vorschlag.theme}" als Entwurf angelegt, mit ${matched.length} Häusern: ${matched.map((d) => d.brand_name).join(", ")}. Prüfen unter Admin → Editionen.`,
+          suggested_action: { action: "review_edition", params: { edition_id: editionId } },
+        });
+      }
+    }
+  }
+
+  const { data: reportRow } = await admin.from("jarvis_reports").insert({
+    kind: "regie", title: `Kampagnen-Regie · ${new Date().toLocaleDateString("de-DE")}`,
+    body: berichtText, data: { weighted_houses: weightedHouses, top_houses: topHouses, edition_id: editionId },
+  }).select("id").single();
+
+  return {
+    ok: true, weighted_houses: weightedHouses, report: reportRow,
+    edition_proposed: !!editionId, tokensUsed: tokens,
+  };
+}
+
 const TOOLS = [
   { type: "web_search_20250305", name: "web_search" },
   {
@@ -1451,6 +1542,7 @@ Deno.serve(async (req) => {
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "kampagnen_regie",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -1462,6 +1554,7 @@ Deno.serve(async (req) => {
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "diagnose", "evolution", "morgenbericht",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "kampagnen_regie",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -1557,6 +1650,22 @@ Deno.serve(async (req) => {
       }).eq("id", runId);
 
       return ok({ ok: true, run_id: runId, report: reportRow });
+    }
+
+    if (mode === "kampagnen_regie") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+
+      const result = await runKampagnenRegie(admin, apiKey);
+      const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
+      const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
+      const summary = `Regie: ${(result as { weighted_houses?: number }).weighted_houses ?? 0} Häuser ausgewertet${(result as { edition_proposed?: boolean }).edition_proposed ? ", 1 Edition vorgeschlagen" : ""}`;
+
+      if (runId) await admin.from("jarvis_runs").update({
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
+      }).eq("id", runId);
+
+      return ok({ run_id: runId, ...result });
     }
 
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen") {

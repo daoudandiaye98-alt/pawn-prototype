@@ -41,6 +41,9 @@ export interface SceneCtx {
   instagramHandle?: string | null;
   /** Haus-Plan zeigt das PAWN-Emblem im Abspann; Atelier/Maison nicht. Default true. */
   showEmblem?: boolean;
+  /** Signatur-Rezept: Canvas-Filter (Licht/Palette), bevorzugte Schnitttypen (Kamerafahrt). */
+  filter?: string;
+  preferredShots?: string[];
 }
 
 export interface Scene {
@@ -197,7 +200,7 @@ export function parallaxDuo(index: number, layerIdx: number): Scene {
       // Foto in Safe-Area (respektiert oben 14 %, unten 20 %)
       const top = safeTop(H);
       const bot = safeBottom(H);
-      drawSource(ctx, sc.layers[layerIdx], pad, top + shift, W - pad * 2, bot - top - 260);
+      drawSource(ctx, sc.layers[layerIdx], pad, top + shift, W - pad * 2, bot - top - 260, sc.filter);
       // Overlay-Karte am unteren Ende der Safe-Area, linksbündig 8 %
       const cardX = indentX(W);
       const cardW = W - cardX * 2;
@@ -231,8 +234,8 @@ export function splitFrame(aIdx: number, bIdx: number): Scene {
       const mid = W / 2;
       const dxA = -20 * easeInOutCubic(t);
       const dxB = 20 * easeInOutCubic(t);
-      drawSource(ctx, sc.layers[aIdx], dxA, 0, mid, H);
-      drawSource(ctx, sc.layers[bIdx], mid + dxB, 0, mid, H);
+      drawSource(ctx, sc.layers[aIdx], dxA, 0, mid, H, sc.filter);
+      drawSource(ctx, sc.layers[bIdx], mid + dxB, 0, mid, H, sc.filter);
       ctx.strokeStyle = "#fff";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -294,7 +297,7 @@ export function maskReveal(layerIdx: number): Scene {
       ctx.beginPath();
       ctx.rect(0, 0, revealW, H);
       ctx.clip();
-      drawSource(ctx, sc.layers[layerIdx], 0, 0, W, H);
+      drawSource(ctx, sc.layers[layerIdx], 0, 0, W, H, sc.filter);
       ctx.restore();
       ctx.fillStyle = "#000";
       ctx.fillRect(revealW, 0, 8, H);
@@ -316,7 +319,7 @@ export function detailPunch(layerIdx: number): Scene {
       const dh = H * zoom;
       const dx = -(dw - W) * 0.6;
       const dy = -(dh - H) * 0.5;
-      drawSource(ctx, sc.layers[layerIdx], dx, dy, dw, dh, "grayscale(1) contrast(1.4) brightness(1)");
+      drawSource(ctx, sc.layers[layerIdx], dx, dy, dw, dh, sc.filter ?? "grayscale(1) contrast(1.4) brightness(1)");
       if (flash) fill(ctx, "#fff", W, H);
     },
   };
@@ -334,7 +337,7 @@ export function kenBurns(layerIdx: number, direction: 1 | -1, zoomDelta = 0.08):
       const dw = W * s, dh = H * s;
       const dx = (W - dw) / 2 + direction * 40 * easeInOutCubic(t);
       const dy = (H - dh) / 2 - 20 * easeInOutCubic(t);
-      drawSource(ctx, sc.layers[layerIdx], dx, dy, dw, dh);
+      drawSource(ctx, sc.layers[layerIdx], dx, dy, dw, dh, sc.filter);
       // Weiße Text-Plate, linksbündig, in Safe-Area
       const x = indentX(W);
       const bot = safeBottom(H);
@@ -433,13 +436,13 @@ export function wipeLeft(fromIdx: number, toIdx: number): Scene {
     layerIndexes: [fromIdx, toIdx],
     render(ctx, t, sc) {
       const { W, H } = sc.layout;
-      drawSource(ctx, sc.layers[fromIdx], 0, 0, W, H);
+      drawSource(ctx, sc.layers[fromIdx], 0, 0, W, H, sc.filter);
       const p = easeInOutCubic(t);
       ctx.save();
       ctx.beginPath();
       ctx.rect(W - W * p, 0, W * p, H);
       ctx.clip();
-      drawSource(ctx, sc.layers[toIdx], 0, 0, W, H);
+      drawSource(ctx, sc.layers[toIdx], 0, 0, W, H, sc.filter);
       ctx.restore();
     },
   };

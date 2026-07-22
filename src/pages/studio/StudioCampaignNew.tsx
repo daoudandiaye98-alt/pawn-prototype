@@ -23,6 +23,11 @@ interface ProductLite {
   image_url: string | null;
 }
 
+interface HouseSignature {
+  id: string; name: string;
+  recipe: { licht?: string; palette?: string; kamerafahrt?: string; schnittrhythmus?: string; typo?: string; musik_tempo?: string; wunsch?: boolean };
+}
+
 type Step = 0 | 1 | 2 | 3 | 4;
 
 interface DraftContent {
@@ -101,6 +106,16 @@ export default function StudioCampaignNew() {
   const [tryonDisclosure, setTryonDisclosure] = useState<string>("Visualisierung mit KI-Model");
   const [tryonStyle, setTryonStyle] = useState<"weiblich"|"männlich"|"divers">("weiblich");
 
+  // Signaturen (der Regisseur)
+  const [signatures, setSignatures] = useState<HouseSignature[]>([]);
+  const [signaturesLoading, setSignaturesLoading] = useState(true);
+  const [chosenSignatureId, setChosenSignatureId] = useState<string | null>(null);
+  const [wishName, setWishName] = useState("");
+  const [wishPrompt, setWishPrompt] = useState("");
+  const [wishBusy, setWishBusy] = useState(false);
+  const [cinematicModel, setCinematicModel] = useState<string | null>(null);
+  const [lastDurationMs, setLastDurationMs] = useState<number>(0);
+
   // Quota
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = useCampaignQuota(designer?.id, plan, isAdmin);
@@ -121,6 +136,39 @@ export default function StudioCampaignNew() {
       setProducts((prods ?? []) as ProductLite[]);
     })();
   }, [designer]);
+
+  // Signaturen: der Regisseur destilliert sie einmalig beim ersten Öffnen dieser Seite.
+  useEffect(() => {
+    if (!designer) return;
+    setSignaturesLoading(true);
+    void supabase.functions.invoke("generate-signatures", { body: { mode: "single" } })
+      .then(({ data }) => {
+        const r = data as { signatures?: HouseSignature[]; error?: string } | null;
+        setSignatures(r?.signatures ?? []);
+      })
+      .finally(() => setSignaturesLoading(false));
+  }, [designer?.id]);
+
+  const requestWishSignature = async () => {
+    if (!wishName.trim() || !wishPrompt.trim()) { toast.error("Name und Beschreibung ausfüllen."); return; }
+    setWishBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-signatures", {
+        body: { mode: "wish", wish_name: wishName.trim(), wish_prompt: wishPrompt.trim() },
+      });
+      if (error) throw error;
+      const r = data as { ok?: boolean; error?: string; message?: string } | null;
+      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Wunsch-Signatur fehlgeschlagen.");
+      toast.success("Wunsch-Signatur erzeugt.");
+      const { data: refreshed } = await supabase.functions.invoke("generate-signatures", { body: { mode: "single" } });
+      setSignatures((refreshed as { signatures?: HouseSignature[] } | null)?.signatures ?? []);
+      setWishName(""); setWishPrompt("");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setWishBusy(false);
+    }
+  };
 
   // Instagram-Handle aus ai_config.business_profile lesen (Fallback bleibt 'hausofpawn').
   useEffect(() => {
@@ -288,7 +336,7 @@ export default function StudioCampaignNew() {
     setCinematicStage("submitting");
     setCinematicProgress({ done: 0, total: inputImages.length });
     const { data: submitData, error: submitErr } = await supabase.functions.invoke("generate-broll", {
-      body: { campaign_id, image_urls: inputImages, motion_prompt: prompt },
+      body: { campaign_id, image_urls: inputImages, motion_prompt: prompt, signature_id: chosenSignatureId ?? undefined },
     });
     if (submitErr) {
       const msg = submitErr.message ?? String(submitErr);
@@ -298,6 +346,7 @@ export default function StudioCampaignNew() {
         ? "Kinematischer Modus ist nicht eingerichtet (FAL_KEY fehlt)."
         : `generate-broll: ${msg}`);
     }
+    setCinematicModel((submitData as { model?: string } | null)?.model ?? null);
     type SubOK = { id: string; request_id?: string; image_url?: string };
     type SubErr = { image_url: string; error: string; status?: number };
     type Sub = SubOK | SubErr;
@@ -404,6 +453,7 @@ export default function StudioCampaignNew() {
         seed,
         instagramHandle,
         showEmblem: plan === "haus",
+        signatureRecipe: signatures.find((s) => s.id === chosenSignatureId)?.recipe ?? null,
       }, {
         onProgress: (p) => setRenderPct(Math.round(p.fraction * 100)),
         onCanvas: (c) => {
@@ -420,6 +470,7 @@ export default function StudioCampaignNew() {
       setVideoBlob(result.blob);
       setVideoMime(result.mimeType);
       setVideoUrl(blobPreviewUrl(result.blob));
+      setLastDurationMs(result.durationMs);
       toast.success("Video steht.");
     } catch (e) {
       console.error("[renderCampaign] failed:", e);
@@ -462,12 +513,22 @@ export default function StudioCampaignNew() {
       if (error) throw error;
 
       const rightsGranted = mediaRightsGranted === true;
+      const chosenSignature = signatures.find((s) => s.id === chosenSignatureId) ?? null;
+      const hookTyp = hook.trim() ? "custom" : chosenProduct ? "product" : "brand";
       await supabase.from("video_assets").insert({
         designer_id: designer.id,
         campaign_id: (campRow as { id: string } | null)?.id ?? null,
         url: signedUrl,
         source: "designer",
-        video_dna: { tempo, seed, format, cinematic, source: "client-renderer" } as unknown as Record<string, unknown>,
+        video_dna: {
+          signatur: chosenSignature?.name ?? null,
+          hook_typ: hookTyp,
+          schnittrhythmus: chosenSignature?.recipe?.schnittrhythmus ?? tempo,
+          palette: chosenSignature?.recipe?.palette ?? "standard-mono",
+          laenge_s: Math.round(lastDurationMs / 1000),
+          modelltyp: cinematic && cinematicModel ? cinematicModel : "editorial-client",
+          tempo, seed, format, cinematic,
+        } as unknown as Record<string, unknown>,
         rights_granted: rightsGranted,
       } as never);
 
@@ -696,6 +757,44 @@ export default function StudioCampaignNew() {
                 </button>
               ))}
             </div>
+
+            <p className="editorial-eyebrow mt-8">Signatur</p>
+            {signaturesLoading ? (
+              <p className="mt-3 text-sm text-muted-foreground">Der Regisseur denkt nach…</p>
+            ) : (
+              <>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => setChosenSignatureId(null)}
+                    className={`border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === null ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                    Standard
+                  </button>
+                  {signatures.map((s) => (
+                    <button key={s.id} onClick={() => setChosenSignatureId(s.id)}
+                      className={`border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === s.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                      {s.name}{s.recipe?.wunsch ? " ✦" : ""}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Dein Stil-Rezept aus Licht, Kamerafahrt und Schnittrhythmus — vom Regisseur aus deiner Brand-DNA destilliert.
+                </p>
+                {plan === "maison" && (
+                  <div className="mt-4 border border-border bg-white p-4">
+                    <p className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Wunsch-Signatur</p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <input value={wishName} onChange={(e) => setWishName(e.target.value)} placeholder="Name"
+                        className="border border-border bg-background p-2 text-sm sm:w-40" />
+                      <input value={wishPrompt} onChange={(e) => setWishPrompt(e.target.value)} placeholder="Beschreibung (Stimmung, Licht, Tempo …)"
+                        className="flex-1 border border-border bg-background p-2 text-sm" />
+                      <button onClick={requestWishSignature} disabled={wishBusy}
+                        className="border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
+                        {wishBusy ? "…" : "Anfragen"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             <p className="editorial-eyebrow mt-8">✦ Kinematischer Modus</p>
             {!quota.kinematicAllowed ? (

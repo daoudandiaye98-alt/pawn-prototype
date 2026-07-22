@@ -16,6 +16,7 @@ import {
   UserPlus,
   Brain,
   Clapperboard,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -33,6 +34,7 @@ const ITEMS = [
   { to: "/admin/kampagnen", label: "Kampagnen", icon: Megaphone },
   { to: "/admin/posting", label: "Posting", icon: Megaphone },
   { to: "/admin/archiv", label: "Archiv", icon: Clapperboard },
+  { to: "/admin/editionen", label: "Editionen", icon: Layers },
   { to: "/admin/trends", label: "Trends", icon: TrendingUp },
   { to: "/admin/ki", label: "KI Cockpit", icon: Bot },
   { to: "/admin/jarvis", label: "Jarvis", icon: Brain },

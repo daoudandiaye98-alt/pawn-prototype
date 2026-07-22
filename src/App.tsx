@@ -73,6 +73,7 @@ import AdminTrends from "./pages/admin/AdminTrends.tsx";
 import AdminAkquise from "./pages/admin/AdminAkquise.tsx";
 import AdminJarvis from "./pages/admin/AdminJarvis.tsx";
 import AdminArchiv from "./pages/admin/AdminArchiv.tsx";
+import AdminEditionen from "./pages/admin/AdminEditionen.tsx";
 
 import PortalOverview from "./pages/portal/PortalOverview.tsx";
 import PortalEditor from "./pages/portal/PortalEditor.tsx";
@@ -149,6 +150,7 @@ const App = () => (
                 <Route path="/admin/inhalte" element={<AdminInhalte />} />
                 <Route path="/admin/posting" element={<RoleGate role="admin"><AdminPosting /></RoleGate>} />
                 <Route path="/admin/archiv" element={<RoleGate role="admin"><AdminArchiv /></RoleGate>} />
+                <Route path="/admin/editionen" element={<RoleGate role="admin"><AdminEditionen /></RoleGate>} />
                 <Route path="/admin/werbung" element={<RoleGate role="admin"><AdminWerbung /></RoleGate>} />
                 <Route path="/admin/aktionen" element={<RoleGate role="admin"><AdminAktionen /></RoleGate>} />
 

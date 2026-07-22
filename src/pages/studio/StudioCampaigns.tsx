@@ -38,6 +38,12 @@ const STATUS_TONE: Record<Status, string> = {
   declined: "bg-muted text-muted-foreground line-through",
 };
 
+interface EditionCard {
+  id: string; status: "pending" | "ready" | "approved" | "declined" | "failed";
+  video_url: string | null; campaign_id: string | null;
+  editions?: { theme: string; world: string | null } | null;
+}
+
 export default function StudioCampaigns() {
   const { designer, loading } = useMyDesigner();
   const { user } = useAuth();
@@ -45,6 +51,8 @@ export default function StudioCampaigns() {
   const [active, setActive] = useState<CampaignRow | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editionCards, setEditionCards] = useState<EditionCard[]>([]);
+  const [editionBusy, setEditionBusy] = useState<string | null>(null);
 
   const refresh = async () => {
     if (!designer) return;
@@ -55,7 +63,46 @@ export default function StudioCampaigns() {
     setItems((data ?? []) as unknown as CampaignRow[]);
   };
 
-  useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [designer?.id]);
+  const refreshEditions = async () => {
+    if (!designer) return;
+    const { data } = await supabase.from("edition_participants" as never)
+      .select("id, status, video_url, campaign_id, editions:edition_id(theme, world)")
+      .eq("designer_id", designer.id)
+      .in("status", ["pending", "ready"]);
+    setEditionCards((data ?? []) as unknown as EditionCard[]);
+  };
+
+  useEffect(() => { void refresh(); void refreshEditions(); /* eslint-disable-next-line */ }, [designer?.id]);
+
+  const decideEdition = async (card: EditionCard, approve: boolean) => {
+    if (!designer) return;
+    setEditionBusy(card.id);
+    try {
+      if (approve) {
+        const { data: d } = await supabase.from("designers").select("media_rights_granted_at").eq("id", designer.id).maybeSingle();
+        const rightsGranted = !!(d as { media_rights_granted_at?: string | null } | null)?.media_rights_granted_at;
+        await supabase.from("video_assets").insert({
+          designer_id: designer.id,
+          campaign_id: card.campaign_id,
+          url: card.video_url,
+          source: "edition",
+          video_dna: { signatur: null, hook_typ: null, schnittrhythmus: null, palette: null, laenge_s: 5, modelltyp: "edition-kinematisch" } as unknown as Record<string, unknown>,
+          rights_granted: rightsGranted,
+        } as never);
+        if (card.campaign_id) await supabase.from("campaigns").update({ status: "approved" }).eq("id", card.campaign_id);
+        await supabase.from("edition_participants" as never).update({ status: "approved" } as never).eq("id", card.id);
+        toast.success("Umgesetzt — landet im Archiv.");
+      } else {
+        await supabase.from("edition_participants" as never).update({ status: "declined" } as never).eq("id", card.id);
+        toast.success("Verworfen.");
+      }
+      void refreshEditions();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setEditionBusy(null);
+    }
+  };
 
   const decide = async (status: "approved" | "changes_requested", comment?: string) => {
     if (!active || !user) return;
@@ -101,6 +148,40 @@ export default function StudioCampaigns() {
           + Neue Kampagne
         </a>
       </div>
+
+      {editionCards.length > 0 && (
+        <div className="mt-8 space-y-4">
+          <p className="editorial-eyebrow">Edition — PAWN schlägt vor</p>
+          {editionCards.map((card) => (
+            <div key={card.id} className="border-[1.5px] border-black bg-white p-5">
+              <p className="font-serif text-xl">{card.editions?.theme ?? "Edition"}</p>
+              <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{card.editions?.world ?? "—"}</p>
+              {card.status === "pending" ? (
+                <p className="mt-3 text-sm text-muted-foreground">Dein Video wird gerade produziert — das dauert ein paar Minuten.</p>
+              ) : (
+                <>
+                  {card.video_url && (
+                    <video src={card.video_url} controls playsInline className="mt-4 aspect-[9/16] w-full max-w-xs border border-border bg-black object-contain" />
+                  )}
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    PAWN hat dieses Video in deiner Signatur erzeugt. Nichts wird veröffentlicht, ohne dass du zustimmst.
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    <button onClick={() => decideEdition(card, true)} disabled={editionBusy === card.id}
+                      className="border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
+                      Umsetzen
+                    </button>
+                    <button onClick={() => decideEdition(card, false)} disabled={editionBusy === card.id}
+                      className="border border-border px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] hover:border-foreground disabled:opacity-50">
+                      Verwerfen
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="mt-8 border border-dashed border-border p-12 text-center">
