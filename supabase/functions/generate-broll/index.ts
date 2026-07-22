@@ -67,6 +67,9 @@ Deno.serve(async (req) => {
     const { data: limits } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
     const costUnits = ((limits?.value as { accent_cost_units?: number } | null)?.accent_cost_units) ?? 2;
 
+    const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
+    const brollClipCents = ((costsCfg?.value as { broll_clip?: number } | null)?.broll_clip) ?? 35;
+
     // Submit each image to fal Queue.
     const submissions = [];
     for (const image_url of images) {
@@ -104,6 +107,8 @@ Deno.serve(async (req) => {
         await admin.from("generation_requests").update({
           error: JSON.stringify({ request_id, status_url, response_url, image_url }),
         } as never).eq("id", (row as { id: string }).id);
+        // Bucht die Ist-Kosten gegen das Monatsbudget des Hauses (informativ, blockiert nicht).
+        try { await admin.rpc("book_ai_spend", { _designer_id: camp.designer_id, _cents: brollClipCents }); } catch { /* noop */ }
         submissions.push({ id: (row as { id: string }).id, request_id, image_url });
       } catch (e) {
         submissions.push({ image_url, error: String((e as Error).message) });

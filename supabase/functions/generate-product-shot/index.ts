@@ -42,13 +42,33 @@ Deno.serve(async (req) => {
     const admin = createClient(url, svc, { auth: { persistSession: false } });
 
     const { data: prod } = await admin.from("products")
-      .select("id, designer_id, designers!inner(user_id)")
+      .select("id, designer_id, designers!inner(user_id, plan)")
       .eq("id", body.product_id).maybeSingle();
-    const p = prod as { id: string; designer_id: string; designers: { user_id: string } } | null;
+    const p = prod as { id: string; designer_id: string; designers: { user_id: string; plan?: string } } | null;
     if (!p) return json({ error: "product_not_found" }, 404);
 
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user_id, _role: "admin" });
     if (!isAdmin && p.designers.user_id !== user_id) return json({ error: "forbidden" }, 403);
+
+    if (!isAdmin) {
+      const plan = p.designers.plan ?? "haus";
+      const { data: planLimitsRow } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
+      const shotLimit = ((planLimitsRow?.value as Record<string, { product_shots_per_month?: number }> | null)?.[plan]?.product_shots_per_month) ?? 5;
+      if (shotLimit >= 0) {
+        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+        const { count } = await admin.from("product_shot_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("designer_id", p.designer_id)
+          .eq("mode", "studio")
+          .gte("created_at", monthStart.toISOString());
+        if ((count ?? 0) >= shotLimit) {
+          return json({
+            error: "quota_exceeded",
+            message: `Dein Studio-Foto-Kontingent für diesen Monat (${shotLimit}) ist aufgebraucht. Mehr geht mit einem größeren Plan.`,
+          }, 200);
+        }
+      }
+    }
 
     const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "image_edit_provider").maybeSingle();
     const model = (cfg?.value as { model?: string } | null)?.model ?? DEFAULT_MODEL;
@@ -138,6 +158,10 @@ Deno.serve(async (req) => {
     await admin.from("product_shot_requests").update({
       status: "done", result_url: finalUrl, error: null,
     } as never).eq("id", request_id);
+
+    const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
+    const productShotCents = ((costsCfg?.value as { product_shot?: number } | null)?.product_shot) ?? 6;
+    try { await admin.rpc("book_ai_spend", { _designer_id: p.designer_id, _cents: productShotCents }); } catch { /* noop */ }
 
     return json({ ok: true, request_id, result_url: finalUrl }, 200);
   } catch (e) {
