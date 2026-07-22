@@ -939,63 +939,6 @@ export type Database = {
           },
         ]
       }
-      video_assets: {
-        Row: {
-          campaign_id: string | null
-          created_at: string
-          designer_id: string
-          id: string
-          performance: Json
-          premiere: boolean
-          rights_granted: boolean
-          source: Database["public"]["Enums"]["video_source"]
-          thumb: string | null
-          url: string
-          video_dna: Json
-        }
-        Insert: {
-          campaign_id?: string | null
-          created_at?: string
-          designer_id: string
-          id?: string
-          performance?: Json
-          premiere?: boolean
-          rights_granted?: boolean
-          source?: Database["public"]["Enums"]["video_source"]
-          thumb?: string | null
-          url: string
-          video_dna?: Json
-        }
-        Update: {
-          campaign_id?: string | null
-          created_at?: string
-          designer_id?: string
-          id?: string
-          performance?: Json
-          premiere?: boolean
-          rights_granted?: boolean
-          source?: Database["public"]["Enums"]["video_source"]
-          thumb?: string | null
-          url?: string
-          video_dna?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "video_assets_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "video_assets_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       domain_events: {
         Row: {
           actor: string
@@ -2013,6 +1956,63 @@ export type Database = {
         }
         Relationships: []
       }
+      video_assets: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          designer_id: string
+          id: string
+          performance: Json
+          premiere: boolean
+          rights_granted: boolean
+          source: Database["public"]["Enums"]["video_source"]
+          thumb: string | null
+          url: string
+          video_dna: Json
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id: string
+          id?: string
+          performance?: Json
+          premiere?: boolean
+          rights_granted?: boolean
+          source?: Database["public"]["Enums"]["video_source"]
+          thumb?: string | null
+          url: string
+          video_dna?: Json
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id?: string
+          id?: string
+          performance?: Json
+          premiere?: boolean
+          rights_granted?: boolean
+          source?: Database["public"]["Enums"]["video_source"]
+          thumb?: string | null
+          url?: string
+          video_dna?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_assets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_assets_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wishlists: {
         Row: {
           created_at: string
@@ -2348,6 +2348,7 @@ export const Constants = {
       posting_status: ["queued", "posted", "failed", "cancelled"],
       product_status: ["draft", "published", "archived"],
       product_world: ["Mode", "Interior", "Kunst"],
+      video_source: ["designer", "edition", "jarvis"],
     },
   },
 } as const
