@@ -99,7 +99,11 @@ Deno.serve(async (req) => {
             campaign_id: r.campaign_id,
             url: finalUrl,
             source: "designer",
-            video_dna: { provider: "fal", tier: r.tier },
+            video_dna: {
+              provider: "fal", tier: r.tier,
+              signatur: null, hook_typ: null, schnittrhythmus: null, palette: null,
+              laenge_s: 5, modelltyp: "kinematisch",
+            },
             rights_granted: !!r.campaigns.designers.media_rights_granted_at,
           } as never);
           await admin.from("notifications").insert({

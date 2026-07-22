@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({})) as {
-      campaign_id?: string; image_urls?: string[]; motion_prompt?: string;
+      campaign_id?: string; image_urls?: string[]; motion_prompt?: string; signature_id?: string;
     };
     if (!body.campaign_id) return json({ error: "campaign_id_required" }, 400);
     const images = (body.image_urls ?? []).filter((u) => typeof u === "string" && u.length > 0).slice(0, 4);
@@ -59,10 +59,24 @@ Deno.serve(async (req) => {
 
     // Config
     const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "video_provider").maybeSingle();
-    const model = (cfg?.value as { model?: string } | null)?.model ?? DEFAULT_MODEL;
+    const videoCfg = (cfg?.value as { model?: string; model_premium?: string } | null) ?? {};
     const { data: tpl } = await admin.from("ai_config").select("value").eq("key", "video_motion_prompt_template").maybeSingle();
     const template = (tpl?.value as { template?: string } | null)?.template ?? DEFAULT_TEMPLATE;
-    const prompt = template.replace("{designer_prompt}", body.motion_prompt ?? "");
+
+    // Signatur gesetzt → stärkste verfügbare i2v-Klasse + Rezept ins Bewegungs-Prompt falten.
+    let model = videoCfg.model ?? DEFAULT_MODEL;
+    let designerPrompt = body.motion_prompt ?? "";
+    if (body.signature_id) {
+      const { data: sig } = await admin.from("house_signatures")
+        .select("recipe").eq("id", body.signature_id).maybeSingle();
+      const recipe = (sig as { recipe?: Record<string, string> } | null)?.recipe;
+      if (recipe) {
+        model = videoCfg.model_premium ?? "fal-ai/kling-video/v2.1/standard/image-to-video";
+        const bits = [recipe.licht, recipe.palette, recipe.kamerafahrt].filter(Boolean).join(", ");
+        designerPrompt = [designerPrompt, bits].filter(Boolean).join(", ");
+      }
+    }
+    const prompt = template.replace("{designer_prompt}", designerPrompt);
 
     const { data: limits } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
     const costUnits = ((limits?.value as { accent_cost_units?: number } | null)?.accent_cost_units) ?? 2;

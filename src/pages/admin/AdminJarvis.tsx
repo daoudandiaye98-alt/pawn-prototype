@@ -67,7 +67,7 @@ interface JarvisExperiment {
 
 const KIND_LABELS: Record<string, string> = {
   morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort",
-  diagnose: "Diagnose", wissen: "Wissenslauf",
+  diagnose: "Diagnose", wissen: "Wissenslauf", regie: "Kampagnen-Regie", dossier: "Haus-Dossier",
 };
 
 const EXPERIMENT_STATUS_LABELS: Record<string, string> = {
@@ -118,6 +118,8 @@ export default function AdminJarvis() {
   const [busy, setBusy] = useState<null | "befehl" | "morgenbericht" | "wochenbericht" | "recherche">(null);
   const [diagnoseBusy, setDiagnoseBusy] = useState(false);
   const [evolutionBusy, setEvolutionBusy] = useState(false);
+  const [regieBusy, setRegieBusy] = useState(false);
+  const [signaturesBulkBusy, setSignaturesBulkBusy] = useState(false);
   const [wissenBusy, setWissenBusy] = useState(false);
   const [resolving, setResolving] = useState<string | null>(null);
   const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
@@ -233,6 +235,37 @@ export default function AdminJarvis() {
       toast.error((e as Error).message);
     } finally {
       setDiagnoseBusy(false);
+    }
+  }
+
+  async function runKampagnenRegieNow() {
+    setRegieBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "kampagnen_regie" } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string };
+      if (!result.ok) { toast.error(result.error ?? "Regie konnte nicht laufen."); return; }
+      toast.success("Regie-Auswertung fertig.");
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRegieBusy(false);
+    }
+  }
+
+  async function runSignaturesBulkNow() {
+    setSignaturesBulkBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-signatures", { body: { mode: "bulk" } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string; message?: string; processed?: number; created?: number };
+      if (!result.ok) { toast.error(result.message ?? result.error ?? "Massenlauf fehlgeschlagen."); return; }
+      toast.success(`${result.processed ?? 0} Häuser geprüft, ${result.created ?? 0} Signaturen erzeugt.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSignaturesBulkBusy(false);
     }
   }
 
@@ -609,6 +642,37 @@ export default function AdminJarvis() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mb-8 border-[1.5px] border-black">
+        <header className="flex items-center justify-between border-b-[1.5px] border-black px-5 py-3">
+          <p className="editorial-eyebrow">Kampagnen-Regie &amp; Signaturen</p>
+        </header>
+        <div className="flex flex-wrap gap-3 p-5">
+          <Button
+            onClick={runKampagnenRegieNow}
+            disabled={regieBusy}
+            variant="outline"
+            size="sm"
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {regieBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Regie jetzt auswerten
+          </Button>
+          <Button
+            onClick={runSignaturesBulkNow}
+            disabled={signaturesBulkBusy}
+            variant="outline"
+            size="sm"
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {signaturesBulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Signaturen für alle Häuser erzeugen
+          </Button>
+        </div>
+        <p className="px-5 pb-5 text-xs text-muted-foreground">
+          Regie liest wöchentlich Première-Views/Shop-Klicks je Haus und destilliert Vorlieben; läuft normalerweise automatisch per Cron. Signaturen-Massenlauf erzeugt Stil-Rezepte für alle Häuser ohne bestehende Signatur.
+        </p>
       </section>
 
       {issueNotices.length > 0 && (
