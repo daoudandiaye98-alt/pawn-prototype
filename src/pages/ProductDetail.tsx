@@ -18,6 +18,8 @@ import { useDbProductBySlug } from "@/features/products/useDbProduct";
 import { useWishlist } from "@/features/wishlist/useWishlist";
 import { createCustomRequestThread } from "@/features/messages/customRequest";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrevNext } from "@/components/palace/PrevNext";
@@ -27,6 +29,7 @@ const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
   const slug = params.slug ?? params.id ?? "asymmetric-coat";
   const { user } = useAuth();
+  const { locale } = useI18n();
 
   const { product: dbProduct } = useDbProductBySlug(slug);
   const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug) ?? marketplaceSelectors.getAllProducts(s)[0]);
@@ -190,10 +193,10 @@ const ProductDetail = () => {
                 </Link>
                 <div className="mt-8 flex items-baseline gap-3">
                   <p className="palace-serif text-[1.4rem] tabular-nums text-[#000000]">
-                    €{(dbProduct?.price ?? product.price).toLocaleString("de-DE")}
+                    {formatPrice(dbProduct?.price ?? product.price, locale)}
                   </p>
                   {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
-                    <span className="palace-eyebrow text-[#7C7972] line-through">€{Number(dbProduct.compare_at_price).toLocaleString("de-DE")}</span>
+                    <span className="palace-eyebrow text-[#7C7972] line-through">{formatPrice(Number(dbProduct.compare_at_price), locale)}</span>
                   )}
                 </div>
 

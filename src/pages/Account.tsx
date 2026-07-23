@@ -13,6 +13,8 @@ import { useDisplayName } from "@/lib/displayName";
 import { useWishlist } from "@/features/wishlist/useWishlist";
 import { CustomerGenomeCard } from "@/components/palace/CustomerGenomeCard";
 import { AccountSettingsPanel } from "@/components/palace/AccountSettings";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { Sparkles } from "lucide-react";
 
 /* Hairline PAWN icons (stroke 1.25) */
@@ -41,6 +43,14 @@ const TABS = [
 ] as const;
 type Tab = typeof TABS[number]["key"];
 
+const TAB_I18N_KEY = {
+  "Übersicht": "account.overview",
+  "Bestellungen": "account.orders",
+  "Anfragen": "account.requests",
+  "Merkzettel": "account.wishlist",
+  "Einstellungen": "account.settings",
+} as const;
+
 function useMemberNumber(userId?: string) {
   const [n, setN] = useState<number | null>(null);
   useEffect(() => {
@@ -57,6 +67,7 @@ const Account = () => {
   const [tab, setTab] = useState<Tab>("Übersicht");
   const { user, loading, signOut, roles } = useAuth();
   const { displayName, firstName } = useDisplayName();
+  const { t } = useI18n();
   const memberNumber = useMemberNumber(user?.id);
 
   if (loading) return null;
@@ -97,13 +108,13 @@ const Account = () => {
         <div className="mx-auto grid max-w-[1400px] gap-8 lg:grid-cols-[220px_1fr]">
           {/* Desktop cell nav */}
           <nav className="hidden lg:flex flex-col border-t border-[rgba(0,0,0,.18)] pt-2">
-            {TABS.map((t) => {
-              const active = tab === t.key;
+            {TABS.map((tb) => {
+              const active = tab === tb.key;
               return (
                 <button
-                  key={t.key}
+                  key={tb.key}
                   type="button"
-                  onClick={() => setTab(t.key)}
+                  onClick={() => setTab(tb.key)}
                   className={cn(
                     "relative flex items-center gap-3 px-4 py-3 text-left text-[0.72rem] uppercase tracking-[0.22em] transition-colors",
                     active
@@ -112,8 +123,8 @@ const Account = () => {
                   )}
                 >
                   {active && <span className="absolute left-0 top-0 h-full w-[1.5px] bg-[#000000]" />}
-                  <t.icon className="h-4 w-4 shrink-0" />
-                  <span>{t.key}</span>
+                  <tb.icon className="h-4 w-4 shrink-0" />
+                  <span>{t(TAB_I18N_KEY[tb.key])}</span>
                 </button>
               );
             })}
@@ -121,13 +132,13 @@ const Account = () => {
 
           {/* Mobile chip bar */}
           <nav className="lg:hidden -mx-6 flex gap-2 overflow-x-auto px-6 pb-2">
-            {TABS.map((t) => {
-              const active = tab === t.key;
+            {TABS.map((tb) => {
+              const active = tab === tb.key;
               return (
                 <button
-                  key={t.key}
+                  key={tb.key}
                   type="button"
-                  onClick={() => setTab(t.key)}
+                  onClick={() => setTab(tb.key)}
                   className={cn(
                     "flex shrink-0 items-center gap-2 border-[1.5px] px-3 py-2 text-[0.62rem] uppercase tracking-[0.24em] transition-colors",
                     active
@@ -135,8 +146,8 @@ const Account = () => {
                       : "border-[rgba(0,0,0,.22)] text-[#000000]",
                   )}
                 >
-                  <t.icon className="h-3.5 w-3.5" />
-                  {t.key}
+                  <tb.icon className="h-3.5 w-3.5" />
+                  {t(TAB_I18N_KEY[tb.key])}
                 </button>
               );
             })}
@@ -331,6 +342,7 @@ function Requests() {
 
 
 function Orders() {
+  const { locale } = useI18n();
   const customerOrders = useStore(selectors.getCustomerOrders);
   if (customerOrders.length === 0) {
     return <Empty title="Noch keine Bestellungen." to="/neu" cta="Ausstellung ansehen" />;
@@ -343,7 +355,7 @@ function Orders() {
           <div>
             <p className="palace-eyebrow">{o.id} · {o.date}</p>
             <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">
-              €{o.total.toLocaleString("de-DE")}
+              {formatPrice(o.total, locale)}
             </p>
             <p className="mt-2 font-serif italic text-[#000000]/70">{o.items.length} Stück · {o.status}</p>
           </div>

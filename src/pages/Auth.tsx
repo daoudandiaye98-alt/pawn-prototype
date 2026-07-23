@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
 function homeForRoles(roles: string[]) {
@@ -12,6 +13,7 @@ function homeForRoles(roles: string[]) {
 
 export default function Auth() {
   const { user, roles, loading, signInWithPassword, signUp, signInWithGoogle } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
@@ -31,7 +33,7 @@ export default function Auth() {
         : await signUp(email, password, displayName || email.split("@")[0]);
     setBusy(false);
     if (error) return toast.error(error);
-    if (mode === "up") toast.success("Prüfe deine E-Mail zur Bestätigung.");
+    if (mode === "up") toast.success(t("auth.checkEmail"));
     // Role redirect happens automatically via the Navigate above once auth state updates.
     else navigate("/account");
   };
@@ -60,15 +62,15 @@ export default function Auth() {
       />
       <section className="relative z-10 mx-auto flex min-h-[80vh] w-full max-w-[520px] flex-col justify-center px-6 pt-32 pb-20 md:pt-40">
 
-        <p className="palace-eyebrow text-center">Zutritt</p>
+        <p className="palace-eyebrow text-center">{t("auth.entry")}</p>
         <h1
           className="palace-serif mt-6 text-center font-light text-[#000000]"
           style={{ fontSize: "clamp(2.4rem, 5vw, 3.6rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
         >
-          {mode === "in" ? <>Willkommen <span className="italic">zurück.</span></> : <>Trage dich <span className="italic">ein.</span></>}
+          {mode === "in" ? t("auth.welcomeBack") : t("auth.joinTitle")}
         </h1>
         <p className="mt-6 text-center font-serif italic text-[#000000]/70">
-          Deine Ausstellung, wie du sie verlassen hast.
+          {t("auth.welcomeBackSub")}
         </p>
 
         <div className="mt-12 flex justify-center gap-8">
@@ -81,39 +83,39 @@ export default function Auth() {
                 mode === k ? "border-b border-[#000000] text-[#000000]" : "text-[#7C7972] hover:text-[#000000]"
               }`}
             >
-              {k === "in" ? "Anmelden" : "Konto anlegen"}
+              {k === "in" ? t("auth.signIn") : t("auth.signUp")}
             </button>
           ))}
         </div>
 
         {mode === "up" && (
           <div className="mt-10 border border-[rgba(0,0,0,.18)] bg-white/40 p-5 text-center">
-            <p className="palace-eyebrow">Registrieren als</p>
+            <p className="palace-eyebrow">{t("auth.registerAs")}</p>
             <div className="mt-3 flex items-center justify-center gap-6 text-[0.75rem] uppercase tracking-[0.28em]">
-              <span className="border-b border-[#000000] pb-1 text-[#000000]">Kunde</span>
-              <Link to="/apply" className="text-[#7C7972] hover:text-[#000000]">Designer →</Link>
+              <span className="border-b border-[#000000] pb-1 text-[#000000]">{t("auth.asCustomer")}</span>
+              <Link to="/apply" className="text-[#7C7972] hover:text-[#000000]">{t("auth.asDesigner")} →</Link>
             </div>
-            <p className="mt-3 text-[0.7rem] text-[#7C7972]">Designer bewerben sich über /apply — dort erfährst du unser Angebot.</p>
+            <p className="mt-3 text-[0.7rem] text-[#7C7972]">{t("auth.designerHint")}</p>
           </div>
         )}
         <form onSubmit={handleSubmit} className="mt-8 space-y-8">
           {mode === "up" && (
-            <Field label="Name" value={displayName} onChange={setDisplayName} />
+            <Field label={t("auth.name")} value={displayName} onChange={setDisplayName} />
           )}
-          <Field label="E-Mail" value={email} onChange={setEmail} type="email" required />
-          <Field label="Passwort" value={password} onChange={setPassword} type="password" required />
+          <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" required />
+          <Field label={t("auth.password")} value={password} onChange={setPassword} type="password" required />
           <button
             type="submit"
             disabled={busy}
             className="palace-btn w-full justify-center text-center hover:bg-[#000000] hover:text-[#FFFFFF] disabled:opacity-50"
           >
-            {busy ? "…" : mode === "in" ? "Anmelden" : "Konto anlegen"}
+            {busy ? "…" : mode === "in" ? t("auth.signIn") : t("auth.signUp")}
           </button>
         </form>
 
         <div className="my-10 flex items-center gap-4">
           <div className="h-px flex-1 bg-[rgba(0,0,0,.18)]" />
-          <span className="palace-eyebrow">oder</span>
+          <span className="palace-eyebrow">{t("auth.or")}</span>
           <div className="h-px flex-1 bg-[rgba(0,0,0,.18)]" />
         </div>
 
@@ -123,11 +125,11 @@ export default function Auth() {
           disabled={busy}
           className="palace-btn w-full justify-center text-center disabled:opacity-50"
         >
-          Mit Google fortfahren
+          {t("auth.continueGoogle")}
         </button>
 
         <p className="mt-10 text-center palace-eyebrow">
-          <Link to="/" className="uline text-[#000000]">Zurück zur Ausstellung</Link>
+          <Link to="/" className="uline text-[#000000]">{t("auth.backToExhibition")}</Link>
         </p>
       </section>
     </PalaceLayout>

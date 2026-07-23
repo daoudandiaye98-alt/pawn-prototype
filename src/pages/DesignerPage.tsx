@@ -8,6 +8,8 @@ import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@
 import { useDesignerPrevNext } from "@/features/navigation/usePrevNext";
 import { useSiteContent } from "@/lib/siteContent";
 import { Editable } from "@/components/palace/Editable";
+import { useI18n } from "@/lib/i18n";
+import { Languages } from "lucide-react";
 
 interface DbDesigner {
   id: string;
@@ -271,11 +273,28 @@ const DesignerPage = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Manifesto word reveal
+  // Manifesto word reveal — Handschrift des Hauses, bleibt in der Original-
+  // sprache; "Übersetzung anzeigen" ist rein optional und nichts wird
+  // dauerhaft ersetzt oder gespeichert.
+  const { locale } = useI18n();
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translatedManifesto, setTranslatedManifesto] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const manifestoOriginal = designer.manifesto ?? designer.story ?? "";
+  const manifestoSource = showTranslation && translatedManifesto ? translatedManifesto : manifestoOriginal;
   const manifestoWords = useMemo(
-    () => (designer.manifesto ?? designer.story ?? "").split(/\s+/).filter(Boolean),
-    [designer.manifesto, designer.story],
+    () => manifestoSource.split(/\s+/).filter(Boolean),
+    [manifestoSource],
   );
+  const toggleManifestoTranslation = async () => {
+    if (showTranslation) { setShowTranslation(false); return; }
+    if (translatedManifesto) { setShowTranslation(true); return; }
+    setTranslating(true);
+    const { data } = await supabase.functions.invoke("suggest-translation", { body: { text: manifestoOriginal } });
+    setTranslating(false);
+    const suggestion = (data as { suggestion?: string } | null)?.suggestion;
+    if (suggestion) { setTranslatedManifesto(suggestion); setShowTranslation(true); }
+  };
 
   // Portrait breathes into view — text layers stay locked in place so they
   // register as a single monumental headline (front-layer clip-path handles
@@ -459,6 +478,17 @@ const DesignerPage = () => {
                   })
                 )}
               </p>
+              {locale === "en" && manifestoOriginal && (
+                <button
+                  type="button"
+                  onClick={() => void toggleManifestoTranslation()}
+                  disabled={translating}
+                  className="mt-6 flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.28em] text-[#000000]/60 hover:text-[#000000] disabled:opacity-50"
+                >
+                  <Languages className="h-3 w-3" />
+                  {translating ? "…" : showTranslation ? "Show original" : "Show translation"}
+                </button>
+              )}
             </div>
 
             <div className="mt-20 flex items-center gap-6">
