@@ -757,7 +757,8 @@ export default function AdminJarvis() {
         {runs.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">Noch keine Läufe.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b border-border text-left text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5">Zeit</th>
@@ -779,6 +780,7 @@ export default function AdminJarvis() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </AdminShell>

@@ -120,7 +120,8 @@ function AdminApplicationsBody() {
             Keine Bewerbungen in dieser Ansicht.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b border-border text-left text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Brand</th>
@@ -159,6 +160,7 @@ function AdminApplicationsBody() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

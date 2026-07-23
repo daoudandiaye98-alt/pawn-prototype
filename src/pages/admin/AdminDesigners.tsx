@@ -49,8 +49,8 @@ export default function AdminDesigners() {
       ) : designers.length === 0 ? (
         <div className="border border-dashed border-border p-12 text-center text-muted-foreground">Keine Designer.</div>
       ) : (
-        <div className="border border-border">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto border border-border">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-secondary text-left text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Brand</th>
@@ -159,30 +159,30 @@ function BrandEditor({ designer, onSaved }: { designer: Designer; onSaved: (d: D
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <F label="Brand"><input className="inp" value={d.brand_name} onChange={(e) => setD({ ...d, brand_name: e.target.value })} /></F>
         <F label="Slug"><input className="inp" value={d.slug} onChange={(e) => setD({ ...d, slug: e.target.value })} /></F>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <F label="Ort"><input className="inp" value={d.location ?? ""} onChange={(e) => setD({ ...d, location: e.target.value })} /></F>
         <F label="Land"><input className="inp" value={d.country ?? ""} onChange={(e) => setD({ ...d, country: e.target.value })} /></F>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <F label="Website"><input className="inp" value={d.website ?? ""} onChange={(e) => setD({ ...d, website: e.target.value })} /></F>
         <F label="Instagram"><input className="inp" value={d.instagram ?? ""} onChange={(e) => setD({ ...d, instagram: e.target.value })} /></F>
       </div>
       <F label="Story"><textarea className="inp min-h-32" value={d.story ?? ""} onChange={(e) => setD({ ...d, story: e.target.value })} /></F>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <F label="Zitat"><textarea className="inp min-h-20" value={d.quote ?? ""} onChange={(e) => setD({ ...d, quote: e.target.value })} /></F>
         <F label="Zitat-Rolle"><input className="inp" value={d.quote_role ?? ""} onChange={(e) => setD({ ...d, quote_role: e.target.value })} /></F>
       </div>
       <F label="Tags (Komma)"><input className="inp" value={(d.tags ?? []).join(", ")} onChange={(e) => setD({ ...d, tags: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} /></F>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <F label="Avatar URL"><input className="inp" value={d.avatar_url ?? ""} onChange={(e) => setD({ ...d, avatar_url: e.target.value })} /></F>
         <F label="Banner URL"><input className="inp" value={d.banner_url ?? ""} onChange={(e) => setD({ ...d, banner_url: e.target.value })} /></F>
         <F label="Hero URL"><input className="inp" value={d.hero_image_url ?? ""} onChange={(e) => setD({ ...d, hero_image_url: e.target.value })} /></F>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <F label="Status"><select className="inp" value={d.status} onChange={(e) => setD({ ...d, status: e.target.value })}>
           <option value="active">active</option><option value="paused">paused</option><option value="hidden">hidden</option>
         </select></F>
@@ -292,14 +292,14 @@ function ProductsManager({ designerId }: { designerId: string }) {
             </div>
             <div className="mt-4 space-y-3">
               <F label="Name"><input className="inp" value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></F>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <F label="Welt"><select className="inp" value={editing.world ?? "Mode"} onChange={(e) => setEditing({ ...editing, world: e.target.value as World })}>
                   <option>Mode</option><option>Interior</option><option>Kunst</option>
                 </select></F>
                 <F label="Preis"><input type="number" className="inp" value={editing.price ?? 0} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></F>
                 <F label="Streichpreis"><input type="number" className="inp" value={editing.compare_at_price ?? ""} onChange={(e) => setEditing({ ...editing, compare_at_price: e.target.value ? Number(e.target.value) : null })} /></F>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <F label="Modus"><select className="inp" value={editing.inventory_mode ?? "stock"} onChange={(e) => setEditing({ ...editing, inventory_mode: e.target.value as InvMode })}>
                   <option value="stock">Lager</option><option value="made_to_order">Anfertigung</option>
                 </select></F>

@@ -61,7 +61,7 @@ export const Panel = forwardRef<HTMLElement, PanelProps>(function Panel(
   return (
     <section
       ref={ref}
-      className={cn("flex flex-col", SURFACE[surface], border, className)}
+      className={cn("flex min-w-0 flex-col", SURFACE[surface], border, className)}
       {...rest}
     >
       {(eyebrow || title || action) && (

@@ -485,8 +485,8 @@ function ImportPanel({ onImported }: { onImported: () => void }) {
       </div>
 
       {rows && (
-        <div className="mt-4 max-h-64 overflow-y-auto border border-border">
-          <table className="w-full text-xs">
+        <div className="mt-4 max-h-64 overflow-auto border border-border">
+          <table className="w-full min-w-[560px] text-xs">
             <thead className="border-b border-border text-left uppercase tracking-[0.18em] text-muted-foreground">
               <tr>
                 <th className="px-3 py-2">Handle</th>
@@ -777,7 +777,8 @@ export default function AdminAkquise() {
             Die ersten Kandidaten ziehen ein.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="border-b-[1.5px] border-black text-left text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Handle</th>
@@ -823,6 +824,7 @@ export default function AdminAkquise() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

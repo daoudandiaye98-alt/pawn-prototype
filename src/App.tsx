@@ -134,7 +134,7 @@ const App = () => (
                 <Route path="/order/success" element={<OrderConfirmation />} />
                 <Route path="/account" element={<Account />} />
 
-                <Route path="/admin" element={<AdminOverview />} />
+                <Route path="/admin" element={<RoleGate role="admin"><AdminOverview /></RoleGate>} />
                 <Route path="/admin/dna" element={<RoleGate role="admin"><AdminDNA /></RoleGate>} />
                 <Route path="/admin/products" element={<RoleGate role="admin"><AdminProducts /></RoleGate>} />
                 <Route path="/admin/applications" element={<RoleGate role="admin"><AdminApplications /></RoleGate>} />
@@ -147,7 +147,7 @@ const App = () => (
                 <Route path="/admin/jarvis" element={<RoleGate role="admin"><AdminJarvis /></RoleGate>} />
                 <Route path="/admin/nachrichten" element={<RoleGate role="admin"><AdminMessages /></RoleGate>} />
                 <Route path="/admin/zahlungen" element={<RoleGate role="admin"><AdminPayments /></RoleGate>} />
-                <Route path="/admin/texte-bilder" element={<AdminContent />} />
+                <Route path="/admin/texte-bilder" element={<RoleGate role="admin"><AdminContent /></RoleGate>} />
                 <Route path="/admin/posting" element={<RoleGate role="admin"><AdminPosting /></RoleGate>} />
                 <Route path="/admin/archiv" element={<RoleGate role="admin"><AdminArchiv /></RoleGate>} />
                 <Route path="/admin/editionen" element={<RoleGate role="admin"><AdminEditionen /></RoleGate>} />

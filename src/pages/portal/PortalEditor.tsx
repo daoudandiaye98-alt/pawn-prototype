@@ -55,7 +55,7 @@ const PortalEditor = () => {
           <div className="p-6">
             <p className="editorial-eyebrow">The story</p>
             <p className="mt-2 text-sm text-foreground/80">{bio}</p>
-            <div className="mt-6 grid grid-cols-4 gap-3 text-center">
+            <div className="mt-6 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
               {[["12", "Collections"], ["86", "Products"], ["184K", "Followers"], ["2021", "Since"]].map(([v, l]) => (
                 <div key={l} className="border border-border p-3">
                   <p className="font-serif text-xl">{v}</p>

@@ -118,7 +118,8 @@ export default function AdminTrends() {
             <p className="mt-3 text-sm text-muted-foreground">Der Strom wächst mit jedem Besucher. Klick „Jetzt neu berechnen", sobald erste Interaktionen da sind.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px]">
             <thead>
               <tr className="border-b border-border text-left text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
                 <th className="px-4 py-3">Begriff</th>
@@ -155,6 +156,7 @@ export default function AdminTrends() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
