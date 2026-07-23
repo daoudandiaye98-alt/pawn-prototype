@@ -718,7 +718,8 @@ function CommandDeck() {
           ) : recentOrders.length === 0 ? (
             <EmptyRow text="Noch keine Bestellungen." />
           ) : (
-            <table className="w-full text-[12px]">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-[12px]">
               <thead>
                 <tr className="text-left text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">
                   <th className="px-5 py-2.5 font-normal">Bestellung</th>
@@ -740,6 +741,7 @@ function CommandDeck() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Panel>
 
@@ -813,7 +815,7 @@ function CommandDeck() {
           };
           return (
             <button key={q.l} onClick={onClick}
-              className="group flex items-center gap-2 border border-white/10 bg-[hsl(18_10%_6%)] px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-[hsl(36_25%_84%)] transition-colors hover:border-[hsl(350_55%_35%)] hover:bg-[hsl(350_55%_10%)]/40">
+              className="group flex min-h-[44px] items-center gap-2 border border-white/10 bg-[hsl(18_10%_6%)] px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-[hsl(36_25%_84%)] transition-colors hover:border-[hsl(350_55%_35%)] hover:bg-[hsl(350_55%_10%)]/40">
               <I className="h-3.5 w-3.5 text-[hsl(350_55%_60%)] transition-transform group-hover:scale-110" />
               {q.l}
             </button>

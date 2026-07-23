@@ -64,7 +64,7 @@ export default function StudioSettings() {
               )}
 
               {dna.price_band && (
-                <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+                <div className="mt-6 grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
                   <Stat label="Ø Preis" value={`€ ${Math.round(dna.price_band.avg ?? 0)}`} />
                   <Stat label="Preisband" value={`€ ${Math.round(dna.price_band.min ?? 0)}–${Math.round(dna.price_band.max ?? 0)}`} />
                   <Stat label="Stücke" value={String(dna.product_count ?? 0)} />

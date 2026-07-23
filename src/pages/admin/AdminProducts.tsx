@@ -42,7 +42,8 @@ const AdminProducts = () => {
       </div>
 
       <Panel className="mt-8" padding="none" headerBorder={false} eyebrow={`${filtered.length} pieces`} title="Catalog">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[hsl(var(--border))] text-left t-eyebrow">
               <th className="px-6 py-3">Product</th>
@@ -71,6 +72,7 @@ const AdminProducts = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </Panel>
     </AdminShell>
   );

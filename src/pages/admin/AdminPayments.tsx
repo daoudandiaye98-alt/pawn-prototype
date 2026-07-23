@@ -181,7 +181,8 @@ export default function AdminPayments() {
         ) : perDesigner.size === 0 ? (
           <div className="p-8 text-center text-muted-foreground">Noch keine bezahlten Bestellungen.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="text-left text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">
                 <th className="px-4 py-3">Designer</th>
@@ -221,6 +222,7 @@ export default function AdminPayments() {
                 })}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
