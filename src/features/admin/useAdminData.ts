@@ -165,17 +165,6 @@ export function useAdminSystemStats(refreshKey: number | string = 0): AdminSyste
   return stats;
 }
 
-/** Writes an admin.action_requested domain event. */
-export async function requestAdminAction(action: string, note?: string) {
-  const { data: userData } = await supabase.auth.getUser();
-  const uid = userData?.user?.id ?? null;
-  await supabase.from("domain_events").insert({
-    type: "admin.action_requested",
-    actor: uid ?? "system",
-    identity_scope: uid,
-    payload: { action, note: note ?? null, requested_at: new Date().toISOString() },
-  } as never);
-}
 
 /** ---------- Platform KPIs: real 30d numbers + daily buckets for the chart ---------- */
 

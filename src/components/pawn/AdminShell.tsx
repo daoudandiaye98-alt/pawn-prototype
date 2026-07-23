@@ -14,7 +14,6 @@ import {
   Bot,
   Sparkles,
   UserPlus,
-  Brain,
   Clapperboard,
   Layers,
   Menu,
@@ -38,7 +37,6 @@ const ITEMS = [
   { to: "/admin/editionen", label: "Editionen", icon: Layers },
   { to: "/admin/trends", label: "Trends", icon: TrendingUp },
   { to: "/admin/ki", label: "KI Cockpit", icon: Bot },
-  { to: "/admin/jarvis", label: "Jarvis", icon: Brain },
   { to: "/admin/aktionen", label: "Aktionen", icon: Sparkles },
 ];
 
