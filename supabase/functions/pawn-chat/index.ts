@@ -16,6 +16,9 @@ Stelle EINE konkrete, warme Frage pro Antwort (Anlass? Raum? eher ruhig oder Spa
 Erkläre nie Technik. Wenn der Nutzer nur stöbern will, respektiere das.
 Wenn du empfehlen kannst, nenne 2-3 konkrete Namen aus dem Kontext, den du bekommst.`;
 
+// Haus-Stilgesetz (Standard, überschreibbar via ai_config.house_style_law): gilt für jeden textschreibenden KI-Schritt.
+const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
+
 function detectWorld(t: string): World | null {
   const s = t.toLowerCase();
   if (/mode|kleid|jacke|mantel|hose|anzieh|outfit|tragen/.test(s)) return "Mode";
@@ -78,6 +81,16 @@ async function loadDirectives(admin: SupabaseClient): Promise<string[]> {
     const v = data?.value as { items?: string[] } | undefined;
     return Array.isArray(v?.items) ? v!.items.filter((x) => typeof x === "string" && x.trim().length > 0) : [];
   } catch { return []; }
+}
+
+/** Haus-Stilgesetz: sagt, was ist — nie, was etwas nicht ist. Gilt für alle textschreibenden KI-Schritte. */
+async function loadHouseStyleLaw(admin: SupabaseClient): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "house_style_law").maybeSingle();
+    const v = data?.value as { text?: string } | string | null;
+    const text = typeof v === "string" ? v : v?.text;
+    return typeof text === "string" && text.trim() ? text.trim() : DEFAULT_HOUSE_STYLE_LAW;
+  } catch { return DEFAULT_HOUSE_STYLE_LAW; }
 }
 
 async function resolveRole(admin: SupabaseClient, user_id: string | null): Promise<PersonaRole> {
@@ -412,6 +425,7 @@ Deno.serve(async (req) => {
     const persona = admin ? await loadPersonaForRole(admin, role) : DEFAULT_SYSTEM;
     const directives = admin ? await loadDirectives(admin) : [];
     const directiveBlock = directives.length ? `Direktiven (immer beachten):\n- ${directives.join("\n- ")}` : "";
+    const houseStyleLaw = admin ? await loadHouseStyleLaw(admin) : DEFAULT_HOUSE_STYLE_LAW;
 
     // --- Page context: if user is on a product page, load rich detail so
     // PAWN can answer concrete questions about the piece in front of them.
@@ -456,7 +470,7 @@ Deno.serve(async (req) => {
       } catch { /* soft */ }
     }
 
-    const system = [persona, directiveBlock].filter(Boolean).join("\n\n");
+    const system = [persona, houseStyleLaw, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [pageContextHint, memoryHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan

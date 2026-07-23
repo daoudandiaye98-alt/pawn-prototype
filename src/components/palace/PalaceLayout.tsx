@@ -2,14 +2,23 @@ import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PalaceHeader } from "./PalaceHeader";
 import { BuilderBar, BuilderToggle } from "./BuilderMode";
-import { Editable } from "./Editable";
+import { Editable, useContentValue } from "./Editable";
+import { useSiteContent } from "@/lib/siteContent";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
+
+const FOOTER_COLUMN_KEYS = ["footer_col_haeuser", "footer_col_fuer_sie", "footer_col_fuer_designer", "footer_col_haus"] as const;
 
 /**
  * PalaceLayout — final black/white system.
  */
 export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean }) {
+  const ausgabeNummer = useSiteContent("ausgabe_nummer");
+  const colTitleHaeuser = useContentValue(FOOTER_COLUMN_KEYS[0], "Häuser");
+  const colTitleFuerSie = useContentValue(FOOTER_COLUMN_KEYS[1], "Für Sie");
+  const colTitleFuerDesigner = useContentValue(FOOTER_COLUMN_KEYS[2], "Für Designer");
+  const colTitleHaus = useContentValue(FOOTER_COLUMN_KEYS[3], "Haus");
+  const resolvedColTitles = [colTitleHaeuser, colTitleFuerSie, colTitleFuerDesigner, colTitleHaus];
   return (
     <div className="palace min-h-screen bg-white text-black">
       <BuilderBar />
@@ -66,7 +75,7 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
               key={col.title}
               className={`${i > 0 ? "border-l-[1.5px] border-black" : ""} px-6 py-8`}
             >
-              <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">{col.title}</p>
+              <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">{resolvedColTitles[i]}</p>
               <ul className="mt-4 space-y-2">
                 {col.links.map((l) => (
                   <li key={l.label}>
@@ -83,7 +92,9 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
           ))}
         </div>
         <div className="mx-auto flex max-w-[1600px] flex-col gap-3 border-t-[1.5px] border-black px-6 py-8 text-[0.6rem] uppercase tracking-[0.42em] text-black md:flex-row md:items-center md:justify-between md:px-14">
-          <Editable contentKey="footer_line_1">PAWN · Kuratierte Ausstellung · Ausgabe 07 · Juli</Editable>
+          <span>
+            <Editable contentKey="footer_line_1">PAWN · Kuratierte Ausstellung</Editable> · Ausgabe {ausgabeNummer}
+          </span>
           <span>© {new Date().getFullYear()} — Für Designer <a href="/apply" className="uline text-black">bewerben</a></span>
         </div>
       </footer>

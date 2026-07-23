@@ -18,6 +18,8 @@ const DEFAULT_PROMPT =
   "Du bist PAWN, eine leise, warme und kuratierende Stimme. Antworte auf Deutsch, in maximal 2 kurzen Sätzen. Stelle EINE konkrete, warme Frage pro Antwort. Erkläre nie Technik. Nie aufdringlich. Wenn du genug weißt (Welt + Stimmung), empfiehl 2-3 konkrete Stücke oder Designer mit einer kurzen Zeile Begründung.";
 const DEFAULT_COPILOT =
   "Du bist PAWN Copilot — ein leiser, präziser Partner für unabhängige Designer. Antworte auf Deutsch, sachlich, ohne Marketing-Floskeln. Baue jede Antwort auf den konkreten Store-Daten des Designers auf. Ein Vorschlag pro Antwort, wenn möglich.";
+const DEFAULT_HOUSE_STYLE_LAW =
+  "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
 
 type Tab = "denklogik" | "persona" | "signale" | "responses" | "integrationen";
 
@@ -30,6 +32,7 @@ export default function AdminKI() {
   const [personaDesigner, setPersonaDesigner] = useState("");
   const [personaAdmin, setPersonaAdmin] = useState("");
   const [directives, setDirectives] = useState<string[]>([]);
+  const [houseStyleLaw, setHouseStyleLaw] = useState("");
   const [suggestion, setSuggestion] = useState<{ key: string; oldText: string; newText: string } | null>(null);
   const [suggestBusy, setSuggestBusy] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,13 +47,14 @@ export default function AdminKI() {
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, pc, pd, pa, dir, sig, ses, resp, usageAll, ints] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_designer").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_admin").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "directives").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "house_style_law").maybeSingle(),
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.taste_signal").order("at", { ascending: false }).limit(50),
       supabase.from("ai_sessions").select("session_id, user_id, turns, extracted, updated_at").order("updated_at", { ascending: false }).limit(50),
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.response_logged").order("at", { ascending: false }).limit(20),
@@ -63,6 +67,8 @@ export default function AdminKI() {
     setPersonaDesigner(((pd.data?.value as { system_prompt?: string })?.system_prompt) ?? "");
     setPersonaAdmin(((pa.data?.value as { system_prompt?: string })?.system_prompt) ?? "");
     setDirectives(((dir.data?.value as { items?: string[] })?.items) ?? []);
+    const styleLawVal = styleLaw.data?.value as { text?: string } | string | undefined;
+    setHouseStyleLaw((typeof styleLawVal === "string" ? styleLawVal : styleLawVal?.text) || DEFAULT_HOUSE_STYLE_LAW);
     setSignals((sig.data ?? []) as SignalRow[]);
     setSessions((ses.data ?? []) as SessionRow[]);
     setResponses((resp.data ?? []) as ResponseRow[]);
@@ -96,6 +102,13 @@ export default function AdminKI() {
   const savePrompt = async (key: "pawn_chat_persona" | "copilot_prompt" | "persona_customer" | "persona_designer" | "persona_admin", value: string) => {
     setBusy(true);
     const { error } = await supabase.from("ai_config").upsert({ key, value: { system_prompt: value }, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else toast.success("Gespeichert.");
+  };
+
+  const saveHouseStyleLaw = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("ai_config").upsert({ key: "house_style_law", value: { text: houseStyleLaw }, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else toast.success("Gespeichert.");
   };
@@ -195,6 +208,15 @@ export default function AdminKI() {
 
       {tab === "denklogik" && (
         <div className="space-y-8">
+          <PromptEditor
+            label="Haus-Stilgesetz"
+            description="Gilt für jeden textschreibenden KI-Schritt (Chat, Copilot, Kampagnen, Akquise): sagt, was ist — nie, was etwas nicht ist."
+            value={houseStyleLaw}
+            setValue={setHouseStyleLaw}
+            onSave={saveHouseStyleLaw}
+            onReset={() => setHouseStyleLaw(DEFAULT_HOUSE_STYLE_LAW)}
+            busy={busy}
+          />
           <DirectivesEditor value={directives} onSave={saveDirectives} busy={busy} />
           <PersonaWithSuggestion
             keyName="persona_customer"

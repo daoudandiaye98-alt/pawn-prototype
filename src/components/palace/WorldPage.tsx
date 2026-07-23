@@ -1,11 +1,11 @@
-import { ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { WorldHero } from "@/components/palace/WorldHero";
-import { useContentValue } from "@/components/palace/Editable";
+import { Editable, useContentValue } from "@/components/palace/Editable";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
@@ -15,7 +15,8 @@ import { usePersonalization, sortByPersonalization } from "@/features/personaliz
 interface WorldPageProps {
   world: World;
   eyebrow: string;
-  headline: ReactNode;
+  headlineA: string;
+  headlineB: string;
   intro: string;
 }
 
@@ -27,7 +28,8 @@ interface WorldPageProps {
  * - Editorial 12-col grid of products filtered by world
  * - Slim CTA to /apply
  */
-export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
+export function WorldPage({ world, eyebrow, headlineA, headlineB, intro }: WorldPageProps) {
+  const worldKey = world.toLowerCase();
   const seedProducts = useStore(marketplaceSelectors.getAllProductViews);
   const { designers } = usePublicDesigners();
   const { products: dbProducts } = usePublishedProducts(world);
@@ -67,13 +69,16 @@ export function WorldPage({ world, eyebrow, headline, intro }: WorldPageProps) {
     return designers.find((d) => d.slug === firstProd.designerSlug) ?? designers[0];
   }, [designers, world, worldProducts]);
 const worldHeroImage = useContentValue(`world_${world}_hero_image`);
+  const resolvedEyebrow = useContentValue(`world.${worldKey}.eyebrow`, eyebrow);
+  const resolvedIntro = useContentValue(`world.${worldKey}.intro`, intro);
+  const categoryAllLabel = useContentValue("world.category_all_label", "Alles");
   return (
     <PalaceLayout transparentHeader={false}>
       {/* ── Monumental world entrance ──────────────────── */}
       <WorldHero
         world={world}
-        eyebrow={eyebrow}
-        subline={intro}
+        eyebrow={resolvedEyebrow}
+        subline={resolvedIntro}
         image={worldHeroImage || featured?.hero_image_url || featured?.banner_url || null}
       />
 
@@ -85,7 +90,8 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
               className="palace-serif font-light text-[#000000]"
               style={{ fontSize: "clamp(2rem, 4.5vw, 3.6rem)", lineHeight: 0.98, letterSpacing: "-0.02em" }}
             >
-              {headline}
+              <Editable as="span" contentKey={`world.${worldKey}.headline_a`}>{headlineA}</Editable>{" "}
+              <Editable as="span" contentKey={`world.${worldKey}.headline_b`} className="italic">{headlineB}</Editable>
             </h2>
           </Reveal>
 
@@ -100,7 +106,7 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
                     : "border-[rgba(0,0,0,.22)] text-[#000000] hover:border-[#000000]"
                 }`}
               >
-                Alles
+                {categoryAllLabel}
               </button>
               {categories.map((c) => (
                 <button
@@ -134,9 +140,11 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
               />
             </Reveal>
             <Reveal delay={120} className="flex flex-col justify-center gap-8 px-8 py-16 md:px-14">
-              <p className="palace-eyebrow">Im Studio · {world}</p>
+              <p className="palace-eyebrow">
+                <Editable as="span" contentKey="world.featured_eyebrow_prefix">Im Studio</Editable> · {world}
+              </p>
               <h2 className="palace-serif font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
-                {featured.brand_name}. <span className="italic">Eine Handschrift, die man wiederkennt.</span>
+                {featured.brand_name}. <Editable as="span" contentKey="world.featured_headline_suffix" className="italic">Eine Handschrift, die man wiedererkennt.</Editable>
               </h2>
               {featured.story && (
                 <p className="max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80">{featured.story}</p>
@@ -147,7 +155,7 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
                 </blockquote>
               )}
               <Link to={`/designer/${featured.slug}`} className="palace-eyebrow uline w-fit text-[#000000]">
-                Zum Atelier →
+                <Editable as="span" contentKey="world.featured_cta">Zum Atelier →</Editable>
               </Link>
             </Reveal>
           </div>
@@ -161,7 +169,7 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
       <section className="px-6 py-24 md:px-14 md:py-32">
         <div className="mx-auto max-w-[1600px]">
           {visible.length === 0 ? (
-            <p className="palace-eyebrow text-[#7C7972]">Nichts in dieser Kategorie — noch.</p>
+            <Editable as="p" contentKey="world.grid_empty" className="palace-eyebrow text-[#7C7972]">Nichts in dieser Kategorie — noch.</Editable>
           ) : (
             <div className="grid grid-cols-12 gap-6 md:gap-8">
               {visible.map((p, i) => {
@@ -197,10 +205,12 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
       {/* ── Designer CTA ─────────────────────────────────── */}
       <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-20 md:px-14">
         <div className="mx-auto flex max-w-[1600px] flex-col items-center justify-between gap-6 md:flex-row">
-          <p className="palace-serif italic text-[1.3rem] text-[#000000]">
+          <Editable as="p" contentKey="world.cta_body" className="palace-serif italic text-[1.3rem] text-[#000000]">
             Du arbeitest in dieser Welt? Zeig uns dein Atelier.
-          </p>
-          <Link to="/apply" className="palace-btn">Als Designer bewerben →</Link>
+          </Editable>
+          <Link to="/apply" className="palace-btn">
+            <Editable as="span" contentKey="world.cta_button">Als Designer bewerben →</Editable>
+          </Link>
         </div>
       </section>
     </PalaceLayout>

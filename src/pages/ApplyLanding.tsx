@@ -9,30 +9,35 @@ const SERVICES = [
     key: "s1",
     title: "Eigene Brand-Page",
     body: "Deine Handschrift, deine Bilder, deine Story. Ein Auftritt, der zu dir gehört — nicht zu einer Suchmaske. Eigener Shop-Bereich, kuratiertes Layout, editorial statt Katalog.",
+    tagline: "Editorial statt Katalog.",
   },
   {
     number: "02",
     key: "s2",
     title: "Kuratiertes Publikum",
     body: "Wir empfehlen dich nach Geschmack, nicht nach Ranking. Cover Story, Banner, Aufnahme in redaktionelle Kollektionen — dort, wo dein Publikum liest, nicht wo es sucht.",
+    tagline: "Publikum statt Traffic.",
   },
   {
     number: "03",
     key: "s3",
     title: "Kampagnen-Studio",
     body: "Aus deinen Produkten entstehen Kampagnenvorschläge — Video, Post, Text. Du gibst jede Veröffentlichung frei. Nichts geht ohne dich raus. Jede Änderung, die du wünschst, fließt in die nächste Runde.",
+    tagline: "Auftritt statt Post.",
   },
   {
     number: "04",
     key: "s4",
     title: "Faire Beteiligung",
     body: "Die Plattform kostet dich nichts. Wir beteiligen uns prozentual am Verkauf, transparent abgerechnet. Keine Aufnahmegebühr, keine Sichtbarkeitspakete.",
+    tagline: "Beteiligung statt Gebühr.",
   },
   {
     number: "05",
     key: "s5",
     title: "Einblicke",
     body: "Was bewegt dein Publikum? Welche Stücke ziehen an, welche werden gerettet? Aggregierte, anonymisierte Signale als Entscheidungshilfe für deine nächste Kollektion.",
+    tagline: "Einsicht statt Bauchgefühl.",
   },
 ];
 
@@ -125,14 +130,10 @@ export default function ApplyLanding() {
                 </div>
                 <div className="md:col-span-3">
                   <div className="border-l border-[rgba(0,0,0,.22)] pl-6">
-                    <p className="palace-eyebrow text-[#7C7972]">Für dich</p>
-                    <p className="palace-serif mt-3 text-[1.15rem] italic text-[#000000]/85">
-                      {i === 0 && "Editorial statt Katalog."}
-                      {i === 1 && "Publikum statt Traffic."}
-                      {i === 2 && "Auftritt statt Post."}
-                      {i === 3 && "Beteiligung statt Gebühr."}
-                      {i === 4 && "Einsicht statt Bauchgefühl."}
-                    </p>
+                    <Editable as="p" contentKey="apply_fuer_dich_label" className="palace-eyebrow text-[#7C7972]">Für dich</Editable>
+                    <Editable as="p" contentKey={`apply_${s.key}_tagline`} className="palace-serif mt-3 text-[1.15rem] italic text-[#000000]/85">
+                      {s.tagline}
+                    </Editable>
                   </div>
                 </div>
               </article>

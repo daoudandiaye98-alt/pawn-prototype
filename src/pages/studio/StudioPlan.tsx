@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCampaignQuota, planLabel, type Plan, type PlanLimits } from "@/features/campaign/quota";
 import { PlanFunnel } from "@/components/pawn/PlanFunnel";
+import { useContentValue } from "@/components/palace/Editable";
 import { Check, Sparkles } from "lucide-react";
 
 const STATIC_BENEFITS: Record<Plan, string[]> = {
@@ -127,6 +128,20 @@ export default function StudioPlan() {
 
   const limits: PlanLimits = quota.limits;
 
+  const headlineHaus = useContentValue("studio_plan.haus.headline", HEADLINES.haus);
+  const headlineAtelier = useContentValue("studio_plan.atelier.headline", HEADLINES.atelier);
+  const headlineMaison = useContentValue("studio_plan.maison.headline", HEADLINES.maison);
+  const resolvedHeadlines: Record<Plan, string> = { haus: headlineHaus, atelier: headlineAtelier, maison: headlineMaison };
+
+  const benefitsHaus = useContentValue("studio_plan.haus.benefits", STATIC_BENEFITS.haus.join("\n"));
+  const benefitsAtelier = useContentValue("studio_plan.atelier.benefits", STATIC_BENEFITS.atelier.join("\n"));
+  const benefitsMaison = useContentValue("studio_plan.maison.benefits", STATIC_BENEFITS.maison.join("\n"));
+  const resolvedStaticBenefits: Record<Plan, string[]> = {
+    haus: benefitsHaus.split("\n").filter(Boolean),
+    atelier: benefitsAtelier.split("\n").filter(Boolean),
+    maison: benefitsMaison.split("\n").filter(Boolean),
+  };
+
   const upgrade = async (target: Plan) => {
     if (!user || !designer) { toast.error("Bitte melde dich an."); return; }
     if (target === "haus" || target === plan) return;
@@ -178,7 +193,7 @@ export default function StudioPlan() {
       : `${fmt(l.videos_per_month)} Kampagnen-Videos pro Monat, davon ${fmt(l.kinematic_videos_per_month)} kinematisch (✦ KI-Bewegtbild, ohne Emblem)`;
     const sigLine = `${fmt(l.signature_previews)} Signatur${l.signature_previews === 1 ? "-Kostprobe" : "en"}${p === "maison" ? " + 1 Wunsch-Signatur" : ""}`;
     const toolsLine = `${fmt(l.tryon_shots_per_month)} Try-Ons${l.product_shots_per_month !== l.tryon_shots_per_month || p === "haus" ? ` · ${fmt(l.product_shots_per_month)} Produkt-Shots` : " + Produkt-Shots"}`;
-    return [videoLine, sigLine, toolsLine, ...STATIC_BENEFITS[p]];
+    return [videoLine, sigLine, toolsLine, ...resolvedStaticBenefits[p]];
   };
 
   return (
@@ -222,7 +237,7 @@ export default function StudioPlan() {
               <p className="editorial-eyebrow">Plan</p>
               <h3 className="mt-2 font-serif text-3xl">{planLabel(key)}</h3>
               <p className="mt-2 tabular-nums text-xl">{priceFor(key)}<span className="text-sm text-muted-foreground"> / Monat</span></p>
-              <p className="mt-4 font-serif text-sm italic text-muted-foreground">{HEADLINES[key]}</p>
+              <p className="mt-4 font-serif text-sm italic text-muted-foreground">{resolvedHeadlines[key]}</p>
 
               <div className="mt-4 border border-border bg-black">
                 {example ? (

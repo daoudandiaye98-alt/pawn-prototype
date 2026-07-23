@@ -5,39 +5,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface AtelierFeature {
-  title: string;
-  text: string;
-  image: string | null;
-}
-
 export interface SiteContentMap {
-  hero_eyebrow: string;
-  hero_headline: string;
-  hero_subline: string;
-  banner_fallback_quote: string;
-  atelier_feature: AtelierFeature;
-  footer_lines: string[];
   ausgabe_nummer: number;
-  show_seed_content: boolean;
 }
 
 export const DEFAULTS: SiteContentMap = {
-  hero_eyebrow: "Ausgabe 12 · Winter",
-  hero_headline: "Mode, Interior und Kunst — von unabhängigen Designern.",
-  hero_subline: "Ein Raum, kein Katalog. PAWN kuratiert leise.",
-  banner_fallback_quote: "Wir zeichnen, was bleibt. Der Rest ist Rauschen.",
-  atelier_feature: {
-    title: "Im Atelier",
-    text: "Handschriften, langsam gezeichnet.",
-    image: null,
-  },
-  footer_lines: [
-    "PAWN — kuratierte Handschriften.",
-    "Gegründet aus Respekt vor dem Handwerk.",
-  ],
   ausgabe_nummer: 12,
-  show_seed_content: true,
 };
 
 type Cache = { data: Partial<SiteContentMap>; ts: number };

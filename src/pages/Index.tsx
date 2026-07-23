@@ -10,7 +10,8 @@ import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PickYourStyle } from "@/components/palace/PickYourStyle";
 import { PremiereSection } from "@/components/palace/PremiereSection";
 import { PlanFunnel } from "@/components/pawn/PlanFunnel";
-import { Editable, EditableImage } from "@/components/palace/Editable";
+import { Editable, EditableImage, useContentValue } from "@/components/palace/Editable";
+import { useSiteContent } from "@/lib/siteContent";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
@@ -47,6 +48,8 @@ function ChapterMark({ index, label }: { index: string; label: string }) {
 const Index = () => {
   const { designers } = usePublicDesigners();
   const collection = useActiveCollection();
+  const ausgabeNummer = useSiteContent("ausgabe_nummer");
+  const gridChapterLabel = useContentValue("landing.grid_chapter_label", "Diese Woche neu");
   const products = useStore(marketplaceSelectors.getAllProductViews);
   const personalization = usePersonalization();
 
@@ -121,11 +124,10 @@ const Index = () => {
   }, [trackProgress]);
 
   // Signature scene texts
-  const finaleText = finaleProgress < 0.33
-    ? "Jeder fängt klein an."
-    : finaleProgress < 0.66
-      ? "Der Raum wächst mit."
-      : "Aus dem Bauern wird die Dame.";
+  const finaleText1 = useContentValue("landing.signature_text_1", "Jeder fängt klein an.");
+  const finaleText2 = useContentValue("landing.signature_text_2", "Der Raum wächst mit.");
+  const finaleText3 = useContentValue("landing.signature_text_3", "Aus dem Bauern wird die Dame.");
+  const finaleText = finaleProgress < 0.33 ? finaleText1 : finaleProgress < 0.66 ? finaleText2 : finaleText3;
 
   const productBySlug = useMemo(() => {
     const m = new Map<string, (typeof products)[number]>();
@@ -179,9 +181,9 @@ const Index = () => {
           {/* Soft white plate keeps text legible over the 3D canvas without hiding the pawn */}
           <div className="mx-auto max-w-[1100px] rounded-none px-2 py-6 md:px-8 md:py-10"
                style={{ background: "radial-gradient(ellipse at center, rgba(241,238,231,.92) 0%, rgba(241,238,231,.72) 55%, rgba(241,238,231,0) 100%)" }}>
-            <Editable as="p" contentKey="hero_eyebrow" className="palace-eyebrow motion-reveal">
-              Kuratierte Ausstellung · Ausgabe 07 · Juli
-            </Editable>
+            <p className="palace-eyebrow motion-reveal">
+              <Editable as="span" contentKey="landing.hero_eyebrow">Kuratierte Ausstellung</Editable> · Ausgabe {ausgabeNummer}
+            </p>
             <h1
               className="palace-serif palace-line-rise mt-8 text-[#000000]"
               style={{ fontSize: "clamp(2.4rem, 6.5vw, 6.4rem)", lineHeight: 1.02, letterSpacing: "-0.02em" }}
@@ -229,15 +231,15 @@ const Index = () => {
                 priority
               />
               <div className="absolute bottom-6 left-6 max-w-xs" style={{ mixBlendMode: "difference" }}>
-                <p className="palace-eyebrow text-white/70">Cover Story · Nr. 07</p>
+                <p className="palace-eyebrow text-white/70">Cover Story · Nr. {ausgabeNummer}</p>
                 <p className="mt-2 font-serif italic text-white">{cover.brand_name}, {cover.location ?? "—"}</p>
               </div>
             </Reveal>
 
             <Reveal delay={120} className="flex flex-col justify-center gap-8 px-8 py-16 md:px-14 md:py-24">
-              <p className="palace-eyebrow">Cover Story</p>
+              <Editable as="p" contentKey="landing.cover_story_eyebrow" className="palace-eyebrow">Cover Story</Editable>
               <h2 className="palace-serif font-light text-[clamp(2.2rem,4vw,3.6rem)] leading-[1.02] text-[#000000]">
-                {cover.brand_name}. <span className="italic">Eine Handschrift,<br/>die man wiederkennt.</span>
+                {cover.brand_name}. <Editable as="span" contentKey="landing.cover_story_headline" className="italic">Eine Handschrift,<br/>die man wiedererkennt.</Editable>
               </h2>
               {cover.story && (
                 <p className="max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80">
@@ -251,7 +253,7 @@ const Index = () => {
                 </blockquote>
               )}
               <Link to={`/designer/${cover.slug}`} className="palace-eyebrow uline w-fit text-[#000000]">
-                Kollektion ansehen →
+                <Editable as="span" contentKey="landing.cover_story_cta">Kollektion ansehen →</Editable>
               </Link>
             </Reveal>
           </div>
@@ -263,22 +265,25 @@ const Index = () => {
         <div className="mx-auto max-w-[1600px]">
           <div className="mb-16 flex items-end justify-between gap-8">
             <div>
-              <ChapterMark index="01" label="Diese Woche neu" />
+              <ChapterMark index="01" label={gridChapterLabel} />
               <h2 className="palace-serif mt-4 font-light text-[clamp(2rem,4vw,3.4rem)] leading-[1.02]">
-                Frisch aus <span className="italic">den Ateliers.</span>
+                <Editable as="span" contentKey="landing.grid_headline_a">Frisch aus </Editable>
+                <Editable as="span" contentKey="landing.grid_headline_b" className="italic">den Ateliers.</Editable>
               </h2>
             </div>
-            <Link to="/neu" className="palace-eyebrow uline text-[#000000]">Alles Neue →</Link>
+            <Link to="/neu" className="palace-eyebrow uline text-[#000000]">
+              <Editable as="span" contentKey="landing.grid_cta">Alles Neue →</Editable>
+            </Link>
           </div>
 
           {editorialTiles.length === 0 ? (
   <div className="py-20 text-center">
-    <h2 className="palace-serif italic text-[clamp(2rem,4vw,3.4rem)] leading-[1.02] text-[#000000]">
+    <Editable as="h2" contentKey="landing.grid_empty_title" className="palace-serif italic text-[clamp(2rem,4vw,3.4rem)] leading-[1.02] text-[#000000]">
   Die ersten Häuser ziehen ein.
-</h2>
-<p className="mt-4 palace-eyebrow text-[#000000]">
+</Editable>
+<Editable as="p" contentKey="landing.grid_empty_body" className="mt-4 palace-eyebrow text-[#000000]">
   Bald zeigen wir hier die neuesten Stücke.
-</p>
+</Editable>
 </div>
 ) : (
 <div className="grid grid-cols-12 border-l-[1.5px] border-t-[1.5px] border-black">
@@ -335,12 +340,14 @@ const Index = () => {
           <div className="px-6 pt-24 md:px-14">
             <div className="mx-auto flex max-w-[1600px] items-end justify-between gap-8">
               <div>
-                <p className="palace-eyebrow">Kuratierte Kollektion № {collection.number}</p>
+                <p className="palace-eyebrow">
+                  <Editable as="span" contentKey="landing.collection_eyebrow">Kuratierte Kollektion</Editable> № {collection.number}
+                </p>
                 <h2 className="palace-serif mt-4 font-light text-[clamp(2rem,4vw,3.4rem)] leading-[1.02]">
                   {collection.title}. <span className="italic">{collection.subtitle}</span>
                 </h2>
               </div>
-              <p className="palace-eyebrow hidden md:block">Scroll = seitwärts · oder Pfeile</p>
+              <Editable as="p" contentKey="landing.collection_hint" className="palace-eyebrow hidden md:block">Scroll = seitwärts · oder Pfeile</Editable>
             </div>
           </div>
           <div className="relative mt-16 flex flex-1 items-center overflow-hidden">
@@ -391,7 +398,7 @@ const Index = () => {
               <Editable as="span" contentKey="atelier_headline_b" className="italic">wie ein Stück entsteht.</Editable>
             </h3>
             <Editable as="p" contentKey="atelier_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80" multiline>
-              Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt. Wir zeigen die Momente vor dem Bild, nicht das Bild.
+              Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt — wir zeigen die Momente vor dem Bild.
             </Editable>
             <Link to="/designers" className="palace-eyebrow uline mt-10 w-fit text-[#000000]">
               Zur Geschichte →
@@ -413,19 +420,19 @@ const Index = () => {
       <section className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-16 md:grid-cols-2">
           <Reveal>
-            <p className="palace-eyebrow">Im Hintergrund</p>
+            <Editable as="p" contentKey="landing.helix_eyebrow" className="palace-eyebrow">Im Hintergrund</Editable>
             <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
-              Der Raum merkt sich, <span className="italic">was dich bewegt.</span>
+              <Editable as="span" contentKey="landing.helix_headline_a">Der Raum merkt sich, </Editable>
+              <Editable as="span" contentKey="landing.helix_headline_b" className="italic">was dich bewegt.</Editable>
             </h3>
-            <p className="mt-8 max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80">
-              Ohne Fragebogen, ohne Häkchen. Beim Sehen, beim Verweilen, beim Zurückkommen
-              wird die Ausstellung ein bisschen mehr deine.
-            </p>
+            <Editable as="p" contentKey="landing.helix_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80" multiline>
+              Beim Sehen, beim Verweilen, beim Zurückkommen wird die Ausstellung von selbst ein bisschen mehr deine.
+            </Editable>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("palace:open-chat"))}
               className="palace-btn mt-10"
             >
-              Frag PAWN →
+              <Editable as="span" contentKey="landing.helix_cta">Frag PAWN →</Editable>
             </button>
           </Reveal>
           <Reveal delay={140} className="relative h-[520px]">
@@ -451,7 +458,7 @@ const Index = () => {
                 to="/apply"
                 className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
-                <p className="palace-eyebrow group-hover:text-[#A8A49B]">Bewerben</p>
+                <Editable as="p" contentKey="landing.cta_label_apply" className="palace-eyebrow group-hover:text-[#A8A49B]">Bewerben</Editable>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
                   <Editable as="span" contentKey="cta_card_a">Als Designer<br/>bewerben.</Editable>
                 </p>
@@ -462,7 +469,7 @@ const Index = () => {
                 to="/neu"
                 className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
-                <p className="palace-eyebrow group-hover:text-[#A8A49B]">Sehen</p>
+                <Editable as="p" contentKey="landing.cta_label_view" className="palace-eyebrow group-hover:text-[#A8A49B]">Sehen</Editable>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
                   <Editable as="span" contentKey="cta_card_b">Zur laufenden<br/>Ausstellung.</Editable>
                 </p>
@@ -486,7 +493,7 @@ const Index = () => {
       >
         <div className="sticky top-0 flex h-screen items-end justify-center px-6 pb-24 md:px-14">
           <div className="text-center">
-            <p className="palace-eyebrow">Signatur</p>
+            <Editable as="p" contentKey="landing.signature_eyebrow" className="palace-eyebrow">Signatur</Editable>
             <p
               key={finaleText}
               className="palace-serif mt-6 font-light italic text-[#000000] motion-reveal"
@@ -503,6 +510,8 @@ const Index = () => {
 
 function HeroPrompt() {
   const [value, setValue] = useState("");
+  const placeholder = useContentValue("landing.hero_prompt_placeholder", 'Frag PAWN — z.B. „skulpturale Mäntel"');
+  const ctaLabel = useContentValue("landing.hero_prompt_cta", "Fragen →");
   const send = () => {
     const text = value.trim();
     if (!text) return;
@@ -519,7 +528,7 @@ function HeroPrompt() {
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder='Frag PAWN — z.B. „skulpturale Mäntel"'
+        placeholder={placeholder}
         className="flex-1 bg-transparent px-4 text-left text-[0.95rem] text-[#000000] placeholder:text-[#7C7972] focus:outline-none"
         aria-label="Frag PAWN"
       />
@@ -527,7 +536,7 @@ function HeroPrompt() {
         type="submit"
         className="whitespace-nowrap border-l-[1.5px] border-black bg-[#000000] px-6 text-[0.7rem] uppercase tracking-[0.32em] text-white transition-colors duration-200 hover:bg-white hover:text-black"
       >
-        Fragen →
+        {ctaLabel}
       </button>
     </form>
   );

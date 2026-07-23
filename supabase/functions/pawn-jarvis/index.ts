@@ -26,7 +26,7 @@ const EXPECTED_CONTENT_KEYS = [
   "atelier_image", "banner_fallback_quote", "cta_card_a", "cta_card_b", "cta_eyebrow",
   "cta_headline_a", "cta_headline_b", "dindex_dir_eyebrow", "dindex_eyebrow", "dindex_headline_a",
   "dindex_headline_b", "dindex_subline", "dna_hero_eyebrow", "dna_hero_headline_a", "dna_hero_headline_b",
-  "dna_hero_subline", "footer_line_1", "hero_eyebrow", "hero_headline", "hero_headline_1", "hero_headline_2",
+  "dna_hero_subline", "footer_line_1", "hero_headline_1", "hero_headline_2",
   "hero_image", "hero_subline", "retro_plaque_act", "retro_plaque_headline", "retro_plaque_label_curator",
   "retro_plaque_label_house", "retro_plaque_label_since", "retro_plaque_label_world", "shop_eyebrow",
   "shop_headline_a", "shop_headline_b", "shop_subline", "style_eyebrow", "style_headline_a",
@@ -121,6 +121,20 @@ async function loadJarvisConfig(admin: SupabaseClient): Promise<JarvisConfig> {
     };
   } catch {
     return DEFAULT_JARVIS_CONFIG;
+  }
+}
+
+const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
+
+/** Haus-Stilgesetz: gilt für jeden textschreibenden KI-Schritt (Kampagnen, Akquise, Studio, Chat). */
+async function loadHouseStyleLaw(admin: SupabaseClient): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "house_style_law").maybeSingle();
+    const v = data?.value as { text?: string } | string | null;
+    const text = typeof v === "string" ? v : v?.text;
+    return typeof text === "string" && text.trim() ? text.trim() : DEFAULT_HOUSE_STYLE_LAW;
+  } catch {
+    return DEFAULT_HOUSE_STYLE_LAW;
   }
 }
 
@@ -1022,7 +1036,7 @@ async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Prom
 
 /** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
 async function researchAndDraftLead(
-  apiKey: string, lead: { handle: string; world: string; bio: string | null },
+  apiKey: string, lead: { handle: string; world: string; bio: string | null }, styleLaw: string,
 ): Promise<{ personal_line: string; message: string; tokens: number } | null> {
   const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision. Halte dich STRIKT an diesen bestätigten Ton und diese Struktur (nur <personal_line> ersetzt du durch einen warmen, konkreten Satz ohne Anführungszeichen und ohne Grußwort):
 
@@ -1036,7 +1050,9 @@ Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
 
 Wenn's nichts für dich ist — auch gut, mach weiter so."
 
-Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — nutze das für personal_line, damit klar wird, dass die Arbeit wirklich angesehen wurde. Antworte am Ende NUR mit JSON: {"personal_line": "...", "message": "<vollständige Nachricht mit eingesetzter personal_line>"}`;
+Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — nutze das für personal_line, damit klar wird, dass die Arbeit wirklich angesehen wurde. Antworte am Ende NUR mit JSON: {"personal_line": "...", "message": "<vollständige Nachricht mit eingesetzter personal_line>"}
+
+Haus-Stilgesetz für personal_line: ${styleLaw}`;
   const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
@@ -1074,10 +1090,11 @@ Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, world, bio, email").eq("status", "qualifiziert").is("message_draft", null).limit(10);
+  const styleLaw = await loadHouseStyleLaw(admin);
 
   let ready = 0, tokensUsed = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null }[]) {
-    const draft = await researchAndDraftLead(apiKey, lead);
+    const draft = await researchAndDraftLead(apiKey, lead, styleLaw);
     if (!draft) continue;
     tokensUsed += draft.tokens;
     await admin.from("acquisition_leads").update({

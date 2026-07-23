@@ -5,7 +5,8 @@ export default function Mode() {
     <WorldPage
       world="Mode"
       eyebrow="Welt · 01"
-      headline={<>Mode. <span className="italic">Kleidung als Sprache.</span></>}
+      headlineA="Mode."
+      headlineB="Kleidung als Sprache."
       intro="Sechs Ateliers, die jeden Schnitt zweimal denken. Vom leisen Mantel bis zur harten Kante."
     />
   );
