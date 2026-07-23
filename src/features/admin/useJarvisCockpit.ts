@@ -8,6 +8,27 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type Zone = "gruen" | "gelb" | "rot";
+
+const DEFAULT_ZONES: Record<string, Zone> = {
+  heartbeat: "gruen",
+  wissen: "gruen",
+  akquise_kuratieren: "gruen",
+  akquise_verfassen: "gruen",
+  akquise_senden: "rot",
+  bewerbung_pruefen: "gruen",
+  kampagnen_regie: "gruen",
+  evolution: "gruen",
+  jarvis_bauplan: "gruen",
+};
+
+export interface BauplanDraft {
+  id: string;
+  title: string;
+  text: string;
+  created_at: string;
+}
+
 export interface JarvisReportRow {
   id: string;
   kind: string;
@@ -48,20 +69,24 @@ export interface CronJobRow {
 export function useJarvisCockpit(refreshKey: number | string = 0) {
   const [latestMorgen, setLatestMorgen] = useState<JarvisReportRow | null>(null);
   const [queue, setQueue] = useState<JarvisQueueItem[]>([]);
+  const [bauplanDrafts, setBauplanDrafts] = useState<BauplanDraft[]>([]);
   const [runs, setRuns] = useState<JarvisRunRow[]>([]);
   const [cronJobs, setCronJobs] = useState<CronJobRow[]>([]);
   const [paused, setPaused] = useState(false);
+  const [zones, setZones] = useState<Record<string, Zone>>(DEFAULT_ZONES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [morgenRes, noticesRes, pendingRes, runsRes, configRes, cronRes] = await Promise.allSettled([
+      const [morgenRes, noticesRes, bauplanRes, pendingRes, runsRes, configRes, zonesRes, cronRes] = await Promise.allSettled([
         supabase.from("jarvis_reports").select("id, kind, title, body, created_at").eq("kind", "morgen").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("jarvis_notices").select("id, kind, title, body, created_at, suggested_action").eq("kind", "vorschlag").is("dismissed_at", null).order("created_at", { ascending: false }),
+        supabase.from("jarvis_notices").select("id, title, created_at, suggested_action").eq("kind", "bauplan").is("dismissed_at", null).order("created_at", { ascending: false }),
         supabase.from("jarvis_pending_actions").select("id, action, params, reason, created_at, expires_at").eq("status", "pending").order("created_at", { ascending: false }),
         supabase.from("jarvis_runs").select("id, mode, trigger, started_at, finished_at, status, summary, error").order("started_at", { ascending: false }).limit(80),
         supabase.from("ai_config").select("value").eq("key", "jarvis_config").maybeSingle(),
+        supabase.from("ai_config").select("value").eq("key", "jarvis_zones").maybeSingle(),
         supabase.functions.invoke("pawn-jarvis", { body: { mode: "cron_status" } }).catch(() => ({ data: null })),
       ]);
       if (!alive) return;
@@ -78,11 +103,23 @@ export function useJarvisCockpit(refreshKey: number | string = 0) {
         : [];
       setQueue([...pendingItems, ...suggestions].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
 
+      if (bauplanRes.status === "fulfilled") {
+        const drafts = ((bauplanRes.value.data ?? []) as Array<{ id: string; title: string; created_at: string; suggested_action: { params?: { text?: string } } | null }>)
+          .map((n) => ({ id: n.id, title: n.title, created_at: n.created_at, text: n.suggested_action?.params?.text ?? "" }))
+          .filter((d) => d.text);
+        setBauplanDrafts(drafts);
+      }
+
       if (runsRes.status === "fulfilled") setRuns((runsRes.value.data as JarvisRunRow[]) ?? []);
 
       if (configRes.status === "fulfilled") {
         const cfg = (configRes.value.data?.value as { enabled?: boolean } | undefined) ?? {};
         setPaused(cfg.enabled === false);
+      }
+
+      if (zonesRes.status === "fulfilled") {
+        const z = (zonesRes.value.data?.value as Record<string, Zone> | undefined) ?? {};
+        setZones({ ...DEFAULT_ZONES, ...z });
       }
 
       if (cronRes.status === "fulfilled") {
@@ -95,5 +132,5 @@ export function useJarvisCockpit(refreshKey: number | string = 0) {
     return () => { alive = false; };
   }, [refreshKey]);
 
-  return { latestMorgen, queue, runs, cronJobs, paused, loading };
+  return { latestMorgen, queue, bauplanDrafts, runs, cronJobs, paused, zones, loading };
 }

@@ -60,7 +60,7 @@ type Mode =
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen"
   | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
-  | "kampagnen_regie" | "cron_status";
+  | "kampagnen_regie" | "cron_status" | "jarvis_bauplan";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -121,6 +121,33 @@ async function loadJarvisConfig(admin: SupabaseClient): Promise<JarvisConfig> {
     };
   } catch {
     return DEFAULT_JARVIS_CONFIG;
+  }
+}
+
+// Vertrauens-Zonen je Organ (Teil 9b) — rot: läuft nur auf Knopfdruck im Maschinenraum, du entscheidest;
+// gelb: läuft automatisch und meldet sich; grün: läuft automatisch und still, erscheint nur im Bericht.
+// Ersetzt den alten Einzel-Schalter akquise_config.autosend_email (akquise_senden: rot ≙ autosend_email=false,
+// gelb/grün ≙ autosend_email=true). Unumkehrbares (Geld, Veröffentlichung, Haus-Aufnahme) läuft NICHT über diese
+// Tafel — das bleibt bei der bestehenden, hart codierten zoneForAction()-Sperre für einzelne pawn_actions.
+type JarvisZones = Record<string, Zone>;
+const DEFAULT_JARVIS_ZONES: JarvisZones = {
+  heartbeat: "gruen",
+  wissen: "gruen",
+  akquise_kuratieren: "gruen",
+  akquise_verfassen: "gruen",
+  akquise_senden: "rot",
+  bewerbung_pruefen: "gruen",
+  kampagnen_regie: "gruen",
+  evolution: "gruen",
+  jarvis_bauplan: "gruen",
+};
+async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "jarvis_zones").maybeSingle();
+    const v = (data?.value ?? {}) as Partial<JarvisZones>;
+    return { ...DEFAULT_JARVIS_ZONES, ...v };
+  } catch {
+    return DEFAULT_JARVIS_ZONES;
   }
 }
 
@@ -944,6 +971,55 @@ async function runDiagnose(admin: SupabaseClient, asCaller: SupabaseClient, apiK
   return { healed, needed, tokensUsed };
 }
 
+/**
+ * jarvis_bauplan (Teil 9b) — die Selbstbau-Schleife. Liest den letzten Diagnose-Bericht, gescheiterte
+ * Läufe der Woche, offene Meldungen und unerledigte Vorschläge, und schreibt daraus EINEN
+ * Bauauftrags-Entwurf in der Sprache der echten "Teil N"-Aufträge dieses Projekts — als Notiz, Zone Rot,
+ * auf dem Cockpit kopierbar. Schickt nichts ab, öffnet kein GitHub-Issue, ruft keine andere Aktion auf.
+ */
+async function runJarvisBauplan(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const [diagnoseRes, failedRunsRes, noticesRes, pendingRes] = await Promise.all([
+    admin.from("jarvis_reports").select("body, created_at").eq("kind", "diagnose").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("jarvis_runs").select("mode, summary, error, started_at").eq("status", "failed").gte("started_at", weekAgo).limit(20),
+    admin.from("jarvis_notices").select("kind, title, body").is("dismissed_at", null).order("created_at", { ascending: false }).limit(15),
+    admin.from("jarvis_pending_actions").select("action, reason").eq("status", "pending").limit(15),
+  ]);
+
+  const diagnose = diagnoseRes.data as { body: string; created_at: string } | null;
+  const failedRuns = (failedRunsRes.data ?? []) as { mode: string | null; summary: string | null; error: string | null; started_at: string }[];
+  const notices = (noticesRes.data ?? []) as { kind: string; title: string; body: string }[];
+  const pending = (pendingRes.data ?? []) as { action: string; reason: string | null }[];
+
+  if (!diagnose && failedRuns.length === 0 && notices.length === 0 && pending.length === 0) {
+    return { ok: true, drafted: false, message: "Nichts Auffälliges diese Woche — kein Bauauftrag nötig." };
+  }
+
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const parts = [
+    diagnose ? `Letzte Diagnose (${new Date(diagnose.created_at).toLocaleDateString("de-DE")}):\n${diagnose.body}` : "Keine Diagnose vorhanden.",
+    failedRuns.length ? `Gescheiterte Läufe diese Woche:\n${failedRuns.map((r) => `- ${r.mode ?? "?"}: ${r.error ?? r.summary ?? "kein Detail"}`).join("\n")}` : "Keine gescheiterten Läufe diese Woche.",
+    notices.length ? `Offene Meldungen:\n${notices.map((n) => `- [${n.kind}] ${n.title}: ${n.body}`).join("\n")}` : "Keine offenen Meldungen.",
+    pending.length ? `Unerledigte Vorschläge/Bestätigungen:\n${pending.map((p) => `- ${p.action}${p.reason ? `: ${p.reason}` : ""}`).join("\n")}` : "Keine unerledigten Vorschläge.",
+  ].join("\n\n");
+
+  const system = `Du bist Jarvis, die interne KI von PAWN (pawn.vision). Einmal pro Woche liest du Diagnose, Fehler, offene Meldungen und unerledigte Vorschläge und schreibst daraus EINEN einzigen, konkreten Bauauftrags-Entwurf für Claude Code — im exakten Stil der echten "Feature: PAWN Teil N — Titel"-Aufträge, mit denen dieses Projekt bisher gebaut wurde: ein kurzer Titel, dann in Prosa/Aufzählung was zu tun ist, konkret und umsetzbar, nicht vage. Wähle das EINE Thema, das am dringendsten oder wertvollsten ist — nicht alles auf einmal. Wenn nichts Substanzielles vorliegt, schreibe stattdessen eine kurze Beobachtung ohne Auftragsform. Haus-Stilgesetz: ${styleLaw}. Antworte NUR mit dem Auftragstext, kein Meta-Kommentar, keine Anführungszeichen drumherum.`;
+
+  const { text, tokens } = await claudeComplete(apiKey, system, parts, 900);
+  const draft = text.trim();
+  if (!draft) return { ok: false, error: "Jarvis konnte keinen Entwurf schreiben.", tokensUsed: tokens };
+
+  const title = draft.split("\n")[0].slice(0, 120) || "Neuer Bauauftrags-Entwurf";
+  await admin.from("jarvis_notices").insert({
+    kind: "bauplan",
+    title: `Bauauftrags-Entwurf: ${title}`,
+    body: "Ein Entwurf für den nächsten Bauauftrag an Claude Code liegt bereit — im Cockpit kopierbar. Wird nie automatisch abgeschickt.",
+    suggested_action: { action: "bauauftrag_entwurf", params: { text: draft }, zone: "rot" },
+  });
+
+  return { ok: true, drafted: true, tokensUsed: tokens };
+}
+
 // --- Akquise-Autopilot ---
 
 function extractBusinessEmail(item: Record<string, unknown>, bio: string | null): string | null {
@@ -1164,10 +1240,11 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
 /**
  * akquise_senden — Kanal E-Mail: Erstkontakt (qualifiziert, Entwurf fertig) + fällige Follow-ups.
  * Zone Rot (Standard): eine Sendeliste als jarvis_pending_actions-Eintrag, ein Tipp bestätigt den ganzen Stapel.
- * Zone Gelb (autosend_email=true): Jarvis versendet direkt und meldet es.
+ * Zone Gelb/Grün (ai_config.jarvis_zones.akquise_senden, ersetzt das alte akquise_config.autosend_email):
+ * Jarvis versendet direkt und meldet es.
  * DM-Kanal wird hier NIE automatisiert — der bleibt vollständig im Sende-Stapel von AdminAkquise.
  */
-async function runAkquiseSenden(admin: SupabaseClient): Promise<Record<string, unknown>> {
+async function runAkquiseSenden(admin: SupabaseClient, zone: Zone): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const nowIso = new Date().toISOString();
 
@@ -1186,13 +1263,13 @@ async function runAkquiseSenden(admin: SupabaseClient): Promise<Record<string, u
   const candidateIds = [...(firstTouch ?? []).map((r: { id: string }) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
   if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden." };
 
-  if (config.autosend_email) {
+  if (zone !== "rot") {
     const result = await sendAkquiseBatch(admin, candidateIds);
     const sentCount = (result as { sent?: number }).sent ?? 0;
     const failedList = (result as { failed?: string[] }).failed ?? [];
     await admin.from("jarvis_notices").insert({
       kind: "akquise_gesendet", title: "Akquise-Mails verschickt",
-      body: `${sentCount} E-Mail(s) verschickt${failedList.length ? `, ${failedList.length} fehlgeschlagen (${failedList.join(", ")})` : ""} — Zone Gelb, automatisch.`,
+      body: `${sentCount} E-Mail(s) verschickt${failedList.length ? `, ${failedList.length} fehlgeschlagen (${failedList.join(", ")})` : ""} — Zone ${zone === "gruen" ? "Grün" : "Gelb"}, automatisch.`,
     });
     return { ok: true, mode: "autosend", ...result };
   }
@@ -1559,7 +1636,7 @@ Deno.serve(async (req) => {
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "kampagnen_regie", "cron_status",
+      "kampagnen_regie", "cron_status", "jarvis_bauplan",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -1571,12 +1648,27 @@ Deno.serve(async (req) => {
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "diagnose", "evolution", "morgenbericht",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "kampagnen_regie",
+      "kampagnen_regie", "jarvis_bauplan",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
     const authorized = CRON_TRIGGERABLE_MODES.includes(mode) ? (isAdmin || isCronSecretCaller) : isAdmin;
     if (!authorized) return ok({ ok: false, error: "forbidden" });
+
+    // --- Zonen-Sperre (Teil 9b): nur für Cron-ausgelöste Läufe. Ein Organ auf Zone Rot läuft nicht
+    // automatisch — es wartet auf einen manuellen Knopfdruck im Maschinenraum. Admin-ausgelöste Läufe
+    // sind bereits die Bestätigung und laufen immer, unabhängig von der Zone.
+    if (isCronSecretCaller && !isAdmin) {
+      const zones = await loadJarvisZones(admin);
+      if (mode in zones && zones[mode] === "rot") {
+        await admin.from("jarvis_notices").insert({
+          kind: "zone_gesperrt",
+          title: `${mode}: Zeitplan übersprungen`,
+          body: `Der Zeitplan wollte "${mode}" starten — das Organ steht auf Zone Rot und läuft nur, wenn du es im Maschinenraum manuell startest.`,
+        });
+        return ok({ ok: true, skipped: "zone_rot" });
+      }
+    }
 
     // --- Herzschlag: eigener, kostenloser Pfad ohne LLM-Aufruf (enthält auch den Evolutions-Kreislauf) ---
     if (mode === "heartbeat") {
@@ -1634,7 +1726,7 @@ Deno.serve(async (req) => {
       const trig = body.trigger === "cron" ? "cron" : "manual";
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
-      const result = mode === "akquise_import" ? await runAkquiseImport(admin) : await runAkquiseSenden(admin);
+      const result = mode === "akquise_import" ? await runAkquiseImport(admin) : await runAkquiseSenden(admin, (await loadJarvisZones(admin)).akquise_senden ?? "rot");
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
         : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
@@ -1676,6 +1768,23 @@ Deno.serve(async (req) => {
       }).eq("id", runId);
 
       return ok({ ok: true, run_id: runId, report: reportRow });
+    }
+
+    if (mode === "jarvis_bauplan") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+
+      const result = await runJarvisBauplan(admin, apiKey);
+      const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
+      const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
+      const summary = (result as { drafted?: boolean }).drafted ? "Bauauftrags-Entwurf geschrieben." : ((result as { message?: string }).message ?? "Kein Entwurf nötig.");
+
+      if (runId) await admin.from("jarvis_runs").update({
+        finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
+        summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
+      }).eq("id", runId);
+
+      return ok({ run_id: runId, ...result });
     }
 
     if (mode === "kampagnen_regie") {

@@ -6,7 +6,7 @@ import { ChartPlaceholder } from "@/components/pawn/ChartPlaceholder";
 import { cn } from "@/lib/utils";
 import { RoleGate, PrototypeAccessBanner } from "@/features/access/RoleGate";
 import {
-  ArrowRight, ArrowUpRight, Check, HeartPulse, Loader2, Rss, X,
+  ArrowRight, ArrowUpRight, Check, Copy, HeartPulse, Loader2, Rss, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -14,8 +14,9 @@ import {
   useAdminPlatformKpis, useAcquisitionPulse, useDomainEventsTicker, useSystemHeartbeat,
 } from "@/features/admin/useAdminData";
 import { useAdminNextMove } from "@/features/admin/useAdminNextMove";
-import { useJarvisCockpit, type JarvisRunRow, type JarvisQueueItem } from "@/features/admin/useJarvisCockpit";
+import { useJarvisCockpit, type JarvisRunRow, type JarvisQueueItem, type Zone, type BauplanDraft } from "@/features/admin/useJarvisCockpit";
 import { useDisplayName } from "@/lib/displayName";
+import { useAuth } from "@/lib/auth";
 
 /* ─────────────────────── Cockpit primitives ─────────────────────── */
 
@@ -439,6 +440,49 @@ function QueuePanel({ items, onChanged }: { items: JarvisQueueItem[]; onChanged:
   );
 }
 
+/* ─────────────────────── Bauauftrags-Entwürfe — Selbstbau-Schleife ─────────────────────── */
+
+function BauplanDraftsPanel({ drafts, onChanged }: { drafts: BauplanDraft[]; onChanged: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function copyDraft(draft: BauplanDraft) {
+    try {
+      await navigator.clipboard.writeText(draft.text);
+      toast.success("Bauauftrag kopiert.");
+    } catch {
+      toast.error("Kopieren nicht möglich — Text manuell markieren.");
+    }
+  }
+
+  async function dismiss(id: string) {
+    setBusy(id);
+    const { error } = await supabase.from("jarvis_notices").update({ dismissed_at: new Date().toISOString() }).eq("id", id);
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    onChanged();
+  }
+
+  return (
+    <ul className="divide-y divide-white/[0.06]">
+      {drafts.map((d) => (
+        <li key={d.id} className="px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="text-[13px] leading-snug text-[hsl(36_28%_92%)]">{d.title}</p>
+            <div className="flex shrink-0 gap-1.5">
+              <Btn variant="solid" disabled={busy === d.id} onClick={() => copyDraft(d)}>
+                <Copy className="mr-1 inline h-3 w-3" /> Kopieren
+              </Btn>
+              <Btn disabled={busy === d.id} onClick={() => dismiss(d.id)}>Verwerfen</Btn>
+            </div>
+          </div>
+          <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap border border-white/[0.06] bg-[hsl(18_10%_5%)] p-3 text-[11px] leading-relaxed text-[hsl(36_20%_78%)]">{d.text}</pre>
+          <p className="mt-1.5 text-[10px] uppercase tracking-[0.2em] text-[hsl(36_15%_45%)]">{timeAgo(new Date(d.created_at).getTime())} · nie automatisch abgeschickt</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /* ─────────────────────── Organe statt Engines — was Jarvis wirklich tut ─────────────────────── */
 
 const ORGANS: { mode: string; label: string; desc: string; keywords: string[] }[] = [
@@ -467,7 +511,44 @@ function humanizeCron(expr: string): string {
   return `Zeitplan: ${expr}`;
 }
 
-function OrganCard({ organ, runs, cronJobs }: { organ: typeof ORGANS[number]; runs: JarvisRunRow[]; cronJobs: ReturnType<typeof useJarvisCockpit>["cronJobs"] }) {
+const ZONE_LABEL: Record<Zone, string> = { gruen: "Grün", gelb: "Gelb", rot: "Rot" };
+const ZONE_ORDER: Zone[] = ["gruen", "gelb", "rot"];
+
+function zoneExplain(mode: string, zone: Zone): string {
+  if (mode === "akquise_senden") {
+    return zone === "rot"
+      ? "Sammelt eine Sendeliste — du bestätigst den Versand."
+      : "Verschickt automatisch, meldet sich in den Meldungen.";
+  }
+  if (zone === "gruen") return "Läuft automatisch, wirkt still — nur im Bericht sichtbar.";
+  if (zone === "gelb") return "Läuft automatisch, meldet sich in den Meldungen.";
+  return "Läuft nur, wenn du es hier manuell startest.";
+}
+
+function ZoneSelector({ mode, zone, onChange }: { mode: string; zone: Zone; onChange: (mode: string, zone: Zone) => void }) {
+  return (
+    <div className="mt-2 flex gap-1">
+      {ZONE_ORDER.map((z) => (
+        <button
+          key={z}
+          type="button"
+          onClick={() => onChange(mode, z)}
+          className={cn(
+            "min-h-[26px] flex-1 border px-1.5 py-1 text-[9.5px] uppercase tracking-[0.14em] transition-colors",
+            z === zone ? "border-[hsl(350_55%_45%)] bg-[hsl(350_55%_22%)] text-[hsl(36_28%_94%)]" : "border-white/10 text-[hsl(36_15%_58%)] hover:border-white/30",
+          )}
+        >
+          {ZONE_LABEL[z]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function OrganCard({ organ, runs, cronJobs, zone, onZoneChange }: {
+  organ: typeof ORGANS[number]; runs: JarvisRunRow[]; cronJobs: ReturnType<typeof useJarvisCockpit>["cronJobs"];
+  zone: Zone; onZoneChange: (mode: string, zone: Zone) => void;
+}) {
   const last = runs.find((r) => r.mode === organ.mode) ?? null;
   const job = cronJobs.find((j) => organ.keywords.some((k) => j.jobname.toLowerCase().includes(k))) ?? null;
   const failed = last?.status === "failed";
@@ -489,13 +570,16 @@ function OrganCard({ organ, runs, cronJobs }: { organ: typeof ORGANS[number]; ru
         {failed && last?.error && (
           <p className="mt-1.5 text-[11px] leading-snug text-red-300/90">{last.error}</p>
         )}
+        <ZoneSelector mode={organ.mode} zone={zone} onChange={onZoneChange} />
+        <p className="mt-1.5 text-[10px] leading-snug text-[hsl(36_15%_50%)]">{zoneExplain(organ.mode, zone)}</p>
       </div>
     </div>
   );
 }
 
-function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh }: {
+function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh, zones, onZoneChange }: {
   runs: JarvisRunRow[]; cronJobs: ReturnType<typeof useJarvisCockpit>["cronJobs"]; trendAgeDays: number | null; trendsFresh: boolean;
+  zones: Record<string, Zone>; onZoneChange: (mode: string, zone: Zone) => void;
 }) {
   const failuresLast24h = runs.filter((r) => {
     const at = new Date(r.finished_at ?? r.started_at).getTime();
@@ -509,7 +593,9 @@ function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh }: {
         </div>
       )}
       <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-        {ORGANS.map((o) => <OrganCard key={o.mode} organ={o} runs={runs} cronJobs={cronJobs} />)}
+        {ORGANS.map((o) => (
+          <OrganCard key={o.mode} organ={o} runs={runs} cronJobs={cronJobs} zone={zones[o.mode] ?? "gruen"} onZoneChange={onZoneChange} />
+        ))}
         <div className="flex items-start gap-3 border border-white/[0.06] p-4">
           <span className={cn(
             "mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
@@ -550,10 +636,19 @@ function CommandDeck() {
   const { rows: eventRows, loading: eventsLoading } = useDomainEventsTicker(15, tick);
   const heartbeat = useSystemHeartbeat(tick);
   const { firstName } = useDisplayName();
+  const { user } = useAuth();
   const { move: adminMove } = useAdminNextMove();
   const [jarvisTick, setJarvisTick] = useState(0);
   const jarvis = useJarvisCockpit(`${tick}-${jarvisTick}`);
   const [morgenBusy, setMorgenBusy] = useState(false);
+
+  async function saveZone(modeKey: string, zone: Zone) {
+    if (!user) return;
+    const nextZones = { ...jarvis.zones, [modeKey]: zone };
+    const { error } = await supabase.from("ai_config").upsert({ key: "jarvis_zones", value: nextZones, updated_by: user.id });
+    if (error) { toast.error(error.message); return; }
+    setJarvisTick((v) => v + 1);
+  }
 
   async function requestMorgenbericht() {
     setMorgenBusy(true);
@@ -677,8 +772,18 @@ function CommandDeck() {
 
       {/* ORGANE STATT ENGINES */}
       <Panel title="Organe" eyebrow="was Jarvis wirklich tut" className="mt-4" live>
-        <OrgansPanel runs={jarvis.runs} cronJobs={jarvis.cronJobs} trendAgeDays={heartbeat.trendAgeDays} trendsFresh={heartbeat.trendsFresh} />
+        <OrgansPanel
+          runs={jarvis.runs} cronJobs={jarvis.cronJobs}
+          trendAgeDays={heartbeat.trendAgeDays} trendsFresh={heartbeat.trendsFresh}
+          zones={jarvis.zones} onZoneChange={(m, z) => void saveZone(m, z)}
+        />
       </Panel>
+
+      {jarvis.bauplanDrafts.length > 0 && (
+        <Panel title="Bauauftrags-Entwürfe" eyebrow="Selbstbau-Schleife · Zone Rot" className="mt-4">
+          <BauplanDraftsPanel drafts={jarvis.bauplanDrafts} onChanged={() => setJarvisTick((v) => v + 1)} />
+        </Panel>
+      )}
 
       {/* Row: Ereignis-Ticker (echte domain_events) + System-Herzschlag */}
       <div className="mt-4 grid gap-3 xl:grid-cols-[1.6fr_1fr]">
