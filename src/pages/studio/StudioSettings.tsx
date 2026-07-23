@@ -1,6 +1,9 @@
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
+import { AccountSettingsPanel } from "@/components/palace/AccountSettings";
 import { Link } from "react-router-dom";
+
+const PLAN_LABEL: Record<string, string> = { haus: "Haus", atelier: "Atelier", maison: "Maison" };
 
 interface BrandDna {
   worlds?: Record<string, number>;
@@ -88,6 +91,28 @@ export default function StudioSettings() {
           </dl>
           <Link to="/studio/brand" className="mt-6 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">Retrospektive bearbeiten</Link>
         </section>
+      </div>
+
+      <div className="mt-6">
+        <AccountSettingsPanel
+          role="designer"
+          paymentSlot={
+            <div className="space-y-4">
+              <p className="text-sm text-black/70">
+                Plan: <strong>{PLAN_LABEL[designer.plan] ?? designer.plan}</strong> ·{" "}
+                {designer.stripe_charges_enabled ? "Auszahlungskonto aktiv" : "Auszahlungskonto noch nicht verbunden"}.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/studio/auszahlung" className="border-[1.5px] border-black px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white">
+                  Zur Auszahlung →
+                </Link>
+                <Link to="/studio/plan" className="border-[1.5px] border-black px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white">
+                  Zum Plan →
+                </Link>
+              </div>
+            </div>
+          }
+        />
       </div>
     </StudioShell>
   );
