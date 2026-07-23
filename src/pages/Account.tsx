@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useStore, selectors } from "@/core";
 import { useAuth } from "@/lib/auth";
@@ -11,6 +11,8 @@ import { useMyRequestThreads } from "@/features/commerce/hooks";
 import { useThreadMessages, sendMessage } from "@/features/messages/useMessages";
 import { useDisplayName } from "@/lib/displayName";
 import { useWishlist } from "@/features/wishlist/useWishlist";
+import { CustomerGenomeCard } from "@/components/palace/CustomerGenomeCard";
+import { AccountSettingsPanel } from "@/components/palace/AccountSettings";
 import { Sparkles } from "lucide-react";
 
 /* Hairline PAWN icons (stroke 1.25) */
@@ -26,12 +28,6 @@ const IRequests = (p: React.SVGProps<SVGSVGElement>) => (
 const IWish = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M10 16s-6-3.5-6-8a3.5 3.5 0 016-2.5A3.5 3.5 0 0116 8c0 4.5-6 8-6 8z" /></svg>
 );
-const IPayment = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="6" width="14" height="10" /><path d="M3 9h14M7 13h3" /></svg>
-);
-const IData = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><ellipse cx="10" cy="5" rx="6" ry="2" /><path d="M4 5v5c0 1.1 2.7 2 6 2s6-.9 6-2V5M4 10v5c0 1.1 2.7 2 6 2s6-.9 6-2v-5" /></svg>
-);
 const ISettings = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><circle cx="10" cy="10" r="2.5" /><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" /></svg>
 );
@@ -41,8 +37,6 @@ const TABS = [
   { key: "Bestellungen", icon: IOrders },
   { key: "Anfragen", icon: IRequests },
   { key: "Merkzettel", icon: IWish },
-  { key: "Zahlung", icon: IPayment },
-  { key: "Meine Daten", icon: IData },
   { key: "Einstellungen", icon: ISettings },
 ] as const;
 type Tab = typeof TABS[number]["key"];
@@ -153,9 +147,28 @@ const Account = () => {
             {tab === "Bestellungen" && <Card><Orders /></Card>}
             {tab === "Anfragen" && <Card><Requests /></Card>}
             {tab === "Merkzettel" && <Card><Empty title="Dein Merkzettel ist noch leer." to="/neu" cta="Ausstellung ansehen" /></Card>}
-            {tab === "Zahlung" && <Card><PaymentTab /></Card>}
-            {tab === "Meine Daten" && <MyData />}
-            {tab === "Einstellungen" && <Card><Settings /></Card>}
+            {tab === "Einstellungen" && (
+              <AccountSettingsPanel
+                role="customer"
+                paymentSlot={
+                  <div className="space-y-4">
+                    <p className="text-sm text-black/70">
+                      Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.
+                    </p>
+                    <p className="text-sm text-black/70">
+                      Rechnungs- und Lieferadresse gibst du beim Bezahlen an; sie hängen an der jeweiligen Bestellung.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTab("Bestellungen")}
+                      className="border-[1.5px] border-black px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white"
+                    >
+                      Zur Bestellhistorie →
+                    </button>
+                  </div>
+                }
+              />
+            )}
           </div>
         </div>
       </section>
@@ -224,7 +237,7 @@ function Overview({ name, onGoto }: { name: string; onGoto: (t: Tab) => void }) 
           {[
             { title: "Deine Bestellungen", body: "Verfolge, was unterwegs ist.", tab: "Bestellungen" as Tab },
             { title: "Merkzettel", body: "Stücke, die du dir gemerkt hast.", tab: "Merkzettel" as Tab },
-            { title: "Deine Daten", body: "Konto, Datenschutz, Export.", tab: "Meine Daten" as Tab },
+            { title: "Einstellungen", body: "Zugang, Zahlung, Datenschutz.", tab: "Einstellungen" as Tab },
           ].map((t) => (
             <button
               key={t.title}
@@ -239,6 +252,8 @@ function Overview({ name, onGoto }: { name: string; onGoto: (t: Tab) => void }) 
           ))}
         </div>
       </Card>
+
+      <CustomerGenomeCard />
     </div>
   );
 }
@@ -339,123 +354,11 @@ function Orders() {
   );
 }
 
-function MyData() {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-
-  const exportData = async () => {
-    if (!user) return;
-    setBusy(true);
-    const [profile, events, signals, sessions] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-      supabase.from("domain_events").select("*").eq("actor", user.id).limit(500),
-      supabase.from("domain_events").select("*").eq("type", "ai.taste_signal").contains("payload", { user_id: user.id }).limit(500),
-      supabase.from("ai_sessions").select("*").eq("user_id", user.id),
-    ]);
-    const bundle = {
-      exported_at: new Date().toISOString(),
-      user: { id: user.id, email: user.email },
-      profile: profile.data,
-      events: events.data,
-      signals: signals.data,
-      sessions: sessions.data,
-    };
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `pawn-daten-${user.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setBusy(false);
-    toast.success("Deine Daten wurden heruntergeladen.");
-  };
-
-  const deleteAccount = async () => {
-    setBusy(true);
-    const { data, error } = await supabase.functions.invoke("delete-account", {});
-    if (error || (data as { error?: string })?.error) {
-      setBusy(false);
-      toast.error((data as { error?: string })?.error ?? error?.message ?? "Löschen fehlgeschlagen.");
-      return;
-    }
-    await signOut();
-    toast.success("Dein Konto wurde gelöscht.");
-    navigate("/");
-  };
-
-  return (
-    <div className="max-w-2xl space-y-6">
-      <div className="border-[1.5px] border-[#000000] bg-white p-8">
-        <p className="palace-eyebrow">Daten exportieren</p>
-        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#000000]">Alles, was wir über dich wissen — als JSON.</p>
-        <p className="mt-3 text-[0.95rem] text-[#000000]/70">
-          Profil, Ereignisse, Geschmackssignale und Chat-Sessions.
-        </p>
-        <button type="button" onClick={exportData} disabled={busy}
-          className="palace-btn mt-6 disabled:opacity-50">
-          {busy ? "…" : "JSON herunterladen"}
-        </button>
-      </div>
-      <div className="border-[1.5px] border-destructive/60 bg-white p-8">
-        <p className="palace-eyebrow text-destructive">Konto löschen</p>
-        <p className="palace-serif mt-3 text-[1.2rem] italic text-[#000000]">Das ist endgültig.</p>
-        <p className="mt-3 text-[0.95rem] text-[#000000]/70">
-          Wir entfernen dein Profil, deine Bewerbung, Consents, Sessions und Benachrichtigungen. Bestellungen und Buchhaltungsdaten
-          bleiben — anonymisiert — aus gesetzlichen Gründen erhalten.
-        </p>
-        {!confirming ? (
-          <button type="button" onClick={() => setConfirming(true)}
-            className="mt-6 border border-destructive px-6 py-3 text-[0.7rem] uppercase tracking-[0.32em] text-destructive hover:bg-destructive hover:text-destructive-foreground">
-            Konto löschen
-          </button>
-        ) : (
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button type="button" onClick={deleteAccount} disabled={busy}
-              className="border border-destructive bg-destructive px-6 py-3 text-[0.7rem] uppercase tracking-[0.32em] text-destructive-foreground disabled:opacity-50">
-              {busy ? "…" : "Ja, endgültig löschen"}
-            </button>
-            <button type="button" onClick={() => setConfirming(false)}
-              className="palace-btn">
-              Abbrechen
-            </button>
-          </div>
-        )}
-      </div>
-      <p className="palace-eyebrow">
-        <Link to="/datenschutz" className="uline text-[#000000]">Datenschutzhinweise</Link>
-      </p>
-    </div>
-  );
-}
-
-function Settings() {
-  return (
-    <div className="max-w-xl">
-      <p className="palace-eyebrow">Präferenzen</p>
-      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#000000]">Ruhig, aufmerksam, nie aufdringlich.</p>
-      <p className="mt-3 text-[0.95rem] text-[#000000]/70">Sprache, Benachrichtigungen und Datenschutz.</p>
-    </div>
-  );
-}
-
 function Empty({ title, to, cta }: { title: string; to: string; cta: string }) {
   return (
     <div className="flex flex-col items-start gap-6 pt-4">
       <p className="palace-serif text-[1.5rem] italic text-[#000000]">{title}</p>
       <Link to={to} className="palace-btn">{cta} →</Link>
-    </div>
-  );
-}
-
-function PaymentTab() {
-  return (
-    <div className="max-w-xl">
-      <p className="palace-eyebrow">Zahlungsmethoden</p>
-      <p className="palace-serif mt-4 text-[1.2rem] italic text-[#000000]">Noch keine hinterlegt.</p>
-      <p className="mt-3 text-[0.95rem] text-[#000000]/70">Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.</p>
     </div>
   );
 }
