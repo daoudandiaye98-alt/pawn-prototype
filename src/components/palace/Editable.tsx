@@ -14,46 +14,56 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useEditMode } from "@/lib/editMode";
 import { invalidateSiteContent } from "@/lib/siteContent";
+import { useI18n, type Locale } from "@/lib/i18n";
 
 const memCache = new Map<string, unknown>();
 const memListeners = new Map<string, Set<(v: unknown) => void>>();
 
-async function fetchKey(key: string): Promise<unknown> {
-  const { data } = await supabase.from("site_content").select("value").eq("key", key).maybeSingle();
-  return (data as { value?: unknown } | null)?.value;
+/** Deutsch bleibt der Rückfall — fehlt eine englische Übersetzung, zeigen wir `value`. */
+async function fetchKey(key: string, locale: Locale): Promise<unknown> {
+  const { data } = await supabase.from("site_content").select("value, value_en").eq("key", key).maybeSingle();
+  const row = data as { value?: unknown; value_en?: unknown } | null;
+  if (locale === "en" && typeof row?.value_en === "string" && row.value_en) return row.value_en;
+  return row?.value;
 }
 
-function subscribe(key: string, cb: (v: unknown) => void) {
-  if (!memListeners.has(key)) memListeners.set(key, new Set());
-  memListeners.get(key)!.add(cb);
-  return () => { memListeners.get(key)?.delete(cb); };
+function subscribe(cacheKey: string, cb: (v: unknown) => void) {
+  if (!memListeners.has(cacheKey)) memListeners.set(cacheKey, new Set());
+  memListeners.get(cacheKey)!.add(cb);
+  return () => { memListeners.get(cacheKey)?.delete(cb); };
 }
 
-function publish(key: string, v: unknown) {
-  memCache.set(key, v);
-  memListeners.get(key)?.forEach((fn) => fn(v));
+function publish(cacheKey: string, v: unknown) {
+  memCache.set(cacheKey, v);
+  memListeners.get(cacheKey)?.forEach((fn) => fn(v));
 }
 
 export function useContentValue(key: string, fallback = ""): string {
+  const { locale } = useI18n();
+  const cacheKey = `${key}:${locale}`;
   const [v, setV] = useState<string>(() => {
-    const cached = memCache.get(key);
+    const cached = memCache.get(cacheKey);
     return typeof cached === "string" ? cached : fallback;
   });
   useEffect(() => {
     let cancelled = false;
-    void fetchKey(key).then((val) => {
+    void fetchKey(key, locale).then((val) => {
       if (cancelled) return;
-      if (typeof val === "string") { publish(key, val); setV(val); }
+      if (typeof val === "string" && val) { publish(cacheKey, val); setV(val); }
+      else setV(fallback);
     });
-    return subscribe(key, (val) => { if (typeof val === "string") setV(val); });
-  }, [key, fallback]);
+    return subscribe(cacheKey, (val) => { if (typeof val === "string") setV(val); });
+  }, [key, fallback, locale, cacheKey]);
   return v;
 }
 
-async function saveContent(key: string, value: unknown) {
-  const { error } = await supabase.from("site_content").upsert({ key, value: value as never });
+/** Speichert immer in der aktiven Sprache — Deutsch in `value`, Englisch in `value_en`. */
+async function saveContent(key: string, value: unknown, locale: Locale = "de") {
+  const payload: { key: string; value?: unknown; value_en?: unknown } =
+    locale === "en" ? { key, value_en: value } : { key, value };
+  const { error } = await supabase.from("site_content").upsert(payload as never);
   if (error) { toast.error("Speichern fehlgeschlagen: " + error.message); return false; }
-  publish(key, value);
+  publish(`${key}:${locale}`, value);
   invalidateSiteContent();
   try {
     await supabase.from("domain_events").insert({
@@ -61,7 +71,7 @@ async function saveContent(key: string, value: unknown) {
       at: new Date().toISOString(),
       type: "content.updated",
       actor: "system",
-      payload: { key } as never,
+      payload: { key, locale } as never,
     });
   } catch { /* best-effort */ }
   toast.success("Gespeichert");
@@ -88,6 +98,7 @@ function extractText(node: ReactNode): string {
 
 export function Editable({ contentKey, children, as, className, multiline = false }: EditableProps) {
   const { enabled } = useEditMode();
+  const { locale } = useI18n();
   const Tag = (as ?? "span") as ElementType;
   const fallback = extractText(children);
   const value = useContentValue(contentKey, fallback);
@@ -124,7 +135,7 @@ export function Editable({ contentKey, children, as, className, multiline = fals
       onBlur={async (e: React.FocusEvent) => {
         const next = (e.currentTarget.textContent ?? "").trim();
         if (next === lastSaved.current) return;
-        const ok = await saveContent(contentKey, next);
+        const ok = await saveContent(contentKey, next, locale);
         if (ok) lastSaved.current = next;
       }}
     >

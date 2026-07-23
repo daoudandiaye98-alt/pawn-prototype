@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useConsent } from "@/lib/consent";
 import { useI18n } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -106,6 +107,7 @@ function useUserPreferences() {
 
 function ZugangSection() {
   const { user, signOut } = useAuth();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
   const [email, setEmail] = useState(user?.email ?? "");
   const [savingEmail, setSavingEmail] = useState(false);
@@ -113,7 +115,7 @@ function ZugangSection() {
   const [pw2, setPw2] = useState("");
   const [savingPw, setSavingPw] = useState(false);
 
-  const provider = user?.app_metadata?.provider === "google" ? "Google" : "Passwort";
+  const provider = user?.app_metadata?.provider === "google" ? "Google" : t("auth.password");
   const hasPasswordIdentity = !user?.identities || user.identities.some((i) => i.provider === "email");
 
   const saveEmail = async () => {
@@ -137,17 +139,17 @@ function ZugangSection() {
   };
 
   return (
-    <SettingsSection eyebrow="Zugang" title="Wie du reinkommst" subtitle="Anmeldemethode, E-Mail und Passwort.">
-      <SettingsRow label="Anmeldemethode" description={`Du meldest dich über ${provider} an.`} />
+    <SettingsSection eyebrow={t("settings.access")} title="Wie du reinkommst" subtitle={t("settings.accessSubtitle")}>
+      <SettingsRow label={t("settings.signInMethod")} description={`Du meldest dich über ${provider} an.`} />
 
       <SettingsRow
-        label="E-Mail-Adresse"
+        label={t("settings.emailAddress")}
         description="Änderung braucht eine Bestätigung über die neue Adresse."
         action={
           <div className="flex items-center gap-2">
             <input value={email} onChange={(e) => setEmail(e.target.value)} className={cn(inputClass(), "w-56")} />
             <button type="button" onClick={() => void saveEmail()} disabled={savingEmail} className={btnClass()}>
-              {savingEmail ? "…" : "Ändern"}
+              {savingEmail ? "…" : t("common.change")}
             </button>
           </div>
         }
@@ -155,13 +157,13 @@ function ZugangSection() {
 
       {hasPasswordIdentity && (
         <SettingsRow
-          label="Passwort ändern"
+          label={t("settings.changePassword")}
           action={
             <div className="flex flex-wrap items-center gap-2">
               <input type="password" placeholder="Neues Passwort" value={pw1} onChange={(e) => setPw1(e.target.value)} className={cn(inputClass(), "w-40")} />
               <input type="password" placeholder="Wiederholen" value={pw2} onChange={(e) => setPw2(e.target.value)} className={cn(inputClass(), "w-40")} />
               <button type="button" onClick={() => void savePassword()} disabled={savingPw} className={btnClass()}>
-                {savingPw ? "…" : "Speichern"}
+                {savingPw ? "…" : t("common.save")}
               </button>
             </div>
           }
@@ -169,11 +171,11 @@ function ZugangSection() {
       )}
 
       <SettingsRow
-        label="Sitzung"
-        description={user?.last_sign_in_at ? `Zuletzt angemeldet am ${new Date(user.last_sign_in_at).toLocaleString("de-DE")}.` : undefined}
+        label={t("settings.session")}
+        description={user?.last_sign_in_at ? `Zuletzt angemeldet am ${formatDate(user.last_sign_in_at, locale)}.` : undefined}
         action={
           <button type="button" onClick={() => { void signOut(); navigate("/"); }} className={btnClass()}>
-            Abmelden
+            {t("nav.logout")}
           </button>
         }
       />
@@ -183,6 +185,7 @@ function ZugangSection() {
 
 function DatenschutzSection() {
   const { user, profile } = useAuth();
+  const { t } = useI18n();
   const consent = useConsent();
   const [personalization, setPersonalization] = useState(profile?.consent.personalization ?? false);
   const [busy, setBusy] = useState(false);
@@ -241,7 +244,7 @@ function DatenschutzSection() {
   };
 
   return (
-    <SettingsSection eyebrow="Datenschutz" title="Was PAWN weiß — und was nicht" subtitle="Deine Entscheidung, jederzeit änderbar.">
+    <SettingsSection eyebrow={t("settings.privacy")} title="Was PAWN weiß — und was nicht" subtitle={t("settings.privacySubtitle")}>
       <SettingsRow
         label="Speicherung über diesen Besuch hinaus"
         description={consent.value === "accepted" ? "Aktiv — Signale werden dauerhaft aggregiert." : "Aus — nur technisch Notwendiges, nichts wird dauerhaft gemerkt."}
@@ -252,9 +255,9 @@ function DatenschutzSection() {
         }
       />
       <SettingsRow
-        label="Personalisierung"
+        label={t("settings.personalization")}
         description="Passt Vorschläge und Ton an das an, was du in Gesprächen und beim Merken zeigst. Aus lässt PAWN neutral."
-        action={<SettingsToggle checked={personalization} onChange={(v) => void togglePersonalization(v)} disabled={busy || !user} label="Personalisierung" />}
+        action={<SettingsToggle checked={personalization} onChange={(v) => void togglePersonalization(v)} disabled={busy || !user} label={t("settings.personalization")} />}
       />
       <SettingsRow
         label="Was PAWN sich merkt"
@@ -266,28 +269,28 @@ function DatenschutzSection() {
         }
       />
       <SettingsRow
-        label="Datenauskunft"
+        label={t("settings.dataExport")}
         description="Alles, was wir über dich wissen — als JSON."
         action={
           <button type="button" onClick={() => void exportData()} disabled={exporting} className={btnClass()}>
-            {exporting ? "…" : "Herunterladen"}
+            {exporting ? "…" : t("common.download")}
           </button>
         }
       />
       <SettingsRow
-        label="Konto löschen"
+        label={t("settings.deleteAccount")}
         description="Endgültig. Bestellungen und Buchhaltungsdaten bleiben — anonymisiert — aus gesetzlichen Gründen erhalten."
         action={
           !confirming ? (
             <button type="button" onClick={() => setConfirming(true)} className="border-[1.5px] border-destructive px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] text-destructive hover:bg-destructive hover:text-destructive-foreground">
-              Löschen
+              {t("common.delete")}
             </button>
           ) : (
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => void deleteAccount()} disabled={busy} className="border-[1.5px] border-destructive bg-destructive px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] text-destructive-foreground disabled:opacity-50">
                 {busy ? "…" : "Ja, endgültig"}
               </button>
-              <button type="button" onClick={() => setConfirming(false)} className={btnClass()}>Abbrechen</button>
+              <button type="button" onClick={() => setConfirming(false)} className={btnClass()}>{t("common.cancel")}</button>
             </div>
           )
         }
@@ -298,12 +301,13 @@ function DatenschutzSection() {
 
 function BenachrichtigungenSection() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const { prefs, loading, save } = useUserPreferences();
   const orderMails = (prefs.notify_orders_email as boolean | undefined) ?? true;
   const newsMails = (prefs.notify_news_email as boolean | undefined) ?? false;
 
   return (
-    <SettingsSection eyebrow="Benachrichtigungen" title="Was dich erreicht" subtitle="Per Mail — oder nur im Haus, wenn du eh vorbeischaust.">
+    <SettingsSection eyebrow={t("settings.notifications")} title="Was dich erreicht" subtitle="Per Mail — oder nur im Haus, wenn du eh vorbeischaust.">
       <SettingsRow
         label="Bestellungen & Versand"
         description="Status-Updates zu deinen Bestellungen per E-Mail."
@@ -323,11 +327,11 @@ function BenachrichtigungenSection() {
 }
 
 function SpracheSection() {
-  const { locale, setLocale } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   return (
-    <SettingsSection eyebrow="Sprache" title="Deutsch oder Englisch" subtitle="Gilt überall — dieselbe Einstellung wie im Kopf der Seite.">
+    <SettingsSection eyebrow={t("settings.language")} title="Deutsch oder Englisch" subtitle="Gilt überall — dieselbe Einstellung wie im Kopf der Seite.">
       <SettingsRow
-        label="Sprache der Oberfläche"
+        label={t("settings.languageOfInterface")}
         action={
           <div className="flex border-[1.5px] border-black">
             {(["de", "en"] as const).map((l) => (
@@ -353,11 +357,12 @@ function SpracheSection() {
 export function AccountSettingsPanel({
   role, paymentSlot,
 }: { role: "customer" | "designer"; paymentSlot?: ReactNode }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
       <ZugangSection />
       {paymentSlot && (
-        <SettingsSection eyebrow="Zahlung" title={role === "designer" ? "Auszahlung & Plan" : "Zahlung & Adressen"}>
+        <SettingsSection eyebrow={t("settings.payment")} title={role === "designer" ? "Auszahlung & Plan" : "Zahlung & Adressen"}>
           {paymentSlot}
         </SettingsSection>
       )}

@@ -24,8 +24,8 @@ export function PalaceHeader() {
     { label: t("nav.interior"), to: "/interior" },
     { label: t("nav.kunst"), to: "/kunst" },
     { label: t("nav.designer"), to: "/designers" },
-    { label: "Style", to: "/style" },
-    { label: "Deine DNA", to: "/dna" },
+    { label: t("nav.style"), to: "/style" },
+    { label: t("nav.dna"), to: "/dna" },
     { label: t("nav.forDesigners"), to: "/apply" },
   ];
 
@@ -156,17 +156,17 @@ export function PalaceHeader() {
                         {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
                       </p>
                     </div>
-                    <MenuItem to="/account" onClick={() => setAccountOpen(false)}>Mein Konto</MenuItem>
-                    <MenuItem to="/dna" onClick={() => setAccountOpen(false)}>Deine DNA</MenuItem>
-                    {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>Mein Studio</MenuItem>}
-                    {!isDesigner && isApplicant && <MenuItem to="/apply" onClick={() => setAccountOpen(false)}>Bewerbungsstatus</MenuItem>}
-                    {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>Admin-Cockpit</MenuItem>}
+                    <MenuItem to="/account" onClick={() => setAccountOpen(false)}>{t("nav.account")}</MenuItem>
+                    <MenuItem to="/dna" onClick={() => setAccountOpen(false)}>{t("nav.dna")}</MenuItem>
+                    {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>{t("nav.myStudio")}</MenuItem>}
+                    {!isDesigner && isApplicant && <MenuItem to="/apply" onClick={() => setAccountOpen(false)}>{t("nav.applicationStatus")}</MenuItem>}
+                    {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>{t("nav.adminCockpit")}</MenuItem>}
                     <button
                       type="button"
                       onClick={handleSignOut}
                       className="block w-full border-t-[1.5px] border-black px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-black hover:text-white"
                     >
-                      Abmelden
+                      {t("nav.logout")}
                     </button>
                   </div>
                 )}
@@ -240,21 +240,29 @@ export function PalaceHeader() {
             className="mt-6 text-left font-serif italic text-[1.4rem] leading-tight text-[#000000]/80"
             style={{ fontWeight: 500 }}
           >
-            Frag PAWN →
+            {t("nav.frag")} →
           </button>
         </nav>
         <div className="space-y-2 border-t border-[rgba(0,0,0,.18)] px-8 py-6">
           {user ? (
             <>
-              <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Mein Konto</Link>
-              {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Mein Studio</Link>}
-              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Bewerbungsstatus</Link>}
-              {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Admin-Cockpit</Link>}
-              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#55534E]">Abmelden</button>
+              <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.account")}</Link>
+              {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.myStudio")}</Link>}
+              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.applicationStatus")}</Link>}
+              {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.adminCockpit")}</Link>}
+              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#55534E]">{t("nav.logout")}</button>
             </>
           ) : (
-            <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">Anmelden</Link>
+            <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.login")}</Link>
           )}
+          <button
+            type="button"
+            onClick={() => setLocale(locale === "de" ? "en" : "de")}
+            className="mt-2 flex min-h-[44px] items-center border-t border-[rgba(0,0,0,.18)] pt-3 text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]"
+            aria-label={t("nav.language")}
+          >
+            {locale === "de" ? "DE → EN" : "EN → DE"}
+          </button>
         </div>
       </div>
 
