@@ -1395,6 +1395,7 @@ export type Database = {
           error: string | null
           finished_at: string | null
           id: string
+          mode: string | null
           started_at: string
           status: string
           summary: string | null
@@ -1406,6 +1407,7 @@ export type Database = {
           error?: string | null
           finished_at?: string | null
           id?: string
+          mode?: string | null
           started_at?: string
           status?: string
           summary?: string | null
@@ -1417,6 +1419,7 @@ export type Database = {
           error?: string | null
           finished_at?: string | null
           id?: string
+          mode?: string | null
           started_at?: string
           status?: string
           summary?: string | null

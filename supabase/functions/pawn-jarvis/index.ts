@@ -60,7 +60,7 @@ type Mode =
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen"
   | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
-  | "kampagnen_regie";
+  | "kampagnen_regie" | "cron_status";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -1559,7 +1559,7 @@ Deno.serve(async (req) => {
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "kampagnen_regie",
+      "kampagnen_regie", "cron_status",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -1580,7 +1580,7 @@ Deno.serve(async (req) => {
 
     // --- Herzschlag: eigener, kostenloser Pfad ohne LLM-Aufruf (enthält auch den Evolutions-Kreislauf) ---
     if (mode === "heartbeat") {
-      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "cron", status: "running" }).select("id").single();
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "cron", mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runHeartbeat(admin, runId);
       const parts = [result.skipped ? `Herzschlag übersprungen (${result.skipped})` : `Herzschlag: ${result.created ?? 0} neue Meldung(en)`];
@@ -1606,12 +1606,21 @@ Deno.serve(async (req) => {
       return ok(result);
     }
 
+    // --- Cron-Zeitplan fürs Cockpit: reiner Lesezugriff auf cron.job, kein LLM, kein Jarvis-Pause-Gate ---
+    if (mode === "cron_status") {
+      const { data, error } = await admin.schema("cron").from("job")
+        .select("jobname, schedule, active")
+        .or("jobname.ilike.%jarvis%,jobname.ilike.%akquise%,jobname.ilike.%regie%,jobname.ilike.%trend%,jobname.ilike.%bauplan%");
+      if (error) return ok({ ok: true, jobs: [], note: "cron.job nicht lesbar." });
+      return ok({ ok: true, jobs: data ?? [] });
+    }
+
     // --- Ab hier: Modi, die Claude aufrufen (oder für Evolution: einmalig manuell auswerten) ---
     const config = await loadJarvisConfig(admin);
     if (!config.enabled) return ok({ ok: false, error: "Jarvis ist pausiert. Erst 'Jarvis pausieren' ausschalten." });
 
     if (mode === "evolution") {
-      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "manual", status: "running" }).select("id").single();
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "manual", mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runEvolution(admin);
       if (runId) await admin.from("jarvis_runs").update({
@@ -1623,7 +1632,7 @@ Deno.serve(async (req) => {
     // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
     if (mode === "akquise_import" || mode === "akquise_senden") {
       const trig = body.trigger === "cron" ? "cron" : "manual";
-      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, status: "running" }).select("id").single();
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = mode === "akquise_import" ? await runAkquiseImport(admin) : await runAkquiseSenden(admin);
       const summary = mode === "akquise_import"
@@ -1650,7 +1659,7 @@ Deno.serve(async (req) => {
     const asCaller = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader! } } });
 
     if (mode === "diagnose") {
-      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, status: "running" }).select("id").single();
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const { healed, needed, tokensUsed } = await runDiagnose(admin, asCaller, apiKey);
@@ -1670,7 +1679,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode === "kampagnen_regie") {
-      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, status: "running" }).select("id").single();
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = await runKampagnenRegie(admin, apiKey);
@@ -1686,7 +1695,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen") {
-      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, status: "running" }).select("id").single();
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
@@ -1710,7 +1719,7 @@ Deno.serve(async (req) => {
     }
 
     // --- Berichte / Befehle: normaler LLM-Pfad ---
-    const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, status: "running" }).select("id").single();
+    const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
     runId = (runRow as { id: string } | null)?.id ?? null;
 
     const basePrompt = await loadSystemPrompt(admin);

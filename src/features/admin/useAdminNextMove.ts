@@ -1,6 +1,10 @@
 /**
  * "Dein nächster Zug" für den Admin.
- * Priorität: wartende Bewerbungen > Posting-Queue > fehlende Secrets > Kampagnen in Review > leere Inhalte.
+ * Priorität: was Jarvis vorlegt (wartende Bestätigungen, ungesehene Vorschläge)
+ * kommt zuerst — das ist der Sinn des Cockpits: Jarvis bereitet vor, du
+ * entscheidest. Danach die bestehende Heuristik: wartende Bewerbungen >
+ * Akquise-Follow-ups > Posting-Queue > fehlende Secrets > Kampagnen in
+ * Review > leere Inhalte > Ruhezustand.
  * Secrets werden lokal geprüft (Client-seitige Erinnerung — Werte sind nie sichtbar).
  */
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +20,10 @@ export interface AdminNextMove {
 }
 
 interface Signals {
+  pendingActions: number;
+  oldestPendingAction: string | null;
+  unseenSuggestions: number;
+  oldestSuggestion: string | null;
   pendingApplications: number;
   queuedPosts: number;
   campaignsInReview: number;
@@ -29,6 +37,7 @@ const KNOWN_SECRETS = ["STRIPE_SECRET_KEY", "OPENAI_API_KEY", "FAL_KEY"];
 
 export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
   const [signals, setSignals] = useState<Signals>({
+    pendingActions: 0, oldestPendingAction: null, unseenSuggestions: 0, oldestSuggestion: null,
     pendingApplications: 0, queuedPosts: 0, campaignsInReview: 0, emptyContent: 0,
     missingSecrets: [], followupDue: 0, warmedWaiting: 0,
   });
@@ -37,7 +46,9 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
     let alive = true;
     (async () => {
       const fiveDaysAgo = new Date(Date.now() - 5 * 86_400_000).toISOString();
-      const [apps, queue, camps, content, secretsRes, followups, warmed] = await Promise.all([
+      const [pendingActions, suggestions, apps, queue, camps, content, secretsRes, followups, warmed] = await Promise.all([
+        supabase.from("jarvis_pending_actions").select("action, created_at").eq("status", "pending").order("created_at", { ascending: true }),
+        supabase.from("jarvis_notices").select("title, created_at").eq("kind", "vorschlag").is("dismissed_at", null).order("created_at", { ascending: true }),
         supabase.from("designer_applications").select("id", { count: "exact", head: true }).in("status", ["submitted", "in_review"]),
         supabase.from("posting_queue").select("id", { count: "exact", head: true }).eq("status", "queued"),
         supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("status", "proposed"),
@@ -54,7 +65,13 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
       }).length;
       const missingFromApi = ((secretsRes as { data?: { missing?: string[] } })?.data?.missing ?? [])
         .filter((s) => KNOWN_SECRETS.includes(s));
+      const pendingRows = (pendingActions.data ?? []) as { action: string; created_at: string }[];
+      const suggestionRows = (suggestions.data ?? []) as { title: string; created_at: string }[];
       setSignals({
+        pendingActions: pendingRows.length,
+        oldestPendingAction: pendingRows[0]?.action ?? null,
+        unseenSuggestions: suggestionRows.length,
+        oldestSuggestion: suggestionRows[0]?.title ?? null,
         pendingApplications: apps.count ?? 0,
         queuedPosts: queue.count ?? 0,
         campaignsInReview: camps.count ?? 0,
@@ -68,6 +85,30 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
   }, []);
 
   const move = useMemo<AdminNextMove>(() => {
+    if (signals.pendingActions > 0) {
+      return {
+        key: "jarvis_pending",
+        headline: signals.pendingActions === 1
+          ? `Jarvis wartet auf eine Bestätigung: ${signals.oldestPendingAction}.`
+          : `Jarvis wartet auf ${signals.pendingActions} Bestätigungen — am längsten: ${signals.oldestPendingAction}.`,
+        reason: "Zone Rot: Geld, Veröffentlichung oder Löschung — das entscheidest du, nicht Jarvis.",
+        cta: "Zug machen",
+        to: "/admin",
+        urgency: "hoch",
+      };
+    }
+    if (signals.unseenSuggestions > 0) {
+      return {
+        key: "jarvis_suggestion",
+        headline: signals.unseenSuggestions === 1
+          ? `Jarvis schlägt vor: ${signals.oldestSuggestion}.`
+          : `Jarvis hat ${signals.unseenSuggestions} Vorschläge gemacht — zuerst: ${signals.oldestSuggestion}.`,
+        reason: "Umsetzen oder verwerfen — ein Klick.",
+        cta: "Vorschlag ansehen",
+        to: "/admin",
+        urgency: "mittel",
+      };
+    }
     if (signals.pendingApplications > 0) {
       return {
         key: "review_applications",
@@ -111,8 +152,8 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
         key: "secret_" + first,
         headline: `Secret fehlt: ${first}.`,
         reason: help[first] ?? "Bitte in Projekt-Einstellungen → Secrets ergänzen.",
-        cta: "Einstellungen öffnen",
-        to: "/admin/settings",
+        cta: "System-Herzschlag ansehen",
+        to: "/admin",
         urgency: "hoch",
       };
     }
@@ -131,8 +172,8 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
         key: "content",
         headline: `${signals.emptyContent} Inhaltsfeld${signals.emptyContent === 1 ? "" : "er"} noch leer.`,
         reason: "Füll die editorialen Räume — Über, Manifest, Hero-Texte.",
-        cta: "Inhalte öffnen",
-        to: "/admin/inhalte",
+        cta: "Texte & Bilder öffnen",
+        to: "/admin/texte-bilder",
         urgency: "sanft",
       };
     }
