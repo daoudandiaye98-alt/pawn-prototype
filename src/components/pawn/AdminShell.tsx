@@ -23,7 +23,7 @@ import { Link } from "react-router-dom";
 
 const ITEMS = [
   { to: "/admin", label: "Kontrollhub", icon: LayoutGrid, end: true },
-  { to: "/admin/dna", label: "Global DNA", icon: Activity },
+  { to: "/admin/dna", label: "Genom", icon: Activity },
   { to: "/admin/products", label: "Produkte", icon: Package },
   { to: "/admin/zahlungen", label: "Zahlungen", icon: ClipboardList },
   { to: "/admin/nachrichten", label: "Nachrichten", icon: FileSignature },

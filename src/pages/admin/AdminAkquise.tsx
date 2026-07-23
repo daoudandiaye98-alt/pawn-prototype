@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
+import { GenomeCard } from "@/components/palace/GenomeCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -238,17 +239,16 @@ function LeadDrawer({
           </div>
 
           {lead.kurator_score != null && (
-            <section className="border-[1.5px] border-black p-4">
-              <p className="editorial-eyebrow mb-2">Kurator-Bewertung</p>
-              <p className="font-serif text-2xl leading-none tabular-nums">{lead.kurator_score}<span className="text-sm text-muted-foreground"> / 100</span></p>
-              {lead.score_reasons && (
-                <ul className="mt-3 space-y-1 text-sm text-foreground/80">
-                  {Object.entries(lead.score_reasons).map(([k, v]) => (
-                    <li key={k}><span className="text-muted-foreground">{k}:</span> {String(v)}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <GenomeCard
+              eyebrow="Das Auge des Kurators"
+              title="Kurator-Bewertung"
+              score={{
+                value: lead.kurator_score,
+                reasons: lead.score_reasons
+                  ? Object.fromEntries(Object.entries(lead.score_reasons).map(([k, v]) => [k, String(v)]))
+                  : undefined,
+              }}
+            />
           )}
 
           {lead.bio && (
