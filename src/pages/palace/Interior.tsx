@@ -5,7 +5,8 @@ export default function Interior() {
     <WorldPage
       world="Interior"
       eyebrow="Welt · 02"
-      headline={<>Interior. <span className="italic">Objekte, mit denen man lebt.</span></>}
+      headlineA="Interior."
+      headlineB="Objekte, mit denen man lebt."
       intro="Möbel, Licht, Spiegel, Vasen — Stücke an der Schwelle zwischen Ding und Skulptur."
     />
   );

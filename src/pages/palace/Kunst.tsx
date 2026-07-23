@@ -5,7 +5,8 @@ export default function Kunst() {
     <WorldPage
       world="Kunst"
       eyebrow="Welt · 03"
-      headline={<>Kunst. <span className="italic">Was den Raum trägt.</span></>}
+      headlineA="Kunst."
+      headlineB="Was den Raum trägt."
       intro="Malerei, Editionen, Tapisserie — Arbeiten, die eine Wand zu einem Ort machen."
     />
   );

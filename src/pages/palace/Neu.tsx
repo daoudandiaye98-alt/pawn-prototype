@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
+import { Editable } from "@/components/palace/Editable";
+import { useSiteContent } from "@/lib/siteContent";
 import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
 
@@ -10,22 +12,26 @@ export default function Neu() {
   const raw = useStore(marketplaceSelectors.getAllProductViews);
   const personalization = usePersonalization();
   const products = useMemo(() => sortByPersonalization(raw, personalization, personalization.designerDna), [raw, personalization]);
+  const ausgabeNummer = useSiteContent("ausgabe_nummer");
   return (
     <PalaceLayout transparentHeader={false}>
 
       <section className="px-6 pt-32 md:px-14 md:pt-40">
         <div className="mx-auto max-w-[1600px]">
           <Reveal>
-            <p className="palace-eyebrow">Ausstellung · Ausgabe 07</p>
+            <p className="palace-eyebrow">
+              <Editable as="span" contentKey="landing.neu_eyebrow">Ausstellung</Editable> · Ausgabe {ausgabeNummer}
+            </p>
             <h1
               className="palace-serif mt-8 font-light text-[#000000]"
               style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
             >
-              Alles Neue. <span className="italic">Diese Woche.</span>
+              <Editable as="span" contentKey="landing.neu_headline_a">Alles Neue. </Editable>
+              <Editable as="span" contentKey="landing.neu_headline_b" className="italic">Diese Woche.</Editable>
             </h1>
-            <p className="mt-8 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#000000]/70">
+            <Editable as="p" contentKey="landing.neu_subline" className="mt-8 block max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#000000]/70">
               Mode, Interior und Kunst — kuratiert, in einer Bewegung.
-            </p>
+            </Editable>
           </Reveal>
         </div>
       </section>

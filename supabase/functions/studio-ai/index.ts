@@ -8,6 +8,7 @@ type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft"
 type Msg = { role: "user" | "assistant" | "system"; content: string };
 
 const DEFAULT_PROMPT = `Du bist PAWN Copilot — ein leiser, präziser Partner für unabhängige Designer. Antworte auf Deutsch, sachlich, ohne Marketing-Floskeln.`;
+const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
 
 function ok(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -90,15 +91,25 @@ async function ai(model: string, system: string, messages: Msg[], chain?: string
   return { text: null, provider: "fallback" };
 }
 
+async function loadHouseStyleLaw(admin: SupabaseClient): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "house_style_law").maybeSingle();
+    const v = data?.value as { text?: string } | string | null;
+    const text = typeof v === "string" ? v : v?.text;
+    return typeof text === "string" && text.trim() ? text.trim() : DEFAULT_HOUSE_STYLE_LAW;
+  } catch { return DEFAULT_HOUSE_STYLE_LAW; }
+}
+
 async function loadPrompt(admin: SupabaseClient): Promise<string> {
+  const styleLaw = await loadHouseStyleLaw(admin);
   try {
     const { data: p } = await admin.from("ai_config").select("value").eq("key", "persona_designer").maybeSingle();
     const pv = p?.value as { system_prompt?: string } | undefined;
-    if (pv?.system_prompt?.trim()) return pv.system_prompt.trim();
+    if (pv?.system_prompt?.trim()) return `${pv.system_prompt.trim()}\n\n${styleLaw}`;
     const { data } = await admin.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle();
     const v = data?.value as { system_prompt?: string } | undefined;
-    return v?.system_prompt?.trim() || DEFAULT_PROMPT;
-  } catch { return DEFAULT_PROMPT; }
+    return `${v?.system_prompt?.trim() || DEFAULT_PROMPT}\n\n${styleLaw}`;
+  } catch { return `${DEFAULT_PROMPT}\n\n${styleLaw}`; }
 }
 
 async function logResponse(admin: SupabaseClient, actor: string, mode: Mode, designer_id: string | null, prompt: string, reply: string, provider: string) {

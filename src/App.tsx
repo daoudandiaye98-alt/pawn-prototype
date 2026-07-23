@@ -14,7 +14,7 @@ import { ConsentBanner } from "@/components/palace/ConsentBanner";
 import { EditModeProvider } from "@/lib/editMode";
 import { CopilotProvider } from "@/components/pawn/CopilotDrawer";
 
-import AdminInhalte from "./pages/admin/AdminInhalte.tsx";
+import AdminContent from "./pages/admin/AdminContent.tsx";
 import AdminWerbung from "./pages/admin/AdminWerbung.tsx";
 import AdminAktionen from "./pages/admin/AdminAktionen.tsx";
 
@@ -147,7 +147,7 @@ const App = () => (
                 <Route path="/admin/jarvis" element={<RoleGate role="admin"><AdminJarvis /></RoleGate>} />
                 <Route path="/admin/nachrichten" element={<RoleGate role="admin"><AdminMessages /></RoleGate>} />
                 <Route path="/admin/zahlungen" element={<RoleGate role="admin"><AdminPayments /></RoleGate>} />
-                <Route path="/admin/inhalte" element={<AdminInhalte />} />
+                <Route path="/admin/texte-bilder" element={<AdminContent />} />
                 <Route path="/admin/posting" element={<RoleGate role="admin"><AdminPosting /></RoleGate>} />
                 <Route path="/admin/archiv" element={<RoleGate role="admin"><AdminArchiv /></RoleGate>} />
                 <Route path="/admin/editionen" element={<RoleGate role="admin"><AdminEditionen /></RoleGate>} />

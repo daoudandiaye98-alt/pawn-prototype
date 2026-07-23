@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { type Plan, planLabel } from "@/features/campaign/quota";
+import { Editable, useContentValue } from "@/components/palace/Editable";
 import { ArrowRight } from "lucide-react";
 
 interface Question { key: string; text: string; options: { label: string; weight: 1 | 2 | 3 }[] }
@@ -68,7 +69,7 @@ export function PlanFunnel({ currentPlan, designerId, context = "studio" }: {
       const total = Object.values(next).reduce((a, b) => a + b, 0);
       const rec = recommend(total);
       setDone(true);
-      setReason(STATIC_REASON[rec]);
+      setReason(resolvedReason[rec]);
       if (context === "studio" && designerId) {
         setLoadingReason(true);
         void supabase.functions.invoke("studio-ai", {
@@ -89,14 +90,24 @@ export function PlanFunnel({ currentPlan, designerId, context = "studio" }: {
   const rec = done ? recommend(total) : null;
   const answeredCount = Object.keys(answers).length;
 
+  const q1Text = useContentValue("plan_funnel.question_1", QUESTIONS[0].text);
+  const q2Text = useContentValue("plan_funnel.question_2", QUESTIONS[1].text);
+  const q3Text = useContentValue("plan_funnel.question_3", QUESTIONS[2].text);
+  const questionText: Record<string, string> = { frequency: q1Text, motion: q2Text, reach: q3Text };
+  const reasonHaus = useContentValue("plan_funnel.reason_haus", STATIC_REASON.haus);
+  const reasonAtelier = useContentValue("plan_funnel.reason_atelier", STATIC_REASON.atelier);
+  const reasonMaison = useContentValue("plan_funnel.reason_maison", STATIC_REASON.maison);
+  const resolvedReason: Record<Plan, string> = { haus: reasonHaus, atelier: reasonAtelier, maison: reasonMaison };
+  const nochmalLabel = useContentValue("plan_funnel.reset_cta", "Nochmal");
+
   return (
     <div className="border-[1.5px] border-black bg-white p-6">
-      <p className="editorial-eyebrow">Welches Haus bist du?</p>
+      <Editable as="p" contentKey="plan_funnel.heading" className="editorial-eyebrow">Welches Haus bist du?</Editable>
       {!done ? (
         <div className="mt-4 space-y-6">
           {QUESTIONS.map((q, qi) => (
             <div key={q.key} className={answeredCount < qi ? "opacity-30" : ""}>
-              <p className="font-serif text-lg">{q.text}</p>
+              <p className="font-serif text-lg">{questionText[q.key]}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {q.options.map((o) => (
                   <button
@@ -125,13 +136,13 @@ export function PlanFunnel({ currentPlan, designerId, context = "studio" }: {
               </a>
             ) : (
               <Link to="/apply" className="mt-4 inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background">
-                Als Haus bewerben <ArrowRight className="h-3.5 w-3.5" />
+                <Editable as="span" contentKey="plan_funnel.apply_cta">Als Haus bewerben</Editable> <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             )
           )}
           <button onClick={() => { setAnswers({}); setDone(false); setReason(null); }}
             className="mt-4 ml-3 text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
-            Nochmal
+            {nochmalLabel}
           </button>
         </div>
       )}

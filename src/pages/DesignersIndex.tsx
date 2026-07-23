@@ -2,11 +2,12 @@ import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
-import { Editable } from "@/components/palace/Editable";
+import { Editable, useContentValue } from "@/components/palace/Editable";
 import { useStore, marketplaceSelectors } from "@/core";
 
 const DesignersIndex = () => {
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
+  const atelierCta = useContentValue("dindex_item_cta", "Zum Atelier →");
   return (
     <PalaceLayout transparentHeader={false}>
       {/* Hero */}
@@ -37,7 +38,7 @@ const DesignersIndex = () => {
               to="/apply"
               className="palace-btn whitespace-nowrap"
             >
-              Als Designer bewerben →
+              <Editable as="span" contentKey="dindex_cta">Als Designer bewerben →</Editable>
             </Link>
           </Reveal>
         </div>
@@ -68,7 +69,7 @@ const DesignersIndex = () => {
                           {d.name}
                         </p>
                       </div>
-                      <span className="palace-eyebrow text-[#7C7972] group-hover:text-[#000000]">Zum Atelier →</span>
+                      <span className="palace-eyebrow text-[#7C7972] group-hover:text-[#000000]">{atelierCta}</span>
                     </div>
                   </Link>
                 </li>

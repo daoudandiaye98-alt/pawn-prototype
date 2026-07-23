@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Reveal } from "@/components/palace/Reveal";
+import { Editable } from "@/components/palace/Editable";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PremiereItem {
@@ -42,8 +43,8 @@ export function PremiereSection() {
   return (
     <section className="mx-auto max-w-[1400px] px-6 py-24 md:px-10">
       <Reveal>
-        <p className="editorial-eyebrow">Première</p>
-        <h2 className="mt-3 font-serif text-3xl md:text-4xl">Aus den Häusern, gerade erst gezeigt.</h2>
+        <Editable as="p" contentKey="landing.premiere_eyebrow" className="editorial-eyebrow">Première</Editable>
+        <Editable as="h2" contentKey="landing.premiere_headline" className="mt-3 font-serif text-3xl md:text-4xl">Aus den Häusern, gerade erst gezeigt.</Editable>
       </Reveal>
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((it) => {
