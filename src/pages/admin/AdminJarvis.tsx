@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { GenomeCard, type GenomeStrand } from "@/components/palace/GenomeCard";
 import { Loader2, Sparkles, Mic, X } from "lucide-react";
 
 interface JarvisRun {
@@ -316,8 +317,22 @@ export default function AdminJarvis() {
   const unseenNotices = notices.filter((n) => !n.dismissed_at);
   const latestDiagnose = reports.find((r) => r.kind === "diagnose") ?? null;
   const wissenReports = reports.filter((r) => r.kind === "wissen");
+  const regieReports = reports.filter((r) => r.kind === "regie");
   const issueNotices = notices.filter((n) => n.kind === "github_issue");
   const runningExperiment = experiments.find((e) => e.status === "laufend") ?? null;
+
+  const learningStrands: GenomeStrand[] = [
+    { label: "Wissenslauf", value: Math.min(100, wissenReports.length * 20), hint: `${wissenReports.length}` },
+    { label: "Gedächtnis", value: Math.min(100, memories.length * 10), hint: `${memories.length}` },
+    { label: "Regie-Gewichte", value: Math.min(100, regieReports.length * 20), hint: `${regieReports.length}` },
+    { label: "Experimente", value: Math.min(100, experiments.length * 20), hint: `${experiments.length}` },
+  ];
+  const learningTimeline = [
+    ...wissenReports.map((r) => ({ id: r.id, at: r.created_at, text: `Wissenslauf: ${r.body.slice(0, 100)}${r.body.length > 100 ? "…" : ""}` })),
+    ...regieReports.map((r) => ({ id: r.id, at: r.created_at, text: `Regie: ${r.body.slice(0, 100)}${r.body.length > 100 ? "…" : ""}` })),
+    ...experiments.filter((e) => e.evaluated_at).map((e) => ({ id: e.id, at: e.evaluated_at as string, text: `Experiment ${EXPERIMENT_STATUS_LABELS[e.status] ?? e.status}: ${e.hypothesis}` })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 10);
+  const latestLearning = learningTimeline[0] ?? null;
 
   return (
     <AdminShell title="Maschinenraum" eyebrow="Jarvis · die interne KI-Instanz von PAWN">
@@ -533,6 +548,30 @@ export default function AdminJarvis() {
           </ul>
         )}
       </section>
+
+      <div className="mb-8">
+        <GenomeCard
+          eyebrow="Denklogik"
+          title="Was Jarvis gelernt hat"
+          subtitle="Erkenntnisse aus Wissenslauf, Gedächtnis, Regie-Gewichten und Experimenten — als Verlauf über die Wochen."
+          strands={learningStrands}
+          strandsLabel="Woraus Jarvis lernt"
+          pulse={latestLearning ? { text: latestLearning.text, when: timeAgo(latestLearning.at) } : null}
+          emptyText="Noch keine Lernschleife gelaufen — der erste Wissenslauf oder das erste Experiment füllt diese Karte."
+          className="border-black"
+        >
+          {learningTimeline.length > 0 && (
+            <div className="mt-6 border-t border-black/15 pt-4">
+              <p className="editorial-eyebrow text-black/50">Verlauf</p>
+              <ul className="mt-2 space-y-1.5 text-sm text-black/70">
+                {learningTimeline.map((item) => (
+                  <li key={item.id}>{timeAgo(item.at)} — {item.text}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </GenomeCard>
+      </div>
 
       <section className="mb-8 border-[1.5px] border-black p-5">
         <p className="editorial-eyebrow mb-3">Denklogik</p>

@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useCopilot } from "./CopilotDrawer";
 import {
   LayoutGrid,
@@ -82,21 +83,54 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   );
 }
 
+/** Zählt, in welchen Zonen Jarvis' Organe gerade handeln dürfen — echte Werte aus ai_config.jarvis_zones. */
+function useJarvisZoneCounts() {
+  const [counts, setCounts] = useState<{ gruen: number; gelb: number; rot: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.from("ai_config").select("value").eq("key", "jarvis_zones").maybeSingle();
+      if (!alive) return;
+      const zones = (data?.value as Record<string, string> | undefined) ?? {};
+      const values = Object.values(zones);
+      if (!values.length) { setCounts(null); return; }
+      setCounts({
+        gruen: values.filter((z) => z === "gruen").length,
+        gelb: values.filter((z) => z === "gelb").length,
+        rot: values.filter((z) => z === "rot").length,
+      });
+    })();
+    return () => { alive = false; };
+  }, []);
+  return counts;
+}
+
 function AdminCopilotPill() {
   const copilot = useCopilot();
+  const zoneCounts = useJarvisZoneCounts();
   return (
-    <button
-      onClick={copilot.toggle}
-      className="flex items-center gap-2 rounded-full bg-[#0B0B0D] px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-black"
-      title="Admin-Copilot öffnen"
-    >
-      <span className="relative flex h-2 w-2 items-center justify-center">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-      </span>
-      <Sparkles className="h-3.5 w-3.5" />
-      Copilot
-    </button>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={copilot.toggle}
+        className="flex items-center gap-2 rounded-full bg-[#0B0B0D] px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-black"
+        title="Admin-Copilot öffnen"
+      >
+        <span className="relative flex h-2 w-2 items-center justify-center">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        </span>
+        <Sparkles className="h-3.5 w-3.5" />
+        Copilot
+      </button>
+      {zoneCounts && (
+        <span
+          className="hidden items-center gap-1.5 border border-border px-2 py-1 text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground md:inline-flex"
+          title="In welcher Zone Jarvis' Organe gerade handeln dürfen"
+        >
+          {zoneCounts.gruen} Grün · {zoneCounts.gelb} Gelb · {zoneCounts.rot} Rot
+        </span>
+      )}
+    </div>
   );
 }
 
