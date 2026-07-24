@@ -108,7 +108,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const initials = initialsOf(brand);
 
   const items: NavItem[] = [
-    { to: "/studio", label: "Bühne", icon: IStage, end: true },
+    { to: "/studio", label: "Übersicht", icon: IStage, end: true },
     { to: "/studio/produkte", label: "Kollektion", icon: ICollection },
     { to: "/studio/bestellungen", label: "Bestellungen", icon: IOrders, badge: badges.orders },
     { to: "/studio/kampagnen", label: "Kampagnen", icon: ICampaigns, badge: badges.campaigns },
