@@ -114,13 +114,8 @@ Deno.serve(async (req) => {
           requested_by: user_id,
           error: null,
           result_url: null,
+          provider_handles: { request_id, status_url, response_url, image_url },
         } as never).select("id").single();
-        // Store fal handles inside error field is ugly; use campaigns.content instead? Simpler: patch result_url later.
-        // Persist provider handles in a side field: campaigns table has no free jsonb per request; use campaigns.content or a temp map.
-        // We piggyback on `error` column repurposed for handles until polling completes.
-        await admin.from("generation_requests").update({
-          error: JSON.stringify({ request_id, status_url, response_url, image_url }),
-        } as never).eq("id", (row as { id: string }).id);
         // Bucht die Ist-Kosten gegen das Monatsbudget des Hauses (informativ, blockiert nicht).
         try { await admin.rpc("book_ai_spend", { _designer_id: camp.designer_id, _cents: brollClipCents }); } catch { /* noop */ }
         submissions.push({ id: (row as { id: string }).id, request_id, image_url });

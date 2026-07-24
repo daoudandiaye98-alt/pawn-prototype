@@ -1150,6 +1150,7 @@ export type Database = {
           error: string | null
           id: string
           provider: string
+          provider_handles: Json | null
           requested_by: string | null
           result_url: string | null
           status: Database["public"]["Enums"]["generation_status"]
@@ -1163,6 +1164,7 @@ export type Database = {
           error?: string | null
           id?: string
           provider?: string
+          provider_handles?: Json | null
           requested_by?: string | null
           result_url?: string | null
           status?: Database["public"]["Enums"]["generation_status"]
@@ -1176,6 +1178,7 @@ export type Database = {
           error?: string | null
           id?: string
           provider?: string
+          provider_handles?: Json | null
           requested_by?: string | null
           result_url?: string | null
           status?: Database["public"]["Enums"]["generation_status"]

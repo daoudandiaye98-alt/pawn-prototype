@@ -87,6 +87,10 @@ Deno.serve(async (req) => {
 
     return ok({ error: "unknown_action" });
   } catch (e) {
-    return ok({ error: String((e as Error)?.message ?? e) }, 500);
+    // Nie 500 zurückgeben: ein technischer Fehler (Stripe-API, Netzwerk, …) soll nie als rohe
+    // "Edge Function returned a non-2xx status code" im Studio auftauchen — immer 200 mit
+    // Klartext-Fehlermeldung, echte Ursache landet nur im Server-Log.
+    console.error("[stripe-connect] error:", e);
+    return ok({ error: "internal_error", message: "Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht." });
   }
 });

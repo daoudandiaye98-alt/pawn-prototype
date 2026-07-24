@@ -31,14 +31,15 @@ Deno.serve(async (req) => {
     const admin = createClient(url, svc, { auth: { persistSession: false } });
 
     const { data: rows } = await admin.from("generation_requests")
-      .select("id, status, error, tier, campaign_id, created_at, campaigns!inner(designer_id, designers!inner(user_id, media_rights_granted_at))")
+      .select("id, status, error, provider_handles, tier, campaign_id, created_at, campaigns!inner(designer_id, designers!inner(user_id, media_rights_granted_at))")
       .in("id", request_ids);
     if (!rows) return json({ ok: true, results: [] });
 
     const results: Array<{ id: string; status: string; result_url?: string; error?: string }> = [];
 
     for (const r of rows as unknown as Array<{
-      id: string; status: string; error: string | null; tier: string; campaign_id: string; created_at: string;
+      id: string; status: string; error: string | null; provider_handles: Record<string, unknown> | null;
+      tier: string; campaign_id: string; created_at: string;
       campaigns: { designer_id: string; designers: { user_id: string; media_rights_granted_at: string | null } };
     }>) {
       if (r.status === "done" || r.status === "failed") {
@@ -52,22 +53,38 @@ Deno.serve(async (req) => {
         results.push({ id: r.id, status: "failed", error: "timeout" });
         continue;
       }
-      let handles: { request_id?: string; status_url?: string; response_url?: string; image_url?: string } = {};
-      try { handles = r.error ? JSON.parse(r.error) : {}; } catch { /* noop */ }
+      // provider_handles trägt die Warteschlangen-Kennungen (Teil 10a) — vorher lagen sie in
+      // error und wurden beim Scheitern überschrieben. Alte, so noch nie gepollte Zeilen lesen
+      // wir zur Sicherheit auch noch aus error (legacy-Fallback), nie umgekehrt.
+      let handles = (r.provider_handles ?? {}) as { request_id?: string; status_url?: string; response_url?: string; image_url?: string };
+      if (!handles.status_url && r.error) {
+        try { handles = JSON.parse(r.error); } catch { /* noop */ }
+      }
       if (!handles.status_url) {
         results.push({ id: r.id, status: r.status });
         continue;
       }
       try {
         const sr = await fetch(handles.status_url, { headers: { "Authorization": `Key ${FAL_KEY}` } });
-        const sj = await sr.json().catch(() => ({})) as { status?: string };
+        const sj = await sr.json().catch(() => ({})) as { status?: string; response_url?: string };
         const st = String(sj.status ?? "").toUpperCase();
         if (st === "COMPLETED" || st === "OK") {
-          const rr = await fetch(handles.response_url ?? handles.status_url, {
+          // response_url kommt bevorzugt aus der Statusantwort selbst (fal liefert es dort mit),
+          // ersatzweise aus den gespeicherten Handles — niemals ein Rückfall auf status_url, das
+          // liefert nur den Warteschlangen-Status zurück, nicht das Ergebnis (Ursache von
+          // no_video_url_in_response).
+          const responseUrl = sj.response_url || handles.response_url;
+          if (!responseUrl) {
+            results.push({ id: r.id, status: r.status });
+            continue;
+          }
+          const rr = await fetch(responseUrl, {
             headers: { "Authorization": `Key ${FAL_KEY}` },
           });
-          const rj = await rr.json().catch(() => ({})) as { video?: { url?: string }; url?: string };
-          const videoUrl = rj?.video?.url ?? rj?.url ?? "";
+          const rj = await rr.json().catch(() => ({})) as {
+            video?: { url?: string }; videos?: Array<{ url?: string }>; output?: { video?: { url?: string } }; url?: string;
+          };
+          const videoUrl = rj?.video?.url ?? rj?.videos?.[0]?.url ?? rj?.output?.video?.url ?? rj?.url ?? "";
           if (!videoUrl) {
             await admin.from("generation_requests").update({ status: "failed", error: "no_video_url_in_response" } as never).eq("id", r.id);
             results.push({ id: r.id, status: "failed", error: "no_video_url" });

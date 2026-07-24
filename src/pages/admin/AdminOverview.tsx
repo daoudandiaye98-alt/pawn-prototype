@@ -494,6 +494,7 @@ const ORGANS: { mode: string; label: string; desc: string; keywords: string[] }[
   { mode: "bewerbung_pruefen", label: "Postfach-Auge", desc: "Prüft eingegangene Designer-Bewerbungen.", keywords: ["bewerbung", "pruefen"] },
   { mode: "kampagnen_regie", label: "Regisseur", desc: "Wertet Première-Performance aus, passt Vorlieben an.", keywords: ["regie"] },
   { mode: "evolution", label: "Evolution", desc: "Testet und verwirft Parameter-Experimente.", keywords: ["evolution"] },
+  { mode: "broll_einsammeln", label: "Einsammeln", desc: "Holt fertige kinematische Clips ab, auch bei geschlossenem Studio-Fenster.", keywords: ["broll", "einsammeln"] },
 ];
 
 function humanizeCron(expr: string): string {
