@@ -66,12 +66,14 @@ Deno.serve(async (req) => {
     // Signatur gesetzt → stärkste verfügbare i2v-Klasse + Rezept ins Bewegungs-Prompt falten.
     let model = videoCfg.model ?? DEFAULT_MODEL;
     let designerPrompt = body.motion_prompt ?? "";
+    let usedPremium = false;
     if (body.signature_id) {
       const { data: sig } = await admin.from("house_signatures")
         .select("recipe").eq("id", body.signature_id).maybeSingle();
       const recipe = (sig as { recipe?: Record<string, string> } | null)?.recipe;
       if (recipe) {
         model = videoCfg.model_premium ?? "fal-ai/kling-video/v2.1/standard/image-to-video";
+        usedPremium = true;
         const bits = [recipe.licht, recipe.palette, recipe.kamerafahrt].filter(Boolean).join(", ");
         designerPrompt = [designerPrompt, bits].filter(Boolean).join(", ");
       }
@@ -84,9 +86,28 @@ Deno.serve(async (req) => {
     const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
     const brollClipCents = ((costsCfg?.value as { broll_clip?: number } | null)?.broll_clip) ?? 35;
 
+    const { data: creditCostsCfg } = await admin.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle();
+    const creditCosts = (creditCostsCfg?.value as { clip_standard?: number; clip_premium?: number } | null) ?? {};
+    const clipCreditCost = usedPremium ? (creditCosts.clip_premium ?? 12) : (creditCosts.clip_standard ?? 5);
+    const clipAction = usedPremium ? "clip_premium" : "clip_standard";
+
     // Submit each image to fal Queue.
     const submissions = [];
     for (const image_url of images) {
+      if (!isAdmin) {
+        const { data: check } = await admin.rpc("book_credit_spend", {
+          _designer_id: camp.designer_id, _action: clipAction, _credits: clipCreditCost, _check_only: true,
+        });
+        const c = check as { ok?: boolean; balance?: number } | null;
+        if (!c?.ok) {
+          submissions.push({
+            image_url,
+            error: `Nicht genug Credits — dieser Clip kostet ${clipCreditCost}, du hast noch ${c?.balance ?? 0}.`,
+            status: 402,
+          });
+          continue;
+        }
+      }
       try {
         const r = await fetch(`https://queue.fal.run/${model}`, {
           method: "POST",
@@ -118,6 +139,9 @@ Deno.serve(async (req) => {
         } as never).select("id").single();
         // Bucht die Ist-Kosten gegen das Monatsbudget des Hauses (informativ, blockiert nicht).
         try { await admin.rpc("book_ai_spend", { _designer_id: camp.designer_id, _cents: brollClipCents }); } catch { /* noop */ }
+        if (!isAdmin) {
+          try { await admin.rpc("book_credit_spend", { _designer_id: camp.designer_id, _action: clipAction, _credits: clipCreditCost, _model: model }); } catch { /* noop */ }
+        }
         submissions.push({ id: (row as { id: string }).id, request_id, image_url });
       } catch (e) {
         submissions.push({ image_url, error: String((e as Error).message) });

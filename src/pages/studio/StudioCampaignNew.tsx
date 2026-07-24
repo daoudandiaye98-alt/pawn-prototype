@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { renderCampaign, blobPreviewUrl, type Tempo, type Format } from "@/features/campaign/renderer";
 import { randomSeed } from "@/features/campaign/prng";
-import { useCampaignQuota, planLabel, type Plan } from "@/features/campaign/quota";
+import { useCredits, planLabel, type Plan } from "@/features/campaign/quota";
 import { Check, Upload, Sparkles, Music, ArrowRight, Wand2, Shuffle, Image as ImageIcon, Clapperboard, X, ChevronDown } from "lucide-react";
 
 
@@ -140,10 +140,12 @@ export default function StudioCampaignNew() {
   const [cinematicModel, setCinematicModel] = useState<string | null>(null);
   const [lastDurationMs, setLastDurationMs] = useState<number>(0);
 
-  // Quota
+  // Credits
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const quota = useCampaignQuota(designer?.id, plan, isAdmin);
-  const cinematicAllowed = true;
+  const credits = useCredits(designer?.id, plan, isAdmin);
+  const clipCreditCost = credits.costs.clip_standard ?? 5;
+  const clipPremiumCost = credits.costs.clip_premium ?? 12;
+  const cinematicCost = chosenSignatureId ? clipPremiumCost : clipCreditCost;
 
 
   // Load consent + products.
@@ -445,10 +447,13 @@ export default function StudioCampaignNew() {
     if (submissions.length === 0) {
       setCinematicStage("failed");
       const firstErr = failedSubs[0];
-      const isCredit = firstErr && (firstErr.status === 402 || /guthaben|credit|402|insufficient/i.test(firstErr.error));
-      throw new Error(isCredit
-        ? "fal.ai-Guthaben fehlt — bitte im fal.ai-Konto Credits aufladen und erneut versuchen."
-        : `Provider hat keine Aufträge angenommen: ${firstErr?.error ?? "unbekannter Fehler"}`);
+      const isPawnCredits = firstErr && /nicht genug credits/i.test(firstErr.error);
+      const isFalGuthaben = firstErr && !isPawnCredits && (firstErr.status === 402 || /guthaben|credit|insufficient/i.test(firstErr.error));
+      throw new Error(isPawnCredits
+        ? firstErr.error
+        : isFalGuthaben
+          ? "fal.ai-Guthaben fehlt — bitte im fal.ai-Konto Credits aufladen und erneut versuchen."
+          : `Provider hat keine Aufträge angenommen: ${firstErr?.error ?? "unbekannter Fehler"}`);
     }
 
     setCinematicStage("polling");
@@ -502,7 +507,7 @@ export default function StudioCampaignNew() {
 
     const baseImages = chosenImages.slice(0, 4);
     let sources: Array<{ image?: string; clip?: string }> | undefined;
-    const useCinematic = cinematic && quota.kinematicAllowed && !quota.kinematicAtLimit;
+    const useCinematic = cinematic && credits.canAfford(cinematicCost);
 
     if (useCinematic) {
       try {
@@ -736,11 +741,14 @@ export default function StudioCampaignNew() {
               <p className="editorial-eyebrow">Dein Plan</p>
               <p className="mt-2 font-serif text-xl">{planLabel(plan)}</p>
               <p className="mt-3 text-sm">
-                Kampagnen diesen Monat: <span className="tabular-nums font-medium">{quota.used}</span> von <span className="tabular-nums">{quota.limit}</span>.
+                Guthaben diesen Monat: <span className="tabular-nums font-medium">{credits.balance}</span> von <span className="tabular-nums">{credits.grant}</span> Credits.
               </p>
-              {quota.atLimit && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Fotos ohne KI-Werkzeuge kosten nichts. Freisteller, Model-Shots und echte Bewegung ziehen vom Guthaben ab.
+              </p>
+              {credits.balance === 0 && (
                 <div className="mt-4 border border-foreground p-3 text-sm">
-                  Dein Kontingent für diesen Monat ist ausgeschöpft. <Link to="/studio/plan" className="underline">Plan ansehen</Link>.
+                  Dein Guthaben für diesen Monat ist aufgebraucht. <Link to="/studio/plan" className="underline">Mehr Credits ansehen</Link>.
                 </div>
               )}
             </div>
@@ -783,7 +791,7 @@ export default function StudioCampaignNew() {
           <div className="lg:col-span-2 flex justify-end">
             <button
               onClick={() => setStep(1)}
-              disabled={!outputType || consentOk !== true || mediaRightsGranted !== true || quota.atLimit}
+              disabled={!outputType || consentOk !== true || mediaRightsGranted !== true}
               className="flex items-center gap-2 border border-foreground bg-foreground px-6 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40"
             >
               Weiter zu Material <ArrowRight className="h-3.5 w-3.5" />
@@ -836,9 +844,9 @@ export default function StudioCampaignNew() {
                   {uploaded.map((u, i) => (
                     <div key={i} className="border border-border bg-white p-1">
                       <img src={u.url} alt="" className="aspect-square w-full object-cover grayscale" />
-                      <button type="button" onClick={() => requestFreistellerForUpload(i)} disabled={freistellerBusy === i}
+                      <button type="button" onClick={() => requestFreistellerForUpload(i)} disabled={freistellerBusy === i || !credits.canAfford(credits.costs.product_shot ?? 1)}
                         className="mt-1 flex min-h-[36px] w-full items-center justify-center gap-1.5 border border-foreground bg-white px-2 py-1.5 text-[0.6rem] uppercase tracking-wide hover:bg-foreground hover:text-background disabled:opacity-60">
-                        <Sparkles className="h-3 w-3" /> {freistellerBusy === i ? "…" : "Freisteller"}
+                        <Sparkles className="h-3 w-3" /> {freistellerBusy === i ? "…" : `Freisteller · ${credits.costs.product_shot ?? 1} Cr.`}
                       </button>
                     </div>
                   ))}
@@ -846,7 +854,7 @@ export default function StudioCampaignNew() {
               )}
             </div>
             <InfoBox>
-              <p><strong>Freisteller</strong> setzt dein Foto auf einen neutralen, weißen Hintergrund — wie im professionellen Fotostudio. Dauert etwa 10–25 Sekunden. Zählt zu deinem monatlichen Studio-Foto-Kontingent (siehe <Link to="/studio/plan" className="underline">Plan</Link>).</p>
+              <p><strong>Freisteller</strong> setzt dein Foto auf einen neutralen, weißen Hintergrund — wie im professionellen Fotostudio. Dauert etwa 10–25 Sekunden. Kostet {credits.costs.product_shot ?? 1} Credits — du hast {credits.balance} (siehe <Link to="/studio/plan" className="underline">Plan</Link>).</p>
             </InfoBox>
           </section>
 
@@ -854,13 +862,14 @@ export default function StudioCampaignNew() {
             <div className="border border-border bg-white p-4">
               <p className="editorial-eyebrow">Für dein gewähltes Stück</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={requestFreistellerForProduct} disabled={freistellerBusy === "product"}
+                <button type="button" onClick={requestFreistellerForProduct} disabled={freistellerBusy === "product" || !credits.canAfford(credits.costs.product_shot ?? 1)}
                   className="inline-flex min-h-[40px] items-center gap-1.5 border border-foreground bg-white px-3 py-1.5 text-[0.68rem] uppercase tracking-wide hover:bg-foreground hover:text-background disabled:opacity-60">
-                  <Sparkles className="h-3 w-3" /> {freistellerBusy === "product" ? "…" : "Freisteller"}
+                  <Sparkles className="h-3 w-3" /> {freistellerBusy === "product" ? "…" : `Freisteller · ${credits.costs.product_shot ?? 1} Credits`}
                 </button>
               </div>
               <p className="mt-3 text-sm text-muted-foreground">
                 Aus deinem Foto wird ein Model-Shot — mit KI-Model, das dein Stück trägt. Das Ergebnis ersetzt das gewählte Foto im Material.
+                Kostet {credits.costs.tryon_shot ?? 2} Credits — du hast {credits.balance}.
               </p>
               <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{tryonDisclosure}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -870,9 +879,9 @@ export default function StudioCampaignNew() {
                     {s.charAt(0).toUpperCase() + s.slice(1)}
                   </button>
                 ))}
-                <button type="button" onClick={requestTryonForChosen} disabled={tryonBusy}
+                <button type="button" onClick={requestTryonForChosen} disabled={tryonBusy || !credits.canAfford(credits.costs.tryon_shot ?? 2)}
                   className="min-h-[40px] border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] uppercase tracking-widest text-background disabled:opacity-60">
-                  {tryonBusy ? "KI arbeitet…" : (tryonReplacement ? "Neu erzeugen" : "Model-Shot erzeugen")}
+                  {tryonBusy ? "KI arbeitet…" : (tryonReplacement ? "Neu erzeugen" : `Model-Shot erzeugen · ${credits.costs.tryon_shot ?? 2} Credits`)}
                 </button>
               </div>
               {(tryonReplacement || productShotResult) && (
@@ -990,22 +999,15 @@ export default function StudioCampaignNew() {
                 )}
 
                 <p className="editorial-eyebrow mt-8">Echte Bewegung (statt Standbildern)</p>
-                {!quota.kinematicAllowed ? (
+                {!credits.canAfford(cinematicCost) ? (
                   <div className="mt-3 border border-foreground bg-white p-4">
-                    <p className="font-serif text-base">Ab Atelier: echte KI-Bewegung statt Standbildern.</p>
+                    <p className="font-serif text-base">Nicht genug Credits für echte Bewegung.</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Der Haus-Plan produziert in der ruhigen Editorial-Regie. Echte Bewegung ist ab Atelier dabei.
+                      Kostet {cinematicCost} Credits pro Foto — du hast noch {credits.balance}. Restliche Videos entstehen in der Editorial-Regie.
                     </p>
                     <Link to="/studio/plan" className="mt-3 inline-block border border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.22em] text-background">
-                      Plan ansehen
+                      Mehr Credits ansehen
                     </Link>
-                  </div>
-                ) : quota.kinematicAtLimit ? (
-                  <div className="mt-3 border border-foreground bg-white p-4">
-                    <p className="font-serif text-base">Kontingent für echte Bewegung diesen Monat aufgebraucht.</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {quota.kinematicUsed} von {quota.kinematicLimit} verbraucht. Restliche Videos entstehen in der Editorial-Regie.
-                    </p>
                   </div>
                 ) : (
                   <div className={`mt-3 border ${cinematic ? "border-foreground" : "border-border"} bg-white p-4`}>
@@ -1019,13 +1021,12 @@ export default function StudioCampaignNew() {
                       <div>
                         <p className="font-serif text-base">Echte KI-Bewegung statt Standbildern.</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          PAWN erzeugt für jedes Foto einen kurzen Clip in deiner Regie.
-                          {quota.kinematicLimit !== Infinity && ` Noch ${quota.kinematicLimit - quota.kinematicUsed} von ${quota.kinematicLimit} diesen Monat.`}
+                          PAWN erzeugt für jedes Foto einen kurzen Clip in deiner Regie. Kostet {cinematicCost} Credits pro Foto — du hast {credits.balance}.
                         </p>
                       </div>
                     </label>
                     <InfoBox>
-                      <p>PAWN schickt jedes Foto an einen externen Bild-zu-Video-Dienst und wartet auf das Ergebnis — meist 1–2 Minuten pro Foto. Jeder gelungene Clip verbraucht einen Platz deines monatlichen Kontingents für echte Bewegung. Schlägt ein Clip fehl, bleibt das Foto als ruhige Einstellung im Video.</p>
+                      <p>PAWN schickt jedes Foto an einen externen Bild-zu-Video-Dienst und wartet auf das Ergebnis — meist 1–2 Minuten pro Foto. Jeder gelungene Clip zieht {cinematicCost} Credits von deinem Guthaben ab. Schlägt ein Clip fehl, bleibt das Foto als ruhige Einstellung im Video und es werden keine Credits abgezogen.</p>
                     </InfoBox>
                   </div>
                 )}
@@ -1102,20 +1103,13 @@ export default function StudioCampaignNew() {
       {/* SCHRITT 3 — Video: Produktion */}
       {step === 3 && outputType === "video" && (
         <div className="mt-8 space-y-6">
-          {quota.atLimit ? (
-            <div className="border border-foreground bg-white p-8 text-center">
-              <p className="editorial-eyebrow">Kontingent erreicht</p>
-              <h3 className="mt-3 font-serif text-2xl">Dein Plan {planLabel(plan)} ist für diesen Monat voll.</h3>
-              <p className="mt-3 text-sm text-muted-foreground">Wechsle in einen größeren Plan oder warte auf den nächsten Monat.</p>
-              <Link to="/studio/plan" className="mt-6 inline-block border border-foreground bg-foreground px-6 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background">Plan ansehen</Link>
-            </div>
-          ) : (
-            <>
+          <>
               <div className="border border-border bg-white p-4">
                 <p className="editorial-eyebrow">Zusammenfassung</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {chosenImages.length} Foto{chosenImages.length === 1 ? "" : "s"} → 1 Video ({format === "9:16" ? "Reel" : "Feed"}).
-                  {cinematic && quota.kinematicAllowed && !quota.kinematicAtLimit && ` Davon bis zu ${Math.min(chosenImages.length, 3)} mit echter Bewegung — verbraucht bis zu ${Math.min(chosenImages.length, 3)} von ${quota.kinematicLimit === Infinity ? "unbegrenzt" : quota.kinematicLimit} im Kontingent.`}
+                  {cinematic && credits.canAfford(cinematicCost) && ` Davon bis zu ${Math.min(chosenImages.length, 3)} mit echter Bewegung — kostet bis zu ${Math.min(chosenImages.length, 3) * cinematicCost} Credits (du hast ${credits.balance}).`}
+                  {" "}Rest kostet nichts.
                 </p>
               </div>
               <div className="grid gap-8 lg:grid-cols-[1fr_.6fr]">
@@ -1205,7 +1199,6 @@ export default function StudioCampaignNew() {
                 </div>
               </div>
             </>
-          )}
           <div className="flex items-center justify-between">
             <button onClick={() => setStep(2)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
           </div>

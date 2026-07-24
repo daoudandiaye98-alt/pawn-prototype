@@ -28,6 +28,17 @@ Deno.serve(async (req) => {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // Credits nachgekauft (Teil 11a) — Gutschrift direkt anhand der Session-Metadaten, unabhängig
+      // von der orders-Tabelle (die ist für Marktplatz-Käufe mit Produkt-Slugs gedacht).
+      const meta = session.metadata as Record<string, string> | null;
+      if (meta?.kind === "credits" && meta.designer_id) {
+        const creditsAmount = parseInt(meta.credits ?? "0", 10);
+        if (creditsAmount > 0) {
+          try { await admin.rpc("grant_credits", { _designer_id: meta.designer_id, _credits: creditsAmount, _note: "kauf" }); } catch { /* best effort */ }
+        }
+      }
+
       const { data: order } = await admin.from("orders")
         .update({ status: "paid" }).eq("stripe_session_id", session.id).select().maybeSingle();
 

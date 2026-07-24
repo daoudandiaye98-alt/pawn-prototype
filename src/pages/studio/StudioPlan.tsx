@@ -9,7 +9,7 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useCampaignQuota, planLabel, type Plan, type PlanLimits } from "@/features/campaign/quota";
+import { useCredits, planLabel, creditExample, type Plan } from "@/features/campaign/quota";
 import { PlanFunnel } from "@/components/pawn/PlanFunnel";
 import { useContentValue } from "@/components/palace/Editable";
 import { Check, Sparkles } from "lucide-react";
@@ -49,11 +49,19 @@ interface PlanPrices {
   maison?: { eur_month?: number; stripe_price_id?: string | null };
 }
 interface ExampleVideo { plan: Plan; url: string }
+interface CreditPack { id: string; credits: number; eur: number; stripe_price_id: string | null }
+interface CreditHistoryItem { at: string; action: string; model: string | null; credits: number }
+interface PlanLimitEntry { signature_previews: number; emblem: boolean; tier: number }
 
 function fmt(n: number): string { return n < 0 ? "alle" : String(n); }
 
-function BudgetCircle({ spentCents, limitCents }: { spentCents: number; limitCents: number }) {
-  const pct = limitCents > 0 ? Math.min(1, spentCents / limitCents) : 0;
+const ACTION_LABEL: Record<string, string> = {
+  product_shot: "Freisteller", tryon_shot: "Model-Shot", tryon_clip: "Model-Clip",
+  clip_standard: "Kinematischer Clip", clip_premium: "Kinematischer Clip (Signatur)", kauf: "Aufgeladen",
+};
+
+function CreditCircle({ balance, grant }: { balance: number; grant: number }) {
+  const pct = grant > 0 ? Math.min(1, balance / grant) : 0;
   const r = 42, c = 2 * Math.PI * r;
   return (
     <div className="flex items-center gap-4">
@@ -64,17 +72,15 @@ function BudgetCircle({ spentCents, limitCents }: { spentCents: number; limitCen
           strokeDasharray={c} strokeDashoffset={c * (1 - pct)}
           strokeLinecap="butt" transform="rotate(-90 50 50)"
         />
-        <text x="50" y="54" textAnchor="middle" fontSize="16" fontFamily="Inter, sans-serif">
-          {limitCents > 0 ? `${Math.round(pct * 100)}%` : "—"}
+        <text x="50" y="54" textAnchor="middle" fontSize="16" fontFamily="Inter, sans-serif" fontWeight="600">
+          {grant > 0 ? balance : "—"}
         </text>
       </svg>
       <div>
-        <p className="editorial-eyebrow">KI-Budget diesen Monat</p>
-        <p className="mt-1 font-serif text-lg tabular-nums">
-          {(spentCents / 100).toFixed(2)} € {limitCents > 0 ? `von ${(limitCents / 100).toFixed(2)} €` : "(im Haus-Plan nicht enthalten)"}
-        </p>
+        <p className="editorial-eyebrow">Guthaben diesen Monat</p>
+        <p className="mt-1 font-serif text-lg tabular-nums">{balance} von {grant} Credits</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Läuft im Hintergrund mit — die Kontingente oben bleiben, was zählt.
+          Fotos ohne KI-Werkzeuge kosten nichts. Ungenutzte Credits verfallen zum Monatsende.
         </p>
       </div>
     </div>
@@ -85,29 +91,64 @@ export default function StudioPlan() {
   const { user } = useAuth();
   const { designer } = useMyDesigner();
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const quota = useCampaignQuota(designer?.id, plan);
+  const credits = useCredits(designer?.id, plan);
   const [prices, setPrices] = useState<PlanPrices>({});
   const [busy, setBusy] = useState<Plan | null>(null);
-  const [budget, setBudget] = useState<{ spent_cents: number; limit_cents: number } | null>(null);
+  const [buyBusy, setBuyBusy] = useState<string | null>(null);
   const [examples, setExamples] = useState<Partial<Record<Plan, string>>>({});
+  const [planCreditsAll, setPlanCreditsAll] = useState<Record<Plan, number>>({ haus: 30, atelier: 300, maison: 1200 });
+  const [planLimits, setPlanLimits] = useState<Record<Plan, PlanLimitEntry>>({
+    haus: { signature_previews: 1, emblem: true, tier: 1 },
+    atelier: { signature_previews: 3, emblem: false, tier: 2 },
+    maison: { signature_previews: -1, emblem: false, tier: 3 },
+  });
+  const [packs, setPacks] = useState<CreditPack[]>([]);
+  const [history, setHistory] = useState<CreditHistoryItem[]>([]);
 
   useEffect(() => {
     supabase.from("ai_config").select("value").eq("key", "plan_prices").maybeSingle()
       .then(({ data }) => data?.value && setPrices(data.value as unknown as PlanPrices));
+    supabase.from("ai_config").select("value").eq("key", "plan_credits").maybeSingle()
+      .then(({ data }) => data?.value && setPlanCreditsAll((prev) => ({ ...prev, ...(data.value as Partial<Record<Plan, number>>) })));
+    supabase.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle()
+      .then(({ data }) => data?.value && setPlanLimits((prev) => ({ ...prev, ...(data.value as unknown as Record<Plan, PlanLimitEntry>) })));
+    supabase.from("ai_config").select("value").eq("key", "credit_packs").maybeSingle()
+      .then(({ data }) => Array.isArray(data?.value) && setPacks(data.value as unknown as CreditPack[]));
   }, []);
 
   useEffect(() => {
     if (!designer) return;
     const month = new Date().toISOString().slice(0, 7);
-    void Promise.all([
-      supabase.from("ai_budget_ledger" as never).select("spent_cents").eq("designer_id", designer.id).eq("month", month).maybeSingle(),
-      supabase.from("ai_config").select("value").eq("key", "ai_budget_limits").maybeSingle(),
-    ]).then(([{ data: ledger }, { data: limitsCfg }]) => {
-      const spent = (ledger as unknown as { spent_cents?: number } | null)?.spent_cents ?? 0;
-      const limitsVal = (limitsCfg?.value as Record<string, number> | null) ?? {};
-      setBudget({ spent_cents: spent, limit_cents: limitsVal[plan] ?? 0 });
-    });
-  }, [designer, plan]);
+    void supabase.from("credits_ledger" as never).select("history").eq("designer_id", designer.id).eq("month", month).maybeSingle()
+      .then(({ data }) => {
+        const row = data as unknown as { history?: CreditHistoryItem[] } | null;
+        setHistory(((row?.history ?? []) as CreditHistoryItem[]).slice().reverse());
+      });
+  }, [designer, plan, credits.balance]);
+
+  const buyPack = async (pack: CreditPack) => {
+    if (!user || !designer) { toast.error("Bitte melde dich an."); return; }
+    if (!pack.stripe_price_id) return;
+    setBuyBusy(pack.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          mode: "credits", price_id: pack.stripe_price_id, credits: pack.credits,
+          success_url: `${window.location.origin}/studio/plan?credits=1`,
+          cancel_url: `${window.location.origin}/studio/plan`,
+          customer_email: user.email,
+        },
+      });
+      if (error) throw error;
+      const url = (data as { url?: string; message?: string })?.url;
+      if (url) window.location.href = url;
+      else toast.error((data as { message?: string })?.message ?? "Kauf konnte nicht gestartet werden.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBuyBusy(null);
+    }
+  };
 
   useEffect(() => {
     void supabase.from("video_assets" as never)
@@ -125,8 +166,6 @@ export default function StudioPlan() {
         setExamples(byPlan);
       });
   }, []);
-
-  const limits: PlanLimits = quota.limits;
 
   const headlineHaus = useContentValue("studio_plan.haus.headline", HEADLINES.haus);
   const headlineAtelier = useContentValue("studio_plan.atelier.headline", HEADLINES.atelier);
@@ -187,13 +226,12 @@ export default function StudioPlan() {
   };
 
   const benefitsFor = (p: Plan): string[] => {
-    const l = limits[p];
-    const videoLine = p === "haus"
-      ? `${fmt(l.videos_per_month)} Kampagnen-Videos pro Monat (Editorial-Regie, PAWN-Emblem im Abspann)`
-      : `${fmt(l.videos_per_month)} Kampagnen-Videos pro Monat, davon ${fmt(l.kinematic_videos_per_month)} kinematisch (✦ KI-Bewegtbild, ohne Emblem)`;
+    const pc = planCreditsAll[p] ?? 0;
+    const l = planLimits[p];
+    const creditsLine = `${pc} Credits pro Monat${p === "haus" ? " (Editorial-Regie kostenlos, PAWN-Emblem im Abspann)" : " — Editorial-Regie bleibt immer kostenlos"}`;
+    const exampleLine = creditExample(pc, credits.costs);
     const sigLine = `${fmt(l.signature_previews)} Signatur${l.signature_previews === 1 ? "-Kostprobe" : "en"}${p === "maison" ? " + 1 Wunsch-Signatur" : ""}`;
-    const toolsLine = `${fmt(l.tryon_shots_per_month)} Try-Ons${l.product_shots_per_month !== l.tryon_shots_per_month || p === "haus" ? ` · ${fmt(l.product_shots_per_month)} Produkt-Shots` : " + Produkt-Shots"}`;
-    return [videoLine, sigLine, toolsLine, ...resolvedStaticBenefits[p]];
+    return [creditsLine, exampleLine, sigLine, ...resolvedStaticBenefits[p]].filter(Boolean);
   };
 
   return (
@@ -212,12 +250,46 @@ export default function StudioPlan() {
       </div>
 
       <p className="mt-8 text-sm">
-        Aktuell: <span className="font-medium">{planLabel(plan)}</span> · {quota.used} von {Number.isFinite(quota.limit) ? quota.limit : "∞"} Kampagnen diesen Monat.
+        Aktuell: <span className="font-medium">{planLabel(plan)}</span>.
       </p>
 
-      {budget && (
+      {!credits.loading && (
         <div className="mt-4 max-w-md border border-border bg-white p-5">
-          <BudgetCircle spentCents={budget.spent_cents} limitCents={budget.limit_cents} />
+          <CreditCircle balance={credits.balance} grant={credits.grant} />
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-4 max-w-md border border-border bg-white p-5">
+          <p className="editorial-eyebrow">Verlauf diesen Monat</p>
+          <ul className="mt-3 space-y-1.5 text-sm">
+            {history.slice(0, 10).map((h, i) => (
+              <li key={i} className="flex items-center justify-between gap-3 text-muted-foreground">
+                <span>{new Date(h.at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} · {ACTION_LABEL[h.action] ?? h.action}</span>
+                <span className={`tabular-nums ${h.credits > 0 ? "text-emerald-700" : ""}`}>{h.credits > 0 ? "+" : ""}{h.credits}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {packs.length > 0 && (
+        <div className="mt-4 max-w-2xl border border-border bg-white p-5">
+          <p className="editorial-eyebrow">Credits nachkaufen</p>
+          <p className="mt-1 text-sm text-muted-foreground">Zusätzlich zum monatlichen Guthaben — verfällt nicht zum Monatsende.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {packs.map((p) => (
+              <div key={p.id} className="border border-border p-4 text-center">
+                <p className="font-serif text-2xl tabular-nums">{p.credits}</p>
+                <p className="text-xs text-muted-foreground">Credits</p>
+                <p className="mt-2 tabular-nums">{p.eur} €</p>
+                <button onClick={() => buyPack(p)} disabled={!p.stripe_price_id || buyBusy === p.id}
+                  className="mt-3 w-full border border-foreground bg-foreground px-3 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-background disabled:opacity-40">
+                  {!p.stripe_price_id ? "Bald verfügbar" : buyBusy === p.id ? "…" : "Kaufen"}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

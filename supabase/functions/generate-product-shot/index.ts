@@ -64,23 +64,19 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user_id, _role: "admin" });
     if (!isAdmin && p.designers.user_id !== user_id) return json({ error: "forbidden" }, 403);
 
+    const { data: creditCostsCfg } = await admin.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle();
+    const shotCost = ((creditCostsCfg?.value as { product_shot?: number } | null)?.product_shot) ?? 1;
+
     if (!isAdmin) {
-      const plan = p.designers.plan ?? "haus";
-      const { data: planLimitsRow } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
-      const shotLimit = ((planLimitsRow?.value as Record<string, { product_shots_per_month?: number }> | null)?.[plan]?.product_shots_per_month) ?? 5;
-      if (shotLimit >= 0) {
-        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-        const { count } = await admin.from("product_shot_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("designer_id", p.designer_id)
-          .eq("mode", "studio")
-          .gte("created_at", monthStart.toISOString());
-        if ((count ?? 0) >= shotLimit) {
-          return json({
-            error: "quota_exceeded",
-            message: `Dein Studio-Foto-Kontingent für diesen Monat (${shotLimit}) ist aufgebraucht. Mehr geht mit einem größeren Plan.`,
-          }, 200);
-        }
+      const { data: check } = await admin.rpc("book_credit_spend", {
+        _designer_id: p.designer_id, _action: "product_shot", _credits: shotCost, _check_only: true,
+      });
+      const c = check as { ok?: boolean; balance?: number } | null;
+      if (!c?.ok) {
+        return json({
+          error: "insufficient_credits",
+          message: `Dieser Freisteller kostet ${shotCost} Credits — du hast noch ${c?.balance ?? 0}. Mehr Credits gibt es im Plan.`,
+        }, 200);
       }
     }
 
@@ -173,9 +169,12 @@ Deno.serve(async (req) => {
       status: "done", result_url: finalUrl, error: null,
     } as never).eq("id", request_id);
 
-    const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
-    const productShotCents = ((costsCfg?.value as { product_shot?: number } | null)?.product_shot) ?? 6;
+    const { data: costsCentsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
+    const productShotCents = ((costsCentsCfg?.value as { product_shot?: number } | null)?.product_shot) ?? 6;
     try { await admin.rpc("book_ai_spend", { _designer_id: p.designer_id, _cents: productShotCents }); } catch { /* noop */ }
+    if (!isAdmin) {
+      try { await admin.rpc("book_credit_spend", { _designer_id: p.designer_id, _action: "product_shot", _credits: shotCost }); } catch { /* noop */ }
+    }
 
     return json({ ok: true, request_id, result_url: finalUrl }, 200);
   } catch (e) {
