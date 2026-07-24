@@ -53,7 +53,7 @@ export default function AdminWerbung() {
             <li key={r.id} className="flex items-center justify-between px-5 py-3 text-sm">
               <span className="font-mono text-[0.7rem] text-muted-foreground">{new Date(r.scheduled_at).toLocaleString("de-DE")}</span>
               <span className="text-[0.65rem] uppercase tracking-[0.22em]">{r.channel}</span>
-              <span className={`border px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em] ${r.status === "posted" ? "border-emerald-500/40 text-emerald-600" : r.status === "failed" ? "border-red-500/40 text-red-600" : "border-amber-500/40 text-amber-600"}`}>{r.status}</span>
+              <span className={`border px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em] ${r.status === "posted" ? "border-foreground text-foreground" : r.status === "failed" ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}>{r.status}</span>
             </li>
           ))}
           {queue.length === 0 && <li className="px-5 py-8 text-center text-sm text-muted-foreground">Noch keine geplanten Posts.</li>}

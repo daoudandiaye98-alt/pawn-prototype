@@ -61,10 +61,10 @@ export default function AdminAktionen() {
               <div className="min-w-0">
                 <p className="font-medium">{r.action} <span className="ml-2 text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">{r.source}</span></p>
                 <p className="mt-0.5 truncate font-mono text-[0.7rem] text-muted-foreground">{JSON.stringify(r.params)}</p>
-                {r.error && <p className="mt-0.5 text-[0.7rem] text-red-600">{r.error}</p>}
+                {r.error && <p className="mt-0.5 text-[0.7rem] text-foreground">{r.error}</p>}
               </div>
               <div className="flex items-center gap-2">
-                <span className={`border px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em] ${r.status === "done" ? "border-emerald-500/40 text-emerald-600" : r.status === "undone" ? "border-muted text-muted-foreground" : "border-red-500/40 text-red-600"}`}>{r.status}</span>
+                <span className={`border px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em] ${r.status === "done" ? "border-foreground text-foreground" : r.status === "undone" ? "border-muted text-muted-foreground" : "border-foreground bg-foreground text-background"}`}>{r.status}</span>
                 {r.status === "done" && UNDOABLE.has(r.action) && (
                   <button onClick={() => undo(r.id)} disabled={busy === r.id}
                     className="inline-flex items-center gap-1 border border-border px-2 py-1 text-[0.6rem] uppercase tracking-[0.22em] hover:bg-muted disabled:opacity-40">

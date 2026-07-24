@@ -34,8 +34,8 @@ function Sparkline({ points }: { points: number[] }) {
 }
 
 function MomentumIcon({ m }: { m: MomentumRow["momentum"] }) {
-  if (m === "steigend") return <ArrowUpRight className="h-4 w-4 text-emerald-600" />;
-  if (m === "fallend") return <ArrowDownRight className="h-4 w-4 text-rose-600" />;
+  if (m === "steigend") return <ArrowUpRight className="h-4 w-4 text-foreground" />;
+  if (m === "fallend") return <ArrowDownRight className="h-4 w-4 text-foreground" />;
   return <Minus className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -98,7 +98,7 @@ export default function AdminTrends() {
           Letzter Snapshot: {lastSnapshot ?? "—"}
         </span>
         <span className="inline-flex items-center gap-1.5 border-[1.5px] border-black bg-white px-2 py-1 text-[0.55rem] uppercase tracking-[0.28em] text-black">
-          <span className="inline-block h-[6px] w-[6px] rounded-full bg-emerald-600" />
+          <span className="inline-block h-[6px] w-[6px] rounded-full bg-black" />
           Automatik: täglich 03:15 UTC
         </span>
         <button onClick={recompute} disabled={computing}
@@ -140,7 +140,7 @@ export default function AdminTrends() {
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1.5 text-[0.72rem]">
                       <MomentumIcon m={r.momentum} />
-                      <span className={r.momentum === "steigend" ? "text-emerald-700" : r.momentum === "fallend" ? "text-rose-700" : "text-muted-foreground"}>{r.momentum}</span>
+                      <span className={r.momentum === "steigend" || r.momentum === "fallend" ? "text-foreground" : "text-muted-foreground"}>{r.momentum}</span>
                       {r.slope !== 0 && (
                         <span className="text-[0.65rem] text-muted-foreground">
                           {r.slope > 0 ? "+" : ""}{Number(r.slope).toFixed(1)}

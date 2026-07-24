@@ -154,11 +154,11 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
           <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border bg-white text-foreground shadow-2xl">
             <header className="flex h-16 items-center justify-between border-b border-border px-6">
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B0B0D] text-white">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-white">
                   <Sparkles className="h-3.5 w-3.5" />
                 </span>
                 <div>
-                  <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">PAWN Copilot {isAdmin && <span className="ml-1 text-emerald-600">· mit Händen</span>}</p>
+                  <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">PAWN Copilot {isAdmin && <span className="ml-1 font-medium text-foreground">· mit Händen</span>}</p>
                   <p className="font-serif text-base leading-none">Dein leiser Partner</p>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
                 if (m.role !== "action_result") return null;
                 const res = m;
                 return (
-                  <div key={i} className={`border px-3 py-2 text-sm ${res.ok ? "border-emerald-500/40 bg-emerald-50" : "border-red-500/40 bg-red-50"}`}>
+                  <div key={i} className={`border px-3 py-2 text-sm ${res.ok ? "border-border bg-muted" : "border-foreground bg-foreground text-background"}`}>
                     {res.ok ? <>✓ Aktion „{res.action}" ausgeführt.</> : <>✕ Fehler: {res.error}</>}
                     {res.ok && res.id && (
                       <button onClick={() => res.id && undoAction(res.id)} className="ml-3 inline-flex items-center gap-1 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground underline hover:text-foreground">
@@ -233,7 +233,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
                 placeholder={isAdmin ? "Kommando oder Frage…" : "Deine Frage…"}
                 className="flex-1 border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent" />
               <button onClick={() => send()} disabled={busy || !input.trim()}
-                className="flex h-10 w-10 items-center justify-center bg-[#0B0B0D] text-white disabled:opacity-40">
+                className="flex h-10 w-10 items-center justify-center bg-foreground text-white disabled:opacity-40">
                 <Send className="h-4 w-4" />
               </button>
             </div>

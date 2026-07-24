@@ -112,7 +112,7 @@ function AdminCopilotPill() {
     <div className="flex items-center gap-2">
       <button
         onClick={copilot.toggle}
-        className="flex items-center gap-2 rounded-full bg-[#0B0B0D] px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-black"
+        className="flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-foreground/90"
         title="Admin-Copilot öffnen"
       >
         <span className="relative flex h-2 w-2 items-center justify-center">

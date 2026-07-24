@@ -27,11 +27,11 @@ function Panel({
   className?: string; eyebrow?: string; live?: boolean;
 }) {
   return (
-    <section className={cn("flex flex-col border border-white/[0.07] bg-[hsl(18_10%_7%)]/70 backdrop-blur-[1px]", className)}>
+    <section className={cn("flex flex-col border border-white/[0.07] bg-[hsl(0_0%_7%)]/70 backdrop-blur-[1px]", className)}>
       <header className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
         <div className="flex items-center gap-3">
-          <h3 className="font-serif text-[15px] leading-none text-[hsl(36_25%_92%)]">{title}</h3>
-          {eyebrow && <span className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(36_15%_55%)]">{eyebrow}</span>}
+          <h3 className="font-serif text-[15px] leading-none text-[hsl(0_0%_92%)]">{title}</h3>
+          {eyebrow && <span className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">{eyebrow}</span>}
           {live && <LiveDot />}
         </div>
         {action}
@@ -43,10 +43,10 @@ function Panel({
 
 function LiveDot() {
   return (
-    <span className="inline-flex items-center gap-1.5 border border-emerald-500/30 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.22em] text-emerald-300/90">
+    <span className="inline-flex items-center gap-1.5 border border-white/30 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.22em] text-white/90">
       <span className="relative flex h-1.5 w-1.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-70" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
       </span>
       Live
     </span>
@@ -59,14 +59,14 @@ function Btn({
   return (
     <button onClick={onClick} disabled={disabled} className={cn(
       "border px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.2em] transition-colors disabled:opacity-40",
-      variant === "ghost" && "border-white/15 text-[hsl(36_25%_82%)] hover:border-white/40 hover:bg-white/[0.04]",
-      variant === "solid" && "border-[hsl(350_55%_35%)] bg-[hsl(350_55%_22%)] text-[hsl(36_28%_94%)] hover:bg-[hsl(350_55%_28%)]",
-      variant === "danger" && "border-red-500/40 text-red-200 hover:bg-red-500/10",
+      variant === "ghost" && "border-white/15 text-[hsl(0_0%_82%)] hover:border-white/40 hover:bg-white/[0.04]",
+      variant === "solid" && "border-[hsl(0_0%_35%)] bg-[hsl(0_0%_22%)] text-[hsl(0_0%_94%)] hover:bg-[hsl(0_0%_28%)]",
+      variant === "danger" && "border-white bg-white text-black hover:bg-white/85",
     )}>{children}</button>
   );
 }
 
-function Sparkline({ series, stroke = "hsl(350 55% 50%)", height = 28 }: { series: number[]; stroke?: string; height?: number }) {
+function Sparkline({ series, stroke = "hsl(0 0% 50%)", height = 28 }: { series: number[]; stroke?: string; height?: number }) {
   const width = 120;
   const max = Math.max(...series, 1); const min = Math.min(...series); const span = max - min || 1;
   const stepX = width / Math.max(series.length - 1, 1);
@@ -80,27 +80,26 @@ function KpiCell({
   label: string; value: string; delta?: string; trend?: "up" | "down" | "neutral";
   why?: string[]; series?: number[]; accent?: "wine" | "emerald" | "amber";
 }) {
-  const stroke = accent === "emerald" ? "hsl(160 55% 55%)" : accent === "amber" ? "hsl(38 90% 60%)" : "hsl(350 55% 55%)";
+  const stroke = accent === "emerald" ? "hsl(0 0% 55%)" : accent === "amber" ? "hsl(0 0% 60%)" : "hsl(0 0% 55%)";
   return (
-    <div className="group relative flex flex-col justify-between border border-white/[0.07] bg-[hsl(18_10%_6%)] p-5 transition-colors hover:bg-[hsl(18_10%_8%)]">
+    <div className="group relative flex flex-col justify-between border border-white/[0.07] bg-[hsl(0_0%_6%)] p-5 transition-colors hover:bg-[hsl(0_0%_8%)]">
       <div className="flex items-start justify-between">
-        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(36_15%_58%)]">{label}</p>
+        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_58%)]">{label}</p>
         {trend && (
           <span className={cn("text-[0.6rem]",
-            trend === "up" && "text-emerald-300/90",
-            trend === "down" && "text-red-300/90",
-            trend === "neutral" && "text-[hsl(36_15%_55%)]",
+            (trend === "up" || trend === "down") && "text-white/90",
+            trend === "neutral" && "text-[hsl(0_0%_55%)]",
           )}>{delta}</span>
         )}
       </div>
-      <p className="mt-4 font-serif text-[28px] leading-none tabular-nums text-[hsl(36_28%_94%)]">{value}</p>
+      <p className="mt-4 font-serif text-[28px] leading-none tabular-nums text-[hsl(0_0%_94%)]">{value}</p>
       {series && <div className="pointer-events-none mt-2 -mx-1 opacity-70"><Sparkline series={series} stroke={stroke} /></div>}
       {why && (
-        <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-[hsl(18_10%_5%)] via-[hsl(18_10%_5%)]/95 to-transparent p-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <p className="text-[0.55rem] uppercase tracking-[0.28em] text-[hsl(36_15%_55%)]">Warum</p>
-          <ul className="mt-2 space-y-1 text-[11px] leading-snug text-[hsl(36_25%_86%)]">
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-[hsl(0_0%_5%)] via-[hsl(0_0%_5%)]/95 to-transparent p-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <p className="text-[0.55rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Warum</p>
+          <ul className="mt-2 space-y-1 text-[11px] leading-snug text-[hsl(0_0%_86%)]">
             {why.map((w) => (
-              <li key={w} className="flex gap-2"><span className="mt-1.5 h-px w-2 shrink-0 bg-[hsl(350_55%_50%)]" /><span>{w}</span></li>
+              <li key={w} className="flex gap-2"><span className="mt-1.5 h-px w-2 shrink-0 bg-[hsl(0_0%_50%)]" /><span>{w}</span></li>
             ))}
           </ul>
         </div>
@@ -120,10 +119,10 @@ function LivePulseBar({ lastUpdated }: { lastUpdated: Date }) {
   const secondsAgo = Math.max(0, Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
   const label = secondsAgo < 60 ? `vor ${secondsAgo}s` : `vor ${Math.floor(secondsAgo / 60)}m`;
   return (
-    <div className="mt-3 flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.24em] text-[hsl(36_15%_55%)]">
+    <div className="mt-3 flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.24em] text-[hsl(0_0%_55%)]">
       <span className="relative flex h-1.5 w-1.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-70" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
       </span>
       Letzte Aktualisierung: {label}
     </div>
@@ -185,8 +184,8 @@ function EventTicker({ rows, loading }: { rows: { id: string; type: string; at: 
     <ul className="max-h-[360px] divide-y divide-white/[0.06] overflow-y-auto">
       {rows.map((e) => (
         <li key={e.id} className="px-5 py-3 text-[12px] animate-in fade-in slide-in-from-top-1 duration-500">
-          <p className="text-[hsl(36_25%_86%)]">{eventSentence(e.type)}</p>
-          <p className="mt-0.5 text-[10px] uppercase tracking-[0.2em] text-[hsl(36_15%_45%)]">
+          <p className="text-[hsl(0_0%_86%)]">{eventSentence(e.type)}</p>
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.2em] text-[hsl(0_0%_45%)]">
             {timeAgo(new Date(e.at).getTime())} · {e.type}
           </p>
         </li>
@@ -201,7 +200,7 @@ function HeartbeatDot({ ok }: { ok: boolean }) {
   return (
     <span className={cn(
       "inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
-      ok ? "border-[hsl(36_28%_94%)] bg-[hsl(36_28%_94%)]" : "border-white/25 bg-transparent",
+      ok ? "border-[hsl(0_0%_94%)] bg-[hsl(0_0%_94%)]" : "border-white/25 bg-transparent",
     )} />
   );
 }
@@ -227,8 +226,8 @@ function SystemHeartbeatPanel({ hb }: { hb: ReturnType<typeof useSystemHeartbeat
         <li key={r.label} className="flex items-center gap-3 px-5 py-3">
           <HeartbeatDot ok={r.ok} />
           <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] text-[hsl(36_28%_92%)]">{r.label}</p>
-            <p className="text-[10.5px] text-[hsl(36_15%_55%)]">{r.sub}</p>
+            <p className="text-[12.5px] text-[hsl(0_0%_92%)]">{r.label}</p>
+            <p className="text-[10.5px] text-[hsl(0_0%_55%)]">{r.sub}</p>
           </div>
         </li>
       ))}
@@ -268,7 +267,7 @@ function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof u
                 <div
                   key={s}
                   title={`${PULSE_STAGE_LABELS[s]}: ${count}`}
-                  className="flex items-center justify-center border-r border-white/10 bg-white/[0.04] text-[9px] uppercase tracking-[0.1em] text-[hsl(36_20%_78%)] last:border-r-0"
+                  className="flex items-center justify-center border-r border-white/10 bg-white/[0.04] text-[9px] uppercase tracking-[0.1em] text-[hsl(0_0%_78%)] last:border-r-0"
                   style={{ width: `${(count / total) * 100}%` }}
                 >
                   {count}
@@ -277,7 +276,7 @@ function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof u
             })}
           </div>
         )}
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9.5px] uppercase tracking-[0.14em] text-[hsl(36_15%_50%)]">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9.5px] uppercase tracking-[0.14em] text-[hsl(0_0%_50%)]">
           {PULSE_STAGES.map((s) => (
             <span key={s}>{PULSE_STAGE_LABELS[s]} · {pulse.loading ? "…" : pulse.stageCounts[s]}</span>
           ))}
@@ -286,13 +285,13 @@ function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof u
         <ul className="mt-4 divide-y divide-white/[0.05]">
           {tasks.map((t) => (
             <li key={t.label} className="flex items-center justify-between py-2 text-[12.5px]">
-              <span className="text-[hsl(36_25%_86%)]">
-                <span className="font-serif text-[16px] tabular-nums text-[hsl(36_28%_94%)]">{pulse.loading ? "…" : t.count}</span>{" "}
+              <span className="text-[hsl(0_0%_86%)]">
+                <span className="font-serif text-[16px] tabular-nums text-[hsl(0_0%_94%)]">{pulse.loading ? "…" : t.count}</span>{" "}
                 {t.label}
               </span>
               <button
                 onClick={() => navigate(`/admin/akquise?status=${t.status}`)}
-                className="text-[0.6rem] uppercase tracking-[0.2em] text-[hsl(36_20%_74%)] hover:text-[hsl(36_28%_94%)]"
+                className="text-[0.6rem] uppercase tracking-[0.2em] text-[hsl(0_0%_74%)] hover:text-[hsl(0_0%_94%)]"
               >
                 Öffnen →
               </button>
@@ -301,7 +300,7 @@ function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof u
         </ul>
       </div>
       <div className="p-5">
-        <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">Fortschritt gegen Ziel</p>
+        <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(0_0%_50%)]">Fortschritt gegen Ziel</p>
         <div className="mt-3 space-y-3">
           {(Object.keys(ACQUISITION_GOALS) as (keyof typeof ACQUISITION_GOALS)[]).map((w) => {
             const goal = ACQUISITION_GOALS[w];
@@ -309,7 +308,7 @@ function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof u
             const pct = Math.min(100, Math.round((count / goal) * 100));
             return (
               <div key={w}>
-                <div className="flex items-center justify-between text-[10.5px] text-[hsl(36_15%_55%)]">
+                <div className="flex items-center justify-between text-[10.5px] text-[hsl(0_0%_55%)]">
                   <span className="uppercase tracking-[0.18em]">{w}</span>
                   <span className="tabular-nums">{count} / {goal}</span>
                 </div>
@@ -331,7 +330,7 @@ function JarvisWordPanel({ report, onRequest, busy }: { report: ReturnType<typeo
   if (!report) {
     return (
       <div className="flex flex-col items-start gap-3 p-6">
-        <p className="text-[12.5px] leading-relaxed text-[hsl(36_18%_66%)]">
+        <p className="text-[12.5px] leading-relaxed text-[hsl(0_0%_66%)]">
           Jarvis hat heute noch nichts geschrieben. Der nächste Morgenbericht kommt automatisch — oder jetzt anfordern.
         </p>
         <Btn variant="solid" onClick={onRequest} disabled={busy}>
@@ -343,8 +342,8 @@ function JarvisWordPanel({ report, onRequest, busy }: { report: ReturnType<typeo
   }
   return (
     <div className="p-6">
-      <p className="text-[0.6rem] uppercase tracking-[0.24em] text-[hsl(36_15%_55%)]">{timeAgo(new Date(report.created_at).getTime())}</p>
-      <p className="mt-3 whitespace-pre-line text-[13.5px] leading-relaxed text-[hsl(36_25%_88%)]">{report.body}</p>
+      <p className="text-[0.6rem] uppercase tracking-[0.24em] text-[hsl(0_0%_55%)]">{timeAgo(new Date(report.created_at).getTime())}</p>
+      <p className="mt-3 whitespace-pre-line text-[13.5px] leading-relaxed text-[hsl(0_0%_88%)]">{report.body}</p>
     </div>
   );
 }
@@ -407,9 +406,9 @@ function QueuePanel({ items, onChanged }: { items: JarvisQueueItem[]; onChanged:
       {items.map((item) => (
         <li key={item.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] leading-snug text-[hsl(36_28%_92%)]">{item.title}</p>
-            {item.body && <p className="mt-0.5 text-[11.5px] text-[hsl(36_15%_58%)]">{item.body}</p>}
-            <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[hsl(36_15%_45%)]">
+            <p className="text-[13px] leading-snug text-[hsl(0_0%_92%)]">{item.title}</p>
+            {item.body && <p className="mt-0.5 text-[11.5px] text-[hsl(0_0%_58%)]">{item.body}</p>}
+            <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[hsl(0_0%_45%)]">
               {item.kind === "pending" ? "Wartet auf Bestätigung" : "Vorschlag"} · {timeAgo(new Date(item.created_at).getTime())}
             </p>
           </div>
@@ -467,7 +466,7 @@ function BauplanDraftsPanel({ drafts, onChanged }: { drafts: BauplanDraft[]; onC
       {drafts.map((d) => (
         <li key={d.id} className="px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <p className="text-[13px] leading-snug text-[hsl(36_28%_92%)]">{d.title}</p>
+            <p className="text-[13px] leading-snug text-[hsl(0_0%_92%)]">{d.title}</p>
             <div className="flex shrink-0 gap-1.5">
               <Btn variant="solid" disabled={busy === d.id} onClick={() => copyDraft(d)}>
                 <Copy className="mr-1 inline h-3 w-3" /> Kopieren
@@ -475,8 +474,8 @@ function BauplanDraftsPanel({ drafts, onChanged }: { drafts: BauplanDraft[]; onC
               <Btn disabled={busy === d.id} onClick={() => dismiss(d.id)}>Verwerfen</Btn>
             </div>
           </div>
-          <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap border border-white/[0.06] bg-[hsl(18_10%_5%)] p-3 text-[11px] leading-relaxed text-[hsl(36_20%_78%)]">{d.text}</pre>
-          <p className="mt-1.5 text-[10px] uppercase tracking-[0.2em] text-[hsl(36_15%_45%)]">{timeAgo(new Date(d.created_at).getTime())} · nie automatisch abgeschickt</p>
+          <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap border border-white/[0.06] bg-[hsl(0_0%_5%)] p-3 text-[11px] leading-relaxed text-[hsl(0_0%_78%)]">{d.text}</pre>
+          <p className="mt-1.5 text-[10px] uppercase tracking-[0.2em] text-[hsl(0_0%_45%)]">{timeAgo(new Date(d.created_at).getTime())} · nie automatisch abgeschickt</p>
         </li>
       ))}
     </ul>
@@ -536,7 +535,7 @@ function ZoneSelector({ mode, zone, onChange }: { mode: string; zone: Zone; onCh
           onClick={() => onChange(mode, z)}
           className={cn(
             "min-h-[26px] flex-1 border px-1.5 py-1 text-[9.5px] uppercase tracking-[0.14em] transition-colors",
-            z === zone ? "border-[hsl(350_55%_45%)] bg-[hsl(350_55%_22%)] text-[hsl(36_28%_94%)]" : "border-white/10 text-[hsl(36_15%_58%)] hover:border-white/30",
+            z === zone ? "border-[hsl(0_0%_45%)] bg-[hsl(0_0%_22%)] text-[hsl(0_0%_94%)]" : "border-white/10 text-[hsl(0_0%_58%)] hover:border-white/30",
           )}
         >
           {ZONE_LABEL[z]}
@@ -557,22 +556,22 @@ function OrganCard({ organ, runs, cronJobs, zone, onZoneChange }: {
     <div className="flex items-start gap-3 border border-white/[0.06] p-4">
       <span className={cn(
         "mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
-        !last ? "border-white/20 bg-transparent" : failed ? "border-red-400 bg-red-400" : "border-[hsl(36_28%_94%)] bg-[hsl(36_28%_94%)]",
+        !last ? "border-white/20 bg-transparent" : failed ? "border-2 border-white bg-transparent animate-pulse" : "border-[hsl(0_0%_94%)] bg-[hsl(0_0%_94%)]",
       )} />
       <div className="min-w-0 flex-1">
-        <p className="text-[12.5px] text-[hsl(36_28%_92%)]">{organ.label}</p>
-        <p className="mt-0.5 text-[10.5px] leading-snug text-[hsl(36_15%_55%)]">{organ.desc}</p>
-        <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-[hsl(36_15%_50%)]">
+        <p className="text-[12.5px] text-[hsl(0_0%_92%)]">{organ.label}</p>
+        <p className="mt-0.5 text-[10.5px] leading-snug text-[hsl(0_0%_55%)]">{organ.desc}</p>
+        <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-[hsl(0_0%_50%)]">
           {last ? `letzter Lauf ${timeAgo(new Date(last.finished_at ?? last.started_at).getTime())}` : "noch kein Lauf"}
         </p>
-        <p className="text-[10px] uppercase tracking-[0.18em] text-[hsl(36_15%_50%)]">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-[hsl(0_0%_50%)]">
           {job ? (job.active ? humanizeCron(job.schedule) : `pausiert · ${humanizeCron(job.schedule)}`) : "kein Zeitplan hinterlegt"}
         </p>
         {failed && last?.error && (
-          <p className="mt-1.5 text-[11px] leading-snug text-red-300/90">{last.error}</p>
+          <p className="mt-1.5 text-[11px] leading-snug text-white/90">{last.error}</p>
         )}
         <ZoneSelector mode={organ.mode} zone={zone} onChange={onZoneChange} />
-        <p className="mt-1.5 text-[10px] leading-snug text-[hsl(36_15%_50%)]">{zoneExplain(organ.mode, zone)}</p>
+        <p className="mt-1.5 text-[10px] leading-snug text-[hsl(0_0%_50%)]">{zoneExplain(organ.mode, zone)}</p>
       </div>
     </div>
   );
@@ -589,8 +588,8 @@ function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh, zones, onZoneC
   return (
     <div className="p-5">
       {failuresLast24h.length > 0 && (
-        <div className="mb-4 border border-red-500/30 bg-red-500/[0.06] p-3 text-[11.5px] text-red-200">
-          {failuresLast24h.length} Fehler in den letzten 24 Stunden — sichtbar statt still (siehe rote Organe unten).
+        <div className="mb-4 border border-white/30 bg-white/[0.06] p-3 text-[11.5px] text-white">
+          {failuresLast24h.length} Fehler in den letzten 24 Stunden — sichtbar statt still (siehe markierte Organe unten).
         </div>
       )}
       <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -600,12 +599,12 @@ function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh, zones, onZoneC
         <div className="flex items-start gap-3 border border-white/[0.06] p-4">
           <span className={cn(
             "mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full border",
-            trendsFresh ? "border-[hsl(36_28%_94%)] bg-[hsl(36_28%_94%)]" : "border-white/20 bg-transparent",
+            trendsFresh ? "border-[hsl(0_0%_94%)] bg-[hsl(0_0%_94%)]" : "border-white/20 bg-transparent",
           )} />
           <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] text-[hsl(36_28%_92%)]">Trends</p>
-            <p className="mt-0.5 text-[10.5px] leading-snug text-[hsl(36_15%_55%)]">Berechnet, was gerade zieht — täglich, unabhängig von Jarvis.</p>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-[hsl(36_15%_50%)]">
+            <p className="text-[12.5px] text-[hsl(0_0%_92%)]">Trends</p>
+            <p className="mt-0.5 text-[10.5px] leading-snug text-[hsl(0_0%_55%)]">Berechnet, was gerade zieht — täglich, unabhängig von Jarvis.</p>
+            <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-[hsl(0_0%_50%)]">
               {trendAgeDays === null ? "noch kein Snapshot" : `letzter Snapshot vor ${trendAgeDays} T`}
             </p>
           </div>
@@ -668,16 +667,16 @@ function CommandDeck() {
   }
 
   return (
-    <div className="-mx-6 -my-6 min-h-[calc(100vh-4rem)] bg-[hsl(18_10%_4%)] p-6 text-[hsl(36_25%_90%)] md:-mx-10 md:-my-10 md:p-10">
+    <div className="-mx-6 -my-6 min-h-[calc(100vh-4rem)] bg-[hsl(0_0%_4%)] p-6 text-[hsl(0_0%_90%)] md:-mx-10 md:-my-10 md:p-10">
       {/* Header strip */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.08] pb-6">
         <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.32em] text-[hsl(36_15%_55%)]">
+          <p className="text-[0.6rem] uppercase tracking-[0.32em] text-[hsl(0_0%_55%)]">
             Cockpit · Identity · Intelligence · Marketplace
           </p>
-          <h2 className="mt-2 font-serif text-3xl leading-tight text-[hsl(36_28%_94%)]">
+          <h2 className="mt-2 font-serif text-3xl leading-tight text-[hsl(0_0%_94%)]">
             Guten Tag, {firstName}.
-            {jarvis.paused && <span className="ml-3 text-[hsl(36_15%_55%)]">Jarvis ist pausiert.</span>}
+            {jarvis.paused && <span className="ml-3 text-[hsl(0_0%_55%)]">Jarvis ist pausiert.</span>}
           </h2>
         </div>
       </div>
@@ -689,23 +688,23 @@ function CommandDeck() {
       </Panel>
 
       {/* DEIN NÄCHSTER ZUG — ganz oben, ein klarer Impuls */}
-      <section className="mt-4 border-[1.5px] border-[hsl(350_55%_45%)] bg-[hsl(18_10%_6%)] p-6 md:p-7">
+      <section className="mt-4 border-[1.5px] border-[hsl(0_0%_45%)] bg-[hsl(0_0%_6%)] p-6 md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0 max-w-2xl">
-            <p className="flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(36_15%_58%)]">
+            <p className="flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_58%)]">
               <ArrowRight className="h-3 w-3" /> Dein nächster Zug
               {adminMove.urgency === "hoch" && (
-                <span className="border border-red-500/40 px-1.5 text-red-200">jetzt</span>
+                <span className="border border-white bg-white px-1.5 text-black">jetzt</span>
               )}
             </p>
-            <h2 className="mt-3 font-serif text-2xl leading-tight text-[hsl(36_28%_94%)] md:text-[26px]">
+            <h2 className="mt-3 font-serif text-2xl leading-tight text-[hsl(0_0%_94%)] md:text-[26px]">
               {adminMove.headline}
             </h2>
-            <p className="mt-3 text-[13px] text-[hsl(36_20%_74%)]">{adminMove.reason}</p>
+            <p className="mt-3 text-[13px] text-[hsl(0_0%_74%)]">{adminMove.reason}</p>
           </div>
           <button
             onClick={() => navigate(adminMove.to)}
-            className="inline-flex items-center gap-2 border border-[hsl(350_55%_45%)] bg-[hsl(350_55%_28%)] px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-[hsl(36_28%_94%)] hover:bg-[hsl(350_55%_34%)]"
+            className="inline-flex items-center gap-2 border border-[hsl(0_0%_45%)] bg-[hsl(0_0%_28%)] px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-[hsl(0_0%_94%)] hover:bg-[hsl(0_0%_34%)]"
           >
             {adminMove.cta} <ArrowRight className="h-3.5 w-3.5" />
           </button>
@@ -715,7 +714,7 @@ function CommandDeck() {
       {/* WARTET AUF DICH — die echte Entscheidungs-Queue */}
       <Panel title="Wartet auf dich" eyebrow="Jarvis-Queue" className="mt-4" action={
         jarvis.queue.length > 0
-          ? <span className="border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.22em] text-red-200">{jarvis.queue.length}</span>
+          ? <span className="border border-white bg-white px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.22em] text-black">{jarvis.queue.length}</span>
           : undefined
       }>
         <QueuePanel items={jarvis.queue} onChanged={() => setJarvisTick((v) => v + 1)} />
@@ -789,12 +788,12 @@ function CommandDeck() {
       {/* Row: Ereignis-Ticker (echte domain_events) + System-Herzschlag */}
       <div className="mt-4 grid gap-3 xl:grid-cols-[1.6fr_1fr]">
         <Panel title="Ereignis-Ticker" eyebrow="letzte 15 · domain_events" live
-          action={<span className="inline-flex items-center gap-1.5 text-[0.6rem] uppercase tracking-[0.22em] text-[hsl(36_20%_74%)]"><Rss className="h-3 w-3" /> real</span>}>
+          action={<span className="inline-flex items-center gap-1.5 text-[0.6rem] uppercase tracking-[0.22em] text-[hsl(0_0%_74%)]"><Rss className="h-3 w-3" /> real</span>}>
           <EventTicker rows={eventRows} loading={eventsLoading} />
         </Panel>
 
         <Panel title="System-Herzschlag" eyebrow="vorhanden / fehlt"
-          action={<HeartPulse className="h-3.5 w-3.5 text-[hsl(36_20%_74%)]" />}>
+          action={<HeartPulse className="h-3.5 w-3.5 text-[hsl(0_0%_74%)]" />}>
           <SystemHeartbeatPanel hb={heartbeat} />
         </Panel>
       </div>
@@ -802,22 +801,22 @@ function CommandDeck() {
       {/* Umsatzentwicklung (real 30d buckets) */}
       <div className="mt-4">
         <Panel title="Umsatzentwicklung" eyebrow="30 Tage · echte Buckets"
-          action={<span className="text-[0.6rem] uppercase tracking-[0.22em] text-[hsl(36_15%_55%)]">EUR / Tag</span>}>
+          action={<span className="text-[0.6rem] uppercase tracking-[0.22em] text-[hsl(0_0%_55%)]">EUR / Tag</span>}>
           <div className="relative px-4 pb-4 pt-2">
             {kpis.loading ? (
-              <div className="flex h-[240px] items-center justify-center text-[11px] text-[hsl(36_15%_55%)]">Lade …</div>
+              <div className="flex h-[240px] items-center justify-center text-[11px] text-[hsl(0_0%_55%)]">Lade …</div>
             ) : kpis.revenueSeries.every((v) => v === 0) ? (
-              <div className="flex h-[240px] flex-col items-center justify-center gap-2 text-center text-[12px] text-[hsl(36_18%_66%)]">
-                <p className="font-serif text-[16px] text-[hsl(36_28%_92%)]">Noch keine Verkäufe — der erste kommt.</p>
-                <p className="text-[11px] text-[hsl(36_15%_55%)]">Chart erscheint, sobald bezahlte Bestellungen eingehen.</p>
+              <div className="flex h-[240px] flex-col items-center justify-center gap-2 text-center text-[12px] text-[hsl(0_0%_66%)]">
+                <p className="font-serif text-[16px] text-[hsl(0_0%_92%)]">Noch keine Verkäufe — der erste kommt.</p>
+                <p className="text-[11px] text-[hsl(0_0%_55%)]">Chart erscheint, sobald bezahlte Bestellungen eingehen.</p>
               </div>
             ) : (
               <>
                 <ChartPlaceholder series={kpis.revenueSeries} labels={kpis.dayLabels.filter((_, i) => i % 5 === 0)} tone="dark" variant="area" height={240} />
-                <div className="mt-3 flex items-center justify-between text-[11px] text-[hsl(36_20%_74%)]">
-                  <span>Summe 30 T: <span className="text-[hsl(36_28%_94%)] tabular-nums">€{kpis.revenue30d.toLocaleString("de-DE")}</span></span>
-                  <span>Bestellungen: <span className="text-[hsl(36_28%_94%)] tabular-nums">{kpis.orders30d}</span></span>
-                  <span>Ø: <span className="text-[hsl(36_28%_94%)] tabular-nums">€{kpis.aov30d.toLocaleString("de-DE")}</span></span>
+                <div className="mt-3 flex items-center justify-between text-[11px] text-[hsl(0_0%_74%)]">
+                  <span>Summe 30 T: <span className="text-[hsl(0_0%_94%)] tabular-nums">€{kpis.revenue30d.toLocaleString("de-DE")}</span></span>
+                  <span>Bestellungen: <span className="text-[hsl(0_0%_94%)] tabular-nums">{kpis.orders30d}</span></span>
+                  <span>Ø: <span className="text-[hsl(0_0%_94%)] tabular-nums">€{kpis.aov30d.toLocaleString("de-DE")}</span></span>
                 </div>
               </>
             )}
@@ -836,7 +835,7 @@ function CommandDeck() {
             <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-[12px]">
               <thead>
-                <tr className="text-left text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">
+                <tr className="text-left text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(0_0%_50%)]">
                   <th className="px-5 py-2.5 font-normal">Bestellung</th>
                   <th className="px-5 py-2.5 font-normal">Kunde</th>
                   <th className="px-5 py-2.5 font-normal">Status</th>
@@ -846,12 +845,12 @@ function CommandDeck() {
               <tbody>
                 {recentOrders.map((o) => (
                   <tr key={o.id} className="border-t border-white/[0.05] transition-colors hover:bg-white/[0.02]">
-                    <td className="px-5 py-2.5 font-mono text-[11px] text-[hsl(36_20%_78%)]">{o.short}</td>
-                    <td className="px-5 py-2.5 text-[hsl(36_25%_88%)]">{o.customer}</td>
+                    <td className="px-5 py-2.5 font-mono text-[11px] text-[hsl(0_0%_78%)]">{o.short}</td>
+                    <td className="px-5 py-2.5 text-[hsl(0_0%_88%)]">{o.customer}</td>
                     <td className="px-5 py-2.5">
-                      <span className="border border-white/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.2em] text-[hsl(36_20%_78%)]">{o.status}</span>
+                      <span className="border border-white/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.2em] text-[hsl(0_0%_78%)]">{o.status}</span>
                     </td>
-                    <td className="px-5 py-2.5 text-right tabular-nums text-[hsl(36_28%_92%)]">€{o.total.toLocaleString("de-DE")}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-[hsl(0_0%_92%)]">€{o.total.toLocaleString("de-DE")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -870,13 +869,13 @@ function CommandDeck() {
               {topDesigners.map((d, i) => (
                 <li key={d.id} className="flex items-center justify-between border-t border-white/[0.05] px-5 py-2.5 text-[12px] first:border-t-0">
                   <div className="flex items-center gap-3">
-                    <span className="w-4 text-[10px] tabular-nums text-[hsl(36_15%_50%)]">{i + 1}</span>
-                    <span className="flex h-6 w-6 items-center justify-center border border-white/10 font-serif text-[10px] text-[hsl(36_28%_92%)]">{d.name.slice(0, 2).toUpperCase()}</span>
-                    <span className="text-[hsl(36_25%_88%)]">{d.name}</span>
+                    <span className="w-4 text-[10px] tabular-nums text-[hsl(0_0%_50%)]">{i + 1}</span>
+                    <span className="flex h-6 w-6 items-center justify-center border border-white/10 font-serif text-[10px] text-[hsl(0_0%_92%)]">{d.name.slice(0, 2).toUpperCase()}</span>
+                    <span className="text-[hsl(0_0%_88%)]">{d.name}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="tabular-nums text-[hsl(36_28%_92%)]">€{d.revenue.toLocaleString("de-DE")}</span>
-                    <span className="text-[11px] text-[hsl(36_15%_55%)]">{d.orders} Pos.</span>
+                    <span className="tabular-nums text-[hsl(0_0%_92%)]">€{d.revenue.toLocaleString("de-DE")}</span>
+                    <span className="text-[11px] text-[hsl(0_0%_55%)]">{d.orders} Pos.</span>
                   </div>
                 </li>
               ))}
@@ -894,8 +893,8 @@ function CommandDeck() {
               { l: "Aktive Designer", v: sysStats.designerCount.toLocaleString("de-DE") },
             ].map((m) => (
               <div key={m.l}>
-                <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(36_15%_50%)]">{m.l}</p>
-                <p className="mt-1 font-serif text-[18px] text-[hsl(36_28%_94%)] tabular-nums">
+                <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(0_0%_50%)]">{m.l}</p>
+                <p className="mt-1 font-serif text-[18px] text-[hsl(0_0%_94%)] tabular-nums">
                   {sysStats.loading ? "…" : m.v}
                 </p>
               </div>
@@ -905,7 +904,7 @@ function CommandDeck() {
       </div>
 
       <div className="mt-6 flex justify-end">
-        <button onClick={() => navigate("/admin/jarvis")} className="editorial-eyebrow text-[hsl(36_20%_74%)] underline decoration-1 underline-offset-4 hover:text-[hsl(36_28%_94%)]">
+        <button onClick={() => navigate("/admin/jarvis")} className="editorial-eyebrow text-[hsl(0_0%_74%)] underline decoration-1 underline-offset-4 hover:text-[hsl(0_0%_94%)]">
           Zum Maschinenraum <ArrowUpRight className="ml-1 inline h-3 w-3" />
         </button>
       </div>
@@ -925,7 +924,7 @@ function timeAgo(ts: number) {
 
 function EmptyRow({ text }: { text: string }) {
   return (
-    <div className="flex min-h-[120px] items-center justify-center px-5 py-8 text-center text-[11px] leading-relaxed text-[hsl(36_15%_55%)]">
+    <div className="flex min-h-[120px] items-center justify-center px-5 py-8 text-center text-[11px] leading-relaxed text-[hsl(0_0%_55%)]">
       {text}
     </div>
   );

@@ -33,8 +33,8 @@ const STATUS_TONE: Record<Status, string> = {
   proposed: "bg-accent/20 text-foreground border border-accent",
   in_review: "bg-muted text-foreground",
   changes_requested: "bg-destructive/20 text-destructive border border-destructive",
-  approved: "bg-emerald-500/15 text-emerald-800 border border-emerald-500/50",
-  published: "bg-emerald-600 text-white",
+  approved: "bg-transparent text-foreground border border-foreground",
+  published: "bg-foreground text-background",
   declined: "bg-muted text-muted-foreground line-through",
 };
 

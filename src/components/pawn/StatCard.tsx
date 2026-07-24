@@ -35,8 +35,7 @@ export function StatCard({ label, value, delta, trend = "neutral", tone = "light
         <p
           className={cn(
             "mt-2 text-xs",
-            trend === "up" && "text-emerald-600",
-            trend === "down" && "text-destructive",
+            (trend === "up" || trend === "down") && "text-foreground",
             trend === "neutral" && (isDark ? "text-sidebar-foreground/60" : "text-muted-foreground"),
           )}
         >

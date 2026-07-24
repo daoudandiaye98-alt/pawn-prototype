@@ -288,22 +288,22 @@ export default function StudioOverview() {
       )}
 
       {/* Copilot weekly mirror — black */}
-      <section className="mb-6 border border-transparent bg-[#0B0B0D] p-8 text-white">
+      <section className="mb-6 border border-transparent bg-foreground p-8 text-background">
         <div className="flex items-start justify-between gap-6">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center border border-white/25 font-serif">♟</span>
-              <p className="text-[0.62rem] uppercase tracking-[0.28em] text-white/60">PAWN Copilot · Wochenspiegel</p>
+              <span className="flex h-8 w-8 items-center justify-center border border-background/25 font-serif">♟</span>
+              <p className="text-[0.62rem] uppercase tracking-[0.28em] text-background/60">PAWN Copilot · Wochenspiegel</p>
             </div>
             <p className="mt-4 font-serif text-xl leading-relaxed md:text-2xl">
               {mirror?.text ?? "Ich schaue mir gerade deine Woche an…"}
             </p>
           </div>
-          <Sparkles className="h-5 w-5 shrink-0 text-white/60" />
+          <Sparkles className="h-5 w-5 shrink-0 text-background/60" />
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
-          <button onClick={generateCampaign} className="border border-white bg-white px-4 py-2 text-[0.68rem] tracking-wide text-[#0B0B0D] hover:bg-white/90">Kampagne entwerfen</button>
-          <button onClick={copilot.open} className="border border-white/50 px-4 py-2 text-[0.68rem] tracking-wide text-white hover:bg-white/10">Nachfragen</button>
+          <button onClick={generateCampaign} className="border border-background bg-background px-4 py-2 text-[0.68rem] tracking-wide text-foreground hover:bg-background/90">Kampagne entwerfen</button>
+          <button onClick={copilot.open} className="border border-background/50 px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-background/10">Nachfragen</button>
         </div>
       </section>
 
@@ -338,7 +338,7 @@ export default function StudioOverview() {
             <article key={p.id} className="group border border-border bg-white">
               <div className="relative aspect-[4/5] overflow-hidden bg-muted">
                 {p.image_url ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Kein Bild</div>}
-                <span className={`absolute left-3 top-3 border px-2 py-1 text-[0.6rem] tracking-wider ${p.inventory_mode === "stock" ? "border-border bg-white text-foreground" : "border-transparent bg-[#0B0B0D] text-white"}`}>
+                <span className={`absolute left-3 top-3 border px-2 py-1 text-[0.6rem] tracking-wider ${p.inventory_mode === "stock" ? "border-border bg-background text-foreground" : "border-transparent bg-foreground text-background"}`}>
                   {p.inventory_mode === "stock" ? `Lager · ${p.stock_quantity}` : `Auf Anfertigung · ${p.lead_time_days ?? "—"} T`}
                 </span>
               </div>
@@ -351,7 +351,7 @@ export default function StudioOverview() {
                 <div className="mt-3 flex items-center justify-between">
                   <p className="tabular-nums text-sm">€ {p.price.toLocaleString("de-DE")}</p>
                   <label className="flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
-                    <input type="checkbox" checked={p.status === "published"} onChange={() => togglePublish(p)} className="h-4 w-8 cursor-pointer appearance-none rounded-full border border-border bg-muted transition-colors checked:bg-[#0B0B0D]" />
+                    <input type="checkbox" checked={p.status === "published"} onChange={() => togglePublish(p)} className="h-4 w-8 cursor-pointer appearance-none rounded-full border border-border bg-muted transition-colors checked:bg-foreground" />
                     <span>{p.status === "published" ? "Live" : "Entwurf"}</span>
                   </label>
                 </div>
@@ -398,7 +398,7 @@ export default function StudioOverview() {
                   </div>
                   <div className="text-right">
                     <p className="tabular-nums text-sm">€ {(l.unit_price * l.qty).toLocaleString("de-DE")}</p>
-                    <span className="text-[0.6rem] uppercase tracking-[0.22em] text-emerald-700">Bezahlt</span>
+                    <span className="text-[0.6rem] uppercase tracking-[0.22em] text-foreground">Bezahlt</span>
                   </div>
                 </li>
               ))}
@@ -420,7 +420,7 @@ export default function StudioOverview() {
           ) : (
             <>
               <p className="font-serif text-xl">{pendingCampaign.title}</p>
-              <div className="mt-4 border border-border bg-[#F7F5F0] p-4">
+              <div className="mt-4 border border-border bg-muted p-4">
                 {pendingCampaign.caption && <p className="font-serif italic leading-relaxed">"{pendingCampaign.caption}"</p>}
                 {pendingCampaign.hashtags && pendingCampaign.hashtags.length > 0 && (
                   <p className="mt-3 text-xs text-muted-foreground">{pendingCampaign.hashtags.map((h) => `#${h}`).join(" ")}</p>
@@ -448,7 +448,7 @@ export default function StudioOverview() {
               {messages.map((m) => (
                 <li key={m.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
-                    {m.unread && <span className="h-1.5 w-1.5 rounded-full bg-[#0B0B0D]" />}
+                    {m.unread && <span className="h-1.5 w-1.5 rounded-full bg-foreground" />}
                     <p className="font-serif text-base">{m.subject}</p>
                   </div>
                   <p className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{new Date(m.last_message_at).toLocaleDateString("de-DE")}</p>
