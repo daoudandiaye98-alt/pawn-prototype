@@ -1244,8 +1244,8 @@ export type Database = {
           created_at: string
           designer_id: string
           freitext: string | null
-          hautton: string | null
           haar: string | null
+          hautton: string | null
           id: string
           name: string
           statur: string | null
@@ -1257,8 +1257,8 @@ export type Database = {
           created_at?: string
           designer_id: string
           freitext?: string | null
-          hautton?: string | null
           haar?: string | null
+          hautton?: string | null
           id?: string
           name: string
           statur?: string | null
@@ -1270,8 +1270,8 @@ export type Database = {
           created_at?: string
           designer_id?: string
           freitext?: string | null
-          hautton?: string | null
           haar?: string | null
+          hautton?: string | null
           id?: string
           name?: string
           statur?: string | null
@@ -2170,10 +2170,6 @@ export type Database = {
         }
         Returns: Json
       }
-      grant_credits: {
-        Args: { _credits: number; _designer_id: string; _note?: string }
-        Returns: Json
-      }
       bump_video_metric: {
         Args: { p_asset_id: string; p_metric: string }
         Returns: undefined
@@ -2183,6 +2179,10 @@ export type Database = {
         Returns: undefined
       }
       designer_level: { Args: { _designer_id: string }; Returns: Json }
+      grant_credits: {
+        Args: { _credits: number; _designer_id: string; _note?: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
