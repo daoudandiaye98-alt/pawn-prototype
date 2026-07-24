@@ -231,7 +231,7 @@ function Overview({ name, onGoto }: { name: string; onGoto: (t: Tab) => void }) 
           <div>
             <p className="text-[0.6rem] uppercase tracking-[0.28em] text-white/60">Frag PAWN</p>
             <p className="palace-serif mt-3 text-[1.15rem] italic leading-snug">
-              Dein Concierge — Fragen zu Bestellungen, Stücken, deiner DNA.
+              PAWN Chat — Fragen zu Bestellungen, Stücken, deiner DNA.
             </p>
           </div>
           <span className="mt-4 inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.28em] text-white">
@@ -242,7 +242,7 @@ function Overview({ name, onGoto }: { name: string; onGoto: (t: Tab) => void }) 
 
       <Card>
         <p className="palace-serif italic text-[1.1rem] text-[#000000]/80">
-          Schön dich zu sehen, <span className="capitalize">{firstName}</span>. Ruhig hier — genau richtig zum Stöbern.
+          Willkommen zurück, <span className="capitalize">{firstName}</span>.
         </p>
         <div className="mt-6 grid gap-3 md:grid-cols-3">
           {[

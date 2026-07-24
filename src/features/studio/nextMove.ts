@@ -157,7 +157,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
     }
     return {
       key: "steady",
-      headline: "Deine Bühne läuft ruhig. Perfekter Moment für eine Kampagne.",
+      headline: "Es ist gerade ruhig. Perfekter Moment für eine Kampagne.",
       reason: "Zwölf Sekunden Video, in wenigen Minuten fertig — das lenkt den Blick auf ein Stück.",
       cta: "Kampagne starten",
       to: "/studio/kampagnen/neu",

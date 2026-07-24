@@ -230,7 +230,7 @@ export default function StudioPlan() {
     const l = planLimits[p];
     const creditsLine = `${pc} Credits pro Monat${p === "haus" ? " (Editorial-Regie kostenlos, PAWN-Emblem im Abspann)" : " — Editorial-Regie bleibt immer kostenlos"}`;
     const exampleLine = creditExample(pc, credits.costs);
-    const sigLine = `${fmt(l.signature_previews)} Signatur${l.signature_previews === 1 ? "-Kostprobe" : "en"}${p === "maison" ? " + 1 Wunsch-Signatur" : ""}`;
+    const sigLine = `${fmt(l.signature_previews)} Signatur${l.signature_previews === 1 ? "-Vorschau" : "en"}${p === "maison" ? " + 1 Wunsch-Signatur" : ""}`;
     return [creditsLine, exampleLine, sigLine, ...resolvedStaticBenefits[p]].filter(Boolean);
   };
 

@@ -198,21 +198,21 @@ export default function StudioOverview() {
   const doneCount = checklist.filter((i) => i.done).length;
   const showChecklist = doneCount < checklist.length;
 
-  if (loading) return <StudioShell title="Bühne"><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
+  if (loading) return <StudioShell title="Übersicht"><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
 
   if (!designer) return (
-    <StudioShell title="Bühne" eyebrow="Willkommen">
+    <StudioShell title="Übersicht" eyebrow="Willkommen">
       <div className="mx-auto max-w-xl border border-border bg-white p-10 text-center">
         <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Kein Studio-Zugang</p>
         <h2 className="mt-3 font-serif text-3xl">Dein Studio steht noch nicht.</h2>
-        <p className="mt-4 text-sm text-muted-foreground">Sobald deine Bewerbung angenommen ist, findest du hier deine Bühne.</p>
+        <p className="mt-4 text-sm text-muted-foreground">Sobald deine Bewerbung angenommen ist, findest du hier deine Übersicht.</p>
         <Link to="/apply" className="mt-6 inline-flex border border-foreground px-6 py-2 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">Zur Bewerbung</Link>
       </div>
     </StudioShell>
   );
 
   return (
-    <StudioShell title="Bühne" eyebrow="Bühne">
+    <StudioShell title="Übersicht" eyebrow="Übersicht">
       {/* Greeting */}
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
