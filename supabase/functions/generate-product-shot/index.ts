@@ -1,11 +1,13 @@
 /**
- * KI-Studio-Foto: nimmt Quellbild eines Produkts, sendet zu fal.ai
+ * KI-Studio-Foto: nimmt ein Quellbild, sendet zu fal.ai
  * (Gemini-Flash-Image-Edit via fal-ai/nano-banana/edit), pollt Ergebnis,
  * lädt es nach product-shots-Bucket, hinterlegt result_url in product_shot_requests.
  *
  * Synchron: submit + poll bis fertig (typisch 10-25s bei nano-banana), max 60s.
  *
- * Body: { product_id, source_url }
+ * Body: { product_id, source_url } — an ein Produkt gebunden (Produkterstellung), ODER
+ *       { designer_id, source_url } — freistehend, z.B. ein im Kampagnen-Studio hochgeladenes
+ *       Foto ohne Produktbezug (Teil 10b). product_id bleibt dann leer.
  * Response: { ok, request_id, result_url? , error? }
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -34,18 +36,30 @@ Deno.serve(async (req) => {
       return json({ error: "provider_not_configured", message: "FAL_KEY fehlt." }, 402);
     }
 
-    const body = await req.json().catch(() => ({})) as { product_id?: string; source_url?: string };
-    if (!body.product_id || !body.source_url) return json({ error: "product_id_and_source_url_required" }, 400);
+    const body = await req.json().catch(() => ({})) as { product_id?: string; designer_id?: string; source_url?: string };
+    if (!body.source_url || (!body.product_id && !body.designer_id)) {
+      return json({ error: "product_id_or_designer_id_and_source_url_required" }, 400);
+    }
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, svc, { auth: { persistSession: false } });
 
-    const { data: prod } = await admin.from("products")
-      .select("id, designer_id, designers!inner(user_id, plan)")
-      .eq("id", body.product_id).maybeSingle();
-    const p = prod as { id: string; designer_id: string; designers: { user_id: string; plan?: string } } | null;
-    if (!p) return json({ error: "product_not_found" }, 404);
+    let p: { id: string | null; designer_id: string; designers: { user_id: string; plan?: string } } | null = null;
+    if (body.product_id) {
+      const { data: prod } = await admin.from("products")
+        .select("id, designer_id, designers!inner(user_id, plan)")
+        .eq("id", body.product_id).maybeSingle();
+      p = prod as typeof p;
+      if (!p) return json({ error: "product_not_found" }, 404);
+    } else {
+      const { data: des } = await admin.from("designers")
+        .select("id, user_id, plan")
+        .eq("id", body.designer_id!).maybeSingle();
+      const d = des as { id: string; user_id: string; plan?: string } | null;
+      if (!d) return json({ error: "designer_not_found" }, 404);
+      p = { id: null, designer_id: d.id, designers: { user_id: d.user_id, plan: d.plan } };
+    }
 
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user_id, _role: "admin" });
     if (!isAdmin && p.designers.user_id !== user_id) return json({ error: "forbidden" }, 403);
@@ -145,7 +159,7 @@ Deno.serve(async (req) => {
     const bytes = new Uint8Array(await imgResp.arrayBuffer());
     const contentType = imgResp.headers.get("content-type") ?? "image/jpeg";
     const ext = contentType.includes("png") ? "png" : "jpg";
-    const path = `${p.designers.user_id}/${p.id}/${request_id}.${ext}`;
+    const path = `${p.designers.user_id}/${p.id ?? "campaign"}/${request_id}.${ext}`;
     const { error: upErr } = await admin.storage.from("product-shots").upload(path, bytes, {
       contentType, upsert: true,
     });

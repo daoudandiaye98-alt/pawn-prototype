@@ -1,9 +1,9 @@
 /**
- * Kampagnen-Funnel: Erklärung → Material → Prompt → Produktion → Freigabe.
+ * Kampagnen-Studio: Bild oder Video → Material → Text/Regie → Produktion → Freigabe.
  *
- * Rendert das Video CLIENT-SEITE (renderCampaign), lädt Blob nach
- * campaign-assets (privat) hoch und legt einen campaigns-Row mit
- * status='proposed' an. Freigabe passiert danach auf /studio/kampagnen.
+ * Video wird CLIENT-SEITIG gerendert (renderCampaign), Blob nach campaign-assets
+ * (privat) hochgeladen; Bilder werden direkt gespeichert. Beides legt eine
+ * campaigns-Row mit status='proposed' an — Freigabe passiert auf /studio/kampagnen.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { renderCampaign, blobPreviewUrl, type Tempo, type Format } from "@/features/campaign/renderer";
 import { randomSeed } from "@/features/campaign/prng";
 import { useCampaignQuota, planLabel, type Plan } from "@/features/campaign/quota";
-import { Check, Upload, Sparkles, Music, ArrowRight, Wand2, Shuffle } from "lucide-react";
+import { Check, Upload, Sparkles, Music, ArrowRight, Wand2, Shuffle, Image as ImageIcon, Clapperboard, X, ChevronDown } from "lucide-react";
 
 
 interface ProductLite {
@@ -28,7 +28,10 @@ interface HouseSignature {
   recipe: { licht?: string; palette?: string; kamerafahrt?: string; schnittrhythmus?: string; typo?: string; musik_tempo?: string; wunsch?: boolean };
 }
 
-type Step = 0 | 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3;
+type OutputType = "bild" | "video";
+
+interface UploadedPhoto { url: string; path: string; }
 
 interface DraftContent {
   asset_url: string;
@@ -57,6 +60,19 @@ async function uploadFile(userId: string, file: File | Blob, ext: string): Promi
   return { path, signedUrl: signed.signedUrl };
 }
 
+/** Ausklappbare Info-Zeile: was gerade passiert, wie lange es dauert, was es kostet. Kein Meta-Baustein — pro Schritt eigener Text. */
+function InfoBox({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="mt-4 border border-border bg-white text-sm [&_summary::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
+        Was passiert gerade?
+        <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+      </summary>
+      <div className="border-t border-border px-4 py-3 text-muted-foreground">{children}</div>
+    </details>
+  );
+}
+
 export default function StudioCampaignNew() {
   const { user, profile, hasRole } = useAuth();
   const isAdmin = hasRole("admin");
@@ -64,6 +80,7 @@ export default function StudioCampaignNew() {
   const { designer, loading } = useMyDesigner();
   const nav = useNavigate();
   const [step, setStep] = useState<Step>(0);
+  const [outputType, setOutputType] = useState<OutputType | null>(null);
 
   // Step 0
   const [consentOk, setConsentOk] = useState<boolean | null>(null);
@@ -74,8 +91,13 @@ export default function StudioCampaignNew() {
   // Step 1
   const [products, setProducts] = useState<ProductLite[]>([]);
   const [chosenProduct, setChosenProduct] = useState<ProductLite | null>(null);
-  const [uploaded, setUploaded] = useState<{ url: string; path: string }[]>([]);
+  const [uploaded, setUploaded] = useState<UploadedPhoto[]>([]);
   const [uploading, setUploading] = useState(false);
+
+  // Freisteller (weißer Hintergrund) — für eigene Fotos wie im Produkt-Screen.
+  const [freistellerBusy, setFreistellerBusy] = useState<number | "product" | null>(null);
+  const [freistellerPreview, setFreistellerPreview] = useState<{ index: number | "product"; source: string; result: string } | null>(null);
+  const [productShotResult, setProductShotResult] = useState<string | null>(null);
 
   // Step 2
   const [prompt, setPrompt] = useState("");
@@ -100,6 +122,7 @@ export default function StudioCampaignNew() {
   const [cinematicError, setCinematicError] = useState<string | null>(null);
   const previewMountRef = useRef<HTMLDivElement | null>(null);
   const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
+  const [savingImage, setSavingImage] = useState(false);
 
   // Try-On
   const [tryonBusy, setTryonBusy] = useState(false);
@@ -138,7 +161,7 @@ export default function StudioCampaignNew() {
     })();
   }, [designer]);
 
-  // Signaturen: der Regisseur destilliert sie einmalig beim ersten Öffnen dieser Seite.
+  // Signaturen: der Regisseur destilliert sie einmalig beim ersten Öffnen dieser Seite (nur für Video relevant).
   useEffect(() => {
     if (!designer) return;
     setSignaturesLoading(true);
@@ -169,6 +192,15 @@ export default function StudioCampaignNew() {
     } finally {
       setWishBusy(false);
     }
+  };
+
+  // Vorschlag aus der gewählten Signatur ins eigene Prompt-Feld übernehmen — Startpunkt, überschreibbar.
+  const applySignatureSuggestion = () => {
+    const sig = signatures.find((s) => s.id === chosenSignatureId);
+    if (!sig?.recipe) return;
+    const bits = [sig.recipe.licht, sig.recipe.kamerafahrt, sig.recipe.musik_tempo].filter(Boolean);
+    if (bits.length === 0) return;
+    setPrompt(bits.join(", "));
   };
 
   // Instagram-Handle aus ai_config.business_profile lesen (Fallback bleibt 'hausofpawn').
@@ -216,6 +248,62 @@ export default function StudioCampaignNew() {
     }
   };
 
+  // Freisteller (weißer Hintergrund) — Produktbild.
+  const requestFreistellerForProduct = async () => {
+    if (!chosenProduct?.id || !chosenProduct.image_url) return;
+    setFreistellerBusy("product");
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-shot", {
+        body: { product_id: chosenProduct.id, source_url: chosenProduct.image_url },
+      });
+      if (error) throw error;
+      const r = data as { result_url?: string; error?: string; message?: string } | null;
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "Freisteller fehlgeschlagen.");
+      setFreistellerPreview({ index: "product", source: chosenProduct.image_url, result: r.result_url });
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      toast.error(/guthaben|402|credit/i.test(msg)
+        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+        : msg || "Fehler");
+    } finally {
+      setFreistellerBusy(null);
+    }
+  };
+
+  // Freisteller (weißer Hintergrund) — eigenes hochgeladenes Foto, ohne Produktbezug.
+  const requestFreistellerForUpload = async (index: number) => {
+    if (!designer) return;
+    const photo = uploaded[index];
+    if (!photo) return;
+    setFreistellerBusy(index);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-shot", {
+        body: { designer_id: designer.id, source_url: photo.url },
+      });
+      if (error) throw error;
+      const r = data as { result_url?: string; error?: string; message?: string } | null;
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "Freisteller fehlgeschlagen.");
+      setFreistellerPreview({ index, source: photo.url, result: r.result_url });
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      toast.error(/guthaben|402|credit/i.test(msg)
+        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+        : msg || "Fehler");
+    } finally {
+      setFreistellerBusy(null);
+    }
+  };
+
+  const acceptFreisteller = () => {
+    if (!freistellerPreview) return;
+    if (freistellerPreview.index === "product") {
+      setProductShotResult(freistellerPreview.result);
+    } else {
+      setUploaded((prev) => prev.map((u, i) => (i === freistellerPreview.index ? { ...u, url: freistellerPreview.result } : u)));
+    }
+    toast.success("Neutraler Hintergrund übernommen.");
+    setFreistellerPreview(null);
+  };
 
   const grantConsent = async () => {
     if (!designer || !user) return;
@@ -266,13 +354,13 @@ export default function StudioCampaignNew() {
 
   // Selected images
   const chosenImages = useMemo(() => {
-    if (chosenProduct?.image_url) return [tryonReplacement ?? chosenProduct.image_url];
+    if (chosenProduct?.image_url) return [tryonReplacement ?? productShotResult ?? chosenProduct.image_url];
     return uploaded.map((u) => u.url);
-  }, [chosenProduct, uploaded, tryonReplacement]);
+  }, [chosenProduct, uploaded, tryonReplacement, productShotResult]);
 
 
   const canProceedFromStep1 =
-    (chosenProduct && !!chosenProduct.image_url) || uploaded.length >= 2;
+    (chosenProduct && !!chosenProduct.image_url) || uploaded.length >= 1;
 
   // Ask AI for hook/caption/hashtags
   const askAI = async () => {
@@ -288,13 +376,12 @@ export default function StudioCampaignNew() {
         if (r?.caption) setCaption(r.caption);
         if (r?.hashtags) setHashtags(r.hashtags);
         if (!hook) setHook(prompt.split(/[.!?]/)[0]?.trim().slice(0, 60) || "");
-        // Delete the auto-created draft campaign row; we'll create our own with the video.
       } else {
-        // Ohne Produkt: nur einen Chat-Aufruf für Vorschläge basierend auf Prompt+DNA.
+        // Ohne Produkt: nur einen Chat-Aufruf für Vorschläge basierend auf Beschreibung+DNA.
         const { data } = await supabase.functions.invoke("studio-ai", {
           body: {
             mode: "chat",
-            question: `Entwirf für eine Reel-Kampagne eine kurze Hook-Zeile (max 6 Wörter), eine Caption (max 2 Sätze) und 4-6 englische Hashtags. Ausgangs-Prompt: "${prompt}". Nur JSON zurückgeben: {"hook":"…","caption":"…","hashtags":["#..","#.."]}`,
+            question: `Entwirf für eine ${outputType === "bild" ? "Bild-" : "Reel-"}Kampagne eine kurze Hook-Zeile (max 6 Wörter), eine Caption (max 2 Sätze) und 4-6 englische Hashtags. Ausgangs-Beschreibung: "${prompt}". Nur JSON zurückgeben: {"hook":"…","caption":"…","hashtags":["#..","#.."]}`,
           },
         });
         const reply = (data as { reply?: string })?.reply ?? "";
@@ -316,8 +403,8 @@ export default function StudioCampaignNew() {
     }
   };
 
-  // Cinematic mode: submit fal.ai jobs, poll live, return one entry per input image
-  // (clip URL when done, null when failed). Throws with real reason on hard failure.
+  // Kinematischer Modus: fal.ai-Aufträge abschicken, live abholen, einen Eintrag pro Eingabebild
+  // zurückgeben (Clip-URL bei Erfolg, null bei Fehlschlag). Wirft mit echtem Grund bei hartem Fehlschlag.
   const runCinematic = async (inputImages: string[]): Promise<Array<string | null>> => {
     if (!designer) throw new Error("no_designer");
     const { data: campRow, error: campErr } = await supabase.from("campaigns").insert({
@@ -407,7 +494,7 @@ export default function StudioCampaignNew() {
     return aligned;
   };
 
-  // Render video
+  // Video rendern
   const doRender = async () => {
     if (!designer) return;
     if (chosenImages.length < 1) { toast.error("Mindestens 1 Bild."); return; }
@@ -542,33 +629,106 @@ export default function StudioCampaignNew() {
     }
   };
 
+  // Bild-Kampagne speichern: kein Rendern nötig, das fertige Bild ist bereits da.
+  const saveImageForApproval = async () => {
+    if (!designer || !user) return;
+    const hero = chosenImages[0];
+    if (!hero) { toast.error("Kein Bild ausgewählt."); return; }
+    setSavingImage(true);
+    try {
+      const hasTryon = !!tryonReplacement;
+      const finalCaption = hasTryon && !caption.includes(tryonDisclosure)
+        ? `${caption}${caption.trim() ? "\n\n" : ""}${tryonDisclosure}`
+        : caption;
+      const title = chosenProduct ? `${chosenProduct.name} · Bild` : `${designer.brand_name} · Bild`;
+      const { error } = await supabase.from("campaigns").insert({
+        designer_id: designer.id,
+        product_id: chosenProduct?.id ?? null,
+        title,
+        kind: "post",
+        status: "proposed",
+        content: {
+          asset_url: hero, caption: finalCaption, hashtags, hook,
+          product_id: chosenProduct?.id ?? null, tryon: hasTryon,
+        } as unknown as Record<string, unknown>,
+        created_by: user.id,
+      } as never);
+      if (error) throw error;
+      toast.success("Zur Freigabe gespeichert.");
+      nav("/studio/kampagnen");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
   if (loading) return <StudioShell title="Neue Kampagne"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
   if (!designer) return <StudioShell title="Neue Kampagne"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+
+  const stepLabels = outputType === "bild"
+    ? ["Erklärung", "Material", "Text", "Fertig"]
+    : ["Erklärung", "Material", "Regie", "Produktion"];
 
   // === Render ===
   return (
     <StudioShell title="Neue Kampagne" eyebrow="Kampagnen-Studio">
-      <StepHeader step={step} />
+      <StepHeader step={step} labels={stepLabels} />
 
-      {/* SCHRITT 0 — Erklärung */}
+      {/* SCHRITT 0 — Erklärung + Wahl */}
       {step === 0 && (
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_.8fr]">
           <section>
-            <p className="editorial-eyebrow">So entsteht deine Kampagne</p>
-            <h2 className="mt-2 font-serif text-3xl">Vier ruhige Züge.</h2>
-            <ol className="mt-8 space-y-6">
-              {[
-                { n: 1, t: "Fotos wählen", d: "Ein Stück aus deiner Kollektion — oder 2 bis 4 eigene Bilder hochladen." },
-                { n: 2, t: "Sag PAWN, wie es sich anfühlen soll", d: "In deinen Worten. Zwei Sätze genügen, PAWN liefert einen Vorschlag." },
-                { n: 3, t: "PAWN produziert", d: "Ein Reel im PAWN-Stil, direkt in deinem Browser — ohne Umweg." },
-                { n: 4, t: "Du gibst frei, PAWN veröffentlicht", d: "Nichts geht ohne deine Freigabe raus. Danach reiht es sich in die Warteschlange." },
-              ].map((a) => (
-                <li key={a.n} className="flex gap-4">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-foreground font-serif">{a.n}</span>
-                  <div><p className="font-serif text-lg">{a.t}</p><p className="mt-1 text-sm text-muted-foreground">{a.d}</p></div>
-                </li>
-              ))}
-            </ol>
+            <p className="editorial-eyebrow">Was soll entstehen?</p>
+            <h2 className="mt-2 font-serif text-3xl">Bild oder Video.</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setOutputType("bild")}
+                className={`flex min-h-[44px] flex-col items-start gap-2 border p-5 text-left transition-colors ${outputType === "bild" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}
+              >
+                <ImageIcon className="h-5 w-5" />
+                <p className="font-serif text-lg">Bilder</p>
+                <p className={`text-sm ${outputType === "bild" ? "text-background/75" : "text-muted-foreground"}`}>
+                  Ein einzelnes Foto — Studio-Hintergrund oder KI-Model-Shot. Fertig in wenigen Sekunden.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutputType("video")}
+                className={`flex min-h-[44px] flex-col items-start gap-2 border p-5 text-left transition-colors ${outputType === "video" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}
+              >
+                <Clapperboard className="h-5 w-5" />
+                <p className="font-serif text-lg">Video</p>
+                <p className={`text-sm ${outputType === "video" ? "text-background/75" : "text-muted-foreground"}`}>
+                  Ein kurzes Reel mit Bewegung, Musik-Tempo und deiner Regie.
+                </p>
+              </button>
+            </div>
+
+            {outputType && (
+              <ol className="mt-8 space-y-6">
+                {(outputType === "bild"
+                  ? [
+                      { n: 1, t: "Foto wählen", d: "Ein Stück aus deiner Kollektion — oder ein eigenes Bild hochladen." },
+                      { n: 2, t: "Kurzer Text dazu", d: "Ein Satz genügt, PAWN liefert einen Vorschlag für Caption und Hashtags." },
+                      { n: 3, t: "PAWN erzeugt das Bild", d: "Studio-Hintergrund oder KI-Model — in Sekunden fertig." },
+                      { n: 4, t: "Du gibst frei, PAWN veröffentlicht", d: "Nichts geht ohne deine Freigabe raus." },
+                    ]
+                  : [
+                      { n: 1, t: "Fotos wählen", d: "Ein Stück aus deiner Kollektion — oder eigene Bilder hochladen. Eins genügt, mehr hilft." },
+                      { n: 2, t: "Sag PAWN, wie es sich anfühlen soll", d: "In deinen Worten. Zwei Sätze genügen, PAWN liefert einen Vorschlag." },
+                      { n: 3, t: "PAWN produziert", d: "Ein Reel im PAWN-Stil, direkt in deinem Browser — ohne Umweg." },
+                      { n: 4, t: "Du gibst frei, PAWN veröffentlicht", d: "Nichts geht ohne deine Freigabe raus. Danach reiht es sich in die Warteschlange." },
+                    ]
+                ).map((a) => (
+                  <li key={a.n} className="flex gap-4">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-foreground font-serif">{a.n}</span>
+                    <div><p className="font-serif text-lg">{a.t}</p><p className="mt-1 text-sm text-muted-foreground">{a.d}</p></div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
 
           <aside className="space-y-4">
@@ -623,7 +783,7 @@ export default function StudioCampaignNew() {
           <div className="lg:col-span-2 flex justify-end">
             <button
               onClick={() => setStep(1)}
-              disabled={consentOk !== true || mediaRightsGranted !== true || quota.atLimit}
+              disabled={!outputType || consentOk !== true || mediaRightsGranted !== true || quota.atLimit}
               className="flex items-center gap-2 border border-foreground bg-foreground px-6 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40"
             >
               Weiter zu Material <ArrowRight className="h-3.5 w-3.5" />
@@ -638,11 +798,16 @@ export default function StudioCampaignNew() {
           <section>
             <p className="editorial-eyebrow">Aus deiner Kollektion</p>
             {products.length === 0 ? (
-              <p className="mt-4 text-sm text-muted-foreground">Noch keine Produkte hinterlegt. Oder lade unten 2–4 Fotos hoch.</p>
+              <div className="mt-4 border border-border bg-white p-5">
+                <p className="text-sm text-muted-foreground">Noch keine Produkte hinterlegt. Leg zuerst ein Stück an, oder lade unten ein eigenes Foto hoch.</p>
+                <Link to="/studio/produkte" className="mt-3 inline-flex min-h-[44px] items-center border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background">
+                  Stück anlegen
+                </Link>
+              </div>
             ) : (
               <div className="mt-4 grid gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                 {products.map((p) => (
-                  <button key={p.id} onClick={() => { setChosenProduct(p); setUploaded([]); }}
+                  <button key={p.id} onClick={() => { setChosenProduct(p); setUploaded([]); setProductShotResult(null); }}
                     className={`group border p-2 text-left transition-all ${chosenProduct?.id === p.id ? "border-foreground shadow-[6px_6px_0_0_rgba(0,0,0,0.9)]" : "border-border hover:border-foreground"}`}>
                     <div className="aspect-[4/5] bg-muted">
                       {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition" loading="lazy" />}
@@ -656,12 +821,12 @@ export default function StudioCampaignNew() {
           </section>
 
           <section>
-            <p className="editorial-eyebrow">Oder eigene Fotos</p>
+            <p className="editorial-eyebrow">Oder eigenes Foto</p>
             <div onDrop={onDrop} onDragOver={(e) => e.preventDefault()}
               className="mt-4 border-2 border-dashed border-border bg-white p-8 text-center">
               <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
-              <p className="mt-3 text-sm">Zieh 2–4 Fotos hierher, oder wähle sie aus.</p>
-              <label className="mt-4 inline-block cursor-pointer border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
+              <p className="mt-3 text-sm">Zieh 1 bis 4 Fotos hierher, oder wähle sie aus. Eins genügt zum Anfangen.</p>
+              <label className="mt-4 inline-flex min-h-[44px] cursor-pointer items-center border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
                 Fotos auswählen
                 <input type="file" accept="image/*" multiple className="hidden" onChange={onPick} />
               </label>
@@ -671,56 +836,63 @@ export default function StudioCampaignNew() {
                   {uploaded.map((u, i) => (
                     <div key={i} className="border border-border bg-white p-1">
                       <img src={u.url} alt="" className="aspect-square w-full object-cover grayscale" />
+                      <button type="button" onClick={() => requestFreistellerForUpload(i)} disabled={freistellerBusy === i}
+                        className="mt-1 flex min-h-[36px] w-full items-center justify-center gap-1.5 border border-foreground bg-white px-2 py-1.5 text-[0.6rem] uppercase tracking-wide hover:bg-foreground hover:text-background disabled:opacity-60">
+                        <Sparkles className="h-3 w-3" /> {freistellerBusy === i ? "…" : "Freisteller"}
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+            <InfoBox>
+              <p><strong>Freisteller</strong> setzt dein Foto auf einen neutralen, weißen Hintergrund — wie im professionellen Fotostudio. Dauert etwa 10–25 Sekunden. Zählt zu deinem monatlichen Studio-Foto-Kontingent (siehe <Link to="/studio/plan" className="underline">Plan</Link>).</p>
+            </InfoBox>
           </section>
 
           {chosenProduct && (
             <div className="border border-border bg-white p-4">
-              <p className="editorial-eyebrow">✦ KI-Model-Shot</p>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">
-                    Aus deinem Foto wird ein Model-Shot — mit KI-Model, das dein Stück trägt. Das Ergebnis ersetzt das gewählte Foto im Material.
-                  </p>
-                  <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{tryonDisclosure}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {(["weiblich","männlich","divers"] as const).map((s) => (
-                    <button key={s} type="button" onClick={() => setTryonStyle(s)} disabled={tryonBusy}
-                      className={`border px-3 py-1 text-[0.68rem] ${tryonStyle === s ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                      {s.charAt(0).toUpperCase() + s.slice(1)}
-                    </button>
-                  ))}
-                  <button type="button" onClick={requestTryonForChosen} disabled={tryonBusy}
-                    className="border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] uppercase tracking-widest text-background disabled:opacity-60">
-                    {tryonBusy ? "KI arbeitet…" : (tryonReplacement ? "Neu erzeugen" : "Shot erzeugen")}
-                  </button>
-                </div>
+              <p className="editorial-eyebrow">Für dein gewähltes Stück</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={requestFreistellerForProduct} disabled={freistellerBusy === "product"}
+                  className="inline-flex min-h-[40px] items-center gap-1.5 border border-foreground bg-white px-3 py-1.5 text-[0.68rem] uppercase tracking-wide hover:bg-foreground hover:text-background disabled:opacity-60">
+                  <Sparkles className="h-3 w-3" /> {freistellerBusy === "product" ? "…" : "Freisteller"}
+                </button>
               </div>
-              {tryonReplacement && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Aus deinem Foto wird ein Model-Shot — mit KI-Model, das dein Stück trägt. Das Ergebnis ersetzt das gewählte Foto im Material.
+              </p>
+              <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{tryonDisclosure}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {(["weiblich","männlich","divers"] as const).map((s) => (
+                  <button key={s} type="button" onClick={() => setTryonStyle(s)} disabled={tryonBusy}
+                    className={`min-h-[36px] border px-3 py-1 text-[0.68rem] ${tryonStyle === s ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+                <button type="button" onClick={requestTryonForChosen} disabled={tryonBusy}
+                  className="min-h-[40px] border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] uppercase tracking-widest text-background disabled:opacity-60">
+                  {tryonBusy ? "KI arbeitet…" : (tryonReplacement ? "Neu erzeugen" : "Model-Shot erzeugen")}
+                </button>
+              </div>
+              {(tryonReplacement || productShotResult) && (
                 <div className="mt-4 flex items-center gap-4">
-                  <img src={tryonReplacement} alt="KI-Model-Shot" className="h-32 w-32 border border-foreground object-cover" />
+                  <img src={tryonReplacement ?? productShotResult ?? undefined} alt="Bearbeitetes Foto" className="h-32 w-32 border border-foreground object-cover" />
                   <div className="flex-1 text-xs">
-                    <span className="inline-block border border-foreground bg-white px-2 py-0.5 text-[0.55rem] uppercase tracking-widest">KI-Model</span>
-                    <p className="mt-2 text-muted-foreground">Wird als Material für diese Kampagne verwendet. Die Disclosure wird automatisch an die Caption angehängt.</p>
-                    <button type="button" onClick={() => setTryonReplacement(null)} className="mt-2 text-[0.62rem] uppercase tracking-widest text-muted-foreground hover:text-foreground">Verwerfen · Originalfoto nutzen</button>
+                    <span className="inline-block border border-foreground bg-white px-2 py-0.5 text-[0.55rem] uppercase tracking-widest">{tryonReplacement ? "KI-Model" : "Freisteller"}</span>
+                    <p className="mt-2 text-muted-foreground">Wird als Material für diese Kampagne verwendet.</p>
+                    <button type="button" onClick={() => { setTryonReplacement(null); setProductShotResult(null); }} className="mt-2 text-[0.62rem] uppercase tracking-widest text-muted-foreground hover:text-foreground">Verwerfen · Originalfoto nutzen</button>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {chosenImages.length === 1 && !tryonReplacement && (
+          {outputType === "video" && chosenImages.length === 1 && !tryonReplacement && (
             <p className="text-xs italic text-muted-foreground">
-              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos führt PAWN echte Regie. Tipp: erst ✨ Studio-Foto veredeln oder ✦ KI-Model-Shot machen.
+              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos führt PAWN echte Regie. Tipp: erst Freisteller oder Model-Shot machen.
             </p>
           )}
-
-
 
           <div className="flex items-center justify-between">
             <button onClick={() => setStep(0)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
@@ -732,126 +904,150 @@ export default function StudioCampaignNew() {
         </div>
       )}
 
-      {/* SCHRITT 2 — Prompt */}
+      {/* SCHRITT 2 — Text/Regie */}
       {step === 2 && (
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_.8fr]">
           <section>
-            <p className="editorial-eyebrow">Wie soll sich die Kampagne anfühlen?</p>
+            <p className="editorial-eyebrow">{outputType === "bild" ? "Kurz beschrieben" : "Deine Regie-Idee"}</p>
             <textarea
               value={prompt} onChange={(e) => setPrompt(e.target.value)}
-              placeholder="ruhig und skulptural, wie ein Museumsbesuch"
+              placeholder={outputType === "bild" ? "z. B. klar, warm, für den Alltag" : "ruhig und skulptural, wie ein Museumsbesuch"}
               className="mt-3 min-h-32 w-full border border-border bg-white p-4 text-base"
             />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {outputType === "bild"
+                ? "Beschreib in deinen Worten, wie das Bild wirken soll — PAWN nutzt das für Caption und Hashtags."
+                : "Beschreib die Bewegung selbst — Kamerafahrt, Tempo, Stimmung. Beispiele unten, oder wähle eine Signatur als Startpunkt."}
+            </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {["Ruhig · skulptural", "Streng · minimal", "Editorial · schnell"].map((chip) => (
+              {(outputType === "bild"
+                ? ["Klar · reduziert", "Warm · persönlich", "Editorial · direkt"]
+                : ["Ruhig · skulptural", "Streng · minimal", "Editorial · schnell"]
+              ).map((chip) => (
                 <button key={chip} onClick={() => setPrompt(chip)}
-                  className="border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">
+                  className="min-h-[36px] border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">
                   {chip}
                 </button>
               ))}
             </div>
 
-            <p className="editorial-eyebrow mt-8">Tempo</p>
-            <div className="mt-3 flex gap-3">
-              {(["ruhig", "spannungsvoll"] as Tempo[]).map((t) => (
-                <button key={t} onClick={() => setTempo(t)}
-                  className={`border px-5 py-2.5 text-[0.7rem] uppercase tracking-[0.22em] ${tempo === t ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            <p className="editorial-eyebrow mt-8">Signatur</p>
-            {signaturesLoading ? (
-              <p className="mt-3 text-sm text-muted-foreground">Der Regisseur denkt nach…</p>
-            ) : (
+            {outputType === "video" && (
               <>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button onClick={() => setChosenSignatureId(null)}
-                    className={`border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === null ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                    Standard
-                  </button>
-                  {signatures.map((s) => (
-                    <button key={s.id} onClick={() => setChosenSignatureId(s.id)}
-                      className={`border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === s.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                      {s.name}{s.recipe?.wunsch ? " ✦" : ""}
+                <p className="editorial-eyebrow mt-8">Tempo</p>
+                <div className="mt-3 flex gap-3">
+                  {(["ruhig", "spannungsvoll"] as Tempo[]).map((t) => (
+                    <button key={t} onClick={() => setTempo(t)}
+                      className={`min-h-[44px] border px-5 py-2.5 text-[0.7rem] uppercase tracking-[0.22em] ${tempo === t ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                      {t}
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Dein Stil-Rezept aus Licht, Kamerafahrt und Schnittrhythmus — vom Regisseur aus deiner Brand-DNA destilliert.
-                </p>
-                {plan === "maison" && (
-                  <div className="mt-4 border border-border bg-white p-4">
-                    <p className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Wunsch-Signatur</p>
-                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                      <input value={wishName} onChange={(e) => setWishName(e.target.value)} placeholder="Name"
-                        className="border border-border bg-background p-2 text-sm sm:w-40" />
-                      <input value={wishPrompt} onChange={(e) => setWishPrompt(e.target.value)} placeholder="Beschreibung (Stimmung, Licht, Tempo …)"
-                        className="flex-1 border border-border bg-background p-2 text-sm" />
-                      <button onClick={requestWishSignature} disabled={wishBusy}
-                        className="border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
-                        {wishBusy ? "…" : "Anfragen"}
+
+                <p className="editorial-eyebrow mt-8">Signatur</p>
+                {signaturesLoading ? (
+                  <p className="mt-3 text-sm text-muted-foreground">Der Regisseur denkt nach…</p>
+                ) : (
+                  <>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => setChosenSignatureId(null)}
+                        className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === null ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                        Standard
                       </button>
+                      {signatures.map((s) => (
+                        <button key={s.id} onClick={() => setChosenSignatureId(s.id)}
+                          className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === s.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                          {s.name}{s.recipe?.wunsch ? " ✦" : ""}
+                        </button>
+                      ))}
                     </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <p className="text-xs text-muted-foreground">
+                        Dein Stil-Rezept aus Licht, Kamerafahrt und Schnittrhythmus — vom Regisseur aus deiner Brand-DNA destilliert.
+                      </p>
+                      {chosenSignatureId && (
+                        <button type="button" onClick={applySignatureSuggestion}
+                          className="min-h-[32px] shrink-0 border border-border bg-white px-3 py-1 text-[0.62rem] uppercase tracking-wide hover:border-foreground">
+                          Vorschlag ins Textfeld übernehmen
+                        </button>
+                      )}
+                    </div>
+                    {plan === "maison" && (
+                      <div className="mt-4 border border-border bg-white p-4">
+                        <p className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Wunsch-Signatur</p>
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                          <input value={wishName} onChange={(e) => setWishName(e.target.value)} placeholder="Name"
+                            className="border border-border bg-background p-2 text-sm sm:w-40" />
+                          <input value={wishPrompt} onChange={(e) => setWishPrompt(e.target.value)} placeholder="Beschreibung (Stimmung, Licht, Tempo …)"
+                            className="flex-1 border border-border bg-background p-2 text-sm" />
+                          <button onClick={requestWishSignature} disabled={wishBusy}
+                            className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
+                            {wishBusy ? "…" : "Anfragen"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <p className="editorial-eyebrow mt-8">Echte Bewegung (statt Standbildern)</p>
+                {!quota.kinematicAllowed ? (
+                  <div className="mt-3 border border-foreground bg-white p-4">
+                    <p className="font-serif text-base">Ab Atelier: echte KI-Bewegung statt Standbildern.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Der Haus-Plan produziert in der ruhigen Editorial-Regie. Echte Bewegung ist ab Atelier dabei.
+                    </p>
+                    <Link to="/studio/plan" className="mt-3 inline-block border border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.22em] text-background">
+                      Plan ansehen
+                    </Link>
+                  </div>
+                ) : quota.kinematicAtLimit ? (
+                  <div className="mt-3 border border-foreground bg-white p-4">
+                    <p className="font-serif text-base">Kontingent für echte Bewegung diesen Monat aufgebraucht.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {quota.kinematicUsed} von {quota.kinematicLimit} verbraucht. Restliche Videos entstehen in der Editorial-Regie.
+                    </p>
+                  </div>
+                ) : (
+                  <div className={`mt-3 border ${cinematic ? "border-foreground" : "border-border"} bg-white p-4`}>
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={cinematic}
+                        onChange={(e) => setCinematic(e.target.checked)}
+                        className="mt-1 h-4 w-4 accent-foreground"
+                      />
+                      <div>
+                        <p className="font-serif text-base">Echte KI-Bewegung statt Standbildern.</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          PAWN erzeugt für jedes Foto einen kurzen Clip in deiner Regie.
+                          {quota.kinematicLimit !== Infinity && ` Noch ${quota.kinematicLimit - quota.kinematicUsed} von ${quota.kinematicLimit} diesen Monat.`}
+                        </p>
+                      </div>
+                    </label>
+                    <InfoBox>
+                      <p>PAWN schickt jedes Foto an einen externen Bild-zu-Video-Dienst und wartet auf das Ergebnis — meist 1–2 Minuten pro Foto. Jeder gelungene Clip verbraucht einen Platz deines monatlichen Kontingents für echte Bewegung. Schlägt ein Clip fehl, bleibt das Foto als ruhige Einstellung im Video.</p>
+                    </InfoBox>
                   </div>
                 )}
               </>
             )}
-
-            <p className="editorial-eyebrow mt-8">✦ Kinematischer Modus</p>
-            {!quota.kinematicAllowed ? (
-              <div className="mt-3 border border-foreground bg-white p-4">
-                <p className="font-serif text-base">Ab Atelier: echte KI-Bewegung statt Standbildern.</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Der Haus-Plan produziert in der ruhigen Editorial-Regie. Kinematische Clips (fal.ai) sind ab Atelier dabei.
-                </p>
-                <Link to="/studio/plan" className="mt-3 inline-block border border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.22em] text-background">
-                  Plan ansehen
-                </Link>
-              </div>
-            ) : quota.kinematicAtLimit ? (
-              <div className="mt-3 border border-foreground bg-white p-4">
-                <p className="font-serif text-base">Kinematisches Kontingent diesen Monat aufgebraucht.</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {quota.kinematicUsed} von {quota.kinematicLimit} kinematischen Clips verbraucht. Restliche Videos entstehen in der Editorial-Regie.
-                </p>
-              </div>
-            ) : (
-              <div className={`mt-3 border ${cinematic ? "border-foreground" : "border-border"} bg-white p-4`}>
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={cinematic}
-                    onChange={(e) => setCinematic(e.target.checked)}
-                    className="mt-1 h-4 w-4 accent-foreground"
-                  />
-                  <div>
-                    <p className="font-serif text-base">Echte KI-Bewegung statt Standbildern.</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      PAWN erzeugt für jedes Foto einen kurzen Clip (fal.ai · Kling), schneidet sie in deiner Regie.
-                      {quota.kinematicLimit !== Infinity && ` Noch ${quota.kinematicLimit - quota.kinematicUsed} von ${quota.kinematicLimit} kinematische Clips diesen Monat.`}
-                    </p>
-                  </div>
-                </label>
-              </div>
-            )}
-
           </section>
 
           <aside className="border border-border bg-white p-5">
             <div className="flex items-center justify-between">
               <p className="editorial-eyebrow">PAWN schreibt mit</p>
               <button onClick={askAI} disabled={aiBusy || !prompt.trim()}
-                className="flex items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] text-background disabled:opacity-40">
+                className="flex min-h-[36px] items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] text-background disabled:opacity-40">
                 <Sparkles className="h-3 w-3" /> {aiBusy ? "…" : "Vorschlag"}
               </button>
             </div>
-            <label className="mt-4 block">
-              <span className="editorial-eyebrow">Hook (Intro-Zeile, optional)</span>
-              <input value={hook} onChange={(e) => setHook(e.target.value)} maxLength={60}
-                className="mt-2 w-full border border-border bg-background p-2 text-sm" />
-            </label>
+            {outputType === "video" && (
+              <label className="mt-4 block">
+                <span className="editorial-eyebrow">Hook (Intro-Zeile, optional)</span>
+                <input value={hook} onChange={(e) => setHook(e.target.value)} maxLength={60}
+                  className="mt-2 w-full border border-border bg-background p-2 text-sm" />
+              </label>
+            )}
             <label className="mt-4 block">
               <span className="editorial-eyebrow">Caption</span>
               <textarea value={caption} onChange={(e) => setCaption(e.target.value)}
@@ -866,7 +1062,7 @@ export default function StudioCampaignNew() {
 
           <div className="lg:col-span-2 flex items-center justify-between">
             <button onClick={() => setStep(1)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
-            <button onClick={() => setStep(3)} disabled={!prompt.trim()}
+            <button onClick={() => setStep(3)} disabled={outputType === "video" && !prompt.trim()}
               className="flex items-center gap-2 border border-foreground bg-foreground px-6 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
               Weiter zur Produktion <ArrowRight className="h-3.5 w-3.5" />
             </button>
@@ -874,8 +1070,37 @@ export default function StudioCampaignNew() {
         </div>
       )}
 
-      {/* SCHRITT 3 — Produktion */}
-      {step === 3 && (
+      {/* SCHRITT 3 — Bild: direkt fertig */}
+      {step === 3 && outputType === "bild" && (
+        <div className="mt-8 space-y-6">
+          <div className="border border-border bg-white p-4">
+            <p className="editorial-eyebrow">Zusammenfassung</p>
+            <p className="mt-2 text-sm text-muted-foreground">1 Bild wird für deinen Post übernommen — {tryonReplacement ? "als KI-Model-Shot" : productShotResult ? "mit neutralem Studio-Hintergrund" : "so, wie hochgeladen"}.</p>
+          </div>
+          <div className="grid gap-8 lg:grid-cols-[1fr_.6fr]">
+            <div className="border border-border bg-black p-4">
+              {chosenImages[0] && (
+                <img src={chosenImages[0]} alt="Ausgewähltes Bild" className="mx-auto aspect-square w-full max-w-sm bg-black object-cover" />
+              )}
+            </div>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Dieses Bild geht — nach deiner Freigabe auf der nächsten Seite — in die Warteschlange zum Posten.
+              </p>
+              <button onClick={saveImageForApproval} disabled={savingImage || !chosenImages[0]}
+                className="flex min-h-[44px] items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
+                {savingImage ? "Speichert…" : "Zur Freigabe speichern"}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <button onClick={() => setStep(2)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
+          </div>
+        </div>
+      )}
+
+      {/* SCHRITT 3 — Video: Produktion */}
+      {step === 3 && outputType === "video" && (
         <div className="mt-8 space-y-6">
           {quota.atLimit ? (
             <div className="border border-foreground bg-white p-8 text-center">
@@ -885,93 +1110,130 @@ export default function StudioCampaignNew() {
               <Link to="/studio/plan" className="mt-6 inline-block border border-foreground bg-foreground px-6 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background">Plan ansehen</Link>
             </div>
           ) : (
-            <div className="grid gap-8 lg:grid-cols-[1fr_.6fr]">
-              <div className="border border-border bg-black p-4">
-                <div ref={previewMountRef} className={`mx-auto ${format === "1:1" ? "aspect-square" : "aspect-[9/16]"} w-full max-w-sm bg-black`} />
-                {videoUrl && (
-                  <video src={videoUrl} controls playsInline className={`mx-auto mt-4 ${format === "1:1" ? "aspect-square" : "aspect-[9/16]"} w-full max-w-sm bg-black`} />
-                )}
+            <>
+              <div className="border border-border bg-white p-4">
+                <p className="editorial-eyebrow">Zusammenfassung</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {chosenImages.length} Foto{chosenImages.length === 1 ? "" : "s"} → 1 Video ({format === "9:16" ? "Reel" : "Feed"}).
+                  {cinematic && quota.kinematicAllowed && !quota.kinematicAtLimit && ` Davon bis zu ${Math.min(chosenImages.length, 3)} mit echter Bewegung — verbraucht bis zu ${Math.min(chosenImages.length, 3)} von ${quota.kinematicLimit === Infinity ? "unbegrenzt" : quota.kinematicLimit} im Kontingent.`}
+                </p>
               </div>
-              <div className="space-y-4">
-                <p className="editorial-eyebrow">Format</p>
-                <div className="flex gap-2">
-                  {(["9:16", "1:1"] as Format[]).map((f) => (
-                    <button key={f} onClick={() => setFormat(f)}
-                      className={`border px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] ${format === f ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                      {f === "9:16" ? "Reel · 9:16" : "Feed · 1:1"}
-                    </button>
-                  ))}
+              <div className="grid gap-8 lg:grid-cols-[1fr_.6fr]">
+                <div className="border border-border bg-black p-4">
+                  <div ref={previewMountRef} className={`mx-auto ${format === "1:1" ? "aspect-square" : "aspect-[9/16]"} w-full max-w-sm bg-black`} />
+                  {videoUrl && (
+                    <video src={videoUrl} controls playsInline className={`mx-auto mt-4 ${format === "1:1" ? "aspect-square" : "aspect-[9/16]"} w-full max-w-sm bg-black`} />
+                  )}
                 </div>
-
-                <p className="editorial-eyebrow pt-2">Produktion</p>
-                {cinematic && cinematicStage && cinematicStage !== "ready" && (
-                  <div className="border border-foreground bg-white p-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Wand2 className="h-4 w-4" />
-                      <span>
-                        {cinematicStage === "submitting" && "✦ Übergabe an die Kamera…"}
-                        {cinematicStage === "polling" && (
-                          <>
-                            ✦ Aufnahmen entstehen — ca. 1–2 Minuten
-                            {cinematicProgress.total > 0 && (
-                              <span className="ml-2 tabular-nums text-muted-foreground">
-                                ({cinematicProgress.done}/{cinematicProgress.total} fertig)
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {cinematicStage === "failed" && (cinematicError ?? "Kinematischer Modus ist fehlgeschlagen. Versuch es gleich noch einmal oder wechsle in die Editorial-Fassung.")}
-                      </span>
-                    </div>
+                <div className="space-y-4">
+                  <p className="editorial-eyebrow">Format</p>
+                  <div className="flex gap-2">
+                    {(["9:16", "1:1"] as Format[]).map((f) => (
+                      <button key={f} onClick={() => setFormat(f)}
+                        className={`min-h-[44px] border px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] ${format === f ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                        {f === "9:16" ? "Reel · 9:16" : "Feed · 1:1"}
+                      </button>
+                    ))}
                   </div>
-                )}
-                {!videoBlob ? (
-                  <>
-                    <p className="text-sm text-muted-foreground">
-                      Der Renderer läuft direkt in deinem Browser. Etwa 15 Sekunden. Kein Ton — Musik fügst du beim Posten hinzu.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <button onClick={doRender} disabled={renderBusy}
-                        className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
-                        {renderBusy ? `PAWN produziert… ${renderPct}%` : "PAWN produziert"}
-                      </button>
-                      <button onClick={() => setSeed(randomSeed())} disabled={renderBusy}
-                        className="flex items-center gap-2 border border-border bg-white px-4 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:border-foreground disabled:opacity-40">
-                        <Shuffle className="h-3 w-3" /> Neu würfeln
-                      </button>
-                    </div>
-                    {renderBusy && (
-                      <div className="h-1 w-full border border-border bg-white">
-                        <div className="h-full bg-foreground transition-all" style={{ width: `${renderPct}%` }} />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm">Fertig. Sieh dir das Ergebnis an.</p>
-                    <div className="flex flex-wrap gap-2">
-                      <button onClick={() => { setSeed(randomSeed()); void doRender(); }}
-                        className="flex items-center gap-2 border border-border bg-white px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-muted">
-                        <Shuffle className="h-3 w-3" /> Neu produzieren
-                      </button>
-                      <button onClick={saveForApproval}
-                        className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background">
-                        Zur Freigabe speichern
-                      </button>
-                    </div>
-                    <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <Music className="mt-0.5 h-3 w-3 shrink-0" />
-                      Bewusst ohne Ton: Musik wählst du direkt in Reels oder TikTok — dort ist sie lizenzsicher.
-                    </p>
-                    <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Seed · {seed}</p>
-                  </>
-                )}
-              </div>
-            </div>
 
+                  <p className="editorial-eyebrow pt-2">Produktion</p>
+                  {cinematic && cinematicStage && cinematicStage !== "ready" && (
+                    <div className="border border-foreground bg-white p-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Wand2 className="h-4 w-4" />
+                        <span>
+                          {cinematicStage === "submitting" && "Übergabe an die Kamera…"}
+                          {cinematicStage === "polling" && (
+                            <>
+                              Aufnahmen entstehen — ca. 1–2 Minuten
+                              {cinematicProgress.total > 0 && (
+                                <span className="ml-2 tabular-nums text-muted-foreground">
+                                  ({cinematicProgress.done}/{cinematicProgress.total} fertig)
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {cinematicStage === "failed" && (cinematicError ?? "Kinematischer Modus ist fehlgeschlagen. Versuch es gleich noch einmal oder wechsle in die Editorial-Fassung.")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {!videoBlob ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Die Produktion läuft direkt in deinem Browser, ohne Umweg. Etwa 15 Sekunden. Kein Ton — Musik fügst du beim Posten hinzu.
+                      </p>
+                      <InfoBox>
+                        <p>PAWN setzt deine Fotos zu einem Reel zusammen — Schnitt, Typografie und Musik-Tempo nach deiner Regie. Läuft komplett auf deinem Gerät, verbraucht kein Kontingent außer dem Kampagnen-Platz selbst (siehe oben). Nur bei aktivierter echter Bewegung kommt zusätzlich der externe Video-Dienst ins Spiel.</p>
+                      </InfoBox>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={doRender} disabled={renderBusy}
+                          className="flex min-h-[44px] items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
+                          {renderBusy ? `PAWN produziert… ${renderPct}%` : "PAWN produziert"}
+                        </button>
+                        <button onClick={() => setSeed(randomSeed())} disabled={renderBusy}
+                          className="flex min-h-[44px] items-center gap-2 border border-border bg-white px-4 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:border-foreground disabled:opacity-40">
+                          <Shuffle className="h-3 w-3" /> Neu würfeln
+                        </button>
+                      </div>
+                      {renderBusy && (
+                        <div className="h-1 w-full border border-border bg-white">
+                          <div className="h-full bg-foreground transition-all" style={{ width: `${renderPct}%` }} />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm">Fertig. Sieh dir das Ergebnis an.</p>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => { setSeed(randomSeed()); void doRender(); }}
+                          className="flex min-h-[44px] items-center gap-2 border border-border bg-white px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-muted">
+                          <Shuffle className="h-3 w-3" /> Neu produzieren
+                        </button>
+                        <button onClick={saveForApproval}
+                          className="min-h-[44px] border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background">
+                          Zur Freigabe speichern
+                        </button>
+                      </div>
+                      <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <Music className="mt-0.5 h-3 w-3 shrink-0" />
+                        Bewusst ohne Ton: Musik wählst du direkt in Reels oder TikTok — dort ist sie lizenzsicher.
+                      </p>
+                      <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Seed · {seed}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
           )}
           <div className="flex items-center justify-between">
             <button onClick={() => setStep(2)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">← Zurück</button>
+          </div>
+        </div>
+      )}
+
+      {/* Freisteller: Vorher/Nachher */}
+      {freistellerPreview && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setFreistellerPreview(null)}>
+          <div className="w-full max-w-3xl border border-border bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-serif text-xl">Vorher · Nachher</h3>
+              <button onClick={() => setFreistellerPreview(null)} aria-label="Schließen" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <figure>
+                <img src={freistellerPreview.source} alt="Original" className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-muted-foreground">Original</figcaption>
+              </figure>
+              <figure>
+                <img src={freistellerPreview.result} alt="Freisteller" className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-foreground">Neutraler Hintergrund</figcaption>
+              </figure>
+            </div>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button onClick={() => setFreistellerPreview(null)} className="min-h-[40px] border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Verwerfen</button>
+              <button onClick={acceptFreisteller} className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-black">Übernehmen</button>
+            </div>
           </div>
         </div>
       )}
@@ -979,8 +1241,7 @@ export default function StudioCampaignNew() {
   );
 }
 
-function StepHeader({ step }: { step: Step }) {
-  const labels = ["Erklärung", "Material", "Prompt", "Produktion"];
+function StepHeader({ step, labels }: { step: Step; labels: string[] }) {
   return (
     <div className="flex flex-wrap items-center gap-4 border-b border-border pb-6">
       {labels.map((l, i) => (

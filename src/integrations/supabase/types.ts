@@ -1665,7 +1665,7 @@ export type Database = {
           id: string
           mode: string
           model_style: string | null
-          product_id: string
+          product_id: string | null
           provider: string | null
           request_handle: Json | null
           requested_by: string | null
@@ -1681,7 +1681,7 @@ export type Database = {
           id?: string
           mode?: string
           model_style?: string | null
-          product_id: string
+          product_id?: string | null
           provider?: string | null
           request_handle?: Json | null
           requested_by?: string | null
@@ -1697,7 +1697,7 @@ export type Database = {
           id?: string
           mode?: string
           model_style?: string | null
-          product_id?: string
+          product_id?: string | null
           provider?: string | null
           request_handle?: Json | null
           requested_by?: string | null
