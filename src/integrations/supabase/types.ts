@@ -1236,6 +1236,56 @@ export type Database = {
           },
         ]
       }
+      house_models: {
+        Row: {
+          altersgruppe: string | null
+          ausstrahlung: string | null
+          base_image_url: string | null
+          created_at: string
+          designer_id: string
+          freitext: string | null
+          hautton: string | null
+          haar: string | null
+          id: string
+          name: string
+          statur: string | null
+        }
+        Insert: {
+          altersgruppe?: string | null
+          ausstrahlung?: string | null
+          base_image_url?: string | null
+          created_at?: string
+          designer_id: string
+          freitext?: string | null
+          hautton?: string | null
+          haar?: string | null
+          id?: string
+          name: string
+          statur?: string | null
+        }
+        Update: {
+          altersgruppe?: string | null
+          ausstrahlung?: string | null
+          base_image_url?: string | null
+          created_at?: string
+          designer_id?: string
+          freitext?: string | null
+          hautton?: string | null
+          haar?: string | null
+          id?: string
+          name?: string
+          statur?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_models_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       house_signatures: {
         Row: {
           created_at: string

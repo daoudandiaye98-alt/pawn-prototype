@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({})) as {
-      campaign_id?: string; image_urls?: string[]; motion_prompt?: string; signature_id?: string;
+      campaign_id?: string; image_urls?: string[]; motion_prompt?: string; signature_id?: string; model_id?: string;
     };
     if (!body.campaign_id) return json({ error: "campaign_id_required" }, 400);
     const images = (body.image_urls ?? []).filter((u) => typeof u === "string" && u.length > 0).slice(0, 4);
@@ -63,33 +63,54 @@ Deno.serve(async (req) => {
     const { data: tpl } = await admin.from("ai_config").select("value").eq("key", "video_motion_prompt_template").maybeSingle();
     const template = (tpl?.value as { template?: string } | null)?.template ?? DEFAULT_TEMPLATE;
 
-    // Signatur gesetzt → stärkste verfügbare i2v-Klasse + Rezept ins Bewegungs-Prompt falten.
-    let model = videoCfg.model ?? DEFAULT_MODEL;
+    // Signatur → Rezept ins Bewegungs-Prompt falten (unabhängig von der Modellwahl).
     let designerPrompt = body.motion_prompt ?? "";
-    let usedPremium = false;
+    let hasSignatureRecipe = false;
     if (body.signature_id) {
       const { data: sig } = await admin.from("house_signatures")
         .select("recipe").eq("id", body.signature_id).maybeSingle();
       const recipe = (sig as { recipe?: Record<string, string> } | null)?.recipe;
       if (recipe) {
-        model = videoCfg.model_premium ?? "fal-ai/kling-video/v2.1/standard/image-to-video";
-        usedPremium = true;
+        hasSignatureRecipe = true;
         const bits = [recipe.licht, recipe.palette, recipe.kamerafahrt].filter(Boolean).join(", ");
         designerPrompt = [designerPrompt, bits].filter(Boolean).join(", ");
       }
     }
     const prompt = template.replace("{designer_prompt}", designerPrompt);
 
+    // Modellwahl (Teil 11b): der Designer wählt explizit aus ai_config.model_catalog. Ohne Wahl
+    // fällt es auf das Standardmodell zurück, mit Signatur automatisch auf die Premium-Stufe
+    // (Rückwärtskompatibilität für ältere Aufrufe ohne model_id).
+    const { data: catalogCfg } = await admin.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle();
+    const catalog = ((catalogCfg?.value as Array<{ id: string; fal_model?: string; credits?: number; kind?: string; active?: boolean }> | null) ?? [])
+      .filter((m) => m.kind === "video" && m.active !== false);
+    const chosenEntry = body.model_id ? catalog.find((m) => m.id === body.model_id) : undefined;
+
+    const { data: creditCostsCfg } = await admin.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle();
+    const creditCosts = (creditCostsCfg?.value as { clip_standard?: number; clip_premium?: number } | null) ?? {};
+
+    let model: string;
+    let clipCreditCost: number;
+    let clipAction: string;
+    if (chosenEntry?.fal_model) {
+      model = chosenEntry.fal_model;
+      clipCreditCost = chosenEntry.credits ?? (creditCosts.clip_standard ?? 5);
+      clipAction = chosenEntry.id;
+    } else if (hasSignatureRecipe) {
+      model = videoCfg.model_premium ?? "fal-ai/kling-video/v2.1/standard/image-to-video";
+      clipCreditCost = creditCosts.clip_premium ?? 12;
+      clipAction = "clip_premium";
+    } else {
+      model = videoCfg.model ?? DEFAULT_MODEL;
+      clipCreditCost = creditCosts.clip_standard ?? 5;
+      clipAction = "clip_standard";
+    }
+
     const { data: limits } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
     const costUnits = ((limits?.value as { accent_cost_units?: number } | null)?.accent_cost_units) ?? 2;
 
     const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
     const brollClipCents = ((costsCfg?.value as { broll_clip?: number } | null)?.broll_clip) ?? 35;
-
-    const { data: creditCostsCfg } = await admin.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle();
-    const creditCosts = (creditCostsCfg?.value as { clip_standard?: number; clip_premium?: number } | null) ?? {};
-    const clipCreditCost = usedPremium ? (creditCosts.clip_premium ?? 12) : (creditCosts.clip_standard ?? 5);
-    const clipAction = usedPremium ? "clip_premium" : "clip_standard";
 
     // Submit each image to fal Queue.
     const submissions = [];

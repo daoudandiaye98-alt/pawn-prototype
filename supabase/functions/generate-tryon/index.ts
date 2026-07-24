@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({})) as {
       product_id?: string; source_image_url?: string;
-      mode?: "shot" | "clip"; model_style?: string;
+      mode?: "shot" | "clip"; model_style?: string; house_model_id?: string;
     };
     if (!body.product_id || !body.source_image_url) return json({ error: "product_id_and_source_image_url_required" }, 400);
     const mode: "shot" | "clip" = body.mode === "clip" ? "clip" : "shot";
@@ -154,10 +154,58 @@ Deno.serve(async (req) => {
     if (reqErr || !reqRow) return json({ error: "insert_failed", message: reqErr?.message }, 500);
     const request_id = (reqRow as { id: string }).id;
 
-    // 1) Base model image (from pool or generate + append)
+    // Haus-Model (Teil 11b): ein designer-eigenes, benanntes Model statt des geteilten Style-Pools —
+    // dieselbe Person läuft dann über jede Kampagne dieses Hauses. Hat es schon ein Basisbild, wird
+    // das immer wieder verwendet (garantiert dasselbe Gesicht); sonst wird es einmalig erzeugt und
+    // auf dem house_models-Datensatz gespeichert (nicht im geteilten ai_config.model_pool).
+    let houseModel: { id: string; ausstrahlung: string | null; altersgruppe: string | null; haar: string | null; hautton: string | null; statur: string | null; freitext: string | null; base_image_url?: string | null } | null = null;
+    if (body.house_model_id) {
+      const { data: hm } = await admin.from("house_models")
+        .select("id, designer_id, ausstrahlung, altersgruppe, haar, hautton, statur, freitext, base_image_url")
+        .eq("id", body.house_model_id).eq("designer_id", p.designer_id).maybeSingle();
+      houseModel = hm as typeof houseModel;
+    }
+
+    // 1) Base model image (Haus-Model, geteilter Pool, oder neu erzeugen)
     let pool = cfg.model_pool?.[style] ?? [];
     let baseImageUrl = "";
-    if (pool.length > 0) {
+    if (houseModel?.base_image_url) {
+      baseImageUrl = houseModel.base_image_url;
+    } else if (houseModel) {
+      const descBits = [houseModel.ausstrahlung, houseModel.altersgruppe, houseModel.haar, houseModel.hautton, houseModel.statur, houseModel.freitext]
+        .filter(Boolean).join(", ");
+      const prompt = basePromptTpl.replace("{style}", descBits ? `${style}, ${descBits}` : style);
+      const gen = await falSubmitAndPoll(FAL_KEY, baseImgModel, { prompt, num_images: 1, output_format: "jpeg" }, 60_000);
+      if (!gen.ok) {
+        const friendly = gen.status === 402
+          ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
+          : gen.message;
+        await admin.from("product_shot_requests").update({ status: "failed", error: `base_model_${friendly}` } as never).eq("id", request_id);
+        return json({ error: "provider_error", stage: "base_model", message: friendly, status: gen.status }, 502);
+      }
+      const providerUrl = extractImageUrl(gen.result);
+      if (!providerUrl) {
+        await admin.from("product_shot_requests").update({ status: "failed", error: "base_model_no_url" } as never).eq("id", request_id);
+        return json({ error: "no_base_url" }, 502);
+      }
+      const dl = await fetch(providerUrl);
+      if (dl.ok) {
+        const bytes = new Uint8Array(await dl.arrayBuffer());
+        const ct = dl.headers.get("content-type") ?? "image/jpeg";
+        const ext = ct.includes("png") ? "png" : "jpg";
+        const key = `house-models/${houseModel.id}.${ext}`;
+        const { error: upErr } = await admin.storage.from("model-pool").upload(key, bytes, { contentType: ct, upsert: true });
+        if (!upErr) {
+          const { data: signed } = await admin.storage.from("model-pool").createSignedUrl(key, 60 * 60 * 24 * 365 * 5);
+          baseImageUrl = signed?.signedUrl ?? providerUrl;
+          await admin.from("house_models").update({ base_image_url: baseImageUrl } as never).eq("id", houseModel.id);
+        } else {
+          baseImageUrl = providerUrl;
+        }
+      } else {
+        baseImageUrl = providerUrl;
+      }
+    } else if (pool.length > 0) {
       // seed-based deterministic pick per request id
       const seed = request_id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
       baseImageUrl = pool[seed % pool.length];

@@ -36,6 +36,15 @@ export interface RendererInput {
   showEmblem?: boolean;
   /** Signatur-Rezept (aus house_signatures) — Freitext von Licht/Palette/Kamerafahrt/Schnittrhythmus. */
   signatureRecipe?: SignatureRecipe | null;
+  /**
+   * Schnitt (Teil 11b): Intro-/Abspann-Karte sind seit Teil 11b abgeschaltet, bis der Designer sie
+   * im eigenen, optionalen "Schnitt"-Schritt ausdrücklich einschaltet — kein automatischer
+   * Intro-Screen mehr. Beide Default false.
+   */
+  includeIntro?: boolean;
+  includeOutro?: boolean;
+  /** Feste Länge je Aufnahme in ms, aus dem Schnitt-Schritt — überschreibt die Takt-Berechnung. */
+  sceneDurationMsOverride?: number;
 }
 
 export interface SignatureRecipe {
@@ -150,11 +159,13 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
   const n = layers.length;
   const scenes: Scene[] = [];
 
-  // Hook-First: Video öffnet mit Hook-Zeile (oder Produktname als Fallback).
-  const hookText = (input.hookLine && input.hookLine.trim())
-    || input.productName
-    || input.brandName;
-  scenes.push(hookTypo(hookText));
+  // Intro-Karte: seit Teil 11b nicht mehr automatisch — nur wenn im Schnitt-Schritt eingeschaltet.
+  if (input.includeIntro) {
+    const hookText = (input.hookLine && input.hookLine.trim())
+      || input.productName
+      || input.brandName;
+    scenes.push(hookTypo(hookText));
+  }
 
   const pushCut = (allowFlash: boolean) => {
     if (allowFlash && n >= 3 && rnd() < 0.5) scenes.push(whiteFlash());
@@ -198,13 +209,15 @@ function buildStoryboard(input: RendererInput, layers: SourceLayer[], seed: numb
     }
   }
 
-  scenes.push(outro(ctx));
+  // Abspann-Karte: seit Teil 11b nicht mehr automatisch — nur wenn im Schnitt-Schritt eingeschaltet.
+  if (input.includeOutro) scenes.push(outro(ctx));
 
   // Taktraster: alle regulären Szenen auf 0.8s quantisieren (Transitions bleiben kurz);
-  // Signatur-Schnittrhythmus kann das Beat-Raster stauchen/strecken.
+  // Signatur-Schnittrhythmus kann das Beat-Raster stauchen/strecken. Der Schnitt-Schritt kann
+  // stattdessen eine feste Länge je Aufnahme vorgeben (sceneDurationMsOverride).
   for (const sc of scenes) {
     if (sc.type === "white-flash") continue;
-    sc.durationMs = quantizeBeat(sc.durationMs, BEAT_MS * beatMultiplier);
+    sc.durationMs = input.sceneDurationMsOverride ?? quantizeBeat(sc.durationMs, BEAT_MS * beatMultiplier);
   }
   return { scenes, ctx };
 }
