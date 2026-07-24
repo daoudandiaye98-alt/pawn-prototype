@@ -145,7 +145,7 @@ export default function AdminEditionen() {
                   <span>{p.designers?.brand_name ?? p.designer_id}</span>
                   <span className="flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground">
                     {STATUS_LABEL[p.status]}
-                    {p.status === "failed" && p.error && <span className="text-amber-700 normal-case">({p.error})</span>}
+                    {p.status === "failed" && p.error && <span className="text-foreground normal-case">({p.error})</span>}
                   </span>
                 </li>
               ))}

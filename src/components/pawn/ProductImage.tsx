@@ -9,23 +9,17 @@ interface ProductImageProps {
 }
 
 /**
- * Editorial fashion stand-in: warm ivory/oxblood palette,
+ * Editorial fashion stand-in: strict schwarz/weiß,
  * abstract silhouette + thin architectural line.
  */
 export function ProductImage({ seed, className, label, children }: ProductImageProps) {
   const hash = Array.from(seed).reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const variant = hash % 6;
 
-  // Strict PAWN palette — ivory, beige, charcoal, oxblood
-  const palettes: Array<[string, string, string]> = [
-    ["#EFE7DC", "#1A1111", "#3A0D0D"], // ivory → black, wine accent
-    ["#E8DED0", "#140D0D", "#2A1818"], // beige → near black
-    ["#F4EFE6", "#1D1A18", "#4A1212"], // ivory deep → wine
-    ["#D9CDB9", "#120B0B", "#2E1414"], // sand → ink
-    ["#E2D6C2", "#1A1111", "#3A0D0D"], // warm clay
-    ["#EFE7DC", "#0F0808", "#3A0D0D"],
-  ];
-  const [bg, ink, accent] = palettes[variant];
+  // Nur #000 und #FFF — Varianten unterscheiden sich über die Silhouette, nicht die Farbe.
+  const bg = "#FFFFFF";
+  const ink = "#000000";
+  const accent = "#000000";
 
   return (
     <div

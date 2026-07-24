@@ -181,8 +181,8 @@ function ImageUsageConsent() {
         Deine Zustimmung erlaubt PAWN, die von dir eingereichten Bilder für Ausstellungs- und Werbezwecke auf pawn.com und in PAWN-Kanälen zu verwenden. Bildrechte bleiben bei dir. Widerruf jederzeit — laufende Kampagnen mit diesen Bildern werden dann pausiert.
       </p>
       <div className="mt-4 flex items-center gap-3">
-        <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.62rem] uppercase tracking-[0.28em] ${active ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600"}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : "bg-amber-500"}`} />
+        <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.62rem] uppercase tracking-[0.28em] ${active ? "border-foreground text-foreground" : "border-border text-muted-foreground"}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-foreground" : "border border-muted-foreground"}`} />
           {active ? "Aktiv" : state.revoked ? "Widerrufen" : "Nicht erteilt"}
         </span>
         {active ? (

@@ -225,8 +225,8 @@ export default function AdminKI() {
 
       <div className="mb-6 flex flex-wrap items-center gap-3 border border-border bg-card p-4">
         <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Provider</span>
-        <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.65rem] uppercase tracking-[0.28em] ${provider === "openai" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600"}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${provider === "openai" ? "bg-emerald-500" : "bg-amber-500"}`} />
+        <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.65rem] uppercase tracking-[0.28em] ${provider === "openai" ? "border-foreground text-foreground" : "border-border text-muted-foreground"}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${provider === "openai" ? "bg-foreground" : "border border-muted-foreground"}`} />
           {provider === "openai" ? "OpenAI aktiv" : provider === "unknown" ? "prüfe…" : "Fallback aktiv"}
         </span>
         <span className="text-xs text-muted-foreground">
@@ -397,7 +397,7 @@ export default function AdminKI() {
                   <p className="font-serif text-lg">{i.label} <span className="ml-2 text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">{i.kind}</span></p>
                   <p className="text-xs text-muted-foreground">Events: {i.event_types.join(", ") || "—"}</p>
                 </div>
-                <button onClick={() => toggleIntegration(i)} className={`border px-3 py-1 text-[0.6rem] uppercase tracking-[0.28em] ${i.enabled ? "border-emerald-500/40 text-emerald-600" : "border-muted text-muted-foreground"}`}>
+                <button onClick={() => toggleIntegration(i)} className={`border px-3 py-1 text-[0.6rem] uppercase tracking-[0.28em] ${i.enabled ? "border-foreground text-foreground" : "border-muted text-muted-foreground"}`}>
                   {i.enabled ? "Aktiv" : "Aus"}
                 </button>
                 <button onClick={() => setNewIntegration(i)} className="text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">Bearbeiten</button>
@@ -876,13 +876,13 @@ function SecretsPanel() {
           const ok = !!present?.[s.key];
           return (
             <li key={s.key} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3">
-              <span className={`h-2.5 w-2.5 rounded-full ${ok ? "bg-emerald-500" : "bg-amber-500"}`} title={ok ? "vorhanden" : "fehlt"} />
+              <span className={`h-2.5 w-2.5 rounded-full ${ok ? "bg-foreground" : "border border-muted-foreground"}`} title={ok ? "vorhanden" : "fehlt"} />
               <div className="min-w-0">
                 <p className="font-mono text-[0.78rem] text-foreground">{s.key}</p>
                 <p className="text-xs text-muted-foreground">{s.unlocks}</p>
-                {!ok && !loading && <p className="mt-1 text-[0.7rem] text-amber-700">So einrichten: {s.where}</p>}
+                {!ok && !loading && <p className="mt-1 text-[0.7rem] text-muted-foreground">So einrichten: {s.where}</p>}
               </div>
-              <span className={`text-[0.6rem] uppercase tracking-[0.28em] ${ok ? "text-emerald-600" : "text-amber-600"}`}>
+              <span className={`text-[0.6rem] uppercase tracking-[0.28em] ${ok ? "text-foreground" : "text-muted-foreground"}`}>
                 {ok ? "Vorhanden" : "Fehlt"}
               </span>
             </li>

@@ -501,7 +501,7 @@ function ImportPanel({ onImported }: { onImported: () => void }) {
                   <td className="px-3 py-1.5">{r.handle || "—"}</td>
                   <td className="px-3 py-1.5">{r.world || "—"}</td>
                   <td className="px-3 py-1.5">{r.followers ?? "—"}</td>
-                  <td className={cn("px-3 py-1.5", r.error ? "text-red-600" : "text-muted-foreground")}>
+                  <td className={cn("px-3 py-1.5", r.error ? "text-foreground" : "text-muted-foreground")}>
                     {r.error ?? "OK"}
                   </td>
                 </tr>

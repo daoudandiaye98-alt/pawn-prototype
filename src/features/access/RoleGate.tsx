@@ -46,8 +46,8 @@ export function PrototypeAccessBanner({ role }: { role: "Owner OS" | "Designer S
   const { user, roles } = useAuth();
   if (user && (roles.includes("admin") || roles.includes("designer"))) return null;
   return (
-    <div className="flex items-center gap-3 border-b border-white/10 bg-[hsl(0_55%_10%)]/60 px-6 py-2 text-[10px] uppercase tracking-[0.28em] text-[hsl(36_25%_84%)] md:px-10">
-      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(350_65%_55%)]" />
+    <div className="flex items-center gap-3 border-b border-white/10 bg-[hsl(0_0%_10%)]/60 px-6 py-2 text-[10px] uppercase tracking-[0.28em] text-[hsl(0_0%_84%)] md:px-10">
+      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(0_0%_55%)]" />
       Prototype access · {role} · role boundaries not enforced
     </div>
   );

@@ -146,7 +146,7 @@ export default function AdminArchiv() {
                 {r.performance?.premiere_views ?? 0} Aufrufe · {r.performance?.shop_clicks ?? 0} Shop-Klicks
               </p>
               {!r.rights_granted && (
-                <p className="mt-2 text-[0.62rem] text-amber-700">Rechte-Haken fehlt — nicht für Première geeignet.</p>
+                <p className="mt-2 text-[0.62rem] text-muted-foreground">Rechte-Haken fehlt — nicht für Première geeignet.</p>
               )}
               <button
                 onClick={() => sendToQueue(r)}

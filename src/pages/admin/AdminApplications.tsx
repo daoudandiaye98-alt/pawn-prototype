@@ -174,9 +174,9 @@ function AdminApplicationsBody() {
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
     submitted: "border-accent text-foreground",
-    in_review: "border-amber-500/60 text-amber-600 dark:text-amber-300",
-    approved: "border-emerald-500/60 text-emerald-600 dark:text-emerald-300",
-    rejected: "border-red-500/60 text-red-600 dark:text-red-300",
+    in_review: "border-border text-muted-foreground",
+    approved: "border-foreground text-foreground",
+    rejected: "border-foreground bg-foreground text-background",
     archived: "border-border text-muted-foreground",
     draft: "border-border text-muted-foreground",
   };

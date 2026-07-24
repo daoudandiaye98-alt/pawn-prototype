@@ -10,6 +10,7 @@ import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
 import { useCredits, type Plan } from "@/features/campaign/quota";
+import { Begleiter } from "./Begleiter";
 
 import { useDisplayName } from "@/lib/displayName";
 
@@ -121,7 +122,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   ];
 
   return (
-    <aside className="flex h-full w-[264px] shrink-0 flex-col bg-[#0B0B0D] text-white/85">
+    <aside className="flex h-full w-[264px] shrink-0 flex-col bg-foreground text-white/85">
       <div className="border-b border-white/10 px-6 py-6">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 items-center justify-center border border-white/25 font-serif text-xs tracking-wider">{initials}</span>
@@ -145,7 +146,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <item.icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && item.badge > 0 ? (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[0.62rem] font-medium text-[#0B0B0D]">{item.badge}</span>
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[0.62rem] font-medium text-foreground">{item.badge}</span>
               ) : null}
             </NavLink>
           );
@@ -212,9 +213,9 @@ function Topbar({ title, section }: { title: string; section?: string }) {
         )}
         <button aria-label="Benachrichtigungen" onClick={() => nav("/account")} className="relative flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
           <Bell className="h-4 w-4" />
-          {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#0B0B0D]" />}
+          {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-foreground" />}
         </button>
-        <button onClick={copilot.toggle} className="relative flex items-center gap-2 rounded-full bg-[#0B0B0D] px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-black">
+        <button onClick={copilot.toggle} className="relative flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-foreground/90">
           <span className="relative flex h-2 w-2 items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
@@ -241,14 +242,18 @@ function Topbar({ title, section }: { title: string; section?: string }) {
   );
 }
 
-interface Props { children: ReactNode; title: string; eyebrow?: string }
+interface Props { children: ReactNode; title: string; eyebrow?: string; begleiterStep?: string }
 
-function Inner({ children, title, eyebrow }: Props) {
+function Inner({ children, title, eyebrow, begleiterStep }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { designer } = useMyDesigner();
+  const { pathname } = useLocation();
+  const plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
+  const credits = useCredits(designer?.id, plan);
   return (
-    <div className="flex min-h-screen bg-[#F7F5F0]">
+    <div className="flex min-h-screen bg-background">
       <LevelUpOverlay designerId={designer?.id} />
+      {designer && <Begleiter pathname={pathname} step={begleiterStep} plan={plan} credits={credits} />}
       {/* Desktop sidebar */}
       <div className="hidden lg:block sticky top-0 h-screen">
         <Sidebar />

@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { renderCampaign, blobPreviewUrl, type Tempo, type Format } from "@/features/campaign/renderer";
 import { randomSeed } from "@/features/campaign/prng";
 import { useCredits, planLabel, type Plan } from "@/features/campaign/quota";
-import { Check, Upload, Sparkles, Music, ArrowRight, Wand2, Shuffle, Image as ImageIcon, Clapperboard, X, ChevronDown, ChevronUp, ArrowDown, Download } from "lucide-react";
+import { Check, Upload, Sparkles, Music, ArrowRight, Wand2, Shuffle, Image as ImageIcon, Clapperboard, X, ChevronUp, ArrowDown, Download } from "lucide-react";
 
 
 interface ProductLite {
@@ -70,19 +70,6 @@ async function uploadFile(userId: string, file: File | Blob, ext: string): Promi
     .from("campaign-assets").createSignedUrl(path, 60 * 60 * 24 * 365);
   if (signErr || !signed) throw signErr ?? new Error("sign_failed");
   return { path, signedUrl: signed.signedUrl };
-}
-
-/** Ausklappbare Info-Zeile: was gerade passiert, wie lange es dauert, was es kostet. Kein Meta-Baustein — pro Schritt eigener Text. */
-function InfoBox({ children }: { children: React.ReactNode }) {
-  return (
-    <details className="mt-4 border border-border bg-white text-sm [&_summary::-webkit-details-marker]:hidden">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
-        Was passiert gerade?
-        <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-      </summary>
-      <div className="border-t border-border px-4 py-3 text-muted-foreground">{children}</div>
-    </details>
-  );
 }
 
 const ORT_PRESETS = ["Studio, neutral", "Straße", "Natur", "Interieur", "Laufsteg"];
@@ -770,7 +757,7 @@ export default function StudioCampaignNew() {
 
   // === Render ===
   return (
-    <StudioShell title="Neue Kampagne" eyebrow="Kampagnen-Studio">
+    <StudioShell title="Neue Kampagne" eyebrow="Kampagnen-Studio" begleiterStep={outputType && step > 0 ? `${outputType}-${step}` : undefined}>
       <StepHeader step={step} labels={stepLabels} />
 
       {step > 0 && (
@@ -856,7 +843,7 @@ export default function StudioCampaignNew() {
               <p className="editorial-eyebrow">Bildrechte</p>
               {consentOk === null ? <p className="mt-2 text-sm text-muted-foreground">wird geprüft…</p> :
                 consentOk ? (
-                  <p className="mt-2 flex items-center gap-2 text-sm text-emerald-700"><Check className="h-4 w-4" /> Einwilligung liegt vor.</p>
+                  <p className="mt-2 flex items-center gap-2 text-sm text-foreground"><Check className="h-4 w-4" /> Einwilligung liegt vor.</p>
                 ) : (
                   <div className="mt-2 space-y-3">
                     <p className="text-sm text-muted-foreground">
@@ -873,7 +860,7 @@ export default function StudioCampaignNew() {
               <p className="editorial-eyebrow">Medien-Rechte</p>
               {mediaRightsGranted === null ? <p className="mt-2 text-sm text-muted-foreground">wird geprüft…</p> :
                 mediaRightsGranted ? (
-                  <p className="mt-2 flex items-center gap-2 text-sm text-emerald-700"><Check className="h-4 w-4" /> Rechte-Haken gesetzt.</p>
+                  <p className="mt-2 flex items-center gap-2 text-sm text-foreground"><Check className="h-4 w-4" /> Rechte-Haken gesetzt.</p>
                 ) : (
                   <div className="mt-2 space-y-3">
                     <p className="text-sm text-muted-foreground">
@@ -953,9 +940,6 @@ export default function StudioCampaignNew() {
                 </div>
               )}
             </div>
-            <InfoBox>
-              <p><strong>Freisteller</strong> setzt dein Foto auf einen neutralen, weißen Hintergrund — wie im professionellen Fotostudio. Dauert etwa 10–25 Sekunden. Kostet {credits.costs.product_shot ?? 1} Credits — du hast {credits.balance} (siehe <Link to="/studio/plan" className="underline">Plan</Link>).</p>
-            </InfoBox>
           </section>
 
           {recentShots.length > 0 && (
@@ -1279,9 +1263,6 @@ export default function StudioCampaignNew() {
                     „{chosenModelEntry.label}" ({chosenModelEntry.strength}) — {chosenModelEntry.credits} Credits pro Foto, du hast {credits.balance}.
                   </p>
                 )}
-                <InfoBox>
-                  <p>PAWN schickt jedes Foto an einen externen Bild-zu-Video-Dienst und wartet auf das Ergebnis — meist 1–2 Minuten pro Foto. Jeder gelungene Clip zieht Credits von deinem Guthaben ab. Schlägt ein Clip fehl, bleibt das Foto als ruhige Einstellung im Video und es werden keine Credits abgezogen.</p>
-                </InfoBox>
               </>
             )}
           </section>
@@ -1485,10 +1466,6 @@ export default function StudioCampaignNew() {
                 <input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} /> PAWN-Logo im Abspann zeigen
               </label>
             )}
-            <InfoBox>
-              <p>Der Schnitt setzt deine Aufnahmen zu einem Video zusammen — komplett auf deinem Gerät, kostet keine Credits. Ohne Intro/Abspann bekommst du die reinen Aufnahmen aneinandergereiht.</p>
-            </InfoBox>
-
             {!videoBlob ? (
               <div className="flex flex-wrap gap-2 pt-2">
                 <button onClick={composeVideo} disabled={renderBusy}

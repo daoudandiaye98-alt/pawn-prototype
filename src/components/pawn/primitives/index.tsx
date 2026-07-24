@@ -76,14 +76,14 @@ export const Panel = forwardRef<HTMLElement, PanelProps>(function Panel(
               <p
                 className={cn(
                   "t-eyebrow",
-                  isInk && "text-[hsl(36_15%_58%)]",
+                  isInk && "text-[hsl(0_0%_58%)]",
                 )}
               >
                 {eyebrow}
               </p>
             )}
             {title && (
-              <h3 className={cn("mt-1 t-display-sm", isInk && "text-[hsl(36_28%_94%)]")}>{title}</h3>
+              <h3 className={cn("mt-1 t-display-sm", isInk && "text-[hsl(0_0%_94%)]")}>{title}</h3>
             )}
           </div>
           {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
@@ -198,36 +198,35 @@ export function Metric({
     <div
       className={cn(
         "group relative flex flex-col justify-between p-5 md:p-6 motion-micro",
-        isInk ? "border border-white/[0.08] bg-[hsl(18_10%_6%)]" : "border border-[hsl(var(--border))] bg-card",
+        isInk ? "border border-white/[0.08] bg-[hsl(0_0%_6%)]" : "border border-[hsl(var(--border))] bg-card",
         className,
       )}
       title={hint}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className={cn("t-eyebrow", isInk && "text-[hsl(36_15%_58%)]")}>{label}</p>
+        <p className={cn("t-eyebrow", isInk && "text-[hsl(0_0%_58%)]")}>{label}</p>
         {delta && (
           <span
             className={cn(
               "text-[0.65rem] tabular-nums",
-              trend === "up" && "text-emerald-600 dark:text-emerald-300",
-              trend === "down" && "text-destructive",
-              trend === "neutral" && (isInk ? "text-[hsl(36_15%_55%)]" : "text-muted-foreground"),
+              (trend === "up" || trend === "down") && "text-foreground",
+              trend === "neutral" && (isInk ? "text-[hsl(0_0%_55%)]" : "text-muted-foreground"),
             )}
           >
             {delta}
           </span>
         )}
       </div>
-      <p className={cn("mt-4 t-display-md leading-none tabular-nums", isInk && "text-[hsl(36_28%_94%)]")}>{value}</p>
+      <p className={cn("mt-4 t-display-md leading-none tabular-nums", isInk && "text-[hsl(0_0%_94%)]")}>{value}</p>
       {rationale && rationale.length > 0 && (
         <div className={cn(
           "pointer-events-none absolute inset-0 flex flex-col justify-end p-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100",
           isInk
-            ? "bg-gradient-to-t from-[hsl(18_10%_5%)] via-[hsl(18_10%_5%)]/95 to-transparent"
+            ? "bg-gradient-to-t from-[hsl(0_0%_5%)] via-[hsl(0_0%_5%)]/95 to-transparent"
             : "bg-gradient-to-t from-card via-card/95 to-transparent",
         )}>
-          <p className={cn("t-eyebrow", isInk && "text-[hsl(36_15%_58%)]")}>Warum</p>
-          <ul className={cn("mt-2 space-y-1 text-[11px] leading-snug", isInk ? "text-[hsl(36_25%_86%)]" : "text-foreground/80")}>
+          <p className={cn("t-eyebrow", isInk && "text-[hsl(0_0%_58%)]")}>Warum</p>
+          <ul className={cn("mt-2 space-y-1 text-[11px] leading-snug", isInk ? "text-[hsl(0_0%_86%)]" : "text-foreground/80")}>
             {rationale.map((r) => (
               <li key={r} className="flex gap-2">
                 <span className="mt-1.5 h-px w-2 shrink-0 bg-[hsl(var(--oxblood))]" />
@@ -299,23 +298,23 @@ export function ActivityList({
           <span
             className={cn(
               "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border font-serif text-[10px]",
-              e.tone === "positive" && "border-emerald-500/40 text-emerald-600 dark:text-emerald-300",
+              e.tone === "positive" && "border-foreground text-foreground",
               e.tone === "critical" && "border-destructive/50 text-destructive",
-              e.tone === "warn" && "border-amber-500/50 text-amber-600 dark:text-amber-200",
-              (!e.tone || e.tone === "neutral") && (isInk ? "border-white/15 text-[hsl(36_20%_78%)]" : "border-[hsl(var(--border-strong))] text-foreground/70"),
+              e.tone === "warn" && "border-muted-foreground/50 text-muted-foreground",
+              (!e.tone || e.tone === "neutral") && (isInk ? "border-white/15 text-[hsl(0_0%_78%)]" : "border-[hsl(var(--border-strong))] text-foreground/70"),
             )}
           >
             ↳
           </span>
           <div className="min-w-0 flex-1">
-            <p className={cn("t-body-sm", isInk ? "text-[hsl(36_25%_86%)]" : "text-foreground/85")}>
-              <span className={cn("font-medium", isInk ? "text-[hsl(36_28%_94%)]" : "text-foreground")}>{e.actor}</span>{" "}
-              <span className={isInk ? "text-[hsl(36_18%_66%)]" : "text-foreground/60"}>{e.verb}</span>
-              {e.object && <> <span className={isInk ? "text-[hsl(36_28%_94%)]" : "text-foreground"}>{e.object}</span></>}
+            <p className={cn("t-body-sm", isInk ? "text-[hsl(0_0%_86%)]" : "text-foreground/85")}>
+              <span className={cn("font-medium", isInk ? "text-[hsl(0_0%_94%)]" : "text-foreground")}>{e.actor}</span>{" "}
+              <span className={isInk ? "text-[hsl(0_0%_66%)]" : "text-foreground/60"}>{e.verb}</span>
+              {e.object && <> <span className={isInk ? "text-[hsl(0_0%_94%)]" : "text-foreground"}>{e.object}</span></>}
             </p>
-            <p className={cn("mt-0.5 text-[10px] uppercase tracking-[0.2em]", isInk ? "text-[hsl(36_15%_45%)]" : "text-muted-foreground")}>
+            <p className={cn("mt-0.5 text-[10px] uppercase tracking-[0.2em]", isInk ? "text-[hsl(0_0%_45%)]" : "text-muted-foreground")}>
               {e.when}
-              {e.tag && <> · <span className={isInk ? "text-[hsl(36_25%_72%)]" : "text-foreground/60"}>{e.tag}</span></>}
+              {e.tag && <> · <span className={isInk ? "text-[hsl(0_0%_72%)]" : "text-foreground/60"}>{e.tag}</span></>}
             </p>
           </div>
         </li>
@@ -347,27 +346,27 @@ export function Insight({
 }) {
   const isInk = surface === "ink";
   const sevDot =
-    severity === "critical" ? "bg-destructive"
-    : severity === "high" ? "bg-amber-500"
-    : severity === "medium" ? "bg-[hsl(var(--oxblood))]"
-    : severity === "low" ? "bg-emerald-500"
+    severity === "critical" ? "bg-foreground"
+    : severity === "high" ? "bg-foreground/75"
+    : severity === "medium" ? "bg-foreground/50"
+    : severity === "low" ? "bg-foreground/25"
     : "bg-foreground/40";
   return (
-    <article className={cn("flex flex-col gap-3 p-5 md:p-6", isInk ? "bg-[hsl(18_10%_7%)] border border-white/[0.06]" : "bg-card border border-[hsl(var(--border))]", className)}>
+    <article className={cn("flex flex-col gap-3 p-5 md:p-6", isInk ? "bg-[hsl(0_0%_7%)] border border-white/[0.06]" : "bg-card border border-[hsl(var(--border))]", className)}>
       <div className="flex items-center gap-2.5">
         <span className={cn("h-2 w-2 rounded-full", sevDot)} />
-        <p className={cn("t-eyebrow", isInk && "text-[hsl(36_15%_58%)]")}>Insight</p>
+        <p className={cn("t-eyebrow", isInk && "text-[hsl(0_0%_58%)]")}>Insight</p>
         {typeof confidence === "number" && (
-          <span className={cn("ml-auto text-[10px] tabular-nums uppercase tracking-[0.24em]", isInk ? "text-[hsl(36_15%_55%)]" : "text-muted-foreground")}>
+          <span className={cn("ml-auto text-[10px] tabular-nums uppercase tracking-[0.24em]", isInk ? "text-[hsl(0_0%_55%)]" : "text-muted-foreground")}>
             {Math.round(confidence * 100)}% confidence
           </span>
         )}
       </div>
-      <h3 className={cn("t-display-sm", isInk && "text-[hsl(36_28%_94%)]")}>{title}</h3>
+      <h3 className={cn("t-display-sm", isInk && "text-[hsl(0_0%_94%)]")}>{title}</h3>
       {(cause || effect) && (
-        <div className={cn("grid gap-2 text-[12.5px] leading-relaxed", isInk ? "text-[hsl(36_25%_82%)]" : "text-foreground/80")}>
-          {cause && <p><span className={cn("t-eyebrow mr-2 inline-block", isInk && "text-[hsl(36_15%_58%)]")}>Cause</span>{cause}</p>}
-          {effect && <p><span className={cn("t-eyebrow mr-2 inline-block", isInk && "text-[hsl(36_15%_58%)]")}>Effect</span>{effect}</p>}
+        <div className={cn("grid gap-2 text-[12.5px] leading-relaxed", isInk ? "text-[hsl(0_0%_82%)]" : "text-foreground/80")}>
+          {cause && <p><span className={cn("t-eyebrow mr-2 inline-block", isInk && "text-[hsl(0_0%_58%)]")}>Cause</span>{cause}</p>}
+          {effect && <p><span className={cn("t-eyebrow mr-2 inline-block", isInk && "text-[hsl(0_0%_58%)]")}>Effect</span>{effect}</p>}
         </div>
       )}
       {actions && <div className="mt-1 flex flex-wrap gap-2">{actions}</div>}
@@ -400,8 +399,8 @@ export function Recommendation({
         <PawnMark className="h-3 w-3" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className={cn("t-body-sm font-medium", isInk ? "text-[hsl(36_28%_94%)]" : "text-foreground")}>{subject}</p>
-        <p className={cn("mt-1 text-[12.5px] leading-relaxed", isInk ? "text-[hsl(36_18%_70%)]" : "text-foreground/65")}>{rationale}</p>
+        <p className={cn("t-body-sm font-medium", isInk ? "text-[hsl(0_0%_94%)]" : "text-foreground")}>{subject}</p>
+        <p className={cn("mt-1 text-[12.5px] leading-relaxed", isInk ? "text-[hsl(0_0%_70%)]" : "text-foreground/65")}>{rationale}</p>
         {action && <div className="mt-2">{action}</div>}
       </div>
     </div>
@@ -452,8 +451,8 @@ export const Command = forwardRef<HTMLButtonElement, CommandProps>(function Comm
 
 type StatusTone = "live" | "watch" | "risk" | "calm" | "muted";
 const STATUS: Record<StatusTone, { dot: string; text: string; border: string }> = {
-  live:  { dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-500/30" },
-  watch: { dot: "bg-amber-500",   text: "text-amber-700 dark:text-amber-200",     border: "border-amber-500/40" },
+  live:  { dot: "bg-foreground",   text: "text-foreground",        border: "border-foreground/30" },
+  watch: { dot: "bg-foreground/60", text: "text-foreground/80",    border: "border-foreground/40" },
   risk:  { dot: "bg-destructive", text: "text-destructive",                        border: "border-destructive/40" },
   calm:  { dot: "bg-foreground/40", text: "text-foreground/70",                    border: "border-[hsl(var(--border-strong))]" },
   muted: { dot: "bg-foreground/25", text: "text-muted-foreground",                 border: "border-[hsl(var(--border))]" },
@@ -489,14 +488,14 @@ export function IdentityChip({
     <span className={cn("inline-flex items-center gap-3", className)}>
       <span className={cn(
         "flex h-8 w-8 items-center justify-center border font-serif text-[13px]",
-        isInk ? "border-white/15 bg-white/[0.03] text-[hsl(36_28%_94%)]" : "border-[hsl(var(--border-strong))] bg-secondary text-foreground",
+        isInk ? "border-white/15 bg-white/[0.03] text-[hsl(0_0%_94%)]" : "border-[hsl(var(--border-strong))] bg-secondary text-foreground",
       )}>
         {glyph ?? name.slice(0, 1).toUpperCase()}
       </span>
       <span className="min-w-0">
-        <span className={cn("block truncate t-body-sm", isInk && "text-[hsl(36_28%_94%)]")}>{name}</span>
+        <span className={cn("block truncate t-body-sm", isInk && "text-[hsl(0_0%_94%)]")}>{name}</span>
         {role && (
-          <span className={cn("block truncate t-eyebrow", isInk && "text-[hsl(36_15%_58%)]")}>{role}</span>
+          <span className={cn("block truncate t-eyebrow", isInk && "text-[hsl(0_0%_58%)]")}>{role}</span>
         )}
       </span>
     </span>

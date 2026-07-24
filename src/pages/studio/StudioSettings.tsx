@@ -48,7 +48,7 @@ export default function StudioSettings() {
                         <span className="tabular-nums text-muted-foreground">{Math.round(ratio * 100)}%</span>
                       </div>
                       <div className="mt-1 h-1 w-full bg-muted">
-                        <div className="h-full bg-[#0B0B0D] transition-all" style={{ width: `${ratio * 100}%` }} />
+                        <div className="h-full bg-foreground transition-all" style={{ width: `${ratio * 100}%` }} />
                       </div>
                     </div>
                   );

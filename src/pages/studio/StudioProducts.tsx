@@ -726,7 +726,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
 
 
 
-      <style>{`.inp { width:100%; border:1px solid hsl(var(--border)); background:#fff; padding: 0.65rem 0.85rem; font-size: 0.9rem; transition: border-color .15s; }
+      <style>{`.inp { width:100%; border:1px solid hsl(var(--border)); background:hsl(var(--background)); padding: 0.65rem 0.85rem; font-size: 0.9rem; transition: border-color .15s; }
       .inp:focus { outline: none; border-color: hsl(var(--foreground)); }`}</style>
     </div>
   );
@@ -734,7 +734,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
 
 function AutosaveBadge({ saving, savedAt }: { saving: boolean; savedAt: Date | null }) {
   if (saving) return <span className="text-[0.68rem] text-muted-foreground">Wird gesichert…</span>;
-  if (savedAt) return <span className="flex items-center gap-1 text-[0.68rem] text-emerald-700"><Check className="h-3 w-3" /> Gespeichert</span>;
+  if (savedAt) return <span className="flex items-center gap-1 text-[0.68rem] text-muted-foreground"><Check className="h-3 w-3" /> Gespeichert</span>;
   return null;
 }
 

@@ -283,9 +283,9 @@ function ShippingDialog({ order, onClose, onDone }: { order: GroupedOrder; onClo
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
-    paid: "border-emerald-500/60 text-emerald-600",
-    pending: "border-amber-500/60 text-amber-600",
-    failed: "border-red-500/60 text-red-600",
+    paid: "border-foreground text-foreground",
+    pending: "border-border text-muted-foreground",
+    failed: "border-foreground bg-foreground text-background",
   };
   return <span className={`inline-block border px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.28em] ${map[status] ?? "border-border text-muted-foreground"}`}>{status}</span>;
 }

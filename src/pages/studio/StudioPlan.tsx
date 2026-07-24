@@ -66,9 +66,9 @@ function CreditCircle({ balance, grant }: { balance: number; grant: number }) {
   return (
     <div className="flex items-center gap-4">
       <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="#e5e5e5" strokeWidth="7" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="hsl(var(--border))" strokeWidth="7" />
         <circle
-          cx="50" cy="50" r={r} fill="none" stroke="#000" strokeWidth="7"
+          cx="50" cy="50" r={r} fill="none" stroke="hsl(var(--foreground))" strokeWidth="7"
           strokeDasharray={c} strokeDashoffset={c * (1 - pct)}
           strokeLinecap="butt" transform="rotate(-90 50 50)"
         />
@@ -266,7 +266,7 @@ export default function StudioPlan() {
             {history.slice(0, 10).map((h, i) => (
               <li key={i} className="flex items-center justify-between gap-3 text-muted-foreground">
                 <span>{new Date(h.at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} · {ACTION_LABEL[h.action] ?? h.action}</span>
-                <span className={`tabular-nums ${h.credits > 0 ? "text-emerald-700" : ""}`}>{h.credits > 0 ? "+" : ""}{h.credits}</span>
+                <span className={`tabular-nums ${h.credits > 0 ? "font-medium text-foreground" : ""}`}>{h.credits > 0 ? "+" : ""}{h.credits}</span>
               </li>
             ))}
           </ul>
