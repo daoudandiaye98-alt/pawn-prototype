@@ -24,6 +24,7 @@ const DEFAULT_HOUSE_STYLE_LAW =
 type Tab = "denklogik" | "credits" | "persona" | "signale" | "responses" | "integrationen";
 
 interface CreditPackRow { id: string; credits: number; eur: number; stripe_price_id: string | null }
+interface ModelCatalogRow { id: string; label: string; kind: "image" | "video"; strength: string; credits: number; active: boolean; fal_model: string }
 
 export default function AdminKI() {
   const { user, roles, loading } = useAuth();
@@ -49,10 +50,11 @@ export default function AdminKI() {
   const [planCredits, setPlanCredits] = useState<Record<string, number>>({ haus: 30, atelier: 300, maison: 1200 });
   const [creditCosts, setCreditCosts] = useState<Record<string, number>>({ product_shot: 1, tryon_shot: 2, tryon_clip: 8, clip_standard: 5, clip_premium: 12 });
   const [creditPacks, setCreditPacks] = useState<CreditPackRow[]>([]);
+  const [modelCatalog, setModelCatalog] = useState<ModelCatalogRow[]>([]);
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
@@ -68,6 +70,7 @@ export default function AdminKI() {
       supabase.from("ai_config").select("value").eq("key", "plan_credits").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "credit_packs").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle(),
     ]);
     setPrompt(((cfg.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_PROMPT);
     setCopilotPrompt(((cfgCopilot.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_COPILOT);
@@ -92,6 +95,7 @@ export default function AdminKI() {
     if (planCreditsCfg.data?.value) setPlanCredits((prev) => ({ ...prev, ...(planCreditsCfg.data.value as Record<string, number>) }));
     if (creditCostsCfg.data?.value) setCreditCosts((prev) => ({ ...prev, ...(creditCostsCfg.data.value as Record<string, number>) }));
     if (Array.isArray(creditPacksCfg.data?.value)) setCreditPacks(creditPacksCfg.data.value as unknown as CreditPackRow[]);
+    if (Array.isArray(modelCatalogCfg.data?.value)) setModelCatalog(modelCatalogCfg.data.value as unknown as ModelCatalogRow[]);
   };
 
   useEffect(() => {
@@ -151,6 +155,13 @@ export default function AdminKI() {
     const { error } = await supabase.from("ai_config").upsert({ key: "credit_packs", value: next as unknown as never, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else { toast.success("Credit-Pakete gespeichert."); setCreditPacks(next); }
+  };
+
+  const saveModelCatalog = async (next: ModelCatalogRow[]) => {
+    setBusy(true);
+    const { error } = await supabase.from("ai_config").upsert({ key: "model_catalog", value: next as unknown as never, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Modell-Katalog gespeichert."); setModelCatalog(next); }
   };
 
   const requestSuggestion = async (personaKey: "persona_customer" | "persona_designer" | "persona_admin", currentText: string, instruction: string) => {
@@ -292,6 +303,7 @@ export default function AdminKI() {
           planCredits={planCredits} onSavePlanCredits={savePlanCredits}
           creditCosts={creditCosts} onSaveCreditCosts={saveCreditCosts}
           creditPacks={creditPacks} onSaveCreditPacks={saveCreditPacks}
+          modelCatalog={modelCatalog} onSaveModelCatalog={saveModelCatalog}
           busy={busy}
         />
       )}
@@ -543,18 +555,21 @@ function DirectivesEditor({ value, onSave, busy }: { value: string[]; onSave: (i
   );
 }
 
-function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCreditCosts, creditPacks, onSaveCreditPacks, busy }: {
+function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCreditCosts, creditPacks, onSaveCreditPacks, modelCatalog, onSaveModelCatalog, busy }: {
   planCredits: Record<string, number>; onSavePlanCredits: (v: Record<string, number>) => void;
   creditCosts: Record<string, number>; onSaveCreditCosts: (v: Record<string, number>) => void;
   creditPacks: CreditPackRow[]; onSaveCreditPacks: (v: CreditPackRow[]) => void;
+  modelCatalog: ModelCatalogRow[]; onSaveModelCatalog: (v: ModelCatalogRow[]) => void;
   busy: boolean;
 }) {
   const [pc, setPc] = useState(planCredits);
   const [cc, setCc] = useState(creditCosts);
   const [packs, setPacks] = useState<CreditPackRow[]>(creditPacks);
+  const [models, setModels] = useState<ModelCatalogRow[]>(modelCatalog);
   useEffect(() => setPc(planCredits), [planCredits]);
   useEffect(() => setCc(creditCosts), [creditCosts]);
   useEffect(() => setPacks(creditPacks), [creditPacks]);
+  useEffect(() => setModels(modelCatalog), [modelCatalog]);
 
   return (
     <div className="space-y-8">
@@ -633,6 +648,67 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
           <button type="button" onClick={() => onSaveCreditPacks(packs)} disabled={busy}
             className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
             {busy ? "…" : "Pakete speichern"}
+          </button>
+        </div>
+      </section>
+
+      <section className="border-[1.5px] border-foreground bg-card p-8">
+        <p className="editorial-eyebrow">Modell-Katalog</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Modelle für die kinematische Erzeugung, die Designer im Kampagnen-Studio selbst wählen können. Neue Modelle kommen hier dazu, ohne Deploy.
+        </p>
+        <div className="mt-4 space-y-3">
+          {models.map((m, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.4fr_1fr_1fr_auto_auto_auto] lg:items-end">
+              <label className="block">
+                <span className="editorial-eyebrow">ID</span>
+                <input value={m.id} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, id: e.target.value } : x))}
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="editorial-eyebrow">Anzeigename</span>
+                <input value={m.label} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="editorial-eyebrow">Art</span>
+                <select value={m.kind} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, kind: e.target.value as "image" | "video" } : x))}
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm">
+                  <option value="video">Video</option>
+                  <option value="image">Bild</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="editorial-eyebrow">Stufe (Klartext)</span>
+                <input value={m.strength} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, strength: e.target.value } : x))}
+                  placeholder="z. B. schnell"
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="editorial-eyebrow">Credits</span>
+                <input type="number" min={0} value={m.credits} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, credits: Number(e.target.value) } : x))}
+                  className="mt-1 w-20 border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={m.active} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, active: e.target.checked } : x))} />
+                Aktiv
+              </label>
+              <button type="button" onClick={() => setModels(models.filter((_, j) => j !== i))} className="text-destructive"><Trash2 className="h-4 w-4" /></button>
+              <label className="col-span-2 block lg:col-span-7">
+                <span className="editorial-eyebrow">fal.ai-Modell-Kennung</span>
+                <input value={m.fal_model} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, fal_model: e.target.value } : x))}
+                  placeholder="fal-ai/…"
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm font-mono" />
+              </label>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <button type="button" onClick={() => setModels([...models, { id: `model_${Date.now()}`, label: "Neues Modell", kind: "video", strength: "schnell", credits: 5, active: true, fal_model: "" }])}
+            className="border-[1.5px] border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] hover:border-foreground">+ Modell</button>
+          <button type="button" onClick={() => onSaveModelCatalog(models)} disabled={busy}
+            className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+            {busy ? "…" : "Katalog speichern"}
           </button>
         </div>
       </section>
