@@ -9,6 +9,7 @@ import { useCopilot } from "./CopilotDrawer";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
+import { useCredits, type Plan } from "@/features/campaign/quota";
 
 import { useDisplayName } from "@/lib/displayName";
 
@@ -164,6 +165,18 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** Guthaben dauerhaft sichtbar, egal auf welcher Studio-Seite — Verlauf liegt auf /studio/plan. */
+function CreditsPill({ designerId, plan }: { designerId: string; plan: Plan }) {
+  const credits = useCredits(designerId, plan);
+  if (credits.loading) return null;
+  return (
+    <Link to="/studio/plan" title="Guthaben & Verlauf"
+      className="hidden items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tabular-nums tracking-wide hover:border-foreground sm:inline-flex">
+      {credits.balance} / {credits.grant} Credits
+    </Link>
+  );
+}
+
 function Topbar({ title, section }: { title: string; section?: string }) {
   const { user, signOut } = useAuth();
   const { designer } = useMyDesigner();
@@ -190,6 +203,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
       </div>
 
       <div className="flex items-center gap-3">
+        {designer && <CreditsPill designerId={designer.id} plan={((designer as unknown as { plan?: Plan }).plan) ?? "haus"} />}
         {designer && (
           <Link to={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="hidden md:inline-flex items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-muted">

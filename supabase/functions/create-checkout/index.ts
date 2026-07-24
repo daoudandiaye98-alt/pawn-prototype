@@ -9,9 +9,10 @@ interface Body {
   success_url?: string;
   cancel_url?: string;
   customer_email?: string;
-  mode?: "payment" | "subscription";
+  mode?: "payment" | "subscription" | "credits";
   price_id?: string;
   plan?: "atelier" | "maison";
+  credits?: number;
 }
 
 Deno.serve(async (req) => {
@@ -52,6 +53,32 @@ Deno.serve(async (req) => {
 
         metadata: { plan: body.plan ?? "", user_id: user_id ?? "" },
         subscription_data: { metadata: { plan: body.plan ?? "", user_id: user_id ?? "" } },
+      });
+      return new Response(JSON.stringify({ url: session.url, id: session.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // === Credits nachkaufen (Teil 11a): eigener Kauf ohne Connect-Aufteilung, läuft direkt an PAWN.
+    // Gutschrift passiert im stripe-webhook bei checkout.session.completed anhand der Metadaten. ===
+    if (body.mode === "credits") {
+      if (!body.price_id) throw new Error("price_id required");
+      if (!user_id) throw new Error("auth_required");
+      const url = Deno.env.get("SUPABASE_URL")!;
+      const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const admin = createClient(url, svc, { auth: { persistSession: false } });
+      const { data: designer } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
+      if (!designer) {
+        return new Response(JSON.stringify({ error: "designer_not_found", message: "Kein Designer-Profil gefunden." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+      }
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        line_items: [{ price: body.price_id, quantity: 1 }],
+        success_url: body.success_url ?? `${origin}/studio/plan?credits=1`,
+        cancel_url: body.cancel_url ?? `${origin}/studio/plan`,
+        customer_email: body.customer_email,
+        locale: "de",
+        metadata: { kind: "credits", designer_id: designer.id, credits: String(body.credits ?? "") },
       });
       return new Response(JSON.stringify({ url: session.url, id: session.id }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -21,7 +21,9 @@ const DEFAULT_COPILOT =
 const DEFAULT_HOUSE_STYLE_LAW =
   "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
 
-type Tab = "denklogik" | "persona" | "signale" | "responses" | "integrationen";
+type Tab = "denklogik" | "credits" | "persona" | "signale" | "responses" | "integrationen";
+
+interface CreditPackRow { id: string; credits: number; eur: number; stripe_price_id: string | null }
 
 export default function AdminKI() {
   const { user, roles, loading } = useAuth();
@@ -44,10 +46,13 @@ export default function AdminKI() {
   const [newIntegration, setNewIntegration] = useState<Partial<IntegrationRow> | null>(null);
   const [provider, setProvider] = useState<"openai" | "fallback" | "unknown">("unknown");
   const [providerChain, setProviderChain] = useState<string[]>([]);
+  const [planCredits, setPlanCredits] = useState<Record<string, number>>({ haus: 30, atelier: 300, maison: 1200 });
+  const [creditCosts, setCreditCosts] = useState<Record<string, number>>({ product_shot: 1, tryon_shot: 2, tryon_clip: 8, clip_standard: 5, clip_premium: 12 });
+  const [creditPacks, setCreditPacks] = useState<CreditPackRow[]>([]);
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
@@ -60,6 +65,9 @@ export default function AdminKI() {
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.response_logged").order("at", { ascending: false }).limit(20),
       supabase.from("domain_events").select("payload").eq("type", "ai.response_logged").gte("at", since),
       supabase.from("ai_integrations").select("*").order("created_at", { ascending: false }),
+      supabase.from("ai_config").select("value").eq("key", "plan_credits").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "credit_packs").maybeSingle(),
     ]);
     setPrompt(((cfg.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_PROMPT);
     setCopilotPrompt(((cfgCopilot.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_COPILOT);
@@ -81,6 +89,9 @@ export default function AdminKI() {
     }
     setUsage({ chat, copilot, campaigns });
     setIntegrations((ints.data ?? []) as IntegrationRow[]);
+    if (planCreditsCfg.data?.value) setPlanCredits((prev) => ({ ...prev, ...(planCreditsCfg.data.value as Record<string, number>) }));
+    if (creditCostsCfg.data?.value) setCreditCosts((prev) => ({ ...prev, ...(creditCostsCfg.data.value as Record<string, number>) }));
+    if (Array.isArray(creditPacksCfg.data?.value)) setCreditPacks(creditPacksCfg.data.value as unknown as CreditPackRow[]);
   };
 
   useEffect(() => {
@@ -119,6 +130,27 @@ export default function AdminKI() {
     const { error } = await supabase.from("ai_config").upsert({ key: "directives", value: { items: clean }, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else { toast.success("Direktiven aktualisiert."); setDirectives(clean); }
+  };
+
+  const savePlanCredits = async (next: Record<string, number>) => {
+    setBusy(true);
+    const { error } = await supabase.from("ai_config").upsert({ key: "plan_credits", value: next, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Guthaben je Plan gespeichert."); setPlanCredits(next); }
+  };
+
+  const saveCreditCosts = async (next: Record<string, number>) => {
+    setBusy(true);
+    const { error } = await supabase.from("ai_config").upsert({ key: "credit_costs", value: next, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Credit-Kosten gespeichert."); setCreditCosts(next); }
+  };
+
+  const saveCreditPacks = async (next: CreditPackRow[]) => {
+    setBusy(true);
+    const { error } = await supabase.from("ai_config").upsert({ key: "credit_packs", value: next as unknown as never, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Credit-Pakete gespeichert."); setCreditPacks(next); }
   };
 
   const requestSuggestion = async (personaKey: "persona_customer" | "persona_designer" | "persona_admin", currentText: string, instruction: string) => {
@@ -198,10 +230,10 @@ export default function AdminKI() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-1 border-b border-border">
-        {(["denklogik","persona","signale","responses","integrationen"] as Tab[]).map((t) => (
+        {(["denklogik","credits","persona","signale","responses","integrationen"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`border-b-2 px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] ${tab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-            {t === "denklogik" ? "Denklogik" : t === "persona" ? "Persona (Legacy)" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
+            {t === "denklogik" ? "Denklogik" : t === "credits" ? "Credits" : t === "persona" ? "Persona (Legacy)" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
           </button>
         ))}
       </div>
@@ -253,6 +285,15 @@ export default function AdminKI() {
           />
           {suggestion && <SuggestionDiff sugg={suggestion} onAccept={acceptSuggestion} onDismiss={() => setSuggestion(null)} />}
         </div>
+      )}
+
+      {tab === "credits" && (
+        <CreditsEditor
+          planCredits={planCredits} onSavePlanCredits={savePlanCredits}
+          creditCosts={creditCosts} onSaveCreditCosts={saveCreditCosts}
+          creditPacks={creditPacks} onSaveCreditPacks={saveCreditPacks}
+          busy={busy}
+        />
       )}
 
       {tab === "persona" && (
@@ -499,6 +540,103 @@ function DirectivesEditor({ value, onSave, busy }: { value: string[]; onSave: (i
         </button>
       </div>
     </section>
+  );
+}
+
+function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCreditCosts, creditPacks, onSaveCreditPacks, busy }: {
+  planCredits: Record<string, number>; onSavePlanCredits: (v: Record<string, number>) => void;
+  creditCosts: Record<string, number>; onSaveCreditCosts: (v: Record<string, number>) => void;
+  creditPacks: CreditPackRow[]; onSaveCreditPacks: (v: CreditPackRow[]) => void;
+  busy: boolean;
+}) {
+  const [pc, setPc] = useState(planCredits);
+  const [cc, setCc] = useState(creditCosts);
+  const [packs, setPacks] = useState<CreditPackRow[]>(creditPacks);
+  useEffect(() => setPc(planCredits), [planCredits]);
+  useEffect(() => setCc(creditCosts), [creditCosts]);
+  useEffect(() => setPacks(creditPacks), [creditPacks]);
+
+  return (
+    <div className="space-y-8">
+      <section className="border-[1.5px] border-foreground bg-card p-8">
+        <p className="editorial-eyebrow">Guthaben je Plan · monatlich</p>
+        <p className="mt-2 text-sm text-muted-foreground">Credits, die jedes Haus pro Monat bekommt. Verfällt zum Monatsende.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {(["haus", "atelier", "maison"] as const).map((p) => (
+            <label key={p} className="block">
+              <span className="editorial-eyebrow capitalize">{p}</span>
+              <input type="number" min={0} value={pc[p] ?? 0} onChange={(e) => setPc({ ...pc, [p]: Number(e.target.value) })}
+                className="mt-2 w-full border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
+            </label>
+          ))}
+        </div>
+        <button type="button" onClick={() => onSavePlanCredits(pc)} disabled={busy}
+          className="mt-4 border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+          {busy ? "…" : "Guthaben speichern"}
+        </button>
+      </section>
+
+      <section className="border-[1.5px] border-foreground bg-card p-8">
+        <p className="editorial-eyebrow">Was jede Handlung kostet</p>
+        <p className="mt-2 text-sm text-muted-foreground">Credits pro Handlung — je nach Modell unterschiedlich teuer.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.entries(cc).map(([key, val]) => (
+            <label key={key} className="block">
+              <span className="editorial-eyebrow">{key}</span>
+              <input type="number" min={0} value={val} onChange={(e) => setCc({ ...cc, [key]: Number(e.target.value) })}
+                className="mt-2 w-full border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
+            </label>
+          ))}
+        </div>
+        <button type="button" onClick={() => onSaveCreditCosts(cc)} disabled={busy}
+          className="mt-4 border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+          {busy ? "…" : "Kosten speichern"}
+        </button>
+      </section>
+
+      <section className="border-[1.5px] border-foreground bg-card p-8">
+        <p className="editorial-eyebrow">Nachkaufbare Pakete</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Stripe-Preis-ID leer lassen, bis sie in Stripe angelegt und hier eingetragen wurde — bis dahin zeigt der Kauf-Knopf im Studio „bald verfügbar".
+        </p>
+        <div className="mt-4 space-y-3">
+          {packs.map((p, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_2fr_auto] sm:items-end">
+              <label className="block">
+                <span className="editorial-eyebrow">ID</span>
+                <input value={p.id} onChange={(e) => setPacks(packs.map((x, j) => j === i ? { ...x, id: e.target.value } : x))}
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="editorial-eyebrow">Credits</span>
+                <input type="number" min={0} value={p.credits} onChange={(e) => setPacks(packs.map((x, j) => j === i ? { ...x, credits: Number(e.target.value) } : x))}
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
+              </label>
+              <label className="block">
+                <span className="editorial-eyebrow">EUR</span>
+                <input type="number" min={0} value={p.eur} onChange={(e) => setPacks(packs.map((x, j) => j === i ? { ...x, eur: Number(e.target.value) } : x))}
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
+              </label>
+              <label className="block">
+                <span className="editorial-eyebrow">Stripe-Preis-ID</span>
+                <input value={p.stripe_price_id ?? ""} placeholder="price_… (leer = bald verfügbar)"
+                  onChange={(e) => setPacks(packs.map((x, j) => j === i ? { ...x, stripe_price_id: e.target.value || null } : x))}
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
+              </label>
+              <button type="button" onClick={() => setPacks(packs.filter((_, j) => j !== i))} className="text-destructive"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <button type="button" onClick={() => setPacks([...packs, { id: `pack_${Date.now()}`, credits: 100, eur: 9, stripe_price_id: null }])}
+            className="border-[1.5px] border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] hover:border-foreground">+ Paket</button>
+          <button type="button" onClick={() => onSaveCreditPacks(packs)} disabled={busy}
+            className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+            {busy ? "…" : "Pakete speichern"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

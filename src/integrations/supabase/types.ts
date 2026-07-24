@@ -508,6 +508,47 @@ export type Database = {
         }
         Relationships: []
       }
+      credits_ledger: {
+        Row: {
+          balance: number
+          consumed: number
+          created_at: string
+          designer_id: string
+          history: Json
+          id: string
+          month: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          consumed?: number
+          created_at?: string
+          designer_id: string
+          history?: Json
+          id?: string
+          month: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          consumed?: number
+          created_at?: string
+          designer_id?: string
+          history?: Json
+          id?: string
+          month?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credits_ledger_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curated_collections: {
         Row: {
           created_at: string
@@ -2067,6 +2108,20 @@ export type Database = {
       }
       book_ai_spend: {
         Args: { _cents: number; _designer_id: string }
+        Returns: Json
+      }
+      book_credit_spend: {
+        Args: {
+          _action: string
+          _check_only?: boolean
+          _credits: number
+          _designer_id: string
+          _model?: string
+        }
+        Returns: Json
+      }
+      grant_credits: {
+        Args: { _credits: number; _designer_id: string; _note?: string }
         Returns: Json
       }
       bump_video_metric: {
