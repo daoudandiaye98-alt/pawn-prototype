@@ -60,7 +60,7 @@ type Mode =
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen"
   | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
-  | "kampagnen_regie" | "cron_status" | "jarvis_bauplan";
+  | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -140,6 +140,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   kampagnen_regie: "gruen",
   evolution: "gruen",
   jarvis_bauplan: "gruen",
+  broll_einsammeln: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -1020,6 +1021,116 @@ async function runJarvisBauplan(admin: SupabaseClient, apiKey: string): Promise<
   return { ok: true, drafted: true, tokensUsed: tokens };
 }
 
+/**
+ * broll_einsammeln (Teil 10a) — sammelt fertige kinematische Clips server-seitig ein, auch wenn
+ * das Studio-Fenster längst geschlossen ist. poll-broll (im Studio) verlangt ein Nutzer-Token und
+ * läuft nur, solange der Tab offen ist; dieser Modus übernimmt dieselbe Abhol-Logik unabhängig
+ * davon, cron-fähig, mit Service-Role. Nach 30 Minuten ohne Ergebnis gilt ein Auftrag als
+ * hängengeblieben und wird als "timeout" markiert statt für immer offen zu bleiben.
+ */
+async function runBrollEinsammeln(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const FAL_KEY = Deno.env.get("FAL_KEY");
+  if (!FAL_KEY) return { ok: true, collected: 0, message: "fal.ai ist nicht eingerichtet (FAL_KEY fehlt)." };
+
+  const STALE_MS = 30 * 60_000;
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { data: rows } = await admin.from("generation_requests")
+    .select("id, status, error, provider_handles, tier, campaign_id, created_at, campaigns!inner(designer_id, designers!inner(user_id, media_rights_granted_at))")
+    .eq("provider", "fal").eq("status", "running").gte("created_at", since);
+
+  let collected = 0, failed = 0, stillRunning = 0;
+  const notifiedDesigners = new Set<string>();
+
+  for (const r of (rows ?? []) as unknown as Array<{
+    id: string; status: string; error: string | null; provider_handles: Record<string, unknown> | null;
+    tier: string; campaign_id: string; created_at: string;
+    campaigns: { designer_id: string; designers: { user_id: string; media_rights_granted_at: string | null } };
+  }>) {
+    let handles = (r.provider_handles ?? {}) as { request_id?: string; status_url?: string; response_url?: string; image_url?: string };
+    if (!handles.status_url && r.error) {
+      try { handles = JSON.parse(r.error); } catch { /* noop */ }
+    }
+    const age = Date.now() - new Date(r.created_at).getTime();
+    if (!handles.status_url) {
+      if (age > STALE_MS) { await admin.from("generation_requests").update({ status: "failed", error: "timeout" } as never).eq("id", r.id); failed++; }
+      else stillRunning++;
+      continue;
+    }
+    try {
+      const sr = await fetch(handles.status_url, { headers: { "Authorization": `Key ${FAL_KEY}` } });
+      const sj = await sr.json().catch(() => ({})) as { status?: string; response_url?: string };
+      const st = String(sj.status ?? "").toUpperCase();
+      if (st === "COMPLETED" || st === "OK") {
+        const responseUrl = sj.response_url || handles.response_url;
+        if (!responseUrl) { stillRunning++; continue; }
+        const rr = await fetch(responseUrl, { headers: { "Authorization": `Key ${FAL_KEY}` } });
+        const rj = await rr.json().catch(() => ({})) as {
+          video?: { url?: string }; videos?: Array<{ url?: string }>; output?: { video?: { url?: string } }; url?: string;
+        };
+        const videoUrl = rj?.video?.url ?? rj?.videos?.[0]?.url ?? rj?.output?.video?.url ?? rj?.url ?? "";
+        if (!videoUrl) {
+          await admin.from("generation_requests").update({ status: "failed", error: "no_video_url_in_response" } as never).eq("id", r.id);
+          failed++; continue;
+        }
+        const videoResp = await fetch(videoUrl);
+        if (!videoResp.ok) {
+          await admin.from("generation_requests").update({ status: "failed", error: `download_${videoResp.status}` } as never).eq("id", r.id);
+          failed++; continue;
+        }
+        const bytes = new Uint8Array(await videoResp.arrayBuffer());
+        const path = `${r.campaigns.designers.user_id}/broll/${r.id}.mp4`;
+        const { error: upErr } = await admin.storage.from("campaign-assets")
+          .upload(path, bytes, { contentType: "video/mp4", upsert: true });
+        if (upErr) {
+          await admin.from("generation_requests").update({ status: "failed", error: `upload_${upErr.message}` } as never).eq("id", r.id);
+          failed++; continue;
+        }
+        const { data: signed } = await admin.storage.from("campaign-assets").createSignedUrl(path, 60 * 60 * 24 * 365);
+        const finalUrl = signed?.signedUrl ?? path;
+        await admin.from("generation_requests").update({ status: "done", result_url: finalUrl, error: null } as never).eq("id", r.id);
+        await admin.from("video_assets").insert({
+          designer_id: r.campaigns.designer_id,
+          campaign_id: r.campaign_id,
+          url: finalUrl,
+          source: "designer",
+          video_dna: {
+            provider: "fal", tier: r.tier,
+            signatur: null, hook_typ: null, schnittrhythmus: null, palette: null,
+            laenge_s: 5, modelltyp: "kinematisch",
+          },
+          rights_granted: !!r.campaigns.designers.media_rights_granted_at,
+        } as never);
+        await admin.from("notifications").insert({
+          user_id: r.campaigns.designers.user_id,
+          type: "campaign.broll_ready",
+          title: "Deine Aufnahmen sind fertig",
+          body: "PAWN hat einen kinematischen Clip abgeholt, während dein Fenster geschlossen war.",
+          link: "/studio/kampagnen",
+        } as never);
+        notifiedDesigners.add(r.campaigns.designers.user_id);
+        collected++;
+      } else if (st === "FAILED" || st === "ERROR") {
+        await admin.from("generation_requests").update({ status: "failed", error: String(sj.status) } as never).eq("id", r.id);
+        failed++;
+      } else if (age > STALE_MS) {
+        await admin.from("generation_requests").update({ status: "failed", error: "timeout" } as never).eq("id", r.id);
+        failed++;
+      } else {
+        stillRunning++;
+      }
+    } catch (e) {
+      if (age > STALE_MS) {
+        await admin.from("generation_requests").update({ status: "failed", error: String((e as Error).message) } as never).eq("id", r.id);
+        failed++;
+      } else {
+        stillRunning++;
+      }
+    }
+  }
+
+  return { ok: true, collected, failed, still_running: stillRunning, designers_notified: notifiedDesigners.size };
+}
+
 // --- Akquise-Autopilot ---
 
 function extractBusinessEmail(item: Record<string, unknown>, bio: string | null): string | null {
@@ -1636,7 +1747,7 @@ Deno.serve(async (req) => {
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "kampagnen_regie", "cron_status", "jarvis_bauplan",
+      "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -1648,7 +1759,7 @@ Deno.serve(async (req) => {
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "diagnose", "evolution", "morgenbericht",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "kampagnen_regie", "jarvis_bauplan",
+      "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -1702,9 +1813,22 @@ Deno.serve(async (req) => {
     if (mode === "cron_status") {
       const { data, error } = await admin.schema("cron").from("job")
         .select("jobname, schedule, active")
-        .or("jobname.ilike.%jarvis%,jobname.ilike.%akquise%,jobname.ilike.%regie%,jobname.ilike.%trend%,jobname.ilike.%bauplan%");
+        .or("jobname.ilike.%jarvis%,jobname.ilike.%akquise%,jobname.ilike.%regie%,jobname.ilike.%trend%,jobname.ilike.%bauplan%,jobname.ilike.%broll%,jobname.ilike.%einsammeln%");
       if (error) return ok({ ok: true, jobs: [], note: "cron.job nicht lesbar." });
       return ok({ ok: true, jobs: data ?? [] });
+    }
+
+    // --- Kinematische Clips einsammeln: mechanisch, ohne LLM, läuft auch bei pausiertem Jarvis
+    // weiter — ein bezahltes Rendering eines Designers darf nicht am Pause-Schalter hängen bleiben. ---
+    if (mode === "broll_einsammeln") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = await runBrollEinsammeln(admin);
+      const summary = `${(result as { collected?: number }).collected ?? 0} eingesammelt, ${(result as { failed?: number }).failed ?? 0} gescheitert, ${(result as { still_running?: number }).still_running ?? 0} noch offen.`;
+      if (runId) await admin.from("jarvis_runs").update({
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
     }
 
     // --- Ab hier: Modi, die Claude aufrufen (oder für Evolution: einmalig manuell auswerten) ---

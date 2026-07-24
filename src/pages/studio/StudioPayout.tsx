@@ -32,7 +32,7 @@ export default function StudioPayout() {
     setLoadingStatus(true);
     void supabase.functions.invoke("stripe-connect", { body: { action: "status" } })
       .then(({ data, error }) => {
-        if (error) { toast.error(error.message); setLoadingStatus(false); return; }
+        if (error) { toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht."); setLoadingStatus(false); return; }
         const result = data as { error?: string; message?: string } & ConnectStatus;
         if (result?.error) { toast.error(result.message ?? "Status konnte nicht geladen werden."); setLoadingStatus(false); return; }
         setStatus(result);
@@ -46,12 +46,12 @@ export default function StudioPayout() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "onboard" } });
-      if (error) { toast.error(error.message); return; }
+      if (error) { toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht."); return; }
       const result = data as { error?: string; message?: string; url?: string };
       if (result?.error) { toast.error(result.message ?? "Verbindung konnte nicht gestartet werden."); return; }
       if (result?.url) window.location.href = result.url;
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht.");
     } finally {
       setBusy(false);
     }

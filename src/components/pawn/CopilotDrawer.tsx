@@ -170,7 +170,9 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
                 <p className="text-sm text-muted-foreground">
                   {isAdmin
                     ? 'Sag mir, was passieren soll. Beispiele: „ändere hero_headline zu …", „neue kategorie leinen in welt Mode", „benachrichtige alle designer: …".'
-                    : "Frag mich alles zu deinem Store — oder wähle unten eine Schnellfrage."}
+                    : helpTopics.length > 0
+                      ? "Frag mich alles zu deinem Store — oder wähle unten eine Schnellfrage."
+                      : "Frag mich alles zu deinem Store."}
                 </p>
               )}
               {messages.map((m, i) => {

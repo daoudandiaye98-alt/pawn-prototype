@@ -20,6 +20,7 @@ const DEFAULT_ZONES: Record<string, Zone> = {
   kampagnen_regie: "gruen",
   evolution: "gruen",
   jarvis_bauplan: "gruen",
+  broll_einsammeln: "gruen",
 };
 
 export interface BauplanDraft {

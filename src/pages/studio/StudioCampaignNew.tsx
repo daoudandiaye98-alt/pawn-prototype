@@ -97,6 +97,7 @@ export default function StudioCampaignNew() {
   const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
   const [cinematicProgress, setCinematicProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [cinematicClips, setCinematicClips] = useState<string[]>([]);
+  const [cinematicError, setCinematicError] = useState<string | null>(null);
   const previewMountRef = useRef<HTMLDivElement | null>(null);
   const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
 
@@ -344,7 +345,7 @@ export default function StudioCampaignNew() {
       setCinematicStage("failed");
       throw new Error(msg.includes("provider_not_configured")
         ? "Kinematischer Modus ist nicht eingerichtet (FAL_KEY fehlt)."
-        : `generate-broll: ${msg}`);
+        : "Kinematischer Modus konnte nicht gestartet werden. Bitte versuch es gleich noch einmal.");
     }
     setCinematicModel((submitData as { model?: string } | null)?.model ?? null);
     type SubOK = { id: string; request_id?: string; image_url?: string };
@@ -410,7 +411,7 @@ export default function StudioCampaignNew() {
   const doRender = async () => {
     if (!designer) return;
     if (chosenImages.length < 1) { toast.error("Mindestens 1 Bild."); return; }
-    setRenderBusy(true); setRenderPct(0); setVideoBlob(null); setVideoUrl(null);
+    setRenderBusy(true); setRenderPct(0); setVideoBlob(null); setVideoUrl(null); setCinematicError(null);
 
     const baseImages = chosenImages.slice(0, 4);
     let sources: Array<{ image?: string; clip?: string }> | undefined;
@@ -432,7 +433,9 @@ export default function StudioCampaignNew() {
         }
       } catch (e) {
         console.error("[doRender] cinematic failed:", e);
-        toast.error((e as Error).message ?? "Kinematischer Modus fehlgeschlagen.");
+        const msg = (e as Error).message || "Kinematischer Modus ist fehlgeschlagen.";
+        setCinematicError(msg);
+        toast.error(msg);
         setRenderBusy(false);
         return;
       }
@@ -917,7 +920,7 @@ export default function StudioCampaignNew() {
                             )}
                           </>
                         )}
-                        {cinematicStage === "failed" && "Kinematischer Modus fehlgeschlagen — Details in der Meldung oben."}
+                        {cinematicStage === "failed" && (cinematicError ?? "Kinematischer Modus ist fehlgeschlagen. Versuch es gleich noch einmal oder wechsle in die Editorial-Fassung.")}
                       </span>
                     </div>
                   </div>
