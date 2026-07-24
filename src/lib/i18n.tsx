@@ -58,8 +58,8 @@ const de = {
   // Cart & checkout
   "cart.bag": "Deine Tasche",
   "cart.bagHeading": "Tasche",
-  "cart.emptyTitle": "Noch ist die Bühne leer.",
-  "cart.emptyBody": "Ein Klick genügt — der Vorhang öffnet sich für dich.",
+  "cart.emptyTitle": "Deine Tasche ist noch leer.",
+  "cart.emptyBody": "Sieh dich in der Ausstellung um.",
   "cart.enter": "Zur Ausstellung",
   "cart.size": "Größe",
   "cart.less": "Weniger",
@@ -159,8 +159,8 @@ const en: Record<keyof typeof de, string> = {
 
   "cart.bag": "Your bag",
   "cart.bagHeading": "Bag",
-  "cart.emptyTitle": "The stage is still empty.",
-  "cart.emptyBody": "One click and the curtain opens for you.",
+  "cart.emptyTitle": "Your bag is still empty.",
+  "cart.emptyBody": "Take a look around the exhibition.",
   "cart.enter": "Enter the exhibition",
   "cart.size": "Size",
   "cart.less": "Less",

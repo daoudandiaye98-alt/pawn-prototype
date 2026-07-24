@@ -81,10 +81,10 @@ const Checkout = () => {
             className="palace-serif mt-6 font-light text-[#000000]"
             style={{ fontSize: "clamp(2.4rem, 5vw, 4rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
           >
-            Es gehört <span className="italic">jetzt dir.</span>
+            Bestellung bestätigt.
           </h1>
           <p className="mx-auto mt-8 max-w-md font-serif italic text-[1.05rem] text-[#000000]/70">
-            Das Atelier wurde benachrichtigt und bereitet dein Stück vor.
+            Das Haus wurde benachrichtigt und bereitet deine Bestellung vor.
           </p>
           <div className="mt-14 flex flex-wrap items-center justify-center gap-3">
             <Link to="/account" className="palace-btn">Deine Sammlung</Link>

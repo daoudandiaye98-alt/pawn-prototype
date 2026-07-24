@@ -66,12 +66,12 @@ export default function StudioBrand() {
     <StudioShell title="Retrospektive" eyebrow={`Öffentlich unter /designer/${designer.slug}`}>
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
-          <p className="editorial-eyebrow">Akt I · Auftritt</p>
+          <p className="editorial-eyebrow">Porträt & Story</p>
           <Field label="Story · für den Katalog">
             <textarea value={form.story} onChange={(e) => setForm({ ...form, story: e.target.value })} className="input min-h-40" />
           </Field>
 
-          <p className="editorial-eyebrow pt-4">Akt II · Haltung</p>
+          <p className="editorial-eyebrow pt-4">Manifest & Zitat</p>
           <Field label="Manifest / Zitat (groß gesetzt)">
             <textarea value={form.manifesto} onChange={(e) => setForm({ ...form, manifesto: e.target.value })} className="input min-h-32" placeholder="Ein Satz, der eure Handschrift auf den Punkt bringt." />
           </Field>
@@ -82,20 +82,20 @@ export default function StudioBrand() {
             <input value={form.quote_role} onChange={(e) => setForm({ ...form, quote_role: e.target.value })} className="input" />
           </Field>
 
-          <p className="editorial-eyebrow pt-4">Akt III · Kollektion</p>
+          <p className="editorial-eyebrow pt-4">Kollektion</p>
           <Field label={"Kollektionstitel (z.B. \u201eAusgabe 07 — Marmor\u201c)"}>
             <input value={form.collection_title} onChange={(e) => setForm({ ...form, collection_title: e.target.value })} className="input" />
           </Field>
 
-          <p className="editorial-eyebrow pt-4">Akt IV · Atelier</p>
+          <p className="editorial-eyebrow pt-4">Atelier</p>
           <Field label={"Atelier-Caption (z.B. \u201eBerlin · 06:14 Uhr\u201c)"}>
             <input value={form.atelier_caption} onChange={(e) => setForm({ ...form, atelier_caption: e.target.value })} className="input" />
           </Field>
         </div>
         <div className="space-y-6">
-          <ImageField label="Header-/Porträtbild (Akt I)" url={form.portrait_url || form.hero_image_url} onUpload={(f) => upload("portrait_url", f)} />
+          <ImageField label="Header-/Porträtbild" url={form.portrait_url || form.hero_image_url} onUpload={(f) => upload("portrait_url", f)} />
           <ImageField label="Hero-Bild (alternativer Header)" url={form.hero_image_url} onUpload={(f) => upload("hero_image_url", f)} />
-          <ImageField label="Atelier-Bild (Akt IV, Parallax)" url={form.atelier_image_url} onUpload={(f) => upload("atelier_image_url", f)} />
+          <ImageField label="Atelier-Bild (Parallax)" url={form.atelier_image_url} onUpload={(f) => upload("atelier_image_url", f)} />
           <ImageField label="Banner" url={form.banner_url} onUpload={(f) => upload("banner_url", f)} />
         </div>
       </div>

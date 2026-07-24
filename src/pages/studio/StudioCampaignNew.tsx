@@ -1,5 +1,5 @@
 /**
- * Kampagnen-Studio: Bild oder Video → Material → Besetzung & Ort → Regie → Produktion → Schnitt.
+ * Kampagnen-Studio: Bild oder Video → Material → Besetzung & Ort → Text → Produktion → Schnitt.
  *
  * Video-Clips entstehen roh (Produktion) und werden erst im eigenen, optionalen Schnitt-Schritt
  * zu einem Video zusammengesetzt (client-seitig, renderCampaign) — kein automatischer
@@ -132,7 +132,7 @@ export default function StudioCampaignNew() {
   const [bewegungPreset, setBewegungPreset] = useState<string | null>(null);
   const [bewegungFreitext, setBewegungFreitext] = useState("");
 
-  // Step 3 — Regie & Text
+  // Step 3 — Text
   const [prompt, setPrompt] = useState("");
   const [tempo, setTempo] = useState<Tempo>("ruhig");
   const [hook, setHook] = useState("");
@@ -258,7 +258,7 @@ export default function StudioCampaignNew() {
     setPrompt(bits.join(", "));
   };
 
-  // Besetzung & Ort → Vorschlag für den Regie-Text (Schritt 3). Wird nie automatisch eingesetzt.
+  // Besetzung & Ort → Vorschlag für den Video-Text (Schritt 3). Wird nie automatisch eingesetzt.
   const composedCastingText = useMemo(() => {
     const parts: string[] = [];
     if (modelMode === "beschreiben") {
@@ -278,7 +278,7 @@ export default function StudioCampaignNew() {
   const applyCastingSuggestion = () => {
     if (!composedCastingText) return;
     setPrompt((prev) => [prev, composedCastingText].filter(Boolean).join(". "));
-    toast.success("In den Regie-Text übernommen.");
+    toast.success("In den Video-Text übernommen.");
   };
 
   const createHouseModel = async () => {
@@ -766,7 +766,7 @@ export default function StudioCampaignNew() {
 
   const stepLabels = outputType === "bild"
     ? ["Erklärung", "Material", "Besetzung", "Text", "Fertig"]
-    : ["Erklärung", "Material", "Besetzung & Ort", "Regie", "Produktion", "Schnitt"];
+    : ["Erklärung", "Material", "Besetzung & Ort", "Text", "Produktion", "Schnitt"];
 
   // === Render ===
   return (
@@ -806,7 +806,7 @@ export default function StudioCampaignNew() {
                 <Clapperboard className="h-5 w-5" />
                 <p className="font-serif text-lg">Video</p>
                 <p className={`text-sm ${outputType === "video" ? "text-background/75" : "text-muted-foreground"}`}>
-                  Ein kurzes Reel mit Bewegung, Musik-Tempo und deiner Regie.
+                  Ein kurzes Reel mit Bewegung, Musik-Tempo und deiner Beschreibung.
                 </p>
               </button>
             </div>
@@ -822,7 +822,7 @@ export default function StudioCampaignNew() {
                     ]
                   : [
                       { n: 1, t: "Fotos wählen", d: "Ein Stück aus deiner Kollektion — oder eigene Bilder hochladen. Eins genügt, mehr hilft." },
-                      { n: 2, t: "Besetzung & Ort", d: "Model, Ort und Bewegung festlegen — schreibt deinen Regie-Text mit." },
+                      { n: 2, t: "Besetzung & Ort", d: "Model, Ort und Bewegung festlegen — schreibt deinen Video-Text mit." },
                       { n: 3, t: "PAWN nimmt auf", d: "Rohe Aufnahmen entstehen, unabhängig vom fertigen Schnitt." },
                       { n: 4, t: "Du schneidest — oder überspringst", d: "Intro/Abspann, Reihenfolge, Format. Oder lade die Rohaufnahmen direkt herunter." },
                     ]
@@ -1017,7 +1017,7 @@ export default function StudioCampaignNew() {
 
           {outputType === "video" && chosenImages.length === 1 && !tryonReplacement && (
             <p className="text-xs italic text-muted-foreground">
-              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos führt PAWN echte Regie. Tipp: erst Freisteller oder Model-Shot machen.
+              Ein Foto ergibt einen kurzen Teaser — mit 3–4 Fotos wird daraus ein richtiger Clip. Tipp: erst Freisteller oder Model-Shot machen.
             </p>
           )}
 
@@ -1153,11 +1153,11 @@ export default function StudioCampaignNew() {
 
           {composedCastingText && (
             <div className="border border-border bg-white p-4">
-              <p className="editorial-eyebrow">Vorschlag für den Regie-Text</p>
+              <p className="editorial-eyebrow">Vorschlag für den Video-Text</p>
               <p className="mt-2 text-sm text-muted-foreground">{composedCastingText}</p>
               <button type="button" onClick={applyCastingSuggestion}
                 className="mt-3 min-h-[36px] border border-border bg-white px-3 py-1.5 text-[0.62rem] uppercase tracking-wide hover:border-foreground">
-                In den Regie-Text übernehmen
+                In den Video-Text übernehmen
               </button>
             </div>
           )}
@@ -1172,11 +1172,11 @@ export default function StudioCampaignNew() {
         </div>
       )}
 
-      {/* SCHRITT 3 — Regie & Text */}
+      {/* SCHRITT 3 — Text */}
       {step === 3 && (
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_.8fr]">
           <section>
-            <p className="editorial-eyebrow">{outputType === "bild" ? "Kurz beschrieben" : "Deine Regie-Idee"}</p>
+            <p className="editorial-eyebrow">{outputType === "bild" ? "Kurz beschrieben" : "Deine Idee"}</p>
             <textarea
               value={prompt} onChange={(e) => setPrompt(e.target.value)}
               placeholder={outputType === "bild" ? "z. B. klar, warm, für den Alltag" : "ruhig und skulptural, wie ein Museumsbesuch"}
