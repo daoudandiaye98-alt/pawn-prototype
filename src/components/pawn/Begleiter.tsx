@@ -17,6 +17,7 @@ const PAGE_TEXTS: Record<string, string> = {
   "/studio/mediathek": "Alles, was du hochlädst oder erzeugst, landet hier. Von hier aus auf Produktseiten, ins PAWN-Archiv oder zum Download.",
   "/studio/videothek": "Alle fertigen Videos zum Herunterladen, inklusive Vorschlag für Caption und Hashtags.",
   "/studio/nachrichten": "Fragen von Kund·innen zu Bestellungen oder Stücken.",
+  "/studio/hausseite": "Bau deine öffentliche Doppelseite aus Bausteinen — jeder zieht sein Material aus der Mediathek. Erst mit „Veröffentlichen” wird sie sichtbar.",
   "/studio/brand": "Deine öffentliche Seite — Story, Zitat, Kollektionstitel, Bilder.",
   "/studio/plan": "Dein monatliches Credit-Guthaben und was jede Handlung kostet.",
   "/studio/auszahlung": "Dein Stripe-Konto. Ohne aktive Verbindung kannst du nicht verkaufen.",

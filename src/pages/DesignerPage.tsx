@@ -10,6 +10,7 @@ import { useSiteContent } from "@/lib/siteContent";
 import { Editable } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
 import { Languages } from "lucide-react";
+import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
 
 interface DbDesigner {
   id: string;
@@ -33,6 +34,7 @@ interface DbDesigner {
   collection_title: string | null;
   house_number: number | null;
   created_at: string | null;
+  page_published_at: string | null;
 }
 
 /* prefers-reduced-motion */
@@ -117,6 +119,9 @@ const DesignerPage = () => {
   const [totalCount, setTotalCount] = useState<number>(0);
   const [nextDesigner, setNextDesigner] = useState<{ slug: string; brand_name: string } | null>(null);
   const [campaignVideos, setCampaignVideos] = useState<Array<{ id: string; title: string; asset_url: string }>>([]);
+  const [pageBlocks, setPageBlocks] = useState<PageBlockRow[]>([]);
+  const [blockMedia, setBlockMedia] = useState<BlockMediaLite[]>([]);
+  const [blockProducts, setBlockProducts] = useState<BlockProductLite[]>([]);
 
 
   useEffect(() => {
@@ -124,7 +129,7 @@ const DesignerPage = () => {
     (async () => {
       const { data } = await supabase
         .from("designers")
-        .select("id, slug, brand_name, location, country, story, quote, quote_role, tags, avatar_url, banner_url, hero_image_url, website, instagram, portrait_url, manifesto, atelier_image_url, atelier_caption, collection_title, house_number, created_at")
+        .select("id, slug, brand_name, location, country, story, quote, quote_role, tags, avatar_url, banner_url, hero_image_url, website, instagram, portrait_url, manifesto, atelier_image_url, atelier_caption, collection_title, house_number, created_at, page_published_at")
         .eq("slug", activeSlug)
         .eq("status", "active")
         .maybeSingle();
@@ -183,6 +188,24 @@ const DesignerPage = () => {
         .map((r) => ({ id: r.id, title: r.title, asset_url: r.content?.asset_url ?? "" }))
         .filter((r) => !!r.asset_url);
       setCampaignVideos(clips);
+    })();
+    return () => { cancelled = true; };
+  }, [dbDesigner]);
+
+  // Hausseite-Bausteine (Teil 12c) — nur laden, wenn das Haus veröffentlicht hat.
+  useEffect(() => {
+    if (!dbDesigner?.page_published_at) return;
+    let cancelled = false;
+    (async () => {
+      const [{ data: b }, { data: m }, { data: p }] = await Promise.all([
+        supabase.from("designer_page_blocks" as never).select("id, kind, position, content").eq("designer_id", dbDesigner.id).order("position"),
+        supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", dbDesigner.id),
+        supabase.from("products").select("id, name, slug, price, image_url").eq("designer_id", dbDesigner.id),
+      ]);
+      if (cancelled) return;
+      setPageBlocks((b ?? []) as unknown as PageBlockRow[]);
+      setBlockMedia((m ?? []) as unknown as BlockMediaLite[]);
+      setBlockProducts((p ?? []) as unknown as BlockProductLite[]);
     })();
     return () => { cancelled = true; };
   }, [dbDesigner]);
@@ -308,6 +331,17 @@ const DesignerPage = () => {
   const houseSince = designer.createdAt
     ? new Date(designer.createdAt).toLocaleDateString("de-DE", { month: "long", year: "numeric" })
     : "—";
+
+  // Neue Hausseite (Teil 12c): veröffentlicht und mit Bausteinen → ersetzt die
+  // gesamte alte Retrospektive. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
+  if (dbDesigner?.page_published_at && pageBlocks.length > 0) {
+    const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
+    return (
+      <PalaceLayout transparentHeader>
+        <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} />
+      </PalaceLayout>
+    );
+  }
 
   return (
     <PalaceLayout transparentHeader>

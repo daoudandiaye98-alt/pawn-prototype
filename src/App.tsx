@@ -22,6 +22,7 @@ import AdminAktionen from "./pages/admin/AdminAktionen.tsx";
 import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
+import Ausgabe from "./pages/Ausgabe.tsx";
 import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
@@ -43,6 +44,7 @@ import StudioCampaignNew from "./pages/studio/StudioCampaignNew.tsx";
 import StudioPlan from "./pages/studio/StudioPlan.tsx";
 import StudioVideothek from "./pages/studio/StudioVideothek.tsx";
 import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
+import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
@@ -118,6 +120,7 @@ const App = () => (
                 <Route path="/style" element={<Style />} />
                 <Route path="/dna" element={<DNA />} />
                 <Route path="/designers" element={<Designers />} />
+                <Route path="/ausgabe" element={<Ausgabe />} />
                 <Route path="/designers/all" element={<DesignersIndex />} />
                 <Route path="/designer/:slug" element={<DesignerPage />} />
                 <Route path="/apply" element={<ApplyLanding />} />
@@ -162,6 +165,7 @@ const App = () => (
                 <Route path="/studio/kampagnen/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />
                 <Route path="/studio/videothek" element={<RoleGate role="designer"><StudioVideothek /></RoleGate>} />
                 <Route path="/studio/mediathek" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
+                <Route path="/studio/hausseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
                 <Route path="/studio/plan" element={<RoleGate role="designer"><StudioPlan /></RoleGate>} />
                 <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/nachrichten" element={<RoleGate role="designer"><StudioMessages /></RoleGate>} />

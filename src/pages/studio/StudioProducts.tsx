@@ -47,6 +47,7 @@ interface ProductRow {
   made_in: string | null;
   edition_info: string | null;
   designer_note: string | null;
+  banner_media_asset_id: string | null;
 }
 
 const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
@@ -87,7 +88,7 @@ export default function StudioProducts() {
     const from = page * PAGE;
     const to = from + PAGE - 1;
     const { data, count } = await supabase.from("products")
-      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note", { count: "exact" })
+      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note, banner_media_asset_id", { count: "exact" })
       .eq("designer_id", designer.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -139,6 +140,7 @@ export default function StudioProducts() {
     made_in: e.made_in?.trim() || null,
     edition_info: e.edition_info?.trim() || null,
     designer_note: e.designer_note?.trim() || null,
+    banner_media_asset_id: e.banner_media_asset_id ?? null,
   });
 
   const save = async () => {
@@ -292,8 +294,16 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const [shotResult, setShotResult] = useState<{ source: string; result: string; isTryon?: boolean; style?: string } | null>(null);
   const [tryonPickerOpen, setTryonPickerOpen] = useState(false);
   const [shotDisclosure, setShotDisclosure] = useState<string>("Visualisierung mit KI-Model");
+  const [media, setMedia] = useState<Array<{ id: string; url: string; kind: "bild" | "video"; title: string | null }>>([]);
   const draftIdRef = useRef<string | undefined>(initial.id);
   const firstRender = useRef(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("media_assets" as never).select("id, url, kind, title").eq("designer_id", designer.id).order("created_at", { ascending: false });
+      setMedia((data ?? []) as unknown as Array<{ id: string; url: string; kind: "bild" | "video"; title: string | null }>);
+    })();
+  }, [designer.id]);
 
   // Sync back to parent so save() (which reads `editing`) has fresh data.
   useEffect(() => { setEditing(local); /* eslint-disable-next-line */ }, [local]);
@@ -554,6 +564,32 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                 </div>
               )}
             </div>
+          </Section>
+
+          {/* Seitlicher Banner (Teil 12c) */}
+          <Section title="Seitlicher Banner" help="Zeig auf der Produktseite ein Bild oder Video neben dem Stück — aus deiner Mediathek gewählt. Optional.">
+            {media.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Noch nichts in deiner Mediathek. Lade Material unter „Mediathek" hoch oder erzeuge es in einer Kampagne.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                <button type="button" onClick={() => patch({ banner_media_asset_id: null })}
+                  className={`flex aspect-[3/4] items-center justify-center border text-[0.6rem] uppercase tracking-widest ${!local.banner_media_asset_id ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:border-foreground"}`}>
+                  Kein Banner
+                </button>
+                {media.map((m) => {
+                  const active = local.banner_media_asset_id === m.id;
+                  return (
+                    <button key={m.id} type="button" onClick={() => patch({ banner_media_asset_id: m.id })}
+                      className={`relative aspect-[3/4] overflow-hidden border ${active ? "border-foreground" : "border-border hover:border-foreground"}`}>
+                      {m.kind === "video"
+                        ? <video src={m.url} className="h-full w-full object-cover" muted playsInline />
+                        : <img src={m.url} alt="" className="h-full w-full object-cover" loading="lazy" />}
+                      {active && <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center bg-foreground text-background"><Check className="h-3 w-3" /></span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </Section>
 
           {/* Description */}
