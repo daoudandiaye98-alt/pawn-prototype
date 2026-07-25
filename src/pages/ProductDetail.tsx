@@ -56,6 +56,16 @@ const ProductDetail = () => {
   );
   const { viewProduct, saveProduct } = useCustomerEvents();
 
+  const [banner, setBanner] = useState<{ url: string; kind: "bild" | "video" } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!dbProduct?.banner_media_asset_id) { setBanner(null); return; }
+    (async () => {
+      const { data } = await supabase.from("media_assets" as never).select("url, kind").eq("id", dbProduct.banner_media_asset_id).maybeSingle();
+      if (!cancelled) setBanner((data as unknown as { url: string; kind: "bild" | "video" }) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [dbProduct?.banner_media_asset_id]);
 
   useEffect(() => { viewProduct(product.id); }, [product.id, viewProduct]);
 
@@ -172,6 +182,17 @@ const ProductDetail = () => {
               ))}
             </div>
           </Reveal>
+
+          {banner && (
+            <Reveal>
+              <div className="mt-8 border-t border-[rgba(0,0,0,.18)] pt-8">
+                <p className="palace-eyebrow">Aus dem Haus</p>
+                {banner.kind === "video"
+                  ? <video src={banner.url} className="mt-4 aspect-[3/4] w-full max-w-sm object-cover" muted autoPlay loop playsInline />
+                  : <img src={banner.url} alt="" className="mt-4 aspect-[3/4] w-full max-w-sm object-cover" loading="lazy" />}
+              </div>
+            </Reveal>
+          )}
 
 
           {/* Right: sticky detail */}

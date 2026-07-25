@@ -811,6 +811,44 @@ export type Database = {
           },
         ]
       }
+      designer_page_blocks: {
+        Row: {
+          content: Json
+          created_at: string
+          designer_id: string
+          id: string
+          kind: Database["public"]["Enums"]["page_block_kind"]
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          designer_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["page_block_kind"]
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          designer_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["page_block_kind"]
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_page_blocks_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designer_payout_profiles: {
         Row: {
           account_holder: string
@@ -874,6 +912,7 @@ export type Database = {
           location: string | null
           manifesto: string | null
           media_rights_granted_at: string | null
+          page_published_at: string | null
           plan: Database["public"]["Enums"]["designer_plan"]
           portrait_url: string | null
           published: boolean
@@ -913,6 +952,7 @@ export type Database = {
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
+          page_published_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           published?: boolean
@@ -952,6 +992,7 @@ export type Database = {
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
+          page_published_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           published?: boolean
@@ -1896,6 +1937,7 @@ export type Database = {
       products: {
         Row: {
           allow_custom_requests: boolean
+          banner_media_asset_id: string | null
           care_instructions: string | null
           compare_at_price: number | null
           created_at: string
@@ -1926,6 +1968,7 @@ export type Database = {
         }
         Insert: {
           allow_custom_requests?: boolean
+          banner_media_asset_id?: string | null
           care_instructions?: string | null
           compare_at_price?: number | null
           created_at?: string
@@ -1956,6 +1999,7 @@ export type Database = {
         }
         Update: {
           allow_custom_requests?: boolean
+          banner_media_asset_id?: string | null
           care_instructions?: string | null
           compare_at_price?: number | null
           created_at?: string
@@ -1990,6 +2034,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_banner_media_asset_id_fkey"
+            columns: ["banner_media_asset_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
             referencedColumns: ["id"]
           },
         ]
@@ -2360,6 +2411,14 @@ export type Database = {
         | "style"
         | "mood"
       order_status: "pending" | "paid" | "failed" | "refunded"
+      page_block_kind:
+        | "auftakt"
+        | "editorial_text"
+        | "zitat"
+        | "produktreihe"
+        | "lookbook_streifen"
+        | "banner_seitlich"
+        | "banner_vollbreite"
       posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
       posting_status: "queued" | "posted" | "failed" | "cancelled"
       product_status: "draft" | "published" | "archived"
@@ -2548,6 +2607,15 @@ export const Constants = {
         "mood",
       ],
       order_status: ["pending", "paid", "failed", "refunded"],
+      page_block_kind: [
+        "auftakt",
+        "editorial_text",
+        "zitat",
+        "produktreihe",
+        "lookbook_streifen",
+        "banner_seitlich",
+        "banner_vollbreite",
+      ],
       posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],
       posting_status: ["queued", "posted", "failed", "cancelled"],
       product_status: ["draft", "published", "archived"],

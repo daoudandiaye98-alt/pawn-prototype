@@ -182,7 +182,7 @@ const Index = () => {
           <div className="mx-auto max-w-[1100px] rounded-none px-2 py-6 md:px-8 md:py-10"
                style={{ background: "radial-gradient(ellipse at center, rgba(241,238,231,.92) 0%, rgba(241,238,231,.72) 55%, rgba(241,238,231,0) 100%)" }}>
             <p className="palace-eyebrow motion-reveal">
-              <Editable as="span" contentKey="landing.hero_eyebrow">Kuratierte Ausstellung</Editable> · Ausgabe {ausgabeNummer}
+              <Editable as="span" contentKey="landing.hero_eyebrow">Kuratierte Ausstellung</Editable> · <Link to="/ausgabe" className="underline underline-offset-4 hover:text-[#000000]">Ausgabe {ausgabeNummer}</Link>
             </p>
             <h1
               className="palace-serif palace-line-rise mt-8 text-[#000000]"
