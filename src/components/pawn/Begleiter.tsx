@@ -14,6 +14,7 @@ const PAGE_TEXTS: Record<string, string> = {
   "/studio/produkte": "Deine Stücke. Neu anlegen, bearbeiten, veröffentlichen — nichts geht ohne deinen Schalter live.",
   "/studio/bestellungen": "Deine Verkäufe laufen hier ein. Bestätige den Versand, sobald das Paket raus ist.",
   "/studio/kampagnen": "Bisherige Kampagnen und Editionen-Vorschläge. Neue entstehen im Kampagnen-Studio.",
+  "/studio/mediathek": "Alles, was du hochlädst oder erzeugst, landet hier. Von hier aus auf Produktseiten, ins PAWN-Archiv oder zum Download.",
   "/studio/videothek": "Alle fertigen Videos zum Herunterladen, inklusive Vorschlag für Caption und Hashtags.",
   "/studio/nachrichten": "Fragen von Kund·innen zu Bestellungen oder Stücken.",
   "/studio/brand": "Deine öffentliche Seite — Story, Zitat, Kollektionstitel, Bilder.",

@@ -690,7 +690,7 @@ export default function StudioCampaignNew() {
       const rightsGranted = mediaRightsGranted === true;
       const chosenSignature = signatures.find((s) => s.id === chosenSignatureId) ?? null;
       const hookTyp = hook.trim() ? "custom" : chosenProduct ? "product" : "brand";
-      await supabase.from("video_assets").insert({
+      const { data: videoAssetRow } = await supabase.from("video_assets").insert({
         designer_id: designer.id,
         campaign_id: (campRow as { id: string } | null)?.id ?? null,
         url: signedUrl,
@@ -705,6 +705,13 @@ export default function StudioCampaignNew() {
           tempo, seed, format, cinematic,
         } as unknown as Record<string, unknown>,
         rights_granted: rightsGranted,
+      } as never).select("id").single();
+      // Mediathek (Teil 12b): jedes fertige Video landet zusätzlich hier, verlinkt mit video_assets.
+      await supabase.from("media_assets" as never).insert({
+        designer_id: designer.id, kind: "video", origin: "erzeugt", url: signedUrl,
+        title, rights_granted: rightsGranted,
+        video_asset_id: (videoAssetRow as { id: string } | null)?.id ?? null,
+        campaign_id: (campRow as { id: string } | null)?.id ?? null,
       } as never);
 
       toast.success("Zur Freigabe gespeichert.");
@@ -726,7 +733,7 @@ export default function StudioCampaignNew() {
         ? `${caption}${caption.trim() ? "\n\n" : ""}${tryonDisclosure}`
         : caption;
       const title = chosenProduct ? `${chosenProduct.name} · Bild` : `${designer.brand_name} · Bild`;
-      const { error } = await supabase.from("campaigns").insert({
+      const { data: campRow, error } = await supabase.from("campaigns").insert({
         designer_id: designer.id,
         product_id: chosenProduct?.id ?? null,
         title,
@@ -737,8 +744,14 @@ export default function StudioCampaignNew() {
           product_id: chosenProduct?.id ?? null, tryon: hasTryon,
         } as unknown as Record<string, unknown>,
         created_by: user.id,
-      } as never);
+      } as never).select("id").single();
       if (error) throw error;
+      // Mediathek (Teil 12b): Bild-Kampagnen hatten bisher keine Archiv-Repräsentation — jetzt schon.
+      await supabase.from("media_assets" as never).insert({
+        designer_id: designer.id, kind: "bild", origin: "erzeugt", url: hero, title,
+        rights_granted: mediaRightsGranted === true,
+        campaign_id: (campRow as { id: string } | null)?.id ?? null,
+      } as never);
       toast.success("Zur Freigabe gespeichert.");
       nav("/studio/kampagnen");
     } catch (e) {

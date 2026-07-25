@@ -11,6 +11,20 @@ import { toast } from "sonner";
 import { Star, Send } from "lucide-react";
 
 type Source = "designer" | "edition" | "jarvis";
+type MediaKind = "bild" | "video";
+type MediaOrigin = "upload" | "erzeugt" | "edition";
+
+interface SubmittedRow {
+  id: string;
+  kind: MediaKind;
+  origin: MediaOrigin;
+  url: string;
+  title: string | null;
+  created_at: string;
+  designers?: { brand_name: string; house_number: number | null } | null;
+}
+
+const MEDIA_ORIGIN_LABEL: Record<MediaOrigin, string> = { upload: "Eigener Upload", erzeugt: "KI erzeugt", edition: "Edition" };
 
 interface AssetRow {
   id: string;
@@ -33,6 +47,7 @@ const SOURCE_LABEL: Record<Source, string> = { designer: "Designer", edition: "E
 export default function AdminArchiv() {
   const { user, roles, loading } = useAuth();
   const [rows, setRows] = useState<AssetRow[]>([]);
+  const [submitted, setSubmitted] = useState<SubmittedRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [filterHouse, setFilterHouse] = useState("");
   const [filterWorld, setFilterWorld] = useState("");
@@ -47,9 +62,18 @@ export default function AdminArchiv() {
     setRows((data ?? []) as unknown as AssetRow[]);
   };
 
+  const refreshSubmitted = async () => {
+    const { data } = await supabase.from("media_assets" as never)
+      .select("id, kind, origin, url, title, created_at, designers:designer_id(brand_name, house_number)")
+      .eq("review_status", "eingereicht")
+      .order("created_at", { ascending: false });
+    setSubmitted((data ?? []) as unknown as SubmittedRow[]);
+  };
+
   useEffect(() => {
     if (!user || !roles.includes("admin")) return;
     void refresh();
+    void refreshSubmitted();
   }, [user, roles]);
 
   const houses = useMemo(() => Array.from(new Set(rows.map((r) => r.designers?.brand_name).filter(Boolean))) as string[], [rows]);
@@ -84,6 +108,16 @@ export default function AdminArchiv() {
     void refresh();
   };
 
+  const decideSubmission = async (row: SubmittedRow, approve: boolean) => {
+    setBusy(row.id);
+    const { error } = await supabase.from("media_assets" as never)
+      .update({ review_status: approve ? "angenommen" : "abgelehnt" } as never).eq("id", row.id);
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(approve ? "Angenommen." : "Abgelehnt.");
+    void refreshSubmitted();
+  };
+
   const sendToQueue = async (row: AssetRow) => {
     if (!row.campaign_id) return toast.error("Dieses Video hängt an keiner Kampagne — kann nicht gepostet werden.");
     setBusy(row.id);
@@ -102,6 +136,44 @@ export default function AdminArchiv() {
       <p className="max-w-3xl text-sm text-muted-foreground">
         Jedes erzeugte Video aller Häuser — Stern setzt eine Première auf der Startseite, der Pfeil schickt die Kampagne in die Posting-Warteschlange.
       </p>
+
+      {submitted.length > 0 && (
+        <section className="mt-8 border border-foreground bg-white">
+          <header className="border-b border-border px-5 py-3">
+            <p className="editorial-eyebrow">Aus der Mediathek eingereicht · {submitted.length}</p>
+            <p className="mt-1 text-sm text-muted-foreground">Häuser haben diese Dateien zur Prüfung eingereicht — die Entscheidung liegt bei dir.</p>
+          </header>
+          <div className="grid gap-4 p-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {submitted.map((s) => (
+              <div key={s.id} className="border border-border bg-white">
+                <div className="border-b border-border bg-muted">
+                  {s.kind === "video" ? (
+                    <video src={s.url} muted playsInline className="aspect-square w-full object-cover" />
+                  ) : (
+                    <img src={s.url} alt={s.title ?? ""} className="aspect-square w-full object-cover" loading="lazy" />
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="truncate text-sm">{s.title ?? "Ohne Titel"}</p>
+                  <p className="mt-1 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">
+                    {s.designers?.brand_name ?? "—"} · {MEDIA_ORIGIN_LABEL[s.origin]}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={() => void decideSubmission(s, true)} disabled={busy === s.id}
+                      className="flex-1 border border-foreground bg-foreground px-3 py-2 text-[0.6rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-40">
+                      Annehmen
+                    </button>
+                    <button onClick={() => void decideSubmission(s, false)} disabled={busy === s.id}
+                      className="flex-1 border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.2em] hover:border-foreground disabled:opacity-40">
+                      Ablehnen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-3">
         <select value={filterHouse} onChange={(e) => setFilterHouse(e.target.value)} className="border border-border bg-white px-3 py-2 text-sm">

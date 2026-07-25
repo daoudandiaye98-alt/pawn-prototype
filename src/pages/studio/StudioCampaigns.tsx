@@ -81,13 +81,20 @@ export default function StudioCampaigns() {
       if (approve) {
         const { data: d } = await supabase.from("designers").select("media_rights_granted_at").eq("id", designer.id).maybeSingle();
         const rightsGranted = !!(d as { media_rights_granted_at?: string | null } | null)?.media_rights_granted_at;
-        await supabase.from("video_assets").insert({
+        const { data: videoAssetRow } = await supabase.from("video_assets").insert({
           designer_id: designer.id,
           campaign_id: card.campaign_id,
           url: card.video_url,
           source: "edition",
           video_dna: { signatur: null, hook_typ: null, schnittrhythmus: null, palette: null, laenge_s: 5, modelltyp: "edition-kinematisch" } as unknown as Record<string, unknown>,
           rights_granted: rightsGranted,
+        } as never).select("id").single();
+        // Mediathek (Teil 12b): auch umgesetzte Editionen landen dort, verlinkt mit video_assets.
+        await supabase.from("media_assets" as never).insert({
+          designer_id: designer.id, kind: "video", origin: "edition", url: card.video_url,
+          title: `Edition · ${card.editions?.theme ?? ""}`.trim(), rights_granted: rightsGranted,
+          video_asset_id: (videoAssetRow as { id: string } | null)?.id ?? null,
+          campaign_id: card.campaign_id,
         } as never);
         if (card.campaign_id) await supabase.from("campaigns").update({ status: "approved" }).eq("id", card.campaign_id);
         await supabase.from("edition_participants" as never).update({ status: "approved" } as never).eq("id", card.id);
