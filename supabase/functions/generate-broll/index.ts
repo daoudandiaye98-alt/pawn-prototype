@@ -36,11 +36,14 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({})) as {
-      campaign_id?: string; image_urls?: string[]; motion_prompt?: string; signature_id?: string; model_id?: string;
+      campaign_id?: string; image_urls?: string[]; motion_prompt?: string; signature_id?: string; model_id?: string; duration_s?: number;
     };
     if (!body.campaign_id) return json({ error: "campaign_id_required" }, 400);
     const images = (body.image_urls ?? []).filter((u) => typeof u === "string" && u.length > 0).slice(0, 4);
     if (images.length === 0) return json({ error: "image_urls_required" }, 400);
+    // Länge je Aufnahme (Teil 13a): 5s Standard, 10s auf Wunsch — kostet doppelt.
+    const durationS: 5 | 10 = body.duration_s === 10 ? 10 : 5;
+    const durationFactor = durationS === 10 ? 2 : 1;
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -105,6 +108,7 @@ Deno.serve(async (req) => {
       clipCreditCost = creditCosts.clip_standard ?? 5;
       clipAction = "clip_standard";
     }
+    clipCreditCost = clipCreditCost * durationFactor;
 
     const { data: limits } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
     const costUnits = ((limits?.value as { accent_cost_units?: number } | null)?.accent_cost_units) ?? 2;
@@ -133,7 +137,7 @@ Deno.serve(async (req) => {
         const r = await fetch(`https://queue.fal.run/${model}`, {
           method: "POST",
           headers: { "Authorization": `Key ${FAL_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ image_url, prompt, duration: 5 }),
+          body: JSON.stringify({ image_url, prompt, duration: durationS }),
         });
         const rj = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -169,7 +173,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, model, prompt, cost_units: costUnits * submissions.filter((s) => "id" in s).length, submissions }, 200);
+    return json({
+      ok: true, model, prompt, duration_s: durationS, credits_per_clip: clipCreditCost,
+      cost_units: costUnits * submissions.filter((s) => "id" in s).length, submissions,
+    }, 200);
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
