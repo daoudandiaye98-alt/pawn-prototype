@@ -42,6 +42,9 @@ const ISettings = (p: React.SVGProps<SVGSVGElement>) => (
 const IVideothek = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="5" width="14" height="10" /><path d="M8.5 8l4 2-4 2V8z" /></svg>
 );
+const IMediathek = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="4" width="14" height="12" /><circle cx="7.5" cy="9" r="1.5" /><path d="M5 14l3.5-3.5L11 13l2-2 2 2.5" /></svg>
+);
 
 type NavItem = { to: string; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; end?: boolean; badge?: number };
 
@@ -110,6 +113,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const items: NavItem[] = [
     { to: "/studio", label: "Übersicht", icon: IStage, end: true },
+    { to: "/studio/mediathek", label: "Mediathek", icon: IMediathek },
     { to: "/studio/produkte", label: "Kollektion", icon: ICollection },
     { to: "/studio/bestellungen", label: "Bestellungen", icon: IOrders, badge: badges.orders },
     { to: "/studio/kampagnen", label: "Kampagnen", icon: ICampaigns, badge: badges.campaigns },

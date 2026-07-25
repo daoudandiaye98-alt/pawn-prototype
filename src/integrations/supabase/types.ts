@@ -1522,6 +1522,85 @@ export type Database = {
         }
         Relationships: []
       }
+      media_assets: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          designer_id: string
+          id: string
+          kind: Database["public"]["Enums"]["media_kind"]
+          note: string | null
+          origin: Database["public"]["Enums"]["media_origin"]
+          review_note: string | null
+          review_status: Database["public"]["Enums"]["media_review_status"]
+          rights_granted: boolean
+          thumb_url: string | null
+          title: string | null
+          updated_at: string
+          url: string
+          usages: Json
+          video_asset_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["media_kind"]
+          note?: string | null
+          origin?: Database["public"]["Enums"]["media_origin"]
+          review_note?: string | null
+          review_status?: Database["public"]["Enums"]["media_review_status"]
+          rights_granted?: boolean
+          thumb_url?: string | null
+          title?: string | null
+          updated_at?: string
+          url: string
+          usages?: Json
+          video_asset_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          designer_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["media_kind"]
+          note?: string | null
+          origin?: Database["public"]["Enums"]["media_origin"]
+          review_note?: string | null
+          review_status?: Database["public"]["Enums"]["media_review_status"]
+          rights_granted?: boolean
+          thumb_url?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string
+          usages?: Json
+          video_asset_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_assets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_video_asset_id_fkey"
+            columns: ["video_asset_id"]
+            isOneToOne: false
+            referencedRelation: "video_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_threads: {
         Row: {
           category: Database["public"]["Enums"]["message_category"]
@@ -2262,6 +2341,9 @@ export type Database = {
       generation_status: "requested" | "running" | "done" | "failed"
       generation_tier: "accent" | "full"
       inventory_mode: "stock" | "made_to_order"
+      media_kind: "bild" | "video"
+      media_origin: "upload" | "erzeugt" | "edition"
+      media_review_status: "privat" | "eingereicht" | "angenommen" | "abgelehnt"
       message_category:
         | "allgemein"
         | "auszahlung"
@@ -2440,6 +2522,14 @@ export const Constants = {
       generation_status: ["requested", "running", "done", "failed"],
       generation_tier: ["accent", "full"],
       inventory_mode: ["stock", "made_to_order"],
+      media_kind: ["bild", "video"],
+      media_origin: ["upload", "erzeugt", "edition"],
+      media_review_status: [
+        "privat",
+        "eingereicht",
+        "angenommen",
+        "abgelehnt",
+      ],
       message_category: [
         "allgemein",
         "auszahlung",
