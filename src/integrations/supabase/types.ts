@@ -2030,17 +2030,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "products_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "products_banner_media_asset_id_fkey"
             columns: ["banner_media_asset_id"]
             isOneToOne: false
             referencedRelation: "media_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
             referencedColumns: ["id"]
           },
         ]
@@ -2583,12 +2583,7 @@ export const Constants = {
       inventory_mode: ["stock", "made_to_order"],
       media_kind: ["bild", "video"],
       media_origin: ["upload", "erzeugt", "edition"],
-      media_review_status: [
-        "privat",
-        "eingereicht",
-        "angenommen",
-        "abgelehnt",
-      ],
+      media_review_status: ["privat", "eingereicht", "angenommen", "abgelehnt"],
       message_category: [
         "allgemein",
         "auszahlung",
