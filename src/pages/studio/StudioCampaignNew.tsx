@@ -8,9 +8,10 @@
  * Kette bei Model: Ausgangsfoto → Model-Shot (generate-tryon, Nano-Banana-2-Basis +
  * fotorealistischer Mensch trägt das Stück) → erst DAS wird zu Bewegung (Kling, via
  * generate-broll). Das Rohfoto geht nie direkt ins Video, wenn ein Model gewählt ist.
- * Echte Bewegung ist standardmäßig verfügbar und vorausgewählt (das im Katalog als
- * default markierte Modell) — kein stiller Rückfall auf Standbilder mehr, aber auch
- * kein Zwang: "Keine Bewegung" bleibt eine gleichwertige, bewusste Wahl.
+ * Video bedeutet immer Bewegung — die Wahl zwischen Bild und Video oben entscheidet
+ * das schon; eine Modellstufe ist vorausgewählt (die im Katalog als default markierte).
+ * Katalog-Einträge mit active:false oder intern:true erscheinen nirgends, auch nicht
+ * als Fallback.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -42,15 +43,18 @@ interface HouseModelRow {
   ausstrahlung: string | null; altersgruppe: string | null; haar: string | null; hautton: string | null; statur: string | null; freitext: string | null;
 }
 
-interface ModelCatalogEntry { id: string; label: string; kind: "bild" | "video"; strength: string; credits: number; active: boolean; default?: boolean }
+interface ModelCatalogEntry {
+  id: string; label: string; kind: "bild" | "video"; strength: string; credits: number;
+  active: boolean; default?: boolean; intern?: boolean; dauer_hinweis?: string;
+}
 
 interface RecentShot { url: string; at: string }
 interface ModelPool { weiblich: string[]; männlich: string[]; divers: string[] }
 
 type OutputType = "bild" | "video";
 type ModelMode = "keins" | "beschreiben" | "gespeichert" | "pawn_pool";
-/** null = noch keine Entscheidung, "none" = bewusst keine Bewegung, sonst model_catalog-ID. */
-type MotionChoice = null | "none" | string;
+/** null = noch keine Entscheidung, sonst model_catalog-ID. Video heißt immer Bewegung. */
+type MotionChoice = null | string;
 type DurationS = 5 | 10;
 type TryonStyle = "weiblich" | "männlich" | "divers";
 
@@ -146,8 +150,8 @@ export default function StudioCampaignNew() {
   const [modelCatalogLoaded, setModelCatalogLoaded] = useState(false);
   const [motionChoice, setMotionChoice] = useState<MotionChoice>(null);
   const [durationS, setDurationS] = useState<DurationS>(5);
-  const [stillsAcknowledged, setStillsAcknowledged] = useState(false);
   const [runningModelLabel, setRunningModelLabel] = useState<string | null>(null);
+  const [runningModelDauer, setRunningModelDauer] = useState<string | null>(null);
 
   // Feinschliff (geschlossen per Default)
   const [feinschliffOpen, setFeinschliffOpen] = useState(false);
@@ -179,7 +183,7 @@ export default function StudioCampaignNew() {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoMime, setVideoMime] = useState<string>("video/webm");
-  const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
+  const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "delayed" | "failed">(null);
   const [cinematicProgress, setCinematicProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [cinematicError, setCinematicError] = useState<string | null>(null);
   const [rawClips, setRawClips] = useState<Array<string | null>>([]);
@@ -190,8 +194,7 @@ export default function StudioCampaignNew() {
   const credits = useCredits(designer?.id, plan, isAdmin);
   const videoModels = useMemo(() => modelCatalog.filter((m) => m.kind === "video"), [modelCatalog]);
   const bildModels = useMemo(() => modelCatalog.filter((m) => m.kind === "bild"), [modelCatalog]);
-  const cinematic = typeof motionChoice === "string" && motionChoice !== "none";
-  const chosenModelEntry = cinematic ? videoModels.find((m) => m.id === motionChoice) ?? null : null;
+  const chosenModelEntry = videoModels.find((m) => m.id === motionChoice) ?? null;
   const chosenBildEntry = bildModels.find((m) => m.id === bildModelId) ?? null;
   const poolHasAny = Object.values(modelPool).some((arr) => arr.length > 0);
   const recommendedMode: ModelMode = poolHasAny ? "pawn_pool" : "beschreiben";
@@ -220,7 +223,7 @@ export default function StudioCampaignNew() {
   useEffect(() => {
     void supabase.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle()
       .then(({ data }) => {
-        const all = ((data?.value as unknown as ModelCatalogEntry[] | null) ?? []).filter((m) => m.active !== false);
+        const all = ((data?.value as unknown as ModelCatalogEntry[] | null) ?? []).filter((m) => m.active !== false && !m.intern);
         setModelCatalog(all);
         setModelCatalogLoaded(true);
       });
@@ -327,7 +330,6 @@ export default function StudioCampaignNew() {
 
   // Ein neuer Besetzungs-Modus oder ein neues Material macht den bisherigen Model-Shot ungültig.
   useEffect(() => { setModelShotUrl(null); }, [modelMode, chosenHouseModelId, chosenPoolImageUrl]);
-  useEffect(() => { setStillsAcknowledged(false); }, [motionChoice, composedCastingText]);
   useEffect(() => { setChosenPoolImageUrl(null); }, [tryonStyle]);
 
   const createHouseModel = async () => {
@@ -394,7 +396,6 @@ export default function StudioCampaignNew() {
   const needsModelShot = modelMode !== null && modelMode !== "keins" && !modelShotUrl;
   const promptReady = outputType === "bild" || prompt.trim().length > 0;
   const motionDecided = motionChoice !== null;
-  const stillsContradiction = motionChoice === "none" && !!composedCastingText;
 
   // Ask AI for hook/caption/hashtags
   const askAI = async () => {
@@ -551,9 +552,9 @@ export default function StudioCampaignNew() {
   const clipsToProduce = Math.min(chosenImages.length, 3);
   const estimatedCost =
     (needsModelShot ? (chosenBildEntry?.credits ?? credits.costs.tryon_shot ?? 2) : 0) +
-    (outputType === "video" && cinematic ? perClipCredits * Math.max(clipsToProduce, 1) : 0);
+    (outputType === "video" && chosenModelEntry ? perClipCredits * Math.max(clipsToProduce, 1) : 0);
   const estimatedDurationS = outputType === "video"
-    ? (cinematic ? clipsToProduce * durationS : Math.round(chosenImages.length * sceneSeconds))
+    ? (chosenModelEntry ? clipsToProduce * durationS : Math.round(chosenImages.length * sceneSeconds))
     : 0;
 
   // Produktion (roh): erzeugt entweder Standbilder (keine Bewegung) oder echte Clips.
@@ -562,13 +563,6 @@ export default function StudioCampaignNew() {
     if (chosenImages.length < 1) { toast.error("Mindestens 1 Bild."); return false; }
     setCinematicError(null);
     const baseImages = chosenImages.slice(0, 4);
-
-    if (!cinematic) {
-      setRawClips(baseImages.map(() => null));
-      setRunningModelLabel(null);
-      return true;
-    }
-
     const inputImages = baseImages.slice(0, 3);
     try {
       const { data: campRow, error: campErr } = await supabase.from("campaigns").insert({
@@ -598,11 +592,12 @@ export default function StudioCampaignNew() {
         const msg = submitErr.message ?? String(submitErr);
         setCinematicStage("failed");
         throw new Error(msg.includes("provider_not_configured")
-          ? "Echte Bewegung ist nicht eingerichtet (FAL_KEY fehlt)."
+          ? "Bewegung ist nicht eingerichtet (FAL_KEY fehlt)."
           : "Aufnahme konnte nicht gestartet werden. Bitte versuch es gleich noch einmal.");
       }
       const respModel = (submitData as { model?: string } | null)?.model ?? null;
       setRunningModelLabel(chosenModelEntry?.label ?? respModel);
+      setRunningModelDauer(chosenModelEntry?.dauer_hinweis ?? null);
 
       type SubOK = { id: string; request_id?: string; image_url?: string };
       type SubErr = { image_url: string; error: string; status?: number };
@@ -623,13 +618,17 @@ export default function StudioCampaignNew() {
       }
 
       setCinematicStage("polling");
-      const perImageClip = new Map<string, string | null>();
+      const perImageStatus = new Map<string, { status: "done" | "failed" | "running"; url?: string }>();
+      for (const img of inputImages) perImageStatus.set(img, { status: "running" });
       const idToImage = new Map<string, string>();
       for (const s of submissions) if (s.image_url) idToImage.set(s.id, s.image_url);
       const requestIds = submissions.map((s) => s.id);
-      const deadline = Date.now() + 240_000;
+      // Meisterklasse braucht laut Katalog bis zu 10 Minuten — das Fenster hier muss
+      // mindestens so lang sein, sonst wird eine laufende Aufnahme fälschlich als
+      // gescheitert gemeldet, während sie am Provider noch fertig wird.
+      const deadline = Date.now() + 600_000;
       while (Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 10_000));
         const { data: pollData, error: pollErr } = await supabase.functions.invoke("poll-broll", { body: { request_ids: requestIds } });
         if (pollErr) continue;
         const results = (pollData as { results?: Array<{ id: string; status: string; result_url?: string; error?: string }> })?.results ?? [];
@@ -638,17 +637,27 @@ export default function StudioCampaignNew() {
         for (const r of results) {
           const img = idToImage.get(r.id);
           if (!img) continue;
-          if (r.status === "done" && r.result_url) perImageClip.set(img, r.result_url);
-          else if (r.status === "failed") perImageClip.set(img, null);
+          if (r.status === "done" && r.result_url) perImageStatus.set(img, { status: "done", url: r.result_url });
+          else if (r.status === "failed") perImageStatus.set(img, { status: "failed" });
         }
-        if (results.every((r) => r.status === "done" || r.status === "failed")) break;
+        if (results.length > 0 && results.every((r) => r.status === "done" || r.status === "failed")) break;
       }
 
-      const aligned = baseImages.map((img) => (inputImages.includes(img) ? perImageClip.get(img) ?? null : null));
+      const aligned = baseImages.map((img) => {
+        const st = perImageStatus.get(img);
+        return st?.status === "done" ? st.url ?? null : null;
+      });
       const successful = aligned.filter((c) => !!c).length;
+      const anyStillRunning = inputImages.some((img) => perImageStatus.get(img)?.status === "running");
+
+      if (anyStillRunning) {
+        setRawClips(aligned);
+        setCinematicStage("delayed");
+        return false;
+      }
       if (successful === 0) {
         setCinematicStage("failed");
-        throw new Error("Keine der Aufnahmen ist gelungen. Prüfe später erneut oder deaktiviere echte Bewegung.");
+        throw new Error("Keine der Aufnahmen ist gelungen. Bitte versuch es später erneut.");
       }
       setRawClips(aligned);
       setCinematicStage("ready");
@@ -775,9 +784,9 @@ export default function StudioCampaignNew() {
           schnittrhythmus: chosenSignature?.recipe?.schnittrhythmus ?? tempo,
           palette: chosenSignature?.recipe?.palette ?? "standard-mono",
           laenge_s: Math.round(lastDurationMs / 1000),
-          modelltyp: cinematic && chosenModelEntry ? chosenModelEntry.id : "editorial-client",
-          clip_laenge_s: cinematic ? durationS : null,
-          tempo, seed, format, cinematic,
+          modelltyp: chosenModelEntry?.id ?? "editorial-client",
+          clip_laenge_s: durationS,
+          tempo, seed, format, cinematic: true,
         } as unknown as Record<string, unknown>,
         rights_granted: rightsGranted,
       } as never).select("id").single();
@@ -845,7 +854,6 @@ export default function StudioCampaignNew() {
     : "feinschliff";
 
   const canGenerateVideo = materialReady && !needsModelShot && promptReady && motionDecided
-    && (!stillsContradiction || stillsAcknowledged)
     && !(renderBusy || cinematicStage === "submitting" || cinematicStage === "polling");
   const canSaveImage = materialReady && !needsModelShot && !savingImage;
 
@@ -910,16 +918,24 @@ export default function StudioCampaignNew() {
               )}
             </div>
             {(cinematicStage === "submitting" || cinematicStage === "polling") && (
-              <div className="flex items-center gap-2 text-sm">
-                <Wand2 className="h-4 w-4" />
+              <div className="flex items-start gap-2 text-sm">
+                <Wand2 className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   {cinematicStage === "submitting" && "Übergabe an die Kamera…"}
                   {cinematicStage === "polling" && (
                     <>
-                      Aufnahmen entstehen mit „{runningModelLabel ?? "Modell"}" — ca. 1–2 Minuten
+                      Aufnahmen entstehen mit „{runningModelLabel ?? "Modell"}"{runningModelDauer ? ` — ${runningModelDauer}` : ""}.
                       {cinematicProgress.total > 0 && <span className="ml-2 tabular-nums text-muted-foreground">({cinematicProgress.done}/{cinematicProgress.total} fertig)</span>}
                     </>
                   )}
+                </span>
+              </div>
+            )}
+            {cinematicStage === "delayed" && (
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Die Aufnahme braucht noch etwas Zeit{runningModelDauer ? ` (${runningModelDauer})` : ""}. Sie erscheint automatisch in deiner Videothek, sobald sie fertig ist — auch wenn du diese Seite schließt.
                 </span>
               </div>
             )}
@@ -1104,8 +1120,7 @@ export default function StudioCampaignNew() {
               {activeModelMode !== "keins" && (
                 <div className="mt-6 border-t border-border pt-6">
                   <p className="text-sm text-muted-foreground">
-                    Aus deinem Foto entsteht ein Model-Shot{chosenBildEntry ? ` (${chosenBildEntry.label})` : ""} — dein Stück an einem fotorealistischen Menschen. Erst das wird zur Bewegung, nicht die Schaufensterpuppe.
-                    {chosenBildEntry && ` Kostet ${chosenBildEntry.credits} Credits — du hast ${credits.balance}.`}
+                    Dein Stück erscheint an einem Model.{chosenBildEntry ? ` ${chosenBildEntry.credits} Credits.` : ""}
                   </p>
                   <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{tryonDisclosure}</p>
                   {!rawMaterialImage && <p className="mt-2 text-sm text-muted-foreground">Wähle zuerst Material oben.</p>}
@@ -1155,7 +1170,7 @@ export default function StudioCampaignNew() {
               <p className="mt-2 text-xs text-muted-foreground">
                 {outputType === "bild"
                   ? "Beschreib in deinen Worten, wie das Bild wirken soll."
-                  : "Beschreib die Bewegung, nicht die Werbebotschaft: Kamera, Tempo, Stoffverhalten."}
+                  : "Beschreib die Bewegung: Kamera, Tempo, Stoffverhalten."}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {(outputType === "bild" ? ["Klar · reduziert", "Warm · persönlich", "Editorial · direkt"] : MOVEMENT_CHIPS).map((chip) => (
@@ -1175,30 +1190,28 @@ export default function StudioCampaignNew() {
 
               {outputType === "video" && (
                 <>
-                  <p className="editorial-eyebrow mt-8">Echte Bewegung</p>
-                  <p className="mt-1 text-xs text-muted-foreground">PAWN erzeugt nie stillschweigend ein Standbild-Reel, wenn Bewegung erwartet wird.</p>
+                  <p className="editorial-eyebrow mt-8">Bewegung</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {videoModels.map((m) => {
                       const affordable = credits.canAfford(m.credits * (durationS === 10 ? 2 : 1));
                       return (
-                        <button key={m.id} disabled={!affordable} onClick={() => setMotionChoice(m.id)}
-                          className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] disabled:opacity-40 ${motionChoice === m.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                          {m.label} · {m.credits * (durationS === 10 ? 2 : 1)} Cr.
-                        </button>
+                        <div key={m.id} className="flex flex-col items-start gap-1">
+                          <button disabled={!affordable} onClick={() => setMotionChoice(m.id)}
+                            className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] disabled:opacity-40 ${motionChoice === m.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                            {m.label} · {m.credits * (durationS === 10 ? 2 : 1)} Cr.
+                          </button>
+                          {m.dauer_hinweis && <span className="text-[0.58rem] text-muted-foreground">{m.dauer_hinweis}</span>}
+                        </div>
                       );
                     })}
-                    <button onClick={() => setMotionChoice("none")}
-                      className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] ${motionChoice === "none" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                      Keine Bewegung
-                    </button>
                   </div>
                   {modelCatalogLoaded && videoModels.length === 0 && (
                     <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Echte Bewegung ist gerade nicht eingerichtet — kein Video-Modell aktiv im Katalog.
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Bewegung ist gerade nicht eingerichtet — kein Video-Modell aktiv im Katalog.
                     </p>
                   )}
 
-                  {cinematic && (
+                  {chosenModelEntry && (
                     <div className="mt-4 flex items-center gap-2">
                       <span className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Länge</span>
                       {([5, 10] as DurationS[]).map((d) => (
@@ -1207,19 +1220,6 @@ export default function StudioCampaignNew() {
                           {d}s
                         </button>
                       ))}
-                    </div>
-                  )}
-
-                  {stillsContradiction && (
-                    <div className="mt-4 border-l-2 border-foreground pl-3">
-                      <p className="flex items-start gap-2 text-sm">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                        Du hast eine Besetzung oder einen Ort angegeben, aber „Keine Bewegung" gewählt — das Ergebnis wird ein Standbild-Reel.
-                      </p>
-                      <button type="button" onClick={() => setStillsAcknowledged(true)} disabled={stillsAcknowledged}
-                        className="mt-3 min-h-[36px] border border-foreground bg-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-background disabled:opacity-50">
-                        {stillsAcknowledged ? "Bestätigt — Standbilder" : "Ja, als Standbilder fortfahren"}
-                      </button>
                     </div>
                   )}
                 </>
@@ -1370,11 +1370,10 @@ export default function StudioCampaignNew() {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    {chosenImages.length} Foto{chosenImages.length === 1 ? "" : "s"} werden zu einem Video —
-                    {cinematic ? ` echte Bewegung mit „${chosenModelEntry?.label ?? "Modell"}", ${durationS}s je Aufnahme, ~${estimatedCost} Credits.` : " als ruhige Standbilder, ohne Credits."}
+                    {chosenImages.length} Foto{chosenImages.length === 1 ? "" : "s"} werden zu einem Video — mit „{chosenModelEntry?.label ?? "Modell"}", {durationS}s je Aufnahme, ~{estimatedCost} Credits.
                   </p>
                   {needsModelShot && <p className="mt-2 text-sm text-foreground">Bestätige zuerst den Model-Shot oben, bevor die Bewegung startet.</p>}
-                  {!motionDecided && <p className="mt-2 text-sm text-foreground">Wähle zuerst bei „Echte Bewegung", ob eine Bewegung entstehen soll.</p>}
+                  {!motionDecided && <p className="mt-2 text-sm text-foreground">Wähle zuerst bei „Bewegung" ein Modell.</p>}
                   <button onClick={generateVideo} disabled={!canGenerateVideo}
                     className="mt-4 flex min-h-[44px] items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
                     {renderBusy ? `PAWN schneidet… ${renderPct}%` : cinematicStage === "submitting" || cinematicStage === "polling" ? "PAWN nimmt auf…" : "Erzeugen"}

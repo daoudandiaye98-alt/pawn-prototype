@@ -46,9 +46,11 @@ Deno.serve(async (req) => {
         results.push({ id: r.id, status: r.status });
         continue;
       }
-      // Timeout check
+      // Timeout check — Meisterklasse braucht laut Katalog bis zu 10 Minuten; das Fenster hier
+      // muss klar darüber liegen, sonst meldet poll-broll selbst eine noch laufende Aufnahme
+      // fälschlich als gescheitert.
       const age = Date.now() - new Date(r.created_at).getTime();
-      if (age > 8 * 60 * 1000) {
+      if (age > 20 * 60 * 1000) {
         await admin.from("generation_requests").update({ status: "failed", error: "timeout" } as never).eq("id", r.id);
         results.push({ id: r.id, status: "failed", error: "timeout" });
         continue;

@@ -24,7 +24,10 @@ const DEFAULT_HOUSE_STYLE_LAW =
 type Tab = "denklogik" | "credits" | "persona" | "signale" | "responses" | "integrationen";
 
 interface CreditPackRow { id: string; credits: number; eur: number; stripe_price_id: string | null }
-interface ModelCatalogRow { id: string; label: string; kind: "bild" | "video"; strength: string; credits: number; active: boolean; fal_model: string; default?: boolean }
+interface ModelCatalogRow {
+  id: string; label: string; kind: "bild" | "video"; strength: string; credits: number;
+  active: boolean; fal_model: string; default?: boolean; intern?: boolean; dauer_hinweis?: string;
+}
 interface ModelPool { weiblich: string[]; männlich: string[]; divers: string[] }
 
 export default function AdminKI() {
@@ -682,10 +685,11 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
         <p className="editorial-eyebrow">Modell-Katalog</p>
         <p className="mt-2 text-sm text-muted-foreground">
           Modelle für die kinematische Erzeugung, die Designer im Kampagnen-Studio selbst wählen können. Neue Modelle kommen hier dazu, ohne Deploy.
+          „Intern" markierte Modelle erscheinen im Studio nirgends, auch nicht als Fallback.
         </p>
         <div className="mt-4 space-y-3">
           {models.map((m, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.4fr_1fr_1fr_auto_auto_auto_auto] lg:items-end">
+            <div key={i} className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.4fr_1fr_1fr_1fr_1.2fr_auto_auto_auto_auto] lg:items-end">
               <label className="block">
                 <span className="editorial-eyebrow">ID</span>
                 <input value={m.id} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, id: e.target.value } : x))}
@@ -715,6 +719,12 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
                 <input type="number" min={0} value={m.credits} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, credits: Number(e.target.value) } : x))}
                   className="mt-1 w-20 border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
               </label>
+              <label className="block">
+                <span className="editorial-eyebrow">Dauer-Hinweis</span>
+                <input value={m.dauer_hinweis ?? ""} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, dauer_hinweis: e.target.value } : x))}
+                  placeholder="z. B. ca. 3–6 Min"
+                  className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
+              </label>
               <label className="flex items-center gap-2 text-xs">
                 <input type="checkbox" checked={m.active} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, active: e.target.checked } : x))} />
                 Aktiv
@@ -723,8 +733,12 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
                 <input type="checkbox" checked={!!m.default} onChange={() => setDefault(i)} />
                 Standard
               </label>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={!!m.intern} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, intern: e.target.checked } : x))} />
+                Intern
+              </label>
               <button type="button" onClick={() => setModels(models.filter((_, j) => j !== i))} className="text-destructive"><Trash2 className="h-4 w-4" /></button>
-              <label className="col-span-2 block lg:col-span-8">
+              <label className="col-span-2 block lg:col-span-10">
                 <span className="editorial-eyebrow">fal.ai-Modell-Kennung</span>
                 <input value={m.fal_model} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, fal_model: e.target.value } : x))}
                   placeholder="fal-ai/…"
@@ -734,7 +748,7 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
           ))}
         </div>
         <div className="mt-4 flex items-center justify-between">
-          <button type="button" onClick={() => setModels([...models, { id: `model_${Date.now()}`, label: "Neues Modell", kind: "video", strength: "schnell", credits: 5, active: true, fal_model: "", default: false }])}
+          <button type="button" onClick={() => setModels([...models, { id: `model_${Date.now()}`, label: "Neues Modell", kind: "video", strength: "schnell", credits: 5, active: true, fal_model: "", default: false, intern: false }])}
             className="border-[1.5px] border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] hover:border-foreground">+ Modell</button>
           <button type="button" onClick={() => onSaveModelCatalog(models)} disabled={busy}
             className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">

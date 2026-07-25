@@ -29,8 +29,8 @@ const STEP_TEXTS: Record<string, string> = {
   "/studio/kampagnen/neu:bild-model": "PAWN-Model, ein beschriebenes Model oder ein gespeichertes Haus-Model — oder gar keins. Mit Model entsteht erst ein Model-Shot, den du bestätigst, bevor er das Bild wird.",
   "/studio/kampagnen/neu:bild-bewegung": "Ein Satz genügt. Je genauer, desto passender der Vorschlag.",
   "/studio/kampagnen/neu:video-material": "Ein Foto genügt, mehr Fotos ergeben ein reicheres Ergebnis. Freisteller setzt es auf neutralen Hintergrund, in 10–25 Sekunden, für den Preis, der am Knopf steht.",
-  "/studio/kampagnen/neu:video-model": "PAWN-Model, Model beschreiben oder Haus-Model entsteht zuerst ein Model-Shot — dein Stück an einem fotorealistischen Menschen. Erst nach deiner Bestätigung geht es als Material weiter, sonst würde die Bewegung später eine Schaufensterpuppe animieren.",
-  "/studio/kampagnen/neu:video-bewegung": "Beschreib die Bewegung, nicht die Werbebotschaft — Kamera, Tempo, wie der Stoff sich verhält. Echte Bewegung ist vorausgewählt; „Keine Bewegung” bleibt eine bewusste, gleichwertige Wahl.",
+  "/studio/kampagnen/neu:video-model": "PAWN-Model, Model beschreiben oder Haus-Model entsteht zuerst ein Model-Shot — dein Stück an einem fotorealistischen Menschen. Deine Bestätigung macht ihn zum Material für die Bewegung.",
+  "/studio/kampagnen/neu:video-bewegung": "Beschreib die Bewegung — Kamera, Tempo, wie der Stoff sich verhält. Ein Modell ist vorausgewählt, die Länge wählst du dazu.",
   "/studio/kampagnen/neu:video-feinschliff": "Caption, Signatur und Schnitt — hier feintunen, muss aber nicht. Der Erzeugen-Knopf unten wartet nicht darauf.",
 };
 

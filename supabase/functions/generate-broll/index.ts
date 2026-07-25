@@ -14,10 +14,6 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
-// Standard: kostengünstiges Modell (wan-2.2). Premium-Alternative:
-//   fal-ai/kling-video/v2.1/standard/image-to-video (in ai_config setzen).
-const DEFAULT_MODEL = "fal-ai/wan/v2.2-a14b/image-to-video/lora";
-
 const DEFAULT_TEMPLATE =
   "subtle fabric movement, slow cinematic camera push-in, monochrome high-fashion editorial, soft studio light, {designer_prompt}";
 
@@ -85,8 +81,8 @@ Deno.serve(async (req) => {
     // fällt es auf das Standardmodell zurück, mit Signatur automatisch auf die Premium-Stufe
     // (Rückwärtskompatibilität für ältere Aufrufe ohne model_id).
     const { data: catalogCfg } = await admin.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle();
-    const catalog = ((catalogCfg?.value as Array<{ id: string; fal_model?: string; credits?: number; kind?: string; active?: boolean; default?: boolean }> | null) ?? [])
-      .filter((m) => m.kind === "video" && m.active !== false);
+    const catalog = ((catalogCfg?.value as Array<{ id: string; fal_model?: string; credits?: number; kind?: string; active?: boolean; default?: boolean; intern?: boolean }> | null) ?? [])
+      .filter((m) => m.kind === "video" && m.active !== false && !m.intern);
     const chosenEntry = body.model_id ? catalog.find((m) => m.id === body.model_id) : undefined;
     const catalogDefault = catalog.find((m) => m.default);
 
@@ -100,20 +96,21 @@ Deno.serve(async (req) => {
       model = chosenEntry.fal_model;
       clipCreditCost = chosenEntry.credits ?? (creditCosts.clip_standard ?? 5);
       clipAction = chosenEntry.id;
-    } else if (hasSignatureRecipe) {
-      model = videoCfg.model_premium ?? "fal-ai/kling-video/v2.1/standard/image-to-video";
+    } else if (hasSignatureRecipe && videoCfg.model_premium) {
+      model = videoCfg.model_premium;
       clipCreditCost = creditCosts.clip_premium ?? 12;
       clipAction = "clip_premium";
     } else if (catalogDefault?.fal_model) {
-      // Teil 13c: kein automatischer Rückfall aufs billigste Modell mehr — ohne explizite Wahl
-      // gilt das im Katalog als Standard markierte Modell, nicht das hart verdrahtete WAN-Fallback.
+      // Teil 13d: kein Rückfall mehr auf ein hart verdrahtetes Modell — ohne explizite Wahl
+      // gilt ausschließlich das im Katalog als Standard markierte, aktive, nicht-interne Modell.
       model = catalogDefault.fal_model;
       clipCreditCost = catalogDefault.credits ?? (creditCosts.clip_standard ?? 5);
       clipAction = catalogDefault.id;
     } else {
-      model = videoCfg.model ?? DEFAULT_MODEL;
-      clipCreditCost = creditCosts.clip_standard ?? 5;
-      clipAction = "clip_standard";
+      return json({
+        error: "no_active_video_model",
+        message: "Kein aktives Video-Modell im Katalog. Bitte im Admin-Bereich ein Modell aktivieren.",
+      }, 503);
     }
     clipCreditCost = clipCreditCost * durationFactor;
 
