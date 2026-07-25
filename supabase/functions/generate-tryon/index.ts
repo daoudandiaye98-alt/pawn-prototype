@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({})) as {
       product_id?: string; designer_id?: string; source_image_url?: string;
       mode?: "shot" | "clip"; model_style?: string; house_model_id?: string;
+      base_image_url?: string; base_model_id?: string;
     };
     if ((!body.product_id && !body.designer_id) || !body.source_image_url) {
       return json({ error: "product_id_or_designer_id_and_source_image_url_required" }, 400);
@@ -145,13 +146,26 @@ Deno.serve(async (req) => {
 
     // Load config
     const { data: cfgRow } = await admin.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle();
-    const cfg = ((cfgRow?.value ?? {}) as TryonConfig);
+    const cfg = ((cfgRow?.value ?? {}) as TryonConfig & { base_model_image_size?: string });
     const tryonModel = cfg.tryon_model ?? "fal-ai/kling/v1-5/kolors-virtual-try-on";
     const tryonModelAlt = cfg.tryon_model_alt ?? "fal-ai/idm-vton";
-    const baseImgModel = cfg.base_model_image_model ?? "fal-ai/nano-banana";
     const basePromptTpl = cfg.base_model_prompt ?? "full body studio photograph of a professional fashion model, {style}, plain white background";
     const fidelity = cfg.fidelity_rules ?? "";
     const clipMotionSuffix = cfg.clip_motion_suffix ?? "";
+
+    // Modellwahl für die Basis-Model-Erzeugung (Teil 13c): explizite Katalog-Stufe (kind="bild")
+    // schlägt die pauschale Konfiguration, die wiederum den fest verdrahteten Fallback schlägt —
+    // kein automatischer Rückfall aufs billigste Modell mehr.
+    let baseImgModel = cfg.base_model_image_model ?? "fal-ai/nano-banana";
+    if (body.base_model_id) {
+      const { data: catalogCfg } = await admin.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle();
+      const catalog = (catalogCfg?.value as Array<{ id: string; fal_model?: string; kind?: string; active?: boolean }> | null) ?? [];
+      const entry = catalog.find((m) => m.id === body.base_model_id && m.kind === "bild" && m.active !== false);
+      if (entry?.fal_model) baseImgModel = entry.fal_model;
+    }
+    // Optionale Auflösungsangabe (z. B. "2K") — nur wenn im Betreiber-Konfig gesetzt, da der genaue
+    // Parametername je Modell variiert und nicht ohne Bestätigung erraten werden soll.
+    const baseImgExtra: Record<string, unknown> = cfg.base_model_image_size ? { image_size: cfg.base_model_image_size } : {};
 
     // Insert request row
     const { data: reqRow, error: reqErr } = await admin.from("product_shot_requests").insert({
@@ -179,16 +193,19 @@ Deno.serve(async (req) => {
       houseModel = hm as typeof houseModel;
     }
 
-    // 1) Base model image (Haus-Model, geteilter Pool, oder neu erzeugen)
+    // 1) Base model image — explizit gewähltes PAWN-Model-Pool-Foto (Teil 13c) schlägt alles
+    // andere: der Designer hat direkt einen Look gewählt, keine weitere Erzeugung nötig.
     let pool = cfg.model_pool?.[style] ?? [];
     let baseImageUrl = "";
-    if (houseModel?.base_image_url) {
+    if (body.base_image_url) {
+      baseImageUrl = body.base_image_url;
+    } else if (houseModel?.base_image_url) {
       baseImageUrl = houseModel.base_image_url;
     } else if (houseModel) {
       const descBits = [houseModel.ausstrahlung, houseModel.altersgruppe, houseModel.haar, houseModel.hautton, houseModel.statur, houseModel.freitext]
         .filter(Boolean).join(", ");
       const prompt = basePromptTpl.replace("{style}", descBits ? `${style}, ${descBits}` : style);
-      const gen = await falSubmitAndPoll(FAL_KEY, baseImgModel, { prompt, num_images: 1, output_format: "jpeg" }, 60_000);
+      const gen = await falSubmitAndPoll(FAL_KEY, baseImgModel, { prompt, num_images: 1, output_format: "jpeg", ...baseImgExtra }, 60_000);
       if (!gen.ok) {
         const friendly = gen.status === 402
           ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
@@ -224,7 +241,7 @@ Deno.serve(async (req) => {
       baseImageUrl = pool[seed % pool.length];
     } else {
       const prompt = basePromptTpl.replace("{style}", style);
-      const gen = await falSubmitAndPoll(FAL_KEY, baseImgModel, { prompt, num_images: 1, output_format: "jpeg" }, 60_000);
+      const gen = await falSubmitAndPoll(FAL_KEY, baseImgModel, { prompt, num_images: 1, output_format: "jpeg", ...baseImgExtra }, 60_000);
       if (!gen.ok) {
         const friendly = gen.status === 402
           ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
