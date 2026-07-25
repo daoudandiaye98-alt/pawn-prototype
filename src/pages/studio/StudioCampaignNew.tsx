@@ -1,19 +1,16 @@
 /**
- * Kampagnen-Studio: eine Arbeitsfläche statt einer Schrittfolge (Teil 13). Links eine
- * durchgehende Vorschau, rechts eine ruhige Spalte mit allen Abschnitten in fester
- * Reihenfolge — jeder immer sichtbar, erst scharf wenn er dran ist, jederzeit frei
- * anspringbar. Kein Weiter/Zurück mehr.
+ * Kampagnen-Studio: eine ruhige, gestufte Arbeitsfläche (Teil 13c). Links eine
+ * durchgehende Vorschau, rechts eine kurze Hauptfolge — Was entsteht → Material →
+ * Model → Bewegung & Qualität — mit Caption/Signatur/Schnitt in einem geschlossenen
+ * "Feinschliff", statt vieler gleichrangiger Boxen. Ein einziger Handlungsknopf.
+ * Der Ask-PAWN-Begleiter erklärt je Abschnitt; hier steht nur das Nötigste.
  *
- * Kette bei Video mit Model: Ausgangsfoto → Model-Shot (generate-tryon, fotorealistischer
- * Mensch trägt das Stück) → erst DAS wird zu Bewegung (generate-broll). Ohne Model geht
- * das Ausgangsfoto direkt in die Bewegung — richtig so, wenn niemand darauf zu sehen sein
- * soll. Echte Bewegung ist eine bewusste Wahl (nie stillschweigend Standbilder statt
- * angeforderter Bewegung, Teil 13a) — ohne Entscheidung startet nichts.
- *
- * Video-Clips entstehen roh (Produktion) und werden im selben Zug zu einem Video
- * zusammengesetzt (client-seitig, renderCampaign). Bilder werden ohne Umweg gespeichert.
- * Beides legt eine campaigns-Row mit status='proposed' an — Freigabe passiert auf
- * /studio/kampagnen.
+ * Kette bei Model: Ausgangsfoto → Model-Shot (generate-tryon, Nano-Banana-2-Basis +
+ * fotorealistischer Mensch trägt das Stück) → erst DAS wird zu Bewegung (Kling, via
+ * generate-broll). Das Rohfoto geht nie direkt ins Video, wenn ein Model gewählt ist.
+ * Echte Bewegung ist standardmäßig verfügbar und vorausgewählt (das im Katalog als
+ * default markierte Modell) — kein stiller Rückfall auf Standbilder mehr, aber auch
+ * kein Zwang: "Keine Bewegung" bleibt eine gleichwertige, bewusste Wahl.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -27,7 +24,7 @@ import { randomSeed } from "@/features/campaign/prng";
 import { useCredits, planLabel, type Plan } from "@/features/campaign/quota";
 import {
   Check, Upload, Sparkles, Music, Wand2, Shuffle, Image as ImageIcon, Clapperboard,
-  ChevronUp, ArrowDown, Download, AlertTriangle, Clock,
+  ChevronUp, ChevronDown, ArrowDown, Download, AlertTriangle, Clock,
 } from "lucide-react";
 
 interface ProductLite {
@@ -45,15 +42,17 @@ interface HouseModelRow {
   ausstrahlung: string | null; altersgruppe: string | null; haar: string | null; hautton: string | null; statur: string | null; freitext: string | null;
 }
 
-interface ModelCatalogEntry { id: string; label: string; kind: "image" | "video"; strength: string; credits: number; active: boolean }
+interface ModelCatalogEntry { id: string; label: string; kind: "bild" | "video"; strength: string; credits: number; active: boolean; default?: boolean }
 
 interface RecentShot { url: string; at: string }
+interface ModelPool { weiblich: string[]; männlich: string[]; divers: string[] }
 
 type OutputType = "bild" | "video";
-type ModelMode = "keins" | "beschreiben" | "gespeichert";
+type ModelMode = "keins" | "beschreiben" | "gespeichert" | "pawn_pool";
 /** null = noch keine Entscheidung, "none" = bewusst keine Bewegung, sonst model_catalog-ID. */
 type MotionChoice = null | "none" | string;
 type DurationS = 5 | 10;
+type TryonStyle = "weiblich" | "männlich" | "divers";
 
 interface UploadedPhoto { url: string; path: string; }
 
@@ -86,6 +85,7 @@ async function uploadFile(userId: string, file: File | Blob, ext: string): Promi
 
 const ORT_PRESETS = ["Studio, neutral", "Straße", "Natur", "Interieur", "Laufsteg"];
 const MOVEMENT_CHIPS = ["Langsame Kamerafahrt", "Kamera fährt näher heran", "Stoff im Wind", "Statisch, Model dreht sich", "Schnelle Schnitte"];
+const MODE_LABEL: Record<ModelMode, string> = { pawn_pool: "PAWN-Model wählen", beschreiben: "Model beschreiben", gespeichert: "Haus-Model", keins: "Kein Model" };
 
 export default function StudioCampaignNew() {
   const { user, hasRole } = useAuth();
@@ -113,8 +113,9 @@ export default function StudioCampaignNew() {
   const [freistellerPreview, setFreistellerPreview] = useState<{ index: number | "product"; source: string; result: string } | null>(null);
   const [productShotResult, setProductShotResult] = useState<string | null>(null);
 
-  // Besetzung & Ort
-  const [modelMode, setModelMode] = useState<ModelMode>("keins");
+  // Model
+  const [modelMode, setModelMode] = useState<ModelMode | null>(null);
+  const [modelModeTouched, setModelModeTouched] = useState(false);
   const [houseModels, setHouseModels] = useState<HouseModelRow[]>([]);
   const [chosenHouseModelId, setChosenHouseModelId] = useState<string | null>(null);
   const [modelAusstrahlung, setModelAusstrahlung] = useState("");
@@ -125,31 +126,52 @@ export default function StudioCampaignNew() {
   const [modelFreitext, setModelFreitext] = useState("");
   const [saveAsHouseModel, setSaveAsHouseModel] = useState(false);
   const [newHouseModelName, setNewHouseModelName] = useState("");
-  const [ortPreset, setOrtPreset] = useState<string | null>(null);
-  const [ortFreitext, setOrtFreitext] = useState("");
-  const [tryonStyle, setTryonStyle] = useState<"weiblich"|"männlich"|"divers">("weiblich");
+  const [tryonStyle, setTryonStyle] = useState<TryonStyle>("weiblich");
   const [tryonDisclosure, setTryonDisclosure] = useState<string>("Visualisierung mit KI-Model");
+  const [modelPool, setModelPool] = useState<ModelPool>({ weiblich: [], männlich: [], divers: [] });
+  const [chosenPoolImageUrl, setChosenPoolImageUrl] = useState<string | null>(null);
 
-  // Model-Shot (die fehlende Mitte, Teil 13a): Ausgangsfoto → Mensch trägt das Stück.
+  // Model-Shot (die fehlende Mitte): Ausgangsfoto → Mensch trägt das Stück.
   const [modelShotUrl, setModelShotUrl] = useState<string | null>(null);
   const [modelShotBusy, setModelShotBusy] = useState(false);
   const [modelShotPreview, setModelShotPreview] = useState<{ source: string; result: string } | null>(null);
+  const [bildModelId, setBildModelId] = useState<string | null>(null);
 
-  // Video-Text
+  // Bewegung & Qualität
+  const [ortPreset, setOrtPreset] = useState<string | null>(null);
+  const [ortFreitext, setOrtFreitext] = useState("");
   const [prompt, setPrompt] = useState("");
   const [tempo, setTempo] = useState<Tempo>("ruhig");
-  const [hook, setHook] = useState("");
-  const [caption, setCaption] = useState("");
-  const [hashtags, setHashtags] = useState<string[]>([]);
-  const [aiBusy, setAiBusy] = useState(false);
   const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
   const [modelCatalogLoaded, setModelCatalogLoaded] = useState(false);
-
-  // Modell & Länge
   const [motionChoice, setMotionChoice] = useState<MotionChoice>(null);
   const [durationS, setDurationS] = useState<DurationS>(5);
   const [stillsAcknowledged, setStillsAcknowledged] = useState(false);
   const [runningModelLabel, setRunningModelLabel] = useState<string | null>(null);
+
+  // Feinschliff (geschlossen per Default)
+  const [feinschliffOpen, setFeinschliffOpen] = useState(false);
+  const [hook, setHook] = useState("");
+  const [caption, setCaption] = useState("");
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [chosenSignatureId, setChosenSignatureId] = useState<string | null>(null);
+  const [signatures, setSignatures] = useState<HouseSignature[]>([]);
+  const [signaturesLoading, setSignaturesLoading] = useState(true);
+  const [wishName, setWishName] = useState("");
+  const [wishPrompt, setWishPrompt] = useState("");
+  const [wishBusy, setWishBusy] = useState(false);
+  const [format, setFormat] = useState<Format>("9:16");
+  const [seed, setSeed] = useState<number>(() => randomSeed());
+  const [includeIntro, setIncludeIntro] = useState(false);
+  const [includeOutro, setIncludeOutro] = useState(false);
+  const [introText, setIntroText] = useState("");
+  const [showLogo, setShowLogo] = useState(false);
+  const [sceneSeconds, setSceneSeconds] = useState(2);
+  const [clipOrder, setClipOrder] = useState<number[]>([]);
+  const previewMountRef = useRef<HTMLDivElement | null>(null);
+  const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
+  const [lastDurationMs, setLastDurationMs] = useState<number>(0);
 
   // Produktion (roh) + Schnitt
   const [renderBusy, setRenderBusy] = useState(false);
@@ -157,36 +179,22 @@ export default function StudioCampaignNew() {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoMime, setVideoMime] = useState<string>("video/webm");
-  const [format, setFormat] = useState<Format>("9:16");
-  const [seed, setSeed] = useState<number>(() => randomSeed());
   const [cinematicStage, setCinematicStage] = useState<null | "submitting" | "polling" | "ready" | "failed">(null);
   const [cinematicProgress, setCinematicProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [cinematicError, setCinematicError] = useState<string | null>(null);
   const [rawClips, setRawClips] = useState<Array<string | null>>([]);
-  const [clipOrder, setClipOrder] = useState<number[]>([]);
-  const [includeIntro, setIncludeIntro] = useState(false);
-  const [includeOutro, setIncludeOutro] = useState(false);
-  const [introText, setIntroText] = useState("");
-  const [showLogo, setShowLogo] = useState(false);
-  const [sceneSeconds, setSceneSeconds] = useState(2);
-  const previewMountRef = useRef<HTMLDivElement | null>(null);
-  const [instagramHandle, setInstagramHandle] = useState<string>("hausofpawn");
   const [savingImage, setSavingImage] = useState(false);
-
-  // Signaturen (der Regisseur)
-  const [signatures, setSignatures] = useState<HouseSignature[]>([]);
-  const [signaturesLoading, setSignaturesLoading] = useState(true);
-  const [chosenSignatureId, setChosenSignatureId] = useState<string | null>(null);
-  const [wishName, setWishName] = useState("");
-  const [wishPrompt, setWishPrompt] = useState("");
-  const [wishBusy, setWishBusy] = useState(false);
-  const [lastDurationMs, setLastDurationMs] = useState<number>(0);
 
   // Credits
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const credits = useCredits(designer?.id, plan, isAdmin);
+  const videoModels = useMemo(() => modelCatalog.filter((m) => m.kind === "video"), [modelCatalog]);
+  const bildModels = useMemo(() => modelCatalog.filter((m) => m.kind === "bild"), [modelCatalog]);
   const cinematic = typeof motionChoice === "string" && motionChoice !== "none";
-  const chosenModelEntry = cinematic ? modelCatalog.find((m) => m.id === motionChoice) ?? null : null;
+  const chosenModelEntry = cinematic ? videoModels.find((m) => m.id === motionChoice) ?? null : null;
+  const chosenBildEntry = bildModels.find((m) => m.id === bildModelId) ?? null;
+  const poolHasAny = Object.values(modelPool).some((arr) => arr.length > 0);
+  const recommendedMode: ModelMode = poolHasAny ? "pawn_pool" : "beschreiben";
 
   // Laden: Rechte, Produkte, Haus-Models, letzte Aufnahmen.
   useEffect(() => {
@@ -208,15 +216,46 @@ export default function StudioCampaignNew() {
     })();
   }, [designer]);
 
-  // Modell-Katalog (Teil 11b): Video-Modelle, die der Designer selbst wählen kann.
+  // Modell-Katalog (video + bild) und PAWN-Model-Galerie.
   useEffect(() => {
     void supabase.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle()
       .then(({ data }) => {
-        const all = ((data?.value as unknown as ModelCatalogEntry[] | null) ?? []).filter((m) => m.kind === "video" && m.active);
+        const all = ((data?.value as unknown as ModelCatalogEntry[] | null) ?? []).filter((m) => m.active !== false);
         setModelCatalog(all);
         setModelCatalogLoaded(true);
       });
+    void supabase.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle()
+      .then(({ data }) => {
+        const v = (data?.value as { model_pool?: Partial<ModelPool>; shot_disclosure?: string } | null) ?? null;
+        if (v?.model_pool) setModelPool({ weiblich: v.model_pool.weiblich ?? [], männlich: v.model_pool.männlich ?? [], divers: v.model_pool.divers ?? [] });
+        if (v?.shot_disclosure) setTryonDisclosure(v.shot_disclosure);
+      });
   }, []);
+
+  // Standardwahl, sobald der Katalog da ist — nie stillschweigend "keine Bewegung",
+  // solange ein echtes Modell aktiv ist. Nur wenn der Katalog wirklich leer ist,
+  // bleibt es bei der ehrlichen "nicht eingerichtet"-Anzeige.
+  useEffect(() => {
+    if (!modelCatalogLoaded || motionChoice !== null) return;
+    const def = videoModels.find((m) => m.default) ?? videoModels[0];
+    if (def) setMotionChoice(def.id);
+  }, [modelCatalogLoaded, videoModels, motionChoice]);
+
+  useEffect(() => {
+    if (!modelCatalogLoaded || bildModelId !== null) return;
+    const def = bildModels.find((m) => m.default) ?? bildModels[0];
+    if (def) setBildModelId(def.id);
+  }, [modelCatalogLoaded, bildModels, bildModelId]);
+
+  // Model-Mode: sobald die Galerie geladen ist, wird der empfohlene Weg (PAWN-Model,
+  // sonst Model beschreiben) vorbelegt — "Kein Model" ist gleichwertig wählbar, aber
+  // nicht länger der schwarz hervorgehobene Standard.
+  useEffect(() => {
+    if (modelModeTouched || modelMode !== null) return;
+    setModelMode(recommendedMode);
+  }, [modelModeTouched, modelMode, recommendedMode]);
+
+  const setModelModeUser = (m: ModelMode) => { setModelModeTouched(true); setModelMode(m); };
 
   // Signaturen: der Regisseur destilliert sie einmalig beim ersten Öffnen dieser Seite.
   useEffect(() => {
@@ -230,18 +269,13 @@ export default function StudioCampaignNew() {
       .finally(() => setSignaturesLoading(false));
   }, [designer?.id]);
 
-  // Instagram-Handle + Try-On Disclosure aus Config.
+  // Instagram-Handle aus Config.
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("ai_config").select("value").eq("key", "business_profile").maybeSingle();
       const v = (data as { value?: { instagram?: string } } | null)?.value;
       const raw = v?.instagram?.trim();
       if (raw) setInstagramHandle(raw.replace(/^@/, ""));
-    })();
-    (async () => {
-      const { data } = await supabase.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle();
-      const d = (data as { value?: { shot_disclosure?: string } } | null)?.value?.shot_disclosure;
-      if (d) setTryonDisclosure(d);
     })();
   }, []);
 
@@ -283,23 +317,18 @@ export default function StudioCampaignNew() {
     } else if (modelMode === "gespeichert") {
       const hm = houseModels.find((m) => m.id === chosenHouseModelId);
       if (hm) parts.push(`Model: ${hm.name}`);
+    } else if (modelMode === "pawn_pool" && chosenPoolImageUrl) {
+      parts.push(`Model: PAWN-Model (${tryonStyle})`);
     }
     const ort = ortFreitext.trim() || ortPreset;
     if (ort && outputType === "video") parts.push(`Ort: ${ort}`);
     return parts.join(". ");
-  }, [modelMode, modelAusstrahlung, modelAltersgruppe, modelHaar, modelHautton, modelStatur, modelFreitext, houseModels, chosenHouseModelId, ortFreitext, ortPreset, outputType]);
-
-  const applyCastingSuggestion = () => {
-    if (!composedCastingText) return;
-    setPrompt((prev) => [prev, composedCastingText].filter(Boolean).join(". "));
-    toast.success("In den Video-Text übernommen.");
-  };
+  }, [modelMode, modelAusstrahlung, modelAltersgruppe, modelHaar, modelHautton, modelStatur, modelFreitext, houseModels, chosenHouseModelId, chosenPoolImageUrl, tryonStyle, ortFreitext, ortPreset, outputType]);
 
   // Ein neuer Besetzungs-Modus oder ein neues Material macht den bisherigen Model-Shot ungültig.
-  useEffect(() => { setModelShotUrl(null); }, [modelMode, chosenHouseModelId]);
-  // Die Bewegungs-Entscheidung muss neu getroffen werden, wenn sich Besetzung/Ort ändert —
-  // sonst könnte eine alte "Keine Bewegung"-Bestätigung eine neue, unpassende Situation stumm übernehmen.
+  useEffect(() => { setModelShotUrl(null); }, [modelMode, chosenHouseModelId, chosenPoolImageUrl]);
   useEffect(() => { setStillsAcknowledged(false); }, [motionChoice, composedCastingText]);
+  useEffect(() => { setChosenPoolImageUrl(null); }, [tryonStyle]);
 
   const createHouseModel = async () => {
     if (!designer || !newHouseModelName.trim()) { toast.error("Bitte einen Namen für das Haus-Model vergeben."); return; }
@@ -312,7 +341,7 @@ export default function StudioCampaignNew() {
     const row = data as unknown as HouseModelRow;
     setHouseModels((prev) => [row, ...prev]);
     setChosenHouseModelId(row.id);
-    setModelMode("gespeichert");
+    setModelModeUser("gespeichert");
     setSaveAsHouseModel(false);
     setNewHouseModelName("");
     toast.success("Haus-Model gespeichert — ab jetzt wiederverwendbar.");
@@ -352,8 +381,7 @@ export default function StudioCampaignNew() {
   const rawMaterialImage = chosenProduct ? (productShotResult ?? chosenProduct.image_url) : (uploaded[0]?.url ?? null);
 
   // Was tatsächlich weiterverwendet wird: mit bestätigtem Model-Shot ersetzt der Mensch,
-  // der das Stück trägt, alle rohen Fotos (auch wenn mehrere hochgeladen wurden) — genau
-  // das schließt die fehlende Mitte, damit Bewegung nie eine Schaufensterpuppe animiert.
+  // der das Stück trägt, alle rohen Fotos — genau das schließt die fehlende Mitte.
   const chosenImages = useMemo(() => {
     if (modelShotUrl) return [modelShotUrl];
     if (chosenProduct?.image_url) return [productShotResult ?? chosenProduct.image_url];
@@ -363,7 +391,7 @@ export default function StudioCampaignNew() {
   useEffect(() => { setClipOrder(chosenImages.map((_, i) => i)); }, [chosenImages.length]);
 
   const materialReady = chosenImages.length > 0;
-  const needsModelShot = modelMode !== "keins" && !modelShotUrl;
+  const needsModelShot = modelMode !== null && modelMode !== "keins" && !modelShotUrl;
   const promptReady = outputType === "bild" || prompt.trim().length > 0;
   const motionDecided = motionChoice !== null;
   const stillsContradiction = motionChoice === "none" && !!composedCastingText;
@@ -460,14 +488,17 @@ export default function StudioCampaignNew() {
   };
 
   // Model-Shot: die fehlende Mitte. product_id, falls ein Produkt gewählt ist — sonst
-  // designer_id, damit auch ein hochgeladenes Foto (Puppe, Bügel) durchlaufen kann.
+  // designer_id. Bei PAWN-Model wird das gewählte Foto direkt als Basis übergeben.
   const requestModelShot = async () => {
     if (!designer || !rawMaterialImage) return;
+    if (modelMode === "pawn_pool" && !chosenPoolImageUrl) { toast.error("Wähle zuerst ein PAWN-Model."); return; }
     setModelShotBusy(true);
     try {
       const body: Record<string, unknown> = {
         source_image_url: rawMaterialImage, mode: "shot", model_style: tryonStyle,
         house_model_id: modelMode === "gespeichert" ? chosenHouseModelId ?? undefined : undefined,
+        base_image_url: modelMode === "pawn_pool" ? chosenPoolImageUrl ?? undefined : undefined,
+        base_model_id: bildModelId ?? undefined,
       };
       if (chosenProduct?.id) body.product_id = chosenProduct.id; else body.designer_id = designer.id;
       const { data, error } = await supabase.functions.invoke("generate-tryon", { body });
@@ -519,14 +550,13 @@ export default function StudioCampaignNew() {
   const perClipCredits = (chosenModelEntry?.credits ?? credits.costs.clip_standard ?? 5) * (durationS === 10 ? 2 : 1);
   const clipsToProduce = Math.min(chosenImages.length, 3);
   const estimatedCost =
-    (needsModelShot ? (credits.costs.tryon_shot ?? 2) : 0) +
+    (needsModelShot ? (chosenBildEntry?.credits ?? credits.costs.tryon_shot ?? 2) : 0) +
     (outputType === "video" && cinematic ? perClipCredits * Math.max(clipsToProduce, 1) : 0);
   const estimatedDurationS = outputType === "video"
     ? (cinematic ? clipsToProduce * durationS : Math.round(chosenImages.length * sceneSeconds))
     : 0;
 
   // Produktion (roh): erzeugt entweder Standbilder (keine Bewegung) oder echte Clips.
-  // Gibt zurück, ob die Produktion erfolgreich war, damit der Aufrufer direkt weiterschneiden kann.
   const produceRaw = async (): Promise<boolean> => {
     if (!designer) return false;
     if (chosenImages.length < 1) { toast.error("Mindestens 1 Bild."); return false; }
@@ -685,7 +715,6 @@ export default function StudioCampaignNew() {
     }
   };
 
-  // Ein Knopf: Produktion und Schnitt laufen im selben Zug.
   const generateVideo = async () => {
     const ok = await produceRaw();
     if (ok) await composeVideo();
@@ -752,7 +781,6 @@ export default function StudioCampaignNew() {
         } as unknown as Record<string, unknown>,
         rights_granted: rightsGranted,
       } as never).select("id").single();
-      // Mediathek (Teil 12b): jedes fertige Video landet zusätzlich hier, verlinkt mit video_assets.
       await supabase.from("media_assets" as never).insert({
         designer_id: designer.id, kind: "video", origin: "erzeugt", url: signedUrl,
         title, rights_granted: rightsGranted,
@@ -809,13 +837,12 @@ export default function StudioCampaignNew() {
   if (!designer) return <StudioShell title="Neue Kampagne"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
 
   const rightsPending = consentOk !== true || mediaRightsGranted !== true;
+  const activeModelMode = modelMode ?? recommendedMode;
 
-  // Für den Begleiter: der nächste Abschnitt, der noch Aufmerksamkeit braucht.
   const focusedSection = !materialReady ? "material"
-    : needsModelShot ? "besetzung"
-    : !promptReady ? "text"
-    : (outputType === "video" && !motionDecided) ? "modell"
-    : "schnitt";
+    : needsModelShot ? "model"
+    : !promptReady || (outputType === "video" && !motionDecided) ? "bewegung"
+    : "feinschliff";
 
   const canGenerateVideo = materialReady && !needsModelShot && promptReady && motionDecided
     && (!stillsContradiction || stillsAcknowledged)
@@ -825,7 +852,7 @@ export default function StudioCampaignNew() {
   return (
     <StudioShell title="Neue Kampagne" eyebrow="Kampagnen-Studio" begleiterStep={`${outputType}-${focusedSection}`}>
       {/* Fixierte Kopfzeile: Guthaben, geschätzte Kosten, geschätzte Dauer */}
-      <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:border sm:px-4">
+      <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0">
         <span className="text-sm text-muted-foreground">{planLabel(plan)}-Plan</span>
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <span className="tabular-nums font-medium">{credits.balance} / {credits.grant} Credits</span>
@@ -841,8 +868,8 @@ export default function StudioCampaignNew() {
       </div>
 
       {rightsPending ? (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="border border-border bg-white p-5">
+        <div className="mt-10 grid gap-6 sm:grid-cols-2">
+          <div>
             <p className="editorial-eyebrow">Bildrechte</p>
             {consentOk === null ? <p className="mt-2 text-sm text-muted-foreground">wird geprüft…</p> :
               <div className="mt-2 space-y-3">
@@ -853,7 +880,7 @@ export default function StudioCampaignNew() {
                 </button>
               </div>}
           </div>
-          <div className="border border-border bg-white p-5">
+          <div>
             <p className="editorial-eyebrow">Medien-Rechte</p>
             {mediaRightsGranted === null ? <p className="mt-2 text-sm text-muted-foreground">wird geprüft…</p> :
               <div className="mt-2 space-y-3">
@@ -866,7 +893,7 @@ export default function StudioCampaignNew() {
           </div>
         </div>
       ) : (
-        <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1.15fr]">
+        <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_1.15fr]">
           {/* LINKS — durchgehende Vorschau */}
           <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
             <div className="border border-border bg-black p-4">
@@ -883,42 +910,23 @@ export default function StudioCampaignNew() {
               )}
             </div>
             {(cinematicStage === "submitting" || cinematicStage === "polling") && (
-              <div className="border border-foreground bg-white p-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Wand2 className="h-4 w-4" />
-                  <span>
-                    {cinematicStage === "submitting" && "Übergabe an die Kamera…"}
-                    {cinematicStage === "polling" && (
-                      <>
-                        Aufnahmen entstehen mit „{runningModelLabel ?? "Modell"}" — ca. 1–2 Minuten
-                        {cinematicProgress.total > 0 && <span className="ml-2 tabular-nums text-muted-foreground">({cinematicProgress.done}/{cinematicProgress.total} fertig)</span>}
-                      </>
-                    )}
-                  </span>
-                </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Wand2 className="h-4 w-4" />
+                <span>
+                  {cinematicStage === "submitting" && "Übergabe an die Kamera…"}
+                  {cinematicStage === "polling" && (
+                    <>
+                      Aufnahmen entstehen mit „{runningModelLabel ?? "Modell"}" — ca. 1–2 Minuten
+                      {cinematicProgress.total > 0 && <span className="ml-2 tabular-nums text-muted-foreground">({cinematicProgress.done}/{cinematicProgress.total} fertig)</span>}
+                    </>
+                  )}
+                </span>
               </div>
             )}
             {cinematicStage === "failed" && (
-              <div className="flex items-start gap-2 border border-foreground bg-white p-3 text-sm">
+              <div className="flex items-start gap-2 text-sm">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{cinematicError ?? "Aufnahme fehlgeschlagen."}</span>
-              </div>
-            )}
-            {rawClips.length > 0 && (
-              <div>
-                <p className="editorial-eyebrow">Reihenfolge</p>
-                <div className="mt-3 space-y-2">
-                  {clipOrder.map((idx, pos) => (
-                    <div key={idx} className="flex items-center gap-3 border border-border bg-white p-2">
-                      <div className="h-12 w-12 shrink-0 border border-border bg-black">
-                        {rawClips[idx] ? <video src={rawClips[idx]!} muted className="h-full w-full object-cover" /> : <img src={chosenImages[idx]} alt="" className="h-full w-full object-cover" />}
-                      </div>
-                      <span className="flex-1 text-sm text-muted-foreground">Aufnahme {pos + 1}</span>
-                      <button onClick={() => moveClip(pos, -1)} disabled={pos === 0} className="p-1 disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
-                      <button onClick={() => moveClip(pos, 1)} disabled={pos === clipOrder.length - 1} className="p-1 disabled:opacity-30"><ArrowDown className="h-4 w-4" /></button>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
             {(rawClips.some(Boolean) || chosenImages[0]) && (
@@ -928,35 +936,32 @@ export default function StudioCampaignNew() {
             )}
           </div>
 
-          {/* RECHTS — Abschnitte */}
-          <div className="space-y-5">
-            {/* 1 — Bild oder Video */}
-            <Section n={1} title="Bild oder Video" ready>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => setOutputType("bild")}
-                  className={`flex min-h-[44px] items-center gap-2 border p-4 text-left transition-colors ${outputType === "bild" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                  <ImageIcon className="h-4 w-4" /> <span className="font-serif text-base">Bild</span>
-                </button>
-                <button type="button" onClick={() => setOutputType("video")}
-                  className={`flex min-h-[44px] items-center gap-2 border p-4 text-left transition-colors ${outputType === "video" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                  <Clapperboard className="h-4 w-4" /> <span className="font-serif text-base">Video</span>
-                </button>
-              </div>
-            </Section>
+          {/* RECHTS — die kurze Hauptfolge */}
+          <div>
+            {/* Was entsteht */}
+            <div className="flex gap-2 border-b border-border pb-8">
+              <button type="button" onClick={() => setOutputType("bild")}
+                className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 border p-3 transition-colors ${outputType === "bild" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                <ImageIcon className="h-4 w-4" /> <span className="font-serif text-base">Bild</span>
+              </button>
+              <button type="button" onClick={() => setOutputType("video")}
+                className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 border p-3 transition-colors ${outputType === "video" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                <Clapperboard className="h-4 w-4" /> <span className="font-serif text-base">Video</span>
+              </button>
+            </div>
 
-            {/* 2 — Material */}
-            <Section n={2} title="Material" ready={materialReady}>
-              <p className="editorial-eyebrow">Aus deiner Kollektion</p>
+            {/* Material */}
+            <div className="border-b border-border py-8">
+              <p className="editorial-eyebrow">Material</p>
               {products.length === 0 ? (
-                <div className="mt-3 border border-border bg-white p-4">
-                  <p className="text-sm text-muted-foreground">Noch keine Produkte hinterlegt.</p>
-                  <Link to="/studio/produkte" className="mt-3 inline-flex min-h-[40px] items-center border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background">Stück anlegen</Link>
+                <div className="mt-4 text-sm text-muted-foreground">
+                  Noch keine Produkte hinterlegt. <Link to="/studio/produkte" className="underline hover:text-foreground">Stück anlegen</Link>
                 </div>
               ) : (
-                <div className="mt-3 grid gap-3 sm:grid-cols-3 md:grid-cols-4">
+                <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
                   {products.map((p) => (
                     <button key={p.id} onClick={() => { setChosenProduct(p); setUploaded([]); setProductShotResult(null); }}
-                      className={`group border p-2 text-left transition-all ${chosenProduct?.id === p.id ? "border-foreground shadow-[6px_6px_0_0_rgba(0,0,0,0.9)]" : "border-border hover:border-foreground"}`}>
+                      className={`group border p-2 text-left transition-all ${chosenProduct?.id === p.id ? "border-foreground" : "border-transparent hover:border-border"}`}>
                       <div className="aspect-[4/5] bg-muted">{p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition" loading="lazy" />}</div>
                       <p className="mt-2 truncate font-serif text-sm">{p.name}</p>
                     </button>
@@ -965,13 +970,13 @@ export default function StudioCampaignNew() {
               )}
               {chosenProduct && (
                 <button type="button" onClick={requestFreistellerForProduct} disabled={freistellerBusy === "product" || !credits.canAfford(credits.costs.product_shot ?? 1)}
-                  className="mt-3 inline-flex min-h-[40px] items-center gap-1.5 border border-foreground bg-white px-3 py-1.5 text-[0.68rem] uppercase tracking-wide hover:bg-foreground hover:text-background disabled:opacity-60">
+                  className="mt-3 inline-flex min-h-[36px] items-center gap-1.5 text-[0.68rem] uppercase tracking-wide text-muted-foreground hover:text-foreground disabled:opacity-60">
                   <Sparkles className="h-3 w-3" /> {freistellerBusy === "product" ? "…" : `Freisteller · ${credits.costs.product_shot ?? 1} Credits`}
                 </button>
               )}
 
-              <p className="editorial-eyebrow mt-6">Oder eigenes Foto</p>
-              <div onDrop={onDrop} onDragOver={(e) => e.preventDefault()} className="mt-3 border-2 border-dashed border-border bg-white p-6 text-center">
+              <p className="mt-6 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Oder eigenes Foto</p>
+              <div onDrop={onDrop} onDragOver={(e) => e.preventDefault()} className="mt-2 border border-dashed border-border p-6 text-center">
                 <Upload className="mx-auto h-5 w-5 text-muted-foreground" />
                 <p className="mt-2 text-sm">Zieh 1 bis 4 Fotos hierher, oder wähle sie aus.</p>
                 <label className="mt-3 inline-flex min-h-[40px] cursor-pointer items-center border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
@@ -982,10 +987,10 @@ export default function StudioCampaignNew() {
                 {uploaded.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {uploaded.map((u, i) => (
-                      <div key={i} className="border border-border bg-white p-1">
+                      <div key={i}>
                         <img src={u.url} alt="" className="aspect-square w-full object-cover grayscale" />
                         <button type="button" onClick={() => requestFreistellerForUpload(i)} disabled={freistellerBusy === i || !credits.canAfford(credits.costs.product_shot ?? 1)}
-                          className="mt-1 flex min-h-[32px] w-full items-center justify-center gap-1.5 border border-foreground bg-white px-2 py-1 text-[0.6rem] uppercase tracking-wide hover:bg-foreground hover:text-background disabled:opacity-60">
+                          className="mt-1 flex min-h-[28px] w-full items-center justify-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-muted-foreground hover:text-foreground disabled:opacity-60">
                           <Sparkles className="h-3 w-3" /> {freistellerBusy === i ? "…" : `Freisteller · ${credits.costs.product_shot ?? 1} Cr.`}
                         </button>
                       </div>
@@ -996,8 +1001,8 @@ export default function StudioCampaignNew() {
 
               {recentShots.length > 0 && (
                 <>
-                  <p className="editorial-eyebrow mt-6">Zuletzt erzeugt</p>
-                  <div className="mt-3 flex flex-wrap gap-3">
+                  <p className="mt-6 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Zuletzt erzeugt</p>
+                  <div className="mt-2 flex flex-wrap gap-3">
                     {recentShots.map((s, i) => (
                       <button key={i} type="button" onClick={() => reuseRecentShot(s.url)} className="group relative h-16 w-16 border border-border hover:border-foreground">
                         <img src={s.url} alt="" className="h-full w-full object-cover" />
@@ -1007,26 +1012,50 @@ export default function StudioCampaignNew() {
                   </div>
                 </>
               )}
-            </Section>
+            </div>
 
-            {/* 3 — Besetzung & Ort */}
-            <Section n={3} title="Besetzung & Ort" ready={!needsModelShot}>
+            {/* Model */}
+            <div className="border-b border-border py-8">
               <p className="editorial-eyebrow">Model</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {([
-                  { v: "keins" as const, l: "Kein Model" },
-                  { v: "beschreiben" as const, l: "Model beschreiben" },
-                  { v: "gespeichert" as const, l: "Gespeichertes Haus-Model" },
-                ]).map((o) => (
-                  <button key={o.v} onClick={() => setModelMode(o.v)}
-                    className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${modelMode === o.v ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                    {o.l}
-                  </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {((poolHasAny ? ["pawn_pool", "beschreiben", "gespeichert", "keins"] : ["beschreiben", "gespeichert", "keins"]) as ModelMode[]).map((m) => (
+                  <div key={m} className="flex flex-col items-start gap-1">
+                    {m === recommendedMode && <span className="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground">Empfohlen</span>}
+                    <button onClick={() => setModelModeUser(m)}
+                      className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${activeModelMode === m ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                      {MODE_LABEL[m]}
+                    </button>
+                  </div>
                 ))}
               </div>
 
-              {modelMode === "beschreiben" && (
-                <div className="mt-4 grid gap-4 border border-border bg-white p-4 sm:grid-cols-2">
+              {activeModelMode === "pawn_pool" && (
+                <div className="mt-4">
+                  <div className="flex flex-wrap gap-2">
+                    {(["weiblich", "männlich", "divers"] as const).map((s) => (
+                      <button key={s} type="button" onClick={() => setTryonStyle(s)}
+                        className={`min-h-[36px] border px-3 py-1 text-[0.68rem] ${tryonStyle === s ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                  {modelPool[tryonStyle].length === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">Für „{tryonStyle}" ist noch kein PAWN-Model hinterlegt — wähle einen anderen Stil oder „Model beschreiben".</p>
+                  ) : (
+                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                      {modelPool[tryonStyle].map((url, i) => (
+                        <button key={i} type="button" onClick={() => setChosenPoolImageUrl(url)}
+                          className={`aspect-[3/4] border ${chosenPoolImageUrl === url ? "border-foreground" : "border-border hover:border-foreground"}`}>
+                          <img src={url} alt="" className="h-full w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeModelMode === "beschreiben" && (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <label className="block"><span className="editorial-eyebrow">Ausstrahlung</span>
                     <input value={modelAusstrahlung} onChange={(e) => setModelAusstrahlung(e.target.value)} placeholder="z. B. selbstbewusst, warm" className="mt-1 w-full border border-border bg-background p-2 text-sm" /></label>
                   <label className="block"><span className="editorial-eyebrow">Altersgruppe</span>
@@ -1057,11 +1086,11 @@ export default function StudioCampaignNew() {
                 </div>
               )}
 
-              {modelMode === "gespeichert" && (
+              {activeModelMode === "gespeichert" && (
                 houseModels.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">Noch kein Haus-Model gespeichert — beschreibe zuerst eins und speichere es.</p>
+                  <p className="mt-4 text-sm text-muted-foreground">Noch kein Haus-Model gespeichert — beschreibe zuerst eins und speichere es.</p>
                 ) : (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     {houseModels.map((hm) => (
                       <button key={hm.id} onClick={() => setChosenHouseModelId(hm.id)}
                         className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenHouseModelId === hm.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
@@ -1072,27 +1101,19 @@ export default function StudioCampaignNew() {
                 )
               )}
 
-              {modelMode !== "keins" && (
-                <div className="mt-4 border border-border bg-white p-4">
-                  <p className="editorial-eyebrow">Model-Shot</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Aus deinem Foto entsteht ein Foto deines Stücks an einem fotorealistischen Menschen — erst das wird zur Bewegung, nicht die Schaufensterpuppe oder der Bügel.
-                    Kostet {credits.costs.tryon_shot ?? 2} Credits — du hast {credits.balance}.
+              {activeModelMode !== "keins" && (
+                <div className="mt-6 border-t border-border pt-6">
+                  <p className="text-sm text-muted-foreground">
+                    Aus deinem Foto entsteht ein Model-Shot{chosenBildEntry ? ` (${chosenBildEntry.label})` : ""} — dein Stück an einem fotorealistischen Menschen. Erst das wird zur Bewegung, nicht die Schaufensterpuppe.
+                    {chosenBildEntry && ` Kostet ${chosenBildEntry.credits} Credits — du hast ${credits.balance}.`}
                   </p>
                   <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{tryonDisclosure}</p>
                   {!rawMaterialImage && <p className="mt-2 text-sm text-muted-foreground">Wähle zuerst Material oben.</p>}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {(["weiblich","männlich","divers"] as const).map((s) => (
-                      <button key={s} type="button" onClick={() => setTryonStyle(s)} disabled={modelShotBusy}
-                        className={`min-h-[36px] border px-3 py-1 text-[0.68rem] ${tryonStyle === s ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </button>
-                    ))}
-                    <button type="button" onClick={requestModelShot} disabled={modelShotBusy || !rawMaterialImage || !credits.canAfford(credits.costs.tryon_shot ?? 2)}
-                      className="min-h-[40px] border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] uppercase tracking-widest text-background disabled:opacity-60">
-                      {modelShotBusy ? "PAWN arbeitet…" : modelShotUrl ? "Neu erzeugen" : `Model-Shot erzeugen · ${credits.costs.tryon_shot ?? 2} Credits`}
-                    </button>
-                  </div>
+                  <button type="button" onClick={requestModelShot}
+                    disabled={modelShotBusy || !rawMaterialImage || (activeModelMode === "pawn_pool" && !chosenPoolImageUrl) || !credits.canAfford(chosenBildEntry?.credits ?? credits.costs.tryon_shot ?? 2)}
+                    className="mt-3 min-h-[40px] border border-foreground bg-foreground px-4 py-1.5 text-[0.68rem] uppercase tracking-widest text-background disabled:opacity-60">
+                    {modelShotBusy ? "PAWN arbeitet…" : modelShotUrl ? "Neu erzeugen" : "Model-Shot erzeugen"}
+                  </button>
                   {modelShotUrl && (
                     <div className="mt-4 flex items-center gap-4">
                       <img src={modelShotUrl} alt="Model-Shot" className="h-24 w-24 border border-foreground object-cover" />
@@ -1105,221 +1126,230 @@ export default function StudioCampaignNew() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Bewegung & Qualität (Video) / Text (Bild) */}
+            <div className="border-b border-border py-8">
+              <p className="editorial-eyebrow">{outputType === "video" ? "Bewegung & Qualität" : "Text"}</p>
 
               {outputType === "video" && (
                 <>
-                  <p className="editorial-eyebrow mt-6">Ort</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <input value={ortFreitext} onChange={(e) => setOrtFreitext(e.target.value)} placeholder="Ort (optional) — eigene Worte"
+                    className="mt-4 w-full border border-border bg-white p-2 text-sm" />
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {ORT_PRESETS.map((o) => (
                       <button key={o} onClick={() => setOrtPreset(o === ortPreset ? null : o)}
-                        className={`min-h-[36px] border px-3 py-1.5 text-[0.68rem] tracking-wide ${ortPreset === o ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                        className={`min-h-[32px] border px-3 py-1 text-[0.62rem] tracking-wide ${ortPreset === o ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
                         {o}
                       </button>
                     ))}
                   </div>
-                  <input value={ortFreitext} onChange={(e) => setOrtFreitext(e.target.value)} placeholder="Oder eigener Ort in Worten" className="mt-3 w-full border border-border bg-white p-2 text-sm" />
                 </>
               )}
 
-              {composedCastingText && (
-                <div className="mt-4 border border-border bg-white p-4">
-                  <p className="editorial-eyebrow">Vorschlag für den Video-Text</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{composedCastingText}</p>
-                  <button type="button" onClick={applyCastingSuggestion} className="mt-3 min-h-[36px] border border-border bg-white px-3 py-1.5 text-[0.62rem] uppercase tracking-wide hover:border-foreground">
-                    In den Video-Text übernehmen
-                  </button>
-                </div>
-              )}
-            </Section>
-
-            {/* 4 — Video-Text */}
-            <Section n={4} title="Video-Text" ready={promptReady}>
               <textarea
                 value={prompt} onChange={(e) => setPrompt(e.target.value)}
                 placeholder={outputType === "bild" ? "z. B. klar, warm, für den Alltag" : "z. B. langsame Kamerafahrt von links nach rechts, Stoff schwingt leicht im Wind, ruhiges Tempo"}
-                className="min-h-32 w-full border border-border bg-white p-4 text-base"
+                className="mt-4 min-h-28 w-full border border-border bg-white p-4 text-base"
               />
               <p className="mt-2 text-xs text-muted-foreground">
                 {outputType === "bild"
-                  ? "Beschreib in deinen Worten, wie das Bild wirken soll — PAWN nutzt das für Caption und Hashtags."
-                  : "Beschreib die Bewegung, nicht die Werbebotschaft: Kamera (fahrt, schwenk, statisch), Tempo, Stoffverhalten. Kein Marketing-Text."}
+                  ? "Beschreib in deinen Worten, wie das Bild wirken soll."
+                  : "Beschreib die Bewegung, nicht die Werbebotschaft: Kamera, Tempo, Stoffverhalten."}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {(outputType === "bild" ? ["Klar · reduziert", "Warm · persönlich", "Editorial · direkt"] : MOVEMENT_CHIPS).map((chip) => (
                   <button key={chip} onClick={() => setPrompt((prev) => (outputType === "bild" ? chip : [prev, chip].filter(Boolean).join(", ")))}
-                    className="min-h-[36px] border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">
+                    className="min-h-[32px] border border-border bg-white px-3 py-1 text-[0.62rem] tracking-wide hover:bg-foreground hover:text-background">
                     {chip}
                   </button>
                 ))}
               </div>
 
-              {outputType === "video" && (
-                <>
-                  <p className="editorial-eyebrow mt-6">Tempo</p>
-                  <div className="mt-3 flex gap-3">
-                    {(["ruhig", "spannungsvoll"] as Tempo[]).map((t) => (
-                      <button key={t} onClick={() => setTempo(t)}
-                        className={`min-h-[44px] border px-5 py-2.5 text-[0.7rem] uppercase tracking-[0.22em] ${tempo === t ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-
-                  <p className="editorial-eyebrow mt-6">Signatur</p>
-                  {signaturesLoading ? (
-                    <p className="mt-3 text-sm text-muted-foreground">Der Regisseur denkt nach…</p>
-                  ) : (
-                    <>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button onClick={() => setChosenSignatureId(null)}
-                          className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === null ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                          Standard
-                        </button>
-                        {signatures.map((s) => (
-                          <button key={s.id} onClick={() => setChosenSignatureId(s.id)}
-                            className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${chosenSignatureId === s.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                            {s.name}{s.recipe?.wunsch ? " ✦" : ""}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <p className="text-xs text-muted-foreground">Dein Stil-Rezept aus Licht, Kamerafahrt und Schnittrhythmus — vom Regisseur aus deiner Brand-DNA destilliert.</p>
-                        {chosenSignatureId && (
-                          <button type="button" onClick={applySignatureSuggestion} className="min-h-[32px] shrink-0 border border-border bg-white px-3 py-1 text-[0.62rem] uppercase tracking-wide hover:border-foreground">
-                            Vorschlag ins Textfeld übernehmen
-                          </button>
-                        )}
-                      </div>
-                      {plan === "maison" && (
-                        <div className="mt-4 border border-border bg-white p-4">
-                          <p className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Wunsch-Signatur</p>
-                          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                            <input value={wishName} onChange={(e) => setWishName(e.target.value)} placeholder="Name" className="border border-border bg-background p-2 text-sm sm:w-40" />
-                            <input value={wishPrompt} onChange={(e) => setWishPrompt(e.target.value)} placeholder="Beschreibung (Stimmung, Licht, Tempo …)" className="flex-1 border border-border bg-background p-2 text-sm" />
-                            <button onClick={requestWishSignature} disabled={wishBusy} className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
-                              {wishBusy ? "…" : "Anfragen"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </>
+              {composedCastingText && (
+                <button type="button" onClick={() => setPrompt((prev) => [prev, composedCastingText].filter(Boolean).join(". "))}
+                  className="mt-3 text-[0.62rem] uppercase tracking-wide text-muted-foreground underline hover:text-foreground">
+                  Besetzung „{composedCastingText}" in den Text übernehmen
+                </button>
               )}
 
-              <div className="mt-6 border-t border-border pt-4">
-                <div className="flex items-center justify-between">
-                  <p className="editorial-eyebrow">PAWN schreibt mit</p>
-                  <button onClick={askAI} disabled={aiBusy || !prompt.trim()} className="flex min-h-[36px] items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] text-background disabled:opacity-40">
-                    <Sparkles className="h-3 w-3" /> {aiBusy ? "…" : "Vorschlag"}
-                  </button>
-                </div>
-                {outputType === "video" && (
-                  <label className="mt-4 block"><span className="editorial-eyebrow">Hook (Intro-Zeile, optional)</span>
-                    <input value={hook} onChange={(e) => setHook(e.target.value)} maxLength={60} className="mt-2 w-full border border-border bg-background p-2 text-sm" /></label>
-                )}
-                <label className="mt-4 block"><span className="editorial-eyebrow">Caption</span>
-                  <textarea value={caption} onChange={(e) => setCaption(e.target.value)} className="mt-2 min-h-24 w-full border border-border bg-background p-2 text-sm" /></label>
-                <label className="mt-4 block"><span className="editorial-eyebrow">Hashtags</span>
-                  <input value={hashtags.join(" ")} onChange={(e) => setHashtags(e.target.value.split(/\s+/).filter(Boolean))} className="mt-2 w-full border border-border bg-background p-2 text-sm" /></label>
-              </div>
-            </Section>
+              {outputType === "video" && (
+                <>
+                  <p className="editorial-eyebrow mt-8">Echte Bewegung</p>
+                  <p className="mt-1 text-xs text-muted-foreground">PAWN erzeugt nie stillschweigend ein Standbild-Reel, wenn Bewegung erwartet wird.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {videoModels.map((m) => {
+                      const affordable = credits.canAfford(m.credits * (durationS === 10 ? 2 : 1));
+                      return (
+                        <button key={m.id} disabled={!affordable} onClick={() => setMotionChoice(m.id)}
+                          className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] disabled:opacity-40 ${motionChoice === m.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                          {m.label} · {m.credits * (durationS === 10 ? 2 : 1)} Cr.
+                        </button>
+                      );
+                    })}
+                    <button onClick={() => setMotionChoice("none")}
+                      className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] ${motionChoice === "none" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                      Keine Bewegung
+                    </button>
+                  </div>
+                  {modelCatalogLoaded && videoModels.length === 0 && (
+                    <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Echte Bewegung ist gerade nicht eingerichtet — kein Video-Modell aktiv im Katalog.
+                    </p>
+                  )}
 
-            {/* 5 — Modell & Länge (nur Video) */}
-            {outputType === "video" && (
-              <Section n={5} title="Modell & Länge" ready={motionDecided}>
-                <p className="editorial-eyebrow">Echte Bewegung (statt Standbildern)</p>
-                <p className="mt-2 text-sm text-muted-foreground">Eine bewusste Wahl — PAWN erzeugt nie stillschweigend ein Standbild-Reel, wenn Bewegung erwartet wird.</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button onClick={() => setMotionChoice("none")}
-                    className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] ${motionChoice === "none" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                    Keine Bewegung
-                  </button>
-                  {modelCatalog.map((m) => {
-                    const affordable = credits.canAfford(m.credits * (durationS === 10 ? 2 : 1));
-                    return (
-                      <button key={m.id} disabled={!affordable} onClick={() => setMotionChoice(m.id)}
-                        className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] disabled:opacity-40 ${motionChoice === m.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                        {m.label} · {m.credits * (durationS === 10 ? 2 : 1)} Cr.
-                      </button>
-                    );
-                  })}
-                </div>
-                {modelCatalogLoaded && modelCatalog.length === 0 && (
-                  <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Echte Bewegung ist gerade nicht eingerichtet — kein Video-Modell aktiv im Katalog. Es entstehen Standbilder.
-                  </p>
-                )}
-                {cinematic && chosenModelEntry && (
-                  <p className="mt-2 text-xs text-muted-foreground">„{chosenModelEntry.label}" ({chosenModelEntry.strength}) — {chosenModelEntry.credits * (durationS === 10 ? 2 : 1)} Credits pro Foto, du hast {credits.balance}.</p>
-                )}
-
-                {cinematic && (
-                  <>
-                    <p className="editorial-eyebrow mt-6">Länge je Aufnahme</p>
-                    <div className="mt-3 flex gap-2">
+                  {cinematic && (
+                    <div className="mt-4 flex items-center gap-2">
+                      <span className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Länge</span>
                       {([5, 10] as DurationS[]).map((d) => (
                         <button key={d} onClick={() => setDurationS(d)}
-                          className={`min-h-[40px] border px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] ${durationS === d ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                          {d}s {d === 10 ? "· doppelte Credits" : ""}
+                          className={`min-h-[36px] border px-3 py-1.5 text-[0.68rem] ${durationS === d ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                          {d}s
                         </button>
                       ))}
                     </div>
-                  </>
-                )}
+                  )}
 
-                {stillsContradiction && (
-                  <div className="mt-4 border border-foreground bg-white p-4">
-                    <p className="flex items-start gap-2 text-sm">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                      Du hast eine Besetzung oder einen Ort angegeben, aber „Keine Bewegung" gewählt — das Ergebnis wird ein Standbild-Reel ohne Bewegung.
-                    </p>
-                    <button type="button" onClick={() => setStillsAcknowledged(true)} disabled={stillsAcknowledged}
-                      className="mt-3 min-h-[36px] border border-foreground bg-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-background disabled:opacity-50">
-                      {stillsAcknowledged ? "Bestätigt — Standbilder" : "Ja, als Standbilder fortfahren"}
-                    </button>
+                  {stillsContradiction && (
+                    <div className="mt-4 border-l-2 border-foreground pl-3">
+                      <p className="flex items-start gap-2 text-sm">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        Du hast eine Besetzung oder einen Ort angegeben, aber „Keine Bewegung" gewählt — das Ergebnis wird ein Standbild-Reel.
+                      </p>
+                      <button type="button" onClick={() => setStillsAcknowledged(true)} disabled={stillsAcknowledged}
+                        className="mt-3 min-h-[36px] border border-foreground bg-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-background disabled:opacity-50">
+                        {stillsAcknowledged ? "Bestätigt — Standbilder" : "Ja, als Standbilder fortfahren"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Feinschliff — geschlossen per Default */}
+            <div className="py-8">
+              <button type="button" onClick={() => setFeinschliffOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
+                <p className="editorial-eyebrow">Feinschliff</p>
+                {feinschliffOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {!feinschliffOpen && <p className="mt-1 text-xs text-muted-foreground">Caption, Hashtags{outputType === "video" ? ", Signatur, Schnitt" : ""} — optional.</p>}
+
+              {feinschliffOpen && (
+                <div className="mt-6 space-y-8">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <p className="editorial-eyebrow">PAWN schreibt mit</p>
+                      <button onClick={askAI} disabled={aiBusy || !prompt.trim()} className="flex min-h-[32px] items-center gap-2 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground hover:text-foreground disabled:opacity-40">
+                        <Sparkles className="h-3 w-3" /> {aiBusy ? "…" : "Vorschlag"}
+                      </button>
+                    </div>
+                    {outputType === "video" && (
+                      <label className="mt-3 block"><span className="editorial-eyebrow">Hook (Intro-Zeile, optional)</span>
+                        <input value={hook} onChange={(e) => setHook(e.target.value)} maxLength={60} className="mt-2 w-full border border-border bg-background p-2 text-sm" /></label>
+                    )}
+                    <label className="mt-3 block"><span className="editorial-eyebrow">Caption</span>
+                      <textarea value={caption} onChange={(e) => setCaption(e.target.value)} className="mt-2 min-h-24 w-full border border-border bg-background p-2 text-sm" /></label>
+                    <label className="mt-3 block"><span className="editorial-eyebrow">Hashtags</span>
+                      <input value={hashtags.join(" ")} onChange={(e) => setHashtags(e.target.value.split(/\s+/).filter(Boolean))} className="mt-2 w-full border border-border bg-background p-2 text-sm" /></label>
                   </div>
-                )}
-              </Section>
-            )}
 
-            {/* 6 — Schnitt (nur Video, optional) */}
-            {outputType === "video" && (
-              <Section n={6} title="Schnitt (optional)" ready={videoBlob != null}>
-                <p className="editorial-eyebrow">Format</p>
-                <div className="mt-3 flex gap-2">
-                  {(["9:16", "1:1"] as Format[]).map((f) => (
-                    <button key={f} onClick={() => setFormat(f)} className={`min-h-[44px] border px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] ${format === f ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                      {f === "9:16" ? "Reel · 9:16" : "Feed · 1:1"}
-                    </button>
-                  ))}
+                  {outputType === "video" && (
+                    <>
+                      <div>
+                        <p className="editorial-eyebrow">Tempo</p>
+                        <div className="mt-3 flex gap-2">
+                          {(["ruhig", "spannungsvoll"] as Tempo[]).map((t) => (
+                            <button key={t} onClick={() => setTempo(t)}
+                              className={`min-h-[40px] border px-4 py-2 text-[0.68rem] uppercase tracking-[0.2em] ${tempo === t ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="editorial-eyebrow">Signatur</p>
+                        {signaturesLoading ? (
+                          <p className="mt-2 text-sm text-muted-foreground">Der Regisseur denkt nach…</p>
+                        ) : (
+                          <>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button onClick={() => setChosenSignatureId(null)}
+                                className={`min-h-[36px] border px-3 py-1.5 text-[0.68rem] uppercase tracking-[0.16em] ${chosenSignatureId === null ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                                Standard
+                              </button>
+                              {signatures.map((s) => (
+                                <button key={s.id} onClick={() => setChosenSignatureId(s.id)}
+                                  className={`min-h-[36px] border px-3 py-1.5 text-[0.68rem] uppercase tracking-[0.16em] ${chosenSignatureId === s.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                                  {s.name}{s.recipe?.wunsch ? " ✦" : ""}
+                                </button>
+                              ))}
+                            </div>
+                            {chosenSignatureId && (
+                              <button type="button" onClick={applySignatureSuggestion} className="mt-2 text-[0.62rem] uppercase tracking-wide text-muted-foreground underline hover:text-foreground">
+                                Vorschlag ins Textfeld übernehmen
+                              </button>
+                            )}
+                            {plan === "maison" && (
+                              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                                <input value={wishName} onChange={(e) => setWishName(e.target.value)} placeholder="Wunsch-Signatur: Name" className="border border-border bg-background p-2 text-sm sm:w-40" />
+                                <input value={wishPrompt} onChange={(e) => setWishPrompt(e.target.value)} placeholder="Beschreibung (Stimmung, Licht, Tempo …)" className="flex-1 border border-border bg-background p-2 text-sm" />
+                                <button onClick={requestWishSignature} disabled={wishBusy}
+                                  className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
+                                  {wishBusy ? "…" : "Anfragen"}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="editorial-eyebrow">Schnitt</p>
+                        <div className="mt-3 flex gap-2">
+                          {(["9:16", "1:1"] as Format[]).map((f) => (
+                            <button key={f} onClick={() => setFormat(f)} className={`min-h-[40px] border px-4 py-2 text-[0.68rem] uppercase tracking-[0.2em] ${format === f ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                              {f === "9:16" ? "Reel · 9:16" : "Feed · 1:1"}
+                            </button>
+                          ))}
+                        </div>
+                        {rawClips.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            {clipOrder.map((idx, pos) => (
+                              <div key={idx} className="flex items-center gap-3 border border-border p-2">
+                                <div className="h-10 w-10 shrink-0 border border-border bg-black">
+                                  {rawClips[idx] ? <video src={rawClips[idx]!} muted className="h-full w-full object-cover" /> : <img src={chosenImages[idx]} alt="" className="h-full w-full object-cover" />}
+                                </div>
+                                <span className="flex-1 text-sm text-muted-foreground">Aufnahme {pos + 1}</span>
+                                <button onClick={() => moveClip(pos, -1)} disabled={pos === 0} className="p-1 disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
+                                <button onClick={() => moveClip(pos, 1)} disabled={pos === clipOrder.length - 1} className="p-1 disabled:opacity-30"><ArrowDown className="h-4 w-4" /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <p className="mt-4 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Länge je Einstellung: {sceneSeconds.toFixed(1)}s</p>
+                        <input type="range" min={1} max={4} step={0.5} value={sceneSeconds} onChange={(e) => setSceneSeconds(Number(e.target.value))} className="mt-2 w-full" />
+                        <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={includeIntro} onChange={(e) => setIncludeIntro(e.target.checked)} /> Intro-Karte mit Textzeile</label>
+                        {includeIntro && <input value={introText} onChange={(e) => setIntroText(e.target.value)} placeholder="Textzeile für die Intro-Karte" className="mt-1 w-full border border-border bg-white p-2 text-sm" />}
+                        <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={includeOutro} onChange={(e) => setIncludeOutro(e.target.checked)} /> Abspann-Karte</label>
+                        {includeOutro && <label className="mt-1 flex items-center gap-2 text-sm"><input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} /> PAWN-Logo im Abspann zeigen</label>}
+                        {videoBlob && (
+                          <button onClick={() => { setSeed(randomSeed()); void composeVideo(); }} className="mt-3 flex min-h-[36px] items-center gap-2 text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">
+                            <Shuffle className="h-3 w-3" /> Neu schneiden
+                          </button>
+                        )}
+                        <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
+                          <Music className="mt-0.5 h-3 w-3 shrink-0" /> Bewusst ohne Ton: Musik wählst du direkt in Reels oder TikTok.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
+              )}
+            </div>
 
-                <p className="editorial-eyebrow mt-4">Länge je Einstellung im Schnitt</p>
-                <input type="range" min={1} max={4} step={0.5} value={sceneSeconds} onChange={(e) => setSceneSeconds(Number(e.target.value))} className="w-full" />
-                <p className="text-xs text-muted-foreground tabular-nums">{sceneSeconds.toFixed(1)}s pro Einstellung</p>
-
-                <p className="editorial-eyebrow mt-4">Intro & Abspann</p>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={includeIntro} onChange={(e) => setIncludeIntro(e.target.checked)} /> Intro-Karte mit Textzeile</label>
-                {includeIntro && <input value={introText} onChange={(e) => setIntroText(e.target.value)} placeholder="Textzeile für die Intro-Karte" className="w-full border border-border bg-white p-2 text-sm" />}
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={includeOutro} onChange={(e) => setIncludeOutro(e.target.checked)} /> Abspann-Karte</label>
-                {includeOutro && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} /> PAWN-Logo im Abspann zeigen</label>}
-
-                {videoBlob && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button onClick={() => { setSeed(randomSeed()); void composeVideo(); }} className="flex min-h-[40px] items-center gap-2 border border-border bg-white px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-muted">
-                      <Shuffle className="h-3 w-3" /> Neu schneiden
-                    </button>
-                  </div>
-                )}
-                <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
-                  <Music className="mt-0.5 h-3 w-3 shrink-0" /> Bewusst ohne Ton: Musik wählst du direkt in Reels oder TikTok — dort ist sie lizenzsicher.
-                </p>
-              </Section>
-            )}
-
-            {/* Erzeugen / Speichern */}
-            <div className="border border-foreground bg-white p-5">
+            {/* Erzeugen / Speichern — der eine Handlungsknopf */}
+            <div className="border-t-[1.5px] border-foreground pt-6">
               {outputType === "bild" ? (
                 <>
                   <p className="text-sm text-muted-foreground">
@@ -1344,7 +1374,7 @@ export default function StudioCampaignNew() {
                     {cinematic ? ` echte Bewegung mit „${chosenModelEntry?.label ?? "Modell"}", ${durationS}s je Aufnahme, ~${estimatedCost} Credits.` : " als ruhige Standbilder, ohne Credits."}
                   </p>
                   {needsModelShot && <p className="mt-2 text-sm text-foreground">Bestätige zuerst den Model-Shot oben, bevor die Bewegung startet.</p>}
-                  {!motionDecided && <p className="mt-2 text-sm text-foreground">Wähle zuerst bei „Modell & Länge", ob eine echte Bewegung entstehen soll.</p>}
+                  {!motionDecided && <p className="mt-2 text-sm text-foreground">Wähle zuerst bei „Echte Bewegung", ob eine Bewegung entstehen soll.</p>}
                   <button onClick={generateVideo} disabled={!canGenerateVideo}
                     className="mt-4 flex min-h-[44px] items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-40">
                     {renderBusy ? `PAWN schneidet… ${renderPct}%` : cinematicStage === "submitting" || cinematicStage === "polling" ? "PAWN nimmt auf…" : "Erzeugen"}
@@ -1409,19 +1439,5 @@ export default function StudioCampaignNew() {
         </div>
       )}
     </StudioShell>
-  );
-}
-
-function Section({ n, title, ready, children }: { n: number; title: string; ready: boolean; children: React.ReactNode }) {
-  return (
-    <section className={`border border-border bg-white p-5 transition-opacity ${ready ? "opacity-100" : "opacity-70"}`}>
-      <div className="flex items-center gap-3">
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center border text-[0.68rem] ${ready ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}>
-          {ready ? <Check className="h-3.5 w-3.5" /> : n}
-        </span>
-        <p className="editorial-eyebrow">{title}</p>
-      </div>
-      <div className="mt-4">{children}</div>
-    </section>
   );
 }

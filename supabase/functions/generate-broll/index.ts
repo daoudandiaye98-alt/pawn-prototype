@@ -85,9 +85,10 @@ Deno.serve(async (req) => {
     // fällt es auf das Standardmodell zurück, mit Signatur automatisch auf die Premium-Stufe
     // (Rückwärtskompatibilität für ältere Aufrufe ohne model_id).
     const { data: catalogCfg } = await admin.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle();
-    const catalog = ((catalogCfg?.value as Array<{ id: string; fal_model?: string; credits?: number; kind?: string; active?: boolean }> | null) ?? [])
+    const catalog = ((catalogCfg?.value as Array<{ id: string; fal_model?: string; credits?: number; kind?: string; active?: boolean; default?: boolean }> | null) ?? [])
       .filter((m) => m.kind === "video" && m.active !== false);
     const chosenEntry = body.model_id ? catalog.find((m) => m.id === body.model_id) : undefined;
+    const catalogDefault = catalog.find((m) => m.default);
 
     const { data: creditCostsCfg } = await admin.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle();
     const creditCosts = (creditCostsCfg?.value as { clip_standard?: number; clip_premium?: number } | null) ?? {};
@@ -103,6 +104,12 @@ Deno.serve(async (req) => {
       model = videoCfg.model_premium ?? "fal-ai/kling-video/v2.1/standard/image-to-video";
       clipCreditCost = creditCosts.clip_premium ?? 12;
       clipAction = "clip_premium";
+    } else if (catalogDefault?.fal_model) {
+      // Teil 13c: kein automatischer Rückfall aufs billigste Modell mehr — ohne explizite Wahl
+      // gilt das im Katalog als Standard markierte Modell, nicht das hart verdrahtete WAN-Fallback.
+      model = catalogDefault.fal_model;
+      clipCreditCost = catalogDefault.credits ?? (creditCosts.clip_standard ?? 5);
+      clipAction = catalogDefault.id;
     } else {
       model = videoCfg.model ?? DEFAULT_MODEL;
       clipCreditCost = creditCosts.clip_standard ?? 5;

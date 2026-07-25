@@ -24,7 +24,8 @@ const DEFAULT_HOUSE_STYLE_LAW =
 type Tab = "denklogik" | "credits" | "persona" | "signale" | "responses" | "integrationen";
 
 interface CreditPackRow { id: string; credits: number; eur: number; stripe_price_id: string | null }
-interface ModelCatalogRow { id: string; label: string; kind: "image" | "video"; strength: string; credits: number; active: boolean; fal_model: string }
+interface ModelCatalogRow { id: string; label: string; kind: "bild" | "video"; strength: string; credits: number; active: boolean; fal_model: string; default?: boolean }
+interface ModelPool { weiblich: string[]; männlich: string[]; divers: string[] }
 
 export default function AdminKI() {
   const { user, roles, loading } = useAuth();
@@ -51,10 +52,12 @@ export default function AdminKI() {
   const [creditCosts, setCreditCosts] = useState<Record<string, number>>({ product_shot: 1, tryon_shot: 2, tryon_clip: 8, clip_standard: 5, clip_premium: 12 });
   const [creditPacks, setCreditPacks] = useState<CreditPackRow[]>([]);
   const [modelCatalog, setModelCatalog] = useState<ModelCatalogRow[]>([]);
+  const [tryonProvider, setTryonProvider] = useState<Record<string, unknown>>({});
+  const [modelPool, setModelPool] = useState<ModelPool>({ weiblich: [], männlich: [], divers: [] });
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg, tryonProviderCfg] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
@@ -71,6 +74,7 @@ export default function AdminKI() {
       supabase.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "credit_packs").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle(),
     ]);
     setPrompt(((cfg.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_PROMPT);
     setCopilotPrompt(((cfgCopilot.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_COPILOT);
@@ -96,6 +100,10 @@ export default function AdminKI() {
     if (creditCostsCfg.data?.value) setCreditCosts((prev) => ({ ...prev, ...(creditCostsCfg.data.value as Record<string, number>) }));
     if (Array.isArray(creditPacksCfg.data?.value)) setCreditPacks(creditPacksCfg.data.value as unknown as CreditPackRow[]);
     if (Array.isArray(modelCatalogCfg.data?.value)) setModelCatalog(modelCatalogCfg.data.value as unknown as ModelCatalogRow[]);
+    const tp = (tryonProviderCfg.data?.value as Record<string, unknown> | null) ?? {};
+    setTryonProvider(tp);
+    const pool = (tp.model_pool as Partial<ModelPool> | undefined) ?? {};
+    setModelPool({ weiblich: pool.weiblich ?? [], männlich: pool.männlich ?? [], divers: pool.divers ?? [] });
   };
 
   useEffect(() => {
@@ -162,6 +170,14 @@ export default function AdminKI() {
     const { error } = await supabase.from("ai_config").upsert({ key: "model_catalog", value: next as unknown as never, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else { toast.success("Modell-Katalog gespeichert."); setModelCatalog(next); }
+  };
+
+  const saveModelPool = async (next: ModelPool) => {
+    setBusy(true);
+    const nextTryon = { ...tryonProvider, model_pool: next };
+    const { error } = await supabase.from("ai_config").upsert({ key: "tryon_provider", value: nextTryon as never, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Model-Galerie gespeichert."); setTryonProvider(nextTryon); setModelPool(next); }
   };
 
   const requestSuggestion = async (personaKey: "persona_customer" | "persona_designer" | "persona_admin", currentText: string, instruction: string) => {
@@ -304,6 +320,7 @@ export default function AdminKI() {
           creditCosts={creditCosts} onSaveCreditCosts={saveCreditCosts}
           creditPacks={creditPacks} onSaveCreditPacks={saveCreditPacks}
           modelCatalog={modelCatalog} onSaveModelCatalog={saveModelCatalog}
+          modelPool={modelPool} onSaveModelPool={saveModelPool}
           busy={busy}
         />
       )}
@@ -555,11 +572,12 @@ function DirectivesEditor({ value, onSave, busy }: { value: string[]; onSave: (i
   );
 }
 
-function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCreditCosts, creditPacks, onSaveCreditPacks, modelCatalog, onSaveModelCatalog, busy }: {
+function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCreditCosts, creditPacks, onSaveCreditPacks, modelCatalog, onSaveModelCatalog, modelPool, onSaveModelPool, busy }: {
   planCredits: Record<string, number>; onSavePlanCredits: (v: Record<string, number>) => void;
   creditCosts: Record<string, number>; onSaveCreditCosts: (v: Record<string, number>) => void;
   creditPacks: CreditPackRow[]; onSaveCreditPacks: (v: CreditPackRow[]) => void;
   modelCatalog: ModelCatalogRow[]; onSaveModelCatalog: (v: ModelCatalogRow[]) => void;
+  modelPool: ModelPool; onSaveModelPool: (v: ModelPool) => void;
   busy: boolean;
 }) {
   const [pc, setPc] = useState(planCredits);
@@ -570,6 +588,14 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
   useEffect(() => setCc(creditCosts), [creditCosts]);
   useEffect(() => setPacks(creditPacks), [creditPacks]);
   useEffect(() => setModels(modelCatalog), [modelCatalog]);
+
+  // Nur ein Standard je Art (bild/video) — beim Setzen wird der vorherige automatisch abgewählt.
+  const setDefault = (index: number) => {
+    setModels((prev) => {
+      const kind = prev[index].kind;
+      return prev.map((x, j) => ({ ...x, default: j === index ? true : (x.kind === kind ? false : x.default) }));
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -659,7 +685,7 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
         </p>
         <div className="mt-4 space-y-3">
           {models.map((m, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.4fr_1fr_1fr_auto_auto_auto] lg:items-end">
+            <div key={i} className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.4fr_1fr_1fr_auto_auto_auto_auto] lg:items-end">
               <label className="block">
                 <span className="editorial-eyebrow">ID</span>
                 <input value={m.id} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, id: e.target.value } : x))}
@@ -672,10 +698,10 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
               </label>
               <label className="block">
                 <span className="editorial-eyebrow">Art</span>
-                <select value={m.kind} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, kind: e.target.value as "image" | "video" } : x))}
+                <select value={m.kind} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, kind: e.target.value as "bild" | "video" } : x))}
                   className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm">
                   <option value="video">Video</option>
-                  <option value="image">Bild</option>
+                  <option value="bild">Bild (Model-Shot)</option>
                 </select>
               </label>
               <label className="block">
@@ -693,8 +719,12 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
                 <input type="checkbox" checked={m.active} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, active: e.target.checked } : x))} />
                 Aktiv
               </label>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={!!m.default} onChange={() => setDefault(i)} />
+                Standard
+              </label>
               <button type="button" onClick={() => setModels(models.filter((_, j) => j !== i))} className="text-destructive"><Trash2 className="h-4 w-4" /></button>
-              <label className="col-span-2 block lg:col-span-7">
+              <label className="col-span-2 block lg:col-span-8">
                 <span className="editorial-eyebrow">fal.ai-Modell-Kennung</span>
                 <input value={m.fal_model} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, fal_model: e.target.value } : x))}
                   placeholder="fal-ai/…"
@@ -704,7 +734,7 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
           ))}
         </div>
         <div className="mt-4 flex items-center justify-between">
-          <button type="button" onClick={() => setModels([...models, { id: `model_${Date.now()}`, label: "Neues Modell", kind: "video", strength: "schnell", credits: 5, active: true, fal_model: "" }])}
+          <button type="button" onClick={() => setModels([...models, { id: `model_${Date.now()}`, label: "Neues Modell", kind: "video", strength: "schnell", credits: 5, active: true, fal_model: "", default: false }])}
             className="border-[1.5px] border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] hover:border-foreground">+ Modell</button>
           <button type="button" onClick={() => onSaveModelCatalog(models)} disabled={busy}
             className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
@@ -712,7 +742,67 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
           </button>
         </div>
       </section>
+
+      <ModelPoolEditor pool={modelPool} onSave={onSaveModelPool} busy={busy} />
     </div>
+  );
+}
+
+function ModelPoolEditor({ pool, onSave, busy }: { pool: ModelPool; onSave: (v: ModelPool) => void; busy: boolean }) {
+  const [p, setP] = useState<ModelPool>(pool);
+  const [uploading, setUploading] = useState<string | null>(null);
+  useEffect(() => setP(pool), [pool]);
+
+  const upload = async (style: keyof ModelPool, file: File) => {
+    setUploading(style);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      const path = `${style}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("model-pool").upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: signed, error: signErr } = await supabase.storage.from("model-pool").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+      if (signErr || !signed) throw signErr ?? new Error("sign_failed");
+      setP((prev) => ({ ...prev, [style]: [...prev[style], signed.signedUrl] }));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  return (
+    <section className="border-[1.5px] border-foreground bg-card p-8">
+      <p className="editorial-eyebrow">PAWN-Model-Galerie</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Kuratierte Model-Fotos, aus denen Designer im Kampagnen-Studio direkt einen professionellen Look wählen können — ohne dass PAWN jedes Mal neu generiert. Leer ist in Ordnung, das Studio blendet dann diesen Weg aus.
+      </p>
+      <div className="mt-6 grid gap-6 sm:grid-cols-3">
+        {(["weiblich", "männlich", "divers"] as const).map((style) => (
+          <div key={style}>
+            <p className="text-[0.65rem] uppercase tracking-[0.24em] text-muted-foreground">{style}</p>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {p[style].map((url, i) => (
+                <div key={i} className="group relative aspect-[3/4] border border-border bg-muted">
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <button type="button" onClick={() => setP((prev) => ({ ...prev, [style]: prev[style].filter((_, j) => j !== i) }))}
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center bg-background/90 text-destructive opacity-0 group-hover:opacity-100">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <label className="flex aspect-[3/4] cursor-pointer items-center justify-center border border-dashed border-border text-[0.6rem] uppercase tracking-wide text-muted-foreground hover:border-foreground">
+                {uploading === style ? "…" : "+ Foto"}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(style, e.target.files[0])} />
+              </label>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={() => onSave(p)} disabled={busy}
+        className="mt-6 border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+        {busy ? "…" : "Galerie speichern"}
+      </button>
+    </section>
   );
 }
 
