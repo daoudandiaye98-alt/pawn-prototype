@@ -91,10 +91,12 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({})) as {
-      product_id?: string; source_image_url?: string;
+      product_id?: string; designer_id?: string; source_image_url?: string;
       mode?: "shot" | "clip"; model_style?: string; house_model_id?: string;
     };
-    if (!body.product_id || !body.source_image_url) return json({ error: "product_id_and_source_image_url_required" }, 400);
+    if ((!body.product_id && !body.designer_id) || !body.source_image_url) {
+      return json({ error: "product_id_or_designer_id_and_source_image_url_required" }, 400);
+    }
     const mode: "shot" | "clip" = body.mode === "clip" ? "clip" : "shot";
     const style = (body.model_style && ["weiblich","männlich","divers"].includes(body.model_style))
       ? body.model_style : "weiblich";
@@ -103,12 +105,23 @@ Deno.serve(async (req) => {
     const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supaUrl, svc, { auth: { persistSession: false } });
 
-    // Ownership check
-    const { data: prod } = await admin.from("products")
-      .select("id, designer_id, name, designers!inner(user_id, plan)")
-      .eq("id", body.product_id).maybeSingle();
-    const p = prod as { id: string; designer_id: string; name: string; designers: { user_id: string; plan?: string } } | null;
-    if (!p) return json({ error: "product_not_found" }, 404);
+    // Ownership check — an ein Produkt gebunden (Kollektion), ODER frei (z. B. ein im
+    // Kampagnen-Studio hochgeladenes Foto ohne Produktbezug, Teil 13a).
+    let p: { id: string | null; designer_id: string; name: string; designers: { user_id: string; plan?: string } } | null = null;
+    if (body.product_id) {
+      const { data: prod } = await admin.from("products")
+        .select("id, designer_id, name, designers!inner(user_id, plan)")
+        .eq("id", body.product_id).maybeSingle();
+      p = prod as typeof p;
+      if (!p) return json({ error: "product_not_found" }, 404);
+    } else {
+      const { data: des } = await admin.from("designers")
+        .select("id, user_id, plan, brand_name")
+        .eq("id", body.designer_id!).maybeSingle();
+      const d = des as { id: string; user_id: string; plan?: string; brand_name?: string } | null;
+      if (!d) return json({ error: "designer_not_found" }, 404);
+      p = { id: null, designer_id: d.id, name: d.brand_name ?? "Material", designers: { user_id: d.user_id, plan: d.plan } };
+    }
 
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user_id, _role: "admin" });
     if (!isAdmin && p.designers.user_id !== user_id) return json({ error: "forbidden" }, 403);
@@ -287,7 +300,7 @@ Deno.serve(async (req) => {
     const bytes = new Uint8Array(await imgResp.arrayBuffer());
     const ct = imgResp.headers.get("content-type") ?? "image/jpeg";
     const ext = ct.includes("png") ? "png" : "jpg";
-    const path = `${p.designers.user_id}/${p.id}/${request_id}.${ext}`;
+    const path = `${p.designers.user_id}/${p.id ?? "material"}/${request_id}.${ext}`;
     const { error: upErr } = await admin.storage.from("product-shots").upload(path, bytes, { contentType: ct, upsert: true });
     if (upErr) {
       await admin.from("product_shot_requests").update({ status: "failed", error: `upload_${upErr.message}` } as never).eq("id", request_id);

@@ -25,14 +25,14 @@ const PAGE_TEXTS: Record<string, string> = {
 };
 
 const STEP_TEXTS: Record<string, string> = {
-  "/studio/kampagnen/neu:bild-1": "Ein Stück aus der Kollektion — oder ein eigenes Bild hochladen. Freisteller setzt es auf neutralen Hintergrund, in 10–25 Sekunden, für den Preis, der am Knopf steht.",
-  "/studio/kampagnen/neu:bild-2": "Kein Model, ein beschriebenes oder ein gespeichertes Haus-Model — ganz wie du magst.",
-  "/studio/kampagnen/neu:bild-3": "Ein Satz genügt. Je genauer, desto passender der Vorschlag.",
-  "/studio/kampagnen/neu:video-1": "Ein Foto genügt, mehr Fotos ergeben ein reicheres Ergebnis. Freisteller setzt es auf neutralen Hintergrund, in 10–25 Sekunden, für den Preis, der am Knopf steht.",
-  "/studio/kampagnen/neu:video-2": "Model, Ort und Bewegung sind optional — sie schreiben dir einen Vorschlag für den Text.",
-  "/studio/kampagnen/neu:video-3": "PAWN schickt jedes Foto an einen externen Dienst und wartet auf das Ergebnis — meist 1–2 Minuten. Schlägt ein Clip fehl, bleibt das Foto als ruhige Einstellung stehen, ohne Credits abzuziehen.",
-  "/studio/kampagnen/neu:video-4": "PAWN nimmt jetzt rohe Aufnahmen auf — unabhängig vom fertigen Schnitt.",
-  "/studio/kampagnen/neu:video-5": "Der Schnitt setzt die Aufnahmen komplett auf deinem Gerät zusammen — kostet keine Credits. Ohne Intro/Abspann bekommst du die reinen Aufnahmen aneinandergereiht.",
+  "/studio/kampagnen/neu:bild-material": "Ein Stück aus der Kollektion — oder ein eigenes Bild hochladen. Freisteller setzt es auf neutralen Hintergrund, in 10–25 Sekunden, für den Preis, der am Knopf steht.",
+  "/studio/kampagnen/neu:bild-besetzung": "Kein Model, ein beschriebenes oder ein gespeichertes Haus-Model. Mit Model entsteht erst ein Model-Shot — ein Foto deines Stücks an einem fotorealistischen Menschen —, den du bestätigst, bevor er das Bild wird.",
+  "/studio/kampagnen/neu:bild-text": "Ein Satz genügt. Je genauer, desto passender der Vorschlag.",
+  "/studio/kampagnen/neu:video-material": "Ein Foto genügt, mehr Fotos ergeben ein reicheres Ergebnis. Freisteller setzt es auf neutralen Hintergrund, in 10–25 Sekunden, für den Preis, der am Knopf steht.",
+  "/studio/kampagnen/neu:video-besetzung": "Mit Model beschreiben oder Haus-Model entsteht zuerst ein Model-Shot — dein Stück an einem fotorealistischen Menschen. Erst nach deiner Bestätigung geht es als Material weiter, sonst würde die Bewegung später eine Schaufensterpuppe animieren.",
+  "/studio/kampagnen/neu:video-text": "Beschreib die Bewegung, nicht die Werbebotschaft — Kamera, Tempo, wie der Stoff sich verhält.",
+  "/studio/kampagnen/neu:video-modell": "Wähle bewusst: echte Bewegung mit einem Modell, oder ausdrücklich keine. PAWN erzeugt nie stillschweigend ein Standbild-Reel, wenn du Bewegung erwartest.",
+  "/studio/kampagnen/neu:video-schnitt": "Der Schnitt setzt die Aufnahmen komplett auf deinem Gerät zusammen — kostet keine Credits. Ohne Intro/Abspann bekommst du die reinen Aufnahmen aneinandergereiht.",
 };
 
 const FALLBACK_TEXT = "Frag mich, wenn etwas unklar ist.";
