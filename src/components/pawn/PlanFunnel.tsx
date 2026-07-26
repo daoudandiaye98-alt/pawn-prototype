@@ -23,21 +23,21 @@ const QUESTIONS: Question[] = [
     ],
   },
   {
-    key: "motion",
-    text: "Brauchst du echte KI-Kamerabewegung statt ruhiger Foto-Regie?",
-    options: [
-      { label: "Ruhige Editorial-Regie reicht", weight: 1 },
-      { label: "Gelegentlich kinematisch", weight: 2 },
-      { label: "Durchgängig kinematisch", weight: 3 },
-    ],
-  },
-  {
     key: "reach",
     text: "Wie wichtig ist dir Priorität in Première und Vitrine?",
     options: [
       { label: "Nicht entscheidend", weight: 1 },
       { label: "Schön, aber kein Muss", weight: 2 },
       { label: "Sehr wichtig", weight: 3 },
+    ],
+  },
+  {
+    key: "motion",
+    text: "Möchtest du gelegentlich auch Video ausprobieren (Beta)?",
+    options: [
+      { label: "Bilder reichen mir", weight: 1 },
+      { label: "Gelegentlich gerne", weight: 2 },
+      { label: "Ja, regelmäßig", weight: 3 },
     ],
   },
 ];
@@ -50,7 +50,7 @@ function recommend(total: number): Plan {
 
 const STATIC_REASON: Record<Plan, string> = {
   haus: "Deine Antworten klingen nach einem ruhigen Rhythmus — der Haus-Plan deckt das kostenlos ab.",
-  atelier: "Du veröffentlichst regelmäßig und willst echte Bewegung — Atelier gibt dir dafür das Werkzeug.",
+  atelier: "Du veröffentlichst regelmäßig und willst mehr Inszenierungen im Monat — Atelier gibt dir dafür das Werkzeug.",
   maison: "Serienbetrieb, volle Priorität — Maison ist für Häuser gebaut, die durchgängig produzieren.",
 };
 

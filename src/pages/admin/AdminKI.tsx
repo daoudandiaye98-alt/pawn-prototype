@@ -21,7 +21,7 @@ const DEFAULT_COPILOT =
 const DEFAULT_HOUSE_STYLE_LAW =
   "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
 
-type Tab = "denklogik" | "credits" | "persona" | "signale" | "responses" | "integrationen";
+type Tab = "denklogik" | "credits" | "staging" | "persona" | "signale" | "responses" | "integrationen";
 
 interface CreditPackRow { id: string; credits: number; eur: number; stripe_price_id: string | null }
 interface ModelCatalogRow {
@@ -29,6 +29,15 @@ interface ModelCatalogRow {
   active: boolean; fal_model: string; default?: boolean; intern?: boolean; dauer_hinweis?: string;
 }
 interface ModelPool { weiblich: string[]; männlich: string[]; divers: string[] }
+interface StagingTemplateRow {
+  id: string; label: string; description?: string; prompt: string;
+  preview_url?: string; credits: number; active?: boolean; groessenbezug?: boolean;
+}
+const STAGING_ARTEN = ["kleidung", "keramik", "malerei", "skulptur", "moebel", "schmuck", "textil", "objekt", "sonstiges"];
+const STAGING_ART_LABEL: Record<string, string> = {
+  kleidung: "Kleidung", keramik: "Keramik", malerei: "Malerei/Grafik", skulptur: "Skulptur",
+  moebel: "Möbel", schmuck: "Schmuck", textil: "Textil", objekt: "Objekt", sonstiges: "Sonstiges",
+};
 
 export default function AdminKI() {
   const { user, roles, loading } = useAuth();
@@ -57,10 +66,11 @@ export default function AdminKI() {
   const [modelCatalog, setModelCatalog] = useState<ModelCatalogRow[]>([]);
   const [tryonProvider, setTryonProvider] = useState<Record<string, unknown>>({});
   const [modelPool, setModelPool] = useState<ModelPool>({ weiblich: [], männlich: [], divers: [] });
+  const [stagingTemplates, setStagingTemplates] = useState<Record<string, StagingTemplateRow[]>>({});
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg, tryonProviderCfg] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg, tryonProviderCfg, stagingTemplatesCfg] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
@@ -78,6 +88,7 @@ export default function AdminKI() {
       supabase.from("ai_config").select("value").eq("key", "credit_packs").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "staging_templates").maybeSingle(),
     ]);
     setPrompt(((cfg.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_PROMPT);
     setCopilotPrompt(((cfgCopilot.data?.value as { system_prompt?: string })?.system_prompt) ?? DEFAULT_COPILOT);
@@ -107,6 +118,7 @@ export default function AdminKI() {
     setTryonProvider(tp);
     const pool = (tp.model_pool as Partial<ModelPool> | undefined) ?? {};
     setModelPool({ weiblich: pool.weiblich ?? [], männlich: pool.männlich ?? [], divers: pool.divers ?? [] });
+    setStagingTemplates((stagingTemplatesCfg.data?.value as unknown as Record<string, StagingTemplateRow[]> | null) ?? {});
   };
 
   useEffect(() => {
@@ -181,6 +193,14 @@ export default function AdminKI() {
     const { error } = await supabase.from("ai_config").upsert({ key: "tryon_provider", value: nextTryon as never, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else { toast.success("Model-Galerie gespeichert."); setTryonProvider(nextTryon); setModelPool(next); }
+  };
+
+  const saveStagingTemplates = async (art: string, next: StagingTemplateRow[]) => {
+    setBusy(true);
+    const nextAll = { ...stagingTemplates, [art]: next };
+    const { error } = await supabase.from("ai_config").upsert({ key: "staging_templates", value: nextAll as unknown as never, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else { toast.success("Inszenierungs-Vorlagen gespeichert."); setStagingTemplates(nextAll); }
   };
 
   const requestSuggestion = async (personaKey: "persona_customer" | "persona_designer" | "persona_admin", currentText: string, instruction: string) => {
@@ -260,10 +280,10 @@ export default function AdminKI() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-1 border-b border-border">
-        {(["denklogik","credits","persona","signale","responses","integrationen"] as Tab[]).map((t) => (
+        {(["denklogik","credits","staging","persona","signale","responses","integrationen"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`border-b-2 px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] ${tab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-            {t === "denklogik" ? "Denklogik" : t === "credits" ? "Credits" : t === "persona" ? "Persona (Legacy)" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
+            {t === "denklogik" ? "Denklogik" : t === "credits" ? "Credits" : t === "staging" ? "Inszenierung" : t === "persona" ? "Persona (Legacy)" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
           </button>
         ))}
       </div>
@@ -326,6 +346,10 @@ export default function AdminKI() {
           modelPool={modelPool} onSaveModelPool={saveModelPool}
           busy={busy}
         />
+      )}
+
+      {tab === "staging" && (
+        <StagingTemplatesEditor templates={stagingTemplates} onSave={saveStagingTemplates} busy={busy} />
       )}
 
       {tab === "persona" && (
@@ -816,6 +840,109 @@ function ModelPoolEditor({ pool, onSave, busy }: { pool: ModelPool; onSave: (v: 
         className="mt-6 border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
         {busy ? "…" : "Galerie speichern"}
       </button>
+    </section>
+  );
+}
+
+/** Inszenierungs-Vorlagen (Teil 16a): je Art eine Liste von Varianten mit Beispielbild-Vorschau. */
+function StagingTemplatesEditor({ templates, onSave, busy }: {
+  templates: Record<string, StagingTemplateRow[]>;
+  onSave: (art: string, next: StagingTemplateRow[]) => void;
+  busy: boolean;
+}) {
+  const [art, setArt] = useState<string>(STAGING_ARTEN[0]);
+  const [rows, setRows] = useState<StagingTemplateRow[]>(templates[art] ?? []);
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  useEffect(() => { setRows(templates[art] ?? []); }, [art, templates]);
+
+  const uploadPreview = async (index: number, file: File) => {
+    setUploading(rows[index].id);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      const path = `${art}/${rows[index].id}-${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("staging-previews").upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: signed, error: signErr } = await supabase.storage.from("staging-previews").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+      if (signErr || !signed) throw signErr ?? new Error("sign_failed");
+      setRows((prev) => prev.map((r, j) => (j === index ? { ...r, preview_url: signed.signedUrl } : r)));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  return (
+    <section className="border-[1.5px] border-foreground bg-card p-8">
+      <p className="editorial-eyebrow">Inszenierungs-Vorlagen</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Je Art eine Liste von Inszenierungs-Varianten — Prompt, Beispielbild, Credit-Kosten. Neue Arten kommen ohne Deploy dazu, solange sie im Studio bekannt sind (kleidung, keramik, malerei, skulptur, moebel, schmuck, textil, objekt, sonstiges).
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {STAGING_ARTEN.map((a) => (
+          <button key={a} type="button" onClick={() => setArt(a)}
+            className={`min-h-[32px] border px-3 py-1 text-[0.62rem] uppercase tracking-wide ${art === a ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+            {STAGING_ART_LABEL[a]} ({(templates[a] ?? []).length})
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {rows.map((r, i) => (
+          <div key={i} className="border border-border p-4">
+            <div className="grid gap-3 sm:grid-cols-[80px_1fr_1fr_100px_auto]">
+              <div>
+                {r.preview_url ? (
+                  <img src={r.preview_url} alt="" className="h-20 w-20 border border-border object-cover" />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center border border-dashed border-border text-[0.5rem] text-muted-foreground">Kein Bild</div>
+                )}
+                <label className="mt-1 block cursor-pointer text-center text-[0.55rem] uppercase tracking-wide text-muted-foreground hover:text-foreground">
+                  {uploading === r.id ? "…" : "Hochladen"}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadPreview(i, e.target.files[0])} />
+                </label>
+              </div>
+              <div className="space-y-2">
+                <input value={r.id} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, id: e.target.value } : x)))}
+                  placeholder="Kennung" className="w-full border border-border bg-white p-2 text-sm" />
+                <input value={r.label} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+                  placeholder="Anzeigename" className="w-full border border-border bg-white p-2 text-sm" />
+                <input value={r.description ?? ""} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))}
+                  placeholder="Beschreibung in einem Satz" className="w-full border border-border bg-white p-2 text-sm" />
+              </div>
+              <textarea value={r.prompt} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, prompt: e.target.value } : x)))}
+                placeholder="Prompt-Vorlage (Englisch)" rows={4} className="w-full border border-border bg-white p-2 text-xs" />
+              <input type="number" value={r.credits} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, credits: Number(e.target.value) } : x)))}
+                placeholder="Credits" className="w-full border border-border bg-white p-2 text-sm" />
+              <div className="flex flex-col items-start gap-2">
+                <label className="flex items-center gap-1.5 text-xs">
+                  <input type="checkbox" checked={r.active !== false} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)))} /> Aktiv
+                </label>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <input type="checkbox" checked={!!r.groessenbezug} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, groessenbezug: e.target.checked } : x)))} /> Größenbezug
+                </label>
+                <button type="button" onClick={() => setRows(rows.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button type="button" onClick={() => setRows([...rows, {
+          id: `variante_${Date.now()}`, label: "Neue Variante", description: "", prompt: "", credits: 2, active: true,
+        }])} className="inline-flex items-center gap-1.5 border border-border px-3 py-2 text-[0.62rem] uppercase tracking-wide hover:border-foreground">
+          <Plus className="h-3.5 w-3.5" /> Variante
+        </button>
+        <button type="button" onClick={() => onSave(art, rows)} disabled={busy}
+          className="border-[1.5px] border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
+          {busy ? "…" : `${STAGING_ART_LABEL[art]} speichern`}
+        </button>
+      </div>
     </section>
   );
 }

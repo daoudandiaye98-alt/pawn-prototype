@@ -96,6 +96,7 @@ export default function StudioPlan() {
   const [busy, setBusy] = useState<Plan | null>(null);
   const [buyBusy, setBuyBusy] = useState<string | null>(null);
   const [examples, setExamples] = useState<Partial<Record<Plan, string>>>({});
+  const [imageExamples, setImageExamples] = useState<Partial<Record<Plan, string>>>({});
   const [planCreditsAll, setPlanCreditsAll] = useState<Record<Plan, number>>({ haus: 30, atelier: 300, maison: 1200 });
   const [planLimits, setPlanLimits] = useState<Record<Plan, PlanLimitEntry>>({
     haus: { signature_previews: 1, emblem: true, tier: 1 },
@@ -164,6 +165,22 @@ export default function StudioPlan() {
           if (p && !byPlan[p]) byPlan[p] = r.url;
         }
         setExamples(byPlan);
+      });
+    // Bild-Beispiele haben Vorrang (Teil 16a: Bild ist das Herz, Video bleibt Beta).
+    void supabase.from("media_assets" as never)
+      .select("url, kind, rights_granted, designers:designer_id(plan)")
+      .eq("kind", "bild")
+      .eq("rights_granted", true)
+      .order("created_at", { ascending: false })
+      .limit(30)
+      .then(({ data }) => {
+        const rows = (data ?? []) as unknown as Array<{ url: string; designers: { plan: Plan } | null }>;
+        const byPlan: Partial<Record<Plan, string>> = {};
+        for (const r of rows) {
+          const p = r.designers?.plan;
+          if (p && !byPlan[p]) byPlan[p] = r.url;
+        }
+        setImageExamples(byPlan);
       });
   }, []);
 
@@ -297,6 +314,7 @@ export default function StudioPlan() {
         {(["haus", "atelier", "maison"] as Plan[]).map((key) => {
           const current = key === plan;
           const badge = BADGES[key];
+          const imageExample = imageExamples[key];
           const example = examples[key];
           return (
             <div key={key} id={`plan-${key}`}
@@ -312,8 +330,13 @@ export default function StudioPlan() {
               <p className="mt-4 font-serif text-sm italic text-muted-foreground">{resolvedHeadlines[key]}</p>
 
               <div className="mt-4 border border-border bg-black">
-                {example ? (
-                  <video src={example} muted playsInline loop autoPlay className="aspect-[9/16] w-full bg-black object-contain" />
+                {imageExample ? (
+                  <img src={imageExample} alt="" className="aspect-[9/16] w-full bg-black object-contain" />
+                ) : example ? (
+                  <div className="relative">
+                    <video src={example} muted playsInline loop autoPlay className="aspect-[9/16] w-full bg-black object-contain" />
+                    <span className="absolute right-2 top-2 border border-white/70 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-white/90">Video · Beta</span>
+                  </div>
                 ) : (
                   <div className="flex aspect-[9/16] items-center justify-center p-4 text-center text-xs text-white/50">
                     Beispiel folgt, sobald das erste Haus in dieser Stufe produziert.

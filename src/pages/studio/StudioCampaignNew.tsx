@@ -67,6 +67,17 @@ interface CulturalCurrentLite {
 interface RecentShot { url: string; at: string }
 interface ModelPool { weiblich: string[]; männlich: string[]; divers: string[] }
 
+interface StagingTemplate {
+  id: string; label: string; description?: string; prompt: string;
+  preview_url?: string; credits: number; active?: boolean; groessenbezug?: boolean;
+}
+interface StagingResult { template_id: string; label: string; result_url: string | null; error: string | null; media_asset_id: string | null }
+const ART_LABEL: Record<string, string> = {
+  kleidung: "Kleidung", keramik: "Keramik", malerei: "Malerei/Grafik", skulptur: "Skulptur",
+  moebel: "Möbel", schmuck: "Schmuck", textil: "Textil", objekt: "Objekt", sonstiges: "Sonstiges",
+};
+const ART_ORDER = Object.keys(ART_LABEL);
+
 type OutputType = "bild" | "video";
 type ModelMode = "keins" | "beschreiben" | "gespeichert" | "pawn_pool";
 /** null = noch keine Entscheidung, sonst model_catalog-ID. Video heißt immer Bewegung. */
@@ -122,7 +133,7 @@ export default function StudioCampaignNew() {
 
   const { designer, loading } = useMyDesigner();
   const nav = useNavigate();
-  const [outputType, setOutputType] = useState<OutputType>("video");
+  const [outputType, setOutputType] = useState<OutputType>("bild");
 
   // Rechte
   const [consentOk, setConsentOk] = useState<boolean | null>(null);
@@ -187,6 +198,19 @@ export default function StudioCampaignNew() {
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const [newSettingName, setNewSettingName] = useState("");
   const [savingSetting, setSavingSetting] = useState(false);
+
+  // Inszenierungs-Dienst (Teil 16a): der neue Bild-Weg — Art erkennen, passende Varianten
+  // anbieten, mehrere zugleich erzeugen.
+  const [stagingTemplatesAll, setStagingTemplatesAll] = useState<Record<string, StagingTemplate[]>>({});
+  const [stagingSourceUrl, setStagingSourceUrl] = useState<string | null>(null);
+  const [stagingDetectBusy, setStagingDetectBusy] = useState(false);
+  const [stagingDetectTried, setStagingDetectTried] = useState(false);
+  const [stagingArt, setStagingArt] = useState<string | null>(null);
+  const [stagingAmbiguous, setStagingAmbiguous] = useState(false);
+  const [stagingFotoHinweis, setStagingFotoHinweis] = useState<string | null>(null);
+  const [stagingSelectedIds, setStagingSelectedIds] = useState<string[]>([]);
+  const [stagingBusy, setStagingBusy] = useState(false);
+  const [stagingResults, setStagingResults] = useState<StagingResult[] | null>(null);
 
   // Feinschliff (geschlossen per Default)
   const [feinschliffOpen, setFeinschliffOpen] = useState(false);
@@ -278,6 +302,8 @@ export default function StudioCampaignNew() {
         if (v?.cfg_scale_options) setCfgScaleOptions((prev) => ({ ...prev, ...v.cfg_scale_options }));
         if (v?.cfg_scale_default) setMovementStrength(v.cfg_scale_default);
       });
+    void supabase.from("ai_config").select("value").eq("key", "staging_templates").maybeSingle()
+      .then(({ data }) => setStagingTemplatesAll((data?.value as unknown as Record<string, StagingTemplate[]> | null) ?? {}));
   }, []);
 
   const toggleMovementChip = (id: string) => {
@@ -510,6 +536,95 @@ export default function StudioCampaignNew() {
   }, [chosenProduct, uploaded, modelShotUrl, productShotResult]);
 
   useEffect(() => { setClipOrder(chosenImages.map((_, i) => i)); }, [chosenImages.length]);
+
+  // Inszenierungs-Dienst (Teil 16a): sobald ein Ausgangsfoto feststeht, wird die Art einmal
+  // automatisch erkannt — mit einem Griff korrigierbar, nie erzwungen.
+  const stagingTemplatesForArt = useMemo(
+    () => (stagingArt ? (stagingTemplatesAll[stagingArt] ?? []).filter((t) => t.active !== false) : []),
+    [stagingArt, stagingTemplatesAll],
+  );
+  const stagingTotalCredits = useMemo(
+    () => stagingTemplatesForArt.filter((t) => stagingSelectedIds.includes(t.id)).reduce((s, t) => s + (t.credits ?? 0), 0),
+    [stagingTemplatesForArt, stagingSelectedIds],
+  );
+
+  useEffect(() => {
+    const source = chosenImages[0] ?? null;
+    if (source === stagingSourceUrl) return;
+    setStagingSourceUrl(source);
+    setStagingDetectTried(false);
+    setStagingArt(null);
+    setStagingAmbiguous(false);
+    setStagingFotoHinweis(null);
+    setStagingSelectedIds([]);
+    setStagingResults(null);
+  }, [chosenImages, stagingSourceUrl]);
+
+  useEffect(() => {
+    if (outputType !== "bild" || !designer || !stagingSourceUrl || stagingDetectTried || stagingDetectBusy) return;
+    setStagingDetectTried(true);
+    setStagingDetectBusy(true);
+    void supabase.functions.invoke("detect-object", { body: { designer_id: designer.id, source_url: stagingSourceUrl } })
+      .then(({ data }) => {
+        const r = data as { ok?: boolean; art?: string; ambiguous?: boolean; foto_hinweis?: string | null } | null;
+        if (r?.ok && r.art) {
+          setStagingArt(r.art);
+          setStagingAmbiguous(r.ambiguous === true);
+          setStagingFotoHinweis(r.foto_hinweis ?? null);
+        }
+      })
+      .catch(() => { /* fällt still auf die manuelle Art-Auswahl zurück */ })
+      .finally(() => setStagingDetectBusy(false));
+  }, [outputType, designer, stagingSourceUrl, stagingDetectTried, stagingDetectBusy]);
+
+  // Sobald eine Art feststeht (erkannt oder gewählt), sind alle ihre Varianten vorbelegt —
+  // ein Lauf erzeugt standardmäßig alle passenden Inszenierungen zugleich.
+  useEffect(() => {
+    if (stagingArt) setStagingSelectedIds(stagingTemplatesForArt.map((t) => t.id));
+  }, [stagingArt, stagingTemplatesForArt]);
+
+  const toggleStagingTemplate = (id: string) => {
+    setStagingSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const runStaging = async () => {
+    if (!designer || !stagingSourceUrl || !stagingArt || stagingSelectedIds.length === 0) return;
+    setStagingBusy(true);
+    setStagingResults(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-staging-shot", {
+        body: {
+          designer_id: designer.id, product_id: chosenProduct?.id ?? null,
+          source_url: stagingSourceUrl, art: stagingArt, template_ids: stagingSelectedIds,
+        },
+      });
+      if (error) throw error;
+      const r = data as { ok?: boolean; results?: StagingResult[]; message?: string; error?: string } | null;
+      if (!r?.ok && !r?.results?.length) throw new Error(r?.message ?? r?.error ?? "Inszenierung fehlgeschlagen.");
+      setStagingResults(r.results ?? []);
+      void credits.refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setStagingBusy(false);
+    }
+  };
+
+  const adoptStagingResult = async (result: StagingResult, productId: string) => {
+    if (!result.result_url || !productId) return;
+    try {
+      const { error } = await supabase.from("products").update({ image_url: result.result_url }).eq("id", productId);
+      if (error) throw error;
+      if (result.media_asset_id) {
+        await supabase.from("media_assets" as never).update({
+          usages: [{ type: "produkt", product_id: productId }],
+        } as never).eq("id", result.media_asset_id);
+      }
+      toast.success("Als Produktbild übernommen.");
+    } catch (e) {
+      toast.error((e as Error).message || "Fehler");
+    }
+  };
 
   const materialReady = chosenImages.length > 0;
   const needsModelShot = modelMode !== null && modelMode !== "keins" && !modelShotUrl;
@@ -1076,7 +1191,7 @@ export default function StudioCampaignNew() {
           {/* RECHTS — die kurze Hauptfolge */}
           <div>
             {/* Was entsteht */}
-            <div className="flex gap-2 border-b border-border pb-8">
+            <div className="flex gap-2 border-b border-border pb-3">
               <button type="button" onClick={() => setOutputType("bild")}
                 className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 border p-3 transition-colors ${outputType === "bild" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
                 <ImageIcon className="h-4 w-4" /> <span className="font-serif text-base">Bild</span>
@@ -1084,8 +1199,15 @@ export default function StudioCampaignNew() {
               <button type="button" onClick={() => setOutputType("video")}
                 className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 border p-3 transition-colors ${outputType === "video" ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
                 <Clapperboard className="h-4 w-4" /> <span className="font-serif text-base">Video</span>
+                <span className="border border-current px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em]">Beta</span>
               </button>
             </div>
+            {outputType === "video" && (
+              <p className="border-b border-border pb-8 pt-3 text-xs text-muted-foreground">
+                Bewegtbild ist noch in Erprobung — Modelle, Länge und Schnitt stehen vollständig zur Verfügung, das Ergebnis kann aber stärker schwanken als bei Bildern.
+              </p>
+            )}
+            {outputType === "bild" && <div className="pb-8" />}
 
             {/* Material */}
             <div className="border-b border-border py-8">
@@ -1150,6 +1272,108 @@ export default function StudioCampaignNew() {
                 </>
               )}
             </div>
+
+            {/* Inszenierung (Teil 16a) — der neue Bild-Weg: Art erkennen, passende Varianten anbieten. */}
+            {outputType === "bild" && stagingSourceUrl && (
+              <div className="border-b border-border py-8">
+                <p className="editorial-eyebrow">Inszenierung</p>
+
+                {stagingDetectBusy && <p className="mt-3 text-sm text-muted-foreground">PAWN sieht sich das Foto an…</p>}
+
+                {stagingFotoHinweis && (
+                  <p className="mt-3 border-l-2 border-foreground pl-3 text-sm text-muted-foreground">{stagingFotoHinweis}</p>
+                )}
+
+                {!stagingDetectBusy && (
+                  <div className="mt-3">
+                    <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
+                      Art{stagingAmbiguous ? " — bitte bestätigen" : ""}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {ART_ORDER.map((a) => (
+                        <button key={a} type="button" onClick={() => setStagingArt(a)}
+                          className={`min-h-[32px] border px-3 py-1 text-[0.62rem] tracking-wide ${stagingArt === a ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                          {ART_LABEL[a]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {stagingArt && stagingTemplatesForArt.length > 0 && (
+                  <>
+                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                      {stagingTemplatesForArt.map((t) => (
+                        <label key={t.id} className={`flex cursor-pointer gap-3 border p-3 ${stagingSelectedIds.includes(t.id) ? "border-foreground" : "border-border"}`}>
+                          <input type="checkbox" className="mt-1" checked={stagingSelectedIds.includes(t.id)} onChange={() => toggleStagingTemplate(t.id)} />
+                          <div className="flex-1">
+                            <div className="flex items-start gap-2">
+                              {t.preview_url ? (
+                                <img src={t.preview_url} alt="" className="h-12 w-12 shrink-0 border border-border object-cover" />
+                              ) : (
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-dashed border-border text-[0.5rem] text-muted-foreground">Beispiel folgt</div>
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{t.label}</p>
+                                {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+                              </div>
+                            </div>
+                            <p className="mt-1 text-[0.6rem] uppercase tracking-wide text-muted-foreground">{t.credits} Credits</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm text-muted-foreground">
+                        {stagingSelectedIds.length === 0
+                          ? "Wähle mindestens eine Variante."
+                          : `Dieser Lauf kostet ${stagingTotalCredits} Credits, dauert etwa 20–40 Sekunden für ${stagingSelectedIds.length} Varianten.`}
+                      </p>
+                      <button type="button" onClick={() => void runStaging()}
+                        disabled={stagingBusy || stagingSelectedIds.length === 0 || !credits.canAfford(stagingTotalCredits)}
+                        className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
+                        {stagingBusy ? "PAWN inszeniert…" : "Inszenierung starten"}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Die Inszenierung ändert nur Umgebung, Licht und Blickwinkel — Form, Farbe, Material und Zustand des Stücks bleiben, wie sie sind.
+                    </p>
+                  </>
+                )}
+
+                {stagingResults && (
+                  <div className="mt-6 border-t border-border pt-6">
+                    <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">Ergebnis</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {stagingResults.map((r) => (
+                        <div key={r.template_id} className="border border-border">
+                          {r.result_url ? (
+                            <>
+                              <img src={r.result_url} alt={r.label} className="aspect-square w-full object-cover" />
+                              <div className="p-2">
+                                <p className="truncate text-xs">{r.label}</p>
+                                {products.length > 0 ? (
+                                  <select defaultValue="" onChange={(e) => { const v = e.target.value; if (v) void adoptStagingResult(r, v); e.target.value = ""; }}
+                                    className="mt-1 w-full border border-border bg-white px-1 py-1 text-[0.6rem]">
+                                    <option value="">Als Produktbild…</option>
+                                    {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                  </select>
+                                ) : (
+                                  <p className="mt-1 text-[0.58rem] text-muted-foreground">Landet in der Mediathek.</p>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex aspect-square items-center justify-center p-2 text-center text-[0.62rem] text-muted-foreground">{r.error ?? "Fehlgeschlagen"}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Model */}
             <div className="border-b border-border py-8">

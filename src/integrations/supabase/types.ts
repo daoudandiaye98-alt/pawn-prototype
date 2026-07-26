@@ -2206,6 +2206,69 @@ export type Database = {
         }
         Relationships: []
       }
+      staging_requests: {
+        Row: {
+          art: string
+          created_at: string
+          designer_id: string
+          error: string | null
+          id: string
+          product_id: string | null
+          request_handle: Json | null
+          result_url: string | null
+          run_id: string
+          source_url: string
+          status: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          art: string
+          created_at?: string
+          designer_id: string
+          error?: string | null
+          id?: string
+          product_id?: string | null
+          request_handle?: Json | null
+          result_url?: string | null
+          run_id?: string
+          source_url: string
+          status?: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          art?: string
+          created_at?: string
+          designer_id?: string
+          error?: string | null
+          id?: string
+          product_id?: string | null
+          request_handle?: Json | null
+          result_url?: string | null
+          run_id?: string
+          source_url?: string
+          status?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staging_requests_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staging_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_snapshots: {
         Row: {
           created_at: string
