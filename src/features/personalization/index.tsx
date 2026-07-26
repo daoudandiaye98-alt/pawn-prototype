@@ -41,6 +41,8 @@ export interface DesignerDna {
   brandName: string;
   worlds: Partial<Record<World, number>>;
   signals: string[];
+  nearCurrent: string | null;
+  resonance: number; // 0..1 — echte Publikums-Resonanz aus gelernten video_taste_weights
 }
 
 export interface MatchingWeights {
@@ -229,24 +231,34 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     } finally { setLoading(false); }
   };
 
-  // Load designer brand_dna map once — public, safe, no PII.
+  // Load designer brand_dna map once — public, safe, no PII. Extended (Teil 14c) mit Nähe zu
+  // Kulturströmungen und echter Publikums-Resonanz aus den gelernten video_taste_weights.
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data } = await supabase
-        .from("designers")
-        .select("slug, brand_name, brand_dna")
-        .eq("status", "active")
-        .eq("published", true);
+      const [{ data }, { data: currentsData }] = await Promise.all([
+        supabase.from("designers").select("id, slug, brand_name, brand_dna, video_taste_weights").eq("status", "active").eq("published", true),
+        supabase.from("cultural_currents" as never).select("name, nahe_haeuser, worlds"),
+      ]);
       if (!alive || !data) return;
+      const currents = (currentsData ?? []) as unknown as Array<{ name: string; nahe_haeuser: string[] | null; worlds: string[] | null }>;
       const m = new Map<string, DesignerDna>();
-      for (const d of data as { slug: string; brand_name: string; brand_dna: unknown }[]) {
+      for (const d of data as { id: string; slug: string; brand_name: string; brand_dna: unknown; video_taste_weights: Record<string, number> | null }[]) {
         const dna = (d.brand_dna ?? {}) as { worlds?: Record<string, number>; signals?: string[] };
+        const worlds = (dna.worlds ?? {}) as Partial<Record<World, number>>;
+        const nearCurrent = currents.find((c) => (c.nahe_haeuser ?? []).includes(d.id))?.name
+          ?? currents.find((c) => (c.worlds ?? []).some((w) => Object.keys(worlds).includes(w)))?.name
+          ?? null;
+        const weights = Object.values(d.video_taste_weights ?? {});
+        const topWeight = weights.length ? Math.max(...weights) : 0;
+        const resonance = Math.max(0, Math.min(1, topWeight / 3));
         m.set(d.slug, {
           slug: d.slug,
           brandName: d.brand_name,
-          worlds: (dna.worlds ?? {}) as Partial<Record<World, number>>,
+          worlds,
           signals: Array.isArray(dna.signals) ? dna.signals : [],
+          nearCurrent,
+          resonance,
         });
       }
       setDesignerDna(m);
@@ -356,6 +368,10 @@ export function scoreForPersonalization<T extends ScoreItem>(
       s += Math.min(3, overlap);
     }
     if (profile.preferredDesigners?.includes(dna.slug)) s += 1.5;
+    // Kulturelle Nähe + echte Publikums-Resonanz — leichte Kuratierungs-Boni, unabhängig
+    // von den persönlichen Signalen des Nutzers (Teil 14c).
+    if (dna.nearCurrent) s += 0.5;
+    s += dna.resonance * 1;
   }
 
   const seed = item.id ?? item.slug ?? "x";
@@ -387,6 +403,8 @@ export function explainMatch<T extends ScoreItem>(
   if (sharedTag) return `Weil deine Auswahl zu ${sharedTag} tendiert.`;
   if (profile.world && item.world === profile.world && brand) return `Weil du ${profile.world} suchst — und ${brand} dort zuhause ist.`;
   if (profile.world && item.world === profile.world) return `Weil du ${profile.world} suchst.`;
+  if (brand && dna?.nearCurrent) return `Weil ${brand} nah an der Strömung „${dna.nearCurrent}" steht.`;
+  if (brand && (dna?.resonance ?? 0) > 0.5) return `Weil ${brand} beim Publikum gerade besonders gut ankommt.`;
   return null;
 }
 

@@ -1378,6 +1378,56 @@ export type Database = {
           },
         ]
       }
+      house_settings: {
+        Row: {
+          created_at: string
+          designer_id: string
+          id: string
+          licht: string | null
+          name: string
+          ort: string | null
+          palette: string | null
+          quelle: string
+          referenzbilder: string[]
+          stimmung: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          designer_id: string
+          id?: string
+          licht?: string | null
+          name: string
+          ort?: string | null
+          palette?: string | null
+          quelle?: string
+          referenzbilder?: string[]
+          stimmung?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          designer_id?: string
+          id?: string
+          licht?: string | null
+          name?: string
+          ort?: string | null
+          palette?: string | null
+          quelle?: string
+          referenzbilder?: string[]
+          stimmung?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_settings_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       house_signatures: {
         Row: {
           created_at: string

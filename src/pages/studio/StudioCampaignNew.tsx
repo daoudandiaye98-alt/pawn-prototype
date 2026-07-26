@@ -53,6 +53,17 @@ interface ModelCatalogEntry {
   active: boolean; default?: boolean; intern?: boolean; dauer_hinweis?: string;
 }
 
+interface HouseSettingRow {
+  id: string; name: string;
+  ort: string | null; licht: string | null; stimmung: string | null; palette: string | null;
+  referenzbilder: string[]; quelle: string;
+}
+
+interface CulturalCurrentLite {
+  id: string; name: string; worlds: string[]; nahe_haeuser: string[];
+  visuelle_merkmale: Record<string, string> | null;
+}
+
 interface RecentShot { url: string; at: string }
 interface ModelPool { weiblich: string[]; männlich: string[]; divers: string[] }
 
@@ -170,6 +181,13 @@ export default function StudioCampaignNew() {
   const [runningModelLabel, setRunningModelLabel] = useState<string | null>(null);
   const [runningModelDauer, setRunningModelDauer] = useState<string | null>(null);
 
+  // DNA-Vorschlag & Settings (Teil 14c)
+  const [culturalCurrents, setCulturalCurrents] = useState<CulturalCurrentLite[]>([]);
+  const [houseSettings, setHouseSettings] = useState<HouseSettingRow[]>([]);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const [newSettingName, setNewSettingName] = useState("");
+  const [savingSetting, setSavingSetting] = useState(false);
+
   // Feinschliff (geschlossen per Default)
   const [feinschliffOpen, setFeinschliffOpen] = useState(false);
   const [hook, setHook] = useState("");
@@ -220,11 +238,13 @@ export default function StudioCampaignNew() {
   useEffect(() => {
     if (!designer) return;
     (async () => {
-      const [{ data: d }, { data: prods }, { data: hm }, { data: shots }] = await Promise.all([
+      const [{ data: d }, { data: prods }, { data: hm }, { data: shots }, { data: settings }, { data: currents }] = await Promise.all([
         supabase.from("designers").select("image_usage_consent, media_rights_granted_at").eq("id", designer.id).maybeSingle(),
         supabase.from("products").select("id, name, slug, world, image_url").eq("designer_id", designer.id).order("created_at", { ascending: false }),
         supabase.from("house_models" as never).select("id, name, ausstrahlung, altersgruppe, haar, hautton, statur, freitext").eq("designer_id", designer.id).order("created_at", { ascending: false }),
         supabase.from("product_shot_requests" as never).select("result_url, created_at").eq("designer_id", designer.id).eq("status", "done").order("created_at", { ascending: false }).limit(6),
+        supabase.from("house_settings" as never).select("id, name, ort, licht, stimmung, palette, referenzbilder, quelle").eq("designer_id", designer.id).order("created_at", { ascending: false }),
+        supabase.from("cultural_currents" as never).select("id, name, worlds, nahe_haeuser, visuelle_merkmale").limit(30),
       ]);
       const dd = d as unknown as { image_usage_consent?: boolean; media_rights_granted_at?: string | null } | null;
       setConsentOk(dd?.image_usage_consent === true);
@@ -233,6 +253,8 @@ export default function StudioCampaignNew() {
       setHouseModels((hm ?? []) as unknown as HouseModelRow[]);
       const shotRows = (shots ?? []) as unknown as Array<{ result_url: string | null; created_at: string }>;
       setRecentShots(shotRows.filter((s) => s.result_url).map((s) => ({ url: s.result_url!, at: s.created_at })));
+      setHouseSettings((settings ?? []) as unknown as HouseSettingRow[]);
+      setCulturalCurrents((currents ?? []) as unknown as CulturalCurrentLite[]);
     })();
   }, [designer]);
 
@@ -354,6 +376,76 @@ export default function StudioCampaignNew() {
     if (ort && outputType === "video") parts.push(`Ort: ${ort}`);
     return parts.join(". ");
   }, [modelMode, modelAusstrahlung, modelAltersgruppe, modelHaar, modelHautton, modelStatur, modelFreitext, houseModels, chosenHouseModelId, chosenPoolImageUrl, tryonStyle, ortFreitext, ortPreset, outputType]);
+
+  // DNA-Vorschlag (Teil 14c): liest Brand-DNA + nahestehende Kulturströmung und schlägt
+  // Ort und Bewegung vor — sichtbar begründet, der Designer entscheidet, ob er übernimmt.
+  const dnaSuggestion = useMemo(() => {
+    const brandDna = (designer as unknown as { brand_dna?: { worlds?: Record<string, number>; signals?: string[] } } | null)?.brand_dna;
+    const signals = brandDna?.signals ?? [];
+    if (!signals.length) return null;
+    const lower = signals.map((s) => s.toLowerCase());
+    const has = (...words: string[]) => words.some((w) => lower.some((s) => s.includes(w)));
+
+    let ort: string | null = null;
+    if (has("minimal", "reduziert", "editorial", "klar")) ort = "Studio, neutral";
+    else if (has("urban", "street", "stadt")) ort = "Straße";
+    else if (has("natur", "organisch", "roh")) ort = "Natur";
+    else if (has("wohnlich", "interieur", "häuslich", "heimelig")) ort = "Interieur";
+
+    let movementId = "push_close";
+    let strength = "spürbar";
+    if (has("ruhig", "reduziert", "zurückhaltend", "minimal")) { movementId = "dolly_in"; strength = "dezent"; }
+    else if (has("dynamisch", "energetisch", "laut", "kontrast")) { movementId = "energetic"; strength = "ausdrucksstark"; }
+
+    const designerWorlds = Object.keys(brandDna?.worlds ?? {});
+    const matchingCurrent = culturalCurrents.find((c) => c.nahe_haeuser.includes(designer?.id ?? ""))
+      ?? culturalCurrents.find((c) => (c.worlds ?? []).some((w) => designerWorlds.includes(w)));
+
+    const topSignals = signals.slice(0, 2).join(" und ");
+    const movementLabel = MOVEMENT_CHIPS.find((m) => m.id === movementId)?.label ?? movementId;
+    const reason = [
+      `Dein Haus neigt zu ${topSignals}`,
+      matchingCurrent ? `— nah an der Strömung „${matchingCurrent.name}"` : null,
+    ].filter(Boolean).join(" ");
+    const summary = [ort, movementLabel].filter(Boolean).join(", ");
+
+    return { ort, movementId, strength, reason, summary, currentName: matchingCurrent?.name ?? null };
+  }, [designer, culturalCurrents]);
+
+  const applyDnaSuggestion = () => {
+    if (!dnaSuggestion) return;
+    if (dnaSuggestion.ort) setOrtPreset(dnaSuggestion.ort);
+    setSelectedMovementIds((prev) => Array.from(new Set([...prev, dnaSuggestion.movementId])));
+    setMovementStrength(dnaSuggestion.strength);
+    setSuggestionDismissed(true);
+    toast.success("Vorschlag übernommen — passe ihn frei an.");
+  };
+
+  const applyHouseSetting = (s: HouseSettingRow) => {
+    if (s.ort) { setOrtFreitext(s.ort); setOrtPreset(null); }
+    if (s.stimmung) setPrompt((prev) => (prev.trim() ? prev : s.stimmung!));
+  };
+
+  const saveHouseSetting = async () => {
+    if (!designer || !newSettingName.trim()) { toast.error("Bitte einen Namen vergeben."); return; }
+    setSavingSetting(true);
+    try {
+      const { data, error } = await supabase.from("house_settings" as never).insert({
+        designer_id: designer.id, name: newSettingName.trim(),
+        ort: ortFreitext.trim() || ortPreset || null, stimmung: prompt.trim() || null,
+        licht: null, palette: null, referenzbilder: chosenImages.slice(0, 3),
+        quelle: "manuell",
+      } as never).select("id, name, ort, licht, stimmung, palette, referenzbilder, quelle").single();
+      if (error) throw error;
+      setHouseSettings((prev) => [data as unknown as HouseSettingRow, ...prev]);
+      setNewSettingName("");
+      toast.success("Setting gespeichert — ab jetzt wiederverwendbar.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSavingSetting(false);
+    }
+  };
 
   // Ein neuer Besetzungs-Modus oder ein neues Material macht den bisherigen Model-Shot ungültig.
   useEffect(() => { setModelShotUrl(null); }, [modelMode, chosenHouseModelId, chosenPoolImageUrl]);
@@ -1176,6 +1268,23 @@ export default function StudioCampaignNew() {
             <div className="border-b border-border py-8">
               <p className="editorial-eyebrow">{outputType === "video" ? "Bewegung & Qualität" : "Text"}</p>
 
+              {outputType === "video" && dnaSuggestion && !suggestionDismissed && (
+                <div className="mt-4 border border-foreground bg-white p-4">
+                  <p className="editorial-eyebrow text-muted-foreground">Vorschlag aus deiner DNA</p>
+                  <p className="mt-1 text-sm">{dnaSuggestion.reason} — vorgeschlagen: {dnaSuggestion.summary}.</p>
+                  <div className="mt-3 flex gap-2">
+                    <button type="button" onClick={applyDnaSuggestion}
+                      className="min-h-[32px] border border-foreground bg-foreground px-3 py-1 text-[0.62rem] uppercase tracking-wide text-background hover:bg-background hover:text-foreground">
+                      Übernehmen
+                    </button>
+                    <button type="button" onClick={() => setSuggestionDismissed(true)}
+                      className="min-h-[32px] border border-border bg-white px-3 py-1 text-[0.62rem] uppercase tracking-wide text-muted-foreground hover:border-foreground hover:text-foreground">
+                      Verwerfen
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {outputType === "video" && (
                 <>
                   <input value={ortFreitext} onChange={(e) => setOrtFreitext(e.target.value)} placeholder="Ort (optional) — eigene Worte"
@@ -1187,6 +1296,26 @@ export default function StudioCampaignNew() {
                         {o}
                       </button>
                     ))}
+                  </div>
+
+                  {houseSettings.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {houseSettings.map((s) => (
+                        <button key={s.id} type="button" onClick={() => applyHouseSetting(s)}
+                          className="min-h-[32px] border border-dashed border-border bg-white px-3 py-1 text-[0.62rem] tracking-wide hover:border-foreground"
+                          title="Eigenes Setting übernehmen">
+                          ★ {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input value={newSettingName} onChange={(e) => setNewSettingName(e.target.value)} placeholder="Setting benennen, z. B. Studio warm"
+                      className="min-h-[32px] w-56 border border-border bg-white px-2 py-1 text-[0.68rem]" />
+                    <button type="button" onClick={() => void saveHouseSetting()} disabled={savingSetting || !newSettingName.trim()}
+                      className="min-h-[32px] border border-border px-3 py-1 text-[0.62rem] uppercase tracking-wide hover:border-foreground disabled:opacity-40">
+                      {savingSetting ? "…" : "Als Setting speichern"}
+                    </button>
                   </div>
                 </>
               )}
