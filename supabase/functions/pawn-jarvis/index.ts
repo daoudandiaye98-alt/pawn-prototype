@@ -1088,7 +1088,7 @@ async function runBrollEinsammeln(admin: SupabaseClient): Promise<Record<string,
         const { data: signed } = await admin.storage.from("campaign-assets").createSignedUrl(path, 60 * 60 * 24 * 365);
         const finalUrl = signed?.signedUrl ?? path;
         await admin.from("generation_requests").update({ status: "done", result_url: finalUrl, error: null } as never).eq("id", r.id);
-        await admin.from("video_assets").insert({
+        const { data: videoAssetRow } = await admin.from("video_assets").insert({
           designer_id: r.campaigns.designer_id,
           campaign_id: r.campaign_id,
           url: finalUrl,
@@ -1099,6 +1099,16 @@ async function runBrollEinsammeln(admin: SupabaseClient): Promise<Record<string,
             laenge_s: 5, modelltyp: "kinematisch",
           },
           rights_granted: !!r.campaigns.designers.media_rights_granted_at,
+        } as never).select("id").single();
+        await admin.from("media_assets").insert({
+          designer_id: r.campaigns.designer_id,
+          kind: "video",
+          origin: "erzeugt",
+          url: finalUrl,
+          title: "Aufnahme (automatisch eingesammelt)",
+          rights_granted: !!r.campaigns.designers.media_rights_granted_at,
+          video_asset_id: (videoAssetRow as { id: string } | null)?.id ?? null,
+          campaign_id: r.campaign_id,
         } as never);
         await admin.from("notifications").insert({
           user_id: r.campaigns.designers.user_id,
