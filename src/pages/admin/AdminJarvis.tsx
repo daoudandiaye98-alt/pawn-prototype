@@ -66,9 +66,22 @@ interface JarvisExperiment {
   evaluated_at: string | null;
 }
 
+interface CulturalCurrent {
+  id: string;
+  name: string;
+  zeitraum: string | null;
+  ausloeser: string | null;
+  visuelle_merkmale: Record<string, string> | null;
+  ontologie_begriffe: string[];
+  nahe_haeuser: string[];
+  zuversicht: string;
+  worlds: string[];
+  updated_at: string;
+}
+
 const KIND_LABELS: Record<string, string> = {
   morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort",
-  diagnose: "Diagnose", wissen: "Wissenslauf", regie: "Kampagnen-Regie", dossier: "Haus-Dossier",
+  diagnose: "Diagnose", wissen: "Wissenslauf", zeitgeist: "Zeitgeist", regie: "Kampagnen-Regie", dossier: "Haus-Dossier",
 };
 
 const EXPERIMENT_STATUS_LABELS: Record<string, string> = {
@@ -124,6 +137,8 @@ export default function AdminJarvis() {
   const [regieBusy, setRegieBusy] = useState(false);
   const [signaturesBulkBusy, setSignaturesBulkBusy] = useState(false);
   const [wissenBusy, setWissenBusy] = useState(false);
+  const [zeitgeistBusy, setZeitgeistBusy] = useState(false);
+  const [culturalCurrents, setCulturalCurrents] = useState<CulturalCurrent[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
@@ -132,7 +147,7 @@ export default function AdminJarvis() {
   const load = async () => {
     setFetching(true);
     try {
-      const [runsRes, reportsRes, noticesRes, memoryRes, experimentsRes, configRes, styleLawRes, directivesRes] = await Promise.allSettled([
+      const [runsRes, reportsRes, noticesRes, memoryRes, experimentsRes, configRes, styleLawRes, directivesRes, currentsRes] = await Promise.allSettled([
         supabase.from("jarvis_runs").select("*").order("started_at", { ascending: false }).limit(20),
         supabase.from("jarvis_reports").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("jarvis_notices").select("*").order("created_at", { ascending: false }).limit(30),
@@ -141,12 +156,14 @@ export default function AdminJarvis() {
         supabase.from("ai_config").select("value").eq("key", "jarvis_config").maybeSingle(),
         supabase.from("ai_config").select("value").eq("key", "house_style_law").maybeSingle(),
         supabase.from("ai_config").select("value").eq("key", "directives").maybeSingle(),
+        supabase.from("cultural_currents").select("*").order("updated_at", { ascending: false }).limit(30),
       ]);
       if (runsRes.status === "fulfilled") setRuns((runsRes.value.data as JarvisRun[]) ?? []);
       if (reportsRes.status === "fulfilled") setReports((reportsRes.value.data as JarvisReport[]) ?? []);
       if (noticesRes.status === "fulfilled") setNotices((noticesRes.value.data as JarvisNotice[]) ?? []);
       if (memoryRes.status === "fulfilled") setMemories((memoryRes.value.data as JarvisMemoryRow[]) ?? []);
       if (experimentsRes.status === "fulfilled") setExperiments((experimentsRes.value.data as JarvisExperiment[]) ?? []);
+      if (currentsRes.status === "fulfilled") setCulturalCurrents((currentsRes.value.data as unknown as CulturalCurrent[]) ?? []);
       if (configRes.status === "fulfilled") {
         const cfgValue = (configRes.value.data?.value as Record<string, unknown>) ?? null;
         setRawConfig(cfgValue);
@@ -294,6 +311,22 @@ export default function AdminJarvis() {
     }
   }
 
+  async function runZeitgeistNow() {
+    setZeitgeistBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "zeitgeist" } });
+      if (error) { toast.error(error.message); return; }
+      const result = data as { ok: boolean; error?: string };
+      if (!result.ok) { toast.error(result.error ?? "Zeitgeist-Lauf konnte nicht laufen."); return; }
+      toast.success("Zeitgeist-Einschätzung fertig.");
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setZeitgeistBusy(false);
+    }
+  }
+
   async function dismissNotice(id: string) {
     const now = new Date().toISOString();
     setNotices((prev) => prev.map((n) => (n.id === id ? { ...n, dismissed_at: now } : n)));
@@ -317,6 +350,7 @@ export default function AdminJarvis() {
   const unseenNotices = notices.filter((n) => !n.dismissed_at);
   const latestDiagnose = reports.find((r) => r.kind === "diagnose") ?? null;
   const wissenReports = reports.filter((r) => r.kind === "wissen");
+  const zeitgeistReports = reports.filter((r) => r.kind === "zeitgeist");
   const regieReports = reports.filter((r) => r.kind === "regie");
   const issueNotices = notices.filter((n) => n.kind === "github_issue");
   const runningExperiment = experiments.find((e) => e.status === "laufend") ?? null;
@@ -500,6 +534,53 @@ export default function AdminJarvis() {
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">Noch keine Diagnose gelaufen.</p>
+        )}
+      </section>
+
+      <section className="mb-8 border-[1.5px] border-black">
+        <header className="flex items-center justify-between border-b-[1.5px] border-black px-5 py-3">
+          <p className="editorial-eyebrow">Kulturströmungen</p>
+          <Button
+            onClick={runZeitgeistNow}
+            disabled={zeitgeistBusy}
+            variant="outline"
+            size="sm"
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {zeitgeistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {zeitgeistBusy ? "Jarvis ordnet ein…" : "Zeitgeist jetzt"}
+          </Button>
+        </header>
+        {culturalCurrents.length === 0 ? (
+          <div className="p-10 text-center text-sm text-muted-foreground">Noch keine Strömung erkannt — der Wissenslauf legt sie mit an.</div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {culturalCurrents.map((c) => (
+              <li key={c.id} className="px-5 py-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-serif text-base">{c.name}{c.zeitraum ? ` · ${c.zeitraum}` : ""}</p>
+                  <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">Zuversicht: {c.zuversicht}</span>
+                </div>
+                {c.ausloeser && <p className="mt-1 text-sm text-foreground/80">{c.ausloeser}</p>}
+                {c.ontologie_begriffe.length > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">{c.ontologie_begriffe.join(" · ")}</p>
+                )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {c.worlds.join(", ") || "—"} · {c.nahe_haeuser.length} Haus/Häuser nahe · {timeAgo(c.updated_at)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        {zeitgeistReports.length > 0 && (
+          <ul className="divide-y divide-border border-t-[1.5px] border-black">
+            {zeitgeistReports.slice(0, 5).map((r) => (
+              <li key={r.id} className="px-5 py-3">
+                <p className="whitespace-pre-line text-sm text-foreground/80">{r.body}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{timeAgo(r.created_at)}</p>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 
