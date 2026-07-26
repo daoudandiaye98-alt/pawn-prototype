@@ -5,10 +5,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
+import { GenomeCard, type GenomeStrand } from "@/components/palace/GenomeCard";
 
 export default function StudioBrand() {
   const { designer, loading, refresh } = useMyDesigner();
   const { user } = useAuth();
+  const [distillBusy, setDistillBusy] = useState(false);
+
+  const distillDna = async () => {
+    setDistillBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("distill-brand-dna", { body: {} });
+      if (error) throw error;
+      const r = data as { ok?: boolean; error?: string; message?: string };
+      if (!r.ok) { toast.error(r.message ?? r.error ?? "DNA konnte nicht destilliert werden."); return; }
+      toast.success("DNA destilliert.");
+      void refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDistillBusy(false);
+    }
+  };
   const [form, setForm] = useState({
     story: "",
     quote: "",
@@ -105,6 +123,23 @@ export default function StudioBrand() {
         </button>
       </div>
 
+      <div className="mt-12">
+        <GenomeCard
+          eyebrow="DNA"
+          title="Eure Marken-DNA"
+          subtitle="Fließt in Signaturen, Kampagnen-Vorschläge und die Kuratierung ein — destilliert aus Story, Manifest und euren Produkten."
+          strands={dnaStrandsFrom(designer)}
+          strandsLabel="Welten"
+          signatures={dnaSignalsFrom(designer)}
+          emptyText="Noch keine DNA — sobald Story oder erste Produkte da sind, lässt sich eine destillieren."
+        >
+          <button type="button" onClick={distillDna} disabled={distillBusy}
+            className="mt-6 border-[1.5px] border-black px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-black hover:text-white disabled:opacity-50">
+            {distillBusy ? "Destilliert…" : "DNA destillieren"}
+          </button>
+        </GenomeCard>
+      </div>
+
       <ImageUsageConsent />
 
       <style>{`.input { width:100%; border:1px solid hsl(var(--border)); background:hsl(var(--background)); padding: 0.6rem 0.8rem; font-size: 0.9rem; }`}</style>
@@ -112,6 +147,15 @@ export default function StudioBrand() {
   );
 }
 
+
+function dnaStrandsFrom(designer: { brand_dna?: unknown } | null): GenomeStrand[] {
+  const worlds = ((designer?.brand_dna as { worlds?: Record<string, number> } | null)?.worlds) ?? {};
+  return Object.entries(worlds).map(([label, value]) => ({ label, value: Math.round(value * 100) }));
+}
+function dnaSignalsFrom(designer: { brand_dna?: unknown } | null): { id: string; name: string }[] {
+  const signals = ((designer?.brand_dna as { signals?: string[] } | null)?.signals) ?? [];
+  return signals.map((s) => ({ id: s, name: s }));
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="editorial-eyebrow">{label}</span><div className="mt-2">{children}</div></label>;

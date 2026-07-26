@@ -26,6 +26,7 @@ interface DesignerRow {
   brand_name: string;
   house_number: number | null;
   video_taste_weights: Record<string, number> | null;
+  brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
 }
 interface SignatureRow {
   id: string;
@@ -38,7 +39,12 @@ interface ReportRow {
   kind: string;
   created_at: string;
   body: string | null;
-  data: { top_houses?: { designer_id: string; weights?: Record<string, number> }[] } | null;
+  data: { top_houses?: { designer_id: string; weights?: Record<string, number>; near_current?: string | null }[] } | null;
+}
+interface CulturalCurrentLite {
+  name: string;
+  nahe_haeuser: string[] | null;
+  worlds: string[] | null;
 }
 
 function timeAgo(iso: string | null): string {
@@ -60,15 +66,40 @@ export default function AdminDNA() {
   const [signatures, setSignatures] = useState<SignatureRow[]>([]);
   const [regieReports, setRegieReports] = useState<ReportRow[]>([]);
   const [wissenReport, setWissenReport] = useState<ReportRow | null>(null);
+  const [culturalCurrents, setCulturalCurrents] = useState<CulturalCurrentLite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [distillBusyId, setDistillBusyId] = useState<string | null>(null);
+
+  const nearCurrentFor = (d: DesignerRow): string | null => {
+    const worlds = Object.keys(d.brand_dna?.worlds ?? {});
+    return culturalCurrents.find((c) => (c.nahe_haeuser ?? []).includes(d.id))?.name
+      ?? culturalCurrents.find((c) => (c.worlds ?? []).some((w) => worlds.includes(w)))?.name
+      ?? null;
+  };
+
+  const distillDna = async (designerId: string) => {
+    setDistillBusyId(designerId);
+    try {
+      const { data, error } = await supabase.functions.invoke("distill-brand-dna", { body: { designer_id: designerId } });
+      if (error) { toast.error(error.message); return; }
+      const r = data as { ok?: boolean; error?: string; message?: string; brand_dna?: { worlds?: Record<string, number>; signals?: string[] } };
+      if (!r.ok) { toast.error(r.message ?? r.error ?? "DNA konnte nicht destilliert werden."); return; }
+      toast.success("DNA destilliert.");
+      setDesigners((prev) => prev.map((d) => (d.id === designerId ? { ...d, brand_dna: r.brand_dna ?? d.brand_dna } : d)));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDistillBusyId(null);
+    }
+  };
 
   useEffect(() => {
     (async () => {
-      const [mw, des, sigs, reports] = await Promise.all([
+      const [mw, des, sigs, reports, currents] = await Promise.all([
         supabase.from("ai_config").select("value").eq("key", "matching_weights").maybeSingle(),
         supabase
           .from("designers")
-          .select("id, brand_name, house_number, video_taste_weights")
+          .select("id, brand_name, house_number, video_taste_weights, brand_dna")
           .eq("status", "active")
           .order("house_number"),
         supabase.from("house_signatures").select("id, designer_id, name, recipe"),
@@ -78,6 +109,7 @@ export default function AdminDNA() {
           .in("kind", ["regie", "wissen"])
           .order("created_at", { ascending: false })
           .limit(20),
+        supabase.from("cultural_currents" as never).select("name, nahe_haeuser, worlds"),
       ]);
       const mwVal = (mw.data?.value ?? {}) as unknown as Partial<MatchingWeights>;
       setWeights({ ...DEFAULT_MATCHING_WEIGHTS, ...mwVal });
@@ -86,6 +118,7 @@ export default function AdminDNA() {
       const allReports = (reports.data ?? []) as unknown as ReportRow[];
       setRegieReports(allReports.filter((r) => r.kind === "regie"));
       setWissenReport(allReports.find((r) => r.kind === "wissen") ?? null);
+      setCulturalCurrents((currents.data ?? []) as unknown as CulturalCurrentLite[]);
       setLoading(false);
     })();
   }, []);
@@ -173,7 +206,11 @@ export default function AdminDNA() {
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5)
                 .map(([label, value]) => ({ label, value: (value / maxW) * 100, hint: `×${value.toFixed(2)}` }));
+              const dnaWorlds = d.brand_dna?.worlds ?? {};
+              const dnaStrands: GenomeStrand[] = Object.entries(dnaWorlds).map(([label, value]) => ({ label, value: Math.round(value * 100) }));
+              const dnaSignals = d.brand_dna?.signals ?? [];
               const houseSigs = signatures.filter((s) => s.designer_id === d.id);
+              const nearCurrent = nearCurrentFor(d);
               const history = regieReports
                 .filter((r) => (r.data?.top_houses ?? []).some((h) => h.designer_id === d.id))
                 .slice(0, 3);
@@ -182,6 +219,8 @@ export default function AdminDNA() {
                   key={d.id}
                   eyebrow={d.house_number ? `Haus № ${d.house_number}` : "Haus"}
                   title={d.brand_name}
+                  strands={dnaStrands}
+                  strandsLabel="DNA · Welten"
                   learned={learned}
                   learnedLabel="Gelernt aus Performance"
                   signatures={houseSigs.map((s) => ({ id: s.id, name: s.name, wunsch: s.recipe?.wunsch }))}
@@ -191,6 +230,26 @@ export default function AdminDNA() {
                   campaignsLinkLabel="Zu Kampagnen"
                   emptyText={`Noch keine gelernte Performance für ${d.brand_name} — erscheint nach der ersten Kampagnen-Regie.`}
                 >
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-black/15 pt-4">
+                    <div className="flex flex-wrap gap-2">
+                      {dnaSignals.length === 0 ? (
+                        <span className="text-sm text-black/50">Noch keine Stil-Signale.</span>
+                      ) : (
+                        dnaSignals.map((s) => (
+                          <span key={s} className="border border-black/20 px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.14em] text-black/70">{s}</span>
+                        ))
+                      )}
+                      {nearCurrent && (
+                        <span className="border border-black bg-black px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.14em] text-white">
+                          Strömung: {nearCurrent}
+                        </span>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => void distillDna(d.id)} disabled={distillBusyId === d.id}
+                      className="shrink-0 border-[1.5px] border-black px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-black hover:text-white disabled:opacity-50">
+                      {distillBusyId === d.id ? "Destilliert…" : "DNA destillieren"}
+                    </button>
+                  </div>
                   {history.length > 0 && (
                     <div className="mt-6 border-t border-black/15 pt-4">
                       <p className="editorial-eyebrow text-black/50">Verlauf</p>
@@ -203,6 +262,7 @@ export default function AdminDNA() {
                           return (
                             <li key={r.id}>
                               {timeAgo(r.created_at)} — {topKey ? `Top: ${topKey}` : "Gewichte aktualisiert"}
+                              {entry?.near_current ? ` — nah an „${entry.near_current}"` : ""}
                             </li>
                           );
                         })}

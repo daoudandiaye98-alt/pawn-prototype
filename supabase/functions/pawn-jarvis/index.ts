@@ -1457,12 +1457,22 @@ async function runBewerbungPruefen(admin: SupabaseClient, apiKey: string): Promi
 async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
   const { data: designers } = await admin.from("designers")
-    .select("id, brand_name, plan").eq("published", true).limit(100);
+    .select("id, brand_name, plan, brand_dna").eq("published", true).limit(100);
+  const { data: currents } = await admin.from("cultural_currents")
+    .select("name, nahe_haeuser, worlds").limit(100);
+  const currentRows = (currents ?? []) as Array<{ name: string; nahe_haeuser: string[] | null; worlds: string[] | null }>;
 
-  const perHouseSummaries: Array<{ designer_id: string; brand_name: string; total_views: number; total_clicks: number; weights: Record<string, number> }> = [];
+  function nearCurrentFor(designerId: string, worlds: string[]): string | null {
+    const direct = currentRows.find((c) => (c.nahe_haeuser ?? []).includes(designerId));
+    if (direct) return direct.name;
+    const byWorld = currentRows.find((c) => (c.worlds ?? []).some((w) => worlds.includes(w)));
+    return byWorld?.name ?? null;
+  }
+
+  const perHouseSummaries: Array<{ designer_id: string; brand_name: string; total_views: number; total_clicks: number; weights: Record<string, number>; near_current: string | null }> = [];
   let weightedHouses = 0;
 
-  for (const d of (designers ?? []) as { id: string; brand_name: string; plan: string }[]) {
+  for (const d of (designers ?? []) as { id: string; brand_name: string; plan: string; brand_dna: { worlds?: Record<string, number> } | null }[]) {
     const { data: videos } = await admin.from("video_assets")
       .select("video_dna, performance").eq("designer_id", d.id).gte("created_at", since);
     const rows = (videos ?? []) as Array<{ video_dna: { signatur?: string; tempo?: string } | null; performance: { premiere_views?: number; shop_clicks?: number } | null }>;
@@ -1487,7 +1497,8 @@ async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise
 
     await admin.from("designers").update({ video_taste_weights: weights }).eq("id", d.id);
     weightedHouses++;
-    perHouseSummaries.push({ designer_id: d.id, brand_name: d.brand_name, total_views: totalViews, total_clicks: totalClicks, weights });
+    const nearCurrent = nearCurrentFor(d.id, Object.keys(d.brand_dna?.worlds ?? {}));
+    perHouseSummaries.push({ designer_id: d.id, brand_name: d.brand_name, total_views: totalViews, total_clicks: totalClicks, weights, near_current: nearCurrent });
   }
 
   const memories = await loadMemories(admin);
@@ -1497,7 +1508,7 @@ async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise
     .slice(0, 8);
 
   const dataSummary = topHouses.length
-    ? topHouses.map((h) => `${h.brand_name}: ${h.total_views} Aufrufe, ${h.total_clicks} Shop-Klicks, Gewichte ${JSON.stringify(h.weights)}`).join("\n")
+    ? topHouses.map((h) => `${h.brand_name}: ${h.total_views} Aufrufe, ${h.total_clicks} Shop-Klicks, Gewichte ${JSON.stringify(h.weights)}${h.near_current ? `, nah an Strömung "${h.near_current}"` : ""}`).join("\n")
     : "Noch keine auswertbaren Performance-Daten diesen Monat.";
 
   const prompt = `Wöchentliche Kampagnen-Regie-Auswertung bei PAWN. Performance je Haus (letzte 30 Tage):\n${dataSummary}\n\nHandeingaben/Notizen von Daouda:\n${memoText}\n\nSchreibe einen kurzen Bericht (3-5 Sätze, Deutsch, für Daouda) darüber, was gerade zieht. Falls die Daten ein gutes gemeinsames Thema für eine häuserübergreifende "Edition" nahelegen (mehrere Häuser mit ähnlich guter Performance, gleiche Welt), schlage sie vor.\n\nAntworte NUR mit JSON: {"bericht": "...", "edition_vorschlag": null oder {"theme": "kurzer Titel", "world": "Mode|Interior|Kunst", "brand_names": ["..."]}}`;
