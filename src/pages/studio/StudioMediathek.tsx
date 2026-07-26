@@ -1,16 +1,17 @@
 /**
  * Mediathek (Teil 12b): zentrale Ablage für alles, was ein Haus erzeugt oder hochlädt —
- * eigene Uploads gleichwertig neben KI-Material. Vier Wege hinaus: Produktseite, Banner
- * vormerken (Umsetzung folgt mit den Hausseiten-Bausteinen, Teil 12c), PAWN-Archiv zur
- * Prüfung, Download.
+ * eigene Uploads gleichwertig neben KI-Material. Wege hinaus: Produktseite, Banner
+ * vormerken, PAWN-Archiv zur Prüfung, Download, Feedback im Content-Begleiter (Teil 16b,
+ * nur für eigene Uploads — PAWN gibt kein Feedback zu KI-erzeugtem Material).
  */
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
 import { useCredits } from "@/features/campaign/quota";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Upload, Sparkles, Image as ImageIcon, Trash2, Send, Check } from "lucide-react";
+import { Download, Upload, Sparkles, Image as ImageIcon, Trash2, Send, Check, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 type Kind = "bild" | "video";
@@ -258,6 +259,12 @@ export default function StudioMediathek() {
                   <a href={row.url} download className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground">
                     <Download className="h-3 w-3" /> Download
                   </a>
+                  {row.origin === "upload" && (
+                    <Link to={`/studio/content-begleiter?media=${row.id}`}
+                      className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground">
+                      <MessageSquare className="h-3 w-3" /> Feedback
+                    </Link>
+                  )}
                   {row.review_status === "privat" && (
                     <button onClick={() => void submitToArchive(row)} disabled={busyId === row.id}
                       className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground disabled:opacity-50">
