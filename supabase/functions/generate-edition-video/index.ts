@@ -21,7 +21,8 @@ function json(obj: unknown, status = 200) {
 }
 
 const DEFAULT_TEMPLATE =
-  "subtle fabric movement, slow cinematic camera push-in, monochrome high-fashion editorial, soft studio light, {designer_prompt}";
+  "{designer_prompt}. Slow cinematic camera movement, natural fabric physics, monochrome high-fashion editorial, soft studio light.";
+const DEFAULT_NEGATIVE_PROMPT = "morphing, warping, distorted anatomy, blurry, low quality, frozen still frame";
 
 async function falSubmitAndPoll(
   falKey: string, model: string, body: Record<string, unknown>, timeoutMs: number,
@@ -56,7 +57,7 @@ async function falSubmitAndPoll(
 }
 
 async function processParticipant(
-  admin: SupabaseClient, falKey: string, model: string, template: string,
+  admin: SupabaseClient, falKey: string, model: string, template: string, negativePrompt: string, cfgScale: number,
   edition: { id: string; theme: string; world: string | null },
   participant: { id: string; designer_id: string },
 ): Promise<void> {
@@ -87,7 +88,7 @@ async function processParticipant(
 
     const designerPrompt = [edition.theme, recipeBits].filter(Boolean).join(", ");
     const prompt = template.replace("{designer_prompt}", designerPrompt);
-    const result = await falSubmitAndPoll(falKey, model, { image_url: imageUrl, prompt, duration: 5 }, 120_000);
+    const result = await falSubmitAndPoll(falKey, model, { image_url: imageUrl, prompt, duration: 5, negative_prompt: negativePrompt, cfg_scale: cfgScale }, 120_000);
     if (!result.ok) throw new Error(result.message);
 
     const videoResp = await fetch(result.url);
@@ -138,16 +139,19 @@ Deno.serve(async (req) => {
     if (!participants || participants.length === 0) return json({ ok: true, started: 0, message: "Keine offenen Teilnehmer." });
 
     const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "video_provider").maybeSingle();
-    const videoCfg = (cfg?.value as { model_premium?: string } | null) ?? {};
+    const videoCfg = (cfg?.value as { model_premium?: string; cfg_scale_options?: Record<string, number>; cfg_scale_default?: string } | null) ?? {};
     const model = videoCfg.model_premium ?? "fal-ai/kling-video/v2.1/standard/image-to-video";
+    const cfgScale = videoCfg.cfg_scale_options?.[videoCfg.cfg_scale_default ?? "spürbar"] ?? 0.5;
     const { data: tpl } = await admin.from("ai_config").select("value").eq("key", "video_motion_prompt_template").maybeSingle();
-    const template = (tpl?.value as { template?: string } | null)?.template ?? DEFAULT_TEMPLATE;
+    const tplCfg = (tpl?.value as { template?: string; negative_prompt?: string } | null) ?? {};
+    const template = tplCfg.template ?? DEFAULT_TEMPLATE;
+    const negativePrompt = tplCfg.negative_prompt ?? DEFAULT_NEGATIVE_PROMPT;
 
     await admin.from("editions").update({ status: "active" } as never).eq("id", body.edition_id);
 
     const ed = edition as { id: string; theme: string; world: string | null };
     await Promise.allSettled(
-      (participants as { id: string; designer_id: string }[]).map((p) => processParticipant(admin, falKey, model, template, ed, p)),
+      (participants as { id: string; designer_id: string }[]).map((p) => processParticipant(admin, falKey, model, template, negativePrompt, cfgScale, ed, p)),
     );
 
     return json({ ok: true, started: participants.length });
