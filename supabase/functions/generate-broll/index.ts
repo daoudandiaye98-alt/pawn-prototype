@@ -15,7 +15,8 @@ function jwtSub(auth: string | null): string | null {
 }
 
 const DEFAULT_TEMPLATE =
-  "subtle fabric movement, slow cinematic camera push-in, monochrome high-fashion editorial, soft studio light, {designer_prompt}";
+  "{designer_prompt}. Slow cinematic camera movement, natural fabric physics, monochrome high-fashion editorial, soft studio light.";
+const DEFAULT_NEGATIVE_PROMPT = "morphing, warping, distorted anatomy, blurry, low quality, frozen still frame";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -32,7 +33,8 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({})) as {
-      campaign_id?: string; image_urls?: string[]; motion_prompt?: string; signature_id?: string; model_id?: string; duration_s?: number;
+      campaign_id?: string; image_urls?: string[]; motion_prompt?: string; signature_id?: string; model_id?: string;
+      duration_s?: number; cfg_scale?: number;
     };
     if (!body.campaign_id) return json({ error: "campaign_id_required" }, 400);
     const images = (body.image_urls ?? []).filter((u) => typeof u === "string" && u.length > 0).slice(0, 4);
@@ -58,9 +60,17 @@ Deno.serve(async (req) => {
 
     // Config
     const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "video_provider").maybeSingle();
-    const videoCfg = (cfg?.value as { model?: string; model_premium?: string } | null) ?? {};
+    const videoCfg = (cfg?.value as { model?: string; model_premium?: string; cfg_scale_options?: Record<string, number>; cfg_scale_default?: string } | null) ?? {};
     const { data: tpl } = await admin.from("ai_config").select("value").eq("key", "video_motion_prompt_template").maybeSingle();
-    const template = (tpl?.value as { template?: string } | null)?.template ?? DEFAULT_TEMPLATE;
+    const tplCfg = (tpl?.value as { template?: string; negative_prompt?: string } | null) ?? {};
+    const template = tplCfg.template ?? DEFAULT_TEMPLATE;
+    const negativePrompt = tplCfg.negative_prompt ?? DEFAULT_NEGATIVE_PROMPT;
+
+    // Bewegungsstärke (Teil 14a): der Designer wählt im Studio dezent/spürbar/ausdrucksstark,
+    // die Zahl (cfg_scale) kommt aus ai_config — ohne Wahl gilt der konfigurierte Standard.
+    const defaultCfgScale = videoCfg.cfg_scale_options?.[videoCfg.cfg_scale_default ?? "spürbar"] ?? 0.5;
+    const cfgScale = typeof body.cfg_scale === "number" && body.cfg_scale >= 0 && body.cfg_scale <= 1
+      ? body.cfg_scale : defaultCfgScale;
 
     // Signatur → Rezept ins Bewegungs-Prompt falten (unabhängig von der Modellwahl).
     let designerPrompt = body.motion_prompt ?? "";
@@ -141,7 +151,7 @@ Deno.serve(async (req) => {
         const r = await fetch(`https://queue.fal.run/${model}`, {
           method: "POST",
           headers: { "Authorization": `Key ${FAL_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ image_url, prompt, duration: durationS }),
+          body: JSON.stringify({ image_url, prompt, duration: durationS, negative_prompt: negativePrompt, cfg_scale: cfgScale }),
         });
         const rj = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -178,7 +188,7 @@ Deno.serve(async (req) => {
     }
 
     return json({
-      ok: true, model, prompt, duration_s: durationS, credits_per_clip: clipCreditCost,
+      ok: true, model, prompt, duration_s: durationS, cfg_scale: cfgScale, credits_per_clip: clipCreditCost,
       cost_units: costUnits * submissions.filter((s) => "id" in s).length, submissions,
     }, 200);
   } catch (e) {

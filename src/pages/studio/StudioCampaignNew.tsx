@@ -12,6 +12,11 @@
  * das schon; eine Modellstufe ist vorausgewählt (die im Katalog als default markierte).
  * Katalog-Einträge mit active:false oder intern:true erscheinen nirgends, auch nicht
  * als Fallback.
+ *
+ * Bewegung (Teil 14a): die Bewegungs-Bausteine (MOVEMENT_CHIPS) zeigen ein deutsches
+ * Label, tragen aber echte Kamerasprache (dolly-in, push-in, …), die strukturiert in
+ * den an generate-broll gesendeten Prompt gefaltet wird — nicht als deutscher Fließtext
+ * angehängt. "Bewegungsstärke" steuert Klings cfg_scale (0-1, aus ai_config.video_provider).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -88,7 +93,16 @@ async function uploadFile(userId: string, file: File | Blob, ext: string): Promi
 }
 
 const ORT_PRESETS = ["Studio, neutral", "Straße", "Natur", "Interieur", "Laufsteg"];
-const MOVEMENT_CHIPS = ["Langsame Kamerafahrt", "Kamera fährt näher heran", "Stoff im Wind", "Statisch, Model dreht sich", "Schnelle Schnitte"];
+/** Deutsches Label fürs Studio, "camera" ist die echte Kamerasprache fürs Modell (Teil 14a) —
+ * die Bausteine werden nicht als Fließtext angehängt, sondern strukturiert in den Prompt gefaltet. */
+const MOVEMENT_CHIPS: { id: string; label: string; camera: string }[] = [
+  { id: "dolly_in", label: "Langsame Kamerafahrt", camera: "slow dolly-in, the camera drifts smoothly toward the subject" },
+  { id: "push_close", label: "Kamera fährt näher heran", camera: "steady push-in, the frame gradually tightens on the garment" },
+  { id: "fabric_wind", label: "Stoff im Wind", camera: "a light breeze moves through the fabric, hem and sleeves drifting and settling" },
+  { id: "orbit_static", label: "Statisch, Model dreht sich", camera: "the camera holds a static frame while the model turns slowly, revealing the garment from every side" },
+  { id: "energetic", label: "Schnelle Schnitte", camera: "brisk, energetic movement with a lively rhythm" },
+];
+const MOVEMENT_STRENGTH_LABEL: Record<string, string> = { dezent: "Dezent", spürbar: "Spürbar", ausdrucksstark: "Ausdrucksstark" };
 const MODE_LABEL: Record<ModelMode, string> = { pawn_pool: "PAWN-Model wählen", beschreiben: "Model beschreiben", gespeichert: "Haus-Model", keins: "Kein Model" };
 
 export default function StudioCampaignNew() {
@@ -150,6 +164,9 @@ export default function StudioCampaignNew() {
   const [modelCatalogLoaded, setModelCatalogLoaded] = useState(false);
   const [motionChoice, setMotionChoice] = useState<MotionChoice>(null);
   const [durationS, setDurationS] = useState<DurationS>(5);
+  const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([]);
+  const [movementStrength, setMovementStrength] = useState<string>("spürbar");
+  const [cfgScaleOptions, setCfgScaleOptions] = useState<Record<string, number>>({ dezent: 0.35, spürbar: 0.5, ausdrucksstark: 0.65 });
   const [runningModelLabel, setRunningModelLabel] = useState<string | null>(null);
   const [runningModelDauer, setRunningModelDauer] = useState<string | null>(null);
 
@@ -233,7 +250,17 @@ export default function StudioCampaignNew() {
         if (v?.model_pool) setModelPool({ weiblich: v.model_pool.weiblich ?? [], männlich: v.model_pool.männlich ?? [], divers: v.model_pool.divers ?? [] });
         if (v?.shot_disclosure) setTryonDisclosure(v.shot_disclosure);
       });
+    void supabase.from("ai_config").select("value").eq("key", "video_provider").maybeSingle()
+      .then(({ data }) => {
+        const v = (data?.value as { cfg_scale_options?: Record<string, number>; cfg_scale_default?: string } | null) ?? null;
+        if (v?.cfg_scale_options) setCfgScaleOptions((prev) => ({ ...prev, ...v.cfg_scale_options }));
+        if (v?.cfg_scale_default) setMovementStrength(v.cfg_scale_default);
+      });
   }, []);
+
+  const toggleMovementChip = (id: string) => {
+    setSelectedMovementIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   // Standardwahl, sobald der Katalog da ist — nie stillschweigend "keine Bewegung",
   // solange ein echtes Modell aktiv ist. Nur wenn der Katalog wirklich leer ist,
@@ -579,13 +606,15 @@ export default function StudioCampaignNew() {
       setCinematicStage("submitting");
       setCinematicProgress({ done: 0, total: inputImages.length });
       const castingBits = composedCastingText || undefined;
+      const cameraBits = MOVEMENT_CHIPS.filter((m) => selectedMovementIds.includes(m.id)).map((m) => m.camera).join(", ") || undefined;
       const { data: submitData, error: submitErr } = await supabase.functions.invoke("generate-broll", {
         body: {
           campaign_id, image_urls: inputImages,
-          motion_prompt: [prompt, castingBits].filter(Boolean).join(". "),
+          motion_prompt: [prompt, cameraBits, castingBits].filter(Boolean).join(". "),
           signature_id: chosenSignatureId ?? undefined,
           model_id: motionChoice ?? undefined,
           duration_s: durationS,
+          cfg_scale: cfgScaleOptions[movementStrength],
         },
       });
       if (submitErr) {
@@ -1173,12 +1202,19 @@ export default function StudioCampaignNew() {
                   : "Beschreib die Bewegung: Kamera, Tempo, Stoffverhalten."}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {(outputType === "bild" ? ["Klar · reduziert", "Warm · persönlich", "Editorial · direkt"] : MOVEMENT_CHIPS).map((chip) => (
-                  <button key={chip} onClick={() => setPrompt((prev) => (outputType === "bild" ? chip : [prev, chip].filter(Boolean).join(", ")))}
-                    className="min-h-[32px] border border-border bg-white px-3 py-1 text-[0.62rem] tracking-wide hover:bg-foreground hover:text-background">
-                    {chip}
-                  </button>
-                ))}
+                {outputType === "bild"
+                  ? ["Klar · reduziert", "Warm · persönlich", "Editorial · direkt"].map((chip) => (
+                    <button key={chip} onClick={() => setPrompt(chip)}
+                      className="min-h-[32px] border border-border bg-white px-3 py-1 text-[0.62rem] tracking-wide hover:bg-foreground hover:text-background">
+                      {chip}
+                    </button>
+                  ))
+                  : MOVEMENT_CHIPS.map((m) => (
+                    <button key={m.id} onClick={() => toggleMovementChip(m.id)}
+                      className={`min-h-[32px] border px-3 py-1 text-[0.62rem] tracking-wide ${selectedMovementIds.includes(m.id) ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                      {m.label}
+                    </button>
+                  ))}
               </div>
 
               {composedCastingText && (
@@ -1212,12 +1248,23 @@ export default function StudioCampaignNew() {
                   )}
 
                   {chosenModelEntry && (
-                    <div className="mt-4 flex items-center gap-2">
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
                       <span className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Länge</span>
                       {([5, 10] as DurationS[]).map((d) => (
                         <button key={d} onClick={() => setDurationS(d)}
                           className={`min-h-[36px] border px-3 py-1.5 text-[0.68rem] ${durationS === d ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
                           {d}s
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {chosenModelEntry && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">Bewegungsstärke</span>
+                      {Object.keys(cfgScaleOptions).map((k) => (
+                        <button key={k} onClick={() => setMovementStrength(k)}
+                          className={`min-h-[36px] border px-3 py-1.5 text-[0.68rem] ${movementStrength === k ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                          {MOVEMENT_STRENGTH_LABEL[k] ?? k}
                         </button>
                       ))}
                     </div>
