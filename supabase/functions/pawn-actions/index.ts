@@ -90,6 +90,29 @@ async function execute(admin: SupabaseClient, actor: string, source: string, req
         const id = await logAction(admin, actor, source, action, params, { from: fromRow, to: toRow }, { to_synonyms: mergedSyn, moved_products: (prods ?? []).length });
         return { ok: true, id, moved: (prods ?? []).length };
       }
+      case "upsert_cultural_current": {
+        const name = String(params.name ?? "").trim();
+        if (!name) throw new Error("name required");
+        const row = {
+          name,
+          zeitraum: params.zeitraum ? String(params.zeitraum) : null,
+          ausloeser: params.ausloeser ? String(params.ausloeser) : null,
+          praegende_kuenstler: Array.isArray(params.praegende_kuenstler) ? params.praegende_kuenstler : [],
+          visuelle_merkmale: (params.visuelle_merkmale && typeof params.visuelle_merkmale === "object") ? params.visuelle_merkmale : {},
+          ontologie_begriffe: Array.isArray(params.ontologie_begriffe) ? params.ontologie_begriffe as string[] : [],
+          nahe_haeuser: Array.isArray(params.nahe_haeuser) ? params.nahe_haeuser as string[] : [],
+          quellen: Array.isArray(params.quellen) ? params.quellen : [],
+          zuversicht: ["niedrig", "mittel", "hoch"].includes(String(params.zuversicht)) ? String(params.zuversicht) : "mittel",
+          worlds: Array.isArray(params.worlds) ? params.worlds as string[] : [],
+          quelle_typ: String(params.quelle_typ ?? "recherchiert"),
+        };
+        const { data: prev } = await admin.from("cultural_currents").select("*").eq("name", name).maybeSingle();
+        let id: string | null;
+        if (prev) { await admin.from("cultural_currents").update(row as never).eq("name", name); id = (prev as { id: string }).id; }
+        else { const { data: created } = await admin.from("cultural_currents").insert(row as never).select("id").single(); id = (created as { id: string } | null)?.id ?? null; }
+        const logId = await logAction(admin, actor, source, action, params, prev ?? null, { ...row, id });
+        return { ok: true, id: logId, current_id: id };
+      }
       case "set_config": {
         const key = String(params.key ?? "");
         if (!CONFIG_WHITELIST.has(key)) throw new Error(`config key '${key}' not whitelisted`);
@@ -191,6 +214,13 @@ async function undo(admin: SupabaseClient, actor: string, action_id: string) {
         const prev = r.before as Record<string, unknown> | null;
         if (prev) await admin.from("fashion_ontology").update(prev as never).eq("term", term);
         else await admin.from("fashion_ontology").delete().eq("term", term);
+        break;
+      }
+      case "upsert_cultural_current": {
+        const name = String(r.params.name ?? "");
+        const prev = r.before as Record<string, unknown> | null;
+        if (prev) await admin.from("cultural_currents").update(prev as never).eq("name", name);
+        else await admin.from("cultural_currents").delete().eq("name", name);
         break;
       }
       default:

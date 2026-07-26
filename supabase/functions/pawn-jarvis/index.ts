@@ -14,6 +14,7 @@ const GITHUB_REPO = "daoudandiaye98-alt/pawn-prototype";
 const PAWN_ACTIONS = new Set([
   "set_content", "set_image", "upsert_ontology_term", "merge_ontology_terms",
   "set_config", "create_campaign_proposal", "send_notification", "recompute_trends", "set_plan",
+  "upsert_cultural_current",
 ]);
 
 // Statische Liste der site_content-Schlüssel, die der Frontend-Code per useContentValue/contentKey erwartet.
@@ -58,7 +59,7 @@ Zonen-Regel für pawn_action: Zone Grün (Ontologie anlegen/zusammenführen, Tre
 type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
-  | "diagnose" | "evolution" | "wissen"
+  | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
 
@@ -264,6 +265,16 @@ async function queryPawn(admin: SupabaseClient, input: { topic?: string }): Prom
     const { data } = await admin.from("fashion_ontology").select("term, kind, world, synonyms, learned").order("updated_at", { ascending: false }).limit(50);
     out.ontologie = data ?? [];
   }
+  if (topic === "cultural_currents") {
+    const { data } = await admin.from("cultural_currents")
+      .select("id, name, zeitraum, ausloeser, praegende_kuenstler, visuelle_merkmale, ontologie_begriffe, nahe_haeuser, zuversicht, worlds, quelle_typ, updated_at")
+      .order("updated_at", { ascending: false }).limit(30);
+    out.stroemungen = data ?? [];
+  }
+  if (topic === "haus_bewegungen") {
+    const { data } = await admin.from("designers").select("id, brand_name, house_number, video_taste_weights").eq("status", "active").limit(50);
+    out.haus_bewegungen = data ?? [];
+  }
   if (topic === "config") {
     const { data } = await admin.from("ai_config").select("key, value, updated_at");
     out.konfiguration = data ?? [];
@@ -446,7 +457,7 @@ async function createIssue(input: { title?: string; body?: string; files?: strin
 
 // --- Zonen: welche pawn_action-Aktion läuft sofort, welche wartet auf Bestätigung ---
 function zoneForAction(action: string, params: Record<string, unknown>): Zone {
-  if (["upsert_ontology_term", "merge_ontology_terms", "recompute_trends"].includes(action)) return "gruen";
+  if (["upsert_ontology_term", "merge_ontology_terms", "recompute_trends", "upsert_cultural_current"].includes(action)) return "gruen";
   if (action === "send_notification") return String(params?.target ?? "") === "admins" ? "gruen" : "gelb";
   if (action === "set_content") return "gelb";
   if (action === "set_config") return String(params?.key ?? "") === "directives" ? "gelb" : "rot";
@@ -1532,14 +1543,14 @@ const TOOLS = [
   { type: "web_search_20250305", name: "web_search" },
   {
     name: "query_pawn",
-    description: "Liest zusammengefasste, echte Kennzahlen aus praktisch jeder PAWN-Tabelle (Leads, Bestellungen, Designer, Produkte, Kampagnen, Ontologie, Konfiguration, Nachrichten-Kategorien, Ereignisse, Trends). Nur lesend, nie personenbezogene Rohdaten (keine E-Mails, Zahlungsdaten, Bewerbungsanhänge oder Nachrichteninhalte).",
+    description: "Liest zusammengefasste, echte Kennzahlen aus praktisch jeder PAWN-Tabelle (Leads, Bestellungen, Designer, Produkte, Kampagnen, Ontologie, Kulturströmungen, Haus-Bewegungsvorlieben, Konfiguration, Nachrichten-Kategorien, Ereignisse, Trends). Nur lesend, nie personenbezogene Rohdaten (keine E-Mails, Zahlungsdaten, Bewerbungsanhänge oder Nachrichteninhalte).",
     input_schema: {
       type: "object",
       properties: {
         topic: {
           type: "string",
-          enum: ["all", "leads", "orders", "designers", "products", "events", "trends", "product_details", "designer_details", "campaigns", "ontology", "config", "messages"],
-          description: "Welcher Ausschnitt der Kennzahlen. 'all' für die Basis-Übersicht, die anderen für Details.",
+          enum: ["all", "leads", "orders", "designers", "products", "events", "trends", "product_details", "designer_details", "campaigns", "ontology", "cultural_currents", "haus_bewegungen", "config", "messages"],
+          description: "Welcher Ausschnitt der Kennzahlen. 'all' für die Basis-Übersicht, die anderen für Details. 'cultural_currents' liest die bekannten Kulturströmungen, 'haus_bewegungen' die Bewegungs-Geschmacksgewichte je Haus.",
         },
       },
     },
@@ -1581,7 +1592,7 @@ const TOOLS = [
   },
   {
     name: "pawn_action",
-    description: "Führt eine Admin-Aktion aus der Whitelist von pawn-actions aus (set_content, set_image, upsert_ontology_term, merge_ontology_terms, set_config, create_campaign_proposal, send_notification, recompute_trends, set_plan). Zone Grün/Gelb laufen sofort. Zone Rot (Geld, Pläne, Veröffentlichung, Löschung, Außenwirkung) wartet unter 'Wartet auf dich' auf Daoudas Bestätigung.",
+    description: "Führt eine Admin-Aktion aus der Whitelist von pawn-actions aus (set_content, set_image, upsert_ontology_term, merge_ontology_terms, upsert_cultural_current, set_config, create_campaign_proposal, send_notification, recompute_trends, set_plan). Zone Grün/Gelb laufen sofort. Zone Rot (Geld, Pläne, Veröffentlichung, Löschung, Außenwirkung) wartet unter 'Wartet auf dich' auf Daoudas Bestätigung. upsert_cultural_current-Parameter: name (Pflicht, Schlüssel für Update-statt-Neuanlage), zeitraum, ausloeser, praegende_kuenstler (Array), visuelle_merkmale (Objekt, z.B. {silhouette, material, palette, haltung}), ontologie_begriffe (Array bestehender fashion_ontology-Begriffe), nahe_haeuser (Array Designer-IDs), quellen (Array {title, url}), zuversicht ('niedrig'|'mittel'|'hoch'), worlds (Array), quelle_typ ('recherchiert' Standard).",
     input_schema: {
       type: "object",
       properties: {
@@ -1720,8 +1731,20 @@ function promptForMode(mode: Mode, prompt?: string): { userMessage: string; repo
   }
   if (mode === "wissen") {
     return {
-      userMessage: `Heute ist ${today}. Das ist dein Wissenslauf: Schau dir mit query_pawn (topic: "ontology") an, welche Welt (Mode, Interior, Kunst) am wenigsten Ontologie-Begriffe hat — das ist die größte Lücke. Wähle EIN konkretes Thema in dieser Lücke (z.B. "aktuelle Materialtrends Interior", "Preispsychologie bei Unikaten", "aufkommende Slow-Fashion-Ästhetiken" — oder ein eigenes, passenderes Thema). Recherchiere es mit web_search. Prüfe danach mit query_pawn (topic: "ontology") gründlich, welche Begriffe und Synonyme schon existieren — lege nie einen Begriff doppelt an: existiert er schon, ergänze nur fehlende Synonyme über upsert_ontology_term (dieselbe Aktion, mit dem bestehenden Begriff und einer erweiterten Synonymliste); existiert er nicht, lege ihn neu an. Ziel: 5 bis 15 neue oder erweiterte Ontologie-Begriffe (kind, world, synonyms, learned=true). Merke dir außerdem mit remember 3 bis 7 kurze, konkrete Erkenntnisse über Stil, Geschmack oder Kaufpsychologie aus der Recherche — jede mit kurzer Quellenangabe im Text. Fasse am Ende in einfachem Deutsch zusammen, welches Thema du gewählt hast, was du gelernt hast und welche Begriffe/Erkenntnisse neu sind. Maximal 250 Wörter Fließtext (die Werkzeug-Aufrufe zählen nicht mit).`,
+      userMessage: `Heute ist ${today}. Das ist dein Wissenslauf — er hat zwei Teile: Vokabular und Zusammenhang.
+
+TEIL 1 — Vokabular: Schau dir mit query_pawn (topic: "ontology") an, welche Welt (Mode, Interior, Kunst) am wenigsten Ontologie-Begriffe hat — das ist die größte Lücke. Wähle EIN konkretes Thema in dieser Lücke (z.B. "aktuelle Materialtrends Interior", "Preispsychologie bei Unikaten", "aufkommende Slow-Fashion-Ästhetiken" — oder ein eigenes, passenderes Thema). Recherchiere es mit web_search. Prüfe danach mit query_pawn (topic: "ontology") gründlich, welche Begriffe und Synonyme schon existieren — lege nie einen Begriff doppelt an: existiert er schon, ergänze nur fehlende Synonyme über pawn_action mit action "upsert_ontology_term" (mit dem bestehenden Begriff und einer erweiterten Synonymliste); existiert er nicht, lege ihn neu an. Ziel: 5 bis 15 neue oder erweiterte Ontologie-Begriffe (kind, world, synonyms, learned=true).
+
+TEIL 2 — Zusammenhang: Bleib beim selben Thema und geh eine Ebene tiefer. Recherchiere mit web_search, welche kulturelle Strömung gerade dahintersteht: was in der Welt geschieht (gesellschaftlich, politisch, ökologisch, technologisch), welche Künstler oder Werke sie prägen, wie sie aussieht (Silhouette, Material, Palette, Haltung). Prüfe mit query_pawn (topic: "cultural_currents"), ob es diese Strömung — oder eine sehr ähnliche — schon gibt; existiert sie, ergänze sie über pawn_action mit action "upsert_cultural_current" (denselben Namen verwenden, damit ergänzt statt dupliziert wird); existiert sie nicht, lege sie neu an. Verknüpfe die Ontologie-Begriffe aus Teil 1 im Feld ontologie_begriffe. Gib jede Quelle im Feld quellen an (title, url) und setze zuversicht ehrlich (niedrig/mittel/hoch je nach Beleglage) — niemals eine Strömung erfinden, die die Recherche nicht hergibt.
+
+Merke dir außerdem mit remember 3 bis 7 kurze, konkrete Erkenntnisse über Stil, Geschmack oder Kaufpsychologie aus der Recherche — jede mit kurzer Quellenangabe im Text. Fasse am Ende in einfachem Deutsch zusammen, welches Thema du gewählt hast, welche Strömung dahintersteht und was neu ist. Maximal 300 Wörter Fließtext (die Werkzeug-Aufrufe zählen nicht mit).`,
       reportKind: "wissen", title: `Wissenslauf · ${today}`,
+    };
+  }
+  if (mode === "zeitgeist") {
+    return {
+      userMessage: `Heute ist ${today}. Das ist dein wöchentlicher Zeitgeist-Lauf: Lies mit query_pawn die drei Themen "cultural_currents" (bekannte Strömungen), "trends" (Trend-Momentum der letzten 24h) und "haus_bewegungen" (Bewegungs-Geschmacksgewichte je Haus). Ordne die Trend-Zahlen den Strömungen zu, wo ein Zusammenhang erkennbar ist — nicht bloß zählen, sondern begründen ("diese Silhouette steigt, weil [Strömung X] gerade [Grund]"). Wenn eine steigende Bewegung zu keiner bekannten Strömung passt, sag das ehrlich, statt eine zu erfinden. Schau auch, welche Häuser (aus haus_bewegungen) einer Strömung sichtbar nahestehen, und ergänze das bei Bedarf über pawn_action mit action "upsert_cultural_current" im Feld nahe_haeuser (denselben Namen der Strömung verwenden, damit ergänzt statt dupliziert wird). Schreibe eine kurze, begründete Zeitgeist-Einschätzung in einfachem Deutsch für Daouda: welche Strömungen gerade an Fahrt gewinnen, welche abklingen, was das für die nächste Kuratierung bedeuten könnte. Ohne belastbare Datenlage lieber knapp "noch nicht genug Signal" schreiben als zu spekulieren. Maximal 250 Wörter Fließtext.`,
+      reportKind: "zeitgeist", title: `Zeitgeist · ${today}`,
     };
   }
   if (mode === "recherche") {
@@ -1755,7 +1778,7 @@ Deno.serve(async (req) => {
     const mode = String(body.mode ?? "") as Mode;
     const validModes: Mode[] = [
       "morgenbericht", "wochenbericht", "recherche", "befehl",
-      "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen",
+      "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
@@ -1767,7 +1790,7 @@ Deno.serve(async (req) => {
     // JARVIS_CRON_SECRET ausgelöst werden (Body-Feld "secret"). Befehle vom Menschen (befehl, recherche,
     // confirm_action, reject_action, wochenbericht) bleiben strikt admin-only.
     const CRON_TRIGGERABLE_MODES: Mode[] = [
-      "heartbeat", "wissen", "diagnose", "evolution", "morgenbericht",
+      "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
@@ -1970,8 +1993,9 @@ Deno.serve(async (req) => {
     const system = basePrompt + memoryBlock(memories);
     const { userMessage, reportKind, title } = promptForMode(mode, prompt);
 
-    // Der Wissenslauf braucht deutlich mehr Werkzeug-Aufrufe (viele einzelne Ontologie-Begriffe/Merksätze).
-    const maxTurns = mode === "wissen" ? 14 : MAX_TOOL_TURNS;
+    // Der Wissens- und der Zeitgeist-Lauf brauchen deutlich mehr Werkzeug-Aufrufe (viele einzelne
+    // Ontologie-Begriffe/Merksätze bzw. mehrere query_pawn-Themen vor der eigentlichen Einordnung).
+    const maxTurns = (mode === "wissen" || mode === "zeitgeist") ? 14 : MAX_TOOL_TURNS;
     const { text, tokensUsed, error } = await runAgentLoop(apiKey, admin, asCaller, system, userMessage, maxTurns);
     const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
 

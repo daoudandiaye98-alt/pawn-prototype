@@ -549,6 +549,57 @@ export type Database = {
           },
         ]
       }
+      cultural_currents: {
+        Row: {
+          ausloeser: string | null
+          created_at: string
+          id: string
+          name: string
+          nahe_haeuser: string[]
+          ontologie_begriffe: string[]
+          praegende_kuenstler: Json
+          quelle_typ: string
+          quellen: Json
+          updated_at: string
+          visuelle_merkmale: Json
+          worlds: string[]
+          zeitraum: string | null
+          zuversicht: string
+        }
+        Insert: {
+          ausloeser?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          nahe_haeuser?: string[]
+          ontologie_begriffe?: string[]
+          praegende_kuenstler?: Json
+          quelle_typ?: string
+          quellen?: Json
+          updated_at?: string
+          visuelle_merkmale?: Json
+          worlds?: string[]
+          zeitraum?: string | null
+          zuversicht?: string
+        }
+        Update: {
+          ausloeser?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          nahe_haeuser?: string[]
+          ontologie_begriffe?: string[]
+          praegende_kuenstler?: Json
+          quelle_typ?: string
+          quellen?: Json
+          updated_at?: string
+          visuelle_merkmale?: Json
+          worlds?: string[]
+          zeitraum?: string | null
+          zuversicht?: string
+        }
+        Relationships: []
+      }
       curated_collections: {
         Row: {
           created_at: string
