@@ -1328,6 +1328,47 @@ export type Database = {
           },
         ]
       }
+      house_milestones: {
+        Row: {
+          designer_id: string
+          eigene_welt_at: string | null
+          erste_kampagne_at: string | null
+          erste_premiere_at: string | null
+          erstes_stueck_at: string | null
+          erster_verkauf_at: string | null
+          updated_at: string
+          verwandlung_at: string | null
+        }
+        Insert: {
+          designer_id: string
+          eigene_welt_at?: string | null
+          erste_kampagne_at?: string | null
+          erste_premiere_at?: string | null
+          erstes_stueck_at?: string | null
+          erster_verkauf_at?: string | null
+          updated_at?: string
+          verwandlung_at?: string | null
+        }
+        Update: {
+          designer_id?: string
+          eigene_welt_at?: string | null
+          erste_kampagne_at?: string | null
+          erste_premiere_at?: string | null
+          erstes_stueck_at?: string | null
+          erster_verkauf_at?: string | null
+          updated_at?: string
+          verwandlung_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_milestones_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       house_models: {
         Row: {
           altersgruppe: string | null
@@ -2574,6 +2615,10 @@ export type Database = {
       }
       recompute_brand_dna: {
         Args: { _designer_id: string }
+        Returns: undefined
+      }
+      recompute_house_milestones: {
+        Args: { p_designer_id: string }
         Returns: undefined
       }
       reject_designer: {

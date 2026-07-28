@@ -13,6 +13,7 @@ import { Languages } from "lucide-react";
 import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
 import { resolveTheme, type HouseTheme } from "@/features/houseTheme/theme";
 import { Schwelle } from "@/components/palace/Schwelle";
+import { currentVerwandlungGlyph, type HouseMilestones } from "@/features/verwandlung";
 
 interface DbDesigner {
   id: string;
@@ -125,6 +126,8 @@ const DesignerPage = () => {
   const [blockMedia, setBlockMedia] = useState<BlockMediaLite[]>([]);
   const [blockProducts, setBlockProducts] = useState<BlockProductLite[]>([]);
   const [houseTheme, setHouseTheme] = useState<HouseTheme | null>(null);
+  // Teil 15c: dezentes Zeichen der Verwandlungsstufe auf der Hausseite.
+  const [houseMilestones, setHouseMilestones] = useState<HouseMilestones | null>(null);
   // Teil 15b: die Schwelle einmalig je Haus-Besuch zeigen, nicht bei jedem Re-Render.
   const [schwelleActive, setSchwelleActive] = useState(true);
   useEffect(() => { setSchwelleActive(true); }, [dbDesigner?.id]);
@@ -203,17 +206,19 @@ const DesignerPage = () => {
     if (!dbDesigner?.page_published_at) return;
     let cancelled = false;
     (async () => {
-      const [{ data: b }, { data: m }, { data: p }, { data: t }] = await Promise.all([
+      const [{ data: b }, { data: m }, { data: p }, { data: t }, { data: ms }] = await Promise.all([
         supabase.from("designer_page_blocks" as never).select("id, kind, position, content").eq("designer_id", dbDesigner.id).order("position"),
         supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", dbDesigner.id),
         supabase.from("products").select("id, name, slug, price, image_url").eq("designer_id", dbDesigner.id),
         supabase.from("house_themes" as never).select("*").eq("designer_id", dbDesigner.id).eq("is_current", true).maybeSingle(),
+        supabase.from("house_milestones" as never).select("*").eq("designer_id", dbDesigner.id).maybeSingle(),
       ]);
       if (cancelled) return;
       setPageBlocks((b ?? []) as unknown as PageBlockRow[]);
       setBlockMedia((m ?? []) as unknown as BlockMediaLite[]);
       setBlockProducts((p ?? []) as unknown as BlockProductLite[]);
       setHouseTheme(t ? resolveTheme(t as unknown as Partial<HouseTheme>) : null);
+      setHouseMilestones((ms as unknown as HouseMilestones) ?? null);
     })();
     return () => { cancelled = true; };
   }, [dbDesigner]);
@@ -350,6 +355,18 @@ const DesignerPage = () => {
           <Schwelle houseName={dbDesigner.brand_name} theme={houseTheme} onDone={() => setSchwelleActive(false)} />
         )}
         <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
+        {/* Teil 15c: dezentes Zeichen der Verwandlungsstufe — nie mehr als ein stiller Hinweis. */}
+        {houseMilestones && (() => {
+          const sign = currentVerwandlungGlyph(houseMilestones);
+          return (
+            <div
+              className="pointer-events-none fixed bottom-4 left-4 z-10 flex h-8 w-8 items-center justify-center border-[1.5px] border-black bg-white font-serif text-base opacity-70"
+              title={sign.label}
+            >
+              {sign.glyph}
+            </div>
+          );
+        })()}
       </PalaceLayout>
     );
   }

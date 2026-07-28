@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSiteContent } from "@/lib/siteContent";
 
 interface HouseSpread {
+  id: string;
   slug: string;
   brand_name: string;
   house_number: number | null;
@@ -25,6 +26,9 @@ export default function Ausgabe() {
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
   const [houses, setHouses] = useState<HouseSpread[]>([]);
   const [loading, setLoading] = useState(true);
+  // Teil 15c: die Halle zeigt die Vielfalt — ein Farbakzent aus dem Haus-Thema je Karte,
+  // ohne dass die Halle selbst ihre Strenge verliert.
+  const [accentById, setAccentById] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -32,11 +36,21 @@ export default function Ausgabe() {
       try {
         const { data } = await supabase
           .from("designers")
-          .select("slug, brand_name, house_number, hero_image_url, portrait_url, page_published_at")
+          .select("id, slug, brand_name, house_number, hero_image_url, portrait_url, page_published_at")
           .eq("status", "active")
           .not("page_published_at", "is", null)
           .order("page_published_at", { ascending: false });
-        if (!cancelled) setHouses((data ?? []) as unknown as HouseSpread[]);
+        const rows = (data ?? []) as unknown as HouseSpread[];
+        if (!cancelled) setHouses(rows);
+        if (rows.length > 0) {
+          const { data: themes } = await supabase.from("house_themes" as never)
+            .select("designer_id, farbwelt").in("designer_id", rows.map((h) => h.id)).eq("is_current", true);
+          const map: Record<string, string> = {};
+          for (const t of (themes ?? []) as unknown as Array<{ designer_id: string; farbwelt: { accent?: string } }>) {
+            if (t.farbwelt?.accent) map[t.designer_id] = t.farbwelt.accent;
+          }
+          if (!cancelled) setAccentById(map);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -75,8 +89,11 @@ export default function Ausgabe() {
             <ul className="divide-y divide-[rgba(0,0,0,.18)] border-y border-[rgba(0,0,0,.18)]">
               {houses.map((h, i) => (
                 <Reveal key={h.slug} delay={Math.min(400, i * 60)}>
-                  <li>
-                    <Link to={`/designer/${h.slug}`} className="group grid grid-cols-1 items-center gap-6 py-10 md:grid-cols-[120px_1fr_auto] md:gap-10">
+                  <li className="relative">
+                    {accentById[h.id] && (
+                      <span className="absolute left-0 top-0 h-full w-[3px]" style={{ background: accentById[h.id] }} aria-hidden="true" />
+                    )}
+                    <Link to={`/designer/${h.slug}`} className="group grid grid-cols-1 items-center gap-6 py-10 pl-4 md:grid-cols-[120px_1fr_auto] md:gap-10">
                       <span className="palace-eyebrow text-[#7C7972]">№ {String(h.house_number ?? i + 1).padStart(3, "0")}</span>
                       <div className="flex items-center gap-6">
                         <div className="h-20 w-16 shrink-0 overflow-hidden md:h-28 md:w-20">

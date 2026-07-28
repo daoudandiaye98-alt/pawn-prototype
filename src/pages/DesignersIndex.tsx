@@ -1,13 +1,37 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable, useContentValue } from "@/components/palace/Editable";
 import { useStore, marketplaceSelectors } from "@/core";
+import { supabase } from "@/integrations/supabase/client";
 
 const DesignersIndex = () => {
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
   const atelierCta = useContentValue("dindex_item_cta", "Zum Atelier →");
+
+  // Teil 15c: die Halle zeigt die Vielfalt — ein Farbakzent aus dem Haus-Thema je Karte.
+  const [accentBySlug, setAccentBySlug] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (designers.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data: rows } = await supabase.from("designers").select("id, slug").in("slug", designers.map((d) => d.slug));
+      const bySlug = new Map(((rows ?? []) as { id: string; slug: string }[]).map((r) => [r.id, r.slug]));
+      if (bySlug.size === 0) return;
+      const { data: themes } = await supabase.from("house_themes" as never)
+        .select("designer_id, farbwelt").in("designer_id", Array.from(bySlug.keys())).eq("is_current", true);
+      const map: Record<string, string> = {};
+      for (const t of (themes ?? []) as unknown as Array<{ designer_id: string; farbwelt: { accent?: string } }>) {
+        const slug = bySlug.get(t.designer_id);
+        if (slug && t.farbwelt?.accent) map[slug] = t.farbwelt.accent;
+      }
+      if (!cancelled) setAccentBySlug(map);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designers.length]);
   return (
     <PalaceLayout transparentHeader={false}>
       {/* Hero */}
@@ -56,7 +80,12 @@ const DesignersIndex = () => {
               <Reveal key={d.slug} delay={Math.min(400, i * 40)}>
                 <li>
                   <Link to={`/designer/${d.slug}`} className="group block">
-                    <EditorialImage seed={`dir-${d.slug}`} ratio="4/5" />
+                    <div className="relative">
+                      {accentBySlug[d.slug] && (
+                        <span className="absolute left-0 top-0 z-10 h-[3px] w-10" style={{ background: accentBySlug[d.slug] }} aria-hidden="true" />
+                      )}
+                      <EditorialImage seed={`dir-${d.slug}`} ratio="4/5" />
+                    </div>
                     <div className="mt-4 flex items-baseline justify-between gap-4">
                       <div>
                         <p className="palace-eyebrow text-[#7C7972]">

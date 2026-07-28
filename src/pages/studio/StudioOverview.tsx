@@ -7,6 +7,7 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders } from "@/features/studio/useDesignerOrders";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { useNextMove } from "@/features/studio/nextMove";
+import { useHouseMilestones, nextVerwandlungStep, VERWANDLUNG_STEPS } from "@/features/verwandlung";
 import { useDisplayName } from "@/lib/displayName";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -89,6 +90,7 @@ export default function StudioOverview() {
   const { designer, loading } = useMyDesigner();
   const { lines } = useDesignerOrders(designer?.id);
   const { level } = useDesignerLevel(designer?.id);
+  const { milestones } = useHouseMilestones(designer?.id);
   const { firstName } = useDisplayName();
   const copilot = useCopilot();
   const { series, ordersSeries, wishSeries } = useDaySeries(designer?.id);
@@ -274,6 +276,40 @@ export default function StudioOverview() {
           </ol>
         </section>
       )}
+
+      {/* Teil 15c: Die Verwandlung — Stufen aus echtem Tun, niemals käuflich. */}
+      <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">
+            {milestones.verwandlung_at ? "Die Verwandlung ist erreicht" : "Die Verwandlung"}
+          </p>
+          {milestones.verwandlung_at && <span className="font-serif text-lg leading-none">♛</span>}
+        </div>
+        <ol className="mt-4 flex flex-wrap items-stretch gap-2">
+          {VERWANDLUNG_STEPS.map((step) => {
+            const done = !!milestones[step.key];
+            const isNext = !done && nextVerwandlungStep(milestones)?.key === step.key;
+            const content = (
+              <div className={`flex min-h-[64px] flex-1 flex-col items-center justify-center gap-1 border-[1.5px] px-3 py-2 text-center ${
+                done ? "border-foreground bg-foreground text-background"
+                : isNext ? "border-foreground bg-white"
+                : "border-border bg-white text-muted-foreground"
+              }`}>
+                <span className="font-serif text-lg leading-none">{step.glyph}</span>
+                <span className="text-[0.55rem] uppercase tracking-wide leading-tight">{step.label}</span>
+              </div>
+            );
+            return (
+              <li key={step.key} className="min-w-[110px] flex-1">
+                {isNext ? <Link to={step.to}>{content}</Link> : content}
+              </li>
+            );
+          })}
+        </ol>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Jede Stufe entsteht aus echtem Tun — nie durch einen Plan. Pläne kaufen Werkzeuge, keine Ränge.
+        </p>
+      </section>
 
       {/* World filter chips */}
       {availableWorlds.length > 1 && (
