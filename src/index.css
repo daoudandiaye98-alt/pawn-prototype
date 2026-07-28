@@ -302,6 +302,7 @@
 
   .palace .house-theme .house-hair { border-color: color-mix(in srgb, var(--house-fg, #000) 18%, transparent); }
   .palace .house-theme .house-accent { color: var(--house-accent, #000); }
+  .palace .house-theme .house-ink { color: var(--house-fg, #000); }
   .palace .house-theme .house-media { border-radius: var(--house-radius, 0px); overflow: hidden; }
   .palace .house-theme .house-gap-y { padding-top: var(--house-gap-y, 4rem); padding-bottom: var(--house-gap-y, 4rem); }
 

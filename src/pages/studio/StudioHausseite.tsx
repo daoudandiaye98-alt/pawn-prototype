@@ -23,7 +23,18 @@ const BLOCK_LABEL: Record<PageBlockKind, string> = {
   auftakt: "Auftaktbild/-video", editorial_text: "Editorial-Text", zitat: "Zitat",
   produktreihe: "Produktreihe", lookbook_streifen: "Lookbook-Streifen",
   banner_seitlich: "Seitlicher Banner", banner_vollbreite: "Vollbreiten-Banner",
+  ueberlappend: "Überlappend (zwei Medien)",
 };
+
+const ABSTAND_OPTIONS = [
+  { value: "", label: "Wie Flächenrhythmus des Themas" },
+  { value: "eng", label: "Eng" }, { value: "ruhig", label: "Ruhig" },
+  { value: "luftig", label: "Luftig" }, { value: "episch", label: "Episch" },
+] as const;
+/** Bausteine, die eine eigene Video-Tonspur erlauben können. */
+const TON_FAEHIG: PageBlockKind[] = ["auftakt", "banner_seitlich", "banner_vollbreite", "lookbook_streifen"];
+/** Bausteine mit eigenem Abstand (house-gap-y-getrieben). */
+const ABSTAND_FAEHIG: PageBlockKind[] = ["editorial_text", "zitat", "produktreihe", "banner_seitlich", "ueberlappend"];
 
 interface ThemeRow extends HouseTheme { id: string; version: number; is_current: boolean; created_at: string }
 
@@ -37,6 +48,7 @@ export default function StudioHausseite() {
 
   const [themeHistory, setThemeHistory] = useState<ThemeRow[]>([]);
   const [vibeText, setVibeText] = useState("");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "telefon">("desktop");
   const [themeBusy, setThemeBusy] = useState(false);
   const currentTheme = themeHistory.find((t) => t.is_current) ?? null;
 
@@ -242,8 +254,20 @@ export default function StudioHausseite() {
         </div>
 
         <div className="lg:sticky lg:top-20 lg:self-start">
-          <p className="editorial-eyebrow mb-3">Vorschau</p>
-          <div className="max-h-[80vh] overflow-y-auto border border-border">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="editorial-eyebrow">Vorschau — vor dem Veröffentlichen prüfen</p>
+            <div className="flex border border-border">
+              <button onClick={() => setPreviewDevice("desktop")}
+                className={`min-h-[32px] px-3 text-[0.6rem] uppercase tracking-widest ${previewDevice === "desktop" ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                Bildschirm
+              </button>
+              <button onClick={() => setPreviewDevice("telefon")}
+                className={`min-h-[32px] border-l border-border px-3 text-[0.6rem] uppercase tracking-widest ${previewDevice === "telefon" ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                Telefon
+              </button>
+            </div>
+          </div>
+          <div className={`mx-auto max-h-[80vh] overflow-y-auto border border-border ${previewDevice === "telefon" ? "max-w-[390px]" : ""}`}>
             {blocks.length === 0 ? (
               <p className="p-8 text-center text-sm text-muted-foreground">Noch nichts zu zeigen.</p>
             ) : (
@@ -269,66 +293,95 @@ function BlockEditor({
     </select>
   );
 
-  switch (block.kind) {
-    case "auftakt":
-    case "banner_seitlich":
-    case "banner_vollbreite":
-      return mediaPicker((c.media_asset_id as string) ?? "", (id) => onChange({ ...c, media_asset_id: id }));
-    case "editorial_text":
-      return (
-        <div className="mt-2 space-y-2">
-          <input defaultValue={(c.heading as string) ?? ""} onBlur={(e) => onChange({ ...c, heading: e.target.value })}
-            placeholder="Überschrift" className="w-full border border-border bg-white p-2 text-sm" />
-          <textarea defaultValue={(c.text as string) ?? ""} onBlur={(e) => onChange({ ...c, text: e.target.value })}
-            placeholder="Text" rows={3} className="w-full border border-border bg-white p-2 text-sm" />
-        </div>
-      );
-    case "zitat":
-      return (
-        <div className="mt-2 space-y-2">
-          <textarea defaultValue={(c.quote as string) ?? ""} onBlur={(e) => onChange({ ...c, quote: e.target.value })}
-            placeholder="Zitat" rows={2} className="w-full border border-border bg-white p-2 text-sm" />
-          <input defaultValue={(c.author as string) ?? ""} onBlur={(e) => onChange({ ...c, author: e.target.value })}
-            placeholder="Wer sagt das?" className="w-full border border-border bg-white p-2 text-sm" />
-        </div>
-      );
-    case "produktreihe": {
-      const ids = new Set((c.product_ids as string[]) ?? []);
-      return (
-        <div className="mt-2 grid max-h-40 grid-cols-2 gap-1 overflow-y-auto text-sm">
-          {products.map((p) => (
-            <label key={p.id} className="flex items-center gap-1.5">
-              <input type="checkbox" checked={ids.has(p.id)} onChange={(e) => {
-                const next = new Set(ids);
-                if (e.target.checked) next.add(p.id); else next.delete(p.id);
-                onChange({ ...c, product_ids: Array.from(next) });
-              }} />
-              {p.name}
-            </label>
-          ))}
-          {products.length === 0 && <p className="col-span-2 text-muted-foreground">Noch keine Produkte.</p>}
-        </div>
-      );
+  const body = (() => {
+    switch (block.kind) {
+      case "auftakt":
+      case "banner_seitlich":
+      case "banner_vollbreite":
+        return mediaPicker((c.media_asset_id as string) ?? "", (id) => onChange({ ...c, media_asset_id: id }));
+      case "editorial_text":
+        return (
+          <div className="mt-2 space-y-2">
+            <input defaultValue={(c.heading as string) ?? ""} onBlur={(e) => onChange({ ...c, heading: e.target.value })}
+              placeholder="Überschrift" className="w-full border border-border bg-white p-2 text-sm" />
+            <textarea defaultValue={(c.text as string) ?? ""} onBlur={(e) => onChange({ ...c, text: e.target.value })}
+              placeholder="Text" rows={3} className="w-full border border-border bg-white p-2 text-sm" />
+          </div>
+        );
+      case "zitat":
+        return (
+          <div className="mt-2 space-y-2">
+            <textarea defaultValue={(c.quote as string) ?? ""} onBlur={(e) => onChange({ ...c, quote: e.target.value })}
+              placeholder="Zitat" rows={2} className="w-full border border-border bg-white p-2 text-sm" />
+            <input defaultValue={(c.author as string) ?? ""} onBlur={(e) => onChange({ ...c, author: e.target.value })}
+              placeholder="Wer sagt das?" className="w-full border border-border bg-white p-2 text-sm" />
+          </div>
+        );
+      case "produktreihe": {
+        const ids = new Set((c.product_ids as string[]) ?? []);
+        return (
+          <div className="mt-2 grid max-h-40 grid-cols-2 gap-1 overflow-y-auto text-sm">
+            {products.map((p) => (
+              <label key={p.id} className="flex items-center gap-1.5">
+                <input type="checkbox" checked={ids.has(p.id)} onChange={(e) => {
+                  const next = new Set(ids);
+                  if (e.target.checked) next.add(p.id); else next.delete(p.id);
+                  onChange({ ...c, product_ids: Array.from(next) });
+                }} />
+                {p.name}
+              </label>
+            ))}
+            {products.length === 0 && <p className="col-span-2 text-muted-foreground">Noch keine Produkte.</p>}
+          </div>
+        );
+      }
+      case "lookbook_streifen": {
+        const ids = new Set((c.media_asset_ids as string[]) ?? []);
+        return (
+          <div className="mt-2 grid max-h-40 grid-cols-2 gap-1 overflow-y-auto text-sm">
+            {media.map((m) => (
+              <label key={m.id} className="flex items-center gap-1.5">
+                <input type="checkbox" checked={ids.has(m.id)} onChange={(e) => {
+                  const next = new Set(ids);
+                  if (e.target.checked) next.add(m.id); else next.delete(m.id);
+                  onChange({ ...c, media_asset_ids: Array.from(next) });
+                }} />
+                {m.kind === "video" ? "🎬" : "🖼"} {m.id.slice(0, 8)}
+              </label>
+            ))}
+            {media.length === 0 && <p className="col-span-2 text-muted-foreground">Noch nichts in der Mediathek.</p>}
+          </div>
+        );
+      }
+      case "ueberlappend":
+        return (
+          <div className="mt-2 space-y-2">
+            <p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">Hinteres Medium</p>
+            {mediaPicker((c.media_asset_id_a as string) ?? "", (id) => onChange({ ...c, media_asset_id_a: id }))}
+            <p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">Vorderes Medium (versetzt)</p>
+            {mediaPicker((c.media_asset_id_b as string) ?? "", (id) => onChange({ ...c, media_asset_id_b: id }))}
+          </div>
+        );
+      default:
+        return null;
     }
-    case "lookbook_streifen": {
-      const ids = new Set((c.media_asset_ids as string[]) ?? []);
-      return (
-        <div className="mt-2 grid max-h-40 grid-cols-2 gap-1 overflow-y-auto text-sm">
-          {media.map((m) => (
-            <label key={m.id} className="flex items-center gap-1.5">
-              <input type="checkbox" checked={ids.has(m.id)} onChange={(e) => {
-                const next = new Set(ids);
-                if (e.target.checked) next.add(m.id); else next.delete(m.id);
-                onChange({ ...c, media_asset_ids: Array.from(next) });
-              }} />
-              {m.kind === "video" ? "🎬" : "🖼"} {m.id.slice(0, 8)}
-            </label>
-          ))}
-          {media.length === 0 && <p className="col-span-2 text-muted-foreground">Noch nichts in der Mediathek.</p>}
-        </div>
-      );
-    }
-    default:
-      return null;
-  }
+  })();
+
+  return (
+    <>
+      {body}
+      {ABSTAND_FAEHIG.includes(block.kind) && (
+        <select value={(c.abstand as string) ?? ""} onChange={(e) => onChange({ ...c, abstand: e.target.value || undefined })}
+          className="mt-2 w-full border border-border bg-white p-2 text-sm">
+          {ABSTAND_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      )}
+      {TON_FAEHIG.includes(block.kind) && (
+        <label className="mt-2 flex items-center gap-1.5 text-sm">
+          <input type="checkbox" checked={!!c.ton} onChange={(e) => onChange({ ...c, ton: e.target.checked })} />
+          Ton erlauben (Video startet trotzdem stumm, Besucher können ihn einschalten)
+        </label>
+      )}
+    </>
+  );
 }
