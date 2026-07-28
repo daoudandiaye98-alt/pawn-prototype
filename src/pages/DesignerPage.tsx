@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { Languages } from "lucide-react";
 import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
 import { resolveTheme, type HouseTheme } from "@/features/houseTheme/theme";
+import { Schwelle } from "@/components/palace/Schwelle";
 
 interface DbDesigner {
   id: string;
@@ -124,6 +125,9 @@ const DesignerPage = () => {
   const [blockMedia, setBlockMedia] = useState<BlockMediaLite[]>([]);
   const [blockProducts, setBlockProducts] = useState<BlockProductLite[]>([]);
   const [houseTheme, setHouseTheme] = useState<HouseTheme | null>(null);
+  // Teil 15b: die Schwelle einmalig je Haus-Besuch zeigen, nicht bei jedem Re-Render.
+  const [schwelleActive, setSchwelleActive] = useState(true);
+  useEffect(() => { setSchwelleActive(true); }, [dbDesigner?.id]);
 
 
   useEffect(() => {
@@ -342,6 +346,9 @@ const DesignerPage = () => {
     const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
     return (
       <PalaceLayout transparentHeader>
+        {houseTheme && schwelleActive && (
+          <Schwelle houseName={dbDesigner.brand_name} theme={houseTheme} onDone={() => setSchwelleActive(false)} />
+        )}
         <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
       </PalaceLayout>
     );
