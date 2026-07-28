@@ -3,6 +3,9 @@
  * jeder zieht sein Material aus der Mediathek. Vorschau ist die echte Darstellung
  * (HausseiteBlocks) — kein separates Preview-Modell. Reihenfolge über Pfeile, nicht per
  * Ziehen (dieselbe, bereits bewährte Interaktion wie beim Kampagnen-Schnitt in Teil 11b).
+ *
+ * Teil 15a: dazu das Haus-Thema per Vibecoding — die eigene Welt in Worten beschreiben statt
+ * über Regler einstellen. Jede Fassung bleibt als Version erhalten (vergleichbar, zurücknehmbar).
  */
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
@@ -11,12 +14,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronUp, ChevronDown, Trash2, ExternalLink } from "lucide-react";
 import { HausseiteBlocks, type PageBlockKind, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
+import {
+  DEFAULT_HOUSE_THEME, resolveTheme, type HouseTheme,
+  TYPOGRAFIE_LABEL, FLAECHENRHYTHMUS_LABEL, KANTENHAERTE_LABEL, BEWEGUNGSCHARAKTER_LABEL, TEXTUR_LABEL,
+} from "@/features/houseTheme/theme";
 
 const BLOCK_LABEL: Record<PageBlockKind, string> = {
   auftakt: "Auftaktbild/-video", editorial_text: "Editorial-Text", zitat: "Zitat",
   produktreihe: "Produktreihe", lookbook_streifen: "Lookbook-Streifen",
   banner_seitlich: "Seitlicher Banner", banner_vollbreite: "Vollbreiten-Banner",
 };
+
+interface ThemeRow extends HouseTheme { id: string; version: number; is_current: boolean; created_at: string }
 
 export default function StudioHausseite() {
   const { designer, loading } = useMyDesigner();
@@ -26,21 +35,63 @@ export default function StudioHausseite() {
   const [published, setPublished] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [themeHistory, setThemeHistory] = useState<ThemeRow[]>([]);
+  const [vibeText, setVibeText] = useState("");
+  const [themeBusy, setThemeBusy] = useState(false);
+  const currentTheme = themeHistory.find((t) => t.is_current) ?? null;
+
   const refresh = async () => {
     if (!designer) return;
-    const [{ data: b }, { data: m }, { data: p }, { data: d }] = await Promise.all([
+    const [{ data: b }, { data: m }, { data: p }, { data: d }, { data: th }] = await Promise.all([
       supabase.from("designer_page_blocks" as never).select("id, kind, position, content").eq("designer_id", designer.id).order("position"),
       supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", designer.id).order("created_at", { ascending: false }),
       supabase.from("products").select("id, name, slug, price, image_url").eq("designer_id", designer.id),
       supabase.from("designers").select("page_published_at").eq("id", designer.id).maybeSingle(),
+      supabase.from("house_themes" as never).select("*").eq("designer_id", designer.id).order("version", { ascending: false }),
     ]);
     setBlocks((b ?? []) as unknown as PageBlockRow[]);
     setMedia((m ?? []) as unknown as BlockMediaLite[]);
     setProducts((p ?? []) as unknown as BlockProductLite[]);
     setPublished((d as { page_published_at?: string | null } | null)?.page_published_at ?? null);
+    setThemeHistory((th ?? []) as unknown as ThemeRow[]);
   };
 
   useEffect(() => { void refresh(); }, [designer]);
+
+  const generateTheme = async () => {
+    if (!designer) return;
+    setThemeBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-house-theme", { body: { prompt: vibeText.trim() || undefined } });
+      if (error) throw error;
+      const r = data as { ok?: boolean; message?: string; error?: string; guardrail_notes?: { grund: string }[] } | null;
+      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Thema konnte nicht erzeugt werden.");
+      setVibeText("");
+      if (r.guardrail_notes?.length) toast.info(r.guardrail_notes.map((n) => n.grund).join(" · "));
+      toast.success("Thema aktualisiert.");
+      void refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setThemeBusy(false);
+    }
+  };
+
+  const revertTheme = async (version: number) => {
+    setThemeBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-house-theme", { body: { action: "revert", revert_to_version: version } });
+      if (error) throw error;
+      const r = data as { ok?: boolean; message?: string; error?: string } | null;
+      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Fassung konnte nicht übernommen werden.");
+      toast.success(`Fassung ${version} ist jetzt aktiv.`);
+      void refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setThemeBusy(false);
+    }
+  };
 
   const mediaById = Object.fromEntries(media.map((m) => [m.id, m]));
 
@@ -104,6 +155,65 @@ export default function StudioHausseite() {
       </div>
       {!published && <p className="mt-3 text-xs text-muted-foreground">Noch nicht veröffentlicht — Besucher sehen bis dahin deine bisherige Seite.</p>}
 
+      <div className="mt-8 border border-border bg-white p-5">
+        <p className="editorial-eyebrow">Thema deines Hauses</p>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          Beschreib deine Welt in eigenen Worten — z. B. „ein verlassenes Hallenbad bei Neonlicht" oder „Großmutters Nähzimmer im Spätsommer".
+          PAWN übersetzt das zusammen mit deiner Marken-DNA in Farben, Schrift, Abstände, Bewegung und Kanten deiner Hausseite.
+          {currentTheme ? ' Verfeinere jederzeit mit einem weiteren Satz — „wärmer", „strenger", „mehr Luft".' : ""}
+        </p>
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <textarea value={vibeText} onChange={(e) => setVibeText(e.target.value)} rows={2}
+            placeholder={currentTheme ? "z. B. wärmer, mehr Luft, strenger…" : "Beschreib deine Welt in ein bis zwei Sätzen…"}
+            className="w-full flex-1 border border-border bg-white p-3 text-sm" />
+          <button onClick={() => void generateTheme()} disabled={themeBusy || (!vibeText.trim() && !!currentTheme)}
+            className="min-h-[44px] shrink-0 border border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-50">
+            {themeBusy ? "Einen Moment…" : currentTheme ? "Verfeinern" : "Thema erzeugen"}
+          </button>
+        </div>
+        {!currentTheme && (
+          <button onClick={() => void generateTheme()} disabled={themeBusy}
+            className="mt-2 text-[0.62rem] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-50">
+            Oder: Vorschlag direkt aus meiner DNA
+          </button>
+        )}
+
+        {currentTheme && (
+          <div className="mt-5 flex flex-wrap items-center gap-4 border-t border-border pt-4">
+            <div className="flex items-center gap-1">
+              {[currentTheme.farbwelt.bg, currentTheme.farbwelt.fg, currentTheme.farbwelt.accent].map((hex, i) => (
+                <span key={i} className="h-6 w-6 border border-border" style={{ background: hex }} title={hex} />
+              ))}
+            </div>
+            <p className="text-sm">{currentTheme.name || "Ohne Namen"} <span className="text-muted-foreground">· v{currentTheme.version}</span></p>
+            <p className="text-xs text-muted-foreground">
+              {TYPOGRAFIE_LABEL[currentTheme.typografie]} · {FLAECHENRHYTHMUS_LABEL[currentTheme.flaechenrhythmus]} · {KANTENHAERTE_LABEL[currentTheme.kantenhaerte]} · {BEWEGUNGSCHARAKTER_LABEL[currentTheme.bewegungscharakter]} · {TEXTUR_LABEL[currentTheme.hintergrundtextur.typ]}
+            </p>
+          </div>
+        )}
+        {!!currentTheme?.guardrail_notes?.length && (
+          <p className="mt-3 text-xs text-muted-foreground">Automatisch angepasst: {currentTheme.guardrail_notes.map((n) => n.grund).join(" · ")}</p>
+        )}
+
+        {themeHistory.length > 1 && (
+          <div className="mt-5 border-t border-border pt-4">
+            <p className="editorial-eyebrow">Frühere Fassungen</p>
+            <div className="mt-2 space-y-1.5">
+              {themeHistory.filter((t) => !t.is_current).map((t) => (
+                <div key={t.id} className="flex items-center justify-between text-xs">
+                  <span>v{t.version} — {t.name || "Ohne Namen"} <span className="text-muted-foreground">({new Date(t.created_at).toLocaleDateString("de-DE")})</span></span>
+                  <button onClick={() => void revertTheme(t.version)} disabled={themeBusy}
+                    className="border border-border px-2 py-1 uppercase tracking-widest hover:border-foreground disabled:opacity-50">
+                    Übernehmen
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="mt-6 flex flex-wrap gap-2">
         {(Object.keys(BLOCK_LABEL) as PageBlockKind[]).map((k) => (
           <button key={k} onClick={() => void addBlock(k)}
@@ -137,7 +247,7 @@ export default function StudioHausseite() {
             {blocks.length === 0 ? (
               <p className="p-8 text-center text-sm text-muted-foreground">Noch nichts zu zeigen.</p>
             ) : (
-              <HausseiteBlocks blocks={blocks} mediaById={mediaById} products={products} />
+              <HausseiteBlocks blocks={blocks} mediaById={mediaById} products={products} theme={currentTheme ? resolveTheme(currentTheme) : DEFAULT_HOUSE_THEME} />
             )}
           </div>
         </div>

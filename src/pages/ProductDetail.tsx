@@ -24,6 +24,7 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrevNext } from "@/components/palace/PrevNext";
 import { useProductPrevNext } from "@/features/navigation/usePrevNext";
+import { resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
@@ -66,6 +67,20 @@ const ProductDetail = () => {
     })();
     return () => { cancelled = true; };
   }, [dbProduct?.banner_media_asset_id]);
+
+  // Teil 15a: Wenn das Haus ein eigenes Thema hat (und seine Hausseite veröffentlicht ist —
+  // die RLS von house_themes gibt sonst nichts zurück), trägt der "Aus dem Haus"-Banner es.
+  const [houseTheme, setHouseTheme] = useState<HouseTheme | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const designerId = dbProduct?.designers?.id;
+    if (!designerId) { setHouseTheme(null); return; }
+    (async () => {
+      const { data } = await supabase.from("house_themes" as never).select("*").eq("designer_id", designerId).eq("is_current", true).maybeSingle();
+      if (!cancelled) setHouseTheme(data ? resolveTheme(data as unknown as Partial<HouseTheme>) : null);
+    })();
+    return () => { cancelled = true; };
+  }, [dbProduct?.designers?.id]);
 
   useEffect(() => { viewProduct(product.id); }, [product.id, viewProduct]);
 
@@ -185,11 +200,15 @@ const ProductDetail = () => {
 
           {banner && (
             <Reveal>
-              <div className="mt-8 border-t border-[rgba(0,0,0,.18)] pt-8">
-                <p className="palace-eyebrow">Aus dem Haus</p>
+              <div
+                className="palace house-theme house-hair mt-8 border-t pt-8"
+                data-typografie={houseTheme?.typografie}
+                style={houseTheme ? themeCssVars(houseTheme) : undefined}
+              >
+                <p className="house-accent palace-eyebrow">Aus dem Haus</p>
                 {banner.kind === "video"
-                  ? <video src={banner.url} className="mt-4 aspect-[3/4] w-full max-w-sm object-cover" muted autoPlay loop playsInline />
-                  : <img src={banner.url} alt="" className="mt-4 aspect-[3/4] w-full max-w-sm object-cover" loading="lazy" />}
+                  ? <video src={banner.url} className="house-media mt-4 aspect-[3/4] w-full max-w-sm object-cover" muted autoPlay loop playsInline />
+                  : <img src={banner.url} alt="" className="house-media mt-4 aspect-[3/4] w-full max-w-sm object-cover" loading="lazy" />}
               </div>
             </Reveal>
           )}
