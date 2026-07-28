@@ -15,6 +15,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_HOUSE_THEME, themeCssVars, type Flaechenrhythmus, type HouseTheme } from "@/features/houseTheme/theme";
 
 export type PageBlockKind =
@@ -83,6 +84,21 @@ function Media({ asset, className, allowTon, style }: {
     );
   }
   return <img src={asset.url} alt="" className={className} loading="lazy" style={style} />;
+}
+
+/** Teil 16c: ein kurzer, sichtbarer Weg zum Kauf — überall, wo ein Medium ein Stück zeigt.
+    mediaAssetId (falls bekannt) bucht den Shop-Klick auf genau dieses Bild/Video. */
+function ShopLink({ product, mediaAssetId }: { product?: BlockProductLite; mediaAssetId?: string }) {
+  if (!product) return null;
+  return (
+    <Link
+      to={`/product/${product.slug}`}
+      onClick={() => { if (mediaAssetId) void supabase.rpc("bump_media_metric" as never, { p_media_asset_id: mediaAssetId, p_metric: "shop_clicks" } as never); }}
+      className="house-accent mt-3 inline-flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.2em] hover:underline"
+    >
+      Zum Stück · {product.name} · €{product.price.toLocaleString("de-DE")}
+    </Link>
+  );
 }
 
 /** Ganzseitige Fläche mit optionalem, leichtem Parallax-Versatz (eigene Komponente, damit
@@ -174,37 +190,48 @@ export function HausseiteBlocks({
             const ids = (c.media_asset_ids as string[]) ?? [];
             const items = ids.map((id) => mediaById[id]).filter(Boolean) as BlockMediaLite[];
             if (items.length === 0) return null;
+            const product = productsById[c.product_id as string];
             return (
-              <section key={b.id} className="house-hair house-reveal overflow-x-auto border-b" style={staggerStyle}>
-                <div className="flex gap-px" style={{ minWidth: "max-content" }}>
-                  {items.map((asset) => <Media key={asset.id} asset={asset} allowTon={!!c.ton} className="house-media h-[60vh] w-auto max-w-[80vw] object-cover md:h-[70vh]" />)}
+              <section key={b.id} className="house-hair house-reveal border-b" style={staggerStyle}>
+                <div className="overflow-x-auto">
+                  <div className="flex gap-px" style={{ minWidth: "max-content" }}>
+                    {items.map((asset) => <Media key={asset.id} asset={asset} allowTon={!!c.ton} className="house-media h-[60vh] w-auto max-w-[80vw] object-cover md:h-[70vh]" />)}
+                  </div>
                 </div>
+                {product && <div className="px-6 pb-6 md:px-14"><ShopLink product={product} mediaAssetId={items[0]?.id} /></div>}
               </section>
             );
           }
           case "banner_seitlich": {
             const asset = mediaById[c.media_asset_id as string];
+            const product = productsById[c.product_id as string];
             return (
               <section key={b.id} className="house-hair house-reveal border-b px-6 py-10 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
                 <Media asset={asset} allowTon={!!c.ton} className="house-media aspect-[3/4] w-full max-w-sm object-cover md:aspect-[2/3]" />
+                <ShopLink product={product} mediaAssetId={asset?.id} />
               </section>
             );
           }
           case "banner_vollbreite": {
             const asset = mediaById[c.media_asset_id as string];
+            const product = productsById[c.product_id as string];
             return (
-              <ParallaxSection key={b.id} active={parallaxOn} className="house-hair house-reveal overflow-hidden border-b" style={staggerStyle}>
-                {(offset) => (
-                  <Media asset={asset} allowTon={!!c.ton}
-                    style={parallaxOn ? { transform: `translateY(${offset}px) scale(1.08)` } : undefined}
-                    className="house-media aspect-[3/1] w-full object-cover md:aspect-[4/1]" />
-                )}
-              </ParallaxSection>
+              <section key={b.id} className="house-hair house-reveal overflow-hidden border-b" style={staggerStyle}>
+                <ParallaxSection active={parallaxOn} className="">
+                  {(offset) => (
+                    <Media asset={asset} allowTon={!!c.ton}
+                      style={parallaxOn ? { transform: `translateY(${offset}px) scale(1.08)` } : undefined}
+                      className="house-media aspect-[3/1] w-full object-cover md:aspect-[4/1]" />
+                  )}
+                </ParallaxSection>
+                {product && <div className="px-6 py-4 md:px-14"><ShopLink product={product} mediaAssetId={asset?.id} /></div>}
+              </section>
             );
           }
           case "ueberlappend": {
             const assetA = mediaById[c.media_asset_id_a as string];
             const assetB = mediaById[c.media_asset_id_b as string];
+            const product = productsById[c.product_id as string];
             return (
               <section key={b.id} className="house-hair house-reveal house-gap-y relative border-b px-6 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
                 <div className="relative mx-auto max-w-4xl">
@@ -213,6 +240,7 @@ export function HausseiteBlocks({
                     <Media asset={assetB} className="house-media aspect-[4/5] w-full object-cover" style={{ boxShadow: "0 0 0 1.5px var(--house-bg, #fff)" }} />
                   </div>
                 </div>
+                {product && <div className="mx-auto max-w-4xl pt-[14%]"><ShopLink product={product} mediaAssetId={assetB?.id ?? assetA?.id} /></div>}
               </section>
             );
           }

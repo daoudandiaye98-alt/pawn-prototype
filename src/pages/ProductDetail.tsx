@@ -84,6 +84,12 @@ const ProductDetail = () => {
 
   useEffect(() => { viewProduct(product.id); }, [product.id, viewProduct]);
 
+  // Teil 16c: Erfolg wird am Verkauf gemessen — dafür zählt jedes Stück seine Aufrufe.
+  useEffect(() => {
+    if (!dbProduct?.id) return;
+    supabase.rpc("bump_product_view" as never, { p_product_id: dbProduct.id } as never).then(() => {}, () => {});
+  }, [dbProduct?.id]);
+
   useEffect(() => {
     setSize(product.sizes[0]);
     setColor(product.colors[0]);

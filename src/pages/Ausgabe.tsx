@@ -22,6 +22,8 @@ interface HouseSpread {
   page_published_at: string;
 }
 
+interface TopProduct { slug: string; name: string; price: number }
+
 export default function Ausgabe() {
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
   const [houses, setHouses] = useState<HouseSpread[]>([]);
@@ -29,6 +31,8 @@ export default function Ausgabe() {
   // Teil 15c: die Halle zeigt die Vielfalt — ein Farbakzent aus dem Haus-Thema je Karte,
   // ohne dass die Halle selbst ihre Strenge verliert.
   const [accentById, setAccentById] = useState<Record<string, string>>({});
+  // Teil 16c: ein kurzer, sichtbarer Weg zum Kauf — nicht nur zur Doppelseite.
+  const [topProductById, setTopProductById] = useState<Record<string, TopProduct>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +54,16 @@ export default function Ausgabe() {
             if (t.farbwelt?.accent) map[t.designer_id] = t.farbwelt.accent;
           }
           if (!cancelled) setAccentById(map);
+
+          const { data: prods } = await supabase.from("products")
+            .select("designer_id, slug, name, price, created_at")
+            .in("designer_id", rows.map((h) => h.id)).eq("status", "published")
+            .order("created_at", { ascending: false });
+          const topMap: Record<string, TopProduct> = {};
+          for (const p of (prods ?? []) as unknown as Array<{ designer_id: string; slug: string; name: string; price: number }>) {
+            if (!topMap[p.designer_id]) topMap[p.designer_id] = { slug: p.slug, name: p.name, price: p.price };
+          }
+          if (!cancelled) setTopProductById(topMap);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -108,6 +122,14 @@ export default function Ausgabe() {
                       </div>
                       <span className="palace-eyebrow whitespace-nowrap text-[#7C7972] group-hover:text-[#000000]">Doppelseite öffnen →</span>
                     </Link>
+                    {topProductById[h.id] && (
+                      <Link
+                        to={`/product/${topProductById[h.id].slug}`}
+                        className="palace-eyebrow absolute bottom-3 right-0 text-[#7C7972] hover:text-[#000000] md:bottom-4"
+                      >
+                        Zum Stück · {topProductById[h.id].name} →
+                      </Link>
+                    )}
                   </li>
                 </Reveal>
               ))}

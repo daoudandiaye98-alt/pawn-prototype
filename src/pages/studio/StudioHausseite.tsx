@@ -35,6 +35,9 @@ const ABSTAND_OPTIONS = [
 const TON_FAEHIG: PageBlockKind[] = ["auftakt", "banner_seitlich", "banner_vollbreite", "lookbook_streifen"];
 /** Bausteine mit eigenem Abstand (house-gap-y-getrieben). */
 const ABSTAND_FAEHIG: PageBlockKind[] = ["editorial_text", "zitat", "produktreihe", "banner_seitlich", "ueberlappend"];
+/** Teil 16c: jedes Medium bekommt ein Ziel — diese Bausteine können ein Stück verlinken
+    (produktreihe hat das Ziel bereits fest eingebaut, hier ist es optional je Baustein). */
+const PRODUKT_LINK_FAEHIG: PageBlockKind[] = ["banner_seitlich", "banner_vollbreite", "ueberlappend", "lookbook_streifen"];
 
 interface ThemeRow extends HouseTheme { id: string; version: number; is_current: boolean; created_at: string }
 
@@ -381,6 +384,16 @@ function BlockEditor({
           <input type="checkbox" checked={!!c.ton} onChange={(e) => onChange({ ...c, ton: e.target.checked })} />
           Ton erlauben (Video startet trotzdem stumm, Besucher können ihn einschalten)
         </label>
+      )}
+      {PRODUKT_LINK_FAEHIG.includes(block.kind) && (
+        <div className="mt-2">
+          <label className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">Führt zum Stück (optional)</label>
+          <select value={(c.product_id as string) ?? ""} onChange={(e) => onChange({ ...c, product_id: e.target.value || undefined })}
+            className="mt-1 w-full border border-border bg-white p-2 text-sm">
+            <option value="">Kein direktes Ziel</option>
+            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
       )}
     </>
   );

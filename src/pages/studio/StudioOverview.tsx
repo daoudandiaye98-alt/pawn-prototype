@@ -18,7 +18,7 @@ type World = "Mode" | "Interior" | "Kunst";
 interface Product {
   id: string; name: string; slug: string; world: World; price: number;
   image_url: string | null; status: string; inventory_mode: "stock" | "made_to_order";
-  stock_quantity: number; lead_time_days: number | null;
+  stock_quantity: number; lead_time_days: number | null; view_count?: number;
 }
 interface Message { id: string; subject: string; last_message_at: string; unread: boolean }
 interface Campaign { id: string; title: string; caption: string | null; hashtags: string[] | null; status: string }
@@ -103,12 +103,15 @@ export default function StudioOverview() {
   const [mirror, setMirror] = useState<{ text: string; stats: { views_total: number; wish_total: number; orders_count: number } } | null>(null);
   const [visitorsYesterday, setVisitorsYesterday] = useState<number | null>(null);
   const [worldFilter, setWorldFilter] = useState<"all" | World>("all");
+  // Teil 16c: Erfolg wird am Verkauf gemessen, nicht an erzeugter Menge — Shop-Klicks
+  // je Stück (Summe über seine verlinkten Medien).
+  const [shopClicksByProduct, setShopClicksByProduct] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!designer) return;
     (async () => {
       const [prods, msgs, camp, visitEvs] = await Promise.all([
-        supabase.from("products").select("id, name, slug, world, price, image_url, status, inventory_mode, stock_quantity, lead_time_days, product_dna").eq("designer_id", designer.id).order("created_at", { ascending: false }),
+        supabase.from("products").select("id, name, slug, world, price, image_url, status, inventory_mode, stock_quantity, lead_time_days, product_dna, view_count").eq("designer_id", designer.id).order("created_at", { ascending: false }),
         supabase.from("message_threads").select("id, subject, last_message_at, status").eq("designer_id", designer.id).order("last_message_at", { ascending: false }).limit(3),
         supabase.from("campaigns").select("id, title, content, status").eq("designer_id", designer.id).eq("status", "proposed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("domain_events").select("id").eq("type", "designer.view").eq("payload->>designer_id", designer.id)
@@ -118,6 +121,13 @@ export default function StudioOverview() {
       setMessages(((msgs.data ?? []) as { id: string; subject: string; last_message_at: string; status: string }[]).map((m) => ({ id: m.id, subject: m.subject, last_message_at: m.last_message_at, unread: m.status === "open" })));
       setPendingCampaign(camp.data ? toCampaign(camp.data as CampaignRow) : null);
       setVisitorsYesterday(visitEvs.data ? visitEvs.data.length : null);
+
+      const { data: media } = await supabase.from("media_assets" as never).select("product_id, performance").eq("designer_id", designer.id).not("product_id", "is", null);
+      const clicks: Record<string, number> = {};
+      for (const m of (media ?? []) as unknown as Array<{ product_id: string; performance: { shop_clicks?: number } }>) {
+        clicks[m.product_id] = (clicks[m.product_id] ?? 0) + (m.performance?.shop_clicks ?? 0);
+      }
+      setShopClicksByProduct(clicks);
     })();
   }, [designer]);
 
@@ -148,6 +158,15 @@ export default function StudioOverview() {
   const revenue30 = useMemo(() => paid.filter((l) => new Date(l.order_created_at) > new Date(Date.now() - 30 * 86400000)).reduce((s, l) => s + l.unit_price * l.qty, 0), [paid]);
   const orderCount = useMemo(() => new Set(paid.map((l) => l.order_id)).size, [paid]);
   const wishTotal = useMemo(() => wishSeries.reduce((s, n) => s + n, 0), [wishSeries]);
+  // Teil 16c: Verkäufe je Stück — die erzeugte Menge tritt in den Hintergrund.
+  const salesBySlug = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const l of lines) {
+      if (l.order_status !== "paid") continue;
+      map[l.product_slug] = (map[l.product_slug] ?? 0) + l.qty;
+    }
+    return map;
+  }, [lines]);
   const criticalStock = useMemo(() => filteredProducts.filter((p) => p.inventory_mode === "stock" && p.stock_quantity < 3).length, [filteredProducts]);
 
   const hasStory = !!designer?.story && designer.story.length > 40;
@@ -193,7 +212,8 @@ export default function StudioOverview() {
       { label: "Erstes Stück anlegen", done: products.length > 0, to: "/studio/produkte" },
       { label: "Stück veröffentlichen", done: products.some((p) => p.status === "published"), to: "/studio/produkte" },
       { label: "DNA deiner Stücke vervollständigen", done: !dnaMissing, to: dnaMissing ? `/studio/produkte?dna=${dnaMissing.id}` : "/studio/produkte" },
-      { label: "Auszahlungsdaten hinterlegen", done: false, to: "/studio/auszahlung" },
+      { label: "Auszahlungsdaten hinterlegen", done: designer?.stripe_charges_enabled === true, to: "/studio/auszahlung" },
+      { label: "Seite veröffentlichen", done: !!designer?.page_published_at, to: "/studio/hausseite" },
     ];
     return items;
   }, [designer, products]);
@@ -391,6 +411,9 @@ export default function StudioOverview() {
                     <span>{p.status === "published" ? "Live" : "Entwurf"}</span>
                   </label>
                 </div>
+                <p className="mt-2 text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
+                  {p.view_count ?? 0} Aufrufe · {shopClicksByProduct[p.id] ?? 0} Shop-Klicks · {salesBySlug[p.slug] ?? 0} verkauft
+                </p>
               </div>
             </article>
           ))}
