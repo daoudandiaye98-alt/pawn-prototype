@@ -11,6 +11,7 @@ import { Editable } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
 import { Languages } from "lucide-react";
 import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
+import { resolveTheme, type HouseTheme } from "@/features/houseTheme/theme";
 
 interface DbDesigner {
   id: string;
@@ -122,6 +123,7 @@ const DesignerPage = () => {
   const [pageBlocks, setPageBlocks] = useState<PageBlockRow[]>([]);
   const [blockMedia, setBlockMedia] = useState<BlockMediaLite[]>([]);
   const [blockProducts, setBlockProducts] = useState<BlockProductLite[]>([]);
+  const [houseTheme, setHouseTheme] = useState<HouseTheme | null>(null);
 
 
   useEffect(() => {
@@ -197,15 +199,17 @@ const DesignerPage = () => {
     if (!dbDesigner?.page_published_at) return;
     let cancelled = false;
     (async () => {
-      const [{ data: b }, { data: m }, { data: p }] = await Promise.all([
+      const [{ data: b }, { data: m }, { data: p }, { data: t }] = await Promise.all([
         supabase.from("designer_page_blocks" as never).select("id, kind, position, content").eq("designer_id", dbDesigner.id).order("position"),
         supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", dbDesigner.id),
         supabase.from("products").select("id, name, slug, price, image_url").eq("designer_id", dbDesigner.id),
+        supabase.from("house_themes" as never).select("*").eq("designer_id", dbDesigner.id).eq("is_current", true).maybeSingle(),
       ]);
       if (cancelled) return;
       setPageBlocks((b ?? []) as unknown as PageBlockRow[]);
       setBlockMedia((m ?? []) as unknown as BlockMediaLite[]);
       setBlockProducts((p ?? []) as unknown as BlockProductLite[]);
+      setHouseTheme(t ? resolveTheme(t as unknown as Partial<HouseTheme>) : null);
     })();
     return () => { cancelled = true; };
   }, [dbDesigner]);
@@ -338,7 +342,7 @@ const DesignerPage = () => {
     const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
     return (
       <PalaceLayout transparentHeader>
-        <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} />
+        <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
       </PalaceLayout>
     );
   }

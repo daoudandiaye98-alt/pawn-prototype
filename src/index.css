@@ -282,6 +282,49 @@
   .palace-drip { animation: palace-drip 2.6s ease-in-out infinite; }
 }
 
+/* Teil 15a: Das Haus-Thema — eigener, geschachtelter Variablen-Scope. Gilt ausschließlich
+   innerhalb von .house-theme (Hausseite + ihre Produktseiten), nie in der Halle selbst
+   (PalaceLayout, Kasse, Konto bleiben strikt schwarz-weiß außerhalb dieses Scopes). */
+@layer components {
+  .palace .house-theme {
+    background: var(--house-bg, #fff);
+    color: var(--house-fg, #000);
+  }
+  .palace .house-theme .house-serif { font-family: "Playfair Display", Georgia, serif; }
+  .palace .house-theme[data-typografie="zart"] .house-serif,
+  .palace .house-theme[data-typografie="warm"] .house-serif {
+    font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500 !important;
+  }
+  .palace .house-theme[data-typografie="archiv"] .house-serif {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 500 !important; letter-spacing: 0;
+  }
+  .palace .house-theme[data-typografie="warm"] .house-body { font-family: Georgia, "Times New Roman", serif; }
+
+  .palace .house-theme .house-hair { border-color: color-mix(in srgb, var(--house-fg, #000) 18%, transparent); }
+  .palace .house-theme .house-accent { color: var(--house-accent, #000); }
+  .palace .house-theme .house-media { border-radius: var(--house-radius, 0px); overflow: hidden; }
+  .palace .house-theme .house-gap-y { padding-top: var(--house-gap-y, 4rem); padding-bottom: var(--house-gap-y, 4rem); }
+
+  .palace .house-theme[data-textur="papier"] {
+    background-image: repeating-linear-gradient(0deg, color-mix(in srgb, var(--house-fg,#000) 3%, transparent) 0px, transparent 1px, transparent 2px);
+  }
+  .palace .house-theme[data-textur="leinen"] {
+    background-image:
+      repeating-linear-gradient(45deg, color-mix(in srgb, var(--house-fg,#000) 4%, transparent) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--house-fg,#000) 4%, transparent) 0 1px, transparent 1px 3px);
+  }
+  .palace .house-theme[data-textur="rauschen"] {
+    background-image: radial-gradient(color-mix(in srgb, var(--house-fg,#000) 6%, transparent) 1px, transparent 1px);
+    background-size: 4px 4px;
+  }
+
+  @keyframes house-reveal { from { opacity: 0; transform: translateY(var(--house-reveal-dist, 16px)); } to { opacity: 1; transform: none; } }
+  .palace .house-theme .house-reveal { animation: house-reveal var(--house-reveal-dur, .6s) var(--ease-pawn) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .palace .house-theme .house-reveal { animation: none; opacity: 1; transform: none; }
+  }
+}
+
 /* Editable (builder mode) */
 .pawn-editable {
   outline: 1px dashed rgba(0,0,0,.35);
