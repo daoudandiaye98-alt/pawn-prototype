@@ -11,7 +11,7 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Info } from "lucide-react";
 
-type Status = "queued" | "posted" | "failed" | "cancelled";
+type Status = "queued" | "posted" | "failed" | "cancelled" | "vorschlag";
 type Channel = "pawn_instagram" | "pawn_tiktok" | "pawn_youtube";
 
 interface QueueRow {
@@ -23,6 +23,8 @@ interface QueueRow {
   posted_url: string | null;
   posted_at: string | null;
   created_at: string;
+  story_reason?: string | null;
+  story_score?: number | null;
   campaigns?: {
     title: string;
     content: { asset_url?: string; caption?: string; hashtags?: string[] } | null;
@@ -30,7 +32,7 @@ interface QueueRow {
   } | null;
 }
 
-const LABELS: Record<Status, string> = { queued: "Warteschlange", posted: "Veröffentlicht", failed: "Fehlgeschlagen", cancelled: "Zurückgezogen" };
+const LABELS: Record<Status, string> = { queued: "Warteschlange", posted: "Veröffentlicht", failed: "Fehlgeschlagen", cancelled: "Zurückgezogen", vorschlag: "Vorschlag" };
 const CH_LABEL: Record<Channel, string> = { pawn_instagram: "Instagram", pawn_tiktok: "TikTok", pawn_youtube: "YouTube" };
 
 export default function AdminPosting() {
@@ -40,7 +42,7 @@ export default function AdminPosting() {
 
   const refresh = async () => {
     const { data } = await supabase.from("posting_queue" as never)
-      .select("id, campaign_id, channel, scheduled_at, status, posted_url, posted_at, created_at, campaigns:campaign_id(title, content, designer_id)")
+      .select("id, campaign_id, channel, scheduled_at, status, posted_url, posted_at, created_at, story_reason, story_score, campaigns:campaign_id(title, content, designer_id)")
       .order("scheduled_at", { ascending: true })
       .limit(200);
     setRows((data ?? []) as unknown as QueueRow[]);
@@ -74,6 +76,18 @@ export default function AdminPosting() {
     void refresh();
   };
 
+  // Teil 16c: kein automatisches Massenposting — Vorschläge (mit oder ohne Jarvis-Begründung)
+  // rücken erst nach ausdrücklicher Freigabe in die echte Warteschlange.
+  const promote = async (row: QueueRow) => {
+    const { error } = await supabase.rpc("promote_posting_suggestion" as never, { p_queue_id: row.id } as never);
+    if (error) return toast.error(error.message);
+    toast.success("Freigegeben — reiht sich in die Warteschlange ein.");
+    void refresh();
+  };
+
+  const suggestions = rows.filter((r) => r.status === "vorschlag");
+  const restRows = rows.filter((r) => r.status !== "vorschlag");
+
   return (
     <AdminShell title="Posting" eyebrow="Warteschlange">
       <p className="max-w-3xl text-sm text-muted-foreground">
@@ -89,9 +103,45 @@ export default function AdminPosting() {
         </ul>
       </details>
 
+      {suggestions.length > 0 && (
+        <div className="mt-8">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">
+            Vorschläge · {suggestions.length} — wenige, starke Beiträge statt Massenposting
+          </p>
+          <ul className="mt-3 divide-y divide-border border-[1.5px] border-foreground bg-card">
+            {suggestions.map((r) => (
+              <li key={r.id} className="grid gap-4 px-5 py-5 md:grid-cols-[220px_1fr_220px]">
+                <div className="border border-border bg-black">
+                  {r.campaigns?.content?.asset_url ? (
+                    <video src={r.campaigns.content.asset_url} controls playsInline className="aspect-[9/16] w-full bg-black object-contain" />
+                  ) : (
+                    <div className="flex aspect-[9/16] items-center justify-center text-xs text-white/50">Kein Asset</div>
+                  )}
+                </div>
+                <div>
+                  <p className="font-serif text-lg">{r.campaigns?.title ?? r.campaign_id}</p>
+                  {r.campaigns?.content?.caption && <p className="mt-3 text-sm">{r.campaigns.content.caption}</p>}
+                  {r.story_reason ? (
+                    <p className="mt-3 border-l-2 border-foreground pl-3 text-sm italic">
+                      „{r.story_reason}"{r.story_score != null && <span className="not-italic text-muted-foreground"> · Jarvis-Einschätzung {r.story_score}/100</span>}
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-xs text-muted-foreground">Noch keine Begründung — Jarvis prüft Vorschläge im wöchentlichen Regie-Lauf.</p>
+                  )}
+                </div>
+                <div className="flex gap-2 self-start">
+                  <button onClick={() => promote(r)} className="flex-1 border border-foreground bg-foreground px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-background">Freigeben</button>
+                  <button onClick={() => cancel(r)} className="border border-border px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] hover:bg-muted">Verwerfen</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <ul className="mt-8 divide-y divide-border border border-border bg-card">
-        {rows.length === 0 && <li className="px-5 py-10 text-center text-sm text-muted-foreground">Warteschlange ist leer.</li>}
-        {rows.map((r) => (
+        {restRows.length === 0 && <li className="px-5 py-10 text-center text-sm text-muted-foreground">Warteschlange ist leer.</li>}
+        {restRows.map((r) => (
           <li key={r.id} className="grid gap-4 px-5 py-5 md:grid-cols-[220px_1fr_260px]">
             <div className="border border-border bg-black">
               {r.campaigns?.content?.asset_url ? (

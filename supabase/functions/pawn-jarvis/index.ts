@@ -285,6 +285,33 @@ async function queryPawn(admin: SupabaseClient, input: { topic?: string }): Prom
     for (const r of (data ?? []) as { category: string }[]) counts[r.category] = (counts[r.category] ?? 0) + 1;
     out.nachrichten_nach_kategorie = counts;
   }
+  if (topic === "media_erfolg") {
+    // Teil 16c: Erfolg wird am Verkauf gemessen, nicht an erzeugter Menge — je Stück
+    // Aufrufe, Shop-Klicks (Summe über seine Medien) und tatsächliche Verkäufe.
+    const { data: prods } = await admin.from("products")
+      .select("id, name, slug, view_count").eq("status", "published")
+      .order("view_count", { ascending: false }).limit(15);
+    const prodRows = (prods ?? []) as { id: string; name: string; slug: string; view_count: number }[];
+    const prodIds = prodRows.map((p) => p.id);
+    const { data: media } = prodIds.length > 0
+      ? await admin.from("media_assets").select("product_id, performance").in("product_id", prodIds)
+      : { data: [] as unknown[] };
+    const clicksByProduct: Record<string, number> = {};
+    for (const m of (media ?? []) as { product_id: string | null; performance: { shop_clicks?: number } }[]) {
+      if (!m.product_id) continue;
+      clicksByProduct[m.product_id] = (clicksByProduct[m.product_id] ?? 0) + (m.performance?.shop_clicks ?? 0);
+    }
+    const { data: orders } = await admin.from("orders").select("items, status").eq("status", "paid")
+      .order("created_at", { ascending: false }).limit(300);
+    const salesBySlug: Record<string, number> = {};
+    for (const o of (orders ?? []) as { items: unknown }[]) {
+      const items = Array.isArray(o.items) ? o.items as { slug?: string; qty?: number }[] : [];
+      for (const it of items) if (it?.slug) salesBySlug[it.slug] = (salesBySlug[it.slug] ?? 0) + (it.qty ?? 1);
+    }
+    out.stuecke_erfolg = prodRows.map((p) => ({
+      name: p.name, aufrufe: p.view_count ?? 0, shop_klicks: clicksByProduct[p.id] ?? 0, verkauft: salesBySlug[p.slug] ?? 0,
+    }));
+  }
   return out;
 }
 
@@ -1528,14 +1555,41 @@ async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise
       }).join("\n")
     : "Noch keine auswertbaren Performance-Daten diesen Monat.";
 
-  const prompt = `Wöchentliche Kampagnen-Regie-Auswertung bei PAWN. Performance je Haus (letzte 30 Tage):\n${dataSummary}\n\nHandeingaben/Notizen von Daouda:\n${memoText}\n\nSchreibe einen kurzen Bericht (3-5 Sätze, Deutsch, für Daouda) darüber, was gerade zieht. Falls die Daten ein gutes gemeinsames Thema für eine häuserübergreifende "Edition" nahelegen (mehrere Häuser mit ähnlich guter Performance, gleiche Welt), schlage sie vor. Falls bei GENAU EINEM Haus mit eigenem Raum-Thema dessen Bewegungscharakter/Flächenrhythmus/Kantenhärte spürbar nicht zur Performance oder Signal-Richtung passt (z. B. ruhiges Thema bei sehr energiegeladenen Stücken), formuliere eine kurze, freundliche Frage an den Designer dazu (z. B. "dein Raum wirkt ruhiger als deine letzten Stücke — willst du ihn strenger?") — nur ein einziger konkreter Vorschlag, kein Pflichtfeld.\n\nAntworte NUR mit JSON: {"bericht": "...", "edition_vorschlag": null oder {"theme": "kurzer Titel", "world": "Mode|Interior|Kunst", "brand_names": ["..."]}, "thema_vorschlag": null oder {"designer_id": "...", "brand_name": "...", "frage": "..."}}`;
+  // Teil 16c: PAWNs eigener Kanal kuratiert statt flutet — Kampagnen, die automatisch als
+  // "vorschlag" in der Posting-Queue landen, bekommen hier eine Begründung von Jarvis
+  // (welche Arbeit trägt eine Geschichte, und warum), nie eine automatische Freigabe.
+  const { data: suggestionRows } = await admin.from("posting_queue")
+    .select("id, campaign_id, campaigns(title, content, designer_id, product_id)")
+    .eq("status", "vorschlag").is("story_reason", null).limit(20);
+  const suggestions = (suggestionRows ?? []) as unknown as Array<{
+    id: string; campaigns: { title: string; content: { caption?: string }; designer_id: string; product_id: string | null } | null;
+  }>;
+  const suggestionSummary = suggestions.length
+    ? suggestions.map((s) => `queue_id ${s.id}: "${s.campaigns?.title ?? "ohne Titel"}"${s.campaigns?.content?.caption ? ` — Caption: "${s.campaigns.content.caption.slice(0, 140)}"` : ""}${s.campaigns?.product_id ? "" : " (kein Stück verknüpft)"}`).join("\n")
+    : "Keine offenen Beitrags-Vorschläge.";
 
-  const { text, tokens } = await claudeComplete(apiKey, "Du bist der Regisseur bei PAWN — knapp, konkret, ehrlich.", prompt, 800);
+  const prompt = `Wöchentliche Kampagnen-Regie-Auswertung bei PAWN. Performance je Haus (letzte 30 Tage):\n${dataSummary}\n\nHandeingaben/Notizen von Daouda:\n${memoText}\n\nOffene Beitrags-Vorschläge für PAWNs eigenen Kanal (noch nicht freigegeben):\n${suggestionSummary}\n\nSchreibe einen kurzen Bericht (3-5 Sätze, Deutsch, für Daouda) darüber, was gerade zieht. Falls die Daten ein gutes gemeinsames Thema für eine häuserübergreifende "Edition" nahelegen (mehrere Häuser mit ähnlich guter Performance, gleiche Welt), schlage sie vor. Falls bei GENAU EINEM Haus mit eigenem Raum-Thema dessen Bewegungscharakter/Flächenrhythmus/Kantenhärte spürbar nicht zur Performance oder Signal-Richtung passt (z. B. ruhiges Thema bei sehr energiegeladenen Stücken), formuliere eine kurze, freundliche Frage an den Designer dazu (z. B. "dein Raum wirkt ruhiger als deine letzten Stücke — willst du ihn strenger?") — nur ein einziger konkreter Vorschlag, kein Pflichtfeld. Prüfe außerdem die offenen Beitrags-Vorschläge: wähle NUR jene aus, die wirklich eine Geschichte tragen (ein Stück und seinen Entstehungsweg erzählen, nicht bloß irgendein Clip) — wenige, starke Beiträge statt vieler. Kein automatisches Massenposting: schlage nur vor, entscheide nichts.\n\nAntworte NUR mit JSON: {"bericht": "...", "edition_vorschlag": null oder {"theme": "kurzer Titel", "world": "Mode|Interior|Kunst", "brand_names": ["..."]}, "thema_vorschlag": null oder {"designer_id": "...", "brand_name": "...", "frage": "..."}, "postings_vorschlag": [{"queue_id": "...", "begruendung": "kurz, warum dieser Beitrag eine Geschichte trägt", "score": <0-100>}]}`;
+
+  const { text, tokens } = await claudeComplete(apiKey, "Du bist der Regisseur bei PAWN — knapp, konkret, ehrlich.", prompt, 900);
   const parsed = extractJson(text) as {
     bericht?: string; edition_vorschlag?: { theme?: string; world?: string; brand_names?: string[] } | null;
     thema_vorschlag?: { designer_id?: string; brand_name?: string; frage?: string } | null;
+    postings_vorschlag?: Array<{ queue_id?: string; begruendung?: string; score?: number }> | null;
   } | null;
   const berichtText = parsed?.bericht ?? "Keine auswertbare Antwort erhalten.";
+
+  const validQueueIds = new Set(suggestions.map((s) => s.id));
+  const postingPicks = (parsed?.postings_vorschlag ?? []).filter((p) => p.queue_id && validQueueIds.has(p.queue_id) && p.begruendung);
+  for (const pick of postingPicks) {
+    await admin.from("posting_queue").update({ story_reason: pick.begruendung, story_score: pick.score ?? null }).eq("id", pick.queue_id!);
+  }
+  if (postingPicks.length > 0) {
+    await admin.from("jarvis_notices").insert({
+      kind: "vorschlag", title: `${postingPicks.length} Beitrag${postingPicks.length === 1 ? "" : "e"} mit Geschichte gefunden`,
+      body: postingPicks.map((p) => `- ${p.begruendung}`).join("\n"),
+      suggested_action: { action: "review_posting_vorschlaege", params: {}, zone: "rot" },
+    });
+  }
 
   const themaVorschlag = parsed?.thema_vorschlag;
   if (themaVorschlag?.designer_id && themaVorschlag?.frage && themesById.has(themaVorschlag.designer_id)) {
@@ -1575,7 +1629,8 @@ async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise
 
   return {
     ok: true, weighted_houses: weightedHouses, report: reportRow,
-    edition_proposed: !!editionId, thema_proposed: !!(themaVorschlag?.designer_id && themaVorschlag?.frage), tokensUsed: tokens,
+    edition_proposed: !!editionId, thema_proposed: !!(themaVorschlag?.designer_id && themaVorschlag?.frage),
+    postings_proposed: postingPicks.length, tokensUsed: tokens,
   };
 }
 
@@ -1583,14 +1638,14 @@ const TOOLS = [
   { type: "web_search_20250305", name: "web_search" },
   {
     name: "query_pawn",
-    description: "Liest zusammengefasste, echte Kennzahlen aus praktisch jeder PAWN-Tabelle (Leads, Bestellungen, Designer, Produkte, Kampagnen, Ontologie, Kulturströmungen, Haus-Bewegungsvorlieben, Konfiguration, Nachrichten-Kategorien, Ereignisse, Trends). Nur lesend, nie personenbezogene Rohdaten (keine E-Mails, Zahlungsdaten, Bewerbungsanhänge oder Nachrichteninhalte).",
+    description: "Liest zusammengefasste, echte Kennzahlen aus praktisch jeder PAWN-Tabelle (Leads, Bestellungen, Designer, Produkte, Kampagnen, Ontologie, Kulturströmungen, Haus-Bewegungsvorlieben, Konfiguration, Nachrichten-Kategorien, Ereignisse, Trends, Verkaufswirkung je Stück). Nur lesend, nie personenbezogene Rohdaten (keine E-Mails, Zahlungsdaten, Bewerbungsanhänge oder Nachrichteninhalte).",
     input_schema: {
       type: "object",
       properties: {
         topic: {
           type: "string",
-          enum: ["all", "leads", "orders", "designers", "products", "events", "trends", "product_details", "designer_details", "campaigns", "ontology", "cultural_currents", "haus_bewegungen", "config", "messages"],
-          description: "Welcher Ausschnitt der Kennzahlen. 'all' für die Basis-Übersicht, die anderen für Details. 'cultural_currents' liest die bekannten Kulturströmungen, 'haus_bewegungen' die Bewegungs-Geschmacksgewichte je Haus.",
+          enum: ["all", "leads", "orders", "designers", "products", "events", "trends", "product_details", "designer_details", "campaigns", "ontology", "cultural_currents", "haus_bewegungen", "config", "messages", "media_erfolg"],
+          description: "Welcher Ausschnitt der Kennzahlen. 'all' für die Basis-Übersicht, die anderen für Details. 'cultural_currents' liest die bekannten Kulturströmungen, 'haus_bewegungen' die Bewegungs-Geschmacksgewichte je Haus. 'media_erfolg' (Teil 16c) liest je meistgesehenem Stück Aufrufe, Shop-Klicks und tatsächliche Verkäufe — die Grundlage, um Medien nach Verkaufswirkung statt nach erzeugter Menge zu bewerten.",
         },
       },
     },
@@ -1765,7 +1820,7 @@ function promptForMode(mode: Mode, prompt?: string): { userMessage: string; repo
   }
   if (mode === "wochenbericht") {
     return {
-      userMessage: `Heute ist ${today}. Erstelle einen Wochenbericht für Daouda: Nutze query_pawn für den aktuellen Stand über alle Bereiche. Fasse zusammen, wo PAWN diese Woche steht, was sich verändert hat, und gib eine ehrliche Einschätzung, worauf sich Daouda in der kommenden Woche konzentrieren sollte. Maximal 350 Wörter.`,
+      userMessage: `Heute ist ${today}. Erstelle einen Wochenbericht für Daouda: Nutze query_pawn für den aktuellen Stand über alle Bereiche, inklusive topic "media_erfolg". Bewerte Medien und Stücke dabei ausdrücklich nach Verkaufswirkung (Aufrufe, Shop-Klicks, tatsächliche Verkäufe) — nicht danach, wie viel erzeugt wurde. Fasse zusammen, wo PAWN diese Woche steht, was sich verändert hat, und gib eine ehrliche Einschätzung, worauf sich Daouda in der kommenden Woche konzentrieren sollte. Maximal 350 Wörter.`,
       reportKind: "woche", title: `Wochenbericht · ${today}`,
     };
   }

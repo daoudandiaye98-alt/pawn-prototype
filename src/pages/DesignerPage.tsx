@@ -121,7 +121,7 @@ const DesignerPage = () => {
   const [dbDesigner, setDbDesigner] = useState<DbDesigner | null>(null);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [nextDesigner, setNextDesigner] = useState<{ slug: string; brand_name: string } | null>(null);
-  const [campaignVideos, setCampaignVideos] = useState<Array<{ id: string; title: string; asset_url: string }>>([]);
+  const [campaignVideos, setCampaignVideos] = useState<Array<{ id: string; title: string; asset_url: string; productSlug?: string; productName?: string }>>([]);
   const [pageBlocks, setPageBlocks] = useState<PageBlockRow[]>([]);
   const [blockMedia, setBlockMedia] = useState<BlockMediaLite[]>([]);
   const [blockProducts, setBlockProducts] = useState<BlockProductLite[]>([]);
@@ -178,23 +178,31 @@ const DesignerPage = () => {
     return () => { cancelled = true; };
   }, [dbDesigner]);
 
-  // Freigegebene Video-Kampagnen laden — nur mit asset_url.
+  // Freigegebene Video-Kampagnen laden — nur mit asset_url. Teil 16c: jede Kampagne mit
+  // Stück-Verknüpfung bekommt einen sichtbaren Weg zum Kauf.
   useEffect(() => {
     if (!dbDesigner) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("campaigns")
-        .select("id, title, status, kind, content, created_at")
-        .eq("designer_id", dbDesigner.id)
-        .in("status", ["approved", "published"])
-        .eq("kind", "video")
-        .order("created_at", { ascending: false })
-        .limit(8);
+      const [{ data }, { data: prods }] = await Promise.all([
+        supabase
+          .from("campaigns")
+          .select("id, title, status, kind, content, created_at, product_id")
+          .eq("designer_id", dbDesigner.id)
+          .in("status", ["approved", "published"])
+          .eq("kind", "video")
+          .order("created_at", { ascending: false })
+          .limit(8),
+        supabase.from("products").select("id, slug, name").eq("designer_id", dbDesigner.id),
+      ]);
       if (cancelled) return;
-      const rows = (data ?? []) as Array<{ id: string; title: string; content: { asset_url?: string } | null }>;
+      const productsById = Object.fromEntries(((prods ?? []) as Array<{ id: string; slug: string; name: string }>).map((p) => [p.id, p]));
+      const rows = (data ?? []) as Array<{ id: string; title: string; content: { asset_url?: string } | null; product_id: string | null }>;
       const clips = rows
-        .map((r) => ({ id: r.id, title: r.title, asset_url: r.content?.asset_url ?? "" }))
+        .map((r) => {
+          const p = r.product_id ? productsById[r.product_id] : undefined;
+          return { id: r.id, title: r.title, asset_url: r.content?.asset_url ?? "", productSlug: p?.slug, productName: p?.name };
+        })
         .filter((r) => !!r.asset_url);
       setCampaignVideos(clips);
     })();
@@ -676,6 +684,15 @@ const DesignerPage = () => {
                     controls={false}
                   />
                   <p className="palace-eyebrow absolute bottom-3 left-3 text-white mix-blend-difference">{c.title}</p>
+                  {c.productSlug && (
+                    <Link
+                      to={`/product/${c.productSlug}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="palace-eyebrow absolute bottom-3 right-3 border border-white px-2 py-1 text-white hover:bg-white hover:text-black"
+                    >
+                      Zum Stück
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
