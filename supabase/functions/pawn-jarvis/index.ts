@@ -1507,15 +1507,44 @@ async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise
     .sort((a, b) => (b.total_views + b.total_clicks * 3) - (a.total_views + a.total_clicks * 3))
     .slice(0, 8);
 
+  // Teil 15c: Jarvis als Baumeister — bezieht das aktuelle Haus-Thema der Top-Häuser mit ein,
+  // um bei Gelegenheit eine Verfeinerung vorzuschlagen (nie automatisch übernommen).
+  const topDesignerIds = topHouses.map((h) => h.designer_id);
+  const themesById = new Map<string, { bewegungscharakter: string; flaechenrhythmus: string; kantenhaerte: string }>();
+  if (topDesignerIds.length > 0) {
+    const { data: themeRows } = await admin.from("house_themes" as never)
+      .select("designer_id, bewegungscharakter, flaechenrhythmus, kantenhaerte")
+      .in("designer_id", topDesignerIds).eq("is_current", true);
+    for (const t of (themeRows ?? []) as unknown as Array<{ designer_id: string; bewegungscharakter: string; flaechenrhythmus: string; kantenhaerte: string }>) {
+      themesById.set(t.designer_id, t);
+    }
+  }
+
   const dataSummary = topHouses.length
-    ? topHouses.map((h) => `${h.brand_name}: ${h.total_views} Aufrufe, ${h.total_clicks} Shop-Klicks, Gewichte ${JSON.stringify(h.weights)}${h.near_current ? `, nah an Strömung "${h.near_current}"` : ""}`).join("\n")
+    ? topHouses.map((h) => {
+        const theme = themesById.get(h.designer_id);
+        const themeText = theme ? `, Raum-Thema: ${theme.bewegungscharakter}/${theme.flaechenrhythmus}/${theme.kantenhaerte}` : ", noch kein eigenes Haus-Thema";
+        return `${h.brand_name} (designer_id ${h.designer_id}): ${h.total_views} Aufrufe, ${h.total_clicks} Shop-Klicks, Gewichte ${JSON.stringify(h.weights)}${h.near_current ? `, nah an Strömung "${h.near_current}"` : ""}${themeText}`;
+      }).join("\n")
     : "Noch keine auswertbaren Performance-Daten diesen Monat.";
 
-  const prompt = `Wöchentliche Kampagnen-Regie-Auswertung bei PAWN. Performance je Haus (letzte 30 Tage):\n${dataSummary}\n\nHandeingaben/Notizen von Daouda:\n${memoText}\n\nSchreibe einen kurzen Bericht (3-5 Sätze, Deutsch, für Daouda) darüber, was gerade zieht. Falls die Daten ein gutes gemeinsames Thema für eine häuserübergreifende "Edition" nahelegen (mehrere Häuser mit ähnlich guter Performance, gleiche Welt), schlage sie vor.\n\nAntworte NUR mit JSON: {"bericht": "...", "edition_vorschlag": null oder {"theme": "kurzer Titel", "world": "Mode|Interior|Kunst", "brand_names": ["..."]}}`;
+  const prompt = `Wöchentliche Kampagnen-Regie-Auswertung bei PAWN. Performance je Haus (letzte 30 Tage):\n${dataSummary}\n\nHandeingaben/Notizen von Daouda:\n${memoText}\n\nSchreibe einen kurzen Bericht (3-5 Sätze, Deutsch, für Daouda) darüber, was gerade zieht. Falls die Daten ein gutes gemeinsames Thema für eine häuserübergreifende "Edition" nahelegen (mehrere Häuser mit ähnlich guter Performance, gleiche Welt), schlage sie vor. Falls bei GENAU EINEM Haus mit eigenem Raum-Thema dessen Bewegungscharakter/Flächenrhythmus/Kantenhärte spürbar nicht zur Performance oder Signal-Richtung passt (z. B. ruhiges Thema bei sehr energiegeladenen Stücken), formuliere eine kurze, freundliche Frage an den Designer dazu (z. B. "dein Raum wirkt ruhiger als deine letzten Stücke — willst du ihn strenger?") — nur ein einziger konkreter Vorschlag, kein Pflichtfeld.\n\nAntworte NUR mit JSON: {"bericht": "...", "edition_vorschlag": null oder {"theme": "kurzer Titel", "world": "Mode|Interior|Kunst", "brand_names": ["..."]}, "thema_vorschlag": null oder {"designer_id": "...", "brand_name": "...", "frage": "..."}}`;
 
-  const { text, tokens } = await claudeComplete(apiKey, "Du bist der Regisseur bei PAWN — knapp, konkret, ehrlich.", prompt, 700);
-  const parsed = extractJson(text) as { bericht?: string; edition_vorschlag?: { theme?: string; world?: string; brand_names?: string[] } | null } | null;
+  const { text, tokens } = await claudeComplete(apiKey, "Du bist der Regisseur bei PAWN — knapp, konkret, ehrlich.", prompt, 800);
+  const parsed = extractJson(text) as {
+    bericht?: string; edition_vorschlag?: { theme?: string; world?: string; brand_names?: string[] } | null;
+    thema_vorschlag?: { designer_id?: string; brand_name?: string; frage?: string } | null;
+  } | null;
   const berichtText = parsed?.bericht ?? "Keine auswertbare Antwort erhalten.";
+
+  const themaVorschlag = parsed?.thema_vorschlag;
+  if (themaVorschlag?.designer_id && themaVorschlag?.frage && themesById.has(themaVorschlag.designer_id)) {
+    await admin.from("jarvis_notices").insert({
+      kind: "vorschlag", title: `Raum-Thema von ${themaVorschlag.brand_name ?? "einem Haus"} verfeinern?`,
+      body: themaVorschlag.frage,
+      suggested_action: { action: "thema_verfeinern", params: { designer_id: themaVorschlag.designer_id }, zone: "rot" },
+    });
+  }
 
   let editionId: string | null = null;
   const vorschlag = parsed?.edition_vorschlag;
@@ -1546,7 +1575,7 @@ async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise
 
   return {
     ok: true, weighted_houses: weightedHouses, report: reportRow,
-    edition_proposed: !!editionId, tokensUsed: tokens,
+    edition_proposed: !!editionId, thema_proposed: !!(themaVorschlag?.designer_id && themaVorschlag?.frage), tokensUsed: tokens,
   };
 }
 

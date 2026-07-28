@@ -46,6 +46,16 @@ interface CulturalCurrentLite {
   nahe_haeuser: string[] | null;
   worlds: string[] | null;
 }
+interface HouseThemeLite {
+  designer_id: string;
+  version: number;
+  is_current: boolean;
+  name: string | null;
+  created_at: string;
+  farbwelt: { bg: string; fg: string; accent: string };
+  typografie: string;
+  bewegungscharakter: string;
+}
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";
@@ -67,6 +77,7 @@ export default function AdminDNA() {
   const [regieReports, setRegieReports] = useState<ReportRow[]>([]);
   const [wissenReport, setWissenReport] = useState<ReportRow | null>(null);
   const [culturalCurrents, setCulturalCurrents] = useState<CulturalCurrentLite[]>([]);
+  const [houseThemes, setHouseThemes] = useState<HouseThemeLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [distillBusyId, setDistillBusyId] = useState<string | null>(null);
 
@@ -95,7 +106,7 @@ export default function AdminDNA() {
 
   useEffect(() => {
     (async () => {
-      const [mw, des, sigs, reports, currents] = await Promise.all([
+      const [mw, des, sigs, reports, currents, themes] = await Promise.all([
         supabase.from("ai_config").select("value").eq("key", "matching_weights").maybeSingle(),
         supabase
           .from("designers")
@@ -110,6 +121,9 @@ export default function AdminDNA() {
           .order("created_at", { ascending: false })
           .limit(20),
         supabase.from("cultural_currents" as never).select("name, nahe_haeuser, worlds"),
+        supabase.from("house_themes" as never)
+          .select("designer_id, version, is_current, name, created_at, farbwelt, typografie, bewegungscharakter")
+          .order("version", { ascending: false }),
       ]);
       const mwVal = (mw.data?.value ?? {}) as unknown as Partial<MatchingWeights>;
       setWeights({ ...DEFAULT_MATCHING_WEIGHTS, ...mwVal });
@@ -119,6 +133,7 @@ export default function AdminDNA() {
       setRegieReports(allReports.filter((r) => r.kind === "regie"));
       setWissenReport(allReports.find((r) => r.kind === "wissen") ?? null);
       setCulturalCurrents((currents.data ?? []) as unknown as CulturalCurrentLite[]);
+      setHouseThemes((themes.data ?? []) as unknown as HouseThemeLite[]);
       setLoading(false);
     })();
   }, []);
@@ -214,6 +229,8 @@ export default function AdminDNA() {
               const history = regieReports
                 .filter((r) => (r.data?.top_houses ?? []).some((h) => h.designer_id === d.id))
                 .slice(0, 3);
+              const themesForD = houseThemes.filter((t) => t.designer_id === d.id);
+              const currentTheme = themesForD.find((t) => t.is_current) ?? null;
               return (
                 <GenomeCard
                   key={d.id}
@@ -267,6 +284,29 @@ export default function AdminDNA() {
                           );
                         })}
                       </ul>
+                    </div>
+                  )}
+                  {/* Teil 15c: das Haus-Thema als Ausdruck der DNA, mit Verlauf über die Zeit. */}
+                  {currentTheme && (
+                    <div className="mt-6 border-t border-black/15 pt-4">
+                      <p className="editorial-eyebrow text-black/50">Haus-Thema · Ausdruck der DNA</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <div className="flex gap-1">
+                          {[currentTheme.farbwelt.bg, currentTheme.farbwelt.fg, currentTheme.farbwelt.accent].map((hex, i) => (
+                            <span key={i} className="h-5 w-5 border border-black/20" style={{ background: hex }} title={hex} />
+                          ))}
+                        </div>
+                        <p className="text-sm text-black/70">
+                          {currentTheme.name || "Ohne Namen"} · {currentTheme.typografie} · {currentTheme.bewegungscharakter} · v{currentTheme.version}
+                        </p>
+                      </div>
+                      {themesForD.length > 1 && (
+                        <ul className="mt-2 space-y-1 text-xs text-black/50">
+                          {themesForD.filter((t) => !t.is_current).slice(0, 3).map((t) => (
+                            <li key={t.version}>v{t.version} — {t.name || "Ohne Namen"} ({timeAgo(t.created_at)})</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </GenomeCard>
