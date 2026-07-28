@@ -92,6 +92,11 @@ export const CONTENT_REGISTRY: ContentEntry[] = [
   { key: "world.featured_eyebrow_prefix", page: "Welt (gemeinsam)", label: "Im Studio · Eyebrow-Präfix", type: "text" },
   { key: "world.featured_headline_suffix", page: "Welt (gemeinsam)", label: "Im Studio · Headline-Suffix (kursiv)", type: "text" },
   { key: "world.featured_cta", page: "Welt (gemeinsam)", label: "Im Studio · Link", type: "text" },
+
+  // Content-Begleiter (Teil 16b) — knapper Leitfaden je Welt, gleichrangig
+  { key: "content_guide.mode.text", page: "Content-Begleiter · Mode", label: "Leitfaden", type: "multiline" },
+  { key: "content_guide.interior.text", page: "Content-Begleiter · Interior", label: "Leitfaden", type: "multiline" },
+  { key: "content_guide.kunst.text", page: "Content-Begleiter · Kunst", label: "Leitfaden", type: "multiline" },
   { key: "world.grid_empty", page: "Welt (gemeinsam)", label: "Grid · Leerer Zustand", type: "text" },
   { key: "world.cta_body", page: "Welt (gemeinsam)", label: "Fuß-CTA · Text", type: "text" },
   { key: "world.cta_button", page: "Welt (gemeinsam)", label: "Fuß-CTA · Button", type: "text" },
