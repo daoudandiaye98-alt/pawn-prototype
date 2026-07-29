@@ -86,6 +86,67 @@ function Sparkline({ data, className }: { data: number[]; className?: string }) 
   return <svg viewBox={`0 0 ${w} ${h}`} className={className} preserveAspectRatio="none"><polyline fill="none" stroke="currentColor" strokeWidth="1.25" points={pts} /></svg>;
 }
 
+const WELCOME_STEPS = [
+  {
+    title: "Was PAWN ist",
+    body: "Ein kuratierter Marktplatz für unabhängige Designer aus Mode, Interior und Kunst — und ein KI-Betriebssystem, das dir Bilder, Texte und Kampagnen abnimmt, die sonst Zeit oder ein Team brauchen.",
+  },
+  {
+    title: "Was dein Haus bekommt",
+    body: null,
+    bullets: [
+      "Eine eigene Seite, kein Baukasten-Gefühl.",
+      "Verkäufe zahlen direkt auf dein eigenes Konto.",
+      "KI-Werkzeuge für Bild, Video und Text, im Rahmen deines Plans.",
+    ],
+  },
+  {
+    title: "Dein erster Zug",
+    body: "Ein Foto, ein Preis, ein Satz — dein erstes Stück ist in ein paar Minuten live. Alles Weitere kannst du danach in Ruhe ergänzen.",
+  },
+] as const;
+
+function DesignerWelcome({ name, onSkip }: { name: string; onSkip: () => void }) {
+  const [step, setStep] = useState(0);
+  const last = step === WELCOME_STEPS.length - 1;
+  const current = WELCOME_STEPS[step];
+  return (
+    <div className="mx-auto max-w-xl border-[1.5px] border-foreground bg-white p-8 sm:p-10">
+      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Willkommen, {name} · Schritt {step + 1} / {WELCOME_STEPS.length}</p>
+      <h2 className="mt-3 font-serif text-2xl font-medium sm:text-3xl">{current.title}</h2>
+      {current.body && <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{current.body}</p>}
+      {"bullets" in current && current.bullets && (
+        <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+          {current.bullets.map((b) => (
+            <li key={b} className="flex items-start gap-2"><span className="mt-1.5 h-1 w-1 shrink-0 bg-foreground" />{b}</li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <button type="button" onClick={onSkip} className="text-[0.65rem] uppercase tracking-[0.24em] text-muted-foreground underline hover:text-foreground">
+          Überspringen
+        </button>
+        <div className="flex items-center gap-3">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep((s) => s - 1)} className="border border-border bg-white px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:border-foreground">
+              Zurück
+            </button>
+          )}
+          {last ? (
+            <Link to="/studio/produkte/neu" onClick={onSkip} className="inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
+              <Plus className="h-3 w-3" /> Erstes Stück anlegen
+            </Link>
+          ) : (
+            <button type="button" onClick={() => setStep((s) => s + 1)} className="inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
+              Weiter <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StudioOverview() {
   const { designer, loading } = useMyDesigner();
   const { lines } = useDesignerOrders(designer?.id);
@@ -106,6 +167,7 @@ export default function StudioOverview() {
   // Teil 16c: Erfolg wird am Verkauf gemessen, nicht an erzeugter Menge — Shop-Klicks
   // je Stück (Summe über seine verlinkten Medien).
   const [shopClicksByProduct, setShopClicksByProduct] = useState<Record<string, number>>({});
+  const [productsLoaded, setProductsLoaded] = useState(false);
 
   useEffect(() => {
     if (!designer) return;
@@ -118,6 +180,7 @@ export default function StudioOverview() {
           .gte("created_at", new Date(Date.now() - 2 * 86400000).toISOString()).lt("created_at", new Date(Date.now() - 86400000).toISOString()),
       ]);
       setProducts(((prods.data ?? []) as Product[]));
+      setProductsLoaded(true);
       setMessages(((msgs.data ?? []) as { id: string; subject: string; last_message_at: string; status: string }[]).map((m) => ({ id: m.id, subject: m.subject, last_message_at: m.last_message_at, unread: m.status === "open" })));
       setPendingCampaign(camp.data ? toCampaign(camp.data as CampaignRow) : null);
       setVisitorsYesterday(visitEvs.data ? visitEvs.data.length : null);
@@ -220,6 +283,20 @@ export default function StudioOverview() {
   const doneCount = checklist.filter((i) => i.done).length;
   const showChecklist = doneCount < checklist.length;
 
+  // Teil 17b: drei ruhige Schritte für ein frisches Haus — abgeleitet aus "noch keine Stücke",
+  // kein eigenes DB-Flag. Session-weit ausblendbar, kommt beim nächsten Besuch zurück, solange
+  // kein Stück existiert.
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  useEffect(() => {
+    if (!designer) return;
+    setWelcomeDismissed(sessionStorage.getItem(`pawn_welcome_seen_${designer.id}`) === "1");
+  }, [designer?.id]);
+  const dismissWelcome = () => {
+    if (designer) sessionStorage.setItem(`pawn_welcome_seen_${designer.id}`, "1");
+    setWelcomeDismissed(true);
+  };
+  const showWelcome = !!designer && productsLoaded && products.length === 0 && !welcomeDismissed;
+
   if (loading) return <StudioShell title="Übersicht"><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
 
   if (!designer) return (
@@ -230,6 +307,12 @@ export default function StudioOverview() {
         <p className="mt-4 text-sm text-muted-foreground">Sobald deine Bewerbung angenommen ist, findest du hier deine Übersicht.</p>
         <Link to="/apply" className="mt-6 inline-flex border border-foreground px-6 py-2 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">Zur Bewerbung</Link>
       </div>
+    </StudioShell>
+  );
+
+  if (showWelcome) return (
+    <StudioShell title="Übersicht" eyebrow="Willkommen">
+      <DesignerWelcome name={firstName} onSkip={dismissWelcome} />
     </StudioShell>
   );
 

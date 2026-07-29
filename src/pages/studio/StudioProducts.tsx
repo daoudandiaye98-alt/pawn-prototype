@@ -4,10 +4,12 @@ import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Upload, X, Sparkles, Megaphone, HelpCircle, Check, ImageIcon } from "lucide-react";
+import { Plus, Upload, X, Sparkles, Megaphone, HelpCircle, Check, ImageIcon, Share2, Package, Link2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { TagInput } from "@/features/ontology/TagInput";
 import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology";
+import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } from "@/features/share/shareKit";
+import { buildCreatorPackage } from "@/features/share/creatorPackage";
 
 type World = "Mode" | "Interior" | "Kunst";
 type Status = "draft" | "published" | "archived";
@@ -262,7 +264,7 @@ export default function StudioProducts() {
 
 interface EditorProps {
   initial: Partial<ProductRow>;
-  designer: { id: string; brand_name: string };
+  designer: { id: string; brand_name: string; slug: string; avatar_url: string | null; story: string | null };
   userId?: string;
   onCancel: () => void;
   onSaved: () => void;
@@ -286,6 +288,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const [media, setMedia] = useState<Array<{ id: string; url: string; kind: "bild" | "video"; title: string | null }>>([]);
   const draftIdRef = useRef<string | undefined>(initial.id);
   const firstRender = useRef(true);
+  const [shareBusy, setShareBusy] = useState<ShareFormat | "zip" | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -352,6 +355,45 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
     }
   };
 
+
+  // ---- Weitergeben (Teil 17b): vorlagenbasiert, ohne KI, ohne Credits, ohne Wartezeit ----
+  const downloadShareFormat = async (format: ShareFormat) => {
+    if (!local.image_url || !local.name || !local.price) return;
+    setShareBusy(format);
+    try {
+      const blob = await renderShareKit(format, {
+        imageUrl: local.image_url, brandName: designer.brand_name, productName: local.name, price: Number(local.price),
+      });
+      downloadBlob(blob, `${slugify(local.name)}-${format}.png`);
+    } catch (e) {
+      toast.error((e as Error).message || "Konnte die Grafik nicht erzeugen.");
+    } finally {
+      setShareBusy(null);
+    }
+  };
+
+  const downloadCreatorPackage = async () => {
+    if (!local.image_url || !local.name || !local.price || !local.slug) return;
+    setShareBusy("zip");
+    try {
+      const zip = await buildCreatorPackage({
+        brandName: designer.brand_name, brandStory: designer.story, logoUrl: designer.avatar_url,
+        productName: local.name, productImageUrl: local.image_url, price: Number(local.price),
+        productLink: `${window.location.origin}/product/${local.slug}`, world: local.world ?? "Mode",
+      });
+      downloadBlob(zip, `${slugify(local.name)}-creator-package.zip`);
+    } catch (e) {
+      toast.error((e as Error).message || "Konnte das Paket nicht bauen.");
+    } finally {
+      setShareBusy(null);
+    }
+  };
+
+  const copyPresseLink = () => {
+    if (!local.slug) return;
+    const url = `${window.location.origin}/presse/${local.slug}`;
+    navigator.clipboard.writeText(url).then(() => toast.success("Link kopiert.")).catch(() => toast.error("Kopieren fehlgeschlagen."));
+  };
 
   // ---- Autosave (debounced) ----
   useEffect(() => {
@@ -558,6 +600,30 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               )}
             </div>
           </Section>
+
+          {/* Weitergeben (Teil 17b): fertige Formate ohne KI, ohne Credits, ohne Wartezeit */}
+          {local.id && local.image_url && local.slug && (
+            <Section title="Weitergeben" help="Vier fertige Bildformate für Story, Post, Pin und Banner — sofort erzeugt, direkt aus deinem Produktbild. Kein Warten, keine Credits. Das Kreativpaket bündelt alles in einer Datei, der Link zeigt dieselben Inhalte ohne Download.">
+              <div className="flex flex-wrap gap-2">
+                {(["story_9x16", "post_1x1", "pin_2x3", "banner"] as ShareFormat[]).map((f) => (
+                  <button key={f} type="button" onClick={() => downloadShareFormat(f)} disabled={shareBusy !== null}
+                    className="inline-flex items-center gap-1.5 border border-foreground bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background disabled:opacity-50">
+                    <Share2 className="h-3 w-3" /> {shareBusy === f ? "…" : SHARE_FORMAT_LABEL[f]}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={downloadCreatorPackage} disabled={shareBusy !== null}
+                  className="inline-flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-50">
+                  <Package className="h-3 w-3" /> {shareBusy === "zip" ? "Paket wird gebaut…" : "Kreativpaket (ZIP)"}
+                </button>
+                <button type="button" onClick={copyPresseLink}
+                  className="inline-flex items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:border-foreground">
+                  <Link2 className="h-3 w-3" /> Teilbaren Link kopieren
+                </button>
+              </div>
+            </Section>
+          )}
 
           {/* Seitlicher Banner (Teil 12c) */}
           <Section title="Seitlicher Banner" help="Zeig auf der Produktseite ein Bild oder Video neben dem Stück — aus deiner Mediathek gewählt. Optional.">
