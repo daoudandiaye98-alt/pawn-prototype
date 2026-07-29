@@ -12,6 +12,7 @@ import type { Plan } from "@/features/campaign/quota";
 const PAGE_TEXTS: Record<string, string> = {
   "/studio": "Hier siehst du, was gerade wartet — Bestellungen, Nachrichten, ein möglicher nächster Zug.",
   "/studio/produkte": "Deine Stücke. Neu anlegen, bearbeiten, veröffentlichen — nichts geht ohne deinen Schalter live.",
+  "/studio/produkte/neu": "Foto hoch, ein paar Angaben, fertig — dein Stück ist sofort live. Die Inszenierung danach ist ein Zusatz, kein Muss.",
   "/studio/bestellungen": "Deine Verkäufe laufen hier ein. Bestätige den Versand, sobald das Paket raus ist.",
   "/studio/kampagnen": "Bisherige Kampagnen und Editionen-Vorschläge. Neue entstehen im Kampagnen-Studio.",
   "/studio/mediathek": "Alles, was du hochlädst oder erzeugst, landet hier. Von hier aus auf Produktseiten, ins PAWN-Archiv oder zum Download.",
