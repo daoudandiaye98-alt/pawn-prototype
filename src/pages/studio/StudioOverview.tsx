@@ -225,6 +225,9 @@ export default function StudioOverview() {
   // je Stück (Summe über seine verlinkten Medien).
   const [shopClicksByProduct, setShopClicksByProduct] = useState<Record<string, number>>({});
   const [productsLoaded, setProductsLoaded] = useState(false);
+  // Teil 17d: eigenes Material, das noch nie fürs PAWN-Archiv eingereicht wurde (Teil 12b) —
+  // speist die tägliche Liste, macht den bestehenden Weg über die Mediathek sichtbarer.
+  const [unsubmittedMediaCount, setUnsubmittedMediaCount] = useState(0);
 
   useEffect(() => {
     if (!designer) return;
@@ -248,6 +251,10 @@ export default function StudioOverview() {
         clicks[m.product_id] = (clicks[m.product_id] ?? 0) + (m.performance?.shop_clicks ?? 0);
       }
       setShopClicksByProduct(clicks);
+
+      const { count } = await supabase.from("media_assets" as never).select("id", { count: "exact", head: true })
+        .eq("designer_id", designer.id).eq("review_status", "privat");
+      setUnsubmittedMediaCount(count ?? 0);
     })();
   }, [designer]);
 
@@ -347,9 +354,10 @@ export default function StudioOverview() {
     if (criticalStock > 0) pool.push({ key: "stock", label: "Lagerbestand prüfen", reason: `${criticalStock} ${criticalStock === 1 ? "Stück ist" : "Stücke sind"} fast ausverkauft.`, to: "/studio/produkte" });
     if (messages.some((m) => m.unread)) pool.push({ key: "messages", label: "Nachrichten beantworten", reason: "Jemand wartet auf deine Antwort.", to: "/studio/nachrichten" });
     if (pendingCampaign) pool.push({ key: "campaign", label: "Kampagnen-Entwurf ansehen", reason: "Ein Vorschlag wartet auf deine Freigabe.", to: "/studio/kampagnen" });
+    if (unsubmittedMediaCount > 0) pool.push({ key: "archiv", label: "Material fürs PAWN-Archiv einreichen", reason: "Ausgewähltes Material kann PAWN mit Credit auf der Plattform zeigen — mehr Reichweite für dich.", to: "/studio/mediathek" });
     return pool.filter((s) => !isDismissed(s.key)).slice(0, 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [designer, hasPortrait, hasStory, dnaMissingProduct, criticalStock, messages, pendingCampaign]);
+  }, [designer, hasPortrait, hasStory, dnaMissingProduct, criticalStock, messages, pendingCampaign, unsubmittedMediaCount]);
 
   const dismissSuggestion = async (key: string) => {
     if (!designer) return;

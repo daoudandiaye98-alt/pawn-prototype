@@ -11,6 +11,13 @@ const DesignersIndex = () => {
   const designers = useStore(marketplaceSelectors.getAllDesignerViews);
   const atelierCta = useContentValue("dindex_item_cta", "Zum Atelier →");
 
+  // Teil 17d: gebündelte Reichweite sichtbar machen — das Netzwerk, nicht nur das einzelne Haus.
+  const [totalViews, setTotalViews] = useState<number | null>(null);
+  useEffect(() => {
+    void supabase.from("products").select("view_count").eq("status", "published")
+      .then(({ data }) => setTotalViews(((data ?? []) as { view_count: number | null }[]).reduce((s, p) => s + (p.view_count ?? 0), 0)));
+  }, []);
+
   // Teil 15c: die Halle zeigt die Vielfalt — ein Farbakzent aus dem Haus-Thema je Karte.
   const [accentBySlug, setAccentBySlug] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -73,7 +80,9 @@ const DesignersIndex = () => {
         <div className="mx-auto max-w-[1600px]">
           <div className="mb-14 flex items-end justify-between">
             <Editable as="p" contentKey="dindex_dir_eyebrow" className="palace-eyebrow">Verzeichnis</Editable>
-            <span className="palace-eyebrow text-[#7C7972]">{designers.length} Ateliers</span>
+            <span className="palace-eyebrow text-[#7C7972]">
+              {designers.length} Ateliers{totalViews != null && totalViews > 0 ? ` · gemeinsam ${totalViews.toLocaleString("de-DE")} Aufrufe` : ""}
+            </span>
           </div>
           <ul className="grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
             {designers.map((d, i) => (

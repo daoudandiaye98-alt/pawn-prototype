@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { captureReferralCode } from "@/features/referral";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -47,6 +49,7 @@ import StudioVideothek from "./pages/studio/StudioVideothek.tsx";
 import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
 import StudioContentBegleiter from "./pages/studio/StudioContentBegleiter.tsx";
 import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
+import StudioReferrals from "./pages/studio/StudioReferrals.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
@@ -96,6 +99,13 @@ function AuthedCore({ children }: { children: React.ReactNode }) {
   return <CoreProvider userId={user?.id ?? null}>{children}</CoreProvider>;
 }
 
+/** Teil 17d: merkt sich ?ref=<haus-slug> für 30 Tage — auf jeder Seite, nicht nur der Landing. */
+function ReferralCapture() {
+  const [params] = useSearchParams();
+  useEffect(() => { captureReferralCode(params.get("ref")); }, [params]);
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -112,6 +122,7 @@ const App = () => (
               <RoomShiftProvider>
               <CopilotProvider>
 
+              <ReferralCapture />
               <Routes>
 
                 <Route path="/" element={<Index />} />
@@ -172,6 +183,7 @@ const App = () => (
                 <Route path="/studio/mediathek" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
                 <Route path="/studio/content-begleiter" element={<RoleGate role="designer"><StudioContentBegleiter /></RoleGate>} />
                 <Route path="/studio/hausseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
+                <Route path="/studio/empfehlungen" element={<RoleGate role="designer"><StudioReferrals /></RoleGate>} />
                 <Route path="/studio/plan" element={<RoleGate role="designer"><StudioPlan /></RoleGate>} />
                 <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/nachrichten" element={<RoleGate role="designer"><StudioMessages /></RoleGate>} />
