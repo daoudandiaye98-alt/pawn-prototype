@@ -1,0 +1,1 @@
+alter type public.page_block_kind add value if not exists 'ueberlappend';

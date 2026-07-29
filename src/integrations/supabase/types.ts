@@ -554,8 +554,8 @@ export type Database = {
           ausloeser: string | null
           created_at: string
           id: string
-          name: string
           nahe_haeuser: string[]
+          name: string
           ontologie_begriffe: string[]
           praegende_kuenstler: Json
           quelle_typ: string
@@ -570,8 +570,8 @@ export type Database = {
           ausloeser?: string | null
           created_at?: string
           id?: string
-          name: string
           nahe_haeuser?: string[]
+          name: string
           ontologie_begriffe?: string[]
           praegende_kuenstler?: Json
           quelle_typ?: string
@@ -586,8 +586,8 @@ export type Database = {
           ausloeser?: string | null
           created_at?: string
           id?: string
-          name?: string
           nahe_haeuser?: string[]
+          name?: string
           ontologie_begriffe?: string[]
           praegende_kuenstler?: Json
           quelle_typ?: string
@@ -1334,8 +1334,8 @@ export type Database = {
           eigene_welt_at: string | null
           erste_kampagne_at: string | null
           erste_premiere_at: string | null
-          erstes_stueck_at: string | null
           erster_verkauf_at: string | null
+          erstes_stueck_at: string | null
           updated_at: string
           verwandlung_at: string | null
         }
@@ -1344,8 +1344,8 @@ export type Database = {
           eigene_welt_at?: string | null
           erste_kampagne_at?: string | null
           erste_premiere_at?: string | null
-          erstes_stueck_at?: string | null
           erster_verkauf_at?: string | null
+          erstes_stueck_at?: string | null
           updated_at?: string
           verwandlung_at?: string | null
         }
@@ -1354,8 +1354,8 @@ export type Database = {
           eigene_welt_at?: string | null
           erste_kampagne_at?: string | null
           erste_premiere_at?: string | null
-          erstes_stueck_at?: string | null
           erster_verkauf_at?: string | null
+          erstes_stueck_at?: string | null
           updated_at?: string
           verwandlung_at?: string | null
         }
@@ -2605,10 +2605,7 @@ export type Database = {
         Args: { p_media_asset_id: string; p_metric: string }
         Returns: undefined
       }
-      bump_product_view: {
-        Args: { p_product_id: string }
-        Returns: undefined
-      }
+      bump_product_view: { Args: { p_product_id: string }; Returns: undefined }
       bump_video_metric: {
         Args: { p_asset_id: string; p_metric: string }
         Returns: undefined
@@ -2736,6 +2733,7 @@ export type Database = {
         | "lookbook_streifen"
         | "banner_seitlich"
         | "banner_vollbreite"
+        | "ueberlappend"
       posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
       posting_status: "queued" | "posted" | "failed" | "cancelled" | "vorschlag"
       product_status: "draft" | "published" | "archived"
@@ -2927,6 +2925,7 @@ export const Constants = {
         "lookbook_streifen",
         "banner_seitlich",
         "banner_vollbreite",
+        "ueberlappend",
       ],
       posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],
       posting_status: ["queued", "posted", "failed", "cancelled", "vorschlag"],
