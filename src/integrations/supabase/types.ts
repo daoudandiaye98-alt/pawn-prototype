@@ -554,8 +554,8 @@ export type Database = {
           ausloeser: string | null
           created_at: string
           id: string
-          name: string
           nahe_haeuser: string[]
+          name: string
           ontologie_begriffe: string[]
           praegende_kuenstler: Json
           quelle_typ: string
@@ -570,8 +570,8 @@ export type Database = {
           ausloeser?: string | null
           created_at?: string
           id?: string
-          name: string
           nahe_haeuser?: string[]
+          name: string
           ontologie_begriffe?: string[]
           praegende_kuenstler?: Json
           quelle_typ?: string
@@ -586,8 +586,8 @@ export type Database = {
           ausloeser?: string | null
           created_at?: string
           id?: string
-          name?: string
           nahe_haeuser?: string[]
+          name?: string
           ontologie_begriffe?: string[]
           praegende_kuenstler?: Json
           quelle_typ?: string
@@ -1328,47 +1328,6 @@ export type Database = {
           },
         ]
       }
-      house_milestones: {
-        Row: {
-          designer_id: string
-          eigene_welt_at: string | null
-          erste_kampagne_at: string | null
-          erste_premiere_at: string | null
-          erstes_stueck_at: string | null
-          erster_verkauf_at: string | null
-          updated_at: string
-          verwandlung_at: string | null
-        }
-        Insert: {
-          designer_id: string
-          eigene_welt_at?: string | null
-          erste_kampagne_at?: string | null
-          erste_premiere_at?: string | null
-          erstes_stueck_at?: string | null
-          erster_verkauf_at?: string | null
-          updated_at?: string
-          verwandlung_at?: string | null
-        }
-        Update: {
-          designer_id?: string
-          eigene_welt_at?: string | null
-          erste_kampagne_at?: string | null
-          erste_premiere_at?: string | null
-          erstes_stueck_at?: string | null
-          erster_verkauf_at?: string | null
-          updated_at?: string
-          verwandlung_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "house_milestones_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: true
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       house_models: {
         Row: {
           altersgruppe: string | null
@@ -1497,77 +1456,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "house_signatures_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      house_themes: {
-        Row: {
-          bewegungscharakter: string
-          created_at: string
-          designer_id: string
-          farbwelt: Json
-          flaechenrhythmus: string
-          guardrail_notes: Json
-          hintergrundtextur: Json
-          id: string
-          input_prompt: string | null
-          is_current: boolean
-          kantenhaerte: string
-          name: string | null
-          quelle: string
-          typografie: string
-          uebergangsart: string
-          updated_at: string
-          version: number
-          zuversicht: string
-        }
-        Insert: {
-          bewegungscharakter?: string
-          created_at?: string
-          designer_id: string
-          farbwelt?: Json
-          flaechenrhythmus?: string
-          guardrail_notes?: Json
-          hintergrundtextur?: Json
-          id?: string
-          input_prompt?: string | null
-          is_current?: boolean
-          kantenhaerte?: string
-          name?: string | null
-          quelle?: string
-          typografie?: string
-          uebergangsart?: string
-          updated_at?: string
-          version?: number
-          zuversicht?: string
-        }
-        Update: {
-          bewegungscharakter?: string
-          created_at?: string
-          designer_id?: string
-          farbwelt?: Json
-          flaechenrhythmus?: string
-          guardrail_notes?: Json
-          hintergrundtextur?: Json
-          id?: string
-          input_prompt?: string | null
-          is_current?: boolean
-          kantenhaerte?: string
-          name?: string | null
-          quelle?: string
-          typografie?: string
-          uebergangsart?: string
-          updated_at?: string
-          version?: number
-          zuversicht?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "house_themes_designer_id_fkey"
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
@@ -1778,7 +1666,6 @@ export type Database = {
       }
       media_assets: {
         Row: {
-          advertises_text: string | null
           campaign_id: string | null
           created_at: string
           designer_id: string
@@ -1786,8 +1673,6 @@ export type Database = {
           kind: Database["public"]["Enums"]["media_kind"]
           note: string | null
           origin: Database["public"]["Enums"]["media_origin"]
-          performance: Json
-          product_id: string | null
           review_note: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
           rights_granted: boolean
@@ -1799,7 +1684,6 @@ export type Database = {
           video_asset_id: string | null
         }
         Insert: {
-          advertises_text?: string | null
           campaign_id?: string | null
           created_at?: string
           designer_id: string
@@ -1807,8 +1691,6 @@ export type Database = {
           kind: Database["public"]["Enums"]["media_kind"]
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
-          performance?: Json
-          product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
@@ -1820,7 +1702,6 @@ export type Database = {
           video_asset_id?: string | null
         }
         Update: {
-          advertises_text?: string | null
           campaign_id?: string | null
           created_at?: string
           designer_id?: string
@@ -1828,8 +1709,6 @@ export type Database = {
           kind?: Database["public"]["Enums"]["media_kind"]
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
-          performance?: Json
-          product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
@@ -1853,13 +1732,6 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "media_assets_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
@@ -2061,8 +1933,6 @@ export type Database = {
           posted_url: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["posting_status"]
-          story_reason: string | null
-          story_score: number | null
           updated_at: string
         }
         Insert: {
@@ -2075,8 +1945,6 @@ export type Database = {
           posted_url?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["posting_status"]
-          story_reason?: string | null
-          story_score?: number | null
           updated_at?: string
         }
         Update: {
@@ -2089,8 +1957,6 @@ export type Database = {
           posted_url?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["posting_status"]
-          story_reason?: string | null
-          story_score?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2197,7 +2063,6 @@ export type Database = {
           tags: string[]
           updated_at: string
           variants: Json
-          view_count: number
           weight_grams: number | null
           width_cm: number | null
           world: Database["public"]["Enums"]["product_world"]
@@ -2229,7 +2094,6 @@ export type Database = {
           tags?: string[]
           updated_at?: string
           variants?: Json
-          view_count?: number
           weight_grams?: number | null
           width_cm?: number | null
           world?: Database["public"]["Enums"]["product_world"]
@@ -2261,7 +2125,6 @@ export type Database = {
           tags?: string[]
           updated_at?: string
           variants?: Json
-          view_count?: number
           weight_grams?: number | null
           width_cm?: number | null
           world?: Database["public"]["Enums"]["product_world"]
@@ -2342,69 +2205,6 @@ export type Database = {
           value_en?: Json | null
         }
         Relationships: []
-      }
-      staging_requests: {
-        Row: {
-          art: string
-          created_at: string
-          designer_id: string
-          error: string | null
-          id: string
-          product_id: string | null
-          request_handle: Json | null
-          result_url: string | null
-          run_id: string
-          source_url: string
-          status: string
-          template_id: string
-          updated_at: string
-        }
-        Insert: {
-          art: string
-          created_at?: string
-          designer_id: string
-          error?: string | null
-          id?: string
-          product_id?: string | null
-          request_handle?: Json | null
-          result_url?: string | null
-          run_id?: string
-          source_url: string
-          status?: string
-          template_id: string
-          updated_at?: string
-        }
-        Update: {
-          art?: string
-          created_at?: string
-          designer_id?: string
-          error?: string | null
-          id?: string
-          product_id?: string | null
-          request_handle?: Json | null
-          result_url?: string | null
-          run_id?: string
-          source_url?: string
-          status?: string
-          template_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "staging_requests_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staging_requests_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       trend_snapshots: {
         Row: {
@@ -2601,14 +2401,6 @@ export type Database = {
         }
         Returns: Json
       }
-      bump_media_metric: {
-        Args: { p_media_asset_id: string; p_metric: string }
-        Returns: undefined
-      }
-      bump_product_view: {
-        Args: { p_product_id: string }
-        Returns: undefined
-      }
       bump_video_metric: {
         Args: { p_asset_id: string; p_metric: string }
         Returns: undefined
@@ -2646,16 +2438,8 @@ export type Database = {
         Args: { _plan: Database["public"]["Enums"]["designer_plan"] }
         Returns: number
       }
-      promote_posting_suggestion: {
-        Args: { p_queue_id: string }
-        Returns: undefined
-      }
       recompute_brand_dna: {
         Args: { _designer_id: string }
-        Returns: undefined
-      }
-      recompute_house_milestones: {
-        Args: { p_designer_id: string }
         Returns: undefined
       }
       reject_designer: {
@@ -2737,7 +2521,7 @@ export type Database = {
         | "banner_seitlich"
         | "banner_vollbreite"
       posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
-      posting_status: "queued" | "posted" | "failed" | "cancelled" | "vorschlag"
+      posting_status: "queued" | "posted" | "failed" | "cancelled"
       product_status: "draft" | "published" | "archived"
       product_world: "Mode" | "Interior" | "Kunst"
       video_source: "designer" | "edition" | "jarvis"
@@ -2929,7 +2713,7 @@ export const Constants = {
         "banner_vollbreite",
       ],
       posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],
-      posting_status: ["queued", "posted", "failed", "cancelled", "vorschlag"],
+      posting_status: ["queued", "posted", "failed", "cancelled"],
       product_status: ["draft", "published", "archived"],
       product_world: ["Mode", "Interior", "Kunst"],
       video_source: ["designer", "edition", "jarvis"],
