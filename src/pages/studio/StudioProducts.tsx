@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,15 +52,6 @@ interface ProductRow {
 
 const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
 
-const emptyEdit = (): Partial<ProductRow> => ({
-  world: "Mode", status: "draft", price: 0, tags: [], name: "", description: "",
-  inventory_mode: "stock", stock_quantity: 0, allow_custom_requests: false,
-  variants: [], compare_at_price: null, sku: "", weight_grams: null, lead_time_days: null,
-  product_dna: emptyDNA(),
-  length_cm: null, width_cm: null, height_cm: null,
-  care_instructions: "", made_in: "", edition_info: "", designer_note: "",
-});
-
 function slugify(s: string) {
   return s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -111,8 +102,6 @@ export default function StudioProducts() {
     searchParams.delete("dna");
     setSearchParams(searchParams, { replace: true });
   }, [items, searchParams, setSearchParams]);
-
-  const startNew = () => setEditing(emptyEdit());
 
   const buildPayload = (e: Partial<ProductRow>) => ({
     designer_id: designer!.id,
@@ -188,9 +177,9 @@ export default function StudioProducts() {
     <StudioShell title="Kollektion" eyebrow="Deine Kollektion">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{total} {total === 1 ? "Stück" : "Stücke"} · Seite {page + 1} / {totalPages}</p>
-        <button onClick={startNew} className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
+        <Link to="/studio/produkte/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
           <Plus className="h-3 w-3" /> Neues Stück
-        </button>
+        </Link>
       </div>
 
       {items.length === 0 ? (
@@ -198,9 +187,9 @@ export default function StudioProducts() {
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Leer</p>
           <p className="mt-3 font-serif text-2xl font-medium">Noch keine Stücke.</p>
           <p className="mt-2 text-sm text-muted-foreground">Leg das erste Stück deiner Kollektion an — es dauert nur ein paar Minuten.</p>
-          <button onClick={startNew} className="mt-6 inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
+          <Link to="/studio/produkte/neu" className="mt-6 inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
             <Plus className="h-3 w-3" /> Erstes Stück anlegen
-          </button>
+          </Link>
         </div>
       ) : (
         <>
@@ -513,7 +502,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={onDrop}
-              className={`relative flex flex-col items-center justify-center gap-3 border-2 border-dashed p-8 text-center transition-colors ${dragOver ? "border-foreground bg-muted" : imageMissing ? "border-destructive/50 bg-white" : "border-border bg-white"}`}>
+              className={`relative flex flex-col items-center justify-center gap-3 border-2 border-dashed p-8 text-center transition-colors ${dragOver ? "border-foreground bg-muted" : "border-border bg-white"}`}>
               {local.image_url && (
                 <>
                   <img src={local.image_url} alt="" className="max-h-64 w-auto object-contain" />
@@ -548,7 +537,6 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               )}
               {!local.image_url && (
                 <>
-
                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm">Zieh dein Bild hier hinein — oder</p>
                   <label className="cursor-pointer border border-foreground bg-white px-4 py-2 text-[0.68rem] hover:bg-foreground hover:text-background">
@@ -556,6 +544,11 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
                   </label>
                   <p className="text-[0.62rem] text-muted-foreground">JPG oder PNG, mind. 1200 px</p>
+                  {local.id && (
+                    <Link to={`/studio/produkte/neu?product=${local.id}`} className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground underline hover:text-foreground">
+                      Oder: PAWN inszeniert dein Stück
+                    </Link>
+                  )}
                 </>
               )}
               {uploadPct != null && (

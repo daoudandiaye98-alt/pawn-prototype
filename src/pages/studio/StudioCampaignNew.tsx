@@ -114,11 +114,6 @@ async function uploadFile(userId: string, file: File | Blob, ext: string): Promi
   return { path, signedUrl: signed.signedUrl };
 }
 
-function slugify(s: string) {
-  return s.toLowerCase().normalize("NFKD").replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-
 const ORT_PRESETS = ["Studio, neutral", "Straße", "Natur", "Interieur", "Laufsteg"];
 /** Deutsches Label fürs Studio, "camera" ist die echte Kamerasprache fürs Modell (Teil 14a) —
  * die Bausteine werden nicht als Fließtext angehängt, sondern strukturiert in den Prompt gefaltet. */
@@ -154,17 +149,8 @@ export default function StudioCampaignNew() {
   const [recentShots, setRecentShots] = useState<RecentShot[]>([]);
 
   // Teil 16c: jedes erzeugte Bild bekommt ein Ziel — ein Stück, oder wenn keins
-  // gewählt ist, ein kurzer Zweck ("wofür wirbt das?"). Zusätzlich eine Schnellanlage
-  // für Häuser ohne Stücke, damit der Weg vom Foto zum Verkauf nie an fehlenden
-  // Produkten hängen bleibt.
+  // gewählt ist, ein kurzer Zweck ("wofür wirbt das?").
   const [advertisesText, setAdvertisesText] = useState("");
-  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
-  const [quickName, setQuickName] = useState("");
-  const [quickPrice, setQuickPrice] = useState("");
-  const [quickSize, setQuickSize] = useState("");
-  const [quickStory, setQuickStory] = useState("");
-  const [quickImageUrl, setQuickImageUrl] = useState<string | null>(null);
-  const [quickBusy, setQuickBusy] = useState(false);
 
   // Freisteller (weißer Hintergrund)
   const [freistellerBusy, setFreistellerBusy] = useState<number | "product" | null>(null);
@@ -642,37 +628,6 @@ export default function StudioCampaignNew() {
       toast.success("Als Produktbild übernommen.");
     } catch (e) {
       toast.error((e as Error).message || "Fehler");
-    }
-  };
-
-  // Teil 16c: Schnellanlage — ein Haus ohne Stücke soll nie an fehlenden Produkten
-  // hängen bleiben. Nur Foto, Preis, Größe/Maße und ein Satz Geschichte; alles
-  // Weitere kann später in /studio/produkte ergänzt werden.
-  const quickCreateProduct = async () => {
-    if (!designer) return;
-    if (!quickName.trim() || quickName.trim().length < 2) { toast.error("Bitte gib deinem Stück einen Namen."); return; }
-    const priceNum = Number(quickPrice);
-    if (!quickPrice || isNaN(priceNum) || priceNum <= 0) { toast.error("Bitte einen Preis eintragen."); return; }
-    if (!quickImageUrl) { toast.error("Bitte ein Foto hochladen."); return; }
-    setQuickBusy(true);
-    try {
-      const description = [quickStory.trim(), quickSize.trim() ? `Größe: ${quickSize.trim()}` : null].filter(Boolean).join("\n\n") || null;
-      const slug = `${slugify(designer.brand_name)}-${slugify(quickName)}-${Date.now().toString(36)}`;
-      const { data, error } = await supabase.from("products").insert({
-        designer_id: designer.id, name: quickName.trim(), slug, price: priceNum,
-        description, image_url: quickImageUrl, status: "published",
-      }).select("id, name, slug, world, image_url").single();
-      if (error) throw error;
-      const created = data as unknown as ProductLite;
-      setProducts((arr) => [created, ...arr]);
-      setChosenProduct(created);
-      setQuickCreateOpen(false);
-      setQuickName(""); setQuickPrice(""); setQuickSize(""); setQuickStory(""); setQuickImageUrl(null);
-      toast.success("Stück angelegt — mehr Details kannst du jederzeit in deiner Kollektion ergänzen.");
-    } catch (e) {
-      toast.error((e as Error).message || "Fehler beim Anlegen.");
-    } finally {
-      setQuickBusy(false);
     }
   };
 
@@ -1271,41 +1226,10 @@ export default function StudioCampaignNew() {
             <div className="border-b border-border py-8">
               <p className="editorial-eyebrow">Welches Stück soll gesehen werden?</p>
               {products.length === 0 ? (
-                quickCreateOpen ? (
-                  <div className="mt-4 border border-border p-4">
-                    <p className="text-sm text-muted-foreground">Foto, Preis, ein Satz Geschichte — mehr braucht es für den Anfang nicht. Alles Weitere ergänzt du später in deiner Kollektion.</p>
-                    <div className="mt-4 flex flex-wrap items-start gap-4">
-                      <label className="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center border border-dashed border-border bg-muted text-center text-xs text-muted-foreground hover:border-foreground">
-                        {quickImageUrl ? <img src={quickImageUrl} alt="" className="h-full w-full object-cover" /> : <span>Foto wählen</span>}
-                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                          const f = e.target.files?.[0]; if (!f || !user) return;
-                          try { const ext = f.name.split(".").pop() || "jpg"; const { signedUrl } = await uploadFile(user.id, f, ext); setQuickImageUrl(signedUrl); }
-                          catch { toast.error("Foto konnte nicht hochgeladen werden."); }
-                        }} />
-                      </label>
-                      <div className="min-w-[220px] flex-1 space-y-2">
-                        <input value={quickName} onChange={(e) => setQuickName(e.target.value)} placeholder="Name des Stücks" className="w-full border border-border bg-white p-2 text-sm" />
-                        <div className="flex gap-2">
-                          <input value={quickPrice} onChange={(e) => setQuickPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preis in €" className="w-1/2 border border-border bg-white p-2 text-sm" />
-                          <input value={quickSize} onChange={(e) => setQuickSize(e.target.value)} placeholder="Größe / Maße" className="w-1/2 border border-border bg-white p-2 text-sm" />
-                        </div>
-                        <textarea value={quickStory} onChange={(e) => setQuickStory(e.target.value)} placeholder="Ein Satz Geschichte" rows={2} className="w-full border border-border bg-white p-2 text-sm" />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <button type="button" onClick={quickCreateProduct} disabled={quickBusy} className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-60">
-                        {quickBusy ? "Legt an…" : "Stück anlegen"}
-                      </button>
-                      <button type="button" onClick={() => setQuickCreateOpen(false)} className="min-h-[40px] border border-border px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-muted">Abbrechen</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-4 text-sm text-muted-foreground">
-                    Noch keine Stücke hinterlegt.{" "}
-                    <button type="button" onClick={() => setQuickCreateOpen(true)} className="underline hover:text-foreground">Jetzt schnell anlegen</button>
-                    {" "}oder <Link to="/studio/produkte" className="underline hover:text-foreground">ausführlich in der Kollektion</Link>.
-                  </div>
-                )
+                <div className="mt-4 text-sm text-muted-foreground">
+                  Noch keine Stücke hinterlegt.{" "}
+                  <Link to="/studio/produkte/neu" className="underline hover:text-foreground">Jetzt anlegen</Link> — Foto, Preis, ein Satz Geschichte, fertig.
+                </div>
               ) : (
                 <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
                   {products.map((p) => (

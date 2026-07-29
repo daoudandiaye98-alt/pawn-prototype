@@ -209,7 +209,7 @@ export default function StudioOverview() {
     const items = [
       { label: "Porträt hochladen", done: !!designer?.avatar_url || !!designer?.hero_image_url, to: "/studio/brand" },
       { label: "Manifest schreiben", done: !!designer?.story && designer.story.length > 40, to: "/studio/brand" },
-      { label: "Erstes Stück anlegen", done: products.length > 0, to: "/studio/produkte" },
+      { label: "Erstes Stück anlegen", done: products.length > 0, to: "/studio/produkte/neu" },
       { label: "Stück veröffentlichen", done: products.some((p) => p.status === "published"), to: "/studio/produkte" },
       { label: "DNA deiner Stücke vervollständigen", done: !dnaMissing, to: dnaMissing ? `/studio/produkte?dna=${dnaMissing.id}` : "/studio/produkte" },
       { label: "Auszahlungsdaten hinterlegen", done: designer?.stripe_charges_enabled === true, to: "/studio/auszahlung" },
@@ -249,6 +249,24 @@ export default function StudioOverview() {
             )}
           </p>
         </div>
+      </section>
+
+      {/* Teil 17a: Verkaufsbereitschaft als ruhige Zeile — nicht als Warnung. */}
+      <section className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        {([
+          { label: "Stücke", done: products.length > 0, to: "/studio/produkte/neu" },
+          { label: "Auszahlungskonto", done: designer?.stripe_charges_enabled === true, to: "/studio/auszahlung" },
+          { label: "Seite veröffentlicht", done: !!designer?.page_published_at, to: "/studio/hausseite" },
+        ] as const).map((it, i, arr) => (
+          <span key={it.label} className="flex items-center gap-2">
+            {it.done ? (
+              <span className="text-muted-foreground">{it.label} ✓</span>
+            ) : (
+              <Link to={it.to} className="underline decoration-dotted underline-offset-4 hover:text-foreground hover:decoration-solid">{it.label}</Link>
+            )}
+            {i < arr.length - 1 && <span className="text-muted-foreground">·</span>}
+          </span>
+        ))}
       </section>
 
       {/* DEIN NÄCHSTER ZUG — die grösste Karte */}
@@ -417,7 +435,7 @@ export default function StudioOverview() {
               </div>
             </article>
           ))}
-          <Link to="/studio/produkte" className="flex aspect-[4/5] flex-col items-center justify-center border border-dashed border-border bg-white text-muted-foreground hover:border-foreground hover:text-foreground">
+          <Link to="/studio/produkte/neu" className="flex aspect-[4/5] flex-col items-center justify-center border border-dashed border-border bg-white text-muted-foreground hover:border-foreground hover:text-foreground">
             <Plus className="h-6 w-6" />
             <p className="mt-3 text-[0.68rem] uppercase tracking-[0.24em]">Neues Stück anlegen</p>
           </Link>
