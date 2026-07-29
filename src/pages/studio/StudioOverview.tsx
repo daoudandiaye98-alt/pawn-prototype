@@ -7,11 +7,12 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders } from "@/features/studio/useDesignerOrders";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { useNextMove } from "@/features/studio/nextMove";
+import { useDesignerJourney, type JourneyStep } from "@/features/studio/useDesignerJourney";
 import { useHouseMilestones, nextVerwandlungStep, VERWANDLUNG_STEPS } from "@/features/verwandlung";
 import { useDisplayName } from "@/lib/displayName";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Sparkles, Plus, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, Check } from "lucide-react";
+import { Sparkles, Plus, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, Check, X } from "lucide-react";
 
 type World = "Mode" | "Interior" | "Kunst";
 
@@ -147,8 +148,64 @@ function DesignerWelcome({ name, onSkip }: { name: string; onSkip: () => void })
   );
 }
 
+interface Suggestion { key: string; label: string; reason: string; to: string }
+
+function DailyList({ suggestions, onDismiss }: { suggestions: Suggestion[]; onDismiss: (key: string) => void }) {
+  return (
+    <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Heute</p>
+      {suggestions.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">Für heute nichts Neues. Schau später wieder vorbei.</p>
+      ) : (
+        <ol className="mt-4 space-y-2">
+          {suggestions.map((s) => (
+            <li key={s.key} className="group flex items-center justify-between gap-4 border-[1.5px] border-border px-4 py-3 hover:border-foreground">
+              <Link to={s.to} className="min-w-0 flex-1">
+                <p className="text-sm">{s.label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{s.reason}</p>
+              </Link>
+              <button type="button" onClick={() => onDismiss(s.key)} aria-label="Weglegen" className="shrink-0 text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function DesignerJourney({ steps, doneCount }: { steps: JourneyStep[]; doneCount: number }) {
+  if (steps.length === 0) return null;
+  return (
+    <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Dein Weg · {doneCount} von {steps.length}</p>
+      <ol className="mt-4 space-y-2">
+        {steps.map((s, i) => (
+          <li key={s.key} className={`border-[1.5px] px-4 py-3 ${s.done ? "border-border" : "border-foreground"}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-[1.5px] text-[0.6rem] ${s.done ? "border-foreground bg-foreground text-background" : "border-foreground"}`}>
+                  {s.done ? <Check className="h-3 w-3" /> : i + 1}
+                </span>
+                <div>
+                  <p className={`text-sm ${s.done ? "text-muted-foreground line-through" : ""}`}>{s.label}</p>
+                  {!s.done && <p className="mt-0.5 text-xs text-muted-foreground">{s.reason}</p>}
+                </div>
+              </div>
+              {!s.done && (
+                <Link to={s.to} className="shrink-0 text-[0.62rem] uppercase tracking-[0.2em] underline hover:text-foreground">Los</Link>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export default function StudioOverview() {
-  const { designer, loading } = useMyDesigner();
+  const { designer, loading, refresh: refreshDesigner } = useMyDesigner();
   const { lines } = useDesignerOrders(designer?.id);
   const { level } = useDesignerLevel(designer?.id);
   const { milestones } = useHouseMilestones(designer?.id);
@@ -263,25 +320,44 @@ export default function StudioOverview() {
     void data;
   };
 
-  const checklist = useMemo(() => {
-    const dnaMissing = products.filter((p) => p.status === "published").find((p) => {
-      const dna = (p as unknown as { product_dna?: Record<string, unknown[]> }).product_dna ?? {};
-      const n = (k: string) => Array.isArray(dna[k]) ? dna[k]!.length : 0;
-      return n("materials") + n("silhouette") + n("colors") + n("mood") === 0;
-    });
-    const items = [
-      { label: "Porträt hochladen", done: !!designer?.avatar_url || !!designer?.hero_image_url, to: "/studio/brand" },
-      { label: "Manifest schreiben", done: !!designer?.story && designer.story.length > 40, to: "/studio/brand" },
-      { label: "Erstes Stück anlegen", done: products.length > 0, to: "/studio/produkte/neu" },
-      { label: "Stück veröffentlichen", done: products.some((p) => p.status === "published"), to: "/studio/produkte" },
-      { label: "DNA deiner Stücke vervollständigen", done: !dnaMissing, to: dnaMissing ? `/studio/produkte?dna=${dnaMissing.id}` : "/studio/produkte" },
-      { label: "Auszahlungsdaten hinterlegen", done: designer?.stripe_charges_enabled === true, to: "/studio/auszahlung" },
-      { label: "Seite veröffentlichen", done: !!designer?.page_published_at, to: "/studio/hausseite" },
-    ];
-    return items;
-  }, [designer, products]);
-  const doneCount = checklist.filter((i) => i.done).length;
-  const showChecklist = doneCount < checklist.length;
+  // Teil 17c: der durchgehende Weg — acht Schritte, jeder Zustand aus echten Daten abgeleitet,
+  // nie in einer eigenen Checklisten-Tabelle gespeichert.
+  const journey = useDesignerJourney({ designer, productsCount: products.length, hasPaidOrder: paid.length > 0 });
+
+  const dnaMissingProduct = useMemo(() => products.filter((p) => p.status === "published").find((p) => {
+    const dna = (p as unknown as { product_dna?: Record<string, unknown[]> }).product_dna ?? {};
+    const n = (k: string) => Array.isArray(dna[k]) ? dna[k]!.length : 0;
+    return n("materials") + n("silhouette") + n("colors") + n("mood") === 0;
+  }), [products]);
+
+  // Teil 17c: tägliche Liste — höchstens drei begründete Vorschläge, aus echtem Zustand
+  // abgeleitet. Weggelegtes kommt frühestens nach 7 Tagen zurück (kein Streak-Zwang, keine
+  // roten Zähler — die Liste darf auch leer sein).
+  const dismissedMap = designer?.dismissed_suggestions ?? {};
+  const isDismissed = (key: string) => {
+    const at = dismissedMap[key];
+    return !!at && Date.now() - new Date(at).getTime() < 7 * 86400000;
+  };
+  const dailySuggestions = useMemo(() => {
+    if (!designer) return [];
+    const pool: { key: string; label: string; reason: string; to: string }[] = [];
+    if (!hasPortrait) pool.push({ key: "portrait", label: "Porträt hochladen", reason: "Ein Gesicht schafft Vertrauen.", to: "/studio/brand" });
+    if (!hasStory) pool.push({ key: "manifest", label: "Manifest schreiben", reason: "Deine Geschichte ist dein bestes Verkaufsargument.", to: "/studio/brand" });
+    if (dnaMissingProduct) pool.push({ key: "dna", label: "DNA deines Stücks ergänzen", reason: "Hilft PAWN, dein Stück den richtigen Menschen zu zeigen.", to: `/studio/produkte?dna=${dnaMissingProduct.id}` });
+    if (criticalStock > 0) pool.push({ key: "stock", label: "Lagerbestand prüfen", reason: `${criticalStock} ${criticalStock === 1 ? "Stück ist" : "Stücke sind"} fast ausverkauft.`, to: "/studio/produkte" });
+    if (messages.some((m) => m.unread)) pool.push({ key: "messages", label: "Nachrichten beantworten", reason: "Jemand wartet auf deine Antwort.", to: "/studio/nachrichten" });
+    if (pendingCampaign) pool.push({ key: "campaign", label: "Kampagnen-Entwurf ansehen", reason: "Ein Vorschlag wartet auf deine Freigabe.", to: "/studio/kampagnen" });
+    return pool.filter((s) => !isDismissed(s.key)).slice(0, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designer, hasPortrait, hasStory, dnaMissingProduct, criticalStock, messages, pendingCampaign]);
+
+  const dismissSuggestion = async (key: string) => {
+    if (!designer) return;
+    const next = { ...dismissedMap, [key]: new Date().toISOString() };
+    const { error } = await supabase.from("designers").update({ dismissed_suggestions: next }).eq("id", designer.id);
+    if (error) { toast.error(error.message); return; }
+    void refreshDesigner();
+  };
 
   // Teil 17b: drei ruhige Schritte für ein frisches Haus — abgeleitet aus "noch keine Stücke",
   // kein eigenes DB-Flag. Session-weit ausblendbar, kommt beim nächsten Besuch zurück, solange
@@ -334,24 +410,6 @@ export default function StudioOverview() {
         </div>
       </section>
 
-      {/* Teil 17a: Verkaufsbereitschaft als ruhige Zeile — nicht als Warnung. */}
-      <section className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-        {([
-          { label: "Stücke", done: products.length > 0, to: "/studio/produkte/neu" },
-          { label: "Auszahlungskonto", done: designer?.stripe_charges_enabled === true, to: "/studio/auszahlung" },
-          { label: "Seite veröffentlicht", done: !!designer?.page_published_at, to: "/studio/hausseite" },
-        ] as const).map((it, i, arr) => (
-          <span key={it.label} className="flex items-center gap-2">
-            {it.done ? (
-              <span className="text-muted-foreground">{it.label} ✓</span>
-            ) : (
-              <Link to={it.to} className="underline decoration-dotted underline-offset-4 hover:text-foreground hover:decoration-solid">{it.label}</Link>
-            )}
-            {i < arr.length - 1 && <span className="text-muted-foreground">·</span>}
-          </span>
-        ))}
-      </section>
-
       {/* DEIN NÄCHSTER ZUG — die grösste Karte */}
       <section className="mb-6 border-[1.5px] border-foreground bg-white p-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
@@ -372,31 +430,11 @@ export default function StudioOverview() {
         </div>
       </section>
 
-      {/* Züge — max 3 kleine Aufgaben */}
-      {showChecklist && (
-        <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Züge · {doneCount} von {checklist.length}</p>
-          <ol className="mt-4 space-y-2">
-            {checklist.filter((c) => !c.done).slice(0, 3).map((it) => (
-              <li key={it.label}>
-                <Link to={it.to} className="group flex items-center justify-between gap-4 border-[1.5px] border-border px-4 py-3 hover:border-foreground">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center border-[1.5px] border-foreground text-[0.6rem]">·</span>
-                    <span className="text-sm">{it.label}</span>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </li>
-            ))}
-            {checklist.filter((c) => c.done).slice(-2).map((it) => (
-              <li key={it.label} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground">
-                <span className="flex h-5 w-5 items-center justify-center border-[1.5px] border-foreground bg-foreground text-background"><Check className="h-3 w-3" /></span>
-                <span className="line-through">{it.label}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      {/* Teil 17c: tägliche Liste — höchstens drei begründete Vorschläge, darf leer sein. */}
+      <DailyList suggestions={dailySuggestions} onDismiss={dismissSuggestion} />
+
+      {/* Teil 17c: Dein Weg — acht Schritte vom Konto bis zum ersten Verkauf, abgeleitet. */}
+      <DesignerJourney steps={journey.steps} doneCount={journey.doneCount} />
 
       {/* Teil 15c: Die Verwandlung — Stufen aus echtem Tun, niemals käuflich. */}
       <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">

@@ -357,6 +357,14 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
 
 
   // ---- Weitergeben (Teil 17b): vorlagenbasiert, ohne KI, ohne Credits, ohne Wartezeit ----
+  // Jede Nutzung schreibt ein leichtes domain_events-Ereignis — daraus leitet Teil 17c den
+  // Weg-Schritt "Erstmals geteilt" ab, ohne ein eigenes Checklisten-Flag zu speichern.
+  const logShareEvent = (type: string, productId?: string) => {
+    void supabase.from("domain_events").insert({
+      type, actor: userId ?? designer.id, payload: { designer_id: designer.id, product_id: productId ?? null },
+    } as never);
+  };
+
   const downloadShareFormat = async (format: ShareFormat) => {
     if (!local.image_url || !local.name || !local.price) return;
     setShareBusy(format);
@@ -365,6 +373,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         imageUrl: local.image_url, brandName: designer.brand_name, productName: local.name, price: Number(local.price),
       });
       downloadBlob(blob, `${slugify(local.name)}-${format}.png`);
+      logShareEvent("share.kit_downloaded", local.id);
     } catch (e) {
       toast.error((e as Error).message || "Konnte die Grafik nicht erzeugen.");
     } finally {
@@ -382,6 +391,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         productLink: `${window.location.origin}/product/${local.slug}`, world: local.world ?? "Mode",
       });
       downloadBlob(zip, `${slugify(local.name)}-creator-package.zip`);
+      logShareEvent("share.package_downloaded", local.id);
     } catch (e) {
       toast.error((e as Error).message || "Konnte das Paket nicht bauen.");
     } finally {
@@ -392,7 +402,10 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const copyPresseLink = () => {
     if (!local.slug) return;
     const url = `${window.location.origin}/presse/${local.slug}`;
-    navigator.clipboard.writeText(url).then(() => toast.success("Link kopiert.")).catch(() => toast.error("Kopieren fehlgeschlagen."));
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success("Link kopiert.");
+      logShareEvent("share.link_copied", local.id);
+    }).catch(() => toast.error("Kopieren fehlgeschlagen."));
   };
 
   // ---- Autosave (debounced) ----
