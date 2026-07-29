@@ -2172,6 +2172,54 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          code: string
+          created_at: string
+          credited: boolean
+          credited_at: string | null
+          first_order_id: string | null
+          id: string
+          referred_user_id: string
+          referrer_designer_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          credited?: boolean
+          credited_at?: string | null
+          first_order_id?: string | null
+          id?: string
+          referred_user_id: string
+          referrer_designer_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          credited?: boolean
+          credited_at?: string | null
+          first_order_id?: string | null
+          id?: string
+          referred_user_id?: string
+          referrer_designer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_first_order_id_fkey"
+            columns: ["first_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_designer_id_fkey"
+            columns: ["referrer_designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           allow_custom_requests: boolean
@@ -2620,6 +2668,10 @@ export type Database = {
       designer_level: { Args: { _designer_id: string }; Returns: Json }
       grant_credits: {
         Args: { _credits: number; _designer_id: string; _note?: string }
+        Returns: Json
+      }
+      grant_referral_credit: {
+        Args: { p_order_id: string; p_ref_code: string }
         Returns: Json
       }
       has_role: {
