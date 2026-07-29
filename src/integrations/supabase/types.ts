@@ -1463,6 +1463,77 @@ export type Database = {
           },
         ]
       }
+      house_themes: {
+        Row: {
+          bewegungscharakter: string
+          created_at: string
+          designer_id: string
+          farbwelt: Json
+          flaechenrhythmus: string
+          guardrail_notes: Json
+          hintergrundtextur: Json
+          id: string
+          input_prompt: string | null
+          is_current: boolean
+          kantenhaerte: string
+          name: string | null
+          quelle: string
+          typografie: string
+          uebergangsart: string
+          updated_at: string
+          version: number
+          zuversicht: string
+        }
+        Insert: {
+          bewegungscharakter?: string
+          created_at?: string
+          designer_id: string
+          farbwelt?: Json
+          flaechenrhythmus?: string
+          guardrail_notes?: Json
+          hintergrundtextur?: Json
+          id?: string
+          input_prompt?: string | null
+          is_current?: boolean
+          kantenhaerte?: string
+          name?: string | null
+          quelle?: string
+          typografie?: string
+          uebergangsart?: string
+          updated_at?: string
+          version?: number
+          zuversicht?: string
+        }
+        Update: {
+          bewegungscharakter?: string
+          created_at?: string
+          designer_id?: string
+          farbwelt?: Json
+          flaechenrhythmus?: string
+          guardrail_notes?: Json
+          hintergrundtextur?: Json
+          id?: string
+          input_prompt?: string | null
+          is_current?: boolean
+          kantenhaerte?: string
+          name?: string | null
+          quelle?: string
+          typografie?: string
+          uebergangsart?: string
+          updated_at?: string
+          version?: number
+          zuversicht?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_themes_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jarvis_experiments: {
         Row: {
           after: Json | null
@@ -2205,6 +2276,69 @@ export type Database = {
           value_en?: Json | null
         }
         Relationships: []
+      }
+      staging_requests: {
+        Row: {
+          art: string
+          created_at: string
+          designer_id: string
+          error: string | null
+          id: string
+          product_id: string | null
+          request_handle: Json | null
+          result_url: string | null
+          run_id: string
+          source_url: string
+          status: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          art: string
+          created_at?: string
+          designer_id: string
+          error?: string | null
+          id?: string
+          product_id?: string | null
+          request_handle?: Json | null
+          result_url?: string | null
+          run_id?: string
+          source_url: string
+          status?: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          art?: string
+          created_at?: string
+          designer_id?: string
+          error?: string | null
+          id?: string
+          product_id?: string | null
+          request_handle?: Json | null
+          result_url?: string | null
+          run_id?: string
+          source_url?: string
+          status?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staging_requests_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staging_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trend_snapshots: {
         Row: {
