@@ -2731,7 +2731,7 @@ export type Database = {
         | "banner_vollbreite"
         | "ueberlappend"
       posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
-      posting_status: "queued" | "posted" | "failed" | "cancelled"
+      posting_status: "queued" | "posted" | "failed" | "cancelled" | "vorschlag"
       product_status: "draft" | "published" | "archived"
       product_world: "Mode" | "Interior" | "Kunst"
       video_source: "designer" | "edition" | "jarvis"
@@ -2924,7 +2924,7 @@ export const Constants = {
         "ueberlappend",
       ],
       posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],
-      posting_status: ["queued", "posted", "failed", "cancelled"],
+      posting_status: ["queued", "posted", "failed", "cancelled", "vorschlag"],
       product_status: ["draft", "published", "archived"],
       product_world: ["Mode", "Interior", "Kunst"],
       video_source: ["designer", "edition", "jarvis"],
