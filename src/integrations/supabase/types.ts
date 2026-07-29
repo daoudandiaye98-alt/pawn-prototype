@@ -1778,6 +1778,7 @@ export type Database = {
       }
       media_assets: {
         Row: {
+          advertises_text: string | null
           campaign_id: string | null
           created_at: string
           designer_id: string
@@ -1785,6 +1786,8 @@ export type Database = {
           kind: Database["public"]["Enums"]["media_kind"]
           note: string | null
           origin: Database["public"]["Enums"]["media_origin"]
+          performance: Json
+          product_id: string | null
           review_note: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
           rights_granted: boolean
@@ -1796,6 +1799,7 @@ export type Database = {
           video_asset_id: string | null
         }
         Insert: {
+          advertises_text?: string | null
           campaign_id?: string | null
           created_at?: string
           designer_id: string
@@ -1803,6 +1807,8 @@ export type Database = {
           kind: Database["public"]["Enums"]["media_kind"]
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
+          performance?: Json
+          product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
@@ -1814,6 +1820,7 @@ export type Database = {
           video_asset_id?: string | null
         }
         Update: {
+          advertises_text?: string | null
           campaign_id?: string | null
           created_at?: string
           designer_id?: string
@@ -1821,6 +1828,8 @@ export type Database = {
           kind?: Database["public"]["Enums"]["media_kind"]
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
+          performance?: Json
+          product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
@@ -1844,6 +1853,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
@@ -2045,6 +2061,8 @@ export type Database = {
           posted_url: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["posting_status"]
+          story_reason: string | null
+          story_score: number | null
           updated_at: string
         }
         Insert: {
@@ -2057,6 +2075,8 @@ export type Database = {
           posted_url?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["posting_status"]
+          story_reason?: string | null
+          story_score?: number | null
           updated_at?: string
         }
         Update: {
@@ -2069,6 +2089,8 @@ export type Database = {
           posted_url?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["posting_status"]
+          story_reason?: string | null
+          story_score?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2175,6 +2197,7 @@ export type Database = {
           tags: string[]
           updated_at: string
           variants: Json
+          view_count: number
           weight_grams: number | null
           width_cm: number | null
           world: Database["public"]["Enums"]["product_world"]
@@ -2206,6 +2229,7 @@ export type Database = {
           tags?: string[]
           updated_at?: string
           variants?: Json
+          view_count?: number
           weight_grams?: number | null
           width_cm?: number | null
           world?: Database["public"]["Enums"]["product_world"]
@@ -2237,6 +2261,7 @@ export type Database = {
           tags?: string[]
           updated_at?: string
           variants?: Json
+          view_count?: number
           weight_grams?: number | null
           width_cm?: number | null
           world?: Database["public"]["Enums"]["product_world"]
@@ -2576,6 +2601,11 @@ export type Database = {
         }
         Returns: Json
       }
+      bump_media_metric: {
+        Args: { p_media_asset_id: string; p_metric: string }
+        Returns: undefined
+      }
+      bump_product_view: { Args: { p_product_id: string }; Returns: undefined }
       bump_video_metric: {
         Args: { p_asset_id: string; p_metric: string }
         Returns: undefined
