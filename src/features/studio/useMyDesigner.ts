@@ -23,6 +23,7 @@ export interface StudioDesigner {
   stripe_charges_enabled: boolean;
   stripe_details_submitted: boolean;
   page_published_at: string | null;
+  dismissed_suggestions: Record<string, string>;
 }
 
 
@@ -38,7 +39,7 @@ export function useMyDesigner() {
     setLoading(true);
     const { data, error } = await supabase
       .from("designers")
-      .select("id, slug, brand_name, location, country, story, quote, quote_role, hero_image_url, banner_url, avatar_url, status, house_number, created_at, brand_dna, plan, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, page_published_at")
+      .select("id, slug, brand_name, location, country, story, quote, quote_role, hero_image_url, banner_url, avatar_url, status, house_number, created_at, brand_dna, plan, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, page_published_at, dismissed_suggestions")
       .eq("user_id", user.id)
       .maybeSingle();
 

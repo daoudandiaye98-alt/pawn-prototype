@@ -953,6 +953,7 @@ export type Database = {
           collection_title: string | null
           country: string | null
           created_at: string
+          dismissed_suggestions: Json
           hero_image_url: string | null
           house_number: number | null
           id: string
@@ -993,6 +994,7 @@ export type Database = {
           collection_title?: string | null
           country?: string | null
           created_at?: string
+          dismissed_suggestions?: Json
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
@@ -1033,6 +1035,7 @@ export type Database = {
           collection_title?: string | null
           country?: string | null
           created_at?: string
+          dismissed_suggestions?: Json
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
