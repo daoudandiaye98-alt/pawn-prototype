@@ -2643,6 +2643,10 @@ export type Database = {
         Args: { _plan: Database["public"]["Enums"]["designer_plan"] }
         Returns: number
       }
+      promote_posting_suggestion: {
+        Args: { p_queue_id: string }
+        Returns: undefined
+      }
       recompute_brand_dna: {
         Args: { _designer_id: string }
         Returns: undefined
