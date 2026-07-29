@@ -2654,6 +2654,7 @@ export type Database = {
         | "lookbook_streifen"
         | "banner_seitlich"
         | "banner_vollbreite"
+        | "ueberlappend"
       posting_channel: "pawn_instagram" | "pawn_tiktok" | "pawn_youtube"
       posting_status: "queued" | "posted" | "failed" | "cancelled"
       product_status: "draft" | "published" | "archived"
@@ -2845,6 +2846,7 @@ export const Constants = {
         "lookbook_streifen",
         "banner_seitlich",
         "banner_vollbreite",
+        "ueberlappend",
       ],
       posting_channel: ["pawn_instagram", "pawn_tiktok", "pawn_youtube"],
       posting_status: ["queued", "posted", "failed", "cancelled"],
