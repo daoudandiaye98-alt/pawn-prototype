@@ -67,6 +67,7 @@ import Kunst from "./pages/palace/Kunst.tsx";
 import Neu from "./pages/palace/Neu.tsx";
 import Style from "./pages/Style.tsx";
 import Kontakt from "./pages/Kontakt.tsx";
+import Presse from "./pages/Presse.tsx";
 
 import AdminOverview from "./pages/admin/AdminOverview.tsx";
 import AdminDNA from "./pages/admin/AdminDNA.tsx";
@@ -135,6 +136,7 @@ const App = () => (
                 <Route path="/kontakt" element={<Kontakt />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
+                <Route path="/presse/:slug" element={<Presse />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/order/success" element={<OrderConfirmation />} />
