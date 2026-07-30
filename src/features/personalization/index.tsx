@@ -187,6 +187,16 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     if (!user) { setProfile({ ...EMPTY, correctedIds: loadCorrected() }); return; }
     setLoading(true);
     try {
+      // Personalisierung ist abschaltbar (Konto → Datenschutz). Aus heißt: PAWN liest die
+      // gespeicherten Signale gar nicht erst — sie bleiben unangetastet, wirken aber nirgends.
+      const { data: profRow } = await supabase.from("profiles").select("consent_personalization").eq("id", user.id).maybeSingle();
+      const personalizationOn = (profRow as { consent_personalization?: boolean } | null)?.consent_personalization ?? true;
+      if (!personalizationOn) {
+        setProfile({ ...EMPTY, correctedIds: loadCorrected() });
+        try { localStorage.removeItem(CACHE_KEY); } catch { /* noop */ }
+        return;
+      }
+
       const [{ data, error }, memRes] = await Promise.all([
         supabase
           .from("domain_events")
