@@ -4,7 +4,6 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { PrevNext } from "@/components/palace/PrevNext";
 import { supabase } from "@/integrations/supabase/client";
-import { useStore, marketplaceSelectors, toDesignerView, toProductView } from "@/core";
 import { useDesignerPrevNext } from "@/features/navigation/usePrevNext";
 import { useSiteContent } from "@/lib/siteContent";
 import { Editable } from "@/components/palace/Editable";
@@ -225,21 +224,32 @@ const DesignerPage = () => {
       setPageBlocks((b ?? []) as unknown as PageBlockRow[]);
       setBlockMedia((m ?? []) as unknown as BlockMediaLite[]);
       setBlockProducts((p ?? []) as unknown as BlockProductLite[]);
-      setHouseTheme(t ? resolveTheme(t as unknown as Partial<HouseTheme>) : null);
+      // Fehlt ein eigenes Thema, gilt das PAWN-Standardthema statt gar keins.
+      setHouseTheme(resolveTheme((t as unknown as Partial<HouseTheme>) ?? null));
       setHouseMilestones((ms as unknown as HouseMilestones) ?? null);
     })();
     return () => { cancelled = true; };
   }, [dbDesigner]);
 
-
-  const coreDesigner = useStore((s) => marketplaceSelectors.getDesignerBySlug(s, activeSlug) ?? marketplaceSelectors.getAllDesigners(s)[0]);
-  const coreProducts = useStore((s) => marketplaceSelectors.getProductsByDesignerId(s, coreDesigner.id));
+  // Kollektion für die Standarddarstellung (Akt III) — unabhängig davon, ob das Haus eine
+  // eigens gestaltete Hausseite veröffentlicht hat. Kommt direkt aus der products-Tabelle,
+  // nie aus dem alten Mock-Store (dessen Seed-Arrays absichtlich leer sind).
+  const [dbProducts, setDbProducts] = useState<Array<{ id: string; slug: string; name: string; price: number }>>([]);
+  useEffect(() => {
+    if (!dbDesigner) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("products").select("id, slug, name, price")
+        .eq("designer_id", dbDesigner.id).eq("status", "published").order("created_at", { ascending: false });
+      if (!cancelled) setDbProducts((data ?? []) as Array<{ id: string; slug: string; name: string; price: number }>);
+    })();
+    return () => { cancelled = true; };
+  }, [dbDesigner]);
 
   const designer = useMemo(() => {
-    const base = toDesignerView(coreDesigner);
+    const base = { slug: "", name: "", location: "", slogan: "", bio: "", followers: 0, collections: 0, productsCount: 0, memberSince: "", featuredIn: 0 };
     if (!dbDesigner) return {
       ...base,
-      name: base.name,
       story: base.bio,
       quote: null as string | null,
       quoteRole: null as string | null,
@@ -269,12 +279,9 @@ const DesignerPage = () => {
       createdAt: dbDesigner.created_at,
       tags: dbDesigner.tags ?? [],
     };
-  }, [coreDesigner, dbDesigner]);
+  }, [dbDesigner]);
 
-  const designerProducts = useMemo(
-    () => coreProducts.map((p) => toProductView(p, coreDesigner)),
-    [coreProducts, coreDesigner],
-  );
+  const designerProducts = dbProducts;
 
   // Refs for scroll-tracking
   const actIRef = useRef<HTMLElement | null>(null);

@@ -15,14 +15,34 @@ interface ContractRow {
  * Persistent (non-blocking) banner for designers who haven't accepted the
  * current designer contract (v2). Opens a modal with the full text and a
  * confirm checkbox. On accept: inserts designer_consents row + emits event.
+ *
+ * application_id wird selbst nachgeschlagen (genehmigte Bewerbung desselben
+ * Nutzers, falls vorhanden) — Häuser, die ohne Bewerbung direkt angelegt
+ * wurden, haben schlicht keine und können trotzdem zustimmen.
  */
-export function ContractV2Banner({ applicationId }: { applicationId?: string | null }) {
+export function ContractV2Banner() {
   const { user } = useAuth();
   const [contract, setContract] = useState<ContractRow | null>(null);
   const [needsAccept, setNeedsAccept] = useState(false);
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("designer_applications")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "approved")
+        .maybeSingle();
+      if (alive) setApplicationId(data?.id ?? null);
+    })();
+    return () => { alive = false; };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;

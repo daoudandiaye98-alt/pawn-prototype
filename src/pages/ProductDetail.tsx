@@ -5,9 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { toast } from "@/components/ui/sonner";
-import {
-  useStore, marketplaceSelectors, toProductView,
-} from "@/core";
+import type { ProductView } from "@/core";
 import { useDnaMatch } from "@/features/dna/hooks";
 import { usePersonalization, explainMatch } from "@/features/personalization";
 
@@ -33,13 +31,35 @@ const ProductDetail = () => {
   const { locale } = useI18n();
 
   const { product: dbProduct } = useDbProductBySlug(slug);
-  const coreProduct = useStore((s) => marketplaceSelectors.getProductBySlug(s, slug) ?? marketplaceSelectors.getAllProducts(s)[0]);
-  const designer = useStore((s) => marketplaceSelectors.getDesignerById(s, coreProduct.designerId as string));
   const cart = useCart();
   const { push } = useRoomShift();
   const wishlist = useWishlist();
 
-  const product = useMemo(() => toProductView(coreProduct, designer), [coreProduct, designer]);
+  // Baut die Produktansicht direkt aus der Datenbank auf — der alte Mock-Katalog
+  // (core-Store) hat absichtlich leere Seed-Arrays (keine Markennamen, keine Fake-Daten) und
+  // lieferte hier immer "kein Treffer", was die ganze Seite zum Absturz brachte.
+  const product = useMemo(() => {
+    const dna = (dbProduct?.product_dna ?? {}) as { colors?: string[] };
+    const variants = (dbProduct?.variants ?? []) as { name: string; options: string[] }[];
+    const sizeVariant = variants.find((v) => /gr(ö|oe)ße|size/i.test(v.name));
+    return {
+      id: dbProduct?.id ?? "",
+      slug: dbProduct?.slug ?? slug,
+      name: dbProduct?.name ?? "",
+      designer: dbProduct?.designers?.brand_name ?? "",
+      designerSlug: dbProduct?.designers?.slug ?? "",
+      price: dbProduct?.price ?? 0,
+      category: "",
+      gender: "",
+      world: dbProduct?.world ?? "Mode",
+      colors: dna.colors ?? [],
+      sizes: sizeVariant?.options ?? [],
+      status: dbProduct?.status ?? "draft",
+      description: dbProduct?.description ?? "",
+      genomeAffinity: {},
+      tags: dbProduct?.tags ?? [],
+    } as unknown as ProductView;
+  }, [dbProduct, slug]);
 
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
@@ -77,7 +97,8 @@ const ProductDetail = () => {
     if (!designerId) { setHouseTheme(null); return; }
     (async () => {
       const { data } = await supabase.from("house_themes" as never).select("*").eq("designer_id", designerId).eq("is_current", true).maybeSingle();
-      if (!cancelled) setHouseTheme(data ? resolveTheme(data as unknown as Partial<HouseTheme>) : null);
+      // Fehlt ein eigenes Thema, gilt das PAWN-Standardthema statt gar keins.
+      if (!cancelled) setHouseTheme(resolveTheme((data as unknown as Partial<HouseTheme>) ?? null));
     })();
     return () => { cancelled = true; };
   }, [dbProduct?.designers?.id]);
