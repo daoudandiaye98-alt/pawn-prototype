@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useStore, selectors } from "@/core";
 import { useAuth } from "@/lib/auth";
@@ -11,7 +11,7 @@ import { useMyRequestThreads } from "@/features/commerce/hooks";
 import { useThreadMessages, sendMessage } from "@/features/messages/useMessages";
 import { useDisplayName } from "@/lib/displayName";
 import { useWishlist } from "@/features/wishlist/useWishlist";
-import { CustomerGenomeCard } from "@/components/palace/CustomerGenomeCard";
+import { Stilberater } from "@/components/palace/Stilberater";
 import { AccountSettingsPanel } from "@/components/palace/AccountSettings";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
@@ -64,7 +64,9 @@ function useMemberNumber(userId?: string) {
 }
 
 const Account = () => {
-  const [tab, setTab] = useState<Tab>("Übersicht");
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = TABS.find((t) => t.key === searchParams.get("tab"))?.key;
+  const [tab, setTab] = useState<Tab>(tabFromUrl ?? "Übersicht");
   const { user, loading, signOut, roles } = useAuth();
   const { displayName, firstName } = useDisplayName();
   const { t } = useI18n();
@@ -264,7 +266,7 @@ function Overview({ name, onGoto }: { name: string; onGoto: (t: Tab) => void }) 
         </div>
       </Card>
 
-      <CustomerGenomeCard />
+      <Stilberater />
     </div>
   );
 }

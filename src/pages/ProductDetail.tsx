@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/sonner";
 import type { ProductView } from "@/core";
 import { useDnaMatch } from "@/features/dna/hooks";
 import { usePersonalization, explainMatch } from "@/features/personalization";
+import { usePageVisit } from "@/features/personalization/usePageVisit";
 
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
@@ -110,6 +111,8 @@ const ProductDetail = () => {
     if (!dbProduct?.id) return;
     supabase.rpc("bump_product_view" as never, { p_product_id: dbProduct.id } as never).then(() => {}, () => {});
   }, [dbProduct?.id]);
+
+  usePageVisit("product", dbProduct?.id);
 
   useEffect(() => {
     setSize(product.sizes[0]);
