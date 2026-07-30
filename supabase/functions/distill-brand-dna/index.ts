@@ -68,7 +68,8 @@ Deno.serve(async (req) => {
     const admin: SupabaseClient = createClient(url, svc, { auth: { persistSession: false } });
 
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user_id, _role: "admin" });
-    const body = await req.json().catch(() => ({})) as { designer_id?: string };
+    const body = await req.json().catch(() => ({})) as { designer_id?: string; correction?: string };
+    const correction = typeof body.correction === "string" ? body.correction.trim().slice(0, 800) : "";
 
     let designerRow: { id: string; brand_name: string; story: string | null; manifesto: string | null; quote: string | null; brand_dna: Record<string, unknown> | null; application_id: string | null } | null = null;
     if (isAdmin && body.designer_id) {
@@ -106,6 +107,10 @@ Deno.serve(async (req) => {
       materialParts.push(`Produkt (${p.world}): ${p.name}${p.description ? ` — ${p.description}` : ""}${p.tags?.length ? ` [${p.tags.join(", ")}]` : ""}${dnaBits ? ` {${dnaBits}}` : ""}`);
     }
 
+    if (correction) {
+      materialParts.unshift(`Korrektur des Designers (hat Vorrang vor allem anderen Material, muss die DNA sichtbar verändern): ${correction}`);
+    }
+
     if (materialParts.length === 0) {
       return json({
         ok: false, error: "no_material",
@@ -120,7 +125,16 @@ Deno.serve(async (req) => {
     }
 
     const prevDna = (designerRow.brand_dna ?? {}) as Record<string, unknown>;
-    const nextDna = { ...prevDna, worlds: distilled.worlds, signals: distilled.signals, distilled_at: new Date().toISOString() };
+    const prevWorlds = (prevDna.worlds ?? {}) as Record<string, number>;
+    const prevSignals = (prevDna.signals ?? []) as string[];
+    const hadPrevious = Object.keys(prevWorlds).length > 0 || prevSignals.length > 0;
+    const prevHistory = Array.isArray(prevDna.history) ? (prevDna.history as unknown[]) : [];
+    // Jede Neu-Destillation legt den vorherigen Stand ins Verlaufsprotokoll — so bleibt sichtbar,
+    // wie sich die DNA über Zeit verändert hat (Teil 19a, "Die Entwicklung").
+    const history = hadPrevious
+      ? [{ at: new Date().toISOString(), worlds: prevWorlds, signals: prevSignals, reason: correction ? "Korrektur" : "Neu destilliert" }, ...prevHistory].slice(0, 10)
+      : prevHistory;
+    const nextDna = { ...prevDna, worlds: distilled.worlds, signals: distilled.signals, distilled_at: new Date().toISOString(), history };
     const { error: updErr } = await admin.from("designers").update({ brand_dna: nextDna } as never).eq("id", designerRow.id);
     if (updErr) return json({ error: "save_failed", message: updErr.message }, 500);
 
