@@ -449,6 +449,14 @@ export default function StudioCampaignNew() {
     setMovementStrength(dnaSuggestion.strength);
     setSuggestionDismissed(true);
     toast.success("Vorschlag übernommen — passe ihn frei an.");
+    // Damit das Werkbuch (Teil 19a) zeigen kann, was die DNA tatsächlich bewirkt hat.
+    if (user) {
+      void supabase.from("domain_events").insert({
+        type: "designer.dna_suggestion_accepted",
+        actor: user.id,
+        payload: { reason: dnaSuggestion.reason, summary: dnaSuggestion.summary, current_name: dnaSuggestion.currentName },
+      } as never);
+    }
   };
 
   const applyHouseSetting = (s: HouseSettingRow) => {
