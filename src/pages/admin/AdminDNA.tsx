@@ -3,7 +3,14 @@
  * plus je Haus eine Genom-Karte mit dem, was aus seiner eigenen Performance
  * gelernt wurde (designers.video_taste_weights), verknüpften Signaturen und
  * einem kurzen Verlauf aus den wöchentlichen Kampagnen-Regie-Berichten.
+ *
+ * Teil 19c: aus der Einzelkarte wird ein Kartenwerk — eine Vergleichstabelle über
+ * alle Häuser, eine Drift-Sektion (welche Häuser sich verändern, welche Strömung
+ * gerade am breitesten verankert ist, wo die Ontologie neu andockt), laufende
+ * Experimente neben der Basis-DNA statt auf einer separaten Seite, und von jeder
+ * Auffälligkeit ein direkter Link zur passenden Handlung.
  */
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { GenomeCard, type GenomeStrand } from "@/components/palace/GenomeCard";
@@ -56,6 +63,19 @@ interface HouseThemeLite {
   typografie: string;
   bewegungscharakter: string;
 }
+interface ExperimentRow {
+  id: string;
+  hypothesis: string;
+  changed_key: string;
+  metric: string;
+  status: "laufend" | "behalten" | "verworfen";
+  started_at: string;
+}
+interface OntologyLearnedRow {
+  term: string;
+  world: string[];
+  created_at: string;
+}
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";
@@ -78,6 +98,8 @@ export default function AdminDNA() {
   const [wissenReport, setWissenReport] = useState<ReportRow | null>(null);
   const [culturalCurrents, setCulturalCurrents] = useState<CulturalCurrentLite[]>([]);
   const [houseThemes, setHouseThemes] = useState<HouseThemeLite[]>([]);
+  const [experiments, setExperiments] = useState<ExperimentRow[]>([]);
+  const [learnedTerms, setLearnedTerms] = useState<OntologyLearnedRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [distillBusyId, setDistillBusyId] = useState<string | null>(null);
 
@@ -106,7 +128,7 @@ export default function AdminDNA() {
 
   useEffect(() => {
     (async () => {
-      const [mw, des, sigs, reports, currents, themes] = await Promise.all([
+      const [mw, des, sigs, reports, currents, themes, exps, terms] = await Promise.all([
         supabase.from("ai_config").select("value").eq("key", "matching_weights").maybeSingle(),
         supabase
           .from("designers")
@@ -124,6 +146,10 @@ export default function AdminDNA() {
         supabase.from("house_themes" as never)
           .select("designer_id, version, is_current, name, created_at, farbwelt, typografie, bewegungscharakter")
           .order("version", { ascending: false }),
+        supabase.from("jarvis_experiments").select("id, hypothesis, changed_key, metric, status, started_at")
+          .eq("status", "laufend").order("started_at", { ascending: false }),
+        supabase.from("fashion_ontology").select("term, world, created_at")
+          .eq("learned", true).order("created_at", { ascending: false }).limit(6),
       ]);
       const mwVal = (mw.data?.value ?? {}) as unknown as Partial<MatchingWeights>;
       setWeights({ ...DEFAULT_MATCHING_WEIGHTS, ...mwVal });
@@ -134,6 +160,8 @@ export default function AdminDNA() {
       setWissenReport(allReports.find((r) => r.kind === "wissen") ?? null);
       setCulturalCurrents((currents.data ?? []) as unknown as CulturalCurrentLite[]);
       setHouseThemes((themes.data ?? []) as unknown as HouseThemeLite[]);
+      setExperiments((exps.data ?? []) as unknown as ExperimentRow[]);
+      setLearnedTerms((terms.data ?? []) as unknown as OntologyLearnedRow[]);
       setLoading(false);
     })();
   }, []);
@@ -160,6 +188,50 @@ export default function AdminDNA() {
     : regieReports[0]
       ? { text: (regieReports[0].body ?? "Performance-Gewichte aktualisiert.").slice(0, 140), when: timeAgo(regieReports[0].created_at) }
       : null;
+
+  // Teil 19c: aus der Einzelkarte wird ein Kartenwerk — Ableitungen je Haus für die
+  // Vergleichstabelle und die Drift-Erkennung (verändert sich das Haus gerade?).
+  const houseDerived = designers.map((d) => {
+    const dnaWorlds = d.brand_dna?.worlds ?? {};
+    const topWorldEntry = Object.entries(dnaWorlds).sort((a, b) => b[1] - a[1])[0];
+    const dnaSignals = d.brand_dna?.signals ?? [];
+    const themesForD = houseThemes.filter((t) => t.designer_id === d.id);
+    const currentTheme = themesForD.find((t) => t.is_current) ?? null;
+    const houseWeights = d.video_taste_weights ?? {};
+    const topLearned = Object.entries(houseWeights).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const history = regieReports.filter((r) => (r.data?.top_houses ?? []).some((h) => h.designer_id === d.id));
+    const priorEntry = history[1]?.data?.top_houses?.find((h) => h.designer_id === d.id);
+    const priorTop = priorEntry?.weights ? Object.entries(priorEntry.weights).sort((a, b) => b[1] - a[1])[0]?.[0] : null;
+    const tasteShifted = !!(topLearned && priorTop && topLearned !== priorTop);
+    const themeEvolved = themesForD.length > 1;
+    return {
+      designer: d,
+      topWorld: topWorldEntry ? { world: topWorldEntry[0], pct: Math.round(topWorldEntry[1] * 100) } : null,
+      topSignal: dnaSignals[0] ?? null,
+      currentTheme,
+      nearCurrent: nearCurrentFor(d),
+      inMotion: themeEvolved || tasteShifted,
+      motionReason: themeEvolved && tasteShifted
+        ? "Thema verfeinert & Geschmack verschoben"
+        : themeEvolved
+          ? "Thema verfeinert"
+          : tasteShifted
+            ? `Geschmack verschoben (${priorTop} → ${topLearned})`
+            : null,
+    };
+  });
+
+  const worldCounts: Record<string, number> = {};
+  for (const hd of houseDerived) if (hd.topWorld) worldCounts[hd.topWorld.world] = (worldCounts[hd.topWorld.world] ?? 0) + 1;
+  const worldEntries = (["Mode", "Interior", "Kunst"] as const).map((w) => ({ world: w, count: worldCounts[w] ?? 0 }));
+  const maxWorldCount = Math.max(0, ...worldEntries.map((w) => w.count));
+  const underrepresented = maxWorldCount > 0 ? worldEntries.filter((w) => w.count < maxWorldCount).sort((a, b) => a.count - b.count)[0] : null;
+
+  const currentsByReach = [...culturalCurrents]
+    .sort((a, b) => (b.nahe_haeuser?.length ?? 0) - (a.nahe_haeuser?.length ?? 0))
+    .slice(0, 4);
+
+  const housesInMotion = houseDerived.filter((hd) => hd.inMotion);
 
   return (
     <AdminShell eyebrow="Intelligence" title="Genom">
@@ -201,7 +273,126 @@ export default function AdminDNA() {
           >
             {savingWeights ? "…" : "Basis-DNA speichern"}
           </button>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-black/15 pt-4">
+            <p className="text-sm text-black/70">
+              {experiments.length === 0
+                ? "Kein laufendes Experiment gerade — Jarvis testet nichts an dieser Basis."
+                : `${experiments.length} laufende${experiments.length === 1 ? "s" : ""} Experiment${experiments.length === 1 ? "" : "e"}: ${experiments.slice(0, 2).map((e) => e.changed_key).join(", ")}${experiments.length > 2 ? "…" : ""}`}
+            </p>
+            <Link to="/admin/jarvis" className="editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
+              Zum Maschinenraum →
+            </Link>
+          </div>
         </GenomeCard>
+      </div>
+
+      {designers.length > 0 && (
+        <div className="mt-10">
+          <p className="editorial-eyebrow text-black/50">Kartenwerk · alle Häuser im Vergleich</p>
+          <div className="mt-4 overflow-x-auto border-[1.5px] border-black bg-white">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead>
+                <tr className="border-b-[1.5px] border-black text-[0.62rem] uppercase tracking-[0.18em] text-black/50">
+                  <th className="px-4 py-3">Haus</th>
+                  <th className="px-4 py-3">Welt</th>
+                  <th className="px-4 py-3">Palette</th>
+                  <th className="px-4 py-3">Haltung</th>
+                  <th className="px-4 py-3">Strömung</th>
+                  <th className="px-4 py-3">Verändert sich</th>
+                </tr>
+              </thead>
+              <tbody>
+                {houseDerived.map((hd) => (
+                  <tr key={hd.designer.id} className="border-b border-black/10 last:border-0">
+                    <td className="px-4 py-3 font-medium text-black">{hd.designer.brand_name}</td>
+                    <td className="px-4 py-3 text-black/70">{hd.topWorld ? `${hd.topWorld.world} · ${hd.topWorld.pct}%` : "—"}</td>
+                    <td className="px-4 py-3">
+                      {hd.currentTheme ? (
+                        <div className="flex gap-1">
+                          {[hd.currentTheme.farbwelt.bg, hd.currentTheme.farbwelt.fg, hd.currentTheme.farbwelt.accent].map((hex, i) => (
+                            <span key={i} className="h-4 w-4 border border-black/20" style={{ background: hex }} title={hex} />
+                          ))}
+                        </div>
+                      ) : <span className="text-black/40">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-black/70">{hd.topSignal ?? "—"}</td>
+                    <td className="px-4 py-3 text-black/70">{hd.nearCurrent ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      {hd.inMotion ? (
+                        <span className="border border-black bg-black px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-white">In Bewegung</span>
+                      ) : <span className="text-black/30">ruhig</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-10 grid gap-6 lg:grid-cols-3">
+        <div className="border-[1.5px] border-black bg-white p-6">
+          <p className="editorial-eyebrow text-black/50">Häuser in Bewegung</p>
+          {housesInMotion.length === 0 ? (
+            <p className="mt-3 text-sm text-black/60">Gerade kein Haus mit sichtbarer Veränderung.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {housesInMotion.map((hd) => (
+                <li key={hd.designer.id} className="border-t border-black/10 pt-3 first:border-0 first:pt-0">
+                  <p className="text-sm font-medium text-black">{hd.designer.brand_name}</p>
+                  <p className="mt-0.5 text-xs text-black/60">{hd.motionReason}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link to="/admin/archiv" className="mt-4 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
+            Für Première vormerken →
+          </Link>
+        </div>
+
+        <div className="border-[1.5px] border-black bg-white p-6">
+          <p className="editorial-eyebrow text-black/50">Strömungen · am breitesten verankert</p>
+          {currentsByReach.length === 0 ? (
+            <p className="mt-3 text-sm text-black/60">Noch keine Kulturströmungen erfasst.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {currentsByReach.map((c) => (
+                <li key={c.name} className="flex items-center justify-between text-sm text-black">
+                  <span>{c.name}</span>
+                  <span className="tabular-nums text-black/50">{c.nahe_haeuser?.length ?? 0} Haus{(c.nahe_haeuser?.length ?? 0) === 1 ? "" : "er"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link to="/admin/editionen" className="mt-4 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
+            Edition vorschlagen →
+          </Link>
+        </div>
+
+        <div className="border-[1.5px] border-black bg-white p-6">
+          <p className="editorial-eyebrow text-black/50">Neu angedockte Begriffe</p>
+          {learnedTerms.length === 0 ? (
+            <p className="mt-3 text-sm text-black/60">Die Ontologie hat gerade nichts Neues gelernt.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {learnedTerms.map((t) => (
+                <li key={t.term} className="flex items-center justify-between text-sm text-black">
+                  <span>{t.term}</span>
+                  <span className="text-black/50">{t.world.join(", ")}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {underrepresented && (
+            <p className="mt-4 text-xs text-black/60">
+              {underrepresented.world} steht mit {underrepresented.count} Haus{underrepresented.count === 1 ? "" : "ern"} am schwächsten da.
+            </p>
+          )}
+          <Link to="/admin/akquise" className="mt-2 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
+            Akquise lenken →
+          </Link>
+        </div>
       </div>
 
       <div className="mt-10">
