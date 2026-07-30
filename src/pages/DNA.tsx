@@ -7,19 +7,19 @@ import { Editable } from "@/components/palace/Editable";
 import { useAuth } from "@/lib/auth";
 import { usePersonalization, type Signal } from "@/features/personalization";
 import { supabase } from "@/integrations/supabase/client";
-import { CustomerGenomeCard } from "@/components/palace/CustomerGenomeCard";
+import { Stilberater } from "@/components/palace/Stilberater";
 import { DnaChat } from "@/components/palace/DnaChat";
 import { DnaKompass } from "@/components/palace/DnaKompass";
+import { PasstDas } from "@/components/palace/PasstDas";
+import { PickYourStyle } from "@/components/palace/PickYourStyle";
+import { useStore, marketplaceSelectors } from "@/core";
 import { X } from "lucide-react";
 
 /**
- * /dna — the living, correctable identity dossier.
- *
- * Structure:
- *  01 · Hero — rotating helix + one sentence
- *  02 · Living state — signal cards ("Weil du …") with "Stimmt nicht"
- *  03 · Empty invitation (no signals yet)
- *  04 · What PAWN does NOT do — trust section
+ * /dna — das große "Über dich" (Teil 21c). Von oben nach unten: das Urteil
+ * (Teil 20, Stilberater) · der Kompass mit dem Ziel und dem Weg (21b) · das
+ * Gespräch mit Bildern (21a) · "Steht mir das?" · die Stil-Sequenz (umgezogen
+ * von /style) · was PAWN sich gemerkt hat, einzeln löschbar · Vertrauen.
  */
 
 function labelForSignal(s: Signal): { title: string; because: string } {
@@ -109,6 +109,7 @@ export default function DNA() {
   const { user } = useAuth();
   const { hasSignals, world, mood, signals, correct, loading, refresh } = usePersonalization();
   const heroRef = useRef<HTMLElement | null>(null);
+  const urteilRef = useRef<HTMLElement | null>(null);
   const [facts, setFacts] = useState<string[]>([]);
 
   useEffect(() => { document.title = "Deine DNA — PAWN"; }, []);
@@ -184,11 +185,11 @@ export default function DNA() {
         </div>
       </section>
 
-      {/* 01b · Deine Genom-Karte */}
+      {/* 01b · Das Urteil (Teil 20) */}
       {user && (
-        <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+        <section ref={urteilRef} className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
           <div className="mx-auto max-w-[900px]">
-            <CustomerGenomeCard />
+            <Stilberater />
           </div>
         </section>
       )}
@@ -208,6 +209,22 @@ export default function DNA() {
           <div className="mx-auto max-w-[900px]">
             <DnaChat />
           </div>
+        </section>
+      )}
+
+      {/* 01e · Steht mir das? (Teil 21c) */}
+      {user && (
+        <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+          <div className="mx-auto max-w-[900px]">
+            <StehtMirDas />
+          </div>
+        </section>
+      )}
+
+      {/* 01f · Die Stil-Sequenz (umgezogen von /style, Teil 21c) */}
+      {user && (
+        <section className="border-t border-[rgba(0,0,0,.18)] bg-[#FAFAF8] py-24 md:py-32">
+          <PickYourStyle compact onRoundComplete={() => urteilRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
         </section>
       )}
 
@@ -323,5 +340,55 @@ export default function DNA() {
         </div>
       </section>
     </PalaceLayout>
+  );
+}
+
+function StehtMirDas() {
+  const products = useStore(marketplaceSelectors.getAllProductViews);
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<{ slug: string; name: string } | null>(null);
+
+  const matches = query.trim().length >= 2
+    ? products.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 6)
+    : [];
+
+  return (
+    <div className="border-[1.5px] border-black bg-white p-6 md:p-8">
+      <p className="editorial-eyebrow text-black/50">Steht mir das?</p>
+      <h2 className="mt-1 font-serif text-2xl leading-tight text-black">Frag zu jedem Stück bei PAWN.</h2>
+
+      {!picked ? (
+        <div className="mt-4">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Name eines Stücks…"
+            className="w-full border border-border bg-background px-3 py-2 text-sm"
+          />
+          {matches.length > 0 && (
+            <ul className="mt-2 divide-y divide-black/10 border border-black/10">
+              {matches.map((p) => (
+                <li key={p.slug}>
+                  <button type="button" onClick={() => { setPicked({ slug: p.slug, name: p.name }); setQuery(""); }}
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-black/5">
+                    {p.name} <span className="text-black/40">— {p.designer}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
+        <div className="mt-4">
+          <p className="text-sm text-black/70">{picked.name}</p>
+          <div className="mt-3 flex items-center gap-4">
+            <PasstDas productSlug={picked.slug} productName={picked.name} />
+            <button type="button" onClick={() => setPicked(null)} className="text-[0.62rem] uppercase tracking-[0.24em] text-black/40 hover:text-black">
+              Anderes Stück
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

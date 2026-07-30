@@ -74,6 +74,8 @@ Deno.serve(async (req) => {
 {"urteil": "zwei kurze Sätze — wie die Arbeit von außen ankommt, im Vergleich zur Selbstbeschreibung, gesetzt wie eine Schlagzeile", "belege": [{"text": "Beobachtung 1 aus echtem Verhalten", "beleg": "konkrete Zahl dahinter"}, {"text": "Beobachtung 2", "beleg": "..."}, {"text": "Beobachtung 3", "beleg": "..."}], "blinder_fleck": {"text": "was das Haus unterschätzt", "beleg": "konkretes Verhalten"}, "naechster_schritt": {"text": "ein Vorschlag aus der Komfortzone", "begruendung": "warum — aus Kaufverhalten und/oder naher Kulturströmung"}}`;
     const OUTPUT_SHAPE_WEG = `Antworte NUR mit JSON, kein weiterer Text:
 {"schritte": [{"text": "ein Satz, was als Nächstes zu tun ist", "produkt_slug": "genau ein slug aus der Liste", "begruendung": "warum genau das — aus Ziel und Verhalten, nie fordernd"}, {"text": "...", "produkt_slug": "...", "begruendung": "..."}, {"text": "...", "produkt_slug": "...", "begruendung": "..."}], "fortschritt": "ein bis zwei Sätze, was sich seit dem letzten Mal in Richtung Ziel bewegt hat, aus echtem Verhalten — oder null, wenn seither nichts Neues war"}`;
+    const OUTPUT_SHAPE_PASST = `Antworte NUR mit JSON, kein weiterer Text:
+{"passt": true, "urteil": "ein bis zwei Sätze, klare Einschätzung mit Begründung aus der eigenen DNA/dem Ziel dieser Person", "alternative_slug": "slug aus der Liste, nur wenn passt=false und eine bessere Alternative existiert, sonst null", "alternative_grund": "warum die Alternative besser passt, oder null"}`;
 
     if (body.mode === "kunde") {
       const [{ data: memRow }, { count: visitCount }, { data: paidOrders }, { data: wishlistEvents }, { data: recentSignals }] = await Promise.all([
@@ -229,6 +231,71 @@ Deno.serve(async (req) => {
         preferences: { ...prefs, weg: result, weg_snapshot: { visits, orders, bilder } },
       } as never);
       return json(result);
+    }
+
+    // Teil 21c: "Steht mir das?" — zu einem echten Stück fragen, ob es zum
+    // eigenen Stil/Ziel passt. Ohne genug DNA lieber einladen als raten.
+    if (body.mode === "passt") {
+      const produktSlug = typeof (body as { produkt_slug?: string }).produkt_slug === "string"
+        ? (body as { produkt_slug: string }).produkt_slug : "";
+      if (!produktSlug) return json({ error: "missing_produkt_slug" }, 400);
+
+      const [{ data: memRow }, { count: visitCount }, { data: paidOrders }] = await Promise.all([
+        admin.from("user_memory" as never).select("preferences").eq("user_id", user_id).maybeSingle(),
+        admin.from("page_visits" as never).select("id", { count: "exact", head: true }).eq("user_id", user_id),
+        admin.from("orders").select("id").eq("user_id", user_id).eq("status", "paid"),
+      ]);
+      const prefs = (memRow as { preferences?: Record<string, unknown> } | null)?.preferences ?? {};
+      const ziel = typeof prefs.ziel === "string" ? prefs.ziel : null;
+      const stilberater = prefs.stilberater as { urteil?: string; stilname?: string } | undefined;
+      const erreicht = !!ziel || !!stilberater?.urteil || (visitCount ?? 0) >= KUNDE_SCHWELLE.blicke || (paidOrders?.length ?? 0) >= KUNDE_SCHWELLE.kaeufe;
+      if (!erreicht) {
+        return json({ ok: true, fruehzustand: { erreicht: false } });
+      }
+      if (!apiKey) return json({ ok: false, error: "not_configured", message: "„Steht mir das?“ ist noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt)." }, 200);
+
+      const { data: productRow } = await admin
+        .from("products").select("name, slug, world, price, product_dna, tags")
+        .eq("slug", produktSlug).eq("status", "published").maybeSingle();
+      if (!productRow) return json({ ok: false, error: "not_found", message: "Dieses Stück wurde nicht gefunden." }, 200);
+      const product = productRow as { name: string; slug: string; world: string | null; price: number | null; product_dna: Record<string, string[]> | null; tags: string[] | null };
+      const dna = product.product_dna ?? {};
+      const dnaBits = ["materials", "silhouette", "colors", "mood"]
+        .map((k) => Array.isArray(dna[k]) && dna[k].length ? `${k}: ${dna[k].join(", ")}` : null)
+        .filter(Boolean).join(" · ");
+
+      const { data: alternatives } = await admin
+        .from("products").select("name, slug, world, price")
+        .eq("status", "published").neq("slug", produktSlug)
+        .eq("world", product.world ?? "Mode").limit(20);
+      const altRows = (alternatives ?? []) as { name: string; slug: string; world: string | null; price: number | null }[];
+      const altList = altRows.map((p) => `${p.slug} — ${p.name} (${p.world ?? "?"}, €${p.price ?? "?"})`).join("\n");
+      const altSlugs = new Set(altRows.map((p) => p.slug));
+
+      const tags: string[] = [];
+      for (const [k, v] of Object.entries(prefs)) if (k.startsWith("mag:") && typeof v === "string") tags.push(v);
+
+      const material = [
+        `Stück, das geprüft wird: "${product.name}" (${product.world ?? "?"}, €${product.price ?? "?"}).`,
+        dnaBits && `DNA des Stücks: ${dnaBits}.`,
+        product.tags?.length && `Tags des Stücks: ${product.tags.slice(0, 8).join(", ")}.`,
+        ziel && `Ziel dieser Person, in eigenen Worten: ${ziel}`,
+        stilberater?.urteil && `Bisheriges Urteil über diese Person: ${stilberater.urteil}${stilberater.stilname ? ` (Stilname: ${stilberater.stilname})` : ""}`,
+        tags.length && `Gemerkte Vorlieben: ${tags.join(", ")}`,
+        `Andere echte Stücke bei PAWN als mögliche Alternative (nur diese Slugs verwenden):\n${altList || "keine Alternativen verfügbar"}`,
+      ].filter(Boolean).join("\n");
+
+      const system = `Du bist PAWNs Stilberater — du sagst klar und konkret, ob ein Stück zu einer Person passt, mit Begründung aus ihrer eigenen DNA oder ihrem Ziel. Passt es nicht, schlägst du eine echte Alternative vor, nie nur Ablehnung.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${OUTPUT_SHAPE_PASST}`;
+      const out = await callClaude(apiKey, system, `Material:\n${material}`, 500) as { passt?: boolean; urteil?: string; alternative_slug?: string | null; alternative_grund?: string | null } | null;
+      if (!out) return json({ ok: false, error: "generation_failed", message: "Dazu ließ sich noch keine Einschätzung schreiben." }, 200);
+
+      const alternative_slug = out.alternative_slug && altSlugs.has(out.alternative_slug) ? out.alternative_slug : null;
+      return json({
+        ok: true, fruehzustand: { erreicht: true },
+        passt: !!out.passt, urteil: out.urteil ?? "", alternative_slug,
+        alternative_grund: alternative_slug ? (out.alternative_grund ?? null) : null,
+        generated_at: new Date().toISOString(),
+      });
     }
 
     return json({ error: "unknown_mode" }, 400);

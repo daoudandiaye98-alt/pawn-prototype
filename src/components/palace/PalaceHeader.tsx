@@ -24,7 +24,6 @@ export function PalaceHeader() {
     { label: t("nav.interior"), to: "/interior" },
     { label: t("nav.kunst"), to: "/kunst" },
     { label: t("nav.designer"), to: "/designers" },
-    { label: t("nav.style"), to: "/style" },
     { label: t("nav.dna"), to: "/dna" },
     { label: t("nav.forDesigners"), to: "/apply" },
   ];

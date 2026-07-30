@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { PrevNext } from "@/components/palace/PrevNext";
 import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
+import { PasstDas } from "@/components/palace/PasstDas";
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
@@ -322,6 +323,11 @@ const ProductDetail = () => {
                 >
                   Frag PAWN zu diesem Stück →
                 </button>
+
+                {/* Steht mir das? (Teil 21c) */}
+                <div className="mt-4">
+                  <PasstDas productSlug={product.slug} productName={product.name} />
+                </div>
 
 
                 {/* DB variants */}
