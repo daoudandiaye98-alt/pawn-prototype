@@ -34,6 +34,14 @@ interface DesignerRow {
   house_number: number | null;
   video_taste_weights: Record<string, number> | null;
   brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
+  aussenauge: { urteil?: string; fruehzustand?: { erreicht?: boolean } } | null;
+}
+interface SegmentRow {
+  segment: string;
+  kunden: number;
+  anteil: number;
+  merkmal: string;
+  avg_bestellungen: number;
 }
 interface SignatureRow {
   id: string;
@@ -100,6 +108,7 @@ export default function AdminDNA() {
   const [houseThemes, setHouseThemes] = useState<HouseThemeLite[]>([]);
   const [experiments, setExperiments] = useState<ExperimentRow[]>([]);
   const [learnedTerms, setLearnedTerms] = useState<OntologyLearnedRow[]>([]);
+  const [segments, setSegments] = useState<SegmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [distillBusyId, setDistillBusyId] = useState<string | null>(null);
 
@@ -128,11 +137,11 @@ export default function AdminDNA() {
 
   useEffect(() => {
     (async () => {
-      const [mw, des, sigs, reports, currents, themes, exps, terms] = await Promise.all([
+      const [mw, des, sigs, reports, currents, themes, exps, terms, segs] = await Promise.all([
         supabase.from("ai_config").select("value").eq("key", "matching_weights").maybeSingle(),
         supabase
           .from("designers")
-          .select("id, brand_name, house_number, video_taste_weights, brand_dna")
+          .select("id, brand_name, house_number, video_taste_weights, brand_dna, aussenauge")
           .eq("status", "active")
           .order("house_number"),
         supabase.from("house_signatures").select("id, designer_id, name, recipe"),
@@ -150,6 +159,7 @@ export default function AdminDNA() {
           .eq("status", "laufend").order("started_at", { ascending: false }),
         supabase.from("fashion_ontology").select("term, world, created_at")
           .eq("learned", true).order("created_at", { ascending: false }).limit(6),
+        supabase.rpc("customer_behavior_segments" as never),
       ]);
       const mwVal = (mw.data?.value ?? {}) as unknown as Partial<MatchingWeights>;
       setWeights({ ...DEFAULT_MATCHING_WEIGHTS, ...mwVal });
@@ -162,6 +172,7 @@ export default function AdminDNA() {
       setHouseThemes((themes.data ?? []) as unknown as HouseThemeLite[]);
       setExperiments((exps.data ?? []) as unknown as ExperimentRow[]);
       setLearnedTerms((terms.data ?? []) as unknown as OntologyLearnedRow[]);
+      setSegments((segs.data ?? []) as unknown as SegmentRow[]);
       setLoading(false);
     })();
   }, []);
@@ -208,6 +219,7 @@ export default function AdminDNA() {
       designer: d,
       topWorld: topWorldEntry ? { world: topWorldEntry[0], pct: Math.round(topWorldEntry[1] * 100) } : null,
       topSignal: dnaSignals[0] ?? null,
+      aussenaugeUrteil: d.aussenauge?.fruehzustand?.erreicht ? (d.aussenauge?.urteil ?? null) : null,
       currentTheme,
       nearCurrent: nearCurrentFor(d),
       inMotion: themeEvolved || tasteShifted,
@@ -235,9 +247,15 @@ export default function AdminDNA() {
 
   return (
     <AdminShell eyebrow="Intelligence" title="Genom">
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Die DNA von PAWN — als lebendes Dokument. Oben die globale Basis, darunter, was jedes Haus aus seiner eigenen
-        Performance gelernt hat.
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Die DNA von PAWN — als lebendes Dokument. Oben die globale Basis, darunter, was jedes Haus aus seiner eigenen
+          Performance gelernt hat, und wie Kundinnen und Kunden sich tatsächlich verhalten.
+        </p>
+        <span className="shrink-0 border border-black bg-black px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.2em] text-white">Nur für Admins</span>
+      </div>
+      <p className="mt-3 max-w-2xl text-[0.8rem] text-muted-foreground/80">
+        Diese Profile beeinflussen ausschließlich Reihenfolge und Empfehlung — niemals Preis, Verfügbarkeit, Versand oder Angebot.
       </p>
 
       <div className="mt-8">
@@ -287,6 +305,43 @@ export default function AdminDNA() {
         </GenomeCard>
       </div>
 
+      <div className="mt-10">
+        <p className="editorial-eyebrow text-black/50">Verhaltensprofile · alle Kunden</p>
+        {segments.length === 0 ? (
+          <div className="mt-4 border border-dashed border-black/30 p-6 text-center text-sm text-muted-foreground">
+            Noch keine Aufrufe oder Bestellungen — die Segmente erscheinen, sobald Kund:innen da waren.
+          </div>
+        ) : (
+          <div className="mt-4 overflow-x-auto border-[1.5px] border-black bg-white">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr className="border-b-[1.5px] border-black text-[0.62rem] uppercase tracking-[0.18em] text-black/50">
+                  <th className="px-4 py-3">Segment</th>
+                  <th className="px-4 py-3">Kunden</th>
+                  <th className="px-4 py-3">Anteil</th>
+                  <th className="px-4 py-3">Merkmal</th>
+                  <th className="px-4 py-3">Ø Bestellungen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {segments.map((s) => (
+                  <tr key={s.segment} className="border-b border-black/10 last:border-0">
+                    <td className="px-4 py-3 font-medium text-black">{s.segment}</td>
+                    <td className="px-4 py-3 tabular-nums text-black/70">{s.kunden}</td>
+                    <td className="px-4 py-3 tabular-nums text-black/70">{s.anteil}%</td>
+                    <td className="px-4 py-3 text-black/70">{s.merkmal}</td>
+                    <td className="px-4 py-3 tabular-nums text-black/70">{s.avg_bestellungen}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-2 text-[0.7rem] text-black/40">
+          Ableitung: Beobachter = keine Bestellung. Gezielt = genau eine. Sammler = mehrfach bei höchstens zwei Häusern. Streuner = mehrfach über drei oder mehr Häuser.
+        </p>
+      </div>
+
       {designers.length > 0 && (
         <div className="mt-10">
           <p className="editorial-eyebrow text-black/50">Kartenwerk · alle Häuser im Vergleich</p>
@@ -298,6 +353,7 @@ export default function AdminDNA() {
                   <th className="px-4 py-3">Welt</th>
                   <th className="px-4 py-3">Palette</th>
                   <th className="px-4 py-3">Haltung</th>
+                  <th className="px-4 py-3">Selbstbild vs. Außenauge</th>
                   <th className="px-4 py-3">Strömung</th>
                   <th className="px-4 py-3">Verändert sich</th>
                 </tr>
@@ -317,6 +373,9 @@ export default function AdminDNA() {
                       ) : <span className="text-black/40">—</span>}
                     </td>
                     <td className="px-4 py-3 text-black/70">{hd.topSignal ?? "—"}</td>
+                    <td className="px-4 py-3 max-w-[240px] text-xs text-black/60">
+                      {hd.aussenaugeUrteil ? hd.aussenaugeUrteil : <span className="text-black/30">noch keine Einschätzung</span>}
+                    </td>
                     <td className="px-4 py-3 text-black/70">{hd.nearCurrent ?? "—"}</td>
                     <td className="px-4 py-3">
                       {hd.inMotion ? (
