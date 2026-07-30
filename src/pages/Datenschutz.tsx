@@ -42,7 +42,21 @@ export default function Datenschutz() {
             </ul>
           </Section>
 
-          <Section title="4. Cookies und persistente Speicherung">
+          <Section title="4. Abgeleitete Verhaltensprofile">
+            <p>
+              Aus deinem Kaufverhalten und deinen Aufrufen leiten wir automatisiert ein grobes Verhaltensprofil ab
+              (z. B. „hat sich umgesehen, aber noch nichts gekauft" oder „kauft gezielt bei einem Haus"). Grundlage:
+              Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer sinnvollen Reihenfolge und Empfehlung).{" "}
+              <strong>Diese Profile beeinflussen ausschließlich Reihenfolge und Empfehlung — niemals Preis,
+              Verfügbarkeit, Versand oder Angebot.</strong> Sie werden nur aggregiert für Admin-Auswertungen
+              verwendet, nie mit deinem Namen oder deiner E-Mail an Designer:innen weitergegeben. Du kannst der
+              Bildung eines solchen Profils jederzeit widersprechen (Art. 21 DSGVO) — schreib an die Kontaktadresse
+              in Abschnitt 10, wir schalten die Personalisierung für dein Konto dann ab. [TODO: exakte Frist zur
+              Umsetzung final durch Kanzlei prüfen]
+            </p>
+          </Section>
+
+          <Section title="5. Cookies und persistente Speicherung">
             <p>
               Nach deiner ausdrücklichen Zustimmung nutzen wir einen technischen Cookie <code>pawn_consent</code> sowie
               lokalen Speicher (<em>localStorage</em>) unter Schlüsseln wie <code>palace.chat.session_id</code> und
@@ -54,29 +68,29 @@ export default function Datenschutz() {
             </p>
           </Section>
 
-          <Section title="5. Speicherdauer">
+          <Section title="6. Speicherdauer">
             <p>Konto- und Bestelldaten so lange, wie gesetzlich vorgeschrieben. Chat-Sessions und Geschmackssignale
               bis zu 24 Monate ab letzter Aktivität, danach automatische Löschung oder Anonymisierung.
               [TODO: exakte Fristen final durch Kanzlei prüfen]</p>
           </Section>
 
-          <Section title="6. Deine Rechte">
+          <Section title="7. Deine Rechte">
             <p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerruf erteilter Einwilligungen.
               In deinem Konto findest du unter „Meine Daten" die Buttons <em>Daten exportieren</em> und <em>Konto löschen</em>.
               Die Konto-Löschung entfernt nachweislich auch alle Signale und Sessions. Beschwerde bei einer
               Datenschutz-Aufsichtsbehörde ist möglich.</p>
           </Section>
 
-          <Section title="7. Empfänger">
+          <Section title="8. Empfänger">
             <p>Hosting und Datenbank: [TODO: Anbieter benennen]. Zahlungsdienstleister: [TODO]. Keine Weitergabe an Werbenetzwerke.</p>
           </Section>
 
-          <Section title="8. Keine Tracking-Cookies Dritter">
+          <Section title="9. Keine Tracking-Cookies Dritter">
             <p>Wir setzen keine Werbe- oder Analytics-Cookies Dritter. Nur die oben beschriebene erst-Party-Speicherung.</p>
           </Section>
 
 
-          <Section title="9. Kontakt">
+          <Section title="10. Kontakt">
             <p>Fragen zum Datenschutz: <a href="mailto:datenschutz@pawn.example" className="underline">datenschutz@pawn.example</a>.</p>
           </Section>
         </div>
