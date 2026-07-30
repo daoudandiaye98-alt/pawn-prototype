@@ -134,7 +134,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     { to: "/studio/nachrichten", label: "Nachrichten", icon: IMessages, badge: badges.messages },
     { to: "/studio/hausseite", label: "Hausseite", icon: IHausseite },
     { to: "/studio/empfehlungen", label: "Empfehlungen", icon: IReferral },
-    { to: "/studio/dna", label: "Werkbuch", icon: IWerkbuch },
+    { to: "/studio/dna", label: "Außenauge", icon: IWerkbuch },
     { to: "/studio/brand", label: "Retrospektive", icon: IRetro },
     { to: "/studio/plan", label: "Plan", icon: IPayout },
     { to: "/studio/auszahlung", label: "Auszahlung", icon: IPayout },
