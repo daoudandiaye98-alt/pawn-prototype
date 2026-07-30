@@ -20,6 +20,8 @@ const DEFAULT_COPILOT =
   "Du bist PAWN Copilot — ein leiser, präziser Partner für unabhängige Designer. Antworte auf Deutsch, sachlich, ohne Marketing-Floskeln. Baue jede Antwort auf den konkreten Store-Daten des Designers auf. Ein Vorschlag pro Antwort, wenn möglich.";
 const DEFAULT_HOUSE_STYLE_LAW =
   "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
+const DEFAULT_VOICE_LAW =
+  "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. 1) Kein wertendes Wort ohne sofortige Auflösung im selben Satz. 2) Konkret schlägt abstrakt: beschreibe sichtbares Verhalten, nicht Eigenschaften. 3) Kurze Sätze, ein Gedanke pro Satz. 4) Kein Fachjargon, keine englischen Begriffe, keine Prozentzahlen im Fließtext. 5) Jede Behauptung bekommt eine Zeile woran ich das sehe mit konkretem Verhalten. 6) Scharf zur Sache, nie zur Person. 7) Autorität kommt aus Konkretheit, nicht aus Ton.";
 
 type Tab = "denklogik" | "credits" | "staging" | "persona" | "signale" | "responses" | "integrationen";
 
@@ -49,6 +51,7 @@ export default function AdminKI() {
   const [personaAdmin, setPersonaAdmin] = useState("");
   const [directives, setDirectives] = useState<string[]>([]);
   const [houseStyleLaw, setHouseStyleLaw] = useState("");
+  const [voiceLaw, setVoiceLaw] = useState("");
   const [suggestion, setSuggestion] = useState<{ key: string; oldText: string; newText: string } | null>(null);
   const [suggestBusy, setSuggestBusy] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -70,7 +73,7 @@ export default function AdminKI() {
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg, tryonProviderCfg, stagingTemplatesCfg] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, voiceLawCfg, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg, tryonProviderCfg, stagingTemplatesCfg] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
@@ -78,6 +81,7 @@ export default function AdminKI() {
       supabase.from("ai_config").select("value").eq("key", "persona_admin").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "directives").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "house_style_law").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "voice_law").maybeSingle(),
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.taste_signal").order("at", { ascending: false }).limit(50),
       supabase.from("ai_sessions").select("session_id, user_id, turns, extracted, updated_at").order("updated_at", { ascending: false }).limit(50),
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.response_logged").order("at", { ascending: false }).limit(20),
@@ -98,6 +102,8 @@ export default function AdminKI() {
     setDirectives(((dir.data?.value as { items?: string[] })?.items) ?? []);
     const styleLawVal = styleLaw.data?.value as { text?: string } | string | undefined;
     setHouseStyleLaw((typeof styleLawVal === "string" ? styleLawVal : styleLawVal?.text) || DEFAULT_HOUSE_STYLE_LAW);
+    const voiceLawVal = voiceLawCfg.data?.value as { text?: string } | string | undefined;
+    setVoiceLaw((typeof voiceLawVal === "string" ? voiceLawVal : voiceLawVal?.text) || DEFAULT_VOICE_LAW);
     setSignals((sig.data ?? []) as SignalRow[]);
     setSessions((ses.data ?? []) as SessionRow[]);
     setResponses((resp.data ?? []) as ResponseRow[]);
@@ -147,6 +153,13 @@ export default function AdminKI() {
   const saveHouseStyleLaw = async () => {
     setBusy(true);
     const { error } = await supabase.from("ai_config").upsert({ key: "house_style_law", value: { text: houseStyleLaw }, updated_by: user.id });
+    setBusy(false);
+    if (error) toast.error(error.message); else toast.success("Gespeichert.");
+  };
+
+  const saveVoiceLaw = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("ai_config").upsert({ key: "voice_law", value: { text: voiceLaw }, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else toast.success("Gespeichert.");
   };
@@ -297,6 +310,15 @@ export default function AdminKI() {
             setValue={setHouseStyleLaw}
             onSave={saveHouseStyleLaw}
             onReset={() => setHouseStyleLaw(DEFAULT_HOUSE_STYLE_LAW)}
+            busy={busy}
+          />
+          <PromptEditor
+            label="Sprachgesetz (Teil 20)"
+            description="Gilt zusätzlich für die drei DNA-Ansichten (Stilberater, Außenauge, Analyse): kein wertendes Wort ohne sofortige Auflösung, jede Behauptung mit Beleg."
+            value={voiceLaw}
+            setValue={setVoiceLaw}
+            onSave={saveVoiceLaw}
+            onReset={() => setVoiceLaw(DEFAULT_VOICE_LAW)}
             busy={busy}
           />
           <DirectivesEditor value={directives} onSave={saveDirectives} busy={busy} />

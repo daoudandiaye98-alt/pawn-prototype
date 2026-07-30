@@ -13,6 +13,7 @@ import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProd
 import { resolveTheme, type HouseTheme } from "@/features/houseTheme/theme";
 import { Schwelle } from "@/components/palace/Schwelle";
 import { currentVerwandlungGlyph, type HouseMilestones } from "@/features/verwandlung";
+import { usePageVisit } from "@/features/personalization/usePageVisit";
 
 interface DbDesigner {
   id: string;
@@ -130,6 +131,7 @@ const DesignerPage = () => {
   // Teil 15b: die Schwelle einmalig je Haus-Besuch zeigen, nicht bei jedem Re-Render.
   const [schwelleActive, setSchwelleActive] = useState(true);
   useEffect(() => { setSchwelleActive(true); }, [dbDesigner?.id]);
+  usePageVisit("designer", dbDesigner?.id);
 
 
   useEffect(() => {
