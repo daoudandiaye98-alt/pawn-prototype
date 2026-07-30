@@ -770,7 +770,7 @@ export type Database = {
       designer_consents: {
         Row: {
           accepted_at: string
-          application_id: string
+          application_id: string | null
           checksum_at_accept: string
           contract_version_id: string
           id: string
@@ -781,7 +781,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string
-          application_id: string
+          application_id?: string | null
           checksum_at_accept: string
           contract_version_id: string
           id?: string
@@ -792,7 +792,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string
-          application_id?: string
+          application_id?: string | null
           checksum_at_accept?: string
           contract_version_id?: string
           id?: string
