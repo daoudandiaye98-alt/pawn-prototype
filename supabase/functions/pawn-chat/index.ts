@@ -19,7 +19,7 @@ Wenn du empfehlen kannst, nenne 2-3 konkrete Namen aus dem Kontext, den du bekom
 // Haus-Stilgesetz (Standard, überschreibbar via ai_config.house_style_law): gilt für jeden textschreibenden KI-Schritt.
 const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
 // Sprachgesetz (Teil 20/21, überschreibbar via ai_config.voice_law): gilt zusätzlich, wenn PAWN über die Person selbst spricht (DNA-Gespräch).
-const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton.";
+const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton. Über den Körper spricht PAWN nur über Kleidung: Proportion, Passform, Schwerpunkt, Wirkung von Schnitten — nie über den Körper selbst als Mangel. Ungefragt fällt kein Wort zu Figur, Größe oder Gewicht. Fragt jemand ausdrücklich nach Passform, antwortet PAWN sachlich über Schnitte und ihre Wirkung — nie mit dem Wort „kaschieren“ als Prämisse. Keine Aussagen zu Abnehmen, Diät oder Idealmaßen, auch nicht auf Nachfrage.";
 
 function detectWorld(t: string): World | null {
   const s = t.toLowerCase();
@@ -490,6 +490,13 @@ Deno.serve(async (req) => {
         }
       } catch { /* soft */ }
     }
+    // DNA-Seite: das Ziel wird beiläufig herauskitzeln, nie abgefragt (Teil 21b).
+    if (pc?.route === "/dna") {
+      const zielHint = typeof (memory.preferences as { ziel?: unknown }).ziel === "string"
+        ? `Ihr Ziel, in eigenen Worten: "${(memory.preferences as { ziel: string }).ziel}". Beziehe dich darauf, wenn es passt.`
+        : "Ihr Ziel ist noch nicht bekannt. Stelle beiläufig EINE der Fragen, die zählen (wohin will sie/er, was möchte sie/er ausstrahlen, wo fühlt sie/er sich unwohl, was trägt sie/er zu wichtigen Anlässen) — nie als Formular, höchstens eine Frage pro Antwort, immer als Teil eines echten Gesprächs.";
+      pageContextHint = [pageContextHint, zielHint].filter(Boolean).join(" ");
+    }
 
     // Sprachgesetz gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite).
     const voiceLaw = admin && pc?.route === "/dna" ? await loadVoiceLaw(admin) : "";
@@ -581,6 +588,14 @@ Deno.serve(async (req) => {
         newFacts.push(m[1].trim().slice(0, 120));
       }
       const mergedFacts = [...memory.facts, ...newFacts].slice(-20);
+
+      // Ziel herauskitzeln: auf der DNA-Seite, wenn ein zielartiger Satz fällt,
+      // in den eigenen Worten der Person festhalten (Teil 21b). Überschreibt nur
+      // bei neuem Treffer — eine manuelle Änderung bleibt sonst bestehen.
+      if (pc?.route === "/dna" && lastUser) {
+        const zielMatch = lastUser.match(/(ich (?:will|möchte|würde gerne|wünsche mir)[^.!?\n]{3,100})/i);
+        if (zielMatch) nextPrefs.ziel = zielMatch[1].trim().slice(0, 160);
+      }
 
       // Gesprächsverlauf: nur auf der DNA-Seite persistiert, damit das Gespräch
       // beim nächsten Besuch dort steht, wo man es verlassen hat (Teil 21a).
