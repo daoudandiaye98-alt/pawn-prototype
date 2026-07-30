@@ -18,6 +18,8 @@ Wenn du empfehlen kannst, nenne 2-3 konkrete Namen aus dem Kontext, den du bekom
 
 // Haus-Stilgesetz (Standard, überschreibbar via ai_config.house_style_law): gilt für jeden textschreibenden KI-Schritt.
 const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
+// Sprachgesetz (Teil 20/21, überschreibbar via ai_config.voice_law): gilt zusätzlich, wenn PAWN über die Person selbst spricht (DNA-Gespräch).
+const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton.";
 
 function detectWorld(t: string): World | null {
   const s = t.toLowerCase();
@@ -91,6 +93,16 @@ async function loadHouseStyleLaw(admin: SupabaseClient): Promise<string> {
     const text = typeof v === "string" ? v : v?.text;
     return typeof text === "string" && text.trim() ? text.trim() : DEFAULT_HOUSE_STYLE_LAW;
   } catch { return DEFAULT_HOUSE_STYLE_LAW; }
+}
+
+/** Sprachgesetz: gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite). */
+async function loadVoiceLaw(admin: SupabaseClient): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "voice_law").maybeSingle();
+    const v = data?.value as { text?: string } | string | null;
+    const text = typeof v === "string" ? v : v?.text;
+    return typeof text === "string" && text.trim() ? text.trim() : DEFAULT_VOICE_LAW;
+  } catch { return DEFAULT_VOICE_LAW; }
 }
 
 async function resolveRole(admin: SupabaseClient, user_id: string | null): Promise<PersonaRole> {
@@ -171,7 +183,7 @@ function fallbackReply(ex: Extracted, cards: Card[], turns: number, action: Acti
   return `Alles klar, ${ex.world} mit ${ex.mood === "ruhig" ? "ruhiger" : "kantiger"} Handschrift. Wofür?`;
 }
 
-async function callOpenAI(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model = "gpt-4o-mini"): Promise<string | null> {
+async function callOpenAI(system: string, messages: Msg[], contextHint: string, imageUrls?: string[], model = "gpt-4o-mini"): Promise<string | null> {
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) return null;
   try {
@@ -180,12 +192,15 @@ async function callOpenAI(system: string, messages: Msg[], contextHint: string, 
       ...(contextHint ? [{ role: "system", content: contextHint }] : []),
       ...messages,
     ];
-    if (imageUrl) {
+    if (imageUrls?.length) {
+      const prompt = imageUrls.length > 1
+        ? "Beschreibe Stil, Farbpalette, Silhouetten und Stimmung dieser Bilder als 4-8 kurze Ontologie-Terme, kommagetrennt — achte auf wiederkehrende Muster über die Bilder hinweg. Danach ein warmer, empathischer Satz auf Deutsch."
+        : "Beschreibe Stil, Farbpalette, Silhouetten und Stimmung dieses Bildes als 4-8 kurze Ontologie-Terme, kommagetrennt. Danach ein warmer, empathischer Satz auf Deutsch.";
       wire.push({
         role: "user",
         content: [
-          { type: "text", text: "Beschreibe Stil, Farbpalette, Silhouetten und Stimmung dieses Bildes als 4-8 kurze Ontologie-Terme, kommagetrennt. Danach ein warmer, empathischer Satz auf Deutsch." },
-          { type: "image_url", image_url: { url: imageUrl } },
+          { type: "text", text: prompt },
+          ...imageUrls.map((url) => ({ type: "image_url", image_url: { url } })),
         ],
       });
     }
@@ -243,10 +258,10 @@ async function callAnthropic(system: string, messages: Msg[], contextHint: strin
   } catch { return null; }
 }
 
-async function callProvider(system: string, messages: Msg[], contextHint: string, imageUrl?: string, model?: string, chain?: string[]): Promise<{ text: string | null; provider: string }> {
+async function callProvider(system: string, messages: Msg[], contextHint: string, imageUrls?: string[], model?: string, chain?: string[]): Promise<{ text: string | null; provider: string }> {
   const order = chain ?? ["openai", "anthropic", "lovable_gateway", "fallback"];
   for (const p of order) {
-    if (p === "openai") { const t = await callOpenAI(system, messages, contextHint, imageUrl, model); if (t) return { text: t, provider: "openai" }; }
+    if (p === "openai") { const t = await callOpenAI(system, messages, contextHint, imageUrls, model); if (t) return { text: t, provider: "openai" }; }
     else if (p === "anthropic") { const t = await callAnthropic(system, messages, contextHint); if (t) return { text: t, provider: "anthropic" }; }
     else if (p === "lovable_gateway") { const t = await callGateway(system, messages, contextHint); if (t) return { text: t, provider: "lovable_gateway" }; }
   }
@@ -277,7 +292,12 @@ function extractUserIdFromJWT(auth: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const body = (await req.json()) as { messages: Msg[]; session_id?: string; probe?: boolean; image_url?: string; pinterest_board?: string; page_context?: { route?: string; product_slug?: string } };
+    const body = (await req.json()) as {
+      messages: Msg[]; session_id?: string; probe?: boolean;
+      image_url?: string; image_urls?: string[]; image_paths?: string[];
+      pinterest_board?: string; persist_thread?: boolean;
+      page_context?: { route?: string; product_slug?: string };
+    };
 
     // Provider probe (used by /admin/ki status badge) — no side effects.
     if (body.probe) {
@@ -292,6 +312,7 @@ Deno.serve(async (req) => {
     }
 
     const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
+    const imageUrls = [...(body.image_urls ?? []), ...(body.image_url ? [body.image_url] : [])].filter(Boolean).slice(0, 6);
     const session_id = body.session_id ?? crypto.randomUUID();
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const user_id = extractUserIdFromJWT(req.headers.get("Authorization"));
@@ -470,7 +491,10 @@ Deno.serve(async (req) => {
       } catch { /* soft */ }
     }
 
-    const system = [persona, houseStyleLaw, directiveBlock].filter(Boolean).join("\n\n");
+    // Sprachgesetz gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite).
+    const voiceLaw = admin && pc?.route === "/dna" ? await loadVoiceLaw(admin) : "";
+
+    const system = [persona, houseStyleLaw, voiceLaw, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [pageContextHint, memoryHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan
@@ -497,25 +521,33 @@ Deno.serve(async (req) => {
       } catch { /* soft */ }
     }
 
-    // Vision-Aufruf bei Bild
+    // Vision-Aufruf bei Bild(ern) — nie Bewertung, nur Beobachtung.
     let imageTerms: string[] = [];
-    if (body.image_url && Deno.env.get("OPENAI_API_KEY")) {
+    if (imageUrls.length && Deno.env.get("OPENAI_API_KEY")) {
       const visionRaw = await callOpenAI(
-        "Du bist PAWN. Analysiere Modebilder/Moodboards: extrahiere 4-8 kurze Terme zu Silhouette, Material, Farbpalette, Stimmung (kommagetrennt), dann EIN warmer Satz auf Deutsch.",
-        [], "", body.image_url, "gpt-4o-mini"
+        "Du bist PAWN. Analysiere Modebilder/Moodboards: extrahiere 4-8 kurze Terme zu Silhouette, Material, Farbpalette, Stimmung (kommagetrennt), dann EIN warmer Satz auf Deutsch. Immer als Beobachtung, nie als Bewertung.",
+        [], "", imageUrls, "gpt-4o-mini"
       );
       if (visionRaw) {
         const line = visionRaw.split(/[\n.]/)[0] ?? "";
         imageTerms = line.split(",").map((s) => s.trim().toLowerCase()).filter((s) => s.length >= 3 && s.length <= 40).slice(0, 8);
       }
     }
-    if (admin && body.image_url) {
+    if (admin && imageUrls.length) {
       await admin.from("domain_events").insert({
         id: crypto.randomUUID(), type: "ai.taste_signal",
         actor: user_id ? "user" : "anon",
-        payload: { source: "image", session_id, user_id: user_id ?? null, image_url: body.image_url, terms: imageTerms },
+        payload: { source: "image", session_id, user_id: user_id ?? null, image_urls: imageUrls, terms: imageTerms },
         schema_version: 1,
       });
+    }
+    // Stil-Referenzen: dauerhafte, einzeln löschbare Ablage je Nutzer (Teil 21a).
+    if (admin && user_id && imageUrls.length) {
+      const beschreibung = imageTerms.length ? imageTerms.join(", ") : null;
+      const rows = imageUrls.map((url, i) => ({
+        user_id, url, path: body.image_paths?.[i] ?? "", beschreibung, herkunft: "bild",
+      }));
+      await admin.from("style_references" as never).insert(rows as never);
     }
 
     // Load provider chain from ai_config (default: openai → anthropic → lovable → fallback)
@@ -527,13 +559,13 @@ Deno.serve(async (req) => {
         if (Array.isArray(c) && c.length) chain = c;
       } catch { /* soft */ }
     }
-    const providerResult = await callProvider(system, messages, fullContextHint, body.image_url, model, chain);
+    const providerResult = await callProvider(system, messages, fullContextHint, imageUrls, model, chain);
     const rawReply = providerResult.text ?? fallbackReply(extracted, cards, turns, action);
     const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
 
     // --- Upsert user_memory: extract simple facts / preferences -----------
-    if (admin && user_id && lastUser) {
-      const nextPrefs = { ...memory.preferences };
+    if (admin && user_id && (lastUser || body.persist_thread)) {
+      const nextPrefs: Record<string, unknown> = { ...memory.preferences };
       if (extracted.world) nextPrefs.welt = extracted.world;
       if (extracted.mood) nextPrefs.stimmung = extracted.mood;
       if (extracted.occasion) nextPrefs.anlass = extracted.occasion;
@@ -549,6 +581,20 @@ Deno.serve(async (req) => {
         newFacts.push(m[1].trim().slice(0, 120));
       }
       const mergedFacts = [...memory.facts, ...newFacts].slice(-20);
+
+      // Gesprächsverlauf: nur auf der DNA-Seite persistiert, damit das Gespräch
+      // beim nächsten Besuch dort steht, wo man es verlassen hat (Teil 21a).
+      if (body.persist_thread) {
+        const existing = Array.isArray((memory.preferences as { dna_chat_verlauf?: unknown }).dna_chat_verlauf)
+          ? (memory.preferences as { dna_chat_verlauf: { id: string; role: string; text: string; at: string }[] }).dna_chat_verlauf
+          : [];
+        const now = new Date().toISOString();
+        const turn: { id: string; role: string; text: string; at: string }[] = [];
+        if (lastUser) turn.push({ id: crypto.randomUUID(), role: "user", text: lastUser, at: now });
+        turn.push({ id: crypto.randomUUID(), role: "assistant", text: reply, at: now });
+        nextPrefs.dna_chat_verlauf = [...existing, ...turn].slice(-40);
+      }
+
       await admin.from("user_memory").upsert({
         user_id,
         preferences: nextPrefs,

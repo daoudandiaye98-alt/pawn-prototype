@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { usePersonalization, type Signal } from "@/features/personalization";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerGenomeCard } from "@/components/palace/CustomerGenomeCard";
+import { DnaChat } from "@/components/palace/DnaChat";
 import { X } from "lucide-react";
 
 /**
@@ -187,6 +188,15 @@ export default function DNA() {
         <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
           <div className="mx-auto max-w-[900px]">
             <CustomerGenomeCard />
+          </div>
+        </section>
+      )}
+
+      {/* 01c · Das Gespräch findet auf der Seite statt (Teil 21a) */}
+      {user && (
+        <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+          <div className="mx-auto max-w-[900px]">
+            <DnaChat />
           </div>
         </section>
       )}
