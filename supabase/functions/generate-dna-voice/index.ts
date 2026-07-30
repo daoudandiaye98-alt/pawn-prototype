@@ -68,8 +68,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({})) as { mode?: string; designer_id?: string };
     const houseStyleLaw = await loadConfigText(admin, "house_style_law", DEFAULT_HOUSE_STYLE_LAW);
     const voiceLaw = await loadConfigText(admin, "voice_law", DEFAULT_VOICE_LAW);
-    const OUTPUT_SHAPE = `Antworte NUR mit JSON, kein weiterer Text:
+    const OUTPUT_SHAPE_KUNDE = `Antworte NUR mit JSON, kein weiterer Text:
 {"urteil": "zwei kurze Sätze, gesetzt wie eine Schlagzeile", "einordnung": "ein Absatz, der das Muster im Alltag erklärt, plus eine sanfte Brücke zu einem bekannten System als Verortung nicht Diagnose", "stilname": "ein kurzer, eigener Name für den Stil", "belege": [{"text": "Beobachtung 1", "beleg": "konkrete Zahl/Verhalten dahinter"}, {"text": "Beobachtung 2", "beleg": "..."}, {"text": "Beobachtung 3", "beleg": "..."}], "blinder_fleck": {"text": "das Muster hinter dem Muster", "beleg": "konkretes Verhalten"}, "naechster_schritt": {"text": "ein Vorschlag aus der Komfortzone, nie fordernd, immer als Einladung"}}`;
+    const OUTPUT_SHAPE_DESIGNER = `Antworte NUR mit JSON, kein weiterer Text:
+{"urteil": "zwei kurze Sätze — wie die Arbeit von außen ankommt, im Vergleich zur Selbstbeschreibung, gesetzt wie eine Schlagzeile", "belege": [{"text": "Beobachtung 1 aus echtem Verhalten", "beleg": "konkrete Zahl dahinter"}, {"text": "Beobachtung 2", "beleg": "..."}, {"text": "Beobachtung 3", "beleg": "..."}], "blinder_fleck": {"text": "was das Haus unterschätzt", "beleg": "konkretes Verhalten"}, "naechster_schritt": {"text": "ein Vorschlag aus der Komfortzone", "begruendung": "warum — aus Kaufverhalten und/oder naher Kulturströmung"}}`;
 
     if (body.mode === "kunde") {
       const [{ data: memRow }, { count: visitCount }, { data: paidOrders }, { data: wishlistEvents }, { data: recentSignals }] = await Promise.all([
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
         `Auf die Merkliste gesetzt: ${wishlistCount} Stück`,
       ].join("\n");
 
-      const system = `Du bist PAWNs Stilberater — du beschreibst einer Kundin/einem Kunden ihr/sein eigenes Muster, warm und konkret, wie eine gute Stil-Strecke in einer Modezeitschrift: man wird beschrieben, erkennt sich wieder, bekommt einen Rat. Niemals technisch, niemals belehrend.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${OUTPUT_SHAPE}`;
+      const system = `Du bist PAWNs Stilberater — du beschreibst einer Kundin/einem Kunden ihr/sein eigenes Muster, warm und konkret, wie eine gute Stil-Strecke in einer Modezeitschrift: man wird beschrieben, erkennt sich wieder, bekommt einen Rat. Niemals technisch, niemals belehrend.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${OUTPUT_SHAPE_KUNDE}`;
       const out = await callClaude(apiKey, system, `Material über diese Person:\n${material}`, 900);
       if (!out) return json({ ok: false, error: "generation_failed", message: "Aus dem vorhandenen Material ließ sich noch keine Einschätzung schreiben." }, 200);
 
@@ -158,7 +160,7 @@ Deno.serve(async (req) => {
         `Wie die Stücke tatsächlich ankommen:\n${engagementText || "noch keine Aufrufe"}`,
       ].filter(Boolean).join("\n");
 
-      const system = `Du bist PAWNs Außenauge für Designer:innen — du sagst, wie ihre Arbeit von außen ankommt, im Vergleich zu ihrer eigenen Beschreibung. Direkt, aber nie über den Geschmack der Person urteilend, nur über Stücke, Reihenfolgen, Gewohnheiten.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${OUTPUT_SHAPE}`;
+      const system = `Du bist PAWNs Außenauge für Designer:innen — du sagst, wie ihre Arbeit von außen ankommt, im Vergleich zu ihrer eigenen Beschreibung. Direkt, aber nie über den Geschmack der Person urteilend, nur über Stücke, Reihenfolgen, Gewohnheiten.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${OUTPUT_SHAPE_DESIGNER}`;
       const out = await callClaude(apiKey, system, `Material über dieses Haus:\n${material}`, 900);
       if (!out) return json({ ok: false, error: "generation_failed", message: "Aus dem vorhandenen Material ließ sich noch keine Einschätzung schreiben." }, 200);
 
