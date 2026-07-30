@@ -946,6 +946,7 @@ export type Database = {
           application_id: string | null
           atelier_caption: string | null
           atelier_image_url: string | null
+          aussenauge: Json
           avatar_url: string | null
           banner_url: string | null
           brand_dna: Json
@@ -987,6 +988,7 @@ export type Database = {
           application_id?: string | null
           atelier_caption?: string | null
           atelier_image_url?: string | null
+          aussenauge?: Json
           avatar_url?: string | null
           banner_url?: string | null
           brand_dna?: Json
@@ -1028,6 +1030,7 @@ export type Database = {
           application_id?: string | null
           atelier_caption?: string | null
           atelier_image_url?: string | null
+          aussenauge?: Json
           avatar_url?: string | null
           banner_url?: string | null
           brand_dna?: Json
@@ -2053,6 +2056,39 @@ export type Database = {
         }
         Relationships: []
       }
+      page_visits: {
+        Row: {
+          dwell_seconds: number
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          target_id: string
+          target_type: string
+          user_id: string
+          visit_count: number
+        }
+        Insert: {
+          dwell_seconds?: number
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          target_id: string
+          target_type: string
+          user_id: string
+          visit_count?: number
+        }
+        Update: {
+          dwell_seconds?: number
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          target_id?: string
+          target_type?: string
+          user_id?: string
+          visit_count?: number
+        }
+        Relationships: []
+      }
       posting_queue: {
         Row: {
           campaign_id: string
@@ -2633,6 +2669,10 @@ export type Database = {
         Args: { _application_id: string; _body: string }
         Returns: string
       }
+      add_dwell_seconds: {
+        Args: { p_seconds: number; p_target_id: string; p_target_type: string }
+        Returns: undefined
+      }
       approve_designer: { Args: { _application_id: string }; Returns: string }
       archive_application: {
         Args: { _application_id: string }
@@ -2661,11 +2701,31 @@ export type Database = {
         Args: { p_asset_id: string; p_metric: string }
         Returns: undefined
       }
+      customer_behavior_segments: {
+        Args: never
+        Returns: {
+          anteil: number
+          avg_bestellungen: number
+          kunden: number
+          merkmal: string
+          segment: string
+        }[]
+      }
       decrement_stock_for_order: {
         Args: { _product_id: string; _qty: number }
         Returns: undefined
       }
       designer_level: { Args: { _designer_id: string }; Returns: Json }
+      designer_product_engagement: {
+        Args: { p_designer_id: string }
+        Returns: {
+          avg_dwell_seconds: number
+          product_id: string
+          returning_visitors: number
+          total_visits: number
+          unique_visitors: number
+        }[]
+      }
       grant_credits: {
         Args: { _credits: number; _designer_id: string; _note?: string }
         Returns: Json
@@ -2708,6 +2768,10 @@ export type Database = {
       }
       recompute_house_milestones: {
         Args: { p_designer_id: string }
+        Returns: undefined
+      }
+      record_page_visit: {
+        Args: { p_target_id: string; p_target_type: string }
         Returns: undefined
       }
       reject_designer: {
