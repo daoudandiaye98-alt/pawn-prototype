@@ -25,7 +25,7 @@ function saveQueue(q: QueuedSignal[]) { try { localStorage.setItem(QUEUE_KEY, JS
  * The deck starts random per selected world; once signals exist it becomes
  * 80% personalization-sorted + 20% random for discovery.
  */
-export function PickYourStyle({ compact = false }: { compact?: boolean }) {
+export function PickYourStyle({ compact = false, onRoundComplete }: { compact?: boolean; onRoundComplete?: () => void }) {
   const { user } = useAuth();
   const products = useStore(marketplaceSelectors.getAllProductViews);
   const personalization = usePersonalization();
@@ -34,6 +34,7 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
   const [count, setCount] = useState<number>(() => loadQueue().length);
   const [dragX, setDragX] = useState(0);
   const startX = useRef<number | null>(null);
+  const hadCurrent = useRef(false);
 
   // Flush anonymous queue on login.
   useEffect(() => {
@@ -75,6 +76,14 @@ export function PickYourStyle({ compact = false }: { compact?: boolean }) {
 
   const current = deck[index];
   const next = deck[index + 1];
+
+  // Nach einer Runde (Deck durchgeschwippt) die Ansicht nach oben springen lassen,
+  // damit sichtbar wird, was sich am Urteil geändert hat (Teil 21c).
+  useEffect(() => {
+    if (current) { hadCurrent.current = true; return; }
+    if (hadCurrent.current) { hadCurrent.current = false; onRoundComplete?.(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
 
   const react = async (verdict: Verdict, p: ProductView) => {
     const signal: QueuedSignal = {
