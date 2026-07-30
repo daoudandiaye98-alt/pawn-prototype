@@ -2172,54 +2172,6 @@ export type Database = {
           },
         ]
       }
-      referrals: {
-        Row: {
-          code: string
-          created_at: string
-          credited: boolean
-          credited_at: string | null
-          first_order_id: string | null
-          id: string
-          referred_user_id: string
-          referrer_designer_id: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          credited?: boolean
-          credited_at?: string | null
-          first_order_id?: string | null
-          id?: string
-          referred_user_id: string
-          referrer_designer_id: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          credited?: boolean
-          credited_at?: string | null
-          first_order_id?: string | null
-          id?: string
-          referred_user_id?: string
-          referrer_designer_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "referrals_first_order_id_fkey"
-            columns: ["first_order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "referrals_referrer_designer_id_fkey"
-            columns: ["referrer_designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       products: {
         Row: {
           allow_custom_requests: boolean
@@ -2369,6 +2321,54 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      referrals: {
+        Row: {
+          code: string
+          created_at: string
+          credited: boolean
+          credited_at: string | null
+          first_order_id: string | null
+          id: string
+          referred_user_id: string
+          referrer_designer_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          credited?: boolean
+          credited_at?: string | null
+          first_order_id?: string | null
+          id?: string
+          referred_user_id: string
+          referrer_designer_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          credited?: boolean
+          credited_at?: string | null
+          first_order_id?: string | null
+          id?: string
+          referred_user_id?: string
+          referrer_designer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_first_order_id_fkey"
+            columns: ["first_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_designer_id_fkey"
+            columns: ["referrer_designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_content: {
         Row: {
