@@ -16,7 +16,7 @@ const KUNDE_SCHWELLE = { blicke: 20, kaeufe: 3 };
 const DESIGNER_SCHWELLE_STUECKE = 3;
 
 const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
-const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton.";
+const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton. Über den Körper spricht PAWN nur über Kleidung: Proportion, Passform, Schwerpunkt, Wirkung von Schnitten — nie über den Körper selbst als Mangel. Ungefragt fällt kein Wort zu Figur, Größe oder Gewicht. Fragt jemand ausdrücklich nach Passform, antwortet PAWN sachlich über Schnitte und ihre Wirkung — nie mit dem Wort „kaschieren“ als Prämisse. Keine Aussagen zu Abnehmen, Diät oder Idealmaßen, auch nicht auf Nachfrage.";
 
 function jwtSub(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
@@ -72,6 +72,8 @@ Deno.serve(async (req) => {
 {"urteil": "zwei kurze Sätze, gesetzt wie eine Schlagzeile", "einordnung": "ein Absatz, der das Muster im Alltag erklärt, plus eine sanfte Brücke zu einem bekannten System als Verortung nicht Diagnose", "stilname": "ein kurzer, eigener Name für den Stil", "belege": [{"text": "Beobachtung 1", "beleg": "konkrete Zahl/Verhalten dahinter"}, {"text": "Beobachtung 2", "beleg": "..."}, {"text": "Beobachtung 3", "beleg": "..."}], "blinder_fleck": {"text": "das Muster hinter dem Muster", "beleg": "konkretes Verhalten"}, "naechster_schritt": {"text": "ein Vorschlag aus der Komfortzone, nie fordernd, immer als Einladung"}}`;
     const OUTPUT_SHAPE_DESIGNER = `Antworte NUR mit JSON, kein weiterer Text:
 {"urteil": "zwei kurze Sätze — wie die Arbeit von außen ankommt, im Vergleich zur Selbstbeschreibung, gesetzt wie eine Schlagzeile", "belege": [{"text": "Beobachtung 1 aus echtem Verhalten", "beleg": "konkrete Zahl dahinter"}, {"text": "Beobachtung 2", "beleg": "..."}, {"text": "Beobachtung 3", "beleg": "..."}], "blinder_fleck": {"text": "was das Haus unterschätzt", "beleg": "konkretes Verhalten"}, "naechster_schritt": {"text": "ein Vorschlag aus der Komfortzone", "begruendung": "warum — aus Kaufverhalten und/oder naher Kulturströmung"}}`;
+    const OUTPUT_SHAPE_WEG = `Antworte NUR mit JSON, kein weiterer Text:
+{"schritte": [{"text": "ein Satz, was als Nächstes zu tun ist", "produkt_slug": "genau ein slug aus der Liste", "begruendung": "warum genau das — aus Ziel und Verhalten, nie fordernd"}, {"text": "...", "produkt_slug": "...", "begruendung": "..."}, {"text": "...", "produkt_slug": "...", "begruendung": "..."}], "fortschritt": "ein bis zwei Sätze, was sich seit dem letzten Mal in Richtung Ziel bewegt hat, aus echtem Verhalten — oder null, wenn seither nichts Neues war"}`;
 
     if (body.mode === "kunde") {
       const [{ data: memRow }, { count: visitCount }, { data: paidOrders }, { data: wishlistEvents }, { data: recentSignals }] = await Promise.all([
@@ -166,6 +168,66 @@ Deno.serve(async (req) => {
 
       const result = { ok: true, fruehzustand: { erreicht: true, stuecke: productCount ?? 0, ziel_stuecke: DESIGNER_SCHWELLE_STUECKE, hat_aufrufe: true }, ...out, generated_at: new Date().toISOString() };
       await admin.from("designers").update({ aussenauge: result } as never).eq("id", designerRow.id);
+      return json(result);
+    }
+
+    // Teil 21b: der berechnete Weg — aus Ziel + Ist-Zustand drei nächste, echte Schritte.
+    // "Ein Teil ersetzt, nicht der ganze Schrank." Ohne Ziel gibt es nichts zu berechnen —
+    // lieber schweigen als raten.
+    if (body.mode === "weg") {
+      const [{ data: memRow }, { count: visitCount }, { data: paidOrders }, { count: bilderCount }] = await Promise.all([
+        admin.from("user_memory" as never).select("preferences").eq("user_id", user_id).maybeSingle(),
+        admin.from("page_visits" as never).select("id", { count: "exact", head: true }).eq("user_id", user_id),
+        admin.from("orders").select("id, items").eq("user_id", user_id).eq("status", "paid"),
+        admin.from("style_references" as never).select("id", { count: "exact", head: true }).eq("user_id", user_id),
+      ]);
+      const prefs = (memRow as { preferences?: Record<string, unknown> } | null)?.preferences ?? {};
+      const ziel = typeof prefs.ziel === "string" ? prefs.ziel : null;
+      if (!ziel) return json({ ok: true, fruehzustand: { erreicht: false, grund: "kein_ziel" } });
+      if (!apiKey) return json({ ok: false, error: "not_configured", message: "Der Weg ist noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt)." }, 200);
+
+      const visits = visitCount ?? 0;
+      const orders = paidOrders?.length ?? 0;
+      const bilder = bilderCount ?? 0;
+      const snapshot = (prefs.weg_snapshot ?? {}) as { visits?: number; orders?: number; bilder?: number };
+      const deltaVisits = Math.max(0, visits - (snapshot.visits ?? 0));
+      const deltaOrders = Math.max(0, orders - (snapshot.orders ?? 0));
+      const deltaBilder = Math.max(0, bilder - (snapshot.bilder ?? 0));
+      const deltaText = [
+        deltaVisits > 0 && `${deltaVisits} neue Seitenaufrufe`,
+        deltaOrders > 0 && `${deltaOrders} neue Bestellung(en)`,
+        deltaBilder > 0 && `${deltaBilder} neue Stil-Referenz(en)`,
+      ].filter(Boolean).join(", ") || "nichts Neues seit dem letzten Mal";
+
+      const { data: candidates } = await admin
+        .from("products")
+        .select("name, slug, world, price")
+        .eq("status", "published")
+        .limit(40);
+      const candidateRows = (candidates ?? []) as { name: string; slug: string; world: string | null; price: number | null }[];
+      const candidateList = candidateRows.map((p) => `${p.slug} — ${p.name} (${p.world ?? "?"}, €${p.price ?? "?"})`).join("\n");
+      const candidateSlugs = new Set(candidateRows.map((p) => p.slug));
+
+      const material = [
+        `Ziel, in eigenen Worten: ${ziel}`,
+        `Ist-Zustand: ${visits} Seitenaufrufe, ${orders} bezahlte Bestellungen, ${bilder} hochgeladene Stil-Referenzen.`,
+        `Seit dem letzten Mal: ${deltaText}.`,
+        `Echte Stücke bei PAWN (nur diese Slugs verwenden):\n${candidateList || "noch keine veröffentlichten Stücke"}`,
+      ].join("\n");
+
+      const system = `Du bist PAWNs Wegweiser — aus dem Ziel einer Person und ihrem echten Verhalten leitest du drei konkrete nächste Schritte ab, jeder an ein echtes Stück bei PAWN geknüpft. Kein Umsturz: ein Teil ersetzt, nicht der ganze Schrank.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${OUTPUT_SHAPE_WEG}`;
+      const out = await callClaude(apiKey, system, `Material:\n${material}`, 900) as { schritte?: { text: string; produkt_slug?: string; begruendung: string }[]; fortschritt?: string | null } | null;
+      if (!out) return json({ ok: false, error: "generation_failed", message: "Aus dem vorhandenen Material ließ sich noch kein Weg schreiben." }, 200);
+
+      const schritte = (out.schritte ?? []).slice(0, 3).map((s) => ({
+        ...s,
+        produkt_slug: s.produkt_slug && candidateSlugs.has(s.produkt_slug) ? s.produkt_slug : null,
+      }));
+      const result = { ok: true, fruehzustand: { erreicht: true }, ziel, schritte, fortschritt: out.fortschritt ?? null, generated_at: new Date().toISOString() };
+      await admin.from("user_memory" as never).upsert({
+        user_id,
+        preferences: { ...prefs, weg: result, weg_snapshot: { visits, orders, bilder } },
+      } as never);
       return json(result);
     }
 

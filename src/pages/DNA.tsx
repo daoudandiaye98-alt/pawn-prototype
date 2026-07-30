@@ -9,6 +9,7 @@ import { usePersonalization, type Signal } from "@/features/personalization";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerGenomeCard } from "@/components/palace/CustomerGenomeCard";
 import { DnaChat } from "@/components/palace/DnaChat";
+import { DnaKompass } from "@/components/palace/DnaKompass";
 import { X } from "lucide-react";
 
 /**
@@ -192,7 +193,16 @@ export default function DNA() {
         </section>
       )}
 
-      {/* 01c · Das Gespräch findet auf der Seite statt (Teil 21a) */}
+      {/* 01c · Das Ziel und der Weg (Teil 21b) */}
+      {user && (
+        <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+          <div className="mx-auto max-w-[900px]">
+            <DnaKompass />
+          </div>
+        </section>
+      )}
+
+      {/* 01d · Das Gespräch findet auf der Seite statt (Teil 21a) */}
       {user && (
         <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
           <div className="mx-auto max-w-[900px]">
