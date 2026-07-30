@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useConsent } from "@/lib/consent";
+import { usePersonalization } from "@/features/personalization";
 import { useI18n } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,7 @@ function DatenschutzSection() {
   const { user, profile } = useAuth();
   const { t } = useI18n();
   const consent = useConsent();
+  const { refresh: refreshPersonalization } = usePersonalization();
   const [personalization, setPersonalization] = useState(profile?.consent.personalization ?? false);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -201,7 +203,8 @@ function DatenschutzSection() {
     const { error } = await supabase.from("profiles").update({ consent_personalization: v }).eq("id", user.id);
     setBusy(false);
     if (error) { setPersonalization(!v); toast.error(error.message); return; }
-    toast.success(v ? "Personalisierung an." : "Personalisierung aus.");
+    toast.success(v ? "Personalisierung an." : "Personalisierung aus — Vorschläge, Passungen und deine Genom-Karte zeigen jetzt nichts mehr.");
+    void refreshPersonalization();
   };
 
   const exportData = async () => {
@@ -256,7 +259,7 @@ function DatenschutzSection() {
       />
       <SettingsRow
         label={t("settings.personalization")}
-        description="Passt Vorschläge und Ton an das an, was du in Gesprächen und beim Merken zeigst. Aus lässt PAWN neutral."
+        description={"Passt Vorschläge und Ton an das an, was du in Gesprächen und beim Merken zeigst. Aus: PAWN liest deine gespeicherten Signale nicht mehr — Vorschläge, Passungen und deine Genom-Karte unter „Deine DNA“ verschwinden, die Signale selbst bleiben aber erhalten und kommen zurück, sobald du wieder anschaltest."}
         action={<SettingsToggle checked={personalization} onChange={(v) => void togglePersonalization(v)} disabled={busy || !user} label={t("settings.personalization")} />}
       />
       <SettingsRow
