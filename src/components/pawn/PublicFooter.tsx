@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
 import { useConsent } from "@/lib/consent";
+import { LanguageToggle } from "./LanguageToggle";
 
 function CookieSettingsLink() {
   const { reopen } = useConsent();
@@ -62,6 +63,7 @@ export function PublicFooter() {
             <CookieSettingsLink />
             <span className="opacity-30">·</span>
             <Link to="/admin" className="hover:text-foreground">Admin</Link>
+            <LanguageToggle className="border-border" />
           </div>
 
         </div>

@@ -2,6 +2,7 @@ import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { ReactNode, useEffect, useState } from "react";
 import { LogOut, Menu, Bell, ExternalLink, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LanguageToggle } from "./LanguageToggle";
 import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -231,6 +232,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
             Meine Retrospektive ansehen <ExternalLink className="h-3 w-3" />
           </Link>
         )}
+        <LanguageToggle className="h-9" />
         <button aria-label="Benachrichtigungen" onClick={() => nav("/account")} className="relative flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
           <Bell className="h-4 w-4" />
           {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-foreground" />}

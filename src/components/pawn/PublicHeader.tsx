@@ -3,6 +3,7 @@ import { Heart, Search, ShoppingBag, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/lib/auth";
+import { LanguageToggle } from "./LanguageToggle";
 
 const NAV = [
   { label: "Women", to: "/shop?gender=women" },
@@ -74,7 +75,8 @@ export function PublicHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4 md:gap-5">
+          <LanguageToggle className="border-current/40 px-2" />
           <button className="hidden opacity-70 hover:opacity-100 sm:block" aria-label="Search">
             <Search className="h-4 w-4" strokeWidth={1.3} />
           </button>
