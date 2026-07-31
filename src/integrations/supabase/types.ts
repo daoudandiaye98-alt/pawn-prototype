@@ -2493,6 +2493,36 @@ export type Database = {
           },
         ]
       }
+      style_references: {
+        Row: {
+          beschreibung: string | null
+          created_at: string
+          herkunft: string
+          id: string
+          path: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          beschreibung?: string | null
+          created_at?: string
+          herkunft?: string
+          id?: string
+          path: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          beschreibung?: string | null
+          created_at?: string
+          herkunft?: string
+          id?: string
+          path?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trend_snapshots: {
         Row: {
           created_at: string
