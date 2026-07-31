@@ -201,10 +201,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="border-t border-[rgba(0,0,0,.18)] px-6 py-5">
           <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
             <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 hover:text-[#000000]">
-              <ImagePlus className="h-3.5 w-3.5" /> Bild
-            </button>
-            <button type="button" onClick={() => setShowPinterest((v) => !v)} className="flex items-center gap-1 hover:text-[#000000]">
-              <Link2 className="h-3.5 w-3.5" /> Pinterest
+              <ImagePlus className="h-3.5 w-3.5" /> Bilder hochladen
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
