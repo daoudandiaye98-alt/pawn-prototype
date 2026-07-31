@@ -64,7 +64,7 @@ export default function StudioPayout() {
   async function saveShipping() {
     if (!designer) return;
     setShippingSaving(true);
-    const { error } = await supabase.from("designers").update({ shipping_rates: shipping as unknown as Record<string, unknown> }).eq("id", designer.id);
+    const { error } = await supabase.from("designers").update({ shipping_rates: JSON.parse(JSON.stringify(shipping)) }).eq("id", designer.id);
     setShippingSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Versandkosten gespeichert.");
