@@ -337,6 +337,15 @@ export default function StudioOverview() {
     return n("materials") + n("silhouette") + n("colors") + n("mood") === 0;
   }), [products]);
 
+  // Teil 22b: Bestellungen, die seit über 3 Tagen unbearbeitet sind (noch nicht einmal "in Arbeit").
+  const staleOrdersCount = useMemo(() => {
+    const cutoff = Date.now() - 3 * 86400000;
+    const staleOrderIds = new Set(
+      paid.filter((l) => l.fulfillment_status === "new" && new Date(l.order_created_at).getTime() < cutoff).map((l) => l.order_id),
+    );
+    return staleOrderIds.size;
+  }, [paid]);
+
   // Teil 17c: tägliche Liste — höchstens drei begründete Vorschläge, aus echtem Zustand
   // abgeleitet. Weggelegtes kommt frühestens nach 7 Tagen zurück (kein Streak-Zwang, keine
   // roten Zähler — die Liste darf auch leer sein).
@@ -352,12 +361,13 @@ export default function StudioOverview() {
     if (!hasStory) pool.push({ key: "manifest", label: "Manifest schreiben", reason: "Deine Geschichte ist dein bestes Verkaufsargument.", to: "/studio/brand" });
     if (dnaMissingProduct) pool.push({ key: "dna", label: "DNA deines Stücks ergänzen", reason: "Hilft PAWN, dein Stück den richtigen Menschen zu zeigen.", to: `/studio/produkte?dna=${dnaMissingProduct.id}` });
     if (criticalStock > 0) pool.push({ key: "stock", label: "Lagerbestand prüfen", reason: `${criticalStock} ${criticalStock === 1 ? "Stück ist" : "Stücke sind"} fast ausverkauft.`, to: "/studio/produkte" });
+    if (staleOrdersCount > 0) pool.push({ key: "stale-orders", label: "Liegengebliebene Bestellung bearbeiten", reason: `${staleOrdersCount} ${staleOrdersCount === 1 ? "Bestellung wartet" : "Bestellungen warten"} seit über 3 Tagen auf den nächsten Schritt.`, to: "/studio/bestellungen" });
     if (messages.some((m) => m.unread)) pool.push({ key: "messages", label: "Nachrichten beantworten", reason: "Jemand wartet auf deine Antwort.", to: "/studio/nachrichten" });
     if (pendingCampaign) pool.push({ key: "campaign", label: "Kampagnen-Entwurf ansehen", reason: "Ein Vorschlag wartet auf deine Freigabe.", to: "/studio/kampagnen" });
     if (unsubmittedMediaCount > 0) pool.push({ key: "archiv", label: "Material fürs PAWN-Archiv einreichen", reason: "Ausgewähltes Material kann PAWN mit Credit auf der Plattform zeigen — mehr Reichweite für dich.", to: "/studio/mediathek" });
     return pool.filter((s) => !isDismissed(s.key)).slice(0, 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [designer, hasPortrait, hasStory, dnaMissingProduct, criticalStock, messages, pendingCampaign, unsubmittedMediaCount]);
+  }, [designer, hasPortrait, hasStory, dnaMissingProduct, criticalStock, messages, pendingCampaign, unsubmittedMediaCount, staleOrdersCount]);
 
   const dismissSuggestion = async (key: string) => {
     if (!designer) return;

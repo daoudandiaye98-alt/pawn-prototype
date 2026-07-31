@@ -13,11 +13,20 @@ export interface DesignerOrderLine {
   customer_email: string | null;
   customer_country: string | null;
   customer_first_name: string | null;
+  shipping_name: string | null;
+  shipping_address_line1: string | null;
+  shipping_address_line2: string | null;
+  shipping_postal_code: string | null;
+  shipping_city: string | null;
+  shipping_country: string | null;
+  invoice_number: string | null;
+  last_email_error: string | null;
   product_id: string;
   product_name: string;
   product_slug: string;
   qty: number;
   unit_price: number; // EUR
+  size: string | null;
   variant: Record<string, string> | null;
 }
 
@@ -32,6 +41,14 @@ interface RawOrder {
   amount_total: number;
   items: unknown;
   user_id: string | null;
+  shipping_name: string | null;
+  shipping_address_line1: string | null;
+  shipping_address_line2: string | null;
+  shipping_postal_code: string | null;
+  shipping_city: string | null;
+  shipping_country: string | null;
+  invoice_number: string | null;
+  last_email_error: string | null;
 }
 interface RawProduct { id: string; slug: string; name: string; designer_id: string; price: number; }
 
@@ -59,7 +76,9 @@ export function useDesignerOrders(designerId: string | undefined) {
       if (slugSet.size === 0) { if (alive) { setLines([]); setLoading(false); } return; }
 
       const { data: ords } = await supabase.from("orders")
-        .select("id, created_at, status, fulfillment_status, tracking_number, carrier, customer_email, amount_total, items, user_id")
+        .select(`id, created_at, status, fulfillment_status, tracking_number, carrier, customer_email, amount_total, items, user_id,
+          shipping_name, shipping_address_line1, shipping_address_line2, shipping_postal_code, shipping_city, shipping_country,
+          invoice_number, last_email_error`)
         .order("created_at", { ascending: false })
         .limit(500);
       const rows = ((ords ?? []) as RawOrder[]);
@@ -84,7 +103,7 @@ export function useDesignerOrders(designerId: string | undefined) {
           const prod = myProds.find((p) => p.slug === slug);
           if (!prod) continue;
           const qty = Number(it.qty ?? 1);
-          const unit = Number(it.price ?? prod.price);
+          const unit = it.unit_amount != null ? Number(it.unit_amount) / 100 : Number(it.price ?? prod.price);
           const firstName = (o.user_id ? profileMap.get(o.user_id) : undefined) ?? (o.customer_email?.split("@")[0] ?? null);
           out.push({
             order_id: o.id,
@@ -94,13 +113,22 @@ export function useDesignerOrders(designerId: string | undefined) {
             tracking_number: o.tracking_number ?? null,
             carrier: o.carrier ?? null,
             customer_email: o.customer_email,
-            customer_country: (it.country as string | undefined) ?? null,
+            customer_country: (it.country as string | undefined) ?? o.shipping_country ?? null,
             customer_first_name: firstName,
+            shipping_name: o.shipping_name ?? null,
+            shipping_address_line1: o.shipping_address_line1 ?? null,
+            shipping_address_line2: o.shipping_address_line2 ?? null,
+            shipping_postal_code: o.shipping_postal_code ?? null,
+            shipping_city: o.shipping_city ?? null,
+            shipping_country: o.shipping_country ?? null,
+            invoice_number: o.invoice_number ?? null,
+            last_email_error: o.last_email_error ?? null,
             product_id: prod.id,
             product_name: prod.name,
             product_slug: prod.slug,
             qty,
             unit_price: unit,
+            size: (it.size as string | undefined) ?? null,
             variant: (it.variant as Record<string, string> | undefined) ?? null,
           });
         }

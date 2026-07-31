@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -33,8 +34,22 @@ interface GroupedOrder {
   carrier: string | null;
   customer_first_name: string | null;
   customer_country: string | null;
+  shipping_name: string | null;
+  shipping_address_line1: string | null;
+  shipping_address_line2: string | null;
+  shipping_postal_code: string | null;
+  shipping_city: string | null;
+  shipping_country: string | null;
+  invoice_number: string | null;
+  last_email_error: string | null;
   lines: DesignerOrderLine[];
   total: number;
+}
+
+async function callFulfillment(body: Record<string, unknown>): Promise<{ ok: boolean; error?: string; message?: string; emailSent?: boolean }> {
+  const { data, error } = await supabase.functions.invoke("order-fulfillment", { body });
+  if (error) return { ok: false, message: error.message };
+  return data as { ok: boolean; error?: string; message?: string; emailSent?: boolean };
 }
 
 export default function StudioOrders() {
@@ -43,6 +58,20 @@ export default function StudioOrders() {
   const [filter, setFilter] = useState<StatusFilter>("alle");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [shippingOrder, setShippingOrder] = useState<GroupedOrder | null>(null);
+  const [billingComplete, setBillingComplete] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!designer?.id) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.from("designer_billing_profiles").select("*").eq("designer_id", designer.id).maybeSingle();
+      if (!alive) return;
+      const b = data as { legal_name: string | null; address_line1: string | null; postal_code: string | null; city: string | null; country: string | null; tax_id: string | null; kleinunternehmer: boolean } | null;
+      setBillingComplete(!!(b?.legal_name && b.address_line1 && b.postal_code && b.city && b.country && (b.tax_id || b.kleinunternehmer)));
+    })();
+    return () => { alive = false; };
+  }, [designer?.id]);
 
   const grouped: GroupedOrder[] = useMemo(() => {
     const m = new Map<string, GroupedOrder>();
@@ -56,6 +85,14 @@ export default function StudioOrders() {
         carrier: l.carrier,
         customer_first_name: l.customer_first_name,
         customer_country: l.customer_country,
+        shipping_name: l.shipping_name,
+        shipping_address_line1: l.shipping_address_line1,
+        shipping_address_line2: l.shipping_address_line2,
+        shipping_postal_code: l.shipping_postal_code,
+        shipping_city: l.shipping_city,
+        shipping_country: l.shipping_country,
+        invoice_number: l.invoice_number,
+        last_email_error: l.last_email_error,
         lines: [],
         total: 0,
       };
@@ -72,18 +109,36 @@ export default function StudioOrders() {
   const setFulfillment = async (order_id: string, next: FulfillmentStatus) => {
     if (next === "shipped") {
       const o = grouped.find((g) => g.order_id === order_id);
-      if (o) { setShippingOrder(o); return; }
+      if (!o) return;
+      if (billingComplete === false) {
+        toast.error("Bitte zuerst deine Rechnungsdaten unter „Auszahlung“ ausfüllen — ohne sie kann kein Versand abgeschlossen werden.");
+        return;
+      }
+      setShippingOrder(o);
+      return;
     }
-    const patch = next === "delivered"
-      ? { fulfillment_status: next, delivered_at: new Date().toISOString() }
-      : { fulfillment_status: next };
-    const { error } = await supabase.from("orders").update(patch).eq("id", order_id);
-    if (error) { toast.error(error.message); return; }
+    setBusy(order_id);
+    const res = await callFulfillment({ order_id, action: "advance", status: next });
+    setBusy(null);
+    if (!res.ok) { toast.error(res.message ?? "Status konnte nicht aktualisiert werden."); return; }
     toast.success("Status aktualisiert.");
     refresh();
   };
 
+  const retryEmail = async (order_id: string) => {
+    setBusy(order_id);
+    const res = await callFulfillment({ order_id, action: "retry-email" });
+    setBusy(null);
+    if (!res.ok) { toast.error(res.message ?? "Erneuter Versand fehlgeschlagen."); return; }
+    toast.success(res.emailSent ? "E-Mail erneut gesendet." : "Rechnung erstellt — E-Mail-Versand hat aber wieder nicht geklappt.");
+    refresh();
+  };
 
+  const downloadInvoice = async (order_id: string) => {
+    const { data, error } = await supabase.storage.from("invoices").createSignedUrl(`${order_id}.pdf`, 3600);
+    if (error || !data?.signedUrl) { toast.error("Rechnung konnte nicht geöffnet werden."); return; }
+    window.open(data.signedUrl, "_blank");
+  };
 
   if (loading) return <StudioShell title="Bestellungen"><div className="animate-pulse h-40 bg-muted" /></StudioShell>;
   if (!designer) return <StudioShell title="Bestellungen"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
@@ -100,6 +155,16 @@ export default function StudioOrders() {
           'Ist der Empfang bestätigt, markiere „Zugestellt". Fertig.',
         ]}
       />
+
+      {billingComplete === false && (
+        <div className="mb-6 border-[1.5px] border-dashed border-foreground p-4 text-sm">
+          <p className="editorial-eyebrow">Vor dem ersten Versand</p>
+          <p className="mt-1">
+            Deine Rechnungsdaten fehlen noch — ohne sie kann keine Bestellung als „versendet" markiert werden.{" "}
+            <Link to="/studio/auszahlung" className="underline underline-offset-2">Jetzt ausfüllen</Link>.
+          </p>
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {STATUSES.map((s) => (
@@ -136,12 +201,15 @@ export default function StudioOrders() {
               </button>
               {expanded === o.order_id && (
                 <div className="border-t-[1.5px] border-foreground bg-white px-5 py-5">
-                  {o.order_status === "paid" && <FulfillmentChain order={o} onSet={(s) => setFulfillment(o.order_id, s)} />}
+                  {o.order_status === "paid" && (
+                    <FulfillmentChain order={o} disabled={busy === o.order_id} onSet={(s) => setFulfillment(o.order_id, s)} />
+                  )}
                   <ul className="mt-5 space-y-2">
                     {o.lines.map((l, i) => (
                       <li key={i} className="flex items-center justify-between text-sm">
                         <span>
                           {l.product_name}
+                          {l.size && <span className="ml-2 text-xs text-muted-foreground">Größe: {l.size}</span>}
                           {l.variant && Object.keys(l.variant).length > 0 && (
                             <span className="ml-2 text-xs text-muted-foreground">
                               {Object.entries(l.variant).map(([k, v]) => `${k}: ${v}`).join(" · ")}
@@ -153,11 +221,39 @@ export default function StudioOrders() {
                       </li>
                     ))}
                   </ul>
+                  {(o.shipping_address_line1 || o.shipping_name) && (
+                    <div className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
+                      <p className="editorial-eyebrow mb-1">Lieferanschrift</p>
+                      <p className="text-foreground">
+                        {o.shipping_name && <>{o.shipping_name}<br /></>}
+                        {o.shipping_address_line1}{o.shipping_address_line2 ? `, ${o.shipping_address_line2}` : ""}<br />
+                        {[o.shipping_postal_code, o.shipping_city].filter(Boolean).join(" ")} {o.shipping_country}
+                      </p>
+                    </div>
+                  )}
                   {o.tracking_number && (
                     <p className="mt-4 text-xs text-muted-foreground">
                       Tracking: <span className="text-foreground">{o.tracking_number}</span>
                       {o.carrier && <> · {o.carrier}</>}
                     </p>
+                  )}
+                  {o.invoice_number && (
+                    <button onClick={() => downloadInvoice(o.order_id)} className="mt-2 text-xs underline underline-offset-2">
+                      Rechnung {o.invoice_number} herunterladen
+                    </button>
+                  )}
+                  {o.last_email_error && (
+                    <div className="mt-3 border-[1.5px] border-dashed border-foreground p-3 text-xs">
+                      <p>E-Mail an den Kunden ist fehlgeschlagen: {o.last_email_error}</p>
+                      <p className="mt-1 text-muted-foreground">Die Bestellung selbst ist davon nicht betroffen.</p>
+                      <button
+                        disabled={busy === o.order_id}
+                        onClick={() => retryEmail(o.order_id)}
+                        className="mt-2 border-[1.5px] border-foreground px-3 py-1 text-[0.6rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background disabled:opacity-40"
+                      >
+                        Erneut senden
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -171,15 +267,13 @@ export default function StudioOrders() {
           order={shippingOrder}
           onClose={() => setShippingOrder(null)}
           onDone={async (tracking, carrier) => {
-            const patch = {
-              fulfillment_status: "shipped" as FulfillmentStatus,
-              tracking_number: tracking,
-              carrier,
-              shipped_at: new Date().toISOString(),
-            };
-            const { error } = await supabase.from("orders").update(patch).eq("id", shippingOrder.order_id);
-            if (error) { toast.error(error.message); return; }
-            toast.success("Versendet — der Kunde bekommt eine Nachricht.");
+            setBusy(shippingOrder.order_id);
+            const res = await callFulfillment({ order_id: shippingOrder.order_id, action: "ship", tracking_number: tracking, carrier });
+            setBusy(null);
+            if (!res.ok) { toast.error(res.message ?? "Versand konnte nicht abgeschlossen werden."); return; }
+            toast.success(res.emailSent === false
+              ? "Versendet — die Bestätigungs-Mail an den Kunden ist aber fehlgeschlagen (siehe unten)."
+              : "Versendet — der Kunde bekommt eine Nachricht.");
             setShippingOrder(null);
             refresh();
           }}
@@ -189,7 +283,7 @@ export default function StudioOrders() {
   );
 }
 
-function FulfillmentChain({ order, onSet }: { order: GroupedOrder; onSet: (s: FulfillmentStatus) => void }) {
+function FulfillmentChain({ order, onSet, disabled }: { order: GroupedOrder; onSet: (s: FulfillmentStatus) => void; disabled: boolean }) {
   const currentIdx = CHAIN.findIndex((c) => c.key === order.fulfillment_status);
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -200,9 +294,9 @@ function FulfillmentChain({ order, onSet }: { order: GroupedOrder; onSet: (s: Fu
           <div key={step.key} className="flex items-center">
             <button
               type="button"
-              disabled={i > currentIdx + 1}
+              disabled={disabled || i > currentIdx + 1}
               onClick={() => onSet(step.key)}
-              className={`flex items-center gap-2 border-[1.5px] px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] transition-colors ${
+              className={`flex items-center gap-2 border-[1.5px] px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] transition-colors disabled:opacity-40 ${
                 done
                   ? "border-foreground bg-foreground text-background"
                   : isNext
@@ -225,6 +319,7 @@ function ShippingDialog({ order, onClose, onDone }: { order: GroupedOrder; onClo
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [tracking, setTracking] = useState("");
   const [carrier, setCarrier] = useState("DHL");
+  const [sending, setSending] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="w-full max-w-md border-[1.5px] border-foreground bg-white p-8" onClick={(e) => e.stopPropagation()}>
@@ -256,7 +351,7 @@ function ShippingDialog({ order, onClose, onDone }: { order: GroupedOrder; onClo
               <label className="block">
                 <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Dienst</span>
                 <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm">
-                  <option>DHL</option><option>Hermes</option><option>DPD</option><option>UPS</option><option>Deutsche Post</option><option>Andere</option>
+                  <option>DHL</option><option>DPD</option><option>Hermes</option><option>GLS</option><option>UPS</option><option>Deutsche Post</option><option>Andere</option>
                 </select>
               </label>
               <label className="block">
@@ -266,11 +361,11 @@ function ShippingDialog({ order, onClose, onDone }: { order: GroupedOrder; onClo
             </div>
             <div className="mt-6 flex gap-2">
               <button
-                disabled={!tracking.trim()}
+                disabled={!tracking.trim() || sending}
                 className="border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.28em] text-background disabled:opacity-40"
-                onClick={() => onDone(tracking.trim(), carrier)}
+                onClick={async () => { setSending(true); await onDone(tracking.trim(), carrier); setSending(false); }}
               >
-                Fertig — versenden
+                {sending ? "Wird versendet…" : "Fertig — versenden"}
               </button>
               <button className="px-3 py-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground" onClick={() => setStep(1)}>Zurück</button>
             </div>

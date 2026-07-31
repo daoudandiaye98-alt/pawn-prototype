@@ -39,8 +39,23 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Teil 22b: Lieferanschrift, die Stripe beim Checkout einsammelt, bisher nie gespeichert —
+      // ohne sie kann kein Haus versenden.
+      const shipping = (session as unknown as { shipping_details?: { name?: string; address?: Stripe.Address } }).shipping_details;
+      const addr = shipping?.address;
+      const shippingPatch = shipping
+        ? {
+            shipping_name: shipping.name ?? null,
+            shipping_address_line1: addr?.line1 ?? null,
+            shipping_address_line2: addr?.line2 ?? null,
+            shipping_postal_code: addr?.postal_code ?? null,
+            shipping_city: addr?.city ?? null,
+            shipping_country: addr?.country ?? null,
+          }
+        : {};
+
       const { data: order } = await admin.from("orders")
-        .update({ status: "paid" }).eq("stripe_session_id", session.id).select().maybeSingle();
+        .update({ status: "paid", ...shippingPatch }).eq("stripe_session_id", session.id).select().maybeSingle();
 
       if (order) {
         await admin.from("domain_events").insert({
@@ -75,6 +90,32 @@ Deno.serve(async (req) => {
             }
           }
         } catch { /* best effort */ }
+
+        // Teil 22b: Bestellbestätigung sofort nach Zahlung, in der Sprache des Käufers.
+        // E-Mail-Fehler dürfen die Bestellung nie anfassen — nur last_email_error setzen,
+        // sichtbar für das Haus im Studio statt still zu scheitern.
+        if (order.customer_email) {
+          try {
+            const resendKey = Deno.env.get("RESEND_API_KEY");
+            if (!resendKey) throw new Error("Kein RESEND_API_KEY hinterlegt.");
+            const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
+            const fromAddr = ((cfg?.value ?? {}) as { email_from?: string }).email_from || "PAWN <hallo@pawn.vision>";
+            const locale = order.buyer_locale === "en" ? "en" : "de";
+            const subject = locale === "en" ? "Your PAWN order is confirmed" : "Deine PAWN-Bestellung ist bestätigt";
+            const text = locale === "en"
+              ? `Thank you — your order (€ ${(order.amount_total / 100).toFixed(2)}) is confirmed and on its way to the house that made it.\n\nYou'll hear from us again the moment it ships, with tracking and invoice attached.`
+              : `Danke — deine Bestellung (€ ${(order.amount_total / 100).toFixed(2)}) ist bestätigt und geht an das Haus, das sie gemacht hat.\n\nSobald sie verschickt wird, meldest du dich — mit Sendungsnummer und Rechnung im Anhang.`;
+            const res = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
+              body: JSON.stringify({ from: fromAddr, to: [order.customer_email], subject, text }),
+            });
+            if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+            await admin.from("orders").update({ confirmation_email_sent_at: new Date().toISOString(), last_email_error: null }).eq("id", order.id);
+          } catch (e) {
+            await admin.from("orders").update({ last_email_error: (e as Error).message }).eq("id", order.id);
+          }
+        }
       }
     } else if (event.type === "checkout.session.expired" || event.type === "payment_intent.payment_failed") {
       const session = event.data.object as { id?: string };

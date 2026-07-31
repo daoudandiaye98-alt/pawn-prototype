@@ -152,6 +152,7 @@ const ProductDetail = () => {
             size,
           }],
           customer_email: user?.email ?? undefined,
+          locale,
         },
       });
       if (error) throw error;

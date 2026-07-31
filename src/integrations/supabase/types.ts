@@ -708,6 +708,77 @@ export type Database = {
         }
         Relationships: []
       }
+      designer_billing_profiles: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          designer_id: string
+          id: string
+          invoice_next_number: number
+          kleinunternehmer: boolean
+          legal_name: string | null
+          postal_code: string | null
+          return_address_line1: string | null
+          return_address_line2: string | null
+          return_city: string | null
+          return_country: string | null
+          return_postal_code: string | null
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          designer_id: string
+          id?: string
+          invoice_next_number?: number
+          kleinunternehmer?: boolean
+          legal_name?: string | null
+          postal_code?: string | null
+          return_address_line1?: string | null
+          return_address_line2?: string | null
+          return_city?: string | null
+          return_country?: string | null
+          return_postal_code?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          designer_id?: string
+          id?: string
+          invoice_next_number?: number
+          kleinunternehmer?: boolean
+          legal_name?: string | null
+          postal_code?: string | null
+          return_address_line1?: string | null
+          return_address_line2?: string | null
+          return_city?: string | null
+          return_country?: string | null
+          return_postal_code?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_billing_profiles_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designer_brand_dna: {
         Row: {
           audience_profile: Json | null
@@ -972,6 +1043,7 @@ export type Database = {
           quote: string | null
           quote_role: string | null
           revenue_share_pct: number
+          shipping_rates: Json
           slug: string
           status: string
           story: string | null
@@ -1014,6 +1086,7 @@ export type Database = {
           quote?: string | null
           quote_role?: string | null
           revenue_share_pct?: number
+          shipping_rates?: Json
           slug: string
           status?: string
           story?: string | null
@@ -1056,6 +1129,7 @@ export type Database = {
           quote?: string | null
           quote_role?: string | null
           revenue_share_pct?: number
+          shipping_rates?: Json
           slug?: string
           status?: string
           story?: string | null
@@ -2000,7 +2074,9 @@ export type Database = {
         Row: {
           amount_total: number
           application_fee_cents: number | null
+          buyer_locale: string
           carrier: string | null
+          confirmation_email_sent_at: string | null
           created_at: string
           currency: string
           customer_email: string | null
@@ -2008,8 +2084,17 @@ export type Database = {
           destination_account: string | null
           fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
           id: string
+          invoice_number: string | null
           items: Json
+          last_email_error: string | null
           shipped_at: string | null
+          shipped_email_sent_at: string | null
+          shipping_address_line1: string | null
+          shipping_address_line2: string | null
+          shipping_city: string | null
+          shipping_country: string | null
+          shipping_name: string | null
+          shipping_postal_code: string | null
           status: Database["public"]["Enums"]["order_status"]
           stripe_session_id: string | null
           tracking_number: string | null
@@ -2019,7 +2104,9 @@ export type Database = {
         Insert: {
           amount_total?: number
           application_fee_cents?: number | null
+          buyer_locale?: string
           carrier?: string | null
+          confirmation_email_sent_at?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
@@ -2027,8 +2114,17 @@ export type Database = {
           destination_account?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
+          invoice_number?: string | null
           items?: Json
+          last_email_error?: string | null
           shipped_at?: string | null
+          shipped_email_sent_at?: string | null
+          shipping_address_line1?: string | null
+          shipping_address_line2?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_name?: string | null
+          shipping_postal_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           stripe_session_id?: string | null
           tracking_number?: string | null
@@ -2038,7 +2134,9 @@ export type Database = {
         Update: {
           amount_total?: number
           application_fee_cents?: number | null
+          buyer_locale?: string
           carrier?: string | null
+          confirmation_email_sent_at?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
@@ -2046,8 +2144,17 @@ export type Database = {
           destination_account?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
+          invoice_number?: string | null
           items?: Json
+          last_email_error?: string | null
           shipped_at?: string | null
+          shipped_email_sent_at?: string | null
+          shipping_address_line1?: string | null
+          shipping_address_line2?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_name?: string | null
+          shipping_postal_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           stripe_session_id?: string | null
           tracking_number?: string | null
@@ -2779,6 +2886,10 @@ export type Database = {
       merge_anon_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: number
+      }
+      next_invoice_number: {
+        Args: { _designer_id: string }
+        Returns: string
       }
       notify_admins: {
         Args: { _body: string; _link: string; _title: string; _type: string }

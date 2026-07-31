@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
-import { useStore, selectors } from "@/core";
 import { useAuth } from "@/lib/auth";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { cn } from "@/lib/utils";
@@ -58,6 +57,18 @@ function useMemberNumber(userId?: string) {
     (async () => {
       const { data } = await supabase.from("profiles").select("member_number").eq("id", userId).maybeSingle();
       setN((data?.member_number as number | null) ?? null);
+    })();
+  }, [userId]);
+  return n;
+}
+
+function useMyOrderCount(userId?: string) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("user_id", userId);
+      setN(count ?? 0);
     })();
   }, [userId]);
   return n;
@@ -156,7 +167,7 @@ const Account = () => {
           </nav>
 
           <div>
-            {tab === "Übersicht" && <Overview name={displayName} onGoto={setTab} />}
+            {tab === "Übersicht" && <Overview name={displayName} onGoto={setTab} userId={user.id} />}
             {tab === "Bestellungen" && <Card><Orders /></Card>}
             {tab === "Anfragen" && <Card><Requests /></Card>}
             {tab === "Merkzettel" && <Card><Empty title="Dein Merkzettel ist noch leer." to="/neu" cta="Ausstellung ansehen" /></Card>}
@@ -197,14 +208,14 @@ function openChat() {
   window.dispatchEvent(new CustomEvent("palace:open-chat"));
 }
 
-function Overview({ name, onGoto }: { name: string; onGoto: (t: Tab) => void }) {
+function Overview({ name, onGoto, userId }: { name: string; onGoto: (t: Tab) => void; userId: string }) {
   const firstName = name.split(/\s+/)[0];
-  const customerOrders = useStore(selectors.getCustomerOrders);
+  const orderCount = useMyOrderCount(userId);
   const { ids: wishIds } = useWishlist();
   const { threads } = useMyRequestThreads();
 
   const stats = [
-    { label: "Bestellungen", value: customerOrders.length, tab: "Bestellungen" as Tab },
+    { label: "Bestellungen", value: orderCount, tab: "Bestellungen" as Tab },
     { label: "Merkzettel", value: wishIds.size, tab: "Merkzettel" as Tab },
     { label: "Offene Anfragen", value: threads.filter((t) => t.status === "open").length, tab: "Anfragen" as Tab },
   ];
@@ -343,27 +354,69 @@ function Requests() {
 }
 
 
+interface RealOrder {
+  id: string; created_at: string; status: string; fulfillment_status: string | null;
+  amount_total: number; items: unknown; tracking_number: string | null; carrier: string | null;
+  invoice_number: string | null;
+}
+
+const FULFILLMENT_LABEL: Record<string, string> = {
+  new: "Neu", in_progress: "In Arbeit", packed: "Verpackt", shipped: "Versendet", delivered: "Zugestellt",
+};
+
 function Orders() {
   const { locale } = useI18n();
-  const customerOrders = useStore(selectors.getCustomerOrders);
-  if (customerOrders.length === 0) {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<RealOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) { setLoading(false); return; }
+    let alive = true;
+    void supabase.from("orders")
+      .select("id, created_at, status, fulfillment_status, amount_total, items, tracking_number, carrier, invoice_number")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => { if (alive) { setOrders((data ?? []) as RealOrder[]); setLoading(false); } });
+    return () => { alive = false; };
+  }, [user?.id]);
+
+  const downloadInvoice = async (orderId: string) => {
+    const { data, error } = await supabase.storage.from("invoices").createSignedUrl(`${orderId}.pdf`, 3600);
+    if (error || !data?.signedUrl) { toast.error("Rechnung konnte nicht geöffnet werden."); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+
+  if (loading) return <div className="animate-pulse h-40 bg-muted" />;
+  if (orders.length === 0) {
     return <Empty title="Noch keine Bestellungen." to="/neu" cta="Ausstellung ansehen" />;
   }
   return (
     <ul className="divide-y divide-border">
-      {customerOrders.map((o) => (
-        <li key={o.id} className="grid grid-cols-1 gap-6 py-10 md:grid-cols-[120px_1fr_auto] md:items-center">
-          <EditorialImage seed={`order-${o.id}`} ratio="1/1" className="w-24" />
-          <div>
-            <p className="palace-eyebrow">{o.id} · {o.date}</p>
-            <p className="palace-serif mt-2 text-[1.4rem] italic text-foreground">
-              {formatPrice(o.total, locale)}
-            </p>
-            <p className="mt-2 font-serif italic text-foreground/70">{o.items.length} Stück · {o.status}</p>
-          </div>
-          <span className="palace-eyebrow">{o.status}</span>
-        </li>
-      ))}
+      {orders.map((o) => {
+        const items = Array.isArray(o.items) ? o.items as Array<{ name?: string }> : [];
+        return (
+          <li key={o.id} className="grid grid-cols-1 gap-6 py-10 md:grid-cols-[120px_1fr_auto] md:items-center">
+            <EditorialImage seed={`order-${o.id}`} ratio="1/1" className="w-24" />
+            <div>
+              <p className="palace-eyebrow">{o.id.slice(0, 8)} · {new Date(o.created_at).toLocaleDateString(locale === "en" ? "en-GB" : "de-DE")}</p>
+              <p className="palace-serif mt-2 text-[1.4rem] italic text-foreground">
+                {formatPrice(o.amount_total / 100, locale)}
+              </p>
+              <p className="mt-2 font-serif italic text-foreground/70">{items.length} Stück{o.status === "paid" && o.fulfillment_status ? ` · ${FULFILLMENT_LABEL[o.fulfillment_status] ?? o.fulfillment_status}` : ""}</p>
+              {o.tracking_number && (
+                <p className="mt-1 text-xs text-muted-foreground">Tracking: {o.tracking_number}{o.carrier && ` · ${o.carrier}`}</p>
+              )}
+              {o.invoice_number && (
+                <button onClick={() => downloadInvoice(o.id)} className="mt-2 text-xs underline underline-offset-2">
+                  Rechnung {o.invoice_number} herunterladen
+                </button>
+              )}
+            </div>
+            <span className="palace-eyebrow">{o.status}</span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
