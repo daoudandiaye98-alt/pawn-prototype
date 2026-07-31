@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { Image as ImageIcon, Search, Sparkles } from "lucide-react";
 
 type Lang = "de" | "en";
-interface Row { key: string; value: unknown; value_en: unknown; updated_at: string }
+interface Row { key: string; value: unknown; value_en: unknown; value_en_source: unknown; updated_at: string }
 
 export default function AdminContent() {
   const [rows, setRows] = useState<Record<string, Row>>({});
@@ -34,7 +34,7 @@ export default function AdminContent() {
   const [settingsBusy, setSettingsBusy] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from("site_content").select("key, value, value_en, updated_at");
+    const { data } = await supabase.from("site_content").select("key, value, value_en, value_en_source, updated_at");
     const map: Record<string, Row> = {};
     for (const r of (data ?? []) as Row[]) map[r.key] = r;
     setRows(map);
@@ -77,20 +77,35 @@ export default function AdminContent() {
     return Array.from(byPage.entries());
   }, [search, rows]);
 
-  const missingCount = useMemo(() => {
-    if (editLang === "de") return 0;
-    return CONTENT_REGISTRY.filter((e) => e.type !== "image").filter((e) => {
-      const r = rows[e.key];
-      return typeof r?.value === "string" && r.value && typeof r?.value_en !== "string";
-    }).length;
-  }, [editLang, rows]);
+  /** Alle Schlüssel mit deutschem Text (auch die, die nicht in der Registry stehen). */
+  const translatableKeys = useMemo(
+    () =>
+      Object.values(rows)
+        .filter((r) => typeof r.value === "string" && r.value && !String(r.value).startsWith("http"))
+        .map((r) => r.key)
+        .sort(),
+    [rows],
+  );
+
+  /** Fehlt die englische Fassung — oder wurde der deutsche Text seither geändert? */
+  const isStale = (key: string): boolean => {
+    const r = rows[key];
+    if (!r || typeof r.value !== "string" || !r.value || String(r.value).startsWith("http")) return false;
+    if (typeof r.value_en !== "string" || !r.value_en) return true;
+    return typeof r.value_en_source !== "string" || r.value_en_source !== r.value;
+  };
+
+  const pendingKeys = useMemo(() => translatableKeys.filter(isStale), [translatableKeys, rows]);
+  const missingCount = editLang === "de" ? 0 : pendingKeys.length;
+
 
   const saveField = async (key: string) => {
     const value = drafts[key] ?? "";
     setBusyKey(key);
     const isImage = typeof rows[key]?.value === "string" && String(rows[key].value).startsWith("http");
-    const payload: { key: string; value?: string; value_en?: string } =
-      !isImage && editLang === "en" ? { key, value_en: value } : { key, value };
+    const germanNow = typeof rows[key]?.value === "string" ? (rows[key].value as string) : "";
+    const payload: { key: string; value?: string; value_en?: string; value_en_source?: string } =
+      !isImage && editLang === "en" ? { key, value_en: value, value_en_source: germanNow } : { key, value };
     const { error } = await supabase.from("site_content").upsert(payload as never);
     setBusyKey(null);
     if (error) return toast.error(error.message);
@@ -98,8 +113,8 @@ export default function AdminContent() {
     setRows((prev) => {
       const prevRow = prev[key];
       const next: Row = !isImage && editLang === "en"
-        ? { key, value: prevRow?.value ?? "", value_en: value, updated_at: new Date().toISOString() }
-        : { key, value, value_en: prevRow?.value_en ?? null, updated_at: new Date().toISOString() };
+        ? { key, value: prevRow?.value ?? "", value_en: value, value_en_source: germanNow, updated_at: new Date().toISOString() }
+        : { key, value, value_en: prevRow?.value_en ?? null, value_en_source: prevRow?.value_en_source ?? null, updated_at: new Date().toISOString() };
       return { ...prev, [key]: next };
     });
     toast.success("Gespeichert.");
@@ -118,7 +133,7 @@ export default function AdminContent() {
       if (error) throw error;
       invalidateSiteContent();
       setDrafts((prev) => ({ ...prev, [key]: url }));
-      setRows((prev) => ({ ...prev, [key]: { key, value: url, value_en: prev[key]?.value_en ?? null, updated_at: new Date().toISOString() } }));
+      setRows((prev) => ({ ...prev, [key]: { key, value: url, value_en: prev[key]?.value_en ?? null, value_en_source: prev[key]?.value_en_source ?? null, updated_at: new Date().toISOString() } }));
       toast.success("Bild hochgeladen.");
     } catch (e) {
       toast.error((e as Error).message);
@@ -127,41 +142,60 @@ export default function AdminContent() {
     }
   };
 
-  /** Holt einen Vorschlag und trägt ihn ins Entwurfsfeld ein — speichert nie automatisch. */
-  const fetchSuggestion = async (key: string): Promise<boolean> => {
+  /**
+   * Übersetzt einen Schlüssel und speichert die englische Fassung sofort — zusammen
+   * mit dem deutschen Text, aus dem sie entstand. Ändert sich der deutsche Text
+   * später, gilt die Übersetzung automatisch als veraltet und wird beim nächsten
+   * Knopfdruck erneut übersetzt.
+   */
+  const translateKey = async (key: string): Promise<boolean> => {
     const source = rows[key]?.value;
     if (typeof source !== "string" || !source) return false;
     const { data, error } = await supabase.functions.invoke("suggest-translation", { body: { key, text: source } });
     const res = data as { suggestion?: string; error?: string; message?: string } | null;
     if (error || res?.error || !res?.suggestion) return false;
-    setDrafts((prev) => ({ ...prev, [key]: res.suggestion! }));
+    const suggestion = res.suggestion;
+    const { error: saveError } = await supabase
+      .from("site_content")
+      .upsert({ key, value_en: suggestion, value_en_source: source } as never);
+    if (saveError) return false;
+    setRows((prev) => ({
+      ...prev,
+      [key]: {
+        key,
+        value: prev[key]?.value ?? source,
+        value_en: suggestion,
+        value_en_source: source,
+        updated_at: new Date().toISOString(),
+      },
+    }));
+    setDrafts((prev) => (editLang === "en" ? { ...prev, [key]: suggestion } : prev));
+    invalidateSiteContent();
     return true;
   };
 
   const suggestTranslation = async (key: string) => {
     setSuggestingKey(key);
-    const ok = await fetchSuggestion(key);
+    const ok = await translateKey(key);
     setSuggestingKey(null);
-    if (!ok) return toast.error("Vorschlag fehlgeschlagen.");
-    toast.success("Vorschlag eingefügt — bitte prüfen und speichern.");
+    if (!ok) return toast.error("Übersetzung fehlgeschlagen.");
+    toast.success("Übersetzt und gespeichert.");
   };
 
-  /** Teil 22a: alle offenen Schlüssel in einem Durchgang vorschlagen — Speichern bleibt Handarbeit. */
-  const suggestAllMissing = async () => {
-    const missingKeys = CONTENT_REGISTRY.filter((e) => e.type !== "image").filter((e) => {
-      const r = rows[e.key];
-      return typeof r?.value === "string" && r.value && typeof r?.value_en !== "string";
-    }).map((e) => e.key);
-    if (missingKeys.length === 0) return;
+  /** Übersetzt in einem Durchgang alles, was fehlt oder veraltet ist. */
+  const translateAllPending = async (all = false) => {
+    const keys = all ? translatableKeys : pendingKeys;
+    if (keys.length === 0) return toast.success("Alle Texte sind bereits übersetzt.");
     setBulkSuggesting(true);
     let ok = 0;
-    for (const key of missingKeys) {
-      if (await fetchSuggestion(key)) ok++;
+    for (const key of keys) {
+      if (await translateKey(key)) ok++;
     }
     setBulkSuggesting(false);
-    if (ok === 0) toast.error("Keine Vorschläge erhalten.");
-    else toast.success(`${ok} von ${missingKeys.length} Vorschlägen eingefügt — bitte prüfen und speichern.`);
+    if (ok === 0) toast.error("Keine Übersetzung erhalten.");
+    else toast.success(`${ok} von ${keys.length} Texten übersetzt und gespeichert.`);
   };
+
 
   const saveSettings = async () => {
     setSettingsBusy(true);
@@ -212,19 +246,30 @@ export default function AdminContent() {
                 />
               </div>
               <div className="flex items-center gap-3">
-                {editLang === "en" && missingCount > 0 && (
+                {editLang === "en" && (
                   <>
-                    <span className="text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">{missingCount} ohne Übersetzung</span>
+                    <span className="text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">
+                      {missingCount > 0 ? `${missingCount} offen oder veraltet` : "Alles übersetzt"}
+                    </span>
                     <button
                       type="button"
-                      onClick={suggestAllMissing}
-                      disabled={bulkSuggesting}
+                      onClick={() => void translateAllPending(false)}
+                      disabled={bulkSuggesting || missingCount === 0}
                       className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
                     >
-                      <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Alle fehlenden übersetzen"}
+                      <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Offene übersetzen"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void translateAllPending(true)}
+                      disabled={bulkSuggesting}
+                      className="flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] text-background disabled:opacity-50"
+                    >
+                      <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Alle Texte neu übersetzen"}
                     </button>
                   </>
                 )}
+
                 <div className="flex border border-border">
                   {(["de", "en"] as const).map((l) => (
                     <button
@@ -250,6 +295,7 @@ export default function AdminContent() {
                   {entries.map((e) => {
                     const hasGerman = typeof rows[e.key]?.value === "string" && !!rows[e.key]?.value;
                     const hasEnglish = typeof rows[e.key]?.value_en === "string" && !!rows[e.key]?.value_en;
+                    const outdated = editLang === "en" && e.type !== "image" && hasGerman && hasEnglish && isStale(e.key);
                     return (
                       <FieldRow
                         key={e.key}
@@ -261,6 +307,8 @@ export default function AdminContent() {
                         suggesting={suggestingKey === e.key}
                         editLang={editLang}
                         missing={editLang === "en" && e.type !== "image" && hasGerman && !hasEnglish}
+                        outdated={outdated}
+                        canTranslate={editLang === "en" && e.type !== "image" && hasGerman}
                         onChange={(v) => setDrafts((prev) => ({ ...prev, [e.key]: v }))}
                         onSave={() => saveField(e.key)}
                         onUpload={(f) => uploadImage(e.key, f)}
@@ -268,6 +316,7 @@ export default function AdminContent() {
                       />
                     );
                   })}
+
                 </div>
               </section>
             ))}
@@ -278,17 +327,18 @@ export default function AdminContent() {
   );
 }
 
-function FieldRow({ entry, value, updatedAt, busy, uploading, suggesting, editLang, missing, onChange, onSave, onUpload, onSuggest }: {
+function FieldRow({ entry, value, updatedAt, busy, uploading, suggesting, editLang, missing, outdated, canTranslate, onChange, onSave, onUpload, onSuggest }: {
   entry: ContentEntry; value: string; updatedAt?: string; busy: boolean; uploading: boolean; suggesting: boolean;
-  editLang: Lang; missing: boolean;
+  editLang: Lang; missing: boolean; outdated: boolean; canTranslate: boolean;
   onChange: (v: string) => void; onSave: () => void; onUpload: (f: File) => void; onSuggest: () => void;
 }) {
   return (
-    <div className={cn("border border-border bg-background p-4", missing && "border-dashed")}>
+    <div className={cn("border border-border bg-background p-4", (missing || outdated) && "border-dashed")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">
           {entry.label}
           {missing && <span className="border border-border px-1.5 py-0.5 text-[0.58rem] text-foreground">Fehlt · {editLang.toUpperCase()}</span>}
+          {outdated && <span className="border border-border px-1.5 py-0.5 text-[0.58rem] text-foreground">Veraltet · Deutsch geändert</span>}
         </span>
         <span className="text-[0.58rem] text-muted-foreground/70">
           {entry.key}{updatedAt ? ` · zuletzt geändert ${new Date(updatedAt).toLocaleString("de-DE")}` : " · noch nicht gesetzt"}
@@ -315,14 +365,14 @@ function FieldRow({ entry, value, updatedAt, busy, uploading, suggesting, editLa
             <input value={value} onChange={(e) => onChange(e.target.value)} onBlur={onSave}
               className="mt-3 w-full border border-border bg-white p-2 text-sm" />
           )}
-          {missing && (
+          {canTranslate && (
             <button
               type="button"
               onClick={onSuggest}
               disabled={suggesting}
               className="mt-2 flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
             >
-              <Sparkles className="h-3 w-3" /> {suggesting ? "…" : "Englisch vorschlagen"}
+              <Sparkles className="h-3 w-3" /> {suggesting ? "…" : missing || outdated ? "Ins Englische übersetzen" : "Neu übersetzen"}
             </button>
           )}
         </>

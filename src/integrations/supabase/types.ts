@@ -2523,6 +2523,7 @@ export type Database = {
           updated_by: string | null
           value: Json
           value_en: Json | null
+          value_en_source: string | null
         }
         Insert: {
           key: string
@@ -2530,6 +2531,7 @@ export type Database = {
           updated_by?: string | null
           value?: Json
           value_en?: Json | null
+          value_en_source?: string | null
         }
         Update: {
           key?: string
@@ -2537,6 +2539,7 @@ export type Database = {
           updated_by?: string | null
           value?: Json
           value_en?: Json | null
+          value_en_source?: string | null
         }
         Relationships: []
       }
