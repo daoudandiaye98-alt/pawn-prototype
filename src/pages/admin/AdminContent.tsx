@@ -77,13 +77,27 @@ export default function AdminContent() {
     return Array.from(byPage.entries());
   }, [search, rows]);
 
-  const missingCount = useMemo(() => {
-    if (editLang === "de") return 0;
-    return CONTENT_REGISTRY.filter((e) => e.type !== "image").filter((e) => {
-      const r = rows[e.key];
-      return typeof r?.value === "string" && r.value && typeof r?.value_en !== "string";
-    }).length;
-  }, [editLang, rows]);
+  /** Alle Schlüssel mit deutschem Text (auch die, die nicht in der Registry stehen). */
+  const translatableKeys = useMemo(
+    () =>
+      Object.values(rows)
+        .filter((r) => typeof r.value === "string" && r.value && !String(r.value).startsWith("http"))
+        .map((r) => r.key)
+        .sort(),
+    [rows],
+  );
+
+  /** Fehlt die englische Fassung — oder wurde der deutsche Text seither geändert? */
+  const isStale = (key: string): boolean => {
+    const r = rows[key];
+    if (!r || typeof r.value !== "string" || !r.value || String(r.value).startsWith("http")) return false;
+    if (typeof r.value_en !== "string" || !r.value_en) return true;
+    return typeof r.value_en_source !== "string" || r.value_en_source !== r.value;
+  };
+
+  const pendingKeys = useMemo(() => translatableKeys.filter(isStale), [translatableKeys, rows]);
+  const missingCount = editLang === "de" ? 0 : pendingKeys.length;
+
 
   const saveField = async (key: string) => {
     const value = drafts[key] ?? "";
