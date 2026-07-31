@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { ImagePlus, Link2, X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 
 interface Card { kind: "product" | "designer"; title: string; subtitle?: string; href: string; reason?: string }
 interface Action { type: "navigate"; path: string; label: string }
