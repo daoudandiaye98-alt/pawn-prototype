@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { LanguageToggle } from "./LanguageToggle";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -164,12 +165,15 @@ export function AdminShell({ children, title, eyebrow }: { children: ReactNode; 
             </button>
             <span className="font-serif text-sm text-muted-foreground">Admin</span>
           </div>
-          <Link
-            to="/"
-            className="flex min-h-[36px] items-center border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] transition-colors hover:bg-foreground hover:text-background"
-          >
-            Zur Ausstellung →
-          </Link>
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <Link
+              to="/"
+              className="flex min-h-[36px] items-center border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] transition-colors hover:bg-foreground hover:text-background"
+            >
+              Zur Ausstellung →
+            </Link>
+          </div>
         </div>
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 md:h-16 md:px-10 md:py-0">
           <div>
