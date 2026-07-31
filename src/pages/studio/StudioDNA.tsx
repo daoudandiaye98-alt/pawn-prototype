@@ -51,7 +51,7 @@ export default function StudioDNA() {
   }, [designer]);
 
   useEffect(() => {
-    const cached = designer?.aussenauge as AussenaugeResult | undefined;
+    const cached = designer?.aussenauge as unknown as AussenaugeResult | undefined;
     setAussenauge(cached && Object.keys(cached).length > 0 ? cached : null);
   }, [designer]);
 
