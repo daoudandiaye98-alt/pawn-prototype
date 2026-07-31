@@ -11,7 +11,6 @@ import { Stilberater } from "@/components/palace/Stilberater";
 import { DnaChat } from "@/components/palace/DnaChat";
 import { DnaKompass } from "@/components/palace/DnaKompass";
 import { PasstDas } from "@/components/palace/PasstDas";
-import { PickYourStyle } from "@/components/palace/PickYourStyle";
 import { useStore, marketplaceSelectors } from "@/core";
 import { X } from "lucide-react";
 
@@ -19,7 +18,7 @@ import { X } from "lucide-react";
  * /dna — das große "Über dich" (Teil 21c). Von oben nach unten: das Urteil
  * (Teil 20, Stilberater) · der Kompass mit dem Ziel und dem Weg (21b) · das
  * Gespräch mit Bildern (21a) · "Steht mir das?" · die Stil-Sequenz (umgezogen
- * von /style) · was PAWN sich gemerkt hat, einzeln löschbar · Vertrauen.
+ * was PAWN sich gemerkt hat, einzeln löschbar · Vertrauen.
  */
 
 function labelForSignal(s: Signal): { title: string; because: string } {
@@ -221,12 +220,6 @@ export default function DNA() {
         </section>
       )}
 
-      {/* 01f · Die Stil-Sequenz (umgezogen von /style, Teil 21c) */}
-      {user && (
-        <section className="border-t border-[rgba(0,0,0,.18)] bg-[#FAFAF8] py-24 md:py-32">
-          <PickYourStyle compact onRoundComplete={() => urteilRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
-        </section>
-      )}
 
       {/* 02 · Living state */}
       <section className="px-6 py-24 md:px-14 md:py-32">

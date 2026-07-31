@@ -7,9 +7,7 @@ import { HelixScene } from "@/components/palace/HelixScene";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
-import { PickYourStyle } from "@/components/palace/PickYourStyle";
 import { PremiereSection } from "@/components/palace/PremiereSection";
-import { PlanFunnel } from "@/components/pawn/PlanFunnel";
 import { Editable, EditableImage, useContentValue } from "@/components/palace/Editable";
 import { useSiteContent } from "@/lib/siteContent";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
@@ -325,10 +323,6 @@ const Index = () => {
       {/* ── 05 STATEMENT BANNER — rotates through featured designers ── */}
       <DynamicBanner />
 
-      {/* ── 05b PICK YOUR STYLE — swipe discovery ─────────── */}
-      <section className="relative z-10 border-y border-[rgba(0,0,0,.18)] bg-[#FFFFFF] py-24 md:py-32">
-        <PickYourStyle />
-      </section>
 
       {/* ── 05c PREMIÈRE — kuratierte Designer-Videos ─────── */}
       <PremiereSection />
@@ -477,11 +471,6 @@ const Index = () => {
             </Reveal>
           </div>
 
-          <div className="mx-auto mt-16 max-w-xl text-left">
-            <Reveal delay={200}>
-              <PlanFunnel context="landing" />
-            </Reveal>
-          </div>
         </div>
       </section>
 

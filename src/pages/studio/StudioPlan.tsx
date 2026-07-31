@@ -10,7 +10,6 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCredits, planLabel, creditExample, type Plan } from "@/features/campaign/quota";
-import { PlanFunnel } from "@/components/pawn/PlanFunnel";
 import { useContentValue } from "@/components/palace/Editable";
 import { Check, Sparkles } from "lucide-react";
 
@@ -260,10 +259,6 @@ export default function StudioPlan() {
         <p className="mt-3 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-sm">
           <strong>7% Provision bleibt immer 7%</strong>, unabhängig vom Plan. Pläne unterscheiden sich nur in Kontingent und KI-Werkzeugen.
         </p>
-      </div>
-
-      <div className="mt-8">
-        <PlanFunnel currentPlan={plan} designerId={designer?.id ?? null} />
       </div>
 
       <p className="mt-8 text-sm">
