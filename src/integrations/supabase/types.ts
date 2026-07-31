@@ -27,6 +27,7 @@ export type Database = {
           handle: string
           id: string
           kurator_score: number | null
+          language: string | null
           message_draft: string | null
           next_touch_at: string | null
           notes: string | null
@@ -53,6 +54,7 @@ export type Database = {
           handle: string
           id?: string
           kurator_score?: number | null
+          language?: string | null
           message_draft?: string | null
           next_touch_at?: string | null
           notes?: string | null
@@ -79,6 +81,7 @@ export type Database = {
           handle?: string
           id?: string
           kurator_score?: number | null
+          language?: string | null
           message_draft?: string | null
           next_touch_at?: string | null
           notes?: string | null
@@ -2887,10 +2890,7 @@ export type Database = {
         Args: { _session_id: string; _user_id: string }
         Returns: number
       }
-      next_invoice_number: {
-        Args: { _designer_id: string }
-        Returns: string
-      }
+      next_invoice_number: { Args: { _designer_id: string }; Returns: string }
       notify_admins: {
         Args: { _body: string; _link: string; _title: string; _type: string }
         Returns: undefined
