@@ -327,17 +327,18 @@ export default function AdminContent() {
   );
 }
 
-function FieldRow({ entry, value, updatedAt, busy, uploading, suggesting, editLang, missing, onChange, onSave, onUpload, onSuggest }: {
+function FieldRow({ entry, value, updatedAt, busy, uploading, suggesting, editLang, missing, outdated, canTranslate, onChange, onSave, onUpload, onSuggest }: {
   entry: ContentEntry; value: string; updatedAt?: string; busy: boolean; uploading: boolean; suggesting: boolean;
-  editLang: Lang; missing: boolean;
+  editLang: Lang; missing: boolean; outdated: boolean; canTranslate: boolean;
   onChange: (v: string) => void; onSave: () => void; onUpload: (f: File) => void; onSuggest: () => void;
 }) {
   return (
-    <div className={cn("border border-border bg-background p-4", missing && "border-dashed")}>
+    <div className={cn("border border-border bg-background p-4", (missing || outdated) && "border-dashed")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">
           {entry.label}
           {missing && <span className="border border-border px-1.5 py-0.5 text-[0.58rem] text-foreground">Fehlt · {editLang.toUpperCase()}</span>}
+          {outdated && <span className="border border-border px-1.5 py-0.5 text-[0.58rem] text-foreground">Veraltet · Deutsch geändert</span>}
         </span>
         <span className="text-[0.58rem] text-muted-foreground/70">
           {entry.key}{updatedAt ? ` · zuletzt geändert ${new Date(updatedAt).toLocaleString("de-DE")}` : " · noch nicht gesetzt"}
@@ -364,14 +365,14 @@ function FieldRow({ entry, value, updatedAt, busy, uploading, suggesting, editLa
             <input value={value} onChange={(e) => onChange(e.target.value)} onBlur={onSave}
               className="mt-3 w-full border border-border bg-white p-2 text-sm" />
           )}
-          {missing && (
+          {canTranslate && (
             <button
               type="button"
               onClick={onSuggest}
               disabled={suggesting}
               className="mt-2 flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
             >
-              <Sparkles className="h-3 w-3" /> {suggesting ? "…" : "Englisch vorschlagen"}
+              <Sparkles className="h-3 w-3" /> {suggesting ? "…" : missing || outdated ? "Ins Englische übersetzen" : "Neu übersetzen"}
             </button>
           )}
         </>
