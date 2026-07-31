@@ -101,7 +101,7 @@ export default function Designers() {
               <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover"
                 style={{ filter: "grayscale(1) contrast(var(--palace-image-contrast, 1.06))" }} />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[#EFEDE8] palace-serif italic text-[#8F8B82]">{hover.brand}</div>
+              <div className="flex h-full w-full items-center justify-center bg-[#FFFFFF] palace-serif italic text-[#8A8A8A]">{hover.brand}</div>
             )}
           </div>
         )}
@@ -115,7 +115,7 @@ export default function Designers() {
               <Reveal key={d.id} delay={Math.min(400, i * 40)}>
                 <li onMouseEnter={() => setHover({ src: preview ?? undefined, brand: d.brand_name })} onMouseLeave={() => setHover(null)}>
                   <Link to={`/designer/${d.slug}`} className="group flex flex-col items-center gap-3 py-10 text-center transition-colors duration-500 md:py-14">
-                    <span className="palace-eyebrow text-[#8F8B82] group-hover:text-[#000000]">
+                    <span className="palace-eyebrow text-[#8A8A8A] group-hover:text-[#000000]">
                       № {String(i + 1).padStart(3, "0")}
                       {fresh && <span className="ml-3 border border-[#000000]/40 px-1.5 py-0.5 text-[0.55rem]">Neu</span>}
                     </span>

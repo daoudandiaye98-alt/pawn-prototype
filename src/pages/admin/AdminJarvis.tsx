@@ -372,8 +372,14 @@ export default function AdminJarvis() {
     <AdminShell title="Maschinenraum" eyebrow="Jarvis · die interne KI-Instanz von PAWN">
       <div className="mb-4 flex items-center justify-between border-[1.5px] border-black px-5 py-3">
         <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Jarvis-Status</p>
-          <p className="mt-1 font-serif text-lg leading-none">{enabled ? "Aktiv" : "Pausiert"}</p>
+          <p className="t-eyebrow text-muted-foreground">Jarvis-Status</p>
+          <p className="mt-1.5 flex items-center gap-2 font-serif text-lg leading-none">
+            <span className={cn("relative flex h-2 w-2 items-center justify-center", enabled ? "text-black" : "text-muted-foreground")}>
+              {enabled && <span className="absolute inline-flex h-full w-full animate-ping bg-current opacity-50" />}
+              <span className="relative inline-flex h-2 w-2 bg-current" />
+            </span>
+            {enabled ? "Aktiv" : "Pausiert"}
+          </p>
         </div>
         <Button
           onClick={togglePause}
@@ -387,20 +393,20 @@ export default function AdminJarvis() {
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="border-[1.5px] border-black p-5">
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Zuletzt aktiv</p>
-          <p className="mt-3 font-serif text-2xl leading-none">{timeAgo(lastRun?.finished_at ?? lastRun?.started_at ?? null)}</p>
+        <div className="border-[1.5px] border-black p-5 motion-micro hover:bg-black hover:text-white">
+          <p className="t-eyebrow text-muted-foreground">Zuletzt aktiv</p>
+          <p className="mt-3 font-mono text-2xl leading-none tabular-nums tracking-tight">{timeAgo(lastRun?.finished_at ?? lastRun?.started_at ?? null)}</p>
         </div>
         <div className="border-[1.5px] border-black p-5">
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Letzter Lauf</p>
+          <p className="t-eyebrow text-muted-foreground">Letzter Lauf</p>
           <p className="mt-3 truncate font-serif text-lg leading-tight" title={lastRun?.summary ?? undefined}>
             {lastRun?.summary ?? "—"}
           </p>
           {lastRun && <div className="mt-2"><StatusChip status={lastRun.status} /></div>}
         </div>
         <div className="border-[1.5px] border-black p-5">
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Geschätzte Kosten · diesen Monat</p>
-          <p className="mt-3 font-serif text-2xl leading-none tabular-nums">
+          <p className="t-eyebrow text-muted-foreground">Geschätzte Kosten · diesen Monat</p>
+          <p className="mt-3 font-mono text-2xl leading-none tabular-nums tracking-tight">
             ${costThisMonth.toFixed(2)} <span className="text-sm text-muted-foreground">/ ${monthlyLimit.toFixed(2)}</span>
           </p>
         </div>

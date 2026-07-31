@@ -169,8 +169,8 @@ const Checkout = () => {
             </ul>
             <div className="my-5 h-px w-full bg-[rgba(0,0,0,.18)]" />
             <dl className="space-y-2 text-sm text-[#000000]">
-              <div className="flex justify-between"><dt className="text-[#55534E]">Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
-              <div className="flex justify-between"><dt className="text-[#55534E]">Versand</dt><dd className="tabular-nums">€{shipping}</dd></div>
+              <div className="flex justify-between"><dt className="text-[#555555]">Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
+              <div className="flex justify-between"><dt className="text-[#555555]">Versand</dt><dd className="tabular-nums">€{shipping}</dd></div>
               <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Gesamt</dt><dd className="tabular-nums">€{(subtotal + shipping).toLocaleString("de-DE")}</dd></div>
             </dl>
             <button
@@ -193,7 +193,7 @@ const Checkout = () => {
 function Field({ label, type = "text", className, value, onChange }: { label: string; type?: string; className?: string; value?: string; onChange?: (v: string) => void }) {
   return (
     <label className={`space-y-2 ${className ?? ""}`}>
-      <span className="palace-eyebrow text-[#55534E]">{label}</span>
+      <span className="palace-eyebrow text-[#555555]">{label}</span>
       <input
         type={type}
         value={value}

@@ -22,13 +22,17 @@ export function HelixScene() {
     const fov = 30;
     const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-    dir.position.set(3, 4, 5);
-    scene.add(dir);
-    const rim = new THREE.DirectionalLight(0xffffff, 0.35);
+    // Studio lighting — matched to HeroScene so the CGI language is one voice.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const key = new THREE.DirectionalLight(0xffffff, 1.15);
+    key.position.set(3, 4, 5);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.5);
     rim.position.set(-3, -2, -4);
     scene.add(rim);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.3);
+    fill.position.set(0, -3, 4);
+    scene.add(fill);
 
     const group = new THREE.Group();
     const steps = 80;
@@ -36,9 +40,11 @@ export function HelixScene() {
     const radius = 1.6;
     const height = 6.4;
     const cubeGeom = new THREE.BoxGeometry(0.18, 0.18, 0.18);
-    const black = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 });
-    const white = new THREE.MeshStandardMaterial({ color: 0xefebe1, roughness: 0.6 });
-    const rungMat = new THREE.MeshStandardMaterial({ color: 0x7c7972, roughness: 0.6 });
+    // Matte-porcelain black & white — identical finish to the hero pawn.
+    // No warmth: pure 0x000000 / 0xffffff, neutral gray rungs (hueless).
+    const black = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.32, metalness: 0.15 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.05 });
+    const rungMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.6, metalness: 0.1 });
     const rungGeom = new THREE.CylinderGeometry(0.025, 0.025, radius * 2, 12);
     for (let i = 0; i < steps; i++) {
       const t = i / (steps - 1);

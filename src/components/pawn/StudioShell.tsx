@@ -166,7 +166,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <item.icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && item.badge > 0 ? (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[0.62rem] font-medium text-foreground">{item.badge}</span>
+                <span className="flex h-5 min-w-[20px] items-center justify-center bg-white px-1.5 font-mono text-[0.62rem] font-medium tabular-nums text-foreground">{item.badge}</span>
               ) : null}
             </NavLink>
           );
@@ -233,19 +233,19 @@ function Topbar({ title, section }: { title: string; section?: string }) {
         )}
         <button aria-label="Benachrichtigungen" onClick={() => nav("/account")} className="relative flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
           <Bell className="h-4 w-4" />
-          {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-foreground" />}
+          {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 bg-foreground" />}
         </button>
-        <button onClick={copilot.toggle} className="relative flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-foreground/90">
-          <span className="relative flex h-2 w-2 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        <button onClick={copilot.toggle} className="relative flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-white motion-micro hover:bg-white hover:text-foreground">
+          <span className="relative flex h-1.5 w-1.5 items-center justify-center">
+            <span className="absolute inline-flex h-full w-full animate-ping bg-current opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 bg-current" />
           </span>
           <Sparkles className="h-3.5 w-3.5" />
           Copilot
           {plusActive && (
             <span
               title="Stärkeres Denkmodell aktiv"
-              className="ml-1 rounded-full border border-white/50 px-1.5 py-0.5 text-[0.55rem] font-medium uppercase tracking-[0.16em] text-white/90"
+              className="ml-1 border border-current px-1.5 py-0.5 text-[0.55rem] font-medium uppercase tracking-[0.16em]"
             >
               PAWN+
             </span>

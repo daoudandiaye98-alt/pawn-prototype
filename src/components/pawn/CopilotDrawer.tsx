@@ -150,24 +150,27 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       {children}
       {isOpen && (
         <>
-          <div onClick={ctx.close} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" />
-          <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border bg-white text-foreground shadow-2xl">
-            <header className="flex h-16 items-center justify-between border-b border-border px-6">
+          <div onClick={ctx.close} className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] transition-opacity duration-500" />
+          <aside
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[hsl(var(--border-strong))] bg-white text-foreground motion-reveal"
+            style={{ animationDuration: "var(--dur-reveal)" }}
+          >
+            <header className="flex h-16 items-center justify-between border-b border-[hsl(var(--border-strong))] px-6">
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-white">
+                <span className="flex h-8 w-8 items-center justify-center border border-foreground bg-foreground text-white">
                   <Sparkles className="h-3.5 w-3.5" />
                 </span>
                 <div>
-                  <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">PAWN Copilot {isAdmin && <span className="ml-1 font-medium text-foreground">· mit Händen</span>}</p>
-                  <p className="font-serif text-base leading-none">Dein leiser Partner</p>
+                  <p className="t-eyebrow text-muted-foreground">PAWN Copilot {isAdmin && <span className="ml-1 font-medium text-foreground">· mit Händen</span>}</p>
+                  <p className="mt-1 font-serif text-base italic leading-none">Dein leiser Partner</p>
                 </div>
               </div>
-              <button onClick={ctx.close} aria-label="Schließen" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
+              <button onClick={ctx.close} aria-label="Schließen" className="flex h-8 w-8 items-center justify-center border border-transparent text-muted-foreground motion-micro hover:border-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
             </header>
 
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-6">
+            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6">
               {messages.length === 0 && (
-                <p className="text-sm text-muted-foreground">
+                <p className="t-body-md text-muted-foreground">
                   {isAdmin
                     ? 'Sag mir, was passieren soll. Beispiele: „ändere hero_headline zu …", „neue kategorie leinen in welt Mode", „benachrichtige alle designer: …".'
                     : helpTopics.length > 0
@@ -177,9 +180,11 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
               )}
               {messages.map((m, i) => {
                 if (m.role === "user" || m.role === "assistant") {
+                  const isUser = m.role === "user";
                   return (
-                    <div key={i} className={m.role === "user" ? "text-right" : ""}>
-                      <div className={`inline-block max-w-[92%] whitespace-pre-wrap border px-3 py-2 text-sm ${m.role === "user" ? "border-foreground bg-foreground text-background" : "border-border bg-white"}`}>
+                    <div key={i} className={isUser ? "text-right" : ""}>
+                      <p className="mb-1.5 t-eyebrow text-[hsl(0_0%_58%)]">{isUser ? "Du" : "Copilot"}</p>
+                      <div className={`inline-block max-w-[92%] whitespace-pre-wrap border px-3.5 py-2.5 text-[0.9rem] leading-relaxed ${isUser ? "border-foreground bg-foreground text-background" : "border-[hsl(var(--border))] bg-white font-serif italic"}`}>
                         {m.content}
                       </div>
                     </div>
@@ -187,12 +192,15 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
                 }
                 if (m.role === "action_proposal") {
                   return (
-                    <div key={i} className="border-2 border-dashed border-foreground/40 bg-muted/40 p-4">
-                      <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Aktions-Vorschlag</p>
-                      <p className="mt-1 text-sm">{m.proposal.label}</p>
+                    <div key={i} className="border border-foreground bg-white p-4 shadow-hard-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 bg-foreground" />
+                        <p className="t-eyebrow text-muted-foreground">Aktions-Vorschlag</p>
+                      </div>
+                      <p className="mt-2 t-body-md">{m.proposal.label}</p>
                       <p className="mt-1 font-mono text-[0.65rem] text-muted-foreground">{m.proposal.action}({JSON.stringify(m.proposal.params)})</p>
                       <button onClick={() => executeAction(m.proposal)} disabled={busy}
-                        className="mt-3 inline-flex items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.65rem] uppercase tracking-[0.22em] text-background hover:bg-foreground/85 disabled:opacity-40">
+                        className="mt-3 inline-flex items-center gap-2 border border-foreground bg-foreground px-3.5 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-background motion-micro hover:bg-white hover:text-foreground disabled:opacity-40">
                         <PlayCircle className="h-3 w-3" /> Ausführen
                       </button>
                     </div>
@@ -201,25 +209,25 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
                 if (m.role !== "action_result") return null;
                 const res = m;
                 return (
-                  <div key={i} className={`border px-3 py-2 text-sm ${res.ok ? "border-border bg-muted" : "border-foreground bg-foreground text-background"}`}>
-                    {res.ok ? <>✓ Aktion „{res.action}" ausgeführt.</> : <>✕ Fehler: {res.error}</>}
+                  <div key={i} className={`flex items-center gap-2 border px-3.5 py-2.5 text-[0.85rem] ${res.ok ? "border-[hsl(var(--border-strong))] bg-white" : "border-foreground bg-foreground text-background"}`}>
+                    <span>{res.ok ? <>Aktion „{res.action}" ausgeführt.</> : <>Fehler: {res.error}</>}</span>
                     {res.ok && res.id && (
-                      <button onClick={() => res.id && undoAction(res.id)} className="ml-3 inline-flex items-center gap-1 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground underline hover:text-foreground">
+                      <button onClick={() => res.id && undoAction(res.id)} className="ml-auto inline-flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground underline underline-offset-4 hover:text-foreground">
                         <Undo2 className="h-3 w-3" /> Rückgängig
                       </button>
                     )}
                   </div>
                 );
               })}
-              {busy && <p className="text-xs text-muted-foreground">Copilot denkt…</p>}
+              {busy && <p className="t-eyebrow text-[hsl(0_0%_58%)]">Copilot denkt…</p>}
             </div>
 
             {helpTopics.length > 0 && !isAdmin && (
-              <div className="border-t border-border px-4 py-3">
+              <div className="border-t border-[hsl(var(--border))] px-4 py-3">
                 <div className="flex flex-wrap gap-2">
                   {helpTopics.slice(0, 3).map((t) => (
                     <button key={t.q} onClick={() => send(t.q)}
-                      className="border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-muted">
+                      className="border border-[hsl(var(--border-strong))] bg-white px-3 py-1.5 text-[0.68rem] tracking-wide motion-micro hover:bg-foreground hover:text-background">
                       {t.q}
                     </button>
                   ))}
@@ -227,13 +235,13 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
               </div>
             )}
 
-            <div className="flex items-center gap-2 border-t border-border p-4">
+            <div className="flex items-center gap-2 border-t border-[hsl(var(--border-strong))] p-4">
               <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) send(); }}
                 placeholder={isAdmin ? "Kommando oder Frage…" : "Deine Frage…"}
-                className="flex-1 border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent" />
+                className="h-10 flex-1 border border-[hsl(var(--border-strong))] bg-white px-3 py-2 text-[16px] motion-micro focus:outline-none focus:border-foreground md:text-sm" />
               <button onClick={() => send()} disabled={busy || !input.trim()}
-                className="flex h-10 w-10 items-center justify-center bg-foreground text-white disabled:opacity-40">
+                className="flex h-10 w-10 items-center justify-center border border-foreground bg-foreground text-white motion-micro hover:bg-white hover:text-foreground disabled:opacity-40 disabled:hover:bg-foreground disabled:hover:text-white">
                 <Send className="h-4 w-4" />
               </button>
             </div>

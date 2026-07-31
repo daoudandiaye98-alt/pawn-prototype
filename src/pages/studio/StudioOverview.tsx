@@ -664,7 +664,7 @@ export default function StudioOverview() {
               {messages.map((m) => (
                 <li key={m.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
-                    {m.unread && <span className="h-1.5 w-1.5 rounded-full bg-foreground" />}
+                    {m.unread && <span className="h-1.5 w-1.5 bg-foreground" />}
                     <p className="font-serif text-base">{m.subject}</p>
                   </div>
                   <p className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{new Date(m.last_message_at).toLocaleDateString("de-DE")}</p>

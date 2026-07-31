@@ -196,7 +196,7 @@ export function EditableImage({ contentKey, fallback, alt, className, loading = 
     <span className={`relative block ${enabled ? "outline outline-1 outline-dashed outline-black/60" : ""}`}>
       {src
         ? <img src={src} alt={alt} className={className} loading={loading} />
-        : (fallbackNode ?? <span className="block h-64 w-full bg-[#E8E4DA]" aria-label={alt} />)}
+        : (fallbackNode ?? <span className="block h-64 w-full bg-[#FFFFFF]" aria-label={alt} />)}
       {enabled && (
         <>
           <button

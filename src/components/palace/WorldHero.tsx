@@ -102,7 +102,7 @@ export function WorldHero({ world, eyebrow, subline, image }: WorldHeroProps) {
 
       {/* Scroll cue */}
       <div className="absolute bottom-8 right-6 z-30 hidden flex-col items-center gap-3 md:flex md:right-14">
-        <span className="palace-eyebrow text-[#55534E]">Scroll</span>
+        <span className="palace-eyebrow text-[#555555]">Scroll</span>
         <span className="palace-drip block h-12 w-px bg-[#000000]" />
       </div>
     </section>

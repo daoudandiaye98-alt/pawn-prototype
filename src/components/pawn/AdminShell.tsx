@@ -112,19 +112,19 @@ function AdminCopilotPill() {
     <div className="flex items-center gap-2">
       <button
         onClick={copilot.toggle}
-        className="flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-foreground/90"
+        className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-white motion-micro hover:bg-white hover:text-foreground"
         title="Admin-Copilot öffnen"
       >
-        <span className="relative flex h-2 w-2 items-center justify-center">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        <span className="relative flex h-1.5 w-1.5 items-center justify-center">
+          <span className="absolute inline-flex h-full w-full animate-ping bg-current opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 bg-current" />
         </span>
         <Sparkles className="h-3.5 w-3.5" />
         Copilot
       </button>
       {zoneCounts && (
         <span
-          className="hidden items-center gap-1.5 border border-border px-2 py-1 text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground md:inline-flex"
+          className="hidden items-center gap-1.5 border border-[hsl(var(--border-strong))] px-2 py-1 text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground md:inline-flex"
           title="In welcher Zone Jarvis' Organe gerade handeln dürfen"
         >
           {zoneCounts.gruen} Grün · {zoneCounts.gelb} Gelb · {zoneCounts.rot} Rot

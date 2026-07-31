@@ -79,14 +79,14 @@ export function PalaceHeader() {
         className="fixed inset-x-0 top-0 z-50 border-b-[1.5px] border-black bg-white"
         style={{ transitionTimingFunction: "cubic-bezier(.76,0,.18,1)" }}
       >
-        <div className="mx-auto flex h-14 max-w-[1600px] items-stretch">
+        <div className="mx-auto flex h-16 max-w-[1600px] items-stretch">
           {/* Logo cell */}
           <Link
             to="/"
             aria-label="PAWN"
-            className="flex items-center whitespace-nowrap border-r-[1.5px] border-black px-5 text-black md:px-7 hover-invert"
+            className="flex items-center whitespace-nowrap border-r-[1.5px] border-black px-5 text-black md:px-8 hover-invert"
           >
-            <PawnWordmark className="text-[1.35rem] md:text-[1.5rem]" />
+            <PawnWordmark className="text-[1.5rem] md:text-[1.7rem]" />
           </Link>
 
           {/* Nav cells */}
@@ -96,8 +96,8 @@ export function PalaceHeader() {
                 key={item.label}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center whitespace-nowrap border-r border-[rgba(0,0,0,.18)] px-5 text-[0.66rem] uppercase tracking-[0.3em] transition-colors duration-200 hover:bg-black hover:text-white ${
-                    isActive ? "bg-black text-white" : "text-[#111]"
+                  `nav-mono flex items-center whitespace-nowrap border-r-[1.5px] border-black px-5 text-[0.64rem] tracking-[0.28em] transition-colors duration-200 hover:bg-black hover:text-white ${
+                    isActive ? "bg-black text-white" : "text-[#000]"
                   }`
                 }
               >
@@ -110,7 +110,7 @@ export function PalaceHeader() {
             {/* Frag PAWN — solid black cell with blinking dot */}
             <button
               onClick={() => setChatOpen(true)}
-              className="hidden items-center gap-2 whitespace-nowrap border-l-[1.5px] border-black bg-black px-4 text-[0.62rem] uppercase tracking-[0.32em] text-white transition-colors duration-200 hover:bg-white hover:text-black xl:flex xl:px-5"
+              className="nav-mono hidden items-center gap-2 whitespace-nowrap border-l-[1.5px] border-black bg-black px-4 text-[0.64rem] tracking-[0.26em] text-white transition-colors duration-200 hover:bg-white hover:text-black xl:flex xl:px-5"
             >
               <span className="inline-block h-[6px] w-[6px] animate-pulse rounded-full bg-current" />
               {t("nav.frag")}
@@ -130,7 +130,7 @@ export function PalaceHeader() {
             <button
               type="button"
               onClick={() => setLocale(locale === "de" ? "en" : "de")}
-              className="hidden items-center whitespace-nowrap border-l border-[rgba(0,0,0,.18)] px-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#111] hover:bg-black hover:text-white xl:inline-flex"
+              className="nav-mono hidden items-center whitespace-nowrap border-l-[1.5px] border-black px-3 text-[0.64rem] tracking-[0.22em] text-[#000] hover:bg-black hover:text-white xl:inline-flex"
               aria-label="Sprache wechseln"
             >
               {locale.toUpperCase()}
@@ -150,7 +150,7 @@ export function PalaceHeader() {
                 {accountOpen && (
                   <div className="absolute right-0 top-full w-64 border-[1.5px] border-black bg-white shadow-[6px_6px_0_#000]">
                     <div className="border-b-[1.5px] border-black px-5 py-4">
-                      <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#55534E]">Zutritt</p>
+                      <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#555555]">Zutritt</p>
                       <p className="mt-1 font-serif italic text-[0.95rem] text-[#000000]" style={{ fontWeight: 500 }}>
                         {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
                       </p>
@@ -163,7 +163,7 @@ export function PalaceHeader() {
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="block w-full border-t-[1.5px] border-black px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-black hover:text-white"
+                      className="block w-full border-t-[1.5px] border-black px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#555555] hover:bg-black hover:text-white"
                     >
                       {t("nav.logout")}
                     </button>
@@ -249,7 +249,7 @@ export function PalaceHeader() {
               {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.myStudio")}</Link>}
               {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.applicationStatus")}</Link>}
               {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.adminCockpit")}</Link>}
-              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#55534E]">{t("nav.logout")}</button>
+              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#555555]">{t("nav.logout")}</button>
             </>
           ) : (
             <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.login")}</Link>

@@ -4,7 +4,7 @@
  */
 export function PaymentLogos({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[0.62rem] uppercase tracking-[0.24em] text-[#55534E] ${className}`}>
+    <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[0.62rem] uppercase tracking-[0.24em] text-[#555555] ${className}`}>
       <span>Apple Pay</span>
       <span className="opacity-40">·</span>
       <span>Google Pay</span>

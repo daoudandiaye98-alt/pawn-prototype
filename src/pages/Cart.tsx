@@ -88,9 +88,9 @@ const Cart = () => {
                     <Link to={`/product/${i.product.slug}`} className="palace-serif mt-2 block text-[1.4rem] italic text-[#000000] hover:underline">
                       {i.product.name}
                     </Link>
-                    <p className="mt-1 text-[0.85rem] text-[#55534E]">{t("cart.size")} {i.size}</p>
+                    <p className="mt-1 text-[0.85rem] text-[#555555]">{t("cart.size")} {i.size}</p>
                     {max !== undefined && Number.isFinite(max) && (
-                      <p className="mt-1 text-[0.6rem] uppercase tracking-[0.28em] text-[#8F8B82]">
+                      <p className="mt-1 text-[0.6rem] uppercase tracking-[0.28em] text-[#8A8A8A]">
                         {max === 0 ? t("cart.outOfStock") : t("cart.inStock", { n: max })}
                       </p>
                     )}
@@ -110,7 +110,7 @@ const Cart = () => {
                   <div className="text-right">
                     <p className="palace-serif italic text-[1.15rem] tabular-nums text-[#000000]">{formatPrice(i.product.price * i.qty, locale)}</p>
                     <button onClick={() => remove(i.product.id, i.size)}
-                      className="mt-3 inline-flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] text-[#55534E] hover:text-[#000000]">
+                      className="mt-3 inline-flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] text-[#555555] hover:text-[#000000]">
                       <X className="h-3 w-3" /> {t("cart.remove")}
                     </button>
                   </div>
@@ -149,7 +149,7 @@ const Cart = () => {
                   {t("cart.checkoutExpress")}
                 </Link>
                 <PaymentLogos className="mt-4" />
-                <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-[#55534E]">
+                <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-[#555555]">
                   <ShieldCheck className="h-3.5 w-3.5 text-[#000000]" /> {t("cart.securePayment")}
                 </p>
               </div>

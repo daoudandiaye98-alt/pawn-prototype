@@ -161,11 +161,11 @@ export function DnaChat() {
   };
 
   if (!user) return null;
-  if (loading) return <div className="h-40 animate-pulse border border-[rgba(0,0,0,.18)] bg-white" />;
+  if (loading) return <div className="h-40 animate-pulse border border-[hsl(var(--border))] bg-white" />;
 
   return (
     <div className="border-[1.5px] border-black bg-white">
-      <div className="border-b border-[rgba(0,0,0,.18)] px-6 py-5 md:px-8">
+      <div className="border-b border-[hsl(var(--border))] px-6 py-5 md:px-8">
         <p className="palace-eyebrow">Das Gespräch</p>
         <h3 className="palace-serif mt-2 text-[1.4rem] italic text-black">Erzähl mir, oder zeig mir etwas.</h3>
       </div>
@@ -178,48 +178,48 @@ export function DnaChat() {
         )}
         {messages.map((m) => (
           <div key={m.id} className={m.role === "assistant" ? "" : "text-right"}>
-            <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">{m.role === "assistant" ? "Pawn" : "Du"}</p>
+            <p className="t-eyebrow text-foreground/40">{m.role === "assistant" ? "Pawn" : "Du"}</p>
             {m.imageUrls && m.imageUrls.length > 0 && (
               <div className={`mt-2 flex flex-wrap gap-2 ${m.role === "assistant" ? "" : "justify-end"}`}>
                 {m.imageUrls.map((u, i) => (
-                  <img key={i} src={u} alt="Hochgeladenes Bild" className="h-20 w-20 border border-[rgba(0,0,0,.18)] object-cover" />
+                  <img key={i} src={u} alt="Hochgeladenes Bild" className="h-20 w-20 border border-[hsl(var(--border))] object-cover" />
                 ))}
               </div>
             )}
-            <p className={`mt-2 whitespace-pre-line text-[0.95rem] leading-relaxed text-black ${m.role === "assistant" ? "font-serif italic" : "font-light"}`}>
+            <p className={`mt-2 whitespace-pre-line text-[0.95rem] leading-relaxed text-black ${m.role === "assistant" ? "font-serif italic" : ""}`}>
               {m.text}
             </p>
           </div>
         ))}
-        {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">Pawn denkt nach…</p>}
+        {busy && <p className="t-eyebrow text-foreground/40">Pawn denkt nach…</p>}
       </div>
 
       {uploadPct !== null && (
-        <div className="border-t border-[rgba(0,0,0,.18)] px-6 py-3 md:px-8">
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">Bilder werden hochgeladen · {uploadPct}%</p>
-          <div className="mt-2 h-[3px] w-full bg-[rgba(0,0,0,.12)]">
+        <div className="border-t border-[hsl(var(--border))] px-6 py-3 md:px-8">
+          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-foreground/55">Bilder werden hochgeladen · {uploadPct}%</p>
+          <div className="mt-2 h-[3px] w-full bg-[hsl(0_0%_92%)]">
             <div className="h-full bg-black transition-all duration-300" style={{ width: `${uploadPct}%` }} />
           </div>
         </div>
       )}
 
       {pendingImages.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-[rgba(0,0,0,.18)] px-6 py-3 md:px-8">
+        <div className="flex flex-wrap items-center gap-2 border-t border-[hsl(var(--border))] px-6 py-3 md:px-8">
           {pendingImages.map((img) => (
             <div key={img.id} className="relative">
-              <img src={img.previewUrl} alt="" className="h-14 w-14 border border-[rgba(0,0,0,.18)] object-cover" />
-              <button onClick={() => removePending(img.id)} aria-label="Entfernen" className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center border border-black bg-white text-black hover:bg-black hover:text-white">
+              <img src={img.previewUrl} alt="" className="h-14 w-14 border border-[hsl(var(--border))] object-cover" />
+              <button onClick={() => removePending(img.id)} aria-label="Entfernen" className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center border border-black bg-white text-black motion-micro hover:bg-black hover:text-white">
                 <X className="h-3 w-3" />
               </button>
             </div>
           ))}
-          <p className="text-xs text-[#7C7972]">bereit — schreib dazu oder schick sie allein.</p>
+          <p className="text-xs text-foreground/55">bereit — schreib dazu oder schick sie allein.</p>
         </div>
       )}
 
-      <form onSubmit={(e) => { e.preventDefault(); void send(); }} className="border-t border-[rgba(0,0,0,.18)] px-6 py-5 md:px-8">
-        <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
-          <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 hover:text-black">
+      <form onSubmit={(e) => { e.preventDefault(); void send(); }} className="border-t border-[hsl(var(--border))] px-6 py-5 md:px-8">
+        <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-foreground/55">
+          <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 motion-micro hover:text-black">
             <ImagePlus className="h-3.5 w-3.5" /> Bilder hochladen
           </button>
           <input
@@ -232,13 +232,13 @@ export function DnaChat() {
           />
         </div>
         <p className="mb-3 text-[0.72rem] text-black/50">Bilder hochladen — Fotos von dir, Screenshots, alles was deinen Geschmack zeigt.</p>
-        <div className="flex items-end gap-3 border-b border-[rgba(0,0,0,.28)] pb-2">
+        <div className="flex items-end gap-3 border-b border-foreground/30 pb-2 transition-colors focus-within:border-foreground">
           <textarea value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}
             rows={1} placeholder="Erzähl mir von dir…"
-            className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-black placeholder:text-[#A8A49B] focus:outline-none" />
+            className="flex-1 resize-none bg-transparent text-[16px] text-black placeholder:text-foreground/40 focus:outline-none md:text-[0.95rem]" />
           <button type="submit" disabled={busy || (!input.trim() && pendingImages.length === 0)}
-            className="text-[0.6rem] uppercase tracking-[0.42em] text-black disabled:text-[#A8A49B]">
+            className="text-[0.6rem] uppercase tracking-[0.42em] text-black motion-micro disabled:text-foreground/40">
             Senden
           </button>
         </div>
@@ -249,21 +249,23 @@ export function DnaChat() {
           <p className="palace-eyebrow">Deine Stil-Referenzen</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {refs.map((r) => (
-              <div key={r.id} className="group relative border border-[rgba(0,0,0,.18)]">
-                <img src={r.url} alt={r.beschreibung ?? "Stil-Referenz"} className="aspect-square w-full object-cover" />
+              <div key={r.id} className="group relative border border-[hsl(var(--border))] motion-micro hover:border-foreground">
+                <div className="overflow-hidden">
+                  <img src={r.url} alt={r.beschreibung ?? "Stil-Referenz"} className="aspect-square w-full object-cover grayscale transition-[transform,filter] duration-700 group-hover:scale-[1.04] group-hover:grayscale-0" style={{ transitionTimingFunction: "var(--ease-pawn)" }} />
+                </div>
                 <button type="button" onClick={() => void deleteRef(r.id)} aria-label="Löschen"
                   className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center border border-black bg-white/90 text-black opacity-0 transition-opacity hover:bg-black hover:text-white group-hover:opacity-100">
                   <X className="h-3.5 w-3.5" />
                 </button>
                 {r.beschreibung && (
-                  <p className="border-t border-[rgba(0,0,0,.18)] bg-white px-2 py-1.5 text-[0.68rem] leading-tight text-black/60">
+                  <p className="border-t border-[hsl(var(--border))] bg-white px-2 py-1.5 text-[0.68rem] leading-tight text-black/60">
                     {r.beschreibung}
                   </p>
                 )}
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[0.68rem] uppercase tracking-[0.24em] text-black/35">aus deinen Bildern · einzeln löschbar</p>
+          <p className="mt-3 t-eyebrow text-black/35">aus deinen Bildern · einzeln löschbar</p>
         </div>
       )}
     </div>

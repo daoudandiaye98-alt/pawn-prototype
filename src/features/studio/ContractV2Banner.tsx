@@ -97,7 +97,7 @@ export function ContractV2Banner() {
 
   return (
     <>
-      <div className="border-b-[1.5px] border-foreground bg-[#FEF6E1] px-6 py-3 text-[0.78rem]">
+      <div className="border-b-[1.5px] border-foreground bg-[#F2F2F2] px-6 py-3 text-[0.78rem]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
           <p className="min-w-0">
             <span className="mr-2 inline-block border border-foreground px-1.5 py-0.5 text-[0.58rem] uppercase tracking-[0.24em]">Vertrag v{contract.version}</span>

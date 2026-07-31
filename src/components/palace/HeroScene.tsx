@@ -57,7 +57,7 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
       const ctx = canv.getContext("2d");
       if (ctx) {
         const grd = ctx.createLinearGradient(0, 0, 0, 256);
-        grd.addColorStop(0, "#f6f3ec");
+        grd.addColorStop(0, "#FFFFFF");
         grd.addColorStop(0.5, "#8a8780");
         grd.addColorStop(1, "#0d0d0f");
         ctx.fillStyle = grd; ctx.fillRect(0, 0, 256, 256);
@@ -203,6 +203,9 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
 
       // Rotations.
       pawnGroup.rotation.y = t * 0.2;
+      // Subtle "awake" gesture — the pawn leans toward the cursor as if regarding it.
+      pawnGroup.rotation.z += (-mouse.x * 0.05 - pawnGroup.rotation.z) * 0.04;
+      pawnGroup.rotation.x += (mouse.y * 0.04 - pawnGroup.rotation.x) * 0.04;
       queenGroup.rotation.y = t * 0.2 + stateRef.current.finale * Math.PI * 3;
 
       // Morph — clamp everything into safe ranges so nothing flickers, inverts,
@@ -221,8 +224,8 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
       // Camera parallax + dolly-zoom (fov shrinks as finale approaches).
       const targetFov = initialFov - f * 6;
       camera.fov += (targetFov - camera.fov) * 0.06;
-      camera.position.x += (mouse.x * 0.6 - camera.position.x) * 0.03;
-      camera.position.y += (2.1 + mouse.y * 0.3 - camera.position.y) * 0.03;
+      camera.position.x += (mouse.x * 0.45 - camera.position.x) * 0.03;
+      camera.position.y += (2.1 + mouse.y * 0.22 - camera.position.y) * 0.03;
       // Push in slightly toward finale.
       const targetZ = 10.5 - f * 1.5;
       camera.position.z += (targetZ - camera.position.z) * 0.03;

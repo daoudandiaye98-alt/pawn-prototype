@@ -89,23 +89,27 @@ export default function StudioCopilot() {
             <p className="editorial-eyebrow flex items-center gap-2"><Sparkles className="h-3 w-3" /> Frag den Copilot</p>
             <h2 className="mt-2 font-serif text-xl">Zu deinem Store.</h2>
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto p-6 min-h-[280px] max-h-[420px]">
+          <div className="flex-1 space-y-4 overflow-y-auto p-6 min-h-[280px] max-h-[420px]">
             {messages.length === 0 && (
-              <p className="text-sm text-muted-foreground">Beispiele: „Wie läuft mein Store?", „Was soll ich als Nächstes hochladen?", „Welches Stück ist stark?"</p>
+              <p className="t-body-md text-muted-foreground">Beispiele: „Wie läuft mein Store?", „Was soll ich als Nächstes hochladen?", „Welches Stück ist stark?"</p>
             )}
-            {messages.map((m, i) => (
-              <div key={i} className={`text-sm ${m.role === "user" ? "text-right" : ""}`}>
-                <div className={`inline-block max-w-[92%] whitespace-pre-wrap border px-3 py-2 ${m.role === "user" ? "border-foreground bg-foreground text-background" : "border-border"}`}>
-                  {m.content}
+            {messages.map((m, i) => {
+              const isUser = m.role === "user";
+              return (
+                <div key={i} className={isUser ? "text-right" : ""}>
+                  <p className="mb-1.5 t-eyebrow text-[hsl(0_0%_58%)]">{isUser ? "Du" : "Copilot"}</p>
+                  <div className={`inline-block max-w-[92%] whitespace-pre-wrap border px-3.5 py-2.5 text-[0.9rem] leading-relaxed ${isUser ? "border-foreground bg-foreground text-background" : "border-[hsl(var(--border))] bg-white font-serif italic"}`}>
+                    {m.content}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {busy && <p className="text-xs text-muted-foreground">Copilot denkt…</p>}
+              );
+            })}
+            {busy && <p className="t-eyebrow text-[hsl(0_0%_58%)]">Copilot denkt…</p>}
           </div>
-          <div className="flex items-center gap-2 border-t border-border p-4">
-            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Deine Frage…" className="flex-1 border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent" />
-            <button onClick={send} disabled={busy || !input.trim()} className="border border-accent bg-accent px-3 py-2 text-accent-foreground disabled:opacity-50">
+          <div className="flex items-center gap-2 border-t border-[hsl(var(--border-strong))] p-4">
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) send(); }}
+              placeholder="Deine Frage…" className="h-10 flex-1 border border-[hsl(var(--border-strong))] bg-white px-3 py-2 text-[16px] motion-micro focus:outline-none focus:border-foreground md:text-sm" />
+            <button onClick={send} disabled={busy || !input.trim()} className="flex h-10 w-10 items-center justify-center border border-foreground bg-foreground text-background motion-micro hover:bg-white hover:text-foreground disabled:opacity-50 disabled:hover:bg-foreground disabled:hover:text-background">
               <Send className="h-4 w-4" />
             </button>
           </div>
@@ -117,9 +121,9 @@ export default function StudioCopilot() {
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="border border-border p-3">
-      <p className="editorial-eyebrow">{label}</p>
-      <p className="mt-1 font-serif text-2xl">{value}</p>
+    <div className="border border-border p-3 motion-micro hover:border-foreground">
+      <p className="t-eyebrow text-muted-foreground">{label}</p>
+      <p className="mt-1.5 font-mono text-2xl tabular-nums tracking-tight">{value}</p>
     </div>
   );
 }

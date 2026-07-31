@@ -8,6 +8,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PremiereSection } from "@/components/palace/PremiereSection";
+import { MoveLadder, type Move } from "@/components/palace/MoveLadder";
 import { Editable, EditableImage, useContentValue } from "@/components/palace/Editable";
 import { useSiteContent } from "@/lib/siteContent";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
@@ -32,15 +33,6 @@ function useScrollProgress(ref: React.RefObject<HTMLElement>) {
     return () => window.removeEventListener("scroll", onScroll);
   }, [ref]);
   return p;
-}
-
-function ChapterMark({ index, label }: { index: string; label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="inline-block h-[9px] w-[9px] border-[1.5px] border-black" />
-      <p className="palace-eyebrow">{index} / {label}</p>
-    </div>
-  );
 }
 
 const Index = () => {
@@ -152,17 +144,25 @@ const Index = () => {
   }, [personalization]);
 
 
+  // The game record. Each coordinate is a real move a visitor can jump to —
+  // the metaphor becomes a functional table of contents / scroll-spy.
+  const moves: Move[] = [
+    { coord: "A1", id: "zug-hero", label: "Eröffnung" },
+    { coord: "B2", id: "zug-cover", label: "Cover Story" },
+    { coord: "C3", id: "zug-grid", label: "Neu im Atelier" },
+    { coord: "D4", id: "zug-kollektion", label: "Kollektion" },
+    { coord: "E5", id: "zug-atelier", label: "Im Atelier" },
+    { coord: "F6", id: "zug-hintergrund", label: "Hintergrund" },
+    { coord: "G7", id: "zug-buehne", label: "Die Bühne" },
+  ];
+
   return (
     <PalaceLayout>
-      {/* Gallery backdrop — warm vertical wash + horizon glow behind the 3D canvas */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 90% 55% at 50% 78%, rgba(255,255,255,0.85) 0%, rgba(241,238,231,0.35) 55%, rgba(241,238,231,0) 100%), linear-gradient(180deg, #E8E5DE 0%, #FFFFFF 38%, #F6F3EC 100%)",
-        }}
-      />
+      <MoveLadder moves={moves} />
+      {/* Gallery backdrop — a vast, undivided white room. Emptiness IS the luxury.
+          The board returns only as deliberate accents (rules, edges), never as
+          all-over texture that would crowd and shrink the space. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 bg-[#FFFFFF]" />
 
       {/* Fixed 3D canvas layer behind everything */}
       <div
@@ -174,43 +174,71 @@ const Index = () => {
 
 
       {/* ── 01 HERO ─────────────────────────────────────────── */}
-      <section className="relative z-10 flex min-h-screen items-center justify-center px-6 md:px-14">
-        <div className="mx-auto max-w-[1400px] text-center">
-          {/* Soft white plate keeps text legible over the 3D canvas without hiding the pawn */}
-          <div className="mx-auto max-w-[1100px] rounded-none px-2 py-6 md:px-8 md:py-10"
-               style={{ background: "radial-gradient(ellipse at center, rgba(241,238,231,.92) 0%, rgba(241,238,231,.72) 55%, rgba(241,238,231,0) 100%)" }}>
-            <p className="palace-eyebrow motion-reveal">
-              <Editable as="span" contentKey="landing.hero_eyebrow">Kuratierte Ausstellung</Editable> · <Link to="/ausgabe" className="underline underline-offset-4 hover:text-[#000000]">Ausgabe {ausgabeNummer}</Link>
-            </p>
-            <h1
-              className="palace-serif palace-line-rise mt-8 text-[#000000]"
-              style={{ fontSize: "clamp(2.4rem, 6.5vw, 6.4rem)", lineHeight: 1.02, letterSpacing: "-0.02em" }}
-            >
-              <Editable as="span" contentKey="hero_headline_1" className="block font-light">Mode, Interior und Kunst —</Editable>
-              <Editable as="span" contentKey="hero_headline_2" className="block italic font-light">von unabhängigen Designern.</Editable>
-            </h1>
-            <Editable as="p" contentKey="hero_subline" className="mx-auto mt-8 block max-w-2xl text-[1.05rem] leading-[1.65] text-[#3A3833]" multiline>
-              {personalSubtitle ?? "PAWN ist die kuratierte Ausstellung, in der du sie zuerst entdeckst."}
-            </Editable>
+      <section id="zug-hero" className="relative z-10 flex min-h-[calc(100vh-76px)] flex-col px-4 md:px-8">
+        {/* Strict running header — the system announces itself: edition,
+            coordinate, discipline, date. Hard rules, monospaced. */}
+        <div className="sys-meta mx-auto w-full max-w-[1600px] bg-[#FFFFFF]/85 backdrop-blur-sm">
+          <span className="text-[#000000]">PAWN</span>
+          <Link to="/ausgabe" className="text-[#000000] hover:bg-[#000000] hover:text-[#FFFFFF]">Ausgabe № {ausgabeNummer}</Link>
+          <span className="hidden text-[#000000] md:flex">Mode · Interior · Kunst</span>
+          <span className="ml-auto text-[#000000]">A1 — G7</span>
+          <span className="hidden text-[#000000] md:flex">{new Date().getFullYear()}</span>
+        </div>
 
-            <HeroPrompt />
-          </div>
+        {/* Hero stage — the pawn, framed by registration ticks. */}
+        <div className="relative mx-auto flex w-full max-w-[1600px] flex-1 items-center justify-center">
+          <span className="sys-tick sys-tick-tl" aria-hidden />
+          <span className="sys-tick sys-tick-tr" aria-hidden />
+          <span className="sys-tick sys-tick-bl" aria-hidden />
+          <span className="sys-tick sys-tick-br" aria-hidden />
 
-          <div className="mt-14 flex flex-col items-center gap-4">
-            <span className="palace-eyebrow" style={{ color: "#55534E" }}>Scroll</span>
-            <span className="palace-drip block h-14 w-px bg-[#000000]" />
+          {/* Running spine label on the left edge */}
+          <span className="sys-rail absolute left-2 top-1/2 hidden -translate-y-1/2 md:block">Kuratierte Ausstellung · Nr. {ausgabeNummer}</span>
+
+          <div className="mx-auto max-w-[1400px] px-2 text-center md:px-6">
+            <div className="mx-auto max-w-[1400px] rounded-none px-2 py-4 md:px-6 md:py-6"
+                 style={{ background: "radial-gradient(ellipse at center, rgba(255, 255, 255,.92) 0%, rgba(255, 255, 255,.66) 58%, rgba(255, 255, 255,0) 100%)" }}>
+              <div className="flex items-center justify-center gap-3">
+                <span className="coord-chip-invert coord-chip">A1</span>
+                <p className="sys-label motion-reveal">
+                  <Editable as="span" contentKey="landing.hero_eyebrow">Eröffnungszug</Editable>
+                </p>
+              </div>
+              <h1
+                className="palace-serif curtain mt-6 text-[#000000]"
+                style={{ fontSize: "clamp(2.6rem, 7.4vw, 7.6rem)", lineHeight: 0.9, letterSpacing: "-0.045em" }}
+              >
+                <span className="curtain-line">
+                  <Editable as="span" contentKey="hero_headline_1" className="block font-light">Mode, Interior, Kunst —</Editable>
+                </span>
+                <span className="curtain-line">
+                  <Editable as="span" contentKey="hero_headline_2" className="block italic font-light">von unabhängigen Designern.</Editable>
+                </span>
+              </h1>
+              <Editable as="p" contentKey="hero_subline" className="mx-auto mt-8 block max-w-lg text-[1.02rem] leading-[1.55] text-[#000000]" multiline>
+                {personalSubtitle ?? "PAWN ist die kuratierte Ausstellung, in der du sie zuerst entdeckst."}
+              </Editable>
+
+              <HeroPrompt />
+            </div>
           </div>
+        </div>
+
+        {/* Scroll cue */}
+        <div className="mx-auto flex w-full max-w-[1600px] items-center gap-4 border-t-[1.5px] border-black py-5">
+          <span className="sys-label">↓ Scroll — Zug für Zug</span>
+          <span className="palace-drip ml-auto block h-8 w-px bg-[#000000]" />
         </div>
       </section>
 
       {/* ── 02 NAMESTRIP ────────────────────────────────────── */}
-      <section className="relative z-10 border-y border-[rgba(0,0,0,.18)] bg-[#FFFFFF] py-6 overflow-hidden">
+      <section className="relative z-10 border-b-2 border-[#000000] bg-[#FFFFFF] py-7 overflow-hidden">
         <div className="palace-marquee flex whitespace-nowrap">
           {[...designers, ...designers].map((d, i) => (
-            <span key={`${d.id}-${i}`} className="flex items-center gap-6 px-8 palace-eyebrow">
+            <span key={`${d.id}-${i}`} className="flex items-center gap-6 px-8 sys-label">
               <span className="text-[#000000]">{d.brand_name}</span>
-              <span className="text-[#A8A49B]">· {d.location ?? "—"}</span>
-              <span className="text-[#A8A49B]">◆</span>
+              <span className="text-[#000000]">{d.location ?? "—"}</span>
+              <span className="text-[#000000]">◆</span>
             </span>
           ))}
         </div>
@@ -218,7 +246,7 @@ const Index = () => {
 
       {/* ── 03 COVER STORY ──────────────────────────────────── */}
       {cover && (
-        <section className="relative z-10 bg-[#FFFFFF]">
+        <section id="zug-cover" className="relative z-10 bg-[#FFFFFF]">
           <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 px-0 md:grid-cols-[1.25fr_1fr] md:min-h-[92vh]">
             <Reveal className="relative">
               <EditorialImage
@@ -234,18 +262,22 @@ const Index = () => {
               </div>
             </Reveal>
 
-            <Reveal delay={120} className="flex flex-col justify-center gap-8 px-8 py-16 md:px-14 md:py-24">
-              <Editable as="p" contentKey="landing.cover_story_eyebrow" className="palace-eyebrow">Cover Story</Editable>
-              <h2 className="palace-serif font-light text-[clamp(2.2rem,4vw,3.6rem)] leading-[1.02] text-[#000000]">
+            <Reveal delay={120} className="relative flex flex-col justify-center gap-7 border-l-[1.5px] border-black px-8 py-16 md:px-14 md:py-24">
+              <div className="measure-head">
+                <span className="coord-chip">B2</span>
+                <span className="measure-rule" />
+                <Editable as="span" contentKey="landing.cover_story_eyebrow" className="sys-label">Cover Story</Editable>
+              </div>
+              <h2 className="palace-serif font-light text-[clamp(2.6rem,5.5vw,5.4rem)] leading-[0.92] tracking-[-0.04em] text-[#000000]">
                 {cover.brand_name}. <Editable as="span" contentKey="landing.cover_story_headline" className="italic">Eine Handschrift,<br/>die man wiedererkennt.</Editable>
               </h2>
               {cover.story && (
-                <p className="max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80">
+                <p className="max-w-md text-[0.95rem] leading-relaxed text-[#000000]">
                   {cover.story}
                 </p>
               )}
               {cover.quote && (
-                <blockquote className="max-w-md border-l border-[rgba(0,0,0,.28)] pl-5">
+                <blockquote className="max-w-md border-l-2 border-[#000000] pl-5">
                   <p className="palace-serif italic text-[1.4rem] leading-snug text-[#000000]">„{cover.quote}"</p>
                   <cite className="mt-3 block not-italic palace-eyebrow">{cover.quote_role ?? cover.brand_name}</cite>
                 </blockquote>
@@ -258,18 +290,23 @@ const Index = () => {
         </section>
       )}
 
+      {/* Checkered board-rule — a literal board edge between movements. */}
+      <div aria-hidden className="board-rule relative z-10" />
+
       {/* ── 04 EDITORIAL GRID · Frisch aus den Ateliers ───── */}
-      <section className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
+      <section id="zug-grid" className="relative z-10 bg-[#FFFFFF] px-6 py-32 md:px-14 md:py-52">
         <div className="mx-auto max-w-[1600px]">
-          <div className="mb-16 flex items-end justify-between gap-8">
-            <div>
-              <ChapterMark index="01" label={gridChapterLabel} />
-              <h2 className="palace-serif mt-4 font-light text-[clamp(2rem,4vw,3.4rem)] leading-[1.02]">
-                <Editable as="span" contentKey="landing.grid_headline_a">Frisch aus </Editable>
-                <Editable as="span" contentKey="landing.grid_headline_b" className="italic">den Ateliers.</Editable>
-              </h2>
-            </div>
-            <Link to="/neu" className="palace-eyebrow uline text-[#000000]">
+          <div className="measure-head mb-6">
+            <span className="coord-chip-invert coord-chip">C3</span>
+            <span className="measure-rule" />
+            <span className="sys-label whitespace-nowrap">{gridChapterLabel}</span>
+          </div>
+          <div className="mb-16 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+            <h2 className="palace-serif font-light text-[clamp(2.4rem,5.5vw,5rem)] leading-[0.9] tracking-[-0.04em]">
+              <Editable as="span" contentKey="landing.grid_headline_a">Frisch aus </Editable>
+              <Editable as="span" contentKey="landing.grid_headline_b" className="italic">den Ateliers.</Editable>
+            </h2>
+            <Link to="/neu" className="sys-label uline whitespace-nowrap text-[#000000]">
               <Editable as="span" contentKey="landing.grid_cta">Alles Neue →</Editable>
             </Link>
           </div>
@@ -323,13 +360,12 @@ const Index = () => {
       {/* ── 05 STATEMENT BANNER — rotates through featured designers ── */}
       <DynamicBanner />
 
-
       {/* ── 05c PREMIÈRE — kuratierte Designer-Videos ─────── */}
       <PremiereSection />
 
       {/* ── 06 CURATED COLLECTION · horizontal scroll ─────── */}
       {collection.items.length > 0 && (
-      <section ref={trackSectionRef} className="relative z-10 bg-[#FFFFFF]" style={{ height: "320vh" }}>
+      <section id="zug-kollektion" ref={trackSectionRef} className="relative z-10 bg-[#FFFFFF]" style={{ height: "320vh" }}>
         <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
           <div className="px-6 pt-24 md:px-14">
             <div className="mx-auto flex max-w-[1600px] items-end justify-between gap-8">
@@ -337,7 +373,7 @@ const Index = () => {
                 <p className="palace-eyebrow">
                   <Editable as="span" contentKey="landing.collection_eyebrow">Kuratierte Kollektion</Editable> № {collection.number}
                 </p>
-                <h2 className="palace-serif mt-4 font-light text-[clamp(2rem,4vw,3.4rem)] leading-[1.02]">
+              <h2 className="palace-serif mt-4 font-light text-[clamp(2.4rem,5vw,4.4rem)] leading-[0.98] tracking-[-0.03em]">
                   {collection.title}. <span className="italic">{collection.subtitle}</span>
                 </h2>
               </div>
@@ -383,15 +419,19 @@ const Index = () => {
       </section>
 )}
       {/* ── 07 ATELIER FEATURE ──────────────────────────────── */}
-      <section className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
+      <section id="zug-atelier" className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-24">
           <Reveal className="flex flex-col justify-center">
-            <Editable as="p" contentKey="atelier_eyebrow" className="palace-eyebrow">Im Atelier</Editable>
-            <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
+            <div className="measure-head">
+              <span className="coord-chip">E5</span>
+              <span className="measure-rule" />
+              <Editable as="span" contentKey="atelier_eyebrow" className="sys-label">Im Atelier</Editable>
+            </div>
+            <h3 className="palace-serif mt-8 font-light text-[clamp(2.2rem,4.2vw,3.8rem)] leading-[0.94] tracking-[-0.03em]">
               <Editable as="span" contentKey="atelier_headline_a">Zwischen zwei Zügen — </Editable>
               <Editable as="span" contentKey="atelier_headline_b" className="italic">wie ein Stück entsteht.</Editable>
             </h3>
-            <Editable as="p" contentKey="atelier_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80" multiline>
+            <Editable as="p" contentKey="atelier_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#000000]" multiline>
               Ein Vormittag im Studio, drei Kaffee, ein Schnitt, der nach Wochen endlich sitzt — wir zeigen die Momente vor dem Bild.
             </Editable>
             <Link to="/designers" className="palace-eyebrow uline mt-10 w-fit text-[#000000]">
@@ -410,16 +450,20 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ── 08 IM HINTERGRUND (Helix) ───────────────────────── */}
-      <section className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
+      {/* ── 08 IM HINTERGRUND (Helix) ───���───────────────────── */}
+      <section id="zug-hintergrund" className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-16 md:grid-cols-2">
           <Reveal>
-            <Editable as="p" contentKey="landing.helix_eyebrow" className="palace-eyebrow">Im Hintergrund</Editable>
-            <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,3.6vw,3.2rem)] leading-[1.02]">
+            <div className="measure-head">
+              <span className="coord-chip-invert coord-chip">F6</span>
+              <span className="measure-rule" />
+              <Editable as="span" contentKey="landing.helix_eyebrow" className="sys-label">Im Hintergrund</Editable>
+            </div>
+            <h3 className="palace-serif mt-8 font-light text-[clamp(2.2rem,4.2vw,3.8rem)] leading-[0.94] tracking-[-0.03em]">
               <Editable as="span" contentKey="landing.helix_headline_a">Der Raum merkt sich, </Editable>
               <Editable as="span" contentKey="landing.helix_headline_b" className="italic">was dich bewegt.</Editable>
             </h3>
-            <Editable as="p" contentKey="landing.helix_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80" multiline>
+            <Editable as="p" contentKey="landing.helix_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#000000]" multiline>
               Beim Sehen, beim Verweilen, beim Zurückkommen wird die Ausstellung von selbst ein bisschen mehr deine.
             </Editable>
             <button
@@ -436,24 +480,28 @@ const Index = () => {
       </section>
 
       {/* ── 09 DESIGNER CTA ─────────────────────────────────── */}
-      <section className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
+      <section id="zug-buehne" className="relative z-10 bg-[#FFFFFF] px-6 py-28 md:px-14 md:py-40">
         <div className="mx-auto max-w-[1200px] text-center">
           <Reveal>
-            <Editable as="p" contentKey="cta_eyebrow" className="palace-eyebrow">Für Designer</Editable>
-            <h3 className="palace-serif mt-6 font-light text-[clamp(2rem,4vw,3.6rem)] leading-[1.02]">
+            <div className="measure-head mx-auto max-w-xl">
+              <span className="coord-chip-invert coord-chip">G7</span>
+              <span className="measure-rule" />
+              <Editable as="span" contentKey="cta_eyebrow" className="sys-label">Für Designer · Umwandlung</Editable>
+            </div>
+            <h3 className="palace-serif mt-8 font-light text-[clamp(2.4rem,5vw,4.6rem)] leading-[0.92] tracking-[-0.04em]">
               <Editable as="span" contentKey="cta_headline_a">Die Bühne steht. </Editable>
               <Editable as="span" contentKey="cta_headline_b" className="italic">Der Auftritt gehört dir.</Editable>
             </h3>
           </Reveal>
 
-          <div className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-0 border-l-[1.5px] border-t-[1.5px] border-black md:grid-cols-2">
             <Reveal>
               <Link
                 to="/apply"
-                className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
+                className="group flex h-full flex-col justify-between border-b-[1.5px] border-r-[1.5px] border-black p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
-                <Editable as="p" contentKey="landing.cta_label_apply" className="palace-eyebrow group-hover:text-[#A8A49B]">Bewerben</Editable>
-                <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
+                <Editable as="p" contentKey="landing.cta_label_apply" className="sys-label group-hover:text-[#FFFFFF]">Bewerben ↗</Editable>
+                <p className="palace-serif mt-16 font-light text-[2rem] italic leading-tight">
                   <Editable as="span" contentKey="cta_card_a">Als Designer<br/>bewerben.</Editable>
                 </p>
               </Link>
@@ -461,10 +509,10 @@ const Index = () => {
             <Reveal delay={120}>
               <Link
                 to="/neu"
-                className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
+                className="group flex h-full flex-col justify-between border-b-[1.5px] border-r-[1.5px] border-black p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
-                <Editable as="p" contentKey="landing.cta_label_view" className="palace-eyebrow group-hover:text-[#A8A49B]">Sehen</Editable>
-                <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
+                <Editable as="p" contentKey="landing.cta_label_view" className="sys-label group-hover:text-[#FFFFFF]">Sehen ↗</Editable>
+                <p className="palace-serif mt-16 font-light text-[2rem] italic leading-tight">
                   <Editable as="span" contentKey="cta_card_b">Zur laufenden<br/>Ausstellung.</Editable>
                 </p>
               </Link>
@@ -482,11 +530,15 @@ const Index = () => {
       >
         <div className="sticky top-0 flex h-screen items-end justify-center px-6 pb-24 md:px-14">
           <div className="text-center">
-            <Editable as="p" contentKey="landing.signature_eyebrow" className="palace-eyebrow">Signatur</Editable>
+            <div className="measure-head mx-auto w-fit">
+              <span className="coord-chip-invert coord-chip">1–0</span>
+              <span className="h-[1.5px] w-16 bg-black" />
+              <Editable as="span" contentKey="landing.signature_eyebrow" className="sys-label">Umwandlung vollzogen</Editable>
+            </div>
             <p
               key={finaleText}
-              className="palace-serif mt-6 font-light italic text-[#000000] motion-reveal"
-              style={{ fontSize: "clamp(2rem, 5vw, 4.4rem)", lineHeight: 1.05 }}
+              className="palace-serif mt-8 font-light italic text-[#000000] motion-reveal"
+              style={{ fontSize: "clamp(2.4rem, 6.5vw, 6rem)", lineHeight: 0.95, letterSpacing: "-0.03em" }}
             >
               {finaleText}
             </p>
@@ -518,7 +570,7 @@ function HeroPrompt() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-transparent px-4 text-left text-[0.95rem] text-[#000000] placeholder:text-[#7C7972] focus:outline-none"
+        className="flex-1 bg-transparent px-4 text-left text-[0.95rem] text-[#000000] placeholder:text-[#666666] focus:outline-none"
         aria-label="Frag PAWN"
       />
       <button

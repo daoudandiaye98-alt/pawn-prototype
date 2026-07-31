@@ -402,13 +402,13 @@ const DesignerPage = () => {
           <span
             key={label}
             className={`palace-eyebrow pointer-events-auto whitespace-nowrap transition-colors ${
-              activeChapter === i ? "text-[#FFFFFF] mix-blend-difference" : "text-[#8F8B82]"
+              activeChapter === i ? "text-[#FFFFFF] mix-blend-difference" : "text-[#8A8A8A]"
             }`}
           >
             0{i + 1} · {label}
           </span>
         ))}
-        <span className="palace-eyebrow pointer-events-auto text-[#8F8B82]">05 · Im Haus</span>
+        <span className="palace-eyebrow pointer-events-auto text-[#8A8A8A]">05 · Im Haus</span>
       </nav>
 
       <div ref={pageRef}>
@@ -478,18 +478,18 @@ const DesignerPage = () => {
 
 
             {/* Top eyebrow */}
-            <p className="palace-eyebrow absolute left-6 top-24 z-[10] md:left-14" style={{ color: "rgba(241,238,231,0.72)" }}>
+            <p className="palace-eyebrow absolute left-6 top-24 z-[10] md:left-14" style={{ color: "rgba(255, 255, 255,0.72)" }}>
               PAWN präsentiert · Retrospektive · Ausgabe {edition}
             </p>
 
             {/* Bottom corners */}
             <div className="absolute inset-x-0 bottom-8 z-[10] flex items-end justify-between px-6 md:bottom-14 md:px-14">
               <div>
-                <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.7)" }}>Gründung</p>
+                <p className="palace-eyebrow" style={{ color: "rgba(255, 255, 255,0.7)" }}>Gründung</p>
                 <p className="palace-serif mt-2 italic text-[1rem] text-[#FFFFFF]">{designer.location}</p>
               </div>
               <div className="text-right">
-                <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.7)" }}>
+                <p className="palace-eyebrow" style={{ color: "rgba(255, 255, 255,0.7)" }}>
                   {designer.tags?.[0] ?? "Welt"} {designer.collectionTitle ? `· ${designer.collectionTitle}` : ""}
                 </p>
                 <p className="palace-serif mt-2 italic text-[1rem] text-[#FFFFFF]">Aktuelle Ausstellung</p>
@@ -497,14 +497,14 @@ const DesignerPage = () => {
             </div>
 
             <div className="absolute bottom-2 left-1/2 z-[10] -translate-x-1/2 text-center">
-              <span className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.6)" }}>Der Vorhang öffnet sich</span>
+              <span className="palace-eyebrow" style={{ color: "rgba(255, 255, 255,0.6)" }}>Der Vorhang öffnet sich</span>
               <span className="mx-auto mt-2 block h-6 w-px palace-drip bg-[#FFFFFF]/60" />
             </div>
           </div>
         </section>
 
         {/* BIGBAND — endloses Marquee */}
-        <div className="overflow-hidden border-y border-[rgba(241,238,231,0.12)] bg-[#0A0A0C] py-8 text-[#FFFFFF]">
+        <div className="overflow-hidden border-y border-[rgba(255, 255, 255,0.12)] bg-[#0A0A0C] py-8 text-[#FFFFFF]">
           <div className="palace-marquee flex whitespace-nowrap">
             {Array.from({ length: 8 }).map((_, i) => (
               <span
@@ -515,7 +515,7 @@ const DesignerPage = () => {
                   fontWeight: 300,
                   fontStyle: i % 2 === 1 ? "italic" : "normal",
                   color: i % 2 === 1 ? "#FFFFFF" : "transparent",
-                  WebkitTextStroke: i % 2 === 1 ? "0" : "1px rgba(241,238,231,0.4)",
+                  WebkitTextStroke: i % 2 === 1 ? "0" : "1px rgba(255, 255, 255,0.4)",
                 }}
               >
                 {designer.name} ·
@@ -674,7 +674,7 @@ const DesignerPage = () => {
               {campaignVideos.map((c) => (
                 <div
                   key={c.id}
-                  className="relative flex-none snap-start border border-[rgba(0,0,0,.18)] bg-[#F1EEE7]"
+                  className="relative flex-none snap-start border border-[rgba(0,0,0,.18)] bg-[#FFFFFF]"
                   style={{ width: "min(62vw, 320px)", aspectRatio: "9 / 16" }}
                 >
                   <video
@@ -743,7 +743,7 @@ const DesignerPage = () => {
           >
             {designer.atelierCaption ?? `${designer.location} · Im Atelier.`}
           </p>
-          <p className="palace-eyebrow absolute left-6 top-24 z-10 md:left-14" style={{ color: "rgba(241,238,231,0.7)" }}>
+          <p className="palace-eyebrow absolute left-6 top-24 z-10 md:left-14" style={{ color: "rgba(255, 255, 255,0.7)" }}>
             Akt IV · Atelier
           </p>
         </section>
@@ -751,12 +751,12 @@ const DesignerPage = () => {
         {/* AKT V — IM HAUS (Plakette) */}
         <section className="bg-[#0A0A0C] px-6 py-32 text-[#FFFFFF] md:px-14 md:py-40">
           <div className="mx-auto max-w-2xl">
-            <p className="palace-eyebrow text-center" style={{ color: "rgba(241,238,231,0.7)" }}>
+            <p className="palace-eyebrow text-center" style={{ color: "rgba(255, 255, 255,0.7)" }}>
               <Editable as="span" contentKey="retro_plaque_act">Akt V · Im Haus</Editable>
             </p>
             <div
-              className="relative mt-14 border border-[rgba(241,238,231,0.4)] px-10 py-16 text-center"
-              style={{ boxShadow: "inset 0 0 0 1px rgba(241,238,231,0.05)" }}
+              className="relative mt-14 border border-[rgba(255, 255, 255,0.4)] px-10 py-16 text-center"
+              style={{ boxShadow: "inset 0 0 0 1px rgba(255, 255, 255,0.05)" }}
             >
               <CornerSquare pos="tl" />
               <CornerSquare pos="tr" />
@@ -770,8 +770,8 @@ const DesignerPage = () => {
               >
                 <Editable as="span" contentKey="retro_plaque_headline">Aufgenommen in den PAWN-Katalog.</Editable>
               </p>
-              <div className="mx-auto mt-10 h-px w-16 bg-[rgba(241,238,231,0.3)]" />
-              <dl className="mx-auto mt-10 space-y-4 text-[0.9rem]" style={{ color: "rgba(241,238,231,0.85)" }}>
+              <div className="mx-auto mt-10 h-px w-16 bg-[rgba(255, 255, 255,0.3)]" />
+              <dl className="mx-auto mt-10 space-y-4 text-[0.9rem]" style={{ color: "rgba(255, 255, 255,0.85)" }}>
                 <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_house">Haus №</Editable>} value={`${houseLabel} von ${totalLabel}`} />
                 <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_since">Im Haus seit</Editable>} value={houseSince} />
                 <PlaqueRow labelNode={<Editable as="span" contentKey="retro_plaque_label_curator">Kuratiert von</Editable>} value={`PAWN · Ausgabe ${edition}`} />
@@ -785,7 +785,7 @@ const DesignerPage = () => {
         {nextDesigner && (
           <section className="group relative bg-[#0A0A0C] py-32 md:py-48">
             <div className="pointer-events-none mx-auto max-w-[1600px] text-center">
-              <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.6)" }}>Akt VI · Das nächste Haus</p>
+              <p className="palace-eyebrow" style={{ color: "rgba(255, 255, 255,0.6)" }}>Akt VI · Das nächste Haus</p>
             </div>
             <Link
               to={`/designer/${nextDesigner.slug}`}
@@ -798,7 +798,7 @@ const DesignerPage = () => {
                   lineHeight: 0.9,
                   letterSpacing: "-0.03em",
                   color: "transparent",
-                  WebkitTextStroke: "1px rgba(241,238,231,0.6)",
+                  WebkitTextStroke: "1px rgba(255, 255, 255,0.6)",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.color = "#FFFFFF";
@@ -806,12 +806,12 @@ const DesignerPage = () => {
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.color = "transparent";
-                  e.currentTarget.style.webkitTextStroke = "1px rgba(241,238,231,0.6)";
+                  e.currentTarget.style.webkitTextStroke = "1px rgba(255, 255, 255,0.6)";
                 }}
               >
                 {nextDesigner.brand_name}
               </h2>
-              <p className="palace-eyebrow mt-8" style={{ color: "rgba(241,238,231,0.7)" }}>
+              <p className="palace-eyebrow mt-8" style={{ color: "rgba(255, 255, 255,0.7)" }}>
                 Die Ausstellung endet nie — weiter →
               </p>
             </Link>
@@ -864,7 +864,7 @@ function CornerSquare({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
 function PlaqueRow({ label, labelNode, value }: { label?: string; labelNode?: React.ReactNode; value: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-6">
-      <dt className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.55)" }}>{labelNode ?? label}</dt>
+      <dt className="palace-eyebrow" style={{ color: "rgba(255, 255, 255,0.55)" }}>{labelNode ?? label}</dt>
       <dd className="palace-serif italic">{value}</dd>
     </div>
   );

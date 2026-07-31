@@ -45,8 +45,8 @@
     --destructive: 0 0% 0%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 0% / 0.18;
-    --border-strong: 0 0% 0% / 0.85;
+    --border: 0 0% 0% / 0.55;
+    --border-strong: 0 0% 0% / 1;
     --input: 0 0% 0% / 0.85;
     --ring: 0 0% 0%;
 
@@ -67,10 +67,15 @@
     --shadow-editorial: 6px 6px 0 0 #000;
     --shadow-card: 6px 6px 0 0 #000;
 
-    /* Motion — harder */
+    /* Motion — two intentional voices.
+       ease-pawn: hard snap for interaction (hovers, inversions, toggles).
+       ease-silk: expo-out "fall" for arrivals (reveals, curtains, images). */
     --ease-pawn: cubic-bezier(0.76, 0, 0.18, 1);
+    --ease-silk: cubic-bezier(0.19, 1, 0.22, 1);
     --dur-micro: 250ms;
-    --dur-reveal: 600ms;
+    --dur-reveal: 720ms;
+    --dur-slow: 1000ms;
+    --dur-cinematic: 1300ms;
   }
 
   .dark {
@@ -118,10 +123,10 @@
 }
 
 @layer components {
-  .t-display-xl { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.02em; line-height: 0.9;  font-size: clamp(3rem, 7vw, 6.5rem); }
-  .t-display-lg { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.018em; line-height: 0.95; font-size: clamp(2.5rem, 5vw, 4.5rem); }
-  .t-display-md { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.015em; line-height: 1.02; font-size: clamp(1.75rem, 3vw, 2.5rem); }
-  .t-display-sm { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.01em;  line-height: 1.1;  font-size: 1.35rem; }
+  .t-display-xl { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.045em; line-height: 0.84; font-size: clamp(3.4rem, 10vw, 10rem); }
+  .t-display-lg { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.03em;  line-height: 0.9;  font-size: clamp(2.6rem, 6vw, 6rem); }
+  .t-display-md { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.02em;  line-height: 0.98; font-size: clamp(1.9rem, 3.6vw, 3rem); }
+  .t-display-sm { font-family: "Playfair Display", Georgia, serif; font-weight: 600; letter-spacing: -0.01em;  line-height: 1.08; font-size: 1.4rem; }
 
   .t-body-lg { font-family: Inter, system-ui, sans-serif; font-weight: 400; font-size: 1.05rem; line-height: 1.55; }
   .t-body-md { font-family: Inter, system-ui, sans-serif; font-weight: 400; font-size: 0.92rem; line-height: 1.55; }
@@ -169,14 +174,147 @@
   }
 
   .motion-micro  { transition: color var(--dur-micro) var(--ease-pawn), background-color var(--dur-micro) var(--ease-pawn), border-color var(--dur-micro) var(--ease-pawn), opacity var(--dur-micro) var(--ease-pawn); }
-  .motion-reveal { animation: pawn-reveal var(--dur-reveal) var(--ease-pawn) both; }
-  @keyframes pawn-reveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .motion-reveal { animation: pawn-reveal var(--dur-reveal) var(--ease-silk) both; }
+  @keyframes pawn-reveal { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
   @keyframes breathe { 0% { transform: scale(1); } 45% { transform: scale(1.012); } 100% { transform: scale(1); } }
+
+  /* ── Curtain headline ────────────────────────────────────
+     True editorial mask: each line rises from behind a static
+     hairline window. Wrap each line in .curtain-line inside a
+     .curtain parent. Staggered so the eye reads top-to-bottom. */
+  .curtain > .curtain-line { display: block; overflow: hidden; padding-bottom: 0.14em; margin-bottom: -0.14em; }
+  .curtain > .curtain-line > * { display: block; transform: translateY(108%); animation: curtain-rise var(--dur-cinematic) var(--ease-silk) both; }
+  .curtain > .curtain-line:nth-child(1) > * { animation-delay: 0.05s; }
+  .curtain > .curtain-line:nth-child(2) > * { animation-delay: 0.20s; }
+  .curtain > .curtain-line:nth-child(3) > * { animation-delay: 0.35s; }
+  .curtain > .curtain-line:nth-child(4) > * { animation-delay: 0.50s; }
+  @keyframes curtain-rise { to { transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .motion-reveal,
+    .palace-reveal,
+    .curtain > .curtain-line > * {
+      animation: none !important;
+      transition: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+    }
+  }
 
   /* Hard offset shadow utility */
   .shadow-hard      { box-shadow: 6px 6px 0 0 #000; }
   .shadow-hard-sm   { box-shadow: 4px 4px 0 0 #000; }
   .shadow-hard-invert { box-shadow: 6px 6px 0 0 #fff; }
+
+  /* ── Chessboard foundation ───────────────────────────────
+     The board follows you. A whisper-level grid of alternating
+     squares that unifies the site with the pawn metaphor —
+     felt, never announced. Pure black on transparent. */
+  .board-field {
+    background-image:
+      conic-gradient(rgba(0,0,0,.022) 25%, transparent 0 50%, rgba(0,0,0,.022) 0 75%, transparent 0);
+    background-size: 120px 120px;
+    background-position: center;
+  }
+  .board-field-sm { background-size: 64px 64px; }
+  .board-field-strong {
+    background-image:
+      conic-gradient(rgba(0,0,0,.045) 25%, transparent 0 50%, rgba(0,0,0,.045) 0 75%, transparent 0);
+  }
+  /* Dark sections: invert the whisper so the board reads on black. */
+  .board-field-invert {
+    background-image:
+      conic-gradient(rgba(255,255,255,.05) 25%, transparent 0 50%, rgba(255,255,255,.05) 0 75%, transparent 0);
+    background-size: 120px 120px;
+    background-position: center;
+  }
+  /* Checkered board edge — a bold movement divider, not a whisper.
+     A full rank of alternating squares framed by hard black rules. */
+  .board-rule {
+    height: 28px;
+    background-image:
+      conic-gradient(#000 25%, #fff 0 50%, #000 0 75%, #fff 0);
+    background-size: 28px 28px;
+    background-position: center;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+  }
+
+  /* ── The Curatorial System ───────────────────────────────
+     Origin (chess) + Vogue drama + sterile strict system.
+     Visible measurement makes the space read as vast and exact:
+     coordinate indices, running rails, ruled meta rows, corner
+     ticks — all pure black hairlines, monospaced numerals. */
+
+  /* Ruled meta row — a strict running header/footer of labels
+     separated by hard vertical rules. Space between = authority. */
+  .sys-meta {
+    display: flex; align-items: stretch;
+    border-top: 1.5px solid #000; border-bottom: 1.5px solid #000;
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.6rem; letter-spacing: 0.34em; text-transform: uppercase;
+  }
+  .sys-meta > * {
+    display: flex; align-items: center;
+    padding: 0.7rem 1.1rem;
+    border-right: 1.5px solid #000;
+    white-space: nowrap;
+  }
+  .sys-meta > *:last-child { border-right: 0; }
+
+  /* Coordinate index — the chess address of a section (e.g. A·01). */
+  .coord-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 2.4rem; height: 2.4rem;
+    border: 1.5px solid #000;
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.72rem; letter-spacing: 0.1em; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    background: #fff; color: #000;
+  }
+  .coord-chip-invert { background: #000; color: #fff; }
+
+  /* System label — the smallest, most architectural mark. */
+  .sys-label {
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.58rem; letter-spacing: 0.4em; text-transform: uppercase;
+    font-variant-numeric: tabular-nums; color: #000;
+  }
+
+  /* Header/nav label — hard, clean, technical. The chrome speaks the
+     same monospaced language as the strict system. */
+  .nav-mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-weight: 500; text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Measured section head — a coordinate chip + hard rule + eyebrow,
+     the recurring "chapter opener" of the strict system. */
+  .measure-head { display: flex; align-items: center; gap: 1rem; }
+  .measure-head .measure-rule { flex: 1; height: 1.5px; background: #000; }
+
+  /* Running vertical rail — a caption fixed to a section's edge,
+     read bottom-to-top like a printed spine. */
+  .sys-rail {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.58rem; letter-spacing: 0.42em; text-transform: uppercase;
+    color: #000;
+  }
+
+  /* Corner ticks — L-shaped registration marks framing a stage. */
+  .sys-tick { position: absolute; width: 18px; height: 18px; }
+  .sys-tick::before, .sys-tick::after { content: ""; position: absolute; background: #000; }
+  .sys-tick::before { width: 18px; height: 1.5px; }
+  .sys-tick::after  { width: 1.5px; height: 18px; }
+  .sys-tick-tl { top: 0; left: 0; }
+  .sys-tick-tr { top: 0; right: 0; }
+  .sys-tick-tr::before { right: 0; } .sys-tick-tr::after { right: 0; }
+  .sys-tick-bl { bottom: 0; left: 0; } .sys-tick-bl::before { bottom: 0; } .sys-tick-bl::after { bottom: 0; }
+  .sys-tick-br { bottom: 0; right: 0; } .sys-tick-br::before { bottom: 0; right: 0; } .sys-tick-br::after { bottom: 0; right: 0; }
 
   /* Inversion hover — replaces opacity hovers */
   .hover-invert { transition: background-color var(--dur-micro) var(--ease-pawn), color var(--dur-micro) var(--ease-pawn); }
@@ -196,7 +334,7 @@
     --palace-hair-strong: rgba(0,0,0,.85);
     --palace-gap: 1.5rem;
     --palace-gap-md: 2rem;
-    --palace-reveal-dur: .6s;
+    --palace-reveal-dur: .85s;
     --palace-image-contrast: 1.06;
     font-family: Inter, system-ui, sans-serif;
     font-weight: 400;
@@ -232,18 +370,24 @@
 
   .palace .palace-image-inner {
     filter: grayscale(1) contrast(var(--palace-image-contrast));
-    transition: transform .8s var(--ease-pawn);
-    will-change: transform;
+    transition: transform 1s var(--ease-silk), filter .9s var(--ease-silk);
+    will-change: transform, filter;
   }
-  .palace .palace-image:hover .palace-image-inner { transform: scale(1.04); }
+  .palace .palace-image:hover .palace-image-inner {
+    transform: scale(1.05);
+    filter: grayscale(0) contrast(1.02);
+  }
 
   .palace-reveal {
     opacity: 0;
-    transform: translateY(24px);
-    transition: opacity var(--palace-reveal-dur, .6s) var(--ease-pawn),
-                transform var(--palace-reveal-dur, .6s) var(--ease-pawn);
+    transform: translateY(30px);
+    filter: blur(7px);
+    transition: opacity var(--palace-reveal-dur, .8s) var(--ease-silk),
+                transform var(--palace-reveal-dur, .8s) var(--ease-silk),
+                filter var(--palace-reveal-dur, .8s) var(--ease-silk);
+    will-change: opacity, transform, filter;
   }
-  .palace-reveal.is-visible { opacity: 1; transform: none; }
+  .palace-reveal.is-visible { opacity: 1; transform: none; filter: blur(0); }
 
   .palace .palace-btn {
     display: inline-flex; align-items: center; gap: .6rem;
