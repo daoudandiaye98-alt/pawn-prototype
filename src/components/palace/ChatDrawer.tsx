@@ -30,8 +30,6 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [busy, setBusy] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ url: string; path: string } | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
-  const [showPinterest, setShowPinterest] = useState(false);
-  const [pinBoard, setPinBoard] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const sessionId = useMemo(() => getSessionId(), []);
