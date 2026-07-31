@@ -2,18 +2,23 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { ImagePlus, Link2, X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 
 /**
  * Teil 21a — Das Gespräch findet auf der Seite statt.
- * Ersetzt das Öffnen einer Seitenleiste: Textbox + Verlauf leben direkt auf
- * /dna. Bilder (Mehrfachauswahl) werden gelesen (Vision, nie bewertet) und
- * landen dauerhaft, einzeln löschbar, in der Stil-Referenzen-Ablage.
+ * Textbox + Verlauf leben direkt auf /dna. Bilder (Mehrfachauswahl) werden
+ * gelesen (Vision, nie bewertet) und landen dauerhaft, einzeln löschbar, in
+ * der Stil-Referenzen-Ablage. Bilder hochladen ist der einzige Weg — kein
+ * externer Dienst.
  */
 
 interface ChatMsg { id: string; role: "user" | "assistant"; text: string; at: string; imageUrls?: string[] }
 interface StyleRef { id: string; url: string; beschreibung: string | null; herkunft: string; created_at: string }
-interface PendingImage { url: string; path: string; file: File }
+interface PendingImage { id: string; previewUrl: string; file: File }
+
+const MAX_IMAGES = 6;
+const MAX_BYTES = 8 * 1024 * 1024;
+const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/avif"];
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "server";
@@ -21,6 +26,15 @@ function getSessionId(): string {
   let id = window.localStorage.getItem(KEY);
   if (!id) { id = (crypto.randomUUID?.() ?? String(Date.now())) as string; window.localStorage.setItem(KEY, id); }
   return id;
+}
+
+function humanUploadError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("exceeded") || m.includes("too large") || m.includes("payload")) return "Die Datei ist zu groß (max. 8 MB).";
+  if (m.includes("mime") || m.includes("content type")) return "Dieses Dateiformat wird nicht unterstützt. Bitte JPG, PNG oder WEBP.";
+  if (m.includes("duplicate") || m.includes("already exists")) return "Dieses Bild wurde gerade schon hochgeladen.";
+  if (m.includes("row-level") || m.includes("unauthorized") || m.includes("jwt")) return "Deine Sitzung ist abgelaufen. Bitte melde dich neu an.";
+  return `Hochladen fehlgeschlagen: ${message}`;
 }
 
 export function DnaChat() {
@@ -31,8 +45,7 @@ export function DnaChat() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
-  const [showPinterest, setShowPinterest] = useState(false);
-  const [pinBoard, setPinBoard] = useState("");
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const sessionId = useRef(getSessionId());
@@ -50,28 +63,51 @@ export function DnaChat() {
   };
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
   useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [messages]);
+  useEffect(() => () => { pendingImages.forEach((p) => URL.revokeObjectURL(p.previewUrl)); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const addFiles = (files: FileList | null) => {
-    if (!files) return;
-    const list = Array.from(files).slice(0, 6 - pendingImages.length);
-    for (const file of list) {
-      if (!file.type.startsWith("image/")) { toast.error("Bitte nur Bilder wählen."); continue; }
-      if (file.size > 8 * 1024 * 1024) { toast.error(`${file.name}: zu groß (max. 8 MB).`); continue; }
-      setPendingImages((p) => [...p, { url: URL.createObjectURL(file), path: "", file }]);
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files);
+    const free = MAX_IMAGES - pendingImages.length;
+    if (free <= 0) { toast.error(`Höchstens ${MAX_IMAGES} Bilder auf einmal.`); return; }
+    if (incoming.length > free) toast.message(`Nur die ersten ${free} Bilder werden übernommen.`);
+    const accepted: PendingImage[] = [];
+    for (const file of incoming.slice(0, free)) {
+      const typeOk = file.type ? (file.type.startsWith("image/") && (ALLOWED.includes(file.type) || file.type.startsWith("image/"))) : false;
+      if (!typeOk) { toast.error(`${file.name}: kein Bildformat. Bitte JPG, PNG oder WEBP.`); continue; }
+      if (file.size > MAX_BYTES) { toast.error(`${file.name}: zu groß (max. 8 MB).`); continue; }
+      accepted.push({ id: crypto.randomUUID(), previewUrl: URL.createObjectURL(file), file });
     }
+    if (accepted.length) setPendingImages((p) => [...p, ...accepted]);
   };
-  const removePending = (i: number) => setPendingImages((p) => p.filter((_, idx) => idx !== i));
+
+  const removePending = (id: string) => setPendingImages((p) => {
+    const hit = p.find((x) => x.id === id);
+    if (hit) URL.revokeObjectURL(hit.previewUrl);
+    return p.filter((x) => x.id !== id);
+  });
 
   const uploadPending = async (): Promise<{ urls: string[]; paths: string[] }> => {
     if (!user || pendingImages.length === 0) return { urls: [], paths: [] };
     const urls: string[] = []; const paths: string[] = [];
-    for (const img of pendingImages) {
-      const path = `${user.id}/dna/${Date.now()}-${img.file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-      const { error } = await supabase.storage.from("taste-uploads").upload(path, img.file, { upsert: false });
-      if (error) { toast.error(error.message); continue; }
-      const { data } = await supabase.storage.from("taste-uploads").createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (data?.signedUrl) { urls.push(data.signedUrl); paths.push(path); }
+    const total = pendingImages.length;
+    setUploadPct(1);
+    for (let i = 0; i < total; i++) {
+      const img = pendingImages[i];
+      const safeName = img.file.name.replace(/[^a-zA-Z0-9.-]/g, "_") || "bild.jpg";
+      const path = `${user.id}/dna/${Date.now()}-${i}-${safeName}`;
+      const { error } = await supabase.storage.from("taste-uploads").upload(path, img.file, {
+        upsert: false,
+        contentType: img.file.type || "image/jpeg",
+      });
+      if (error) { toast.error(humanUploadError(error.message)); continue; }
+      const { data, error: signErr } = await supabase.storage.from("taste-uploads").createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr || !data?.signedUrl) { toast.error("Bild gespeichert, aber die Vorschau konnte nicht erzeugt werden."); continue; }
+      urls.push(data.signedUrl); paths.push(path);
+      setUploadPct(Math.round(((i + 1) / total) * 100));
     }
+    window.setTimeout(() => setUploadPct(null), 500);
+    if (urls.length === 0) toast.error("Kein Bild konnte hochgeladen werden.");
     return { urls, paths };
   };
 
@@ -81,6 +117,8 @@ export function DnaChat() {
     if (!text && pendingImages.length === 0) return;
     setBusy(true);
     const { urls: imageUrls, paths: imagePaths } = await uploadPending();
+    if (!text && imageUrls.length === 0) { setBusy(false); return; }
+    pendingImages.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setPendingImages([]);
     const wire = [
       ...messages.map((m) => ({ role: m.role, content: m.text })),
@@ -93,9 +131,16 @@ export function DnaChat() {
       const { data, error } = await supabase.functions.invoke("pawn-chat", {
         body: { messages: wire, session_id: sessionId.current, image_urls: imageUrls, image_paths: imagePaths, persist_thread: true, page_context: { route: "/dna" } },
       });
-      const payload = (data ?? {}) as { reply?: string };
-      const reply = payload.reply ?? (error ? "Kurz — ich sammle einen Gedanken." : "…");
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", text: reply, at: new Date().toISOString() }]);
+      const payload = (data ?? {}) as { reply?: string; error?: string };
+      if (error || payload.error) {
+        const raw = (payload.error ?? error?.message ?? "").toLowerCase();
+        const hint = raw.includes("credit") || raw.includes("guthaben") || raw.includes("quota") || raw.includes("429")
+          ? "Das KI-Guthaben ist gerade aufgebraucht. Deine Bilder sind gespeichert — versuch es später noch einmal."
+          : "Die Bilder sind gespeichert, aber PAWN konnte gerade nicht antworten. Versuch es gleich nochmal.";
+        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", text: payload.reply ?? hint, at: new Date().toISOString() }]);
+      } else {
+        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", text: payload.reply ?? "…", at: new Date().toISOString() }]);
+      }
       if (imageUrls.length) void loadRefsOnly();
     } catch {
       setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", text: "Verbindung stockt. Versuch's gleich nochmal.", at: new Date().toISOString() }]);
@@ -113,22 +158,6 @@ export function DnaChat() {
   const deleteRef = async (id: string) => {
     setRefs((r) => r.filter((x) => x.id !== id));
     await supabase.from("style_references" as never).delete().eq("id", id);
-  };
-
-  const savePinterest = async () => {
-    const board = pinBoard.trim();
-    if (!board.startsWith("https://")) { toast.error("Bitte Link mit https:// einfügen."); return; }
-    try {
-      await supabase.functions.invoke("pawn-chat", {
-        body: { messages: [{ role: "user", content: "Ich habe mein Pinterest-Board verbunden." }], session_id: sessionId.current, pinterest_board: board, persist_thread: true, page_context: { route: "/dna" } },
-      });
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", at: new Date().toISOString(),
-        text: "Danke — ich schaue mir dein Board an, sobald die Verbindung freigeschaltet ist. Bis dahin erzähl mir gern, was dir daran besonders auffällt." }]);
-      setShowPinterest(false); setPinBoard("");
-      toast.success("Pinterest-Board gemerkt.");
-    } catch {
-      toast.error("Konnte nicht speichern.");
-    }
   };
 
   if (!user) return null;
@@ -165,26 +194,21 @@ export function DnaChat() {
         {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">Pawn denkt nach…</p>}
       </div>
 
-      {showPinterest && (
-        <div className="border-t border-[rgba(0,0,0,.18)] bg-[rgba(0,0,0,.03)] px-6 py-3 md:px-8">
-          <p className="text-[0.6rem] uppercase tracking-[0.32em] text-[#7C7972]">Pinterest-Board</p>
-          <p className="mt-1 text-[0.72rem] text-black/50">Ein Screenshot funktioniert genauso gut — Bilder tragen den Wert, nicht die Verbindung.</p>
-          <div className="mt-2 flex gap-2">
-            <input value={pinBoard} onChange={(e) => setPinBoard(e.target.value)}
-              placeholder="https://pinterest.com/dein-name/moodboard"
-              className="flex-1 border border-[rgba(0,0,0,.28)] bg-white px-2 py-1.5 text-xs" />
-            <button onClick={savePinterest} className="border border-black bg-black px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-white">Merken</button>
-            <button onClick={() => setShowPinterest(false)} className="px-2 text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">Zu</button>
+      {uploadPct !== null && (
+        <div className="border-t border-[rgba(0,0,0,.18)] px-6 py-3 md:px-8">
+          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">Bilder werden hochgeladen · {uploadPct}%</p>
+          <div className="mt-2 h-[3px] w-full bg-[rgba(0,0,0,.12)]">
+            <div className="h-full bg-black transition-all duration-300" style={{ width: `${uploadPct}%` }} />
           </div>
         </div>
       )}
 
       {pendingImages.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-t border-[rgba(0,0,0,.18)] px-6 py-3 md:px-8">
-          {pendingImages.map((img, i) => (
-            <div key={i} className="relative">
-              <img src={img.url} alt="" className="h-14 w-14 border border-[rgba(0,0,0,.18)] object-cover" />
-              <button onClick={() => removePending(i)} aria-label="Entfernen" className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center border border-black bg-white text-black hover:bg-black hover:text-white">
+          {pendingImages.map((img) => (
+            <div key={img.id} className="relative">
+              <img src={img.previewUrl} alt="" className="h-14 w-14 border border-[rgba(0,0,0,.18)] object-cover" />
+              <button onClick={() => removePending(img.id)} aria-label="Entfernen" className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center border border-black bg-white text-black hover:bg-black hover:text-white">
                 <X className="h-3 w-3" />
               </button>
             </div>
@@ -196,13 +220,18 @@ export function DnaChat() {
       <form onSubmit={(e) => { e.preventDefault(); void send(); }} className="border-t border-[rgba(0,0,0,.18)] px-6 py-5 md:px-8">
         <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
           <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 hover:text-black">
-            <ImagePlus className="h-3.5 w-3.5" /> Bilder
+            <ImagePlus className="h-3.5 w-3.5" /> Bilder hochladen
           </button>
-          <button type="button" onClick={() => setShowPinterest((v) => !v)} className="flex items-center gap-1 hover:text-black">
-            <Link2 className="h-3.5 w-3.5" /> Pinterest
-          </button>
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+          />
         </div>
+        <p className="mb-3 text-[0.72rem] text-black/50">Bilder hochladen — Fotos von dir, Screenshots, alles was deinen Geschmack zeigt.</p>
         <div className="flex items-end gap-3 border-b border-[rgba(0,0,0,.28)] pb-2">
           <textarea value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
