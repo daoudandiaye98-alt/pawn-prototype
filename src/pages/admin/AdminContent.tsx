@@ -246,19 +246,30 @@ export default function AdminContent() {
                 />
               </div>
               <div className="flex items-center gap-3">
-                {editLang === "en" && missingCount > 0 && (
+                {editLang === "en" && (
                   <>
-                    <span className="text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">{missingCount} ohne Übersetzung</span>
+                    <span className="text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">
+                      {missingCount > 0 ? `${missingCount} offen oder veraltet` : "Alles übersetzt"}
+                    </span>
                     <button
                       type="button"
-                      onClick={suggestAllMissing}
-                      disabled={bulkSuggesting}
+                      onClick={() => void translateAllPending(false)}
+                      disabled={bulkSuggesting || missingCount === 0}
                       className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
                     >
-                      <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Alle fehlenden übersetzen"}
+                      <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Offene übersetzen"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void translateAllPending(true)}
+                      disabled={bulkSuggesting}
+                      className="flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] text-background disabled:opacity-50"
+                    >
+                      <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Alle Texte neu übersetzen"}
                     </button>
                   </>
                 )}
+
                 <div className="flex border border-border">
                   {(["de", "en"] as const).map((l) => (
                     <button
