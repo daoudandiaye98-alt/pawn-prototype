@@ -142,41 +142,60 @@ export default function AdminContent() {
     }
   };
 
-  /** Holt einen Vorschlag und trägt ihn ins Entwurfsfeld ein — speichert nie automatisch. */
-  const fetchSuggestion = async (key: string): Promise<boolean> => {
+  /**
+   * Übersetzt einen Schlüssel und speichert die englische Fassung sofort — zusammen
+   * mit dem deutschen Text, aus dem sie entstand. Ändert sich der deutsche Text
+   * später, gilt die Übersetzung automatisch als veraltet und wird beim nächsten
+   * Knopfdruck erneut übersetzt.
+   */
+  const translateKey = async (key: string): Promise<boolean> => {
     const source = rows[key]?.value;
     if (typeof source !== "string" || !source) return false;
     const { data, error } = await supabase.functions.invoke("suggest-translation", { body: { key, text: source } });
     const res = data as { suggestion?: string; error?: string; message?: string } | null;
     if (error || res?.error || !res?.suggestion) return false;
-    setDrafts((prev) => ({ ...prev, [key]: res.suggestion! }));
+    const suggestion = res.suggestion;
+    const { error: saveError } = await supabase
+      .from("site_content")
+      .upsert({ key, value_en: suggestion, value_en_source: source } as never);
+    if (saveError) return false;
+    setRows((prev) => ({
+      ...prev,
+      [key]: {
+        key,
+        value: prev[key]?.value ?? source,
+        value_en: suggestion,
+        value_en_source: source,
+        updated_at: new Date().toISOString(),
+      },
+    }));
+    setDrafts((prev) => (editLang === "en" ? { ...prev, [key]: suggestion } : prev));
+    invalidateSiteContent();
     return true;
   };
 
   const suggestTranslation = async (key: string) => {
     setSuggestingKey(key);
-    const ok = await fetchSuggestion(key);
+    const ok = await translateKey(key);
     setSuggestingKey(null);
-    if (!ok) return toast.error("Vorschlag fehlgeschlagen.");
-    toast.success("Vorschlag eingefügt — bitte prüfen und speichern.");
+    if (!ok) return toast.error("Übersetzung fehlgeschlagen.");
+    toast.success("Übersetzt und gespeichert.");
   };
 
-  /** Teil 22a: alle offenen Schlüssel in einem Durchgang vorschlagen — Speichern bleibt Handarbeit. */
-  const suggestAllMissing = async () => {
-    const missingKeys = CONTENT_REGISTRY.filter((e) => e.type !== "image").filter((e) => {
-      const r = rows[e.key];
-      return typeof r?.value === "string" && r.value && typeof r?.value_en !== "string";
-    }).map((e) => e.key);
-    if (missingKeys.length === 0) return;
+  /** Übersetzt in einem Durchgang alles, was fehlt oder veraltet ist. */
+  const translateAllPending = async (all = false) => {
+    const keys = all ? translatableKeys : pendingKeys;
+    if (keys.length === 0) return toast.success("Alle Texte sind bereits übersetzt.");
     setBulkSuggesting(true);
     let ok = 0;
-    for (const key of missingKeys) {
-      if (await fetchSuggestion(key)) ok++;
+    for (const key of keys) {
+      if (await translateKey(key)) ok++;
     }
     setBulkSuggesting(false);
-    if (ok === 0) toast.error("Keine Vorschläge erhalten.");
-    else toast.success(`${ok} von ${missingKeys.length} Vorschlägen eingefügt — bitte prüfen und speichern.`);
+    if (ok === 0) toast.error("Keine Übersetzung erhalten.");
+    else toast.success(`${ok} von ${keys.length} Texten übersetzt und gespeichert.`);
   };
+
 
   const saveSettings = async () => {
     setSettingsBusy(true);
