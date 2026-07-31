@@ -84,25 +84,8 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     }
   };
 
-  const savePinterest = async () => {
-    const board = pinBoard.trim();
-    if (!board.startsWith("https://")) { toast.error("Bitte Link mit https:// einfügen."); return; }
-    try {
-      await supabase.functions.invoke("pawn-chat", {
-        body: { messages: [{ role: "user", content: "Ich habe mein Pinterest-Board verbunden." }], session_id: sessionId, pinterest_board: board },
-      });
-      setMessages((m) => [...m, {
-        role: "assistant",
-        content: "Danke — ich schaue mir dein Board an, sobald die Verbindung freigeschaltet ist. Bis dahin erzähl mir gern, was dir besonders auffällt."
-      }]);
-      setShowPinterest(false); setPinBoard("");
-      toast.success("Pinterest-Board gemerkt.");
-    } catch {
-      toast.error("Konnte nicht speichern.");
-    }
-  };
-
   useEffect(() => {
+
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ message?: string; page_context?: { route?: string; product_slug?: string } }>).detail;
       if (detail?.message) void sendMessage(detail.message, { page_context: detail.page_context });
