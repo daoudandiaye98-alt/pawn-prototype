@@ -26,6 +26,7 @@ export default function AdminContent() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [suggestingKey, setSuggestingKey] = useState<string | null>(null);
+  const [bulkSuggesting, setBulkSuggesting] = useState(false);
   const [search, setSearch] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [ausgabeNummer, setAusgabeNummer] = useState<number>(12);
@@ -126,17 +127,40 @@ export default function AdminContent() {
     }
   };
 
-  const suggestTranslation = async (key: string) => {
+  /** Holt einen Vorschlag und trägt ihn ins Entwurfsfeld ein — speichert nie automatisch. */
+  const fetchSuggestion = async (key: string): Promise<boolean> => {
     const source = rows[key]?.value;
-    if (typeof source !== "string" || !source) return toast.error("Kein deutscher Text vorhanden.");
-    setSuggestingKey(key);
+    if (typeof source !== "string" || !source) return false;
     const { data, error } = await supabase.functions.invoke("suggest-translation", { body: { key, text: source } });
-    setSuggestingKey(null);
     const res = data as { suggestion?: string; error?: string; message?: string } | null;
-    if (error || res?.error) return toast.error(res?.message ?? error?.message ?? "Vorschlag fehlgeschlagen.");
-    if (!res?.suggestion) return toast.error("Keine Übersetzung erhalten.");
+    if (error || res?.error || !res?.suggestion) return false;
     setDrafts((prev) => ({ ...prev, [key]: res.suggestion! }));
+    return true;
+  };
+
+  const suggestTranslation = async (key: string) => {
+    setSuggestingKey(key);
+    const ok = await fetchSuggestion(key);
+    setSuggestingKey(null);
+    if (!ok) return toast.error("Vorschlag fehlgeschlagen.");
     toast.success("Vorschlag eingefügt — bitte prüfen und speichern.");
+  };
+
+  /** Teil 22a: alle offenen Schlüssel in einem Durchgang vorschlagen — Speichern bleibt Handarbeit. */
+  const suggestAllMissing = async () => {
+    const missingKeys = CONTENT_REGISTRY.filter((e) => e.type !== "image").filter((e) => {
+      const r = rows[e.key];
+      return typeof r?.value === "string" && r.value && typeof r?.value_en !== "string";
+    }).map((e) => e.key);
+    if (missingKeys.length === 0) return;
+    setBulkSuggesting(true);
+    let ok = 0;
+    for (const key of missingKeys) {
+      if (await fetchSuggestion(key)) ok++;
+    }
+    setBulkSuggesting(false);
+    if (ok === 0) toast.error("Keine Vorschläge erhalten.");
+    else toast.success(`${ok} von ${missingKeys.length} Vorschlägen eingefügt — bitte prüfen und speichern.`);
   };
 
   const saveSettings = async () => {
@@ -189,7 +213,17 @@ export default function AdminContent() {
               </div>
               <div className="flex items-center gap-3">
                 {editLang === "en" && missingCount > 0 && (
-                  <span className="text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">{missingCount} ohne Übersetzung</span>
+                  <>
+                    <span className="text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">{missingCount} ohne Übersetzung</span>
+                    <button
+                      type="button"
+                      onClick={suggestAllMissing}
+                      disabled={bulkSuggesting}
+                      className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
+                    >
+                      <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Alle fehlenden übersetzen"}
+                    </button>
+                  </>
                 )}
                 <div className="flex border border-border">
                   {(["de", "en"] as const).map((l) => (

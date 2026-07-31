@@ -4,6 +4,16 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 export type Locale = "de" | "en";
 const KEY = "pawn.locale";
 
+// Teil 22a: beim allerersten Besuch die Browsersprache lesen — nie IP/Standort,
+// Sprache folgt dem Menschen. Beginnt sie mit "de" → Deutsch, sonst Englisch.
+// Das Ergebnis wird sofort gespeichert und überschreibt die Erkennung dauerhaft:
+// jeder spätere Aufruf liest nur noch localStorage, erkennt nie neu.
+function detectBrowserLocale(): Locale {
+  if (typeof navigator === "undefined") return "de";
+  const primary = navigator.languages?.[0] ?? navigator.language ?? "";
+  return primary.toLowerCase().startsWith("de") ? "de" : "en";
+}
+
 const de = {
   // Navigation
   "nav.mode": "Mode",
@@ -218,9 +228,13 @@ const Ctx = createContext<I18nCtx | null>(null);
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (typeof window === "undefined") return "de";
-    return ((localStorage.getItem(KEY) as Locale) ?? "de");
+    const stored = localStorage.getItem(KEY) as Locale | null;
+    return stored === "de" || stored === "en" ? stored : detectBrowserLocale();
   });
-  useEffect(() => { try { localStorage.setItem(KEY, locale); } catch { /* noop */ } }, [locale]);
+  useEffect(() => {
+    try { localStorage.setItem(KEY, locale); } catch { /* noop */ }
+    if (typeof document !== "undefined") document.documentElement.lang = locale;
+  }, [locale]);
   const value = useMemo<I18nCtx>(() => ({
     locale,
     setLocale: setLocaleState,

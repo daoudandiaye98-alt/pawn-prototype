@@ -6,13 +6,21 @@ import { Editable, useContentValue } from "./Editable";
 import { useSiteContent } from "@/lib/siteContent";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
+import { Seo } from "./Seo";
+import { useI18n } from "@/lib/i18n";
 
 const FOOTER_COLUMN_KEYS = ["footer_col_haeuser", "footer_col_fuer_sie", "footer_col_fuer_designer", "footer_col_haus"] as const;
+
+const DEFAULT_SEO = {
+  de: { title: "PAWN — kuratierte Ausstellung für unabhängige Designer", description: "PAWN kuratiert Mode, Interior und Kunst unabhängiger Designer — jedes Stück mit Herkunft, jedes Haus mit eigener Handschrift." },
+  en: { title: "PAWN — a curated exhibition for independent designers", description: "PAWN curates fashion, interior and art from independent designers — every piece with provenance, every house with its own signature." },
+};
 
 /**
  * PalaceLayout — final black/white system.
  */
-export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean }) {
+export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true, title, description }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean; title?: string; description?: string }) {
+  const { locale } = useI18n();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
   const colTitleHaeuser = useContentValue(FOOTER_COLUMN_KEYS[0], "Häuser");
   const colTitleFuerSie = useContentValue(FOOTER_COLUMN_KEYS[1], "Für Sie");
@@ -21,6 +29,7 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
   const resolvedColTitles = [colTitleHaeuser, colTitleFuerSie, colTitleFuerDesigner, colTitleHaus];
   return (
     <div className="palace min-h-screen bg-white text-black">
+      <Seo title={title ?? DEFAULT_SEO[locale].title} description={description ?? DEFAULT_SEO[locale].description} />
       <BuilderBar />
       <PalaceHeader />
       {showBreadcrumbs && <div className="pt-[68px] md:pt-[76px]"><Breadcrumbs /></div>}

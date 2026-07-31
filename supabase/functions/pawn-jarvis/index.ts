@@ -177,11 +177,12 @@ interface AkquiseConfig {
   email_reply_to: string;
   followup_after_days: number;
   max_touches: number;
+  languages: string[];
 }
 const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
   autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "pawnstudio.co@gmail.com",
-  followup_after_days: 5, max_touches: 2,
+  followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -1271,10 +1272,16 @@ async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Prom
 
 /** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
 async function researchAndDraftLead(
-  apiKey: string, lead: { handle: string; world: string; bio: string | null }, styleLaw: string,
-): Promise<{ personal_line: string; message: string; tokens: number } | null> {
-  const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision. Halte dich STRIKT an diesen bestätigten Ton und diese Struktur (nur <personal_line> ersetzt du durch einen warmen, konkreten Satz ohne Anführungszeichen und ohne Grußwort):
+  apiKey: string, lead: { handle: string; world: string; bio: string | null }, styleLaw: string, languages: string[],
+): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> {
+  const allowed = languages.length ? languages : ["de", "en"];
+  const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision.
 
+Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe die Nachricht in dieser Sprache mit der englischen Vorlage unten. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
+
+Halte dich STRIKT an die passende Vorlage (nur <personal_line> ersetzt du durch einen warmen, konkreten Satz ohne Anführungszeichen und ohne Grußwort, in derselben Sprache wie die Vorlage):
+
+DEUTSCHE VORLAGE:
 "Hey, ich bin Daouda aus Köln. <personal_line>
 
 Ich baue gerade PAWN — eine kuratierte Ausstellung für unabhängige Designer aus Mode, Interior und Kunst. Kein Katalog, kein Marktplatz-Grau: ein ruhiger Raum, in dem jedes Haus seine eigene Geschichte erzählt und gesehen wird.
@@ -1285,9 +1292,20 @@ Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
 
 Wenn's nichts für dich ist — auch gut, mach weiter so."
 
-Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — nutze das für personal_line, damit klar wird, dass die Arbeit wirklich angesehen wurde. Antworte am Ende NUR mit JSON: {"personal_line": "...", "message": "<vollständige Nachricht mit eingesetzter personal_line>"}
+ENGLISH TEMPLATE:
+"Hey, I'm Daouda from Cologne. <personal_line>
 
-Haus-Stilgesetz für personal_line: ${styleLaw}`;
+I'm building PAWN — a curated exhibition for independent designers in fashion, interior and art. No catalog, no marketplace grey: a quiet room where every house tells its own story and gets seen.
+
+There's no cost for you. No base fee, no minimum term. You upload your pieces once — you've already got the photos — and we make sure you're seen. If something sells, 93% stays with you.
+
+Issue 08 is opening right now, the first houses are moving in: pawn.vision
+
+If it's not for you — that's fine too, keep doing your thing."
+
+Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — nutze das für personal_line, damit klar wird, dass die Arbeit wirklich angesehen wurde. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht mit eingesetzter personal_line>"}
+
+Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
   const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
@@ -1308,8 +1326,11 @@ Haus-Stilgesetz für personal_line: ${styleLaw}`;
     tokens += (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
     if (data.stop_reason !== "tool_use") {
       const text = data.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
-      const json = extractJson(text) as { personal_line?: string; message?: string } | null;
-      if (json?.personal_line && json?.message) return { personal_line: json.personal_line, message: json.message, tokens };
+      const json = extractJson(text) as { personal_line?: string; message?: string; language?: string } | null;
+      if (json?.personal_line && json?.message) {
+        const language = allowed.includes(json.language ?? "") ? json.language! : "de";
+        return { personal_line: json.personal_line, message: json.message, language, tokens };
+      }
       return null;
     }
     messages.push({ role: "assistant", content: data.content });
@@ -1326,14 +1347,15 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, world, bio, email").eq("status", "qualifiziert").is("message_draft", null).limit(10);
   const styleLaw = await loadHouseStyleLaw(admin);
+  const config = await loadAkquiseConfig(admin);
 
   let ready = 0, tokensUsed = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null }[]) {
-    const draft = await researchAndDraftLead(apiKey, lead, styleLaw);
+    const draft = await researchAndDraftLead(apiKey, lead, styleLaw, config.languages);
     if (!draft) continue;
     tokensUsed += draft.tokens;
     await admin.from("acquisition_leads").update({
-      personal_line: draft.personal_line, message_draft: draft.message, channel: lead.email ? "email" : "dm",
+      personal_line: draft.personal_line, message_draft: draft.message, language: draft.language, channel: lead.email ? "email" : "dm",
     }).eq("id", lead.id);
     ready++;
   }
