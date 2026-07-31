@@ -11,6 +11,25 @@ type ConnectState = "none" | "pending" | "active" | "error";
 
 interface ConnectStatus { connected: boolean; charges_enabled: boolean; details_submitted: boolean }
 
+interface BillingProfile {
+  legal_name: string; address_line1: string; address_line2: string; postal_code: string; city: string; country: string;
+  tax_id: string; kleinunternehmer: boolean;
+  return_address_line1: string; return_address_line2: string; return_postal_code: string; return_city: string; return_country: string;
+}
+const EMPTY_BILLING: BillingProfile = {
+  legal_name: "", address_line1: "", address_line2: "", postal_code: "", city: "", country: "DE",
+  tax_id: "", kleinunternehmer: false,
+  return_address_line1: "", return_address_line2: "", return_postal_code: "", return_city: "", return_country: "",
+};
+
+interface ShippingZone { flat_cents: number; free_from_cents: number | null }
+interface ShippingRates { inland: ShippingZone; eu: ShippingZone; world: ShippingZone }
+const EMPTY_SHIPPING: ShippingRates = {
+  inland: { flat_cents: 0, free_from_cents: null },
+  eu: { flat_cents: 0, free_from_cents: null },
+  world: { flat_cents: 0, free_from_cents: null },
+};
+
 export default function StudioPayout() {
   const { designer, refresh } = useMyDesigner();
   const [searchParams] = useSearchParams();
@@ -18,6 +37,38 @@ export default function StudioPayout() {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
   const [commissionPct, setCommissionPct] = useState<number>(7);
+
+  const [billing, setBilling] = useState<BillingProfile>(EMPTY_BILLING);
+  const [billingSaving, setBillingSaving] = useState(false);
+  const [shipping, setShipping] = useState<ShippingRates>(EMPTY_SHIPPING);
+  const [shippingSaving, setShippingSaving] = useState(false);
+
+  useEffect(() => {
+    if (!designer) return;
+    void supabase.from("designer_billing_profiles").select("*").eq("designer_id", designer.id).maybeSingle()
+      .then(({ data }) => { if (data) setBilling({ ...EMPTY_BILLING, ...(data as Partial<BillingProfile>) }); });
+    const rates = designer.shipping_rates as Partial<ShippingRates> | null;
+    if (rates) setShipping({ ...EMPTY_SHIPPING, ...rates, inland: { ...EMPTY_SHIPPING.inland, ...rates.inland }, eu: { ...EMPTY_SHIPPING.eu, ...rates.eu }, world: { ...EMPTY_SHIPPING.world, ...rates.world } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designer?.id]);
+
+  async function saveBilling() {
+    if (!designer) return;
+    setBillingSaving(true);
+    const { error } = await supabase.from("designer_billing_profiles").upsert({ designer_id: designer.id, ...billing }, { onConflict: "designer_id" });
+    setBillingSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Rechnungsdaten gespeichert.");
+  }
+
+  async function saveShipping() {
+    if (!designer) return;
+    setShippingSaving(true);
+    const { error } = await supabase.from("designers").update({ shipping_rates: shipping as unknown as Record<string, unknown> }).eq("id", designer.id);
+    setShippingSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Versandkosten gespeichert.");
+  }
 
   useEffect(() => {
     void supabase.from("ai_config").select("value").eq("key", "platform_commission").maybeSingle()
@@ -149,7 +200,81 @@ export default function StudioPayout() {
             </button>
           </div>
         )}
+
+        <div className="border border-foreground bg-white p-5">
+          <p className="editorial-eyebrow">Rechnungsdaten</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Ohne diese Angaben kann keine Bestellung als versendet markiert werden — jede Rechnung trägt deine Daten, nicht die von PAWN.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Firmierung / Name" value={billing.legal_name} onChange={(v) => setBilling((b) => ({ ...b, legal_name: v }))} full />
+            <Field label="Straße, Hausnummer" value={billing.address_line1} onChange={(v) => setBilling((b) => ({ ...b, address_line1: v }))} full />
+            <Field label="Adresszusatz" value={billing.address_line2} onChange={(v) => setBilling((b) => ({ ...b, address_line2: v }))} full optional />
+            <Field label="PLZ" value={billing.postal_code} onChange={(v) => setBilling((b) => ({ ...b, postal_code: v }))} />
+            <Field label="Stadt" value={billing.city} onChange={(v) => setBilling((b) => ({ ...b, city: v }))} />
+            <Field label="Land" value={billing.country} onChange={(v) => setBilling((b) => ({ ...b, country: v }))} />
+            <Field label="Steuernummer / USt-IdNr." value={billing.tax_id} onChange={(v) => setBilling((b) => ({ ...b, tax_id: v }))} optional={billing.kleinunternehmer} />
+          </div>
+          <label className="mt-4 flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={billing.kleinunternehmer} onChange={(e) => setBilling((b) => ({ ...b, kleinunternehmer: e.target.checked }))} />
+            Kleinunternehmer nach § 19 UStG (keine Umsatzsteuer auf Rechnungen)
+          </label>
+          <p className="mt-6 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Rückversandadresse (falls abweichend)</p>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Straße, Hausnummer" value={billing.return_address_line1} onChange={(v) => setBilling((b) => ({ ...b, return_address_line1: v }))} full optional />
+            <Field label="PLZ" value={billing.return_postal_code} onChange={(v) => setBilling((b) => ({ ...b, return_postal_code: v }))} optional />
+            <Field label="Stadt" value={billing.return_city} onChange={(v) => setBilling((b) => ({ ...b, return_city: v }))} optional />
+            <Field label="Land" value={billing.return_country} onChange={(v) => setBilling((b) => ({ ...b, return_country: v }))} optional />
+          </div>
+          <button onClick={saveBilling} disabled={billingSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
+            {billingSaving ? "Speichert…" : "Rechnungsdaten speichern"}
+          </button>
+        </div>
+
+        <div className="border border-foreground bg-white p-5">
+          <p className="editorial-eyebrow">Versandkosten</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Pauschale je Zone. Leer lassen = kostenlos. Käufer:innen wählen ihre Zone selbst beim Bezahlen.
+          </p>
+          <div className="mt-4 space-y-3">
+            {(["inland", "eu", "world"] as const).map((zone) => (
+              <div key={zone} className="grid grid-cols-1 items-end gap-3 border-b border-border pb-3 sm:grid-cols-3">
+                <p className="text-sm font-medium sm:col-span-1">{zone === "inland" ? "Inland (DE)" : zone === "eu" ? "EU" : "Weltweit"}</p>
+                <label className="block">
+                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Pauschale (€)</span>
+                  <input
+                    type="number" min={0} step={0.5}
+                    value={shipping[zone].flat_cents / 100}
+                    onChange={(e) => setShipping((s) => ({ ...s, [zone]: { ...s[zone], flat_cents: Math.round(Number(e.target.value || 0) * 100) } }))}
+                    className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Kostenlos ab (€, optional)</span>
+                  <input
+                    type="number" min={0} step={1}
+                    value={shipping[zone].free_from_cents != null ? shipping[zone].free_from_cents! / 100 : ""}
+                    onChange={(e) => setShipping((s) => ({ ...s, [zone]: { ...s[zone], free_from_cents: e.target.value === "" ? null : Math.round(Number(e.target.value) * 100) } }))}
+                    className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+          <button onClick={saveShipping} disabled={shippingSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
+            {shippingSaving ? "Speichert…" : "Versandkosten speichern"}
+          </button>
+        </div>
       </div>
     </StudioShell>
+  );
+}
+
+function Field({ label, value, onChange, full, optional }: { label: string; value: string; onChange: (v: string) => void; full?: boolean; optional?: boolean }) {
+  return (
+    <label className={`block ${full ? "sm:col-span-2" : ""}`}>
+      <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{label}{optional ? " (optional)" : ""}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
+    </label>
   );
 }

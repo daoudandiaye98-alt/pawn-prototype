@@ -7,6 +7,7 @@ import * as commands from "@/core/commands";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/lib/i18n";
 
 const METHODS = [
   { key: "card", label: "Kreditkarte" },
@@ -21,6 +22,7 @@ const Checkout = () => {
   const { items, subtotal } = useCart();
   const dispatch = useCommand();
   const { user, profile } = useAuth();
+  const { locale } = useI18n();
   const [method, setMethod] = useState<MethodKey>("card");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -42,6 +44,7 @@ const Checkout = () => {
             slug: i.product.slug,
           })),
           customer_email: user?.email,
+          locale,
         },
       });
       if (!error && data?.url) {
