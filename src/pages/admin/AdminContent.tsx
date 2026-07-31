@@ -295,6 +295,7 @@ export default function AdminContent() {
                   {entries.map((e) => {
                     const hasGerman = typeof rows[e.key]?.value === "string" && !!rows[e.key]?.value;
                     const hasEnglish = typeof rows[e.key]?.value_en === "string" && !!rows[e.key]?.value_en;
+                    const outdated = editLang === "en" && e.type !== "image" && hasGerman && hasEnglish && isStale(e.key);
                     return (
                       <FieldRow
                         key={e.key}
@@ -306,6 +307,8 @@ export default function AdminContent() {
                         suggesting={suggestingKey === e.key}
                         editLang={editLang}
                         missing={editLang === "en" && e.type !== "image" && hasGerman && !hasEnglish}
+                        outdated={outdated}
+                        canTranslate={editLang === "en" && e.type !== "image" && hasGerman}
                         onChange={(v) => setDrafts((prev) => ({ ...prev, [e.key]: v }))}
                         onSave={() => saveField(e.key)}
                         onUpload={(f) => uploadImage(e.key, f)}
@@ -313,6 +316,7 @@ export default function AdminContent() {
                       />
                     );
                   })}
+
                 </div>
               </section>
             ))}
