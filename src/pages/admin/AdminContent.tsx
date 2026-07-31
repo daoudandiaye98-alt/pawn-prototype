@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { Image as ImageIcon, Search, Sparkles } from "lucide-react";
 
 type Lang = "de" | "en";
-interface Row { key: string; value: unknown; value_en: unknown; updated_at: string }
+interface Row { key: string; value: unknown; value_en: unknown; value_en_source: unknown; updated_at: string }
 
 export default function AdminContent() {
   const [rows, setRows] = useState<Record<string, Row>>({});
@@ -34,7 +34,7 @@ export default function AdminContent() {
   const [settingsBusy, setSettingsBusy] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from("site_content").select("key, value, value_en, updated_at");
+    const { data } = await supabase.from("site_content").select("key, value, value_en, value_en_source, updated_at");
     const map: Record<string, Row> = {};
     for (const r of (data ?? []) as Row[]) map[r.key] = r;
     setRows(map);
@@ -89,8 +89,9 @@ export default function AdminContent() {
     const value = drafts[key] ?? "";
     setBusyKey(key);
     const isImage = typeof rows[key]?.value === "string" && String(rows[key].value).startsWith("http");
-    const payload: { key: string; value?: string; value_en?: string } =
-      !isImage && editLang === "en" ? { key, value_en: value } : { key, value };
+    const germanNow = typeof rows[key]?.value === "string" ? (rows[key].value as string) : "";
+    const payload: { key: string; value?: string; value_en?: string; value_en_source?: string } =
+      !isImage && editLang === "en" ? { key, value_en: value, value_en_source: germanNow } : { key, value };
     const { error } = await supabase.from("site_content").upsert(payload as never);
     setBusyKey(null);
     if (error) return toast.error(error.message);
@@ -98,8 +99,8 @@ export default function AdminContent() {
     setRows((prev) => {
       const prevRow = prev[key];
       const next: Row = !isImage && editLang === "en"
-        ? { key, value: prevRow?.value ?? "", value_en: value, updated_at: new Date().toISOString() }
-        : { key, value, value_en: prevRow?.value_en ?? null, updated_at: new Date().toISOString() };
+        ? { key, value: prevRow?.value ?? "", value_en: value, value_en_source: germanNow, updated_at: new Date().toISOString() }
+        : { key, value, value_en: prevRow?.value_en ?? null, value_en_source: prevRow?.value_en_source ?? null, updated_at: new Date().toISOString() };
       return { ...prev, [key]: next };
     });
     toast.success("Gespeichert.");
@@ -118,7 +119,7 @@ export default function AdminContent() {
       if (error) throw error;
       invalidateSiteContent();
       setDrafts((prev) => ({ ...prev, [key]: url }));
-      setRows((prev) => ({ ...prev, [key]: { key, value: url, value_en: prev[key]?.value_en ?? null, updated_at: new Date().toISOString() } }));
+      setRows((prev) => ({ ...prev, [key]: { key, value: url, value_en: prev[key]?.value_en ?? null, value_en_source: prev[key]?.value_en_source ?? null, updated_at: new Date().toISOString() } }));
       toast.success("Bild hochgeladen.");
     } catch (e) {
       toast.error((e as Error).message);
