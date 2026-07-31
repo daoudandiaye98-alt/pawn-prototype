@@ -295,7 +295,7 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as {
       messages: Msg[]; session_id?: string; probe?: boolean;
       image_url?: string; image_urls?: string[]; image_paths?: string[];
-      pinterest_board?: string; persist_thread?: boolean;
+      persist_thread?: boolean;
       page_context?: { route?: string; product_slug?: string };
     };
 
@@ -515,18 +515,6 @@ Deno.serve(async (req) => {
     }
     const model = admin ? await loadModelForTier(admin, tier) : "gpt-4o-mini";
 
-    // Pinterest board pickup
-    if (admin && user_id && body.pinterest_board) {
-      try {
-        const nextPrefs = { ...(memory.preferences ?? {}), pinterest_board: body.pinterest_board };
-        await admin.from("user_memory").upsert({ user_id, preferences: nextPrefs, facts: memory.facts, updated_at: new Date().toISOString() });
-        await admin.from("domain_events").insert({
-          id: crypto.randomUUID(), type: "ai.taste_signal", actor: "user",
-          payload: { source: "pinterest", session_id, user_id, board: body.pinterest_board },
-          schema_version: 1,
-        });
-      } catch { /* soft */ }
-    }
 
     // Vision-Aufruf bei Bild(ern) — nie Bewertung, nur Beobachtung.
     let imageTerms: string[] = [];

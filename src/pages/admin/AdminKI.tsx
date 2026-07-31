@@ -1068,26 +1068,6 @@ function ProviderStatusCards() {
           Aktivieren: fal.ai-Konto anlegen → API-Key erzeugen → als <code>FAL_KEY</code> in Project Settings → Secrets speichern. Ohne Key ist die Option im Funnel deaktiviert.
         </p>
       </div>
-
-      <div className="border-[1.5px] border-border bg-white p-5 opacity-90">
-        <div className="flex items-center justify-between">
-          <p className="font-serif text-lg">Pinterest</p>
-          <span className="border border-border px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.28em]">Bald</span>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Board-Direktposts kommen im nächsten Zyklus. Felder werden dann hier freigeschaltet.
-        </p>
-        <div className="mt-3 grid gap-2 text-sm">
-          <label className="flex flex-col gap-1">
-            <span className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">Board-ID</span>
-            <input disabled className="border border-border bg-muted p-2 text-sm" placeholder="wird noch nicht ausgelesen" />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">API-Token</span>
-            <input disabled type="password" className="border border-border bg-muted p-2 text-sm" placeholder="folgt" />
-          </label>
-        </div>
-      </div>
     </div>
   );
 }
