@@ -21,7 +21,7 @@ import AdminWerbung from "./pages/admin/AdminWerbung.tsx";
 import AdminAktionen from "./pages/admin/AdminAktionen.tsx";
 
 
-import Index from "./pages/Index.tsx";
+import Home from "./pages/Home.tsx";
 import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
 import Ausgabe from "./pages/Ausgabe.tsx";
@@ -125,7 +125,7 @@ const App = () => (
               <ReferralCapture />
               <Routes>
 
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Home />} />
                 <Route path="/mode" element={<Mode />} />
                 <Route path="/interior" element={<Interior />} />
                 <Route path="/kunst" element={<Kunst />} />
