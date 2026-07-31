@@ -172,18 +172,6 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">{t("chat.thinking")}</p>}
         </div>
 
-        {showPinterest && (
-          <div className="border-t border-[rgba(0,0,0,.18)] bg-[rgba(0,0,0,.03)] px-6 py-3">
-            <p className="text-[0.6rem] uppercase tracking-[0.32em] text-[#7C7972]">Pinterest-Board</p>
-            <div className="mt-2 flex gap-2">
-              <input value={pinBoard} onChange={(e) => setPinBoard(e.target.value)}
-                placeholder="https://pinterest.com/dein-name/moodboard"
-                className="flex-1 border border-[rgba(0,0,0,.28)] bg-white px-2 py-1.5 text-xs" />
-              <button onClick={savePinterest} className="border border-[#000000] bg-[#000000] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-white">Merken</button>
-              <button onClick={() => setShowPinterest(false)} className="px-2 text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">Zu</button>
-            </div>
-          </div>
-        )}
 
         {pendingImage && (
           <div className="flex items-center gap-3 border-t border-[rgba(0,0,0,.18)] px-6 py-3">
