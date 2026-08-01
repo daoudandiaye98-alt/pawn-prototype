@@ -28,6 +28,11 @@ export interface DesignerOrderLine {
   unit_price: number; // EUR
   size: string | null;
   variant: Record<string, string> | null;
+  /** Versandgewicht je Stück in Gramm — Grundlage fürs Versandetikett. */
+  weight_grams: number | null;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
 }
 
 interface RawOrder {
