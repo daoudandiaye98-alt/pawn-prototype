@@ -206,26 +206,65 @@ export default function StudioPayout() {
             <p className="mt-2 text-sm text-muted-foreground">
               Stripe prüft gerade deine Angaben. Das dauert normalerweise nur kurz — sobald es fertig ist, kannst du direkt verkaufen.
             </p>
+            {requirementsDue.length > 0 && (
+              <div className="mt-4 border border-black p-4">
+                <p className="editorial-eyebrow">Stripe wartet noch auf</p>
+                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  {requirementsDue.slice(0, 6).map((r) => (
+                    <li key={r}>· {REQUIREMENT_LABELS[r] ?? r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <button
+              onClick={connect}
+              disabled={busy}
+              className="mt-4 bg-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] text-white disabled:opacity-40"
+            >
+              {busy ? "Öffnet Stripe…" : "Angaben vervollständigen"}
+            </button>
           </div>
-        ) : state === "active" ? (
+        ) : state === "active" || state === "payouts" ? (
           <div className="border-[1.5px] border-black p-6">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center bg-black text-white">
                 <Check className="h-4 w-4" />
               </span>
-              <p className="font-serif text-xl">Aktiv</p>
+              <p className="font-serif text-xl">{state === "payouts" ? "Aktiv — Auszahlungen laufen" : "Aktiv — Verkauf möglich"}</p>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Dein Konto ist verbunden. Jeder Verkauf fließt automatisch direkt zu dir.
+              {state === "payouts"
+                ? `Jeder Verkauf fließt direkt auf dein Konto. PAWN behält ${commissionPct} % auf den Warenwert — Versandkosten bleiben vollständig bei dir.`
+                : "Du kannst verkaufen. Die Auszahlung auf dein Bankkonto schaltet Stripe frei, sobald die letzten Angaben geprüft sind."}
             </p>
-            <button
-              onClick={connect}
-              disabled={busy}
-              className="mt-4 border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
-            >
-              {busy ? "Öffnet Stripe…" : "Konto verwalten"}
-            </button>
+            {requirementsDue.length > 0 && (
+              <div className="mt-4 border border-black p-4">
+                <p className="editorial-eyebrow">Stripe wartet noch auf</p>
+                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  {requirementsDue.slice(0, 6).map((r) => (
+                    <li key={r}>· {REQUIREMENT_LABELS[r] ?? r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={openDashboard}
+                disabled={busy}
+                className="border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
+              >
+                {busy ? "Öffnet Stripe…" : "Stripe-Konto öffnen"}
+              </button>
+              <button
+                onClick={connect}
+                disabled={busy}
+                className="border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
+              >
+                Angaben ändern
+              </button>
+            </div>
           </div>
+
         ) : (
           <div className="border-[1.5px] border-black p-6">
             <p className="editorial-eyebrow">Status</p>
