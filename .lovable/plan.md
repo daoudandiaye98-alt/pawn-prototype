@@ -1,58 +1,63 @@
-## Warum heute nichts passiert (geprüft in Datenbank und Code)
+## Teil 1 — E-Mail: was geht, was nicht
 
-- `acquisition_hunts` ist **leer**, und `akquise_jagd` taucht in **keinem** `jarvis_runs`-Eintrag auf — für diesen Modus wurde nie ein Zeitplan angelegt. Die Jagd ist gebaut, aber nie gestartet.
-- `akquise_import` scheitert seit dem 27.07. **täglich** mit „Apify 404: konnte letzten Lauf nicht lesen." — weil es keine offenen Jagden gibt, fällt der Code auf den alten Pfad „letzter Lauf des Actors" zurück, und dort existiert kein Lauf.
-- `akquise_kuratieren` ist **nie gelaufen**. Alle 24 Leads haben `kurator_score = NULL` und stehen trotzdem auf „qualifiziert" (aus dem alten Handimport). Es hat also nie eine Qualitätskontrolle stattgefunden.
-- **Kein einziger Lead hat eine E-Mail-Adresse** → Kanal fällt auf „dm", und für DMs gibt es keinen Weg nach draußen. Deshalb wurde bis heute niemand eingeladen.
-- Claude antwortet seit Tagen mit „credit balance too low" — davon sind Morgenbericht, Wissen, Kuratieren und Verfassen betroffen.
-- Ein `akquise_verfassen`-Lauf hängt seit 01.08. 02:15 auf `running`; der Herzschlag meldet seither 660-mal „laeuft_bereits" und tut nichts.
-- `hunt_queries` in `akquise_config` ist leer — Suchbegriffe müssten also erst destilliert werden.
+Geprüft im Code und in der Konfiguration:
 
-## Was gebaut wird
+- **Anzeige-/Kontaktadresse** ist bereits `pawnstudio.co@gmail.com`: in `business_profile` (Datenbank), Impressum, AGB, Widerruf.
+- **Absenderadresse beim Versand** ist etwas anderes: In `akquise_config.email_from` und in den Bestell-Mails steht fest `PAWN <hallo@pawn.vision>`, Antwortadresse `pawnstudio.co@gmail.com`.
+- Zwei Stellen sind noch Platzhalter aus der Vorlage: Footer-Link „Contact" → `kontakt@pawn.example`, und Datenschutz-Seite (`kontakt@pawn.example`, `datenschutz@pawn.example`).
 
-### 1. Selbstheilung und Zuverlässigkeit (Fundament)
-- **Modell-Kette statt einzelnem Anbieter:** Jeder Jarvis-Aufruf versucht Anthropic, und bei Guthaben-, Rate-Limit- oder Serverfehler automatisch das eingebaute Lovable-Gateway (`openai/gpt-5.6-sol`), danach OpenAI. Der genutzte Anbieter wird je Lauf protokolliert. Kein Lauf stirbt mehr an einer leeren Geldbörse.
-- **Hängende Läufe:** Läufe, die länger als 15 Minuten auf `running` stehen, werden automatisch auf `failed` gesetzt, bevor ein neuer Lauf startet. Der aktuell hängende Lauf wird einmalig bereinigt.
-- **Sparsamkeit:** Bildbewertung nur mit maximal 4 Bildern statt allem, harte Vorfilter **vor** jedem Modellaufruf, günstiges Modell für Klassifizierung, teures nur für Textentwürfe. Kosten je Lauf werden in `jarvis_runs` mitgeschrieben, damit sichtbar ist, was die Akquise kostet.
+Wichtige Einschränkung, ohne Fachjargon: **Resend kann nicht von einer Gmail-Adresse aus versenden.** Um über einen Versanddienst zu senden, muss die Absender-Domain nachweislich dir gehören (DNS-Einträge). `gmail.com` gehört Google, nicht dir — Google verbietet fremden Versand in eigenem Namen ausdrücklich. Mails „von" `pawnstudio.co@gmail.com` würden bei Gmail/Outlook im Spam landen oder direkt abgelehnt.
 
-### 2. Die Jagd tatsächlich starten (mehrere Quellen)
-- Zeitplan für `akquise_jagd` anlegen (täglich, gestaffelt vor dem Import) — das ist der fehlende erste Dominostein.
-- Quellen, jeweils eigener Apify-Actor, konfigurierbar in `akquise_config`:
-  - **Instagram Hashtag** (bestehend)
-  - **Instagram Nachbarschaft** — ähnliche Konten zu bereits guten Leads und bestehenden PAWN-Häusern
-  - **TikTok** (Hashtag/Suchbegriff)
-  - **Behance** (Kategorie/Feld)
-- Suchbegriffe destilliert Jarvis aus der Brand-DNA der bestehenden Häuser, wenn die Liste leer ist; du kannst sie im Admin jederzeit überschreiben.
-- Tagesdeckel für Apify-Läufe und Leads bleibt bestehen, wird pro Quelle getrennt geführt.
+Damit gibt es genau zwei saubere Wege:
 
-### 3. Qualitätskontrolle, die wirklich greift
-- **Stufe A (kostenlos):** Follower-Spanne, Mindest-Postzahl, Ausschlusswörter, Dubletten gegen `designers` und bereits aussortierte Leads, Sprach-/Länder-Plausibilität.
-- **Stufe B (Modell, günstig):** Bildbewertung mit Score 0–100 und Begründung je Kriterium (Handwerk, Bildsprache, Fotoqualität, Unabhängigkeit, Welt-Passung) — genau wie heute im Code, nur mit funktionierendem Modell und Bildbegrenzung.
-- **Stufe C (Mensch):** Alles ab Schwelle landet als Karte im Admin. Du kannst mit einem Klick „Ja" oder „Nein" sagen; jede Entscheidung wird gespeichert.
-- Ein einmaliger Nachlauf bewertet die 24 Alt-Leads nach, damit kein ungeprüfter Kontakt angeschrieben wird.
-- Zeitplan für `akquise_kuratieren` anlegen (fehlt bisher komplett).
+**A (empfohlen): pawn.vision als Absender, Gmail als Antwortadresse.** Für den Empfänger steht „PAWN" im Posteingang, Antworten landen in deinem Gmail-Fach. Deine To-dos in Resend: Domain `pawn.vision` hinzufügen, die drei angezeigten DNS-Einträge (SPF, DKIM, optional DMARC) bei deinem Domain-Anbieter eintragen, auf „verified" warten. Danach funktionieren Bestellbestätigungen, Rechnungen und Akquise-Mails.
 
-### 4. Einladung: E-Mail automatisch, DM als Karte
-- **Kontaktsuche:** Neuer Schritt sucht zu jedem qualifizierten Lead eine E-Mail — Business-Mail aus dem Profil-Scrape, Link-in-Bio-Seite, Impressum/Kontakt der Website, Etsy-/Shopseite. Gefundene Adresse → Kanal „email".
-- **E-Mail-Weg:** Bestehender Resend-Versand mit deiner festen Vorlage (deutsch/englisch, personalisierter erster Satz), Tagesdeckel, ein Follow-up nach 5 Tagen, danach Ruhe. Freigabe-Zone bleibt wie eingestellt (rot = du bestätigst die Tagesliste, grün = läuft allein).
-- **DM-Weg:** Leads ohne Mail erscheinen im Admin als Karte mit fertigem Text, Kopier-Knopf und Link zum Profil. Ein Klick auf „gesendet" setzt Status und Follow-up-Termin. Kein automatisiertes DM-Versenden — das kostet Instagram-Accounts.
-- Opt-out, Höchstzahl Berührungen und Antwort-Erkennung bleiben wie gebaut.
+**B: Gmail als sichtbarer Absender.** Nur möglich, wenn du in Gmail „Senden als" mit deiner eigenen Domain kombinierst — heißt praktisch: du brauchst trotzdem eine eigene Domain. Kein Vorteil gegenüber A.
 
-### 5. Lernschleife
-Wöchentlich wertet Jarvis aus, welche Suchbegriffe und welche Quelle zu hohen Kurator-Scores, zu Antworten und zu echten Anmeldungen geführt haben, gewichtet gute Begriffe hoch, wirft schwache raus und schreibt einen Bericht. Zusätzlich: die Merkmale angenommener gegenüber abgelehnter Leads fließen als kurze Regelliste in den Kurator-Prompt zurück — die Filterung wird also mit deinen Entscheidungen schärfer.
+Was ich baue (unabhängig von A/B, kostenlos über Git):
+- Alle `pawn.example`-Platzhalter (Footer, Datenschutz) durch `pawnstudio.co@gmail.com` ersetzen; Datenschutz-Seite bekommt Name/Anschrift aus `business_profile` statt „TODO".
+- Eine einzige Wahrheit für Kontakt: alle Rechtstexte und der Footer lesen `business_profile.contact_email`.
+- Antwortadresse konsequent auf `pawnstudio.co@gmail.com` in allen Versandwegen (Bestellung, Rechnung, Akquise, Follow-up) — auch dort, wo bisher nichts gesetzt war.
+- Absenderadresse bleibt konfigurierbar in der Datenbank; sobald `pawn.vision` in Resend verifiziert ist, ändert sich nichts mehr im Code.
 
-### 6. Admin-Sicht `/admin/akquise`
-- Jagd-Panel bekommt: Quelle je Zeile, Trefferquote, Kosten, und eine Ampel „Kette gesund / hängt seit …".
-- Neue Abschnitte: **Prüfen** (Kuratoren-Karten mit Bildern, Score, Begründung, Ja/Nein) und **DM-Liste** (Text kopieren, gesendet markieren).
-- Pipeline-Zeile oben: gefunden → geprüft → qualifiziert → angeschrieben → geantwortet → registriert.
+## Teil 2 — Abo-System: Bestandsaufnahme
+
+Ist-Zustand: Haus 0 € · Atelier 24 € · Maison 99 €, dazu ein **zweites, paralleles System** aus Credits (Haus 30, Atelier 300, Maison 1200), Preislisten je Handlung (Freisteller 1, Model-Shot 2, Model-Clip 8, Clip 5/12/20) und drei Nachkauf-Paketen. Die Pakete haben **keine Stripe-Preis-IDs** — Nachkauf ist heute nicht kaufbar. Aktuell ist genau 1 Haus im System (Maison). Es gibt also keine Bestandskunden, die eine Umstellung schmerzt: der beste Moment, das zu vereinfachen.
+
+Kernproblem: PAWN verspricht Designern, dass Technik verschwindet und Handwerk sichtbar wird. Ein Guthabenstand, Kostentabellen pro Klick und ein Kreisdiagramm über verbrauchte Einheiten machen genau das Gegenteil — der Designer rechnet, statt zu gestalten. Zusätzlich zahlt er zweimal Aufmerksamkeit: Abo plus Verbrauch. Für den Betreiber ist die Kostenkontrolle nötig — aber die läuft ohnehin schon unsichtbar über das interne KI-Budget (`ai_budget_ledger`).
+
+## Teil 3 — Entscheidung: Credits raus, Kontingente rein
+
+**Credits werden gestrichen.** An ihre Stelle treten verständliche Monats-Kontingente in echten Dingen, keine Punkte:
+
+- **Haus · 0 €** — 3 Videos, 5 Model-Shots, 5 Freisteller, 1 Signatur-Kostprobe, PAWN-Emblem im Video.
+- **Atelier · 24 €** — 15 Videos (8 davon kinematisch, ohne Emblem), 25 Model-Shots/Freisteller, 3 Signaturen, KI-Kurator, Text-Atelier, PAWN+ Denkstufe.
+- **Maison · 99 €** — 40 Videos, alle kinematisch, unbegrenzt Shots, alle Signaturen + Wunsch-Signatur, Haus-Dossier, Vitrine-Rotation, Première-Priorität, Editionen-Erstzugang.
+
+Warum das besser zur Mission passt: Ein Designer versteht „3 Videos diesen Monat" sofort. „30 Credits" muss er erst in Videos umrechnen — das ist Buchhaltung, nicht Atelier. Kontingente sind außerdem ehrlicher: sie sagen, was er bekommt, nicht was er verbraucht.
+
+Was mit dem Guthaben-Nachkauf passiert: **entfällt.** Wer mehr will, steigt eine Stufe hoch — eine Entscheidung statt einer Dauer-Mikrorechnung. Der Kostendeckel für PAWN bleibt über das interne Budget bestehen und wird nur sichtbar, wenn ein Haus wirklich anschlägt („Dein Kontingent für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle ins Atelier.").
+
+## Teil 4 — Inszenierung der Plan-Seite
+
+Die Seite wird von einer Preistabelle zu einer Standortbestimmung:
+
+1. **Kopf:** eine Zeile, die nie verhandelt wird — „7 % bleiben immer 7 %. Pläne sind optional." Damit ist klar: kein Plan ist nie eine Strafe.
+2. **Drei Stufen als Erzählung** statt Feature-Listen, jede mit einem Satz, für wen sie gedacht ist („Alles, um live zu sein." / „Wenn du regelmäßig veröffentlichst." / „Für Ateliers im Serienbetrieb."), darunter höchstens fünf Punkte in echter Sprache.
+3. **Beweis statt Behauptung:** je Stufe ein echtes Beispielvideo aus dem Archiv (Haus mit Emblem, Atelier kinematisch, Maison Signatur) — der Unterschied wird gesehen, nicht gelesen.
+4. **Dein Monat:** eine ruhige Zeile statt Kreisdiagramm — „Diesen Monat: 2 von 3 Videos, 4 von 5 Shots." Kein Guthaben, keine Preisliste.
+5. **Kein Dauer-Druck:** Der Hinweis auf die nächste Stufe erscheint nur an der Stelle, an der ein Kontingent tatsächlich endet — nicht als Banner über allem.
 
 ## Technische Details
-- Änderungen fast ausschließlich in `supabase/functions/pawn-jarvis/index.ts` (Modell-Fallback, Lauf-Bereinigung, neue Quellen, Kontaktsuche, Lernschleife) → **ein einziger Deploy am Ende**, Kosten gebündelt.
-- Datenbank: Spalten `contact_source`, `provider_used`, `cost_cents` sowie ein Entscheidungsfeld für deine Ja/Nein-Klicks; `acquisition_hunts` bekommt `source`. Bereinigung des hängenden Laufs.
-- Zeitpläne: `akquise_jagd` (täglich 22:00), `akquise_kuratieren` (23:45), `akquise_import` (23:30 und 01:00, bereits vorhanden), `akquise_verfassen` (02:15, vorhanden), Lernlauf montags.
-- Frontend (`JagdPanel.tsx`, `AdminAkquise.tsx`) läuft über Git und kostet keine Credits.
+
+- `ai_config`: `plan_limits` wird zur einzigen Wahrheit (Videos, kinematische Videos, Shots, Signaturen, Emblem-Flag je Stufe); `plan_credits`, `credit_costs`, `credit_packs` entfallen. Nichts hart im Code.
+- `src/features/campaign/quota.ts`: `useCredits` wird zu `usePlanQuota` (Verbrauch je Handlungsart im Monat aus `ai_actions_log`/`generation_requests` statt Punktesaldo). `credits_ledger`/`book_credit_spend` bleiben unangetastet in der Datenbank (keine Migration nötig), werden aber nicht mehr gelesen.
+- Aufrufer: `StudioPlan.tsx`, `StudioCampaignNew.tsx`, `StudioMediathek.tsx`, `StudioProducts.tsx`, `StudioStueckNeu.tsx`, `Begleiter.tsx` — überall Guthaben-Anzeige durch Kontingent-Anzeige ersetzen.
+- Der Credits-Zweig in `create-checkout` (`mode: "credits"`) und die Gutschrift im `stripe-webhook` bleiben im Code liegen (kein Deploy nötig), das UI ruft ihn nicht mehr auf.
+- E-Mail-Teil: `PublicFooter.tsx`, `Datenschutz.tsx`, `order-fulfillment`, `_shared/orderPaid.ts`, `pawn-jarvis` (Reply-To). Die drei Function-Änderungen erfordern **einen** Deploy — ich sage Bescheid, wenn er dran ist.
+- Typecheck grün vor Abschluss; Prüfung auf 390 px.
 
 ## Was du selbst tun musst
-1. Anthropic-Guthaben aufladen (der Fallback fängt es sonst zwar ab, aber Claude ist für die Bildbewertung der beste).
-2. Absender-Domain in Resend verifizieren, falls `hallo@pawn.vision` noch nicht verifiziert ist — sonst gehen die Einladungen nicht raus.
-3. Apify-Actors für TikTok und Behance einmal freigeben (kostenpflichtig je Lauf); ich trage die Actor-IDs voreingestellt ein, du kannst sie im Admin ändern.
+
+1. In Resend `pawn.vision` als Domain hinzufügen und die angezeigten DNS-Einträge beim Domain-Anbieter eintragen (das ist der einzige Weg zu zuverlässigem Versand).
+2. Bestätigen, dass Atelier 24 € / Maison 99 € so bleiben — die bestehenden Stripe-Preise ändere ich nicht.
