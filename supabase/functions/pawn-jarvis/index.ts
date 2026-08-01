@@ -2407,6 +2407,12 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Aufräumen: Läufe, die vor über 30 Minuten begonnen haben und nie fertig wurden, sind tot.
+    // Sie blockierten bisher den Cron-Wächter ("laeuft_bereits"). Wir schließen sie ehrlich ab.
+    await admin.from("jarvis_runs")
+      .update({ status: "failed", finished_at: new Date().toISOString(), error: "abgebrochen (Zeitüberschreitung)" })
+      .eq("status", "running").lt("started_at", new Date(Date.now() - 30 * 60_000).toISOString());
+
     // --- Herzschlag: eigener, kostenloser Pfad ohne LLM-Aufruf (enthält auch den Evolutions-Kreislauf) ---
     if (mode === "heartbeat") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "cron", mode, status: "running" }).select("id").single();
