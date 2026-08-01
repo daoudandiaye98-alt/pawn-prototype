@@ -694,6 +694,8 @@ export default function AdminAkquise() {
         </p>
       </div>
 
+      <JagdPanel />
+
       <SendeStapel rows={rows} onChange={patchRow} />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
