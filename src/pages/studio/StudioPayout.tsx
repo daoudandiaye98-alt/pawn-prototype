@@ -51,11 +51,15 @@ const EMPTY_SHIPPING: ShippingRates = {
 
 export default function StudioPayout() {
   const { designer, refresh } = useMyDesigner();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [setupBlocked, setSetupBlocked] = useState<string | null>(null);
   const [commissionPct, setCommissionPct] = useState<number>(7);
+
 
   const [billing, setBilling] = useState<BillingProfile>(EMPTY_BILLING);
   const [billingSaving, setBillingSaving] = useState(false);
