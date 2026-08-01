@@ -772,9 +772,15 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             </label>
           </Section>
 
-          {/* Variants */}
-          <Section title="Varianten (optional)" help="Nur nötig, wenn dein Stück in verschiedenen Größen, Farben oder Formaten existiert.">
-            {(local.variants ?? []).length === 0 && <p className="text-xs text-muted-foreground">Keine Varianten — passt für Unikate und Editionen.</p>}
+          {/* Größen mit eigenem Bestand */}
+          <SizesSection local={local} patch={patch} />
+
+          {/* Material & Pflege */}
+          <MaterialSection local={local} patch={patch} />
+
+          {/* Weitere Varianten (Farbe, Format …) */}
+          <Section title="Weitere Varianten (optional)" help="Für alles außer Größe — etwa Farbe oder Format. Größen pflegst du oben in der Größentabelle.">
+            {(local.variants ?? []).length === 0 && <p className="text-xs text-muted-foreground">Keine weiteren Varianten — passt für Unikate und Editionen.</p>}
             <div className="space-y-3">
               {(local.variants ?? []).map((v, i) => (
                 <div key={i} className="grid grid-cols-[1fr_2fr_auto] items-end gap-2">
