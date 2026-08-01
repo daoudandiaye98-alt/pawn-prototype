@@ -18,10 +18,12 @@ Deno.serve(async (req) => {
     const raw = await req.text();
 
     let event: Stripe.Event;
-    if (whSecret && sig) {
+    if (whSecret) {
+      // Ist ein Signing Secret hinterlegt, wird jedes Ereignis geprüft — sonst könnte
+      // jeder gefälschte Ereignisse (Plan-Upgrades, Gutschriften) einschleusen.
+      if (!sig) return new Response("missing_signature", { status: 400 });
       event = await stripe.webhooks.constructEventAsync(raw, sig, whSecret);
     } else {
-      // Development mode: accept unsigned events
       event = JSON.parse(raw) as Stripe.Event;
     }
 
