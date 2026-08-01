@@ -285,7 +285,7 @@ export default function StudioProducts() {
 
 interface EditorProps {
   initial: Partial<ProductRow>;
-  designer: { id: string; brand_name: string; slug: string; avatar_url: string | null; story: string | null };
+  designer: { id: string; brand_name: string; slug: string; avatar_url: string | null; story: string | null; vat_rate?: number };
   userId?: string;
   onCancel: () => void;
   onSaved: () => void;
