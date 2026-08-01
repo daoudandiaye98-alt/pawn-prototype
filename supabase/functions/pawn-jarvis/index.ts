@@ -996,32 +996,15 @@ async function fetchImageAsBase64(url: string): Promise<{ data: string; media_ty
   }
 }
 
-/** Ruft Claude mit Bildern + Text auf und erwartet reines JSON als Antwort. Ohne ladbare Bilder: null. */
+/** Bildbewertung mit JSON-Antwort — über die Modell-Kette. Ohne ladbare Bilder: null. */
 async function claudeVisionJson(
-  apiKey: string, prompt: string, images: string[], maxTokens = 500,
+  _apiKey: string, prompt: string, images: string[], maxTokens = 500,
 ): Promise<{ json: Record<string, unknown> | null; tokens: number }> {
-  const content: Record<string, unknown>[] = [];
-  for (const url of images.slice(0, 4)) {
-    const img = await fetchImageAsBase64(url);
-    if (img) content.push({ type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } });
-  }
-  if (content.length === 0) return { json: null, tokens: 0 };
-  content.push({ type: "text", text: prompt });
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, messages: [{ role: "user", content }] }),
-    });
-    if (!res.ok) return { json: null, tokens: 0 };
-    const data = await res.json();
-    const text = (data.content ?? []).filter((b: { type: string }) => b.type === "text").map((b: { text?: string }) => b.text ?? "").join("\n");
-    const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
-    return { json: extractJson(text) as Record<string, unknown> | null, tokens };
-  } catch {
-    return { json: null, tokens: 0 };
-  }
+  const r = await llm({ user: prompt, images, maxTokens });
+  if (r.error || !r.text) return { json: null, tokens: r.tokens };
+  return { json: extractJson(r.text) as Record<string, unknown> | null, tokens: r.tokens };
 }
+
 
 async function runDiagnose(admin: SupabaseClient, asCaller: SupabaseClient, apiKey: string): Promise<{ healed: string[]; needed: string[]; tokensUsed: number }> {
   const healed: string[] = [];
