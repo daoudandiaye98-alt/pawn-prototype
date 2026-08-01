@@ -2982,6 +2982,7 @@ export type Database = {
         Args: { _body: string; _link: string; _title: string; _type: string }
         Returns: undefined
       }
+      order_has_my_house_items: { Args: { _items: Json }; Returns: boolean }
       plan_priority: {
         Args: { _plan: Database["public"]["Enums"]["designer_plan"] }
         Returns: number
