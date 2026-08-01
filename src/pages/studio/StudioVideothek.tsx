@@ -69,7 +69,7 @@ export default function StudioVideothek() {
               </div>
               <div className="p-4">
                 <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
-                  {new Date(r.created_at).toLocaleDateString("de-DE")}{r.premiere ? " · Première" : ""}
+                  {new Date(r.created_at).toLocaleDateString("de-DE")}{r.premiere ? " · Startseiten-Video" : ""}
                 </p>
                 <p className="mt-2 line-clamp-2 text-sm">{captionFor(r)}</p>
                 <p className="mt-2 text-xs text-muted-foreground">{hashtagsFor(r).join(" ")}</p>

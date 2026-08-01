@@ -271,7 +271,7 @@ export default function AdminJarvis() {
       if (error) { toast.error(error.message); return; }
       const result = data as { ok: boolean; error?: string; message?: string; processed?: number; created?: number };
       if (!result.ok) { toast.error(result.message ?? result.error ?? "Massenlauf fehlgeschlagen."); return; }
-      toast.success(`${result.processed ?? 0} Häuser geprüft, ${result.created ?? 0} Signaturen erzeugt.`);
+      toast.success(`${result.processed ?? 0} Häuser geprüft, ${result.created ?? 0} Bildsprachen erzeugt.`);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -716,7 +716,7 @@ export default function AdminJarvis() {
 
       <section className="mb-8 border-[1.5px] border-black">
         <header className="flex items-center justify-between border-b-[1.5px] border-black px-5 py-3">
-          <p className="editorial-eyebrow">Kampagnen-Regie &amp; Signaturen</p>
+          <p className="editorial-eyebrow">Kampagnen-Regie &amp; Bildsprachen</p>
         </header>
         <div className="flex flex-wrap gap-3 p-5">
           <Button
@@ -737,11 +737,11 @@ export default function AdminJarvis() {
             className="rounded-none border-black hover:bg-black hover:text-white"
           >
             {signaturesBulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Signaturen für alle Häuser erzeugen
+            Bildsprachen für alle Häuser erzeugen
           </Button>
         </div>
         <p className="px-5 pb-5 text-xs text-muted-foreground">
-          Regie liest wöchentlich Première-Views/Shop-Klicks je Haus und destilliert Vorlieben; läuft normalerweise automatisch per Cron. Signaturen-Massenlauf erzeugt Stil-Rezepte für alle Häuser ohne bestehende Signatur.
+          Regie liest wöchentlich Startseiten-Video-Views/Shop-Klicks je Haus und destilliert Vorlieben; läuft normalerweise automatisch per Cron. Bildsprachen-Massenlauf erzeugt Stil-Rezepte für alle Häuser ohne bestehende Bildsprache.
         </p>
       </section>
 

@@ -1,6 +1,6 @@
 /**
- * Editionen: häuserübergreifende Kampagnen. Admin wählt Thema + Häuser →
- * Start erzeugt je Haus eine eigene Video-Version in dessen Signatur.
+ * gemeinsame Kampagnen: häuserübergreifende Kampagnen. Admin wählt Thema + Häuser →
+ * Start erzeugt je Haus eine eigene Video-Version in dessen Bildsprache.
  * Jedes Haus muss im Studio zustimmen, bevor irgendetwas veröffentlicht wird.
  */
 import { useEffect, useState } from "react";
@@ -19,7 +19,7 @@ interface DesignerLite { id: string; brand_name: string; house_number: number | 
 
 const STATUS_LABEL: Record<Status, string> = { pending: "Wartet", ready: "Bereit", approved: "Freigegeben", declined: "Abgelehnt", failed: "Fehlgeschlagen" };
 
-export default function AdminEditionen() {
+export default function Admingemeinsame Kampagnen() {
   const { user, roles, loading } = useAuth();
   const [editions, setEditions] = useState<EditionRow[]>([]);
   const [designers, setDesigners] = useState<DesignerLite[]>([]);
@@ -54,7 +54,7 @@ export default function AdminEditionen() {
     return next;
   });
 
-  const createEdition = async () => {
+  const creategemeinsame Kampagne = async () => {
     if (!theme.trim()) return toast.error("Thema fehlt.");
     if (chosen.size < 2) return toast.error("Mindestens 2 Häuser wählen.");
     setCreating(true);
@@ -66,7 +66,7 @@ export default function AdminEditionen() {
       const editionId = (ed as { id: string }).id;
       const rows = Array.from(chosen).map((designer_id) => ({ edition_id: editionId, designer_id, status: "pending" }));
       await supabase.from("edition_participants" as never).insert(rows as never);
-      toast.success("Edition als Entwurf angelegt.");
+      toast.success("gemeinsame Kampagne als Entwurf angelegt.");
       setTheme(""); setChosen(new Set());
       void refresh();
     } catch (e) {
@@ -76,7 +76,7 @@ export default function AdminEditionen() {
     }
   };
 
-  const startEdition = async (id: string) => {
+  const startgemeinsame Kampagne = async (id: string) => {
     setStarting(id);
     try {
       const { data, error } = await supabase.functions.invoke("generate-edition-video", { body: { edition_id: id } });
@@ -93,13 +93,13 @@ export default function AdminEditionen() {
   };
 
   return (
-    <AdminShell title="Editionen" eyebrow="Häuserübergreifend">
+    <AdminShell title="gemeinsame Kampagnen" eyebrow="Häuserübergreifend">
       <p className="max-w-3xl text-sm text-muted-foreground">
-        Ein Thema, mehrere Häuser — jedes bekommt eine eigene Video-Version in seiner Signatur. Nichts geht raus, ohne dass das jeweilige Haus im Studio zustimmt.
+        Ein Thema, mehrere Häuser — jedes bekommt eine eigene Video-Version in seiner Bildsprache. Nichts geht raus, ohne dass das jeweilige Haus im Studio zustimmt.
       </p>
 
       <div className="mt-8 border border-border bg-white p-5">
-        <p className="editorial-eyebrow">Neue Edition</p>
+        <p className="editorial-eyebrow">Neue gemeinsame Kampagne</p>
         <div className="mt-3 flex flex-wrap gap-3">
           <input value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="Thema, z.B. „Herbst-Editorial”"
             className="flex-1 border border-border bg-background p-2 text-sm" />
@@ -117,14 +117,14 @@ export default function AdminEditionen() {
             </button>
           ))}
         </div>
-        <button onClick={createEdition} disabled={creating}
+        <button onClick={creategemeinsame Kampagne} disabled={creating}
           className="mt-4 border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] text-background disabled:opacity-50">
           {creating ? "Lege an…" : "Als Entwurf anlegen"}
         </button>
       </div>
 
       <div className="mt-8 space-y-4">
-        {editions.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Edition.</p>}
+        {editions.length === 0 && <p className="text-sm text-muted-foreground">Noch keine gemeinsame Kampagne.</p>}
         {editions.map((e) => (
           <div key={e.id} className="border border-border bg-white p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -133,7 +133,7 @@ export default function AdminEditionen() {
                 <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{e.world ?? "—"} · {e.status}</p>
               </div>
               {e.status === "draft" && (
-                <button onClick={() => startEdition(e.id)} disabled={starting === e.id}
+                <button onClick={() => startgemeinsame Kampagne(e.id)} disabled={starting === e.id}
                   className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
                   <Play className="h-3.5 w-3.5" /> {starting === e.id ? "Startet…" : "Produzieren starten"}
                 </button>

@@ -1,7 +1,7 @@
 /**
  * Kampagnen-Studio: eine ruhige, gestufte Arbeitsfläche (Teil 13c). Links eine
  * durchgehende Vorschau, rechts eine kurze Hauptfolge — Was entsteht → Material →
- * Model → Bewegung & Qualität — mit Caption/Signatur/Schnitt in einem geschlossenen
+ * Model → Bewegung & Qualität — mit Caption/Bildsprache/Schnitt in einem geschlossenen
  * "Feinschliff", statt vieler gleichrangiger Boxen. Ein einziger Handlungsknopf.
  * Der Ask-PAWN-Begleiter erklärt je Abschnitt; hier steht nur das Nötigste.
  *
@@ -339,7 +339,7 @@ export default function StudioCampaignNew() {
 
   const setModelModeUser = (m: ModelMode) => { setModelModeTouched(true); setModelMode(m); };
 
-  // Signaturen: der Regisseur destilliert sie einmalig beim ersten Öffnen dieser Seite.
+  // Bildsprachen: der Regisseur destilliert sie einmalig beim ersten Öffnen dieser Seite.
   useEffect(() => {
     if (!designer) return;
     setSignaturesLoading(true);
@@ -370,8 +370,8 @@ export default function StudioCampaignNew() {
       });
       if (error) throw error;
       const r = data as { ok?: boolean; error?: string; message?: string } | null;
-      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Wunsch-Signatur fehlgeschlagen.");
-      toast.success("Wunsch-Signatur erzeugt.");
+      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Wunsch-Bildsprache fehlgeschlagen.");
+      toast.success("Wunsch-Bildsprache erzeugt.");
       const { data: refreshed } = await supabase.functions.invoke("generate-signatures", { body: { mode: "single" } });
       setSignatures((refreshed as { signatures?: HouseSignature[] } | null)?.signatures ?? []);
       setWishName(""); setWishPrompt("");
@@ -1656,7 +1656,7 @@ export default function StudioCampaignNew() {
                 <p className="editorial-eyebrow">Feinschliff</p>
                 {feinschliffOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
-              {!feinschliffOpen && <p className="mt-1 text-xs text-muted-foreground">Caption, Hashtags{outputType === "video" ? ", Signatur, Schnitt" : ""} — optional.</p>}
+              {!feinschliffOpen && <p className="mt-1 text-xs text-muted-foreground">Caption, Hashtags{outputType === "video" ? ", Bildsprache, Schnitt" : ""} — optional.</p>}
 
               {feinschliffOpen && (
                 <div className="mt-6 space-y-8">
@@ -1692,7 +1692,7 @@ export default function StudioCampaignNew() {
                       </div>
 
                       <div>
-                        <p className="editorial-eyebrow">Signatur</p>
+                        <p className="editorial-eyebrow">Bildsprache</p>
                         {signaturesLoading ? (
                           <p className="mt-2 text-sm text-muted-foreground">Der Regisseur denkt nach…</p>
                         ) : (
@@ -1716,7 +1716,7 @@ export default function StudioCampaignNew() {
                             )}
                             {plan === "maison" && (
                               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                                <input value={wishName} onChange={(e) => setWishName(e.target.value)} placeholder="Wunsch-Signatur: Name" className="border border-border bg-background p-2 text-sm sm:w-40" />
+                                <input value={wishName} onChange={(e) => setWishName(e.target.value)} placeholder="Wunsch-Bildsprache: Name" className="border border-border bg-background p-2 text-sm sm:w-40" />
                                 <input value={wishPrompt} onChange={(e) => setWishPrompt(e.target.value)} placeholder="Beschreibung (Stimmung, Licht, Tempo …)" className="flex-1 border border-border bg-background p-2 text-sm" />
                                 <button onClick={requestWishSignature} disabled={wishBusy}
                                   className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">

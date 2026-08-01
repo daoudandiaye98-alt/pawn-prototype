@@ -1,7 +1,7 @@
 /**
  * Studio-Plan-Übersicht — eine Standortbestimmung, keine Preistabelle.
  * Kernbotschaft: 7% Provision bleibt immer 7%. Pläne sind optional.
- * Limits (Videos, Shots, Signaturen) kommen live aus ai_config.plan_limits.
+ * Limits (Videos, Shots, Bildsprachen) kommen live aus ai_config.plan_limits.
  */
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
@@ -30,7 +30,7 @@ const STATIC_BENEFITS: Record<Plan, string[]> = {
   maison: [
     "Monatliches Haus-Dossier",
     "Vitrine-Rotation auf der Startseite",
-    "Première-Priorität und Editionen-Erstzugang",
+    "Startseiten-Video-Priorität und gemeinsame Kampagnen-Erstzugang",
     "PAWN+ Max — stärkstes Modell, längster Kontext",
   ],
 };
@@ -189,7 +189,7 @@ export default function StudioPlan() {
       ? `${fmtCount(l.videos, "Videos")} pro Monat, ${fmt(l.cinematic)} davon kinematisch${l.emblem ? "" : " — ohne PAWN-Emblem"}`
       : `${fmtCount(l.videos, "Videos")} pro Monat in Editorial-Regie${l.emblem ? ", mit PAWN-Emblem im Abspann" : ""}`;
     const shotLine = `${fmtCount(l.shots, "Model-Shots & Freisteller")} pro Monat`;
-    const sigLine = `${fmt(l.signature_previews)} Signatur${l.signature_previews === 1 ? "" : "en"}${p === "maison" ? " + 1 Wunsch-Signatur" : ""}`;
+    const sigLine = `${fmt(l.signature_previews)} Bildsprache${l.signature_previews === 1 ? "" : "en"}${p === "maison" ? " + 1 Wunsch-Bildsprache" : ""}`;
     return [videoLine, shotLine, sigLine, ...resolvedStaticBenefits[p]].filter(Boolean);
   };
 
