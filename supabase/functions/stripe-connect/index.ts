@@ -55,20 +55,17 @@ Deno.serve(async (req) => {
           email = userRes?.user?.email ?? undefined;
         } catch { /* best effort */ }
         const country = (designer.stripe_country as string | null) || "DE";
-        // Direct Charges: die Zahlung entsteht auf dem Konto des Hauses. Stripe-Gebühren und
-        // Rückbuchungsverluste werden Stripe-seitig diesem Konto zugeordnet, PAWN übernimmt
-        // die Zahlungsabwicklung als Plattform (Express-Dashboard bleibt für das Haus offen).
+        // Express-Konto: die Zahlung entsteht direkt auf dem Konto des Hauses (Direct Charge).
+        // Stripe ordnet Zahlungsgebühren und Rückbuchungen diesem Konto zu; PAWN erhält
+        // die Application Fee. `type: "express"` und `controller` schließen sich in der
+        // Stripe-API gegenseitig aus — die Express-Voreinstellung entspricht genau dieser Verteilung.
         const account = await stripe.accounts.create({
           type: "express",
           country,
           email,
           capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-          controller: {
-            fees: { payer: "account" },
-            losses: { payments: "stripe" },
-            stripe_dashboard: { type: "express" },
-          },
-        } as unknown as Stripe.AccountCreateParams);
+        });
+
         accountId = account.id;
         await admin.from("designers").update({
           stripe_account_id: accountId,
