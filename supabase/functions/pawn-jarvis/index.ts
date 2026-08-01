@@ -831,22 +831,148 @@ async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): P
 
 // --- Selbstheilung (mode: 'diagnose') ---
 
-async function claudeComplete(apiKey: string, system: string, user: string, maxTokens = 300): Promise<{ text: string; tokens: number }> {
+// --- Die Modell-Kette: Anthropic zuerst, dann das Lovable-Gateway, dann OpenAI. -------------
+// Kein Jarvis-Lauf darf mehr sterben, nur weil ein Anbieter kein Guthaben hat oder bremst.
+// Der zuletzt erfolgreich genutzte Anbieter landet in jarvis_runs.provider_used.
+
+const GATEWAY_MODEL = "openai/gpt-5.6-sol";
+const OPENAI_FALLBACK_MODEL = "gpt-4o";
+
+let PROVIDER_USED: string | null = null;
+function providerUsed(): string | null { return PROVIDER_USED; }
+
+interface LlmCall {
+  system?: string;
+  user: string;
+  maxTokens?: number;
+  images?: string[];
+}
+
+interface LlmResult { text: string; tokens: number; provider: string | null; error: string | null }
+
+/** Bilder einmal laden, damit jeder Anbieter dieselben Bytes bekommt. */
+async function loadImages(urls: string[], max = 4): Promise<{ data: string; media_type: string }[]> {
+  const out: { data: string; media_type: string }[] = [];
+  for (const url of urls.slice(0, max)) {
+    const img = await fetchImageAsBase64(url);
+    if (img) out.push(img);
+  }
+  return out;
+}
+
+async function callAnthropic(
+  apiKey: string, call: LlmCall, images: { data: string; media_type: string }[],
+): Promise<LlmResult> {
+  const content: Record<string, unknown>[] = images.map((img) => ({
+    type: "image", source: { type: "base64", media_type: img.media_type, data: img.data },
+  }));
+  content.push({ type: "text", text: call.user });
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
+      body: JSON.stringify({
+        model: MODEL, max_tokens: call.maxTokens ?? 600,
+        ...(call.system ? { system: call.system } : {}),
+        messages: [{ role: "user", content }],
+      }),
     });
-    if (!res.ok) return { text: "", tokens: 0 };
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { text: "", tokens: 0, provider: null, error: `Anthropic ${res.status}: ${body.slice(0, 200)}` };
+    }
     const data = await res.json();
     const text = (data.content ?? []).filter((b: { type: string }) => b.type === "text").map((b: { text?: string }) => b.text ?? "").join("\n").trim();
     const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
-    return { text, tokens };
-  } catch {
-    return { text: "", tokens: 0 };
+    return { text, tokens, provider: "anthropic", error: null };
+  } catch (e) {
+    return { text: "", tokens: 0, provider: null, error: `Anthropic nicht erreichbar: ${(e as Error).message}` };
   }
 }
+
+/** OpenAI-kompatibler Aufruf — deckt das Lovable-Gateway und OpenAI direkt ab. */
+async function callOpenAiCompatible(
+  endpoint: string, headers: Record<string, string>, model: string, call: LlmCall,
+  images: { data: string; media_type: string }[], label: string,
+): Promise<LlmResult> {
+  const parts: Record<string, unknown>[] = images.map((img) => ({
+    type: "image_url", image_url: { url: `data:${img.media_type};base64,${img.data}` },
+  }));
+  parts.push({ type: "text", text: call.user });
+  const messages: Record<string, unknown>[] = [];
+  if (call.system) messages.push({ role: "system", content: call.system });
+  messages.push({ role: "user", content: parts });
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        model, messages,
+        ...(model.startsWith("openai/gpt-5") ? { reasoning_effort: "none" } : {}),
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { text: "", tokens: 0, provider: null, error: `${label} ${res.status}: ${body.slice(0, 200)}` };
+    }
+    const data = await res.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: { total_tokens?: number };
+    };
+    const text = (data.choices?.[0]?.message?.content ?? "").trim();
+    if (!text) return { text: "", tokens: 0, provider: null, error: `${label}: leere Antwort` };
+    return { text, tokens: data.usage?.total_tokens ?? 0, provider: label, error: null };
+  } catch (e) {
+    return { text: "", tokens: 0, provider: null, error: `${label} nicht erreichbar: ${(e as Error).message}` };
+  }
+}
+
+/**
+ * Ein Denkaufruf mit Rückfallkette. Gibt immer eine Antwort oder eine klare Fehlermeldung —
+ * nie eine Ausnahme. Bilder werden nur einmal geladen, egal wie viele Anbieter probiert werden.
+ */
+async function llm(call: LlmCall): Promise<LlmResult> {
+  const images = call.images?.length ? await loadImages(call.images) : [];
+  if (call.images?.length && images.length === 0) {
+    return { text: "", tokens: 0, provider: null, error: "Keine der Bild-URLs war ladbar." };
+  }
+
+  const errors: string[] = [];
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (anthropicKey) {
+    const r = await callAnthropic(anthropicKey, call, images);
+    if (!r.error && r.text) { PROVIDER_USED = r.provider; return r; }
+    if (r.error) errors.push(r.error);
+  }
+
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (lovableKey) {
+    const r = await callOpenAiCompatible(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      { "Lovable-API-Key": lovableKey }, GATEWAY_MODEL, call, images, "gateway",
+    );
+    if (!r.error && r.text) { PROVIDER_USED = r.provider; return r; }
+    if (r.error) errors.push(r.error);
+  }
+
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openaiKey) {
+    const r = await callOpenAiCompatible(
+      "https://api.openai.com/v1/chat/completions",
+      { Authorization: `Bearer ${openaiKey}` }, OPENAI_FALLBACK_MODEL, call, images, "openai",
+    );
+    if (!r.error && r.text) { PROVIDER_USED = r.provider; return r; }
+    if (r.error) errors.push(r.error);
+  }
+
+  return { text: "", tokens: 0, provider: null, error: errors.join(" | ") || "Kein Denkmodell konfiguriert." };
+}
+
+async function claudeComplete(_apiKey: string, system: string, user: string, maxTokens = 300): Promise<{ text: string; tokens: number }> {
+  const r = await llm({ system, user, maxTokens });
+  return { text: r.text, tokens: r.tokens };
+}
+
 
 function extractJson(text: string): unknown | null {
   const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
