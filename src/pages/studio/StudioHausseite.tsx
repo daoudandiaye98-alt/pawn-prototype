@@ -128,6 +128,19 @@ export default function StudioHausseite() {
     void refresh();
   };
 
+  const addTemplate = async (kinds: PageBlockKind[]) => {
+    if (!designer) return;
+    const start = blocks.length;
+    const { error } = await supabase.from("designer_page_blocks" as never).insert(
+      kinds.map((kind, i) => ({ designer_id: designer.id, kind, position: start + i, content: {} })) as never,
+    );
+    if (error) return toast.error(error.message);
+    toast.success("Vorlage eingefügt — jetzt Bilder und Text ergänzen.");
+    void refresh();
+  };
+
+
+
   const updateContent = async (block: PageBlockRow, content: Record<string, unknown>) => {
     setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, content } : b)));
     await supabase.from("designer_page_blocks" as never).update({ content } as never).eq("id", block.id);
