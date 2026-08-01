@@ -37,6 +37,7 @@ import StudioOverview from "./pages/studio/StudioOverview.tsx";
 import StudioProducts from "./pages/studio/StudioProducts.tsx";
 import StudioStueckNeu from "./pages/studio/StudioStueckNeu.tsx";
 import StudioOrders from "./pages/studio/StudioOrders.tsx";
+import StudioVersand from "./pages/studio/StudioVersand.tsx";
 import StudioBrand from "./pages/studio/StudioBrand.tsx";
 import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
 import StudioMessages from "./pages/studio/StudioMessages.tsx";
@@ -176,6 +177,7 @@ const App = () => (
                 <Route path="/studio/produkte" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
                 <Route path="/studio/produkte/neu" element={<RoleGate role="designer"><StudioStueckNeu /></RoleGate>} />
                 <Route path="/studio/bestellungen" element={<RoleGate role="designer"><StudioOrders /></RoleGate>} />
+                <Route path="/studio/versand" element={<RoleGate role="designer"><StudioVersand /></RoleGate>} />
                 <Route path="/studio/kampagnen" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
                 <Route path="/studio/kampagnen/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />
                 <Route path="/studio/videothek" element={<RoleGate role="designer"><StudioVideothek /></RoleGate>} />
