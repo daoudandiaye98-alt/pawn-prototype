@@ -113,6 +113,18 @@ Deno.serve(async (req) => {
     // "Edge Function returned a non-2xx status code" im Studio auftauchen — immer 200 mit
     // Klartext-Fehlermeldung, echte Ursache landet nur im Server-Log.
     console.error("[stripe-connect] error:", e);
-    return ok({ error: "internal_error", message: "Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht." });
+    const raw = String((e as Error)?.message ?? e);
+    // Sonderfall: Stripe verlangt, dass PAWN einmalig das Connect-Plattform-Profil ausfüllt
+    // (Verantwortung für Verluste). Ohne das kann kein einziges Haus ein Konto anlegen —
+    // das ist eine Aufgabe der Plattform, nicht des Designers.
+    if (/platform-profile|responsibilities of managing losses/i.test(raw)) {
+      return ok({
+        error: "platform_setup_required",
+        message: "PAWN schließt gerade die Freigabe beim Zahlungspartner ab — dein Konto kannst du in Kürze verbinden.",
+        detail: raw,
+      });
+    }
+    return ok({ error: "internal_error", message: "Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht.", detail: raw });
   }
 });
+
