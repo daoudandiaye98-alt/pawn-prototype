@@ -2675,6 +2675,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_translations: {
+        Row: {
+          created_at: string
+          de: string
+          en: string
+          hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          de: string
+          en: string
+          hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          de?: string
+          en?: string
+          hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_memory: {
         Row: {
           facts: Json
