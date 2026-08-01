@@ -106,7 +106,7 @@ const Checkout = () => {
   return (
     <PalaceLayout transparentHeader={false}>
       <section className="mx-auto max-w-[1400px] px-6 pt-36 pb-24 md:px-14 md:pt-44">
-        <p className="palace-eyebrow">Kasse · Prototyp</p>
+        <p className="palace-eyebrow">Kasse</p>
         <h1
           className="palace-serif mt-6 font-light text-[#000000]"
           style={{ fontSize: "clamp(2.2rem, 5vw, 4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
@@ -133,9 +133,11 @@ const Checkout = () => {
             <section className="border border-[rgba(0,0,0,.16)] bg-white p-8 md:p-10">
               <p className="palace-eyebrow">Zahlung</p>
               <h2 className="palace-serif mt-3 text-[1.6rem] font-light text-[#000000]">Wie?</h2>
-              <p className="mt-2 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">
-                Keine echte Zahlung — Prototyp.
+              <p className="mt-2 text-[0.8rem] leading-relaxed text-[#55534E]">
+                Zahlungsart, Lieferadresse und Versand wählst du im nächsten Schritt bei unserem
+                Zahlungspartner Stripe. Die Zahlung wird über das Stripe-Konto des Hauses abgewickelt.
               </p>
+
               <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
                 {METHODS.map((m) => (
                   <button
