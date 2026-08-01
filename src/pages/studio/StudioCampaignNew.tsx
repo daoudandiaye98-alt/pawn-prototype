@@ -27,7 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { renderCampaign, blobPreviewUrl, type Tempo, type Format } from "@/features/campaign/renderer";
 import { randomSeed } from "@/features/campaign/prng";
-import { useCredits, planLabel, type Plan } from "@/features/campaign/quota";
+import { usePlanQuota, planLabel, formatQuota, quotaExhaustedHint, type Plan } from "@/features/campaign/quota";
 import {
   Check, Upload, Sparkles, Music, Wand2, Shuffle, Image as ImageIcon, Clapperboard,
   ChevronUp, ChevronDown, ArrowDown, Download, AlertTriangle, Clock,
@@ -254,7 +254,7 @@ export default function StudioCampaignNew() {
 
   // Credits
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const credits = useCredits(designer?.id, plan, isAdmin);
+  const quota = usePlanQuota(designer?.id, plan, isAdmin);
   const videoModels = useMemo(() => modelCatalog.filter((m) => m.kind === "video"), [modelCatalog]);
   const bildModels = useMemo(() => modelCatalog.filter((m) => m.kind === "bild"), [modelCatalog]);
   const chosenModelEntry = videoModels.find((m) => m.id === motionChoice) ?? null;
@@ -614,7 +614,7 @@ export default function StudioCampaignNew() {
       const r = data as { ok?: boolean; results?: StagingResult[]; message?: string; error?: string } | null;
       if (!r?.ok && !r?.results?.length) throw new Error(r?.message ?? r?.error ?? "Inszenierung fehlgeschlagen.");
       setStagingResults(r.results ?? []);
-      void credits.refresh();
+      void quota.refresh();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -797,11 +797,7 @@ export default function StudioCampaignNew() {
   };
 
   // Kosten- und Dauer-Schätzung für die fixierte Kopfzeile.
-  const perClipCredits = (chosenModelEntry?.credits ?? credits.costs.clip_standard ?? 5) * (durationS === 10 ? 2 : 1);
   const clipsToProduce = Math.min(chosenImages.length, 3);
-  const estimatedCost =
-    (needsModelShot ? (chosenBildEntry?.credits ?? credits.costs.tryon_shot ?? 2) : 0) +
-    (outputType === "video" && chosenModelEntry ? perClipCredits * Math.max(clipsToProduce, 1) : 0);
   const estimatedDurationS = outputType === "video"
     ? (chosenModelEntry ? clipsToProduce * durationS : Math.round(chosenImages.length * sceneSeconds))
     : 0;
@@ -1120,10 +1116,10 @@ export default function StudioCampaignNew() {
       <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0">
         <span className="text-sm text-muted-foreground">{planLabel(plan)}-Plan</span>
         <div className="flex flex-wrap items-center gap-4 text-sm">
-          <span className="tabular-nums font-medium">{credits.balance} / {credits.grant} Credits</span>
+          <span className="tabular-nums font-medium">{formatQuota(quota.used.videos, quota.unlimited ? -1 : quota.limits.videos, "Videos")} · {formatQuota(quota.used.shots, quota.unlimited ? -1 : quota.limits.shots, "Shots")}</span>
           {outputType === "video" && (
             <>
-              <span className="text-muted-foreground">Nächster Lauf: <span className="tabular-nums font-medium text-foreground">~{estimatedCost} Cr.</span></span>
+              <span className="text-muted-foreground">Nächster Lauf: <span className="tabular-nums font-medium text-foreground">{Math.max(clipsToProduce, 1)} Clip{Math.max(clipsToProduce, 1) === 1 ? "" : "s"}</span></span>
               {estimatedDurationS > 0 && (
                 <span className="flex items-center gap-1 text-muted-foreground"><Clock className="h-3.5 w-3.5" /> <span className="tabular-nums">{estimatedDurationS}s</span></span>
               )}
@@ -1250,9 +1246,9 @@ export default function StudioCampaignNew() {
                 </div>
               )}
               {chosenProduct && (
-                <button type="button" onClick={requestFreistellerForProduct} disabled={freistellerBusy === "product" || !credits.canAfford(credits.costs.product_shot ?? 1)}
+                <button type="button" onClick={requestFreistellerForProduct} disabled={freistellerBusy === "product" || !quota.canDo("shots")}
                   className="mt-3 inline-flex min-h-[36px] items-center gap-1.5 text-[0.68rem] uppercase tracking-wide text-muted-foreground hover:text-foreground disabled:opacity-60">
-                  <Sparkles className="h-3 w-3" /> {freistellerBusy === "product" ? "…" : `Freisteller · ${credits.costs.product_shot ?? 1} Credits`}
+                  <Sparkles className="h-3 w-3" /> {freistellerBusy === "product" ? "…" : "Freisteller"}
                 </button>
               )}
 
@@ -1270,9 +1266,9 @@ export default function StudioCampaignNew() {
                     {uploaded.map((u, i) => (
                       <div key={i}>
                         <img src={u.url} alt="" className="aspect-square w-full object-cover grayscale" />
-                        <button type="button" onClick={() => requestFreistellerForUpload(i)} disabled={freistellerBusy === i || !credits.canAfford(credits.costs.product_shot ?? 1)}
+                        <button type="button" onClick={() => requestFreistellerForUpload(i)} disabled={freistellerBusy === i || !quota.canDo("shots")}
                           className="mt-1 flex min-h-[28px] w-full items-center justify-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-muted-foreground hover:text-foreground disabled:opacity-60">
-                          <Sparkles className="h-3 w-3" /> {freistellerBusy === i ? "…" : `Freisteller · ${credits.costs.product_shot ?? 1} Cr.`}
+                          <Sparkles className="h-3 w-3" /> {freistellerBusy === i ? "…" : "Freisteller"}
                         </button>
                       </div>
                     ))}
@@ -1350,7 +1346,7 @@ export default function StudioCampaignNew() {
                                 {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
                               </div>
                             </div>
-                            <p className="mt-1 text-[0.6rem] uppercase tracking-wide text-muted-foreground">{t.credits} Credits</p>
+                            
                           </div>
                         </label>
                       ))}
@@ -1360,10 +1356,10 @@ export default function StudioCampaignNew() {
                       <p className="text-sm text-muted-foreground">
                         {stagingSelectedIds.length === 0
                           ? "Wähle mindestens eine Variante."
-                          : `Dieser Lauf kostet ${stagingTotalCredits} Credits, dauert etwa 20–40 Sekunden für ${stagingSelectedIds.length} Varianten.`}
+                          : `Dauert etwa 20–40 Sekunden für ${stagingSelectedIds.length} Varianten — zählt auf dein Monats-Kontingent.`}
                       </p>
                       <button type="button" onClick={() => void runStaging()}
-                        disabled={stagingBusy || stagingSelectedIds.length === 0 || !credits.canAfford(stagingTotalCredits)}
+                        disabled={stagingBusy || stagingSelectedIds.length === 0 || !quota.canDo("shots")}
                         className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
                         {stagingBusy ? "PAWN inszeniert…" : "Inszenierung starten"}
                       </button>
@@ -1497,12 +1493,12 @@ export default function StudioCampaignNew() {
               {activeModelMode !== "keins" && (
                 <div className="mt-6 border-t border-border pt-6">
                   <p className="text-sm text-muted-foreground">
-                    Dein Stück erscheint an einem Model.{chosenBildEntry ? ` ${chosenBildEntry.credits} Credits.` : ""}
+                    Dein Stück erscheint an einem Model.
                   </p>
                   <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{tryonDisclosure}</p>
                   {!rawMaterialImage && <p className="mt-2 text-sm text-muted-foreground">Wähle zuerst Material oben.</p>}
                   <button type="button" onClick={requestModelShot}
-                    disabled={modelShotBusy || !rawMaterialImage || (activeModelMode === "pawn_pool" && !chosenPoolImageUrl) || !credits.canAfford(chosenBildEntry?.credits ?? credits.costs.tryon_shot ?? 2)}
+                    disabled={modelShotBusy || !rawMaterialImage || (activeModelMode === "pawn_pool" && !chosenPoolImageUrl) || !quota.canDo("shots")}
                     className="mt-3 min-h-[40px] border border-foreground bg-foreground px-4 py-1.5 text-[0.68rem] uppercase tracking-widest text-background disabled:opacity-60">
                     {modelShotBusy ? "PAWN arbeitet…" : modelShotUrl ? "Neu erzeugen" : "Model-Shot erzeugen"}
                   </button>
@@ -1614,12 +1610,12 @@ export default function StudioCampaignNew() {
                   <p className="editorial-eyebrow mt-8">Bewegung</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {videoModels.map((m) => {
-                      const affordable = credits.canAfford(m.credits * (durationS === 10 ? 2 : 1));
+                      const affordable = quota.canDo("videos") && quota.canDo("cinematic");
                       return (
                         <div key={m.id} className="flex flex-col items-start gap-1">
                           <button disabled={!affordable} onClick={() => setMotionChoice(m.id)}
                             className={`min-h-[44px] border px-4 py-2 text-left text-[0.7rem] uppercase tracking-[0.18em] disabled:opacity-40 ${motionChoice === m.id ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                            {m.label} · {m.credits * (durationS === 10 ? 2 : 1)} Cr.
+                            {m.label}
                           </button>
                           {m.dauer_hinweis && <span className="text-[0.58rem] text-muted-foreground">{m.dauer_hinweis}</span>}
                         </div>
