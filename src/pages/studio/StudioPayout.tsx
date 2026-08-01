@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
+import { useAuth } from "@/lib/auth";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check } from "lucide-react";
