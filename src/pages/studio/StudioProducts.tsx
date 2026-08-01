@@ -506,10 +506,12 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const addVariant = () => patch({ variants: [...(local.variants ?? []), { name: "Größe", options: [] }] });
   const removeVariant = (i: number) => patch({ variants: (local.variants ?? []).filter((_, k) => k !== i) });
 
+  const editorProfile = worldProfile(local.world);
   const nameMissing = !local.name || local.name.trim().length < 2;
   const priceMissing = !local.price || Number(local.price) <= 0;
   const imageMissing = !local.image_url;
-  const materialMissing = (local.material_composition ?? []).filter((m) => m.material.trim()).length === 0;
+  const materialMissing = editorProfile.materialRequired
+    && (local.material_composition ?? []).filter((m) => m.material.trim()).length === 0;
   const weightMissing = local.weight_grams == null || Number(local.weight_grams) <= 0;
   const complete = !nameMissing && !priceMissing && !imageMissing && !materialMissing && !weightMissing;
 
