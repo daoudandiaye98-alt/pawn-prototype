@@ -134,7 +134,13 @@ export default function StudioPayout() {
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "onboard" } });
       if (error) { toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht."); return; }
-      const result = data as { error?: string; message?: string; url?: string };
+      const result = data as { error?: string; message?: string; url?: string; detail?: string };
+      if (result?.error === "platform_setup_required") {
+        setSetupBlocked(result.message ?? "PAWN schließt gerade die Freigabe beim Zahlungspartner ab.");
+        if (isAdmin && result.detail) toast.error(result.detail, { duration: 12000 });
+        else toast.error(result.message ?? "PAWN schließt gerade die Freigabe beim Zahlungspartner ab.");
+        return;
+      }
       if (result?.error) { toast.error(result.message ?? "Verbindung konnte nicht gestartet werden."); return; }
       if (result?.url) window.location.href = result.url;
     } catch {
@@ -143,6 +149,7 @@ export default function StudioPayout() {
       setBusy(false);
     }
   }
+
 
   async function openDashboard() {
     setBusy(true);
