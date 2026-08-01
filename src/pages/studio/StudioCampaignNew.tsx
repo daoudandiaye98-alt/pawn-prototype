@@ -555,10 +555,6 @@ export default function StudioCampaignNew() {
     () => (stagingArt ? (stagingTemplatesAll[stagingArt] ?? []).filter((t) => t.active !== false) : []),
     [stagingArt, stagingTemplatesAll],
   );
-  const stagingTotalCredits = useMemo(
-    () => stagingTemplatesForArt.filter((t) => stagingSelectedIds.includes(t.id)).reduce((s, t) => s + (t.credits ?? 0), 0),
-    [stagingTemplatesForArt, stagingSelectedIds],
-  );
 
   useEffect(() => {
     const source = chosenImages[0] ?? null;
@@ -858,7 +854,7 @@ export default function StudioCampaignNew() {
         const isPawnCredits = firstErr && /nicht genug credits/i.test(firstErr.error);
         const isFalGuthaben = firstErr && !isPawnCredits && (firstErr.status === 402 || /guthaben|credit|insufficient/i.test(firstErr.error));
         throw new Error(isPawnCredits
-          ? firstErr.error
+          ? quotaExhaustedHint(plan, "Videos")
           : isFalGuthaben
             ? "fal.ai-Guthaben fehlt — bitte im fal.ai-Konto Credits aufladen und erneut versuchen."
             : `Provider hat keine Aufträge angenommen: ${firstErr?.error ?? "unbekannter Fehler"}`);
