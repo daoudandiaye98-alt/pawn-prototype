@@ -1,5 +1,6 @@
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { Reveal } from "@/components/palace/Reveal";
+import { LegalTranslationNote } from "@/components/palace/LegalTranslationNote";
 
 export default function Widerruf() {
   return (
@@ -7,6 +8,7 @@ export default function Widerruf() {
       <section className="mx-auto max-w-[820px] px-6 pt-32 pb-24 md:pt-40">
         <Reveal>
           <p className="palace-eyebrow">Rechtliches</p>
+          <LegalTranslationNote />
           <h1 className="palace-serif mt-6 font-light text-[#000000]"
             style={{ fontSize: "clamp(2.4rem,5vw,3.8rem)", lineHeight: 1, letterSpacing: "-0.02em" }}>
             Widerrufsrecht.
