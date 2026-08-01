@@ -565,7 +565,7 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
       )}
       {showTable && (
         <div className="mt-8">
-          <p className="palace-eyebrow">Maßtabelle (cm)</p>
+          <p className="palace-eyebrow">{profile.measurementTitle}</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[380px] text-[0.9rem]">
               <thead>
