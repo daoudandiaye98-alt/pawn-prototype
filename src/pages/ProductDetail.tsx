@@ -40,6 +40,11 @@ const ProductDetail = () => {
   // Baut die Produktansicht direkt aus der Datenbank auf — der alte Mock-Katalog
   // (core-Store) hat absichtlich leere Seed-Arrays (keine Markennamen, keine Fake-Daten) und
   // lieferte hier immer "kein Treffer", was die ganze Seite zum Absturz brachte.
+  const sizeVariants = useMemo(
+    () => ((dbProduct?.size_variants ?? []) as unknown as SizeVariant[]).filter((v) => v?.size?.trim()),
+    [dbProduct],
+  );
+
   const product = useMemo(() => {
     const dna = (dbProduct?.product_dna ?? {}) as { colors?: string[] };
     const variants = (dbProduct?.variants ?? []) as { name: string; options: string[] }[];
@@ -55,13 +60,13 @@ const ProductDetail = () => {
       gender: "",
       world: dbProduct?.world ?? "Mode",
       colors: dna.colors ?? [],
-      sizes: sizeVariant?.options ?? [],
+      sizes: sizeVariants.length > 0 ? sizeVariants.map((v) => v.size) : (sizeVariant?.options ?? []),
       status: dbProduct?.status ?? "draft",
       description: dbProduct?.description ?? "",
       genomeAffinity: {},
       tags: dbProduct?.tags ?? [],
     } as unknown as ProductView;
-  }, [dbProduct, slug]);
+  }, [dbProduct, slug, sizeVariants]);
 
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
