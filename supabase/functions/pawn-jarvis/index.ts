@@ -1402,21 +1402,13 @@ function huntInput(q: HuntQuery, config: AkquiseConfig): { actorId: string; inpu
 
 /** Ein einzelner Claude-Aufruf ohne Werkzeuge, der JSON zurückgibt. */
 async function claudeJsonOnce(
-  apiKey: string, system: string, user: string, maxTokens = 900,
+  _apiKey: string, system: string, user: string, maxTokens = 900,
 ): Promise<{ json: Record<string, unknown> | null; tokens: number }> {
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
-    });
-    if (!res.ok) return { json: null, tokens: 0 };
-    const data = await res.json() as AnthropicResponse;
-    const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
-    const text = data.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
-    return { json: extractJson(text) as Record<string, unknown> | null, tokens };
-  } catch { return { json: null, tokens: 0 }; }
+  const r = await llm({ system, user, maxTokens });
+  if (r.error || !r.text) return { json: null, tokens: r.tokens };
+  return { json: extractJson(r.text) as Record<string, unknown> | null, tokens: r.tokens };
 }
+
 
 /** Destilliert Suchbegriffe aus der Brand-DNA bestehender Häuser und der Ontologie. */
 async function destillHuntQueries(admin: SupabaseClient, apiKey: string): Promise<{ queries: HuntQuery[]; tokens: number }> {
