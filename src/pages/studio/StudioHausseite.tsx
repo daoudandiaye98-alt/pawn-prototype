@@ -20,11 +20,19 @@ import {
 } from "@/features/houseTheme/theme";
 
 const BLOCK_LABEL: Record<PageBlockKind, string> = {
-  auftakt: "Auftaktbild/-video", editorial_text: "Editorial-Text", zitat: "Zitat",
-  produktreihe: "Produktreihe", lookbook_streifen: "Lookbook-Streifen",
-  banner_seitlich: "Seitlicher Banner", banner_vollbreite: "Vollbreiten-Banner",
-  ueberlappend: "Überlappend (zwei Medien)",
+  auftakt: "Großes Bild oben", editorial_text: "Text-Abschnitt", zitat: "Zitat",
+  produktreihe: "Reihe mit Stücken", lookbook_streifen: "Bilderstreifen zum Wischen",
+  banner_seitlich: "Bild seitlich", banner_vollbreite: "Bild über die ganze Breite",
+  ueberlappend: "Zwei Bilder versetzt",
 };
+
+/** Startvorlagen: ein Klick legt eine sinnvolle Grundstruktur an. */
+const TEMPLATES: { key: string; label: string; hint: string; kinds: PageBlockKind[] }[] = [
+  { key: "ein_stueck", label: "Ein Stück im Mittelpunkt", hint: "Großes Bild, kurzer Text, ein Stück verlinkt", kinds: ["auftakt", "editorial_text", "banner_seitlich"] },
+  { key: "kollektion", label: "Geschichte einer Kollektion", hint: "Bild, Text, Zitat, Reihe mit Stücken", kinds: ["auftakt", "editorial_text", "zitat", "produktreihe"] },
+  { key: "lookbook", label: "Lookbook zum Wischen", hint: "Bilderstreifen, Text, Reihe mit Stücken", kinds: ["lookbook_streifen", "editorial_text", "produktreihe"] },
+];
+
 
 const ABSTAND_OPTIONS = [
   { value: "", label: "Wie Flächenrhythmus des Themas" },
