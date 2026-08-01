@@ -55,7 +55,10 @@ interface RawOrder {
   invoice_number: string | null;
   last_email_error: string | null;
 }
-interface RawProduct { id: string; slug: string; name: string; designer_id: string; price: number; }
+interface RawProduct {
+  id: string; slug: string; name: string; designer_id: string; price: number;
+  weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null;
+}
 
 
 /**
