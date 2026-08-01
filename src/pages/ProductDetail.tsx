@@ -536,14 +536,15 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
   const sizes = ((dbProduct.size_variants ?? []) as unknown as SizeVariant[]).filter((s) => s?.size?.trim());
   const showTable = measurements.rows.length > 0 && sizes.length > 0;
 
+  const profile = worldProfile(dbProduct.world);
   const rows: [string, string | null][] = [
-    ["Maße", dims || null],
+    [profile.world === undefined ? "Maße" : "Maße", dims || null],
     ["Gewicht", weight],
-    ["Material", materials],
-    ["Futter & Details", dbProduct.lining_hardware ?? null],
-    ["Pflege", careText || null],
-    ["Gefertigt in", dbProduct.made_in ?? null],
-    ["Edition", dbProduct.edition_info ?? null],
+    [profile.materialPublicLabel, materials],
+    [profile.detailPublicLabel, dbProduct.lining_hardware ?? null],
+    [profile.carePublicLabel, careText || null],
+    [profile.originLabel === "Wo entstanden?" ? "Entstanden in" : "Gefertigt in", dbProduct.made_in ?? null],
+    [profile.editionPublicLabel, dbProduct.edition_info ?? null],
     ["Nachhaltigkeit", dbProduct.sustainability_note ?? null],
     ["Lieferzeit (Anfertigung)", dbProduct.inventory_mode === "made_to_order" && dbProduct.lead_time_days ? `ca. ${dbProduct.lead_time_days} Tage` : null],
   ];
