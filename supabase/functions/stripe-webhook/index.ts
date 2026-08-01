@@ -18,10 +18,12 @@ Deno.serve(async (req) => {
     const raw = await req.text();
 
     let event: Stripe.Event;
-    if (whSecret && sig) {
+    if (whSecret) {
+      // Ist ein Signing Secret hinterlegt, wird jedes Ereignis geprüft — sonst könnte
+      // jeder gefälschte Ereignisse (Plan-Upgrades, Gutschriften) einschleusen.
+      if (!sig) return new Response("missing_signature", { status: 400 });
       event = await stripe.webhooks.constructEventAsync(raw, sig, whSecret);
     } else {
-      // Development mode: accept unsigned events
       event = JSON.parse(raw) as Stripe.Event;
     }
 
@@ -35,9 +37,13 @@ Deno.serve(async (req) => {
       if ((session.metadata as Record<string, string> | null)?.kind !== "credits") {
         await handleOrderPaid(admin, session as unknown as PaidSessionLike, null);
       }
-    } else if (event.type === "checkout.session.expired" || event.type === "payment_intent.payment_failed") {
+    } else if (event.type === "checkout.session.expired") {
       const session = event.data.object as { id?: string };
-      if (session.id) await admin.from("orders").update({ status: "failed" }).eq("stripe_session_id", session.id);
+      if (session.id) await admin.from("orders").update({ status: "failed" }).eq("stripe_session_id", session.id).eq("status", "pending");
+    } else if (event.type === "payment_intent.payment_failed") {
+      // Bei einem PaymentIntent-Ereignis ist die ID die des Intents, nicht der Session.
+      const pi = event.data.object as { id?: string };
+      if (pi.id) await admin.from("orders").update({ status: "failed" }).eq("stripe_payment_intent_id", pi.id).eq("status", "pending");
     } else if (event.type === "account.updated") {
       // Konto-Status eines Hauses hat sich geändert (Nachweise eingereicht, freigeschaltet, gesperrt).
       const account = event.data.object as Stripe.Account;

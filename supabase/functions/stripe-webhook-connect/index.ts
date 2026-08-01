@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
     const raw = await req.text();
 
     let event: Stripe.Event;
+    if (whSecret && !sig) return new Response("missing_signature", { status: 400 });
     if (whSecret && sig) {
       try {
         event = await stripe.webhooks.constructEventAsync(raw, sig, whSecret);
