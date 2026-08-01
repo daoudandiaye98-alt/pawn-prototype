@@ -396,18 +396,28 @@ const ProductDetail = () => {
                   <div className="mt-6">
                     <p className="house-ink palace-eyebrow">Format · <span>{size}</span></p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {product.sizes.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setSize(s)}
-                          className="house-ink border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300"
-                          style={s === size
-                            ? { borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }
-                            : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
-                        >
-                          {s}
-                        </button>
-                      ))}
+                      {product.sizes.map((s) => {
+                        const variant = sizeVariants.find((v) => v.size === s);
+                        const outOfStock = !!variant && !isMto && Number(variant.stock) <= 0;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => !outOfStock && setSize(s)}
+                            disabled={outOfStock}
+                            title={outOfStock ? "Diese Größe ist ausverkauft." : undefined}
+                            className={cn(
+                              "house-ink border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300",
+                              outOfStock && "cursor-not-allowed line-through opacity-40",
+                            )}
+                            style={s === size && !outOfStock
+                              ? { borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }
+                              : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
+                          >
+                            {s}
+                            {variant && variant.surcharge > 0 && !outOfStock ? ` +€${formatEuro(variant.surcharge)}` : ""}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
