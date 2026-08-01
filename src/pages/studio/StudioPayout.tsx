@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
+import { useAuth } from "@/lib/auth";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check } from "lucide-react";
@@ -51,11 +53,15 @@ const EMPTY_SHIPPING: ShippingRates = {
 
 export default function StudioPayout() {
   const { designer, refresh } = useMyDesigner();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [setupBlocked, setSetupBlocked] = useState<string | null>(null);
   const [commissionPct, setCommissionPct] = useState<number>(7);
+
 
   const [billing, setBilling] = useState<BillingProfile>(EMPTY_BILLING);
   const [billingSaving, setBillingSaving] = useState(false);
@@ -134,7 +140,13 @@ export default function StudioPayout() {
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "onboard" } });
       if (error) { toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht."); return; }
-      const result = data as { error?: string; message?: string; url?: string };
+      const result = data as { error?: string; message?: string; url?: string; detail?: string };
+      if (result?.error === "platform_setup_required") {
+        setSetupBlocked(result.message ?? "PAWN schließt gerade die Freigabe beim Zahlungspartner ab.");
+        if (isAdmin && result.detail) toast.error(result.detail, { duration: 12000 });
+        else toast.error(result.message ?? "PAWN schließt gerade die Freigabe beim Zahlungspartner ab.");
+        return;
+      }
       if (result?.error) { toast.error(result.message ?? "Verbindung konnte nicht gestartet werden."); return; }
       if (result?.url) window.location.href = result.url;
     } catch {
@@ -143,6 +155,7 @@ export default function StudioPayout() {
       setBusy(false);
     }
   }
+
 
   async function openDashboard() {
     setBusy(true);
@@ -193,6 +206,19 @@ export default function StudioPayout() {
             PAWN nimmt {commissionPct} % — bewusst weit unter Galerien und klassischen Marktplätzen. Kein Aufpreis für Rückgaben, keine Listing-Gebühr.
           </p>
         </div>
+
+        {setupBlocked && (
+          <div className="border-[1.5px] border-black bg-black p-5 text-white">
+            <p className="editorial-eyebrow">Kurz Geduld</p>
+            <p className="mt-2 text-sm">{setupBlocked}</p>
+            {isAdmin && (
+              <p className="mt-3 text-xs opacity-70">
+                Admin-Hinweis: Connect-Plattform-Profil bei Stripe ausfüllen (Einstellungen → Connect → Plattform-Profil), inklusive Verantwortung für Verluste — getrennt für Test- und Live-Modus.
+              </p>
+            )}
+          </div>
+        )}
+
 
         {loadingStatus ? (
           <div className="flex items-center gap-2 border border-border p-5 text-sm text-muted-foreground">
