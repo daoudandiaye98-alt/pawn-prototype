@@ -1036,8 +1036,8 @@ function DetailsSection({ local, patch }: { local: Partial<ProductRow>; patch: (
 function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
   const sizes: SizeVariant[] = local.size_variants ?? [];
   const measurements: Measurements = local.measurements ?? emptyMeasurements();
-  const world = local.world ?? "Mode";
-  const presets = MEASUREMENT_PRESETS[world] ?? MEASUREMENT_PRESETS.Mode;
+  const profile = worldProfile(local.world);
+  const presets = profile.measurementRows;
 
   const setSize = (i: number, p: Partial<SizeVariant>) => {
     const next = sizes.map((s, k) => (k === i ? { ...s, ...p } : s));
