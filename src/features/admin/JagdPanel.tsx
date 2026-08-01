@@ -110,7 +110,7 @@ export function JagdPanel() {
     const { data: current } = await supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
     const base = (current?.value as Record<string, unknown> | null) ?? {};
     const { error } = await supabase.from("ai_config")
-      .upsert({ key: "akquise_config", value: { ...base, hunt_queries: parsed } }, { onConflict: "key" });
+      .upsert({ key: "akquise_config", value: { ...base, hunt_queries: parsed } as unknown as never }, { onConflict: "key" });
     if (error) { toast.error(error.message); return; }
     setQueries(parsed);
     setEditing(false);
