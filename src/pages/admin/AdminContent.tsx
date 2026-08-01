@@ -15,6 +15,8 @@ import { CONTENT_REGISTRY, MISC_PAGE, type ContentEntry } from "@/lib/contentReg
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Image as ImageIcon, Search, Sparkles } from "lucide-react";
+import { TranslationWarmup } from "./TranslationWarmup";
+
 
 type Lang = "de" | "en";
 interface Row { key: string; value: unknown; value_en: unknown; value_en_source: unknown; updated_at: string }
