@@ -24,10 +24,25 @@ async function findOrderId(sessionId: string): Promise<string | null> {
 export default function OrderConfirmation() {
   const [params] = useSearchParams();
   const sessionId = params.get("session_id");
+  const houseKey = params.get("haus");
   const cart = useCart();
   const tried = useRef(false);
+  const cleared = useRef(false);
 
-  useEffect(() => { cart.clear(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  // Nach der Zahlung nur die Stücke des bezahlten Hauses entfernen — was noch bei anderen
+  // Häusern liegt, bleibt im Warenkorb.
+  useEffect(() => {
+    if (cleared.current) return;
+    cleared.current = true;
+    if (!houseKey) { cart.clear(); return; }
+    for (const line of cart.items) {
+      if ((line.product.designerSlug || line.product.designer) === houseKey) {
+        cart.remove(line.product.id, line.size);
+      }
+    }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
+
 
   useEffect(() => {
     if (tried.current || !sessionId) return;
