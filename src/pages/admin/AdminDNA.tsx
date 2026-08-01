@@ -425,7 +425,7 @@ export default function AdminDNA() {
             </ul>
           )}
           <Link to="/admin/editionen" className="mt-4 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
-            gemeinsame Kampagne vorschlagen →
+            Gemeinsame Kampagne vorschlagen →
           </Link>
         </div>
 

@@ -30,7 +30,7 @@ const STATIC_BENEFITS: Record<Plan, string[]> = {
   maison: [
     "Monatliches Haus-Dossier",
     "Vitrine-Rotation auf der Startseite",
-    "Startseiten-Video-Priorität und gemeinsame Kampagnen-Erstzugang",
+    "Dein Video zuerst auf der Startseite, früher Zugang zu gemeinsamen Kampagnen",
     "PAWN+ Max — stärkstes Modell, längster Kontext",
   ],
 };

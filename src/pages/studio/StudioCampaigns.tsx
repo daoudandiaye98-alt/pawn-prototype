@@ -158,10 +158,10 @@ export default function StudioCampaigns() {
 
       {editionCards.length > 0 && (
         <div className="mt-8 space-y-4">
-          <p className="editorial-eyebrow">gemeinsame Kampagne — PAWN schlägt vor</p>
+          <p className="editorial-eyebrow">Gemeinsame Kampagne — PAWN schlägt vor</p>
           {editionCards.map((card) => (
             <div key={card.id} className="border-[1.5px] border-black bg-white p-5">
-              <p className="font-serif text-xl">{card.editions?.theme ?? "gemeinsame Kampagne"}</p>
+              <p className="font-serif text-xl">{card.editions?.theme ?? "Gemeinsame Kampagne"}</p>
               <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{card.editions?.world ?? "—"}</p>
               {card.status === "pending" ? (
                 <p className="mt-3 text-sm text-muted-foreground">Dein Video wird gerade produziert — das dauert ein paar Minuten.</p>

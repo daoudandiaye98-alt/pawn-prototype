@@ -24,7 +24,7 @@ interface SubmittedRow {
   designers?: { brand_name: string; house_number: number | null } | null;
 }
 
-const MEDIA_ORIGIN_LABEL: Record<MediaOrigin, string> = { upload: "Eigener Upload", erzeugt: "KI erzeugt", edition: "gemeinsame Kampagne" };
+const MEDIA_ORIGIN_LABEL: Record<MediaOrigin, string> = { upload: "Eigener Upload", erzeugt: "KI erzeugt", edition: "Gemeinsame Kampagne" };
 
 interface AssetRow {
   id: string;
@@ -42,7 +42,7 @@ interface AssetRow {
   campaigns?: { title: string; products?: { world: string } | null } | null;
 }
 
-const SOURCE_LABEL: Record<Source, string> = { designer: "Designer", edition: "gemeinsame Kampagne", jarvis: "Jarvis" };
+const SOURCE_LABEL: Record<Source, string> = { designer: "Designer", edition: "Gemeinsame Kampagne", jarvis: "Jarvis" };
 
 export default function AdminArchiv() {
   const { user, roles, loading } = useAuth();
