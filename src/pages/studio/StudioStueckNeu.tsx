@@ -102,10 +102,8 @@ export default function StudioStueckNeu() {
     () => (art ? (stagingTemplatesAll[art] ?? []).filter((t) => t.active !== false) : []),
     [art, stagingTemplatesAll],
   );
-  const totalCredits = useMemo(
-    () => templatesForArt.filter((t) => selectedIds.includes(t.id)).reduce((s, t) => s + (t.credits ?? 0), 0),
-    [templatesForArt, selectedIds],
-  );
+
+
 
   useEffect(() => {
     if (!sourceUrl || detectTried || detectBusy || !designer) return;
