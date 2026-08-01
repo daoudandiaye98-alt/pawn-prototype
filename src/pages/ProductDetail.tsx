@@ -526,30 +526,69 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
     dbProduct.height_cm && `H ${dbProduct.height_cm} cm`,
   ].filter(Boolean).join(" × ");
   const dna = (dbProduct.product_dna ?? {}) as { materials?: string[] };
-  const materials = Array.isArray(dna.materials) && dna.materials.length ? dna.materials.join(", ") : null;
+  const parts = (dbProduct.size_variants ? (dbProduct.material_composition ?? []) : (dbProduct.material_composition ?? [])) as unknown as MaterialPart[];
+  const composition = materialLine(parts);
+  const materials = composition || (Array.isArray(dna.materials) && dna.materials.length ? dna.materials.join(", ") : null);
   const weight = dbProduct.weight_grams ? `${dbProduct.weight_grams} g` : null;
+  const care = ((dbProduct.care_symbols ?? []) as string[]).map(careLabel).join(" · ");
+  const careText = [care || null, dbProduct.care_instructions ?? null].filter(Boolean).join("\n");
+  const measurements = (dbProduct.measurements ?? { rows: [], values: {} }) as unknown as Measurements;
+  const sizes = ((dbProduct.size_variants ?? []) as unknown as SizeVariant[]).filter((s) => s?.size?.trim());
+  const showTable = measurements.rows.length > 0 && sizes.length > 0;
+
   const rows: [string, string | null][] = [
     ["Maße", dims || null],
     ["Gewicht", weight],
     ["Material", materials],
-    ["Pflege", dbProduct.care_instructions ?? null],
+    ["Futter & Details", dbProduct.lining_hardware ?? null],
+    ["Pflege", careText || null],
     ["Gefertigt in", dbProduct.made_in ?? null],
     ["Edition", dbProduct.edition_info ?? null],
+    ["Nachhaltigkeit", dbProduct.sustainability_note ?? null],
     ["Lieferzeit (Anfertigung)", dbProduct.inventory_mode === "made_to_order" && dbProduct.lead_time_days ? `ca. ${dbProduct.lead_time_days} Tage` : null],
   ];
   const filled = rows.filter(([, v]) => v && String(v).trim() !== "");
-  if (filled.length === 0) return null;
+  if (filled.length === 0 && !showTable) return null;
   return (
     <div className="mt-10 border-t border-[rgba(0,0,0,.18)] pt-8">
       <p className="palace-eyebrow">Details</p>
-      <dl className="mt-4 divide-y divide-[rgba(0,0,0,.12)] border-y border-[rgba(0,0,0,.12)]">
-        {filled.map(([label, value]) => (
-          <div key={label} className="grid grid-cols-[140px_1fr] items-baseline gap-4 py-3">
-            <dt className="text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{label}</dt>
-            <dd className="text-[0.92rem] leading-relaxed text-[#000000]/85 whitespace-pre-line">{value}</dd>
+      {filled.length > 0 && (
+        <dl className="mt-4 divide-y divide-[rgba(0,0,0,.12)] border-y border-[rgba(0,0,0,.12)]">
+          {filled.map(([label, value]) => (
+            <div key={label} className="grid grid-cols-[140px_1fr] items-baseline gap-4 py-3">
+              <dt className="text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{label}</dt>
+              <dd className="text-[0.92rem] leading-relaxed text-[#000000]/85 whitespace-pre-line">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {showTable && (
+        <div className="mt-8">
+          <p className="palace-eyebrow">Maßtabelle (cm)</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[380px] text-[0.9rem]">
+              <thead>
+                <tr className="border-b border-[rgba(0,0,0,.3)] text-left">
+                  <th className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">Maß</th>
+                  {sizes.map((s) => (
+                    <th key={s.size} className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{s.size}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {measurements.rows.map((row) => (
+                  <tr key={row} className="border-b border-[rgba(0,0,0,.12)]">
+                    <td className="py-2 pr-4">{row}</td>
+                    {sizes.map((s) => (
+                      <td key={s.size} className="py-2 pr-4 tabular-nums">{measurements.values[row]?.[s.size] || "—"}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </dl>
+        </div>
+      )}
     </div>
   );
 }
