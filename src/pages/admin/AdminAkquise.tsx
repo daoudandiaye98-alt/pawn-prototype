@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { GenomeCard } from "@/components/palace/GenomeCard";
+import { JagdPanel } from "@/features/admin/JagdPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
