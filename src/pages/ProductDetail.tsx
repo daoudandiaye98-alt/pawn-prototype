@@ -26,7 +26,7 @@ import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PasstDas } from "@/components/palace/PasstDas";
 import {
-  careLabel, effectiveVatRate, materialLine, splitVat, vatNote, formatEuro,
+  careLabel, effectiveVatRate, materialLine, vatNote, formatEuro,
   type MaterialPart, type Measurements, type SizeVariant,
 } from "@/features/studio/productDetails";
 
@@ -526,7 +526,7 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
     dbProduct.height_cm && `H ${dbProduct.height_cm} cm`,
   ].filter(Boolean).join(" × ");
   const dna = (dbProduct.product_dna ?? {}) as { materials?: string[] };
-  const parts = (dbProduct.size_variants ? (dbProduct.material_composition ?? []) : (dbProduct.material_composition ?? [])) as unknown as MaterialPart[];
+  const parts = (dbProduct.material_composition ?? []) as unknown as MaterialPart[];
   const composition = materialLine(parts);
   const materials = composition || (Array.isArray(dna.materials) && dna.materials.length ? dna.materials.join(", ") : null);
   const weight = dbProduct.weight_grams ? `${dbProduct.weight_grams} g` : null;
