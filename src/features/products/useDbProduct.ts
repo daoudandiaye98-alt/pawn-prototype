@@ -16,7 +16,7 @@ export function useDbProductBySlug(slug: string | undefined) {
     (async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, designers ( id, slug, brand_name, user_id, house_number )")
+        .select("*, designers ( id, slug, brand_name, user_id, house_number, vat_rate )")
         .eq("slug", slug)
         .eq("status", "published")
         .maybeSingle();
