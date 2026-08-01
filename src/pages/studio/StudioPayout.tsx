@@ -7,7 +7,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check } from "lucide-react";
 
+// Stripe nennt fehlende Angaben in Fachbegriffen — hier in Klartext übersetzt.
+const REQUIREMENT_LABELS: Record<string, string> = {
+  "individual.verification.document": "Ausweisfoto",
+  "individual.id_number": "Ausweisnummer",
+  "individual.address.line1": "Adresse",
+  "external_account": "Bankverbindung (IBAN)",
+  "business_profile.url": "Website oder Shop-Adresse",
+  "business_profile.mcc": "Branche",
+  "tos_acceptance.date": "Zustimmung zu den Stripe-Bedingungen",
+};
+
 type ConnectState = "none" | "pending" | "active" | "payouts" | "error";
+
 
 interface ConnectStatus {
   connected: boolean;
