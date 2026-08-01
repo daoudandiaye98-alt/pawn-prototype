@@ -2414,7 +2414,7 @@ Deno.serve(async (req) => {
       const result = await runHeartbeat(admin, runId);
       const parts = [result.skipped ? `Herzschlag übersprungen (${result.skipped})` : `Herzschlag: ${result.created ?? 0} neue Meldung(en)`];
       if (result.evolution) parts.push(result.evolution);
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary: parts.join(" · "), tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
       return ok({ ok: true, run_id: runId, ...result });
@@ -2451,7 +2451,7 @@ Deno.serve(async (req) => {
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runBrollEinsammeln(admin);
       const summary = `${(result as { collected?: number }).collected ?? 0} eingesammelt, ${(result as { failed?: number }).failed ?? 0} gescheitert, ${(result as { still_running?: number }).still_running ?? 0} noch offen.`;
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
       return ok({ run_id: runId, ...result });
@@ -2465,7 +2465,7 @@ Deno.serve(async (req) => {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "manual", mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runEvolution(admin);
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary: result.summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
       return ok({ ok: true, run_id: runId, ...result });
@@ -2484,7 +2484,7 @@ Deno.serve(async (req) => {
       const summary = mode === "akquise_jagd"
         ? `Jagd: ${(result as { started?: number }).started ?? 0} Suchlauf/Suchläufe gestartet${(result as { message?: string }).message ? ` · ${(result as { message?: string }).message}` : ""}`
         : `Jagd-Auswertung: ${(result as { ausgewertet?: number }).ausgewertet ?? 0} Begriffe, ${(result as { aussortiert?: number }).aussortiert ?? 0} aussortiert`;
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
         tokens_used: tokensUsed, cost_estimate: (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2),
@@ -2501,7 +2501,7 @@ Deno.serve(async (req) => {
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
         : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
         tokens_used: 0, cost_estimate: 0,
@@ -2534,7 +2534,7 @@ Deno.serve(async (req) => {
         kind: "diagnose", title, body: reportBody, data: { healed, needed },
       }).select("id, kind, title, body, created_at").single();
 
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary: title, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
 
@@ -2550,7 +2550,7 @@ Deno.serve(async (req) => {
       const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
       const summary = (result as { drafted?: boolean }).drafted ? "Bauauftrags-Entwurf geschrieben." : ((result as { message?: string }).message ?? "Kein Entwurf nötig.");
 
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
@@ -2567,7 +2567,7 @@ Deno.serve(async (req) => {
       const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
       const summary = `Regie: ${(result as { weighted_houses?: number }).weighted_houses ?? 0} Häuser ausgewertet${(result as { edition_proposed?: boolean }).edition_proposed ? ", 1 Edition vorgeschlagen" : ""}`;
 
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
 
@@ -2590,7 +2590,7 @@ Deno.serve(async (req) => {
 
       const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
       const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
@@ -2614,7 +2614,7 @@ Deno.serve(async (req) => {
     const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
 
     if (error) {
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "failed", error, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
       return ok({ ok: false, error, run_id: runId });
@@ -2624,7 +2624,7 @@ Deno.serve(async (req) => {
       kind: reportKind, title, body: text || "Keine Antwort erhalten.", data: { mode, prompt: prompt ?? null },
     }).select("id, kind, title, body, created_at").single();
 
-    if (runId) await admin.from("jarvis_runs").update({
+    if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
       finished_at: new Date().toISOString(), status: "done",
       summary: title, tokens_used: tokensUsed, cost_estimate: costEstimate,
     }).eq("id", runId);
@@ -2633,7 +2633,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     const message = (e as Error).message ?? String(e);
     if (runId) {
-      await admin.from("jarvis_runs").update({
+      await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "failed", error: message,
       }).eq("id", runId).catch(() => {});
     }
