@@ -538,7 +538,7 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
 
   const profile = worldProfile(dbProduct.world);
   const rows: [string, string | null][] = [
-    [profile.world === undefined ? "Maße" : "Maße", dims || null],
+    [dbProduct.world === "Mode" ? "Paketmaße" : "Maße", dims || null],
     ["Gewicht", weight],
     [profile.materialPublicLabel, materials],
     [profile.detailPublicLabel, dbProduct.lining_hardware ?? null],
