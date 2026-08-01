@@ -1459,8 +1459,7 @@ async function runAkquiseJagd(admin: SupabaseClient, apiKey: string | null): Pro
   let queries = config.hunt_queries ?? [];
   let tokensUsed = 0;
   if (!queries.length) {
-    if (!apiKey) return { ok: true, started: 0, message: "Keine Suchbegriffe hinterlegt und kein ANTHROPIC_API_KEY für die Destillation." };
-    const distilled = await destillHuntQueries(admin, apiKey);
+    const distilled = await destillHuntQueries(admin, apiKey ?? "");
     tokensUsed = distilled.tokens;
     queries = distilled.queries;
     if (!queries.length) return { ok: false, error: "Konnte keine Suchbegriffe destillieren." };
