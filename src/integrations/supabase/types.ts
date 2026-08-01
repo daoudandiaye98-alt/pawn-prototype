@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      acquisition_hunts: {
+        Row: {
+          apify_actor_id: string
+          apify_dataset_id: string | null
+          apify_run_id: string | null
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          items_found: number
+          leads_created: number
+          qualified_count: number
+          query: string
+          query_type: string
+          status: string
+          world: string
+        }
+        Insert: {
+          apify_actor_id: string
+          apify_dataset_id?: string | null
+          apify_run_id?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_found?: number
+          leads_created?: number
+          qualified_count?: number
+          query: string
+          query_type?: string
+          status?: string
+          world?: string
+        }
+        Update: {
+          apify_actor_id?: string
+          apify_dataset_id?: string | null
+          apify_run_id?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_found?: number
+          leads_created?: number
+          qualified_count?: number
+          query?: string
+          query_type?: string
+          status?: string
+          world?: string
+        }
+        Relationships: []
+      }
       acquisition_leads: {
         Row: {
           bio: string | null
@@ -21,10 +72,12 @@ export type Database = {
           clips: Json | null
           contacted_at: string | null
           created_at: string | null
+          discovery_source: string | null
           email: string | null
           followers: number | null
           followup_at: string | null
           handle: string
+          hunt_id: string | null
           id: string
           kurator_score: number | null
           language: string | null
@@ -48,10 +101,12 @@ export type Database = {
           clips?: Json | null
           contacted_at?: string | null
           created_at?: string | null
+          discovery_source?: string | null
           email?: string | null
           followers?: number | null
           followup_at?: string | null
           handle: string
+          hunt_id?: string | null
           id?: string
           kurator_score?: number | null
           language?: string | null
@@ -75,10 +130,12 @@ export type Database = {
           clips?: Json | null
           contacted_at?: string | null
           created_at?: string | null
+          discovery_source?: string | null
           email?: string | null
           followers?: number | null
           followup_at?: string | null
           handle?: string
+          hunt_id?: string | null
           id?: string
           kurator_score?: number | null
           language?: string | null
@@ -96,7 +153,15 @@ export type Database = {
           warmed_at?: string | null
           world?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_leads_hunt_id_fkey"
+            columns: ["hunt_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_hunts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_actions_log: {
         Row: {

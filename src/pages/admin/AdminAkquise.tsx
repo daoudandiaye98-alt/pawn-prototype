@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { GenomeCard } from "@/components/palace/GenomeCard";
+import { JagdPanel } from "@/features/admin/JagdPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -693,6 +694,8 @@ export default function AdminAkquise() {
           <strong className="text-foreground">So funktioniert's:</strong> anwärmen → 2 Tage warten → DM mit Clips → nach 5 Tagen einmal nachfassen → dann Ruhe.
         </p>
       </div>
+
+      <JagdPanel />
 
       <SendeStapel rows={rows} onChange={patchRow} />
 
