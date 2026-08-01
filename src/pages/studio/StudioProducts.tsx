@@ -552,8 +552,8 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                 placeholder="z. B. Kaschmirmantel Nº 3"
                 className={`inp ${nameMissing ? "border-destructive/60" : ""}`} />
             </Field>
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Preis in Euro" required missing={priceMissing}>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label="Endpreis in Euro (inkl. MwSt.)" required missing={priceMissing}>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
                   <input type="number" min={0} value={local.price ?? 0}
@@ -569,6 +569,18 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                     className="inp pl-8" />
                 </div>
               </Field>
+              <Field label="Mehrwertsteuer (%)" hint={`Leer = Haus-Standard (${formatRate(houseVatRate)} %).`}>
+                <input type="number" min={0} max={30} step={0.1} value={local.vat_rate ?? ""}
+                  onChange={(e) => patch({ vat_rate: e.target.value === "" ? null : Number(e.target.value) })}
+                  placeholder={formatRate(houseVatRate)} className="inp" />
+              </Field>
+            </div>
+            <div className="mt-3 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs">
+              <p>
+                Endpreis € {formatEuro(vat.gross)} · davon netto € {formatEuro(vat.net)} und € {formatEuro(vat.vat)} Mehrwertsteuer
+                {vat.rate > 0 ? ` (${formatRate(vat.rate)} %)` : ""}.
+              </p>
+              <p className="mt-1 text-muted-foreground">Auf der Produktseite steht: „{vatNote(vat.rate)}“.</p>
             </div>
           </Section>
 
