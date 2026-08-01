@@ -55,6 +55,13 @@ interface ProductRow {
   edition_info: string | null;
   designer_note: string | null;
   banner_media_asset_id: string | null;
+  size_variants: SizeVariant[];
+  measurements: Measurements;
+  material_composition: MaterialPart[];
+  care_symbols: string[];
+  lining_hardware: string | null;
+  sustainability_note: string | null;
+  vat_rate: number | null;
 }
 
 const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
