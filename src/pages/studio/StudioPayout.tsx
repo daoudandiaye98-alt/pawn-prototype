@@ -132,14 +132,32 @@ export default function StudioPayout() {
     }
   }
 
+  async function openDashboard() {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "dashboard" } });
+      if (error) { toast.error("Das Stripe-Konto lässt sich gerade nicht öffnen."); return; }
+      const result = data as { error?: string; message?: string; url?: string };
+      if (result?.error) { toast.error(result.message ?? "Das Stripe-Konto lässt sich gerade nicht öffnen."); return; }
+      if (result?.url) window.open(result.url, "_blank", "noopener");
+    } catch {
+      toast.error("Das Stripe-Konto lässt sich gerade nicht öffnen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!designer) return <StudioShell title="Auszahlung"><p className="text-muted-foreground">Lädt…</p></StudioShell>;
 
   const retryParam = searchParams.get("connect") === "retry";
+  const requirementsDue = status?.requirements_due ?? [];
   const state: ConnectState = retryParam ? "error"
     : loadingStatus ? "none"
     : !status?.connected ? "none"
+    : status.charges_enabled && status.payouts_enabled ? "payouts"
     : status.charges_enabled ? "active"
     : "pending";
+
 
   return (
     <StudioShell title="Auszahlung" eyebrow="Zahlung">
