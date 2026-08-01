@@ -34,7 +34,7 @@ export interface HouseTheme {
 }
 
 export const DEFAULT_HOUSE_THEME: HouseTheme = {
-  farbwelt: { bg: "#FFFFFF", fg: "#000000", accent: "#000000", muted: "#F2F2F2" },
+  farbwelt: { bg: "#FFFFFF", fg: "#000000", accent: "#000000", muted: "#FFFFFF" },
   typografie: "editorial",
   flaechenrhythmus: "ruhig",
   kantenhaerte: "hart",

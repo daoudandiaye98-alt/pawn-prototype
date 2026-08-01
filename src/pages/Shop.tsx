@@ -91,7 +91,7 @@ const Shop = () => {
             placeholder="Boutique durchsuchen"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-2 text-sm text-[#000000] placeholder:text-[#7C7972] focus:border-[#000000] focus:outline-none"
+            className="w-full border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-2 text-sm text-[#000000] placeholder:text-black/60 focus:border-[#000000] focus:outline-none"
           />
           <FilterGroup title="DNA-Richtung">
             {DNA_DIRECTIONS.map((d) => (

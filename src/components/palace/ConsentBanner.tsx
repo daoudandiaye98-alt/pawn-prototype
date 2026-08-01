@@ -49,7 +49,7 @@ export function ConsentBanner() {
               <button
                 type="button"
                 onClick={() => setOpenSettings(false)}
-                className="palace-eyebrow mt-1 text-[#6B6862] hover:text-[#000000]"
+                className="palace-eyebrow mt-1 text-black/60 hover:text-[#000000]"
               >
                 Schließen
               </button>

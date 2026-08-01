@@ -133,7 +133,7 @@ const Checkout = () => {
             <section className="border border-[rgba(0,0,0,.16)] bg-white p-8 md:p-10">
               <p className="palace-eyebrow">Zahlung</p>
               <h2 className="palace-serif mt-3 text-[1.6rem] font-light text-[#000000]">Wie?</h2>
-              <p className="mt-2 text-[0.8rem] leading-relaxed text-[#55534E]">
+              <p className="mt-2 text-[0.8rem] leading-relaxed text-black/70">
                 Zahlungsart, Lieferadresse und Versand wählst du im nächsten Schritt bei unserem
                 Zahlungspartner Stripe. Die Zahlung wird über das Stripe-Konto des Hauses abgewickelt.
               </p>
@@ -165,7 +165,7 @@ const Checkout = () => {
                 <li key={i.product.id + i.size} className="flex items-start justify-between py-3">
                   <div>
                     <p className="text-[#000000]">{i.product.name}</p>
-                    <p className="palace-eyebrow mt-1 text-[#7C7972]">{i.product.designer} · {i.size} · ×{i.qty}</p>
+                    <p className="palace-eyebrow mt-1 text-black/60">{i.product.designer} · {i.size} · ×{i.qty}</p>
                   </div>
                   <span className="tabular-nums text-[#000000]">€{(i.product.price * i.qty).toLocaleString("de-DE")}</span>
                 </li>
@@ -176,8 +176,8 @@ const Checkout = () => {
             </ul>
             <div className="my-5 h-px w-full bg-[rgba(0,0,0,.18)]" />
             <dl className="space-y-2 text-sm text-[#000000]">
-              <div className="flex justify-between"><dt className="text-[#55534E]">Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
-              <div className="flex justify-between"><dt className="text-[#55534E]">Versand</dt><dd className="text-[0.8rem] text-[#55534E]">wird im nächsten Schritt gewählt</dd></div>
+              <div className="flex justify-between"><dt className="text-black/70">Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
+              <div className="flex justify-between"><dt className="text-black/70">Versand</dt><dd className="text-[0.8rem] text-black/70">wird im nächsten Schritt gewählt</dd></div>
               <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
             </dl>
             <button
@@ -187,7 +187,7 @@ const Checkout = () => {
             >
               {busy ? "Öffnet Zahlung…" : "Jetzt bezahlen"}
             </button>
-            <p className="mt-4 text-center text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
+            <p className="mt-4 text-center text-[0.6rem] uppercase tracking-[0.28em] text-black/60">
               Verschlüsselt · Zahlung über das Konto des Hauses
             </p>
 
@@ -201,7 +201,7 @@ const Checkout = () => {
 function Field({ label, type = "text", className, value, onChange }: { label: string; type?: string; className?: string; value?: string; onChange?: (v: string) => void }) {
   return (
     <label className={`space-y-2 ${className ?? ""}`}>
-      <span className="palace-eyebrow text-[#55534E]">{label}</span>
+      <span className="palace-eyebrow text-black/70">{label}</span>
       <input
         type={type}
         value={value}

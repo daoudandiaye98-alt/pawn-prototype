@@ -1,7 +1,7 @@
 /**
  * Genom — die Basis-DNA der Plattform (ai_config.matching_weights, editierbar)
  * plus je Haus eine Genom-Karte mit dem, was aus seiner eigenen Performance
- * gelernt wurde (designers.video_taste_weights), verknüpften Signaturen und
+ * gelernt wurde (designers.video_taste_weights), verknüpften Bildsprachen und
  * einem kurzen Verlauf aus den wöchentlichen Kampagnen-Regie-Berichten.
  *
  * Teil 19c: aus der Einzelkarte wird ein Kartenwerk — eine Vergleichstabelle über
@@ -353,7 +353,7 @@ export default function AdminDNA() {
                   <th className="px-4 py-3">Welt</th>
                   <th className="px-4 py-3">Palette</th>
                   <th className="px-4 py-3">Haltung</th>
-                  <th className="px-4 py-3">Selbstbild vs. Außenauge</th>
+                  <th className="px-4 py-3">Selbstbild vs. Markenprofil</th>
                   <th className="px-4 py-3">Strömung</th>
                   <th className="px-4 py-3">Verändert sich</th>
                 </tr>
@@ -406,7 +406,7 @@ export default function AdminDNA() {
             </ul>
           )}
           <Link to="/admin/archiv" className="mt-4 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
-            Für Première vormerken →
+            Für Startseiten-Video vormerken →
           </Link>
         </div>
 
@@ -425,7 +425,7 @@ export default function AdminDNA() {
             </ul>
           )}
           <Link to="/admin/editionen" className="mt-4 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
-            Edition vorschlagen →
+            Gemeinsame Kampagne vorschlagen →
           </Link>
         </div>
 

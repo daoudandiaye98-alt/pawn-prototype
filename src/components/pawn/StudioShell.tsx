@@ -59,7 +59,7 @@ const IWerkbuch = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 3c3 1.5 3 12 0 14M16 3c-3 1.5-3 12 0 14M4 6c4 2 8 2 12 0M4 14c4-2 8-2 12 0" /></svg>
 );
 
-type NavItem = { to: string; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; end?: boolean; badge?: number };
+type NavItem = { to: string; label: string; hint?: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; end?: boolean; badge?: number };
 
 function useStudioBadges(designerId?: string) {
   const [badges, setBadges] = useState({ orders: 0, campaigns: 0, messages: 0 });
@@ -124,23 +124,43 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const brand = designer?.brand_name ?? "Studio";
   const initials = initialsOf(brand);
 
-  const items: NavItem[] = [
-    { to: "/studio", label: "Übersicht", icon: IStage, end: true },
-    { to: "/studio/mediathek", label: "Mediathek", icon: IMediathek },
-    { to: "/studio/content-begleiter", label: "Content-Begleiter", icon: IContentBegleiter },
-    { to: "/studio/produkte", label: "Kollektion", icon: ICollection },
-    { to: "/studio/bestellungen", label: "Bestellungen", icon: IOrders, badge: badges.orders },
-    { to: "/studio/versand", label: "Versand", icon: IOrders },
-    { to: "/studio/kampagnen", label: "Kampagnen", icon: ICampaigns, badge: badges.campaigns },
-    { to: "/studio/videothek", label: "Videothek", icon: IVideothek },
-    { to: "/studio/nachrichten", label: "Nachrichten", icon: IMessages, badge: badges.messages },
-    { to: "/studio/hausseite", label: "Hausseite", icon: IHausseite },
-    { to: "/studio/empfehlungen", label: "Empfehlungen", icon: IReferral },
-    { to: "/studio/dna", label: "Außenauge", icon: IWerkbuch },
-    { to: "/studio/brand", label: "Retrospektive", icon: IRetro },
-    { to: "/studio/plan", label: "Plan", icon: IPayout },
-    { to: "/studio/auszahlung", label: "Auszahlung", icon: IPayout },
-    { to: "/studio/einstellungen", label: "Einstellungen", icon: ISettings },
+  const groups: { title: string; items: NavItem[] }[] = [
+    {
+      title: "Verkaufen",
+      items: [
+        { to: "/studio", label: "Start", hint: "Dein nächster Schritt", icon: IStage, end: true },
+        { to: "/studio/produkte", label: "Kollektion", hint: "Deine Stücke anlegen und pflegen", icon: ICollection },
+        { to: "/studio/bestellungen", label: "Bestellungen", hint: "Was verkauft wurde", icon: IOrders, badge: badges.orders },
+        { to: "/studio/versand", label: "Versand", hint: "Pakete vorbereiten und verschicken", icon: IOrders },
+      ],
+    },
+    {
+      title: "Zeigen",
+      items: [
+        { to: "/studio/hausseite", label: "Deine Markenseite", hint: "Deine eigene Seite auf PAWN", icon: IHausseite },
+        { to: "/studio/mediathek", label: "Bilder", hint: "Fotos hochladen und freistellen", icon: IMediathek },
+        { to: "/studio/kampagnen", label: "Videos erstellen", hint: "Aus Fotos wird ein Clip", icon: ICampaigns, badge: badges.campaigns },
+        { to: "/studio/videothek", label: "Fertige Videos", hint: "Herunterladen und posten", icon: IVideothek },
+      ],
+    },
+    {
+      title: "Marke",
+      items: [
+        { to: "/studio/dna", label: "Markenprofil", hint: "Wie PAWN deine Handschrift sieht", icon: IWerkbuch },
+        { to: "/studio/brand", label: "Rückblick", hint: "Was in letzter Zeit passiert ist", icon: IRetro },
+        { to: "/studio/content-begleiter", label: "Ideen-Begleiter", hint: "Vorschläge, was du zeigen kannst", icon: IContentBegleiter },
+      ],
+    },
+    {
+      title: "Konto",
+      items: [
+        { to: "/studio/plan", label: "Plan", hint: "Was diesen Monat noch frei ist", icon: IPayout },
+        { to: "/studio/auszahlung", label: "Auszahlung", hint: "Wohin dein Geld fließt", icon: IPayout },
+        { to: "/studio/nachrichten", label: "Nachrichten", hint: "Anfragen von Kundinnen und PAWN", icon: IMessages, badge: badges.messages },
+        { to: "/studio/empfehlungen", label: "Empfehlungen", hint: "Andere Häuser einladen", icon: IReferral },
+        { to: "/studio/einstellungen", label: "Einstellungen", hint: "Konto und Angaben", icon: ISettings },
+      ],
+    },
   ];
 
   return (
@@ -150,30 +170,39 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <span className="flex h-9 w-9 items-center justify-center border border-white/25 font-serif text-xs tracking-wider">{initials}</span>
           <div className="min-w-0">
             <p className="truncate font-serif text-[1.05rem] font-medium leading-none">{brand}</p>
-            <p className="mt-1 text-[0.6rem] uppercase tracking-[0.24em] text-white/45">Studio · Retrospektive</p>
+            <p className="mt-1 text-[0.6rem] uppercase tracking-[0.24em] text-white/45">Dein Studio</p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 py-3">
-        {items.map((item) => {
-          const active = item.end ? pathname === item.to : pathname.startsWith(item.to);
-          return (
-            <NavLink key={item.to} to={item.to} end={item.end} onClick={onNavigate}
-              className={cn(
-                "relative flex items-center gap-3 px-6 py-2.5 text-[0.78rem] tracking-[0.06em] transition-colors",
-                active ? "bg-white/[0.06] text-white" : "text-white/60 hover:text-white/90",
-              )}>
-              {active && <span className="absolute left-0 top-0 h-full w-px bg-white" />}
-              <item.icon className="h-4 w-4 shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {item.badge && item.badge > 0 ? (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[0.62rem] font-medium text-foreground">{item.badge}</span>
-              ) : null}
-            </NavLink>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto py-3">
+        {groups.map((group) => (
+          <div key={group.title} className="mb-2">
+            <p className="px-6 pb-1 pt-3 text-[0.58rem] uppercase tracking-[0.28em] text-white/35">{group.title}</p>
+            {group.items.map((item) => {
+              const active = item.end ? pathname === item.to : pathname.startsWith(item.to);
+              return (
+                <NavLink key={item.to} to={item.to} end={item.end} onClick={onNavigate}
+                  className={cn(
+                    "relative flex items-start gap-3 px-6 py-2 text-[0.78rem] tracking-[0.06em] transition-colors",
+                    active ? "bg-white/[0.06] text-white" : "text-white/60 hover:text-white/90",
+                  )}>
+                  {active && <span className="absolute left-0 top-0 h-full w-px bg-white" />}
+                  <item.icon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="flex-1">
+                    {item.label}
+                    {item.hint && <span className="mt-0.5 block text-[0.6rem] leading-snug tracking-normal text-white/35">{item.hint}</span>}
+                  </span>
+                  {item.badge && item.badge > 0 ? (
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[0.62rem] font-medium text-foreground">{item.badge}</span>
+                  ) : null}
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
       </nav>
+
 
       <Link
         to="/"
@@ -188,7 +217,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Kontingent dauerhaft sichtbar, egal auf welcher Studio-Seite — Details liegen auf /studio/plan. */
+/** Limit dauerhaft sichtbar, egal auf welcher Studio-Seite — Details liegen auf /studio/plan. */
 function CreditsPill({ designerId, plan }: { designerId: string; plan: Plan }) {
   const quota = usePlanQuota(designerId, plan);
   if (quota.loading) return null;
@@ -230,7 +259,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
         {designer && (
           <Link to={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="hidden md:inline-flex items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-muted">
-            Meine Retrospektive ansehen <ExternalLink className="h-3 w-3" />
+            Meine Rückblick ansehen <ExternalLink className="h-3 w-3" />
           </Link>
         )}
         <LanguageToggle className="h-9" />

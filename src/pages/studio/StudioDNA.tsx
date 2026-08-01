@@ -1,5 +1,5 @@
 /**
- * Teil 20b — Das Außenauge: ersetzt das Werkbuch (Teil 19a). Statt Balken/Prozentringen
+ * Teil 20b — Das Markenprofil: ersetzt das Werkbuch (Teil 19a). Statt Balken/Prozentringen
  * schreibt PAWN in Prosa, wie die Arbeit des Hauses von außen ankommt, im Vergleich zur
  * eigenen Beschreibung — mit Beleg aus echtem Verhalten. Die Entwicklung (Verlauf) und
  * die Korrektur (DNA neu lesen bei Widerspruch) bleiben aus Teil 19a bestehen.
@@ -103,14 +103,14 @@ export default function StudioDNA() {
     return entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 12);
   }, [dna, themes]);
 
-  if (loading) return <StudioShell title="Außenauge"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Außenauge"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title="Markenprofil"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title="Markenprofil"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
 
   const fz = aussenauge?.fruehzustand;
   const hasContent = fz?.erreicht && aussenauge?.urteil;
 
   return (
-    <StudioShell title="Außenauge" eyebrow="Wie eure Arbeit ankommt">
+    <StudioShell title="Markenprofil" eyebrow="Wie eure Arbeit ankommt">
       <section className="border-[1.5px] border-black bg-white p-6 md:p-8">
         <p className="editorial-eyebrow text-black/50">Das Urteil</p>
 

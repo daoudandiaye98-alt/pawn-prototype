@@ -130,7 +130,7 @@ export default function ApplyLanding() {
                 </div>
                 <div className="md:col-span-3">
                   <div className="border-l border-[rgba(0,0,0,.22)] pl-6">
-                    <Editable as="p" contentKey="apply_fuer_dich_label" className="palace-eyebrow text-[#7C7972]">Für dich</Editable>
+                    <Editable as="p" contentKey="apply_fuer_dich_label" className="palace-eyebrow text-black/60">Für dich</Editable>
                     <Editable as="p" contentKey={`apply_${s.key}_tagline`} className="palace-serif mt-3 text-[1.15rem] italic text-[#000000]/85">
                       {s.tagline}
                     </Editable>
@@ -143,7 +143,7 @@ export default function ApplyLanding() {
       </section>
 
       {/* ── Ablauf: vertikale Fortschrittslinie ──────────── */}
-      <section className="border-t border-[rgba(0,0,0,.18)] bg-[#EEE9E0] px-6 py-24 md:px-14 md:py-32">
+      <section className="border-t border-[rgba(0,0,0,.18)] bg-white px-6 py-24 md:px-14 md:py-32">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
             <Editable as="p" contentKey="apply_flow_eyebrow" className="palace-eyebrow">Ablauf</Editable>
@@ -167,13 +167,13 @@ export default function ApplyLanding() {
                 <li className="relative flex gap-8 pl-10 md:pl-16">
                   <span
                     aria-hidden
-                    className="absolute left-0 top-2 grid h-5 w-5 place-items-center rounded-full border border-[#000000] bg-[#EEE9E0] md:h-9 md:w-9"
+                    className="absolute left-0 top-2 grid h-5 w-5 place-items-center rounded-full border border-[#000000] bg-white md:h-9 md:w-9"
                   >
                     <span className="palace-eyebrow hidden md:block">{String(i + 1).padStart(2, "0")}</span>
                     <span className="block h-1.5 w-1.5 rounded-full bg-[#000000] md:hidden" />
                   </span>
                   <div className="flex-1">
-                    <p className="palace-eyebrow text-[#7C7972]">Schritt {i + 1}</p>
+                    <p className="palace-eyebrow text-black/60">Schritt {i + 1}</p>
                     <p
                       className="palace-serif mt-3 font-light text-[#000000]"
                       style={{ fontSize: "clamp(1.6rem, 3vw, 2.4rem)", lineHeight: 1, letterSpacing: "-0.015em" }}
@@ -227,7 +227,7 @@ export default function ApplyLanding() {
                 to="/designers"
                 className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left text-[#000000] transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
-                <p className="palace-eyebrow group-hover:text-[#A8A49B]">Vorher sehen</p>
+                <p className="palace-eyebrow group-hover:text-black/40">Vorher sehen</p>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
                   <Editable as="span" contentKey="apply_cta_card_b">Häuser, die<br/>schon eingezogen sind.</Editable>
                 </p>

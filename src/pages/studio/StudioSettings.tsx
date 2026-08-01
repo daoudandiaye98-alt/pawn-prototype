@@ -89,7 +89,7 @@ export default function StudioSettings() {
             <Row k="Status" v={designer.status} />
             <Row k="Im Haus seit" v={designer.created_at ? new Date(designer.created_at).toLocaleDateString("de-DE", { month: "long", year: "numeric" }) : "—"} />
           </dl>
-          <Link to="/studio/brand" className="mt-6 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">Retrospektive bearbeiten</Link>
+          <Link to="/studio/brand" className="mt-6 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">Rückblick bearbeiten</Link>
         </section>
       </div>
 

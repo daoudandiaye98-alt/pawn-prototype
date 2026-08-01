@@ -363,7 +363,7 @@ const DesignerPage = () => {
     : "—";
 
   // Neue Hausseite (Teil 12c): veröffentlicht und mit Bausteinen → ersetzt die
-  // gesamte alte Retrospektive. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
+  // gesamte alte Rückblick. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
   if (dbDesigner?.page_published_at && pageBlocks.length > 0) {
     const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
     return (
@@ -402,20 +402,20 @@ const DesignerPage = () => {
           <span
             key={label}
             className={`palace-eyebrow pointer-events-auto whitespace-nowrap transition-colors ${
-              activeChapter === i ? "text-[#FFFFFF] mix-blend-difference" : "text-[#8F8B82]"
+              activeChapter === i ? "text-[#FFFFFF] mix-blend-difference" : "text-black/50"
             }`}
           >
             0{i + 1} · {label}
           </span>
         ))}
-        <span className="palace-eyebrow pointer-events-auto text-[#8F8B82]">05 · Im Haus</span>
+        <span className="palace-eyebrow pointer-events-auto text-black/50">05 · Im Haus</span>
       </nav>
 
       <div ref={pageRef}>
         {/* AKT I — AUFTRITT */}
         <section
           ref={actIRef as React.RefObject<HTMLElement>}
-          className="relative bg-[#0A0A0C] text-[#FFFFFF]"
+          className="relative bg-black text-[#FFFFFF]"
           style={{ height: reduced ? "auto" : "170vh" }}
         >
           <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
@@ -479,7 +479,7 @@ const DesignerPage = () => {
 
             {/* Top eyebrow */}
             <p className="palace-eyebrow absolute left-6 top-24 z-[10] md:left-14" style={{ color: "rgba(241,238,231,0.72)" }}>
-              PAWN präsentiert · Retrospektive · Ausgabe {edition}
+              PAWN präsentiert · Rückblick · Ausgabe {edition}
             </p>
 
             {/* Bottom corners */}
@@ -504,7 +504,7 @@ const DesignerPage = () => {
         </section>
 
         {/* BIGBAND — endloses Marquee */}
-        <div className="overflow-hidden border-y border-[rgba(241,238,231,0.12)] bg-[#0A0A0C] py-8 text-[#FFFFFF]">
+        <div className="overflow-hidden border-y border-[rgba(241,238,231,0.12)] bg-black py-8 text-[#FFFFFF]">
           <div className="palace-marquee flex whitespace-nowrap">
             {Array.from({ length: 8 }).map((_, i) => (
               <span
@@ -674,7 +674,7 @@ const DesignerPage = () => {
               {campaignVideos.map((c) => (
                 <div
                   key={c.id}
-                  className="relative flex-none snap-start border border-[rgba(0,0,0,.18)] bg-[#F1EEE7]"
+                  className="relative flex-none snap-start border border-[rgba(0,0,0,.18)] bg-white"
                   style={{ width: "min(62vw, 320px)", aspectRatio: "9 / 16" }}
                 >
                   <video
@@ -713,7 +713,7 @@ const DesignerPage = () => {
         {/* AKT IV — ATELIER */}
         <section
           ref={actIVRef as React.RefObject<HTMLElement>}
-          className="relative overflow-hidden bg-[#0A0A0C]"
+          className="relative overflow-hidden bg-black"
           style={{ height: "100vh", minHeight: 560 }}
         >
           <div
@@ -729,7 +729,7 @@ const DesignerPage = () => {
               ratio="16/9"
               className="h-full w-full"
             />
-            <div className="absolute inset-0 bg-[#0A0A0C]/30" />
+            <div className="absolute inset-0 bg-black/30" />
           </div>
           <p
             className="absolute bottom-14 left-6 z-10 palace-serif italic md:bottom-20 md:left-14"
@@ -749,7 +749,7 @@ const DesignerPage = () => {
         </section>
 
         {/* AKT V — IM HAUS (Plakette) */}
-        <section className="bg-[#0A0A0C] px-6 py-32 text-[#FFFFFF] md:px-14 md:py-40">
+        <section className="bg-black px-6 py-32 text-[#FFFFFF] md:px-14 md:py-40">
           <div className="mx-auto max-w-2xl">
             <p className="palace-eyebrow text-center" style={{ color: "rgba(241,238,231,0.7)" }}>
               <Editable as="span" contentKey="retro_plaque_act">Akt V · Im Haus</Editable>
@@ -783,7 +783,7 @@ const DesignerPage = () => {
 
         {/* AKT VI — NÄCHSTES HAUS */}
         {nextDesigner && (
-          <section className="group relative bg-[#0A0A0C] py-32 md:py-48">
+          <section className="group relative bg-black py-32 md:py-48">
             <div className="pointer-events-none mx-auto max-w-[1600px] text-center">
               <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,0.6)" }}>Akt VI · Das nächste Haus</p>
             </div>

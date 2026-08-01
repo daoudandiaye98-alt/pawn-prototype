@@ -1,63 +1,57 @@
-## Teil 1 — E-Mail: was geht, was nicht
+## Letzter Feinschliff — 5 Schritte
 
-Geprüft im Code und in der Konfiguration:
+### 1. Streng Schwarz-Weiß (alle Cremetöne raus)
+Die Design-Tokens sind bereits reines Schwarz/Weiß, aber in **30 Dateien** stehen noch fest eingetippte Cremetöne (`#7C7972`, `#EFEDE8`, `#EEE9E0`, `#F1EEE7`, `#8F8B82`, `#55534E`, `#A8A49B`, `#0A0A0C`, `#FEF6E1` …).
 
-- **Anzeige-/Kontaktadresse** ist bereits `pawnstudio.co@gmail.com`: in `business_profile` (Datenbank), Impressum, AGB, Widerruf.
-- **Absenderadresse beim Versand** ist etwas anderes: In `akquise_config.email_from` und in den Bestell-Mails steht fest `PAWN <hallo@pawn.vision>`, Antwortadresse `pawnstudio.co@gmail.com`.
-- Zwei Stellen sind noch Platzhalter aus der Vorlage: Footer-Link „Contact" → `kontakt@pawn.example`, und Datenschutz-Seite (`kontakt@pawn.example`, `datenschutz@pawn.example`).
+Vorgehen:
+- Ersatzregel: warme Graustufen → `text-black/60` bzw. `/70` (Fließtext-Abstufung), Cremeflächen → `#FFFFFF` mit 1.5px schwarzer Linie, „fast-schwarz" (`#0A0A0C`) → `#000000`.
+- Betroffen u. a.: `Index`, `DesignerPage`, `Checkout`, `Cart`, `DNA`, `Designers`, `DesignersIndex`, `Ausgabe`, `Auth`, `ApplyLanding`, `ProductDetail`, `Impressum`, `Shop`, `Versand`, `AGB`, `OrderConfirmation`, `ChatDrawer`, `DnaChat`, `SearchOverlay`, `PalaceHeader`, `HeroScene`, `WorldPage`, `WorldHero`, `ConsentBanner`, `Editable`, `PaymentLogos`, `ContractV2Banner`, `campaign/scenes.ts`, `App.css`.
+- Ausnahme bleibt: Welt-Kopfbilder (`color`-Prop) und vom Designer selbst gewählte Hausseiten-Themen. Standard-Thema `#F2F2F2` (muted) wird zu `#FFFFFF`.
+- Danach eine Regel im Lint-Sinn: keine Hex-Werte außer `#000000`/`#FFFFFF` im `src`-Code.
 
-Wichtige Einschränkung, ohne Fachjargon: **Resend kann nicht von einer Gmail-Adresse aus versenden.** Um über einen Versanddienst zu senden, muss die Absender-Domain nachweislich dir gehören (DNS-Einträge). `gmail.com` gehört Google, nicht dir — Google verbietet fremden Versand in eigenem Namen ausdrücklich. Mails „von" `pawnstudio.co@gmail.com` würden bei Gmail/Outlook im Spam landen oder direkt abgelehnt.
+### 2. Sprache verständlich machen (ganz PAWN)
+Ein Glossar-Durchgang über Studio, Admin und öffentliche Seiten. Vorschlag (korrigierbar):
 
-Damit gibt es genau zwei saubere Wege:
+| bisher | neu |
+| --- | --- |
+| Außenauge | Markenprofil |
+| Retrospektive | Rückblick |
+| Werkbuch | Notizen |
+| Bühne / Nächster Zug | Start / Dein nächster Schritt |
+| Hausseite | Deine Markenseite |
+| Signatur | Bildsprache |
+| Edition | Gemeinsame Kampagne |
+| Prüf-Stapel / Jagd (Admin) | Zu prüfen / Designer-Suche |
+| Schwelle, Verwandlung | Einladung, Vorher/Nachher |
+| Kontingent | Was diesen Monat noch frei ist |
 
-**A (empfohlen): pawn.vision als Absender, Gmail als Antwortadresse.** Für den Empfänger steht „PAWN" im Posteingang, Antworten landen in deinem Gmail-Fach. Deine To-dos in Resend: Domain `pawn.vision` hinzufügen, die drei angezeigten DNS-Einträge (SPF, DKIM, optional DMARC) bei deinem Domain-Anbieter eintragen, auf „verified" warten. Danach funktionieren Bestellbestätigungen, Rechnungen und Akquise-Mails.
+Regel: poetische Sprache bleibt auf der öffentlichen Bühne (Startseite, Weltseiten, leere Zustände), aber **jede Bedienoberfläche** (Studio, Admin, Konto, Kasse) benennt Dinge wörtlich. Jeder Menüpunkt bekommt zusätzlich eine erklärende Kurzzeile.
 
-**B: Gmail als sichtbarer Absender.** Nur möglich, wenn du in Gmail „Senden als" mit deiner eigenen Domain kombinierst — heißt praktisch: du brauchst trotzdem eine eigene Domain. Kein Vorteil gegenüber A.
+### 3. Studio-Menü übersichtlich
+Aktuell 15 gleichrangige Punkte. Neu in 4 benannte Gruppen:
+- **Verkaufen** — Start, Kollektion, Bestellungen, Versand
+- **Zeigen** — Markenseite, Mediathek, Kampagnen, Videothek
+- **Marke** — Markenprofil, Rückblick, Content-Begleiter
+- **Konto** — Plan, Auszahlung, Empfehlungen, Nachrichten, Einstellungen
 
-Was ich baue (unabhängig von A/B, kostenlos über Git):
-- Alle `pawn.example`-Platzhalter (Footer, Datenschutz) durch `pawnstudio.co@gmail.com` ersetzen; Datenschutz-Seite bekommt Name/Anschrift aus `business_profile` statt „TODO".
-- Eine einzige Wahrheit für Kontakt: alle Rechtstexte und der Footer lesen `business_profile.contact_email`.
-- Antwortadresse konsequent auf `pawnstudio.co@gmail.com` in allen Versandwegen (Bestellung, Rechnung, Akquise, Follow-up) — auch dort, wo bisher nichts gesetzt war.
-- Absenderadresse bleibt konfigurierbar in der Datenbank; sobald `pawn.vision` in Resend verifiziert ist, ändert sich nichts mehr im Code.
+Gruppen aufklappbar, aktive Gruppe bleibt offen, mobil identisch. Keine neue Route, nur Struktur + Beschriftung.
 
-## Teil 2 — Abo-System: Bestandsaufnahme
+### 4. Hausseite prüfen und PAWN-gerecht machen
+Bestandsaufnahme des Editors (`StudioHausseite.tsx`, 400 Zeilen) und der Darstellung (`HausseiteBlocks.tsx`): 8 Bausteine und ein Thema-System existieren, aber es fehlt das, was sie benutzbar macht. Geplant:
+- **Vorlagen statt leerem Blatt:** 3 fertige Seitengerüste („Ein Stück im Fokus", „Kollektion", „Geschichte des Hauses"), ein Klick füllt die Seite mit den vorhandenen Medien.
+- **Live-Vorschau nebeneinander** (Desktop) bzw. umschaltbar (mobil), inkl. Handy-Ansicht.
+- **Ehrliche Prüfliste vor Veröffentlichen:** mindestens ein Bild, ein Text, ein Stück verlinkt — sonst Hinweis statt stummem Fehler.
+- **Klarer Zustand:** Entwurf / veröffentlicht mit Link zur echten Seite, „Änderungen nicht gesichert"-Hinweis.
+- Bausteinnamen entjargonisieren („Auftakt" → „Kopfbild", „banner_seitlich" → „Bild mit Kaufhinweis").
+- Der Datenbank-Teil bleibt unangetastet (nur Lesen/Schreiben wie bisher).
 
-Ist-Zustand: Haus 0 € · Atelier 24 € · Maison 99 €, dazu ein **zweites, paralleles System** aus Credits (Haus 30, Atelier 300, Maison 1200), Preislisten je Handlung (Freisteller 1, Model-Shot 2, Model-Clip 8, Clip 5/12/20) und drei Nachkauf-Paketen. Die Pakete haben **keine Stripe-Preis-IDs** — Nachkauf ist heute nicht kaufbar. Aktuell ist genau 1 Haus im System (Maison). Es gibt also keine Bestandskunden, die eine Umstellung schmerzt: der beste Moment, das zu vereinfachen.
+### 5. Alles Anklickbare prüfen
+Automatischer Durchlauf mit einem Browser-Skript über alle Routen (öffentlich, Studio, Admin — mit Test-Session): jeder Link und Knopf wird eingesammelt, tote Ziele (404, `#`, leerer `onClick`, Route existiert nicht) werden gelistet und behoben. Ergebnis kommt als kurze Liste „gefunden / behoben".
 
-Kernproblem: PAWN verspricht Designern, dass Technik verschwindet und Handwerk sichtbar wird. Ein Guthabenstand, Kostentabellen pro Klick und ein Kreisdiagramm über verbrauchte Einheiten machen genau das Gegenteil — der Designer rechnet, statt zu gestalten. Zusätzlich zahlt er zweimal Aufmerksamkeit: Abo plus Verbrauch. Für den Betreiber ist die Kostenkontrolle nötig — aber die läuft ohnehin schon unsichtbar über das interne KI-Budget (`ai_budget_ledger`).
+### Technisches
+- Nur Frontend: `src/**` (Seiten, `StudioShell`, `HausseiteBlocks`, `StudioHausseite`, `index.css`). Keine Migration, keine Edge Function, kein Deploy nötig.
+- Sichtbare Texte gehen, wo möglich, über `site_content`/`Editable`, damit du sie ohne Code ändern kannst.
+- Abschluss: Typecheck grün, Prüfung bei 390px und iPad, Kurzbericht je Punkt.
 
-## Teil 3 — Entscheidung: Credits raus, Kontingente rein
-
-**Credits werden gestrichen.** An ihre Stelle treten verständliche Monats-Kontingente in echten Dingen, keine Punkte:
-
-- **Haus · 0 €** — 3 Videos, 5 Model-Shots, 5 Freisteller, 1 Signatur-Kostprobe, PAWN-Emblem im Video.
-- **Atelier · 24 €** — 15 Videos (8 davon kinematisch, ohne Emblem), 25 Model-Shots/Freisteller, 3 Signaturen, KI-Kurator, Text-Atelier, PAWN+ Denkstufe.
-- **Maison · 99 €** — 40 Videos, alle kinematisch, unbegrenzt Shots, alle Signaturen + Wunsch-Signatur, Haus-Dossier, Vitrine-Rotation, Première-Priorität, Editionen-Erstzugang.
-
-Warum das besser zur Mission passt: Ein Designer versteht „3 Videos diesen Monat" sofort. „30 Credits" muss er erst in Videos umrechnen — das ist Buchhaltung, nicht Atelier. Kontingente sind außerdem ehrlicher: sie sagen, was er bekommt, nicht was er verbraucht.
-
-Was mit dem Guthaben-Nachkauf passiert: **entfällt.** Wer mehr will, steigt eine Stufe hoch — eine Entscheidung statt einer Dauer-Mikrorechnung. Der Kostendeckel für PAWN bleibt über das interne Budget bestehen und wird nur sichtbar, wenn ein Haus wirklich anschlägt („Dein Kontingent für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle ins Atelier.").
-
-## Teil 4 — Inszenierung der Plan-Seite
-
-Die Seite wird von einer Preistabelle zu einer Standortbestimmung:
-
-1. **Kopf:** eine Zeile, die nie verhandelt wird — „7 % bleiben immer 7 %. Pläne sind optional." Damit ist klar: kein Plan ist nie eine Strafe.
-2. **Drei Stufen als Erzählung** statt Feature-Listen, jede mit einem Satz, für wen sie gedacht ist („Alles, um live zu sein." / „Wenn du regelmäßig veröffentlichst." / „Für Ateliers im Serienbetrieb."), darunter höchstens fünf Punkte in echter Sprache.
-3. **Beweis statt Behauptung:** je Stufe ein echtes Beispielvideo aus dem Archiv (Haus mit Emblem, Atelier kinematisch, Maison Signatur) — der Unterschied wird gesehen, nicht gelesen.
-4. **Dein Monat:** eine ruhige Zeile statt Kreisdiagramm — „Diesen Monat: 2 von 3 Videos, 4 von 5 Shots." Kein Guthaben, keine Preisliste.
-5. **Kein Dauer-Druck:** Der Hinweis auf die nächste Stufe erscheint nur an der Stelle, an der ein Kontingent tatsächlich endet — nicht als Banner über allem.
-
-## Technische Details
-
-- `ai_config`: `plan_limits` wird zur einzigen Wahrheit (Videos, kinematische Videos, Shots, Signaturen, Emblem-Flag je Stufe); `plan_credits`, `credit_costs`, `credit_packs` entfallen. Nichts hart im Code.
-- `src/features/campaign/quota.ts`: `useCredits` wird zu `usePlanQuota` (Verbrauch je Handlungsart im Monat aus `ai_actions_log`/`generation_requests` statt Punktesaldo). `credits_ledger`/`book_credit_spend` bleiben unangetastet in der Datenbank (keine Migration nötig), werden aber nicht mehr gelesen.
-- Aufrufer: `StudioPlan.tsx`, `StudioCampaignNew.tsx`, `StudioMediathek.tsx`, `StudioProducts.tsx`, `StudioStueckNeu.tsx`, `Begleiter.tsx` — überall Guthaben-Anzeige durch Kontingent-Anzeige ersetzen.
-- Der Credits-Zweig in `create-checkout` (`mode: "credits"`) und die Gutschrift im `stripe-webhook` bleiben im Code liegen (kein Deploy nötig), das UI ruft ihn nicht mehr auf.
-- E-Mail-Teil: `PublicFooter.tsx`, `Datenschutz.tsx`, `order-fulfillment`, `_shared/orderPaid.ts`, `pawn-jarvis` (Reply-To). Die drei Function-Änderungen erfordern **einen** Deploy — ich sage Bescheid, wenn er dran ist.
-- Typecheck grün vor Abschluss; Prüfung auf 390 px.
-
-## Was du selbst tun musst
-
-1. In Resend `pawn.vision` als Domain hinzufügen und die angezeigten DNS-Einträge beim Domain-Anbieter eintragen (das ist der einzige Weg zu zuverlässigem Versand).
-2. Bestätigen, dass Atelier 24 € / Maison 99 € so bleiben — die bestehenden Stripe-Preise ändere ich nicht.
+### Reihenfolge
+1 (Farben) → 2 (Sprache) → 3 (Menü) → 4 (Hausseite) → 5 (Klick-Prüfung als Schlussabnahme).

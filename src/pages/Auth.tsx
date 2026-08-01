@@ -80,7 +80,7 @@ export default function Auth() {
               type="button"
               onClick={() => setMode(k)}
               className={`palace-eyebrow pb-2 transition-colors duration-300 ${
-                mode === k ? "border-b border-[#000000] text-[#000000]" : "text-[#7C7972] hover:text-[#000000]"
+                mode === k ? "border-b border-[#000000] text-[#000000]" : "text-black/60 hover:text-[#000000]"
               }`}
             >
               {k === "in" ? t("auth.signIn") : t("auth.signUp")}
@@ -93,9 +93,9 @@ export default function Auth() {
             <p className="palace-eyebrow">{t("auth.registerAs")}</p>
             <div className="mt-3 flex items-center justify-center gap-6 text-[0.75rem] uppercase tracking-[0.28em]">
               <span className="border-b border-[#000000] pb-1 text-[#000000]">{t("auth.asCustomer")}</span>
-              <Link to="/apply" className="text-[#7C7972] hover:text-[#000000]">{t("auth.asDesigner")} →</Link>
+              <Link to="/apply" className="text-black/60 hover:text-[#000000]">{t("auth.asDesigner")} →</Link>
             </div>
-            <p className="mt-3 text-[0.7rem] text-[#7C7972]">{t("auth.designerHint")}</p>
+            <p className="mt-3 text-[0.7rem] text-black/60">{t("auth.designerHint")}</p>
           </div>
         )}
         <form onSubmit={handleSubmit} className="mt-8 space-y-8">

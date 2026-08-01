@@ -1,6 +1,6 @@
 /**
- * Editionen: häuserübergreifende Kampagnen. Admin wählt Thema + Häuser →
- * Start erzeugt je Haus eine eigene Video-Version in dessen Signatur.
+ * gemeinsame Kampagnen: häuserübergreifende Kampagnen. Admin wählt Thema + Häuser →
+ * Start erzeugt je Haus eine eigene Video-Version in dessen Bildsprache.
  * Jedes Haus muss im Studio zustimmen, bevor irgendetwas veröffentlicht wird.
  */
 import { useEffect, useState } from "react";
@@ -66,7 +66,7 @@ export default function AdminEditionen() {
       const editionId = (ed as { id: string }).id;
       const rows = Array.from(chosen).map((designer_id) => ({ edition_id: editionId, designer_id, status: "pending" }));
       await supabase.from("edition_participants" as never).insert(rows as never);
-      toast.success("Edition als Entwurf angelegt.");
+      toast.success("Gemeinsame Kampagne als Entwurf angelegt.");
       setTheme(""); setChosen(new Set());
       void refresh();
     } catch (e) {
@@ -93,13 +93,13 @@ export default function AdminEditionen() {
   };
 
   return (
-    <AdminShell title="Editionen" eyebrow="Häuserübergreifend">
+    <AdminShell title="Gemeinsame Kampagnen" eyebrow="Häuserübergreifend">
       <p className="max-w-3xl text-sm text-muted-foreground">
-        Ein Thema, mehrere Häuser — jedes bekommt eine eigene Video-Version in seiner Signatur. Nichts geht raus, ohne dass das jeweilige Haus im Studio zustimmt.
+        Ein Thema, mehrere Häuser — jedes bekommt eine eigene Video-Version in seiner Bildsprache. Nichts geht raus, ohne dass das jeweilige Haus im Studio zustimmt.
       </p>
 
       <div className="mt-8 border border-border bg-white p-5">
-        <p className="editorial-eyebrow">Neue Edition</p>
+        <p className="editorial-eyebrow">Neue gemeinsame Kampagne</p>
         <div className="mt-3 flex flex-wrap gap-3">
           <input value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="Thema, z.B. „Herbst-Editorial”"
             className="flex-1 border border-border bg-background p-2 text-sm" />
@@ -124,7 +124,7 @@ export default function AdminEditionen() {
       </div>
 
       <div className="mt-8 space-y-4">
-        {editions.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Edition.</p>}
+        {editions.length === 0 && <p className="text-sm text-muted-foreground">Noch keine gemeinsame Kampagne angelegt.</p>}
         {editions.map((e) => (
           <div key={e.id} className="border border-border bg-white p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">

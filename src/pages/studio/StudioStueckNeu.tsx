@@ -311,7 +311,7 @@ export default function StudioStueckNeu() {
                   </div>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm text-muted-foreground">
-                      {selectedIds.length === 0 ? "Wähle mindestens eine Variante." : `Dauert etwa 20–40 Sekunden für ${selectedIds.length} Varianten — zählt auf dein Monats-Kontingent.`}
+                      {selectedIds.length === 0 ? "Wähle mindestens eine Variante." : `Dauert etwa 20–40 Sekunden für ${selectedIds.length} Varianten — zählt auf dein Monats-Limit.`}
                     </p>
                     <button type="button" onClick={() => void runStaging()}
                       disabled={stagingBusy || selectedIds.length === 0 || !quota.canDo("shots")}

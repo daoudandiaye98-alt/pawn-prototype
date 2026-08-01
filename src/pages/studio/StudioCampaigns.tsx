@@ -89,10 +89,10 @@ export default function StudioCampaigns() {
           video_dna: { signatur: null, hook_typ: null, schnittrhythmus: null, palette: null, laenge_s: 5, modelltyp: "edition-kinematisch" } as unknown as Record<string, unknown>,
           rights_granted: rightsGranted,
         } as never).select("id").single();
-        // Mediathek (Teil 12b): auch umgesetzte Editionen landen dort, verlinkt mit video_assets.
+        // Mediathek (Teil 12b): auch umgesetzte gemeinsame Kampagnen landen dort, verlinkt mit video_assets.
         await supabase.from("media_assets" as never).insert({
           designer_id: designer.id, kind: "video", origin: "edition", url: card.video_url,
-          title: `Edition · ${card.editions?.theme ?? ""}`.trim(), rights_granted: rightsGranted,
+          title: `gemeinsame Kampagne · ${card.editions?.theme ?? ""}`.trim(), rights_granted: rightsGranted,
           video_asset_id: (videoAssetRow as { id: string } | null)?.id ?? null,
           campaign_id: card.campaign_id,
         } as never);
@@ -158,10 +158,10 @@ export default function StudioCampaigns() {
 
       {editionCards.length > 0 && (
         <div className="mt-8 space-y-4">
-          <p className="editorial-eyebrow">Edition — PAWN schlägt vor</p>
+          <p className="editorial-eyebrow">Gemeinsame Kampagne — PAWN schlägt vor</p>
           {editionCards.map((card) => (
             <div key={card.id} className="border-[1.5px] border-black bg-white p-5">
-              <p className="font-serif text-xl">{card.editions?.theme ?? "Edition"}</p>
+              <p className="font-serif text-xl">{card.editions?.theme ?? "Gemeinsame Kampagne"}</p>
               <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{card.editions?.world ?? "—"}</p>
               {card.status === "pending" ? (
                 <p className="mt-3 text-sm text-muted-foreground">Dein Video wird gerade produziert — das dauert ein paar Minuten.</p>
@@ -171,7 +171,7 @@ export default function StudioCampaigns() {
                     <video src={card.video_url} controls playsInline className="mt-4 aspect-[9/16] w-full max-w-xs border border-border bg-black object-contain" />
                   )}
                   <p className="mt-3 text-sm text-muted-foreground">
-                    PAWN hat dieses Video in deiner Signatur erzeugt. Nichts wird veröffentlicht, ohne dass du zustimmst.
+                    PAWN hat dieses Video in deiner Bildsprache erzeugt. Nichts wird veröffentlicht, ohne dass du zustimmst.
                   </p>
                   <div className="mt-4 flex gap-2">
                     <button onClick={() => decideEdition(card, true)} disabled={editionBusy === card.id}

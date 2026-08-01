@@ -14,7 +14,7 @@ const PAGE_TEXTS: Record<string, string> = {
   "/studio/produkte": "Deine Stücke. Neu anlegen, bearbeiten, veröffentlichen — nichts geht ohne deinen Schalter live.",
   "/studio/produkte/neu": "Foto hoch, ein paar Angaben, fertig — dein Stück ist sofort live. Die Inszenierung danach ist ein Zusatz, kein Muss.",
   "/studio/bestellungen": "Deine Verkäufe laufen hier ein. Bestätige den Versand, sobald das Paket raus ist.",
-  "/studio/kampagnen": "Bisherige Kampagnen und Editionen-Vorschläge. Neue entstehen im Kampagnen-Studio.",
+  "/studio/kampagnen": "Bisherige Kampagnen und gemeinsame Kampagnen-Vorschläge. Neue entstehen im Kampagnen-Studio.",
   "/studio/mediathek": "Alles, was du hochlädst oder erzeugst, landet hier. Von hier aus auf Produktseiten, ins PAWN-Archiv oder zum Download.",
   "/studio/content-begleiter": "PAWN erzeugt keine Beiträge für deine Kanäle — hier bekommst du konkretes Feedback zu deinem eigenen Foto oder Video, plus einen Leitfaden für deine Welt.",
   "/studio/videothek": "Alle fertigen Videos zum Herunterladen, inklusive Vorschlag für Caption und Hashtags.",
@@ -33,7 +33,7 @@ const STEP_TEXTS: Record<string, string> = {
   "/studio/kampagnen/neu:video-material": "Ein Foto genügt, mehr Fotos ergeben ein reicheres Ergebnis. Freisteller setzt es auf neutralen Hintergrund, in 10–25 Sekunden, für den Preis, der am Knopf steht.",
   "/studio/kampagnen/neu:video-model": "PAWN-Model, Model beschreiben oder Haus-Model entsteht zuerst ein Model-Shot — dein Stück an einem fotorealistischen Menschen. Deine Bestätigung macht ihn zum Material für die Bewegung.",
   "/studio/kampagnen/neu:video-bewegung": "Beschreib die Bewegung — Kamera, Tempo, wie der Stoff sich verhält. Ein Modell ist vorausgewählt, die Länge wählst du dazu.",
-  "/studio/kampagnen/neu:video-feinschliff": "Caption, Signatur und Schnitt — hier feintunen, muss aber nicht. Der Erzeugen-Knopf unten wartet nicht darauf.",
+  "/studio/kampagnen/neu:video-feinschliff": "Caption, Bildsprache und Schnitt — hier feintunen, muss aber nicht. Der Erzeugen-Knopf unten wartet nicht darauf.",
 };
 
 const FALLBACK_TEXT = "Frag mich, wenn etwas unklar ist.";

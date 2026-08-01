@@ -57,9 +57,9 @@ export function HeroScene({ finaleProgress = 0 }: { finaleProgress?: number }) {
       const ctx = canv.getContext("2d");
       if (ctx) {
         const grd = ctx.createLinearGradient(0, 0, 0, 256);
-        grd.addColorStop(0, "#f6f3ec");
-        grd.addColorStop(0.5, "#8a8780");
-        grd.addColorStop(1, "#0d0d0f");
+        grd.addColorStop(0, "#ffffff");
+        grd.addColorStop(0.5, "#808080");
+        grd.addColorStop(1, "#000000");
         ctx.fillStyle = grd; ctx.fillRect(0, 0, 256, 256);
         envMap = new THREE.CanvasTexture(canv);
         envMap.mapping = THREE.EquirectangularReflectionMapping;

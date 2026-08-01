@@ -20,11 +20,19 @@ import {
 } from "@/features/houseTheme/theme";
 
 const BLOCK_LABEL: Record<PageBlockKind, string> = {
-  auftakt: "Auftaktbild/-video", editorial_text: "Editorial-Text", zitat: "Zitat",
-  produktreihe: "Produktreihe", lookbook_streifen: "Lookbook-Streifen",
-  banner_seitlich: "Seitlicher Banner", banner_vollbreite: "Vollbreiten-Banner",
-  ueberlappend: "Überlappend (zwei Medien)",
+  auftakt: "Großes Bild oben", editorial_text: "Text-Abschnitt", zitat: "Zitat",
+  produktreihe: "Reihe mit Stücken", lookbook_streifen: "Bilderstreifen zum Wischen",
+  banner_seitlich: "Bild seitlich", banner_vollbreite: "Bild über die ganze Breite",
+  ueberlappend: "Zwei Bilder versetzt",
 };
+
+/** Startvorlagen: ein Klick legt eine sinnvolle Grundstruktur an. */
+const TEMPLATES: { key: string; label: string; hint: string; kinds: PageBlockKind[] }[] = [
+  { key: "ein_stueck", label: "Ein Stück im Mittelpunkt", hint: "Großes Bild, kurzer Text, ein Stück verlinkt", kinds: ["auftakt", "editorial_text", "banner_seitlich"] },
+  { key: "kollektion", label: "Geschichte einer Kollektion", hint: "Bild, Text, Zitat, Reihe mit Stücken", kinds: ["auftakt", "editorial_text", "zitat", "produktreihe"] },
+  { key: "lookbook", label: "Lookbook zum Wischen", hint: "Bilderstreifen, Text, Reihe mit Stücken", kinds: ["lookbook_streifen", "editorial_text", "produktreihe"] },
+];
+
 
 const ABSTAND_OPTIONS = [
   { value: "", label: "Wie Flächenrhythmus des Themas" },
@@ -120,6 +128,19 @@ export default function StudioHausseite() {
     void refresh();
   };
 
+  const addTemplate = async (kinds: PageBlockKind[]) => {
+    if (!designer) return;
+    const start = blocks.length;
+    const { error } = await supabase.from("designer_page_blocks" as never).insert(
+      kinds.map((kind, i) => ({ designer_id: designer.id, kind, position: start + i, content: {} })) as never,
+    );
+    if (error) return toast.error(error.message);
+    toast.success("Vorlage eingefügt — jetzt Bilder und Text ergänzen.");
+    void refresh();
+  };
+
+
+
   const updateContent = async (block: PageBlockRow, content: Record<string, unknown>) => {
     setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, content } : b)));
     await supabase.from("designer_page_blocks" as never).update({ content } as never).eq("id", block.id);
@@ -145,36 +166,73 @@ export default function StudioHausseite() {
     await supabase.from("designers").update({ page_published_at: on ? new Date().toISOString() : null }).eq("id", designer.id);
     setBusy(false);
     setPublished(on ? new Date().toISOString() : null);
-    toast.success(on ? "Hausseite veröffentlicht." : "Von der Ausstellung genommen.");
+    toast.success(on ? "Deine Markenseite ist online." : "Seite ist wieder offline.");
   };
 
-  if (loading) return <StudioShell title="Hausseite"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Hausseite"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  // Vor dem Veröffentlichen: drei einfache Bedingungen, damit die Seite nicht leer wirkt.
+  const hasMedia = blocks.some((b) => !!b.content.media_asset_id || ((b.content.media_asset_ids as string[] | undefined)?.length ?? 0) > 0 || !!b.content.media_asset_id_a);
+  const hasText = blocks.some((b) => !!b.content.text || !!b.content.heading || !!b.content.quote);
+  const hasProduct = blocks.some((b) => !!b.content.product_id || ((b.content.product_ids as string[] | undefined)?.length ?? 0) > 0);
+  const checklist = [
+    { ok: hasMedia, label: "Mindestens ein Bild oder Video" },
+    { ok: hasText, label: "Mindestens ein Text oder Zitat" },
+    { ok: hasProduct, label: "Mindestens ein Stück verlinkt" },
+  ];
+  const readyToPublish = checklist.every((c) => c.ok);
+
+  if (loading) return <StudioShell title="Deine Markenseite"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title="Deine Markenseite"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
 
   return (
-    <StudioShell title="Hausseite" eyebrow="Deine öffentliche Doppelseite">
+    <StudioShell title="Deine Markenseite" eyebrow="So sehen Besucher dein Haus">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Baue deine öffentliche Seite aus Bausteinen — jeder zieht sein Material aus der Mediathek. Reihenfolge über die Pfeile.
+          Setz deine Seite aus Bausteinen zusammen — Bilder kommen aus deinen hochgeladenen Dateien. Mit den Pfeilen änderst du die Reihenfolge.
         </p>
         <div className="flex items-center gap-2">
           <a href={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="flex min-h-[36px] items-center gap-1.5 border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
             Live ansehen <ExternalLink className="h-3 w-3" />
           </a>
-          <button onClick={() => void publish(!published)} disabled={busy}
+          <button onClick={() => void publish(!published)} disabled={busy || (!published && !readyToPublish)}
+            title={!published && !readyToPublish ? "Erst die drei Punkte unten erfüllen." : undefined}
             className="min-h-[36px] border border-foreground bg-foreground px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-50">
-            {published ? "Von der Ausstellung nehmen" : "Veröffentlichen"}
+            {published ? "Seite offline nehmen" : "Veröffentlichen"}
           </button>
         </div>
       </div>
-      {!published && <p className="mt-3 text-xs text-muted-foreground">Noch nicht veröffentlicht — Besucher sehen bis dahin deine bisherige Seite.</p>}
+
+      <div className="mt-4 border border-border bg-white p-4">
+        <p className="editorial-eyebrow">Bereit zum Veröffentlichen?</p>
+        <ul className="mt-2 space-y-1 text-sm">
+          {checklist.map((c) => (
+            <li key={c.label} className={c.ok ? "text-foreground" : "text-muted-foreground"}>
+              {c.ok ? "✓" : "○"} {c.label}
+            </li>
+          ))}
+        </ul>
+        {!published && <p className="mt-2 text-xs text-muted-foreground">Noch nicht veröffentlicht — bis dahin sehen Besucher deine bisherige Seite.</p>}
+      </div>
+
+      <div className="mt-6 border border-border bg-white p-4">
+        <p className="editorial-eyebrow">Mit einer Vorlage starten</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {TEMPLATES.map((t) => (
+            <button key={t.key} onClick={() => void addTemplate(t.kinds)}
+              className="border border-border p-3 text-left hover:border-foreground">
+              <span className="block text-sm">{t.label}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{t.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
 
       <div className="mt-8 border border-border bg-white p-5">
-        <p className="editorial-eyebrow">Thema deines Hauses</p>
+        <p className="editorial-eyebrow">Look deiner Seite</p>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Beschreib deine Welt in eigenen Worten — z. B. „ein verlassenes Hallenbad bei Neonlicht" oder „Großmutters Nähzimmer im Spätsommer".
-          PAWN übersetzt das zusammen mit deiner Marken-DNA in Farben, Schrift, Abstände, Bewegung und Kanten deiner Hausseite.
+          PAWN übersetzt das zusammen mit deiner Marken-DNA in Farben, Schrift, Abstände, Bewegung und Kanten deiner Markenseite.
           {currentTheme ? ' Verfeinere jederzeit mit einem weiteren Satz — „wärmer", „strenger", „mehr Luft".' : ""}
         </p>
 
@@ -240,7 +298,7 @@ export default function StudioHausseite() {
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.1fr]">
         <div className="space-y-4">
-          {blocks.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Bausteine. Füge oben einen hinzu.</p>}
+          {blocks.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Bausteine — nimm oben eine Vorlage oder füge einzelne hinzu.</p>}
           {blocks.map((b, i) => (
             <div key={b.id} className="border border-border bg-white p-4">
               <div className="flex items-center justify-between">

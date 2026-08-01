@@ -1,6 +1,6 @@
 /**
  * Admin-Video-Archiv: alle Videos aller Häuser an einem Ort.
- * Stern = Première (Landing-Feed), Pfeil = in die Posting-Queue schicken.
+ * Stern = Startseiten-Video (Landing-Feed), Pfeil = in die Posting-Queue schicken.
  */
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/pawn/AdminShell";
@@ -24,7 +24,7 @@ interface SubmittedRow {
   designers?: { brand_name: string; house_number: number | null } | null;
 }
 
-const MEDIA_ORIGIN_LABEL: Record<MediaOrigin, string> = { upload: "Eigener Upload", erzeugt: "KI erzeugt", edition: "Edition" };
+const MEDIA_ORIGIN_LABEL: Record<MediaOrigin, string> = { upload: "Eigener Upload", erzeugt: "KI erzeugt", edition: "Gemeinsame Kampagne" };
 
 interface AssetRow {
   id: string;
@@ -42,7 +42,7 @@ interface AssetRow {
   campaigns?: { title: string; products?: { world: string } | null } | null;
 }
 
-const SOURCE_LABEL: Record<Source, string> = { designer: "Designer", edition: "Edition", jarvis: "Jarvis" };
+const SOURCE_LABEL: Record<Source, string> = { designer: "Designer", edition: "Gemeinsame Kampagne", jarvis: "Jarvis" };
 
 export default function AdminArchiv() {
   const { user, roles, loading } = useAuth();
@@ -104,7 +104,7 @@ export default function AdminArchiv() {
       .update({ premiere: !row.premiere } as never).eq("id", row.id);
     setBusy(null);
     if (error) return toast.error(error.message);
-    toast.success(!row.premiere ? "Première gesetzt." : "Aus Première entfernt.");
+    toast.success(!row.premiere ? "Startseiten-Video gesetzt." : "Aus Startseiten-Video entfernt.");
     void refresh();
   };
 
@@ -134,7 +134,7 @@ export default function AdminArchiv() {
   return (
     <AdminShell title="Archiv" eyebrow="Videos">
       <p className="max-w-3xl text-sm text-muted-foreground">
-        Jedes erzeugte Video aller Häuser — Stern setzt eine Première auf der Startseite, der Pfeil schickt die Kampagne in die Posting-Warteschlange.
+        Jedes erzeugte Video aller Häuser — Stern setzt eine Startseiten-Video auf der Startseite, der Pfeil schickt die Kampagne in die Posting-Warteschlange.
       </p>
 
       {submitted.length > 0 && (
@@ -185,7 +185,7 @@ export default function AdminArchiv() {
           {worlds.map((w) => <option key={w} value={w}>{w}</option>)}
         </select>
         <select value={filterSignature} onChange={(e) => setFilterSignature(e.target.value)} className="border border-border bg-white px-3 py-2 text-sm">
-          <option value="">Alle Signaturen</option>
+          <option value="">Alle Bildsprachen</option>
           {signatures.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <select value={sortMode} onChange={(e) => setSortMode(e.target.value as "neu" | "performance")} className="border border-border bg-white px-3 py-2 text-sm">
@@ -203,7 +203,7 @@ export default function AdminArchiv() {
               <button
                 onClick={() => togglePremiere(r)}
                 disabled={busy === r.id}
-                title={r.premiere ? "Première entfernen" : "Als Première setzen"}
+                title={r.premiere ? "Startseiten-Video entfernen" : "Als Startseiten-Video setzen"}
                 className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center border ${r.premiere ? "border-white bg-white text-black" : "border-white/60 bg-black/40 text-white"}`}
               >
                 <Star className="h-4 w-4" fill={r.premiere ? "currentColor" : "none"} />
@@ -218,7 +218,7 @@ export default function AdminArchiv() {
                 {r.performance?.premiere_views ?? 0} Aufrufe · {r.performance?.shop_clicks ?? 0} Shop-Klicks
               </p>
               {!r.rights_granted && (
-                <p className="mt-2 text-[0.62rem] text-muted-foreground">Rechte-Haken fehlt — nicht für Première geeignet.</p>
+                <p className="mt-2 text-[0.62rem] text-muted-foreground">Rechte-Haken fehlt — nicht für Startseiten-Video geeignet.</p>
               )}
               <button
                 onClick={() => sendToQueue(r)}

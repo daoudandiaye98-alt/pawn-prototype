@@ -178,7 +178,7 @@ export function DnaChat() {
         )}
         {messages.map((m) => (
           <div key={m.id} className={m.role === "assistant" ? "" : "text-right"}>
-            <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">{m.role === "assistant" ? "Pawn" : "Du"}</p>
+            <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{m.role === "assistant" ? "Pawn" : "Du"}</p>
             {m.imageUrls && m.imageUrls.length > 0 && (
               <div className={`mt-2 flex flex-wrap gap-2 ${m.role === "assistant" ? "" : "justify-end"}`}>
                 {m.imageUrls.map((u, i) => (
@@ -191,12 +191,12 @@ export function DnaChat() {
             </p>
           </div>
         ))}
-        {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">Pawn denkt nach…</p>}
+        {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">Pawn denkt nach…</p>}
       </div>
 
       {uploadPct !== null && (
         <div className="border-t border-[rgba(0,0,0,.18)] px-6 py-3 md:px-8">
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">Bilder werden hochgeladen · {uploadPct}%</p>
+          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-black/60">Bilder werden hochgeladen · {uploadPct}%</p>
           <div className="mt-2 h-[3px] w-full bg-[rgba(0,0,0,.12)]">
             <div className="h-full bg-black transition-all duration-300" style={{ width: `${uploadPct}%` }} />
           </div>
@@ -213,12 +213,12 @@ export function DnaChat() {
               </button>
             </div>
           ))}
-          <p className="text-xs text-[#7C7972]">bereit — schreib dazu oder schick sie allein.</p>
+          <p className="text-xs text-black/60">bereit — schreib dazu oder schick sie allein.</p>
         </div>
       )}
 
       <form onSubmit={(e) => { e.preventDefault(); void send(); }} className="border-t border-[rgba(0,0,0,.18)] px-6 py-5 md:px-8">
-        <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
+        <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-black/60">
           <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 hover:text-black">
             <ImagePlus className="h-3.5 w-3.5" /> Bilder hochladen
           </button>
@@ -236,9 +236,9 @@ export function DnaChat() {
           <textarea value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
             rows={1} placeholder="Erzähl mir von dir…"
-            className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-black placeholder:text-[#A8A49B] focus:outline-none" />
+            className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-black placeholder:text-black/40 focus:outline-none" />
           <button type="submit" disabled={busy || (!input.trim() && pendingImages.length === 0)}
-            className="text-[0.6rem] uppercase tracking-[0.42em] text-black disabled:text-[#A8A49B]">
+            className="text-[0.6rem] uppercase tracking-[0.42em] text-black disabled:text-black/40">
             Senden
           </button>
         </div>

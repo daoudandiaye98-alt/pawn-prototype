@@ -314,7 +314,7 @@ export default function AdminKI() {
           />
           <PromptEditor
             label="Sprachgesetz (Teil 20)"
-            description="Gilt zusätzlich für die drei DNA-Ansichten (Stilberater, Außenauge, Analyse): kein wertendes Wort ohne sofortige Auflösung, jede Behauptung mit Beleg."
+            description="Gilt zusätzlich für die drei DNA-Ansichten (Stilberater, Markenprofil, Analyse): kein wertendes Wort ohne sofortige Auflösung, jede Behauptung mit Beleg."
             value={voiceLaw}
             setValue={setVoiceLaw}
             onSave={saveVoiceLaw}

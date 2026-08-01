@@ -108,7 +108,7 @@ export default function Ausgabe() {
                       <span className="absolute left-0 top-0 h-full w-[3px]" style={{ background: accentById[h.id] }} aria-hidden="true" />
                     )}
                     <Link to={`/designer/${h.slug}`} className="group grid grid-cols-1 items-center gap-6 py-10 pl-4 md:grid-cols-[120px_1fr_auto] md:gap-10">
-                      <span className="palace-eyebrow text-[#7C7972]">№ {String(h.house_number ?? i + 1).padStart(3, "0")}</span>
+                      <span className="palace-eyebrow text-black/60">№ {String(h.house_number ?? i + 1).padStart(3, "0")}</span>
                       <div className="flex items-center gap-6">
                         <div className="h-20 w-16 shrink-0 overflow-hidden md:h-28 md:w-20">
                           <EditorialImage seed={`ausgabe-${h.slug}`} src={h.portrait_url ?? h.hero_image_url} ratio="3/4" className="h-full w-full" />
@@ -120,12 +120,12 @@ export default function Ausgabe() {
                           {h.brand_name}
                         </p>
                       </div>
-                      <span className="palace-eyebrow whitespace-nowrap text-[#7C7972] group-hover:text-[#000000]">Doppelseite öffnen →</span>
+                      <span className="palace-eyebrow whitespace-nowrap text-black/60 group-hover:text-[#000000]">Doppelseite öffnen →</span>
                     </Link>
                     {topProductById[h.id] && (
                       <Link
                         to={`/product/${topProductById[h.id].slug}`}
-                        className="palace-eyebrow absolute bottom-3 right-0 text-[#7C7972] hover:text-[#000000] md:bottom-4"
+                        className="palace-eyebrow absolute bottom-3 right-0 text-black/60 hover:text-[#000000] md:bottom-4"
                       >
                         Zum Stück · {topProductById[h.id].name} →
                       </Link>

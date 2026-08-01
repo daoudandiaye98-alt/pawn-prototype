@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 /**
  * Teil 20 (Vorlauf): zählt Besuche + Verweildauer je eingeloggtem Nutzer für eine
  * Haus- oder Produktseite (page_visits) — die Grundlage für Belege wie „3 Mal
- * zurückgekehrt“ oder „38 Sekunden angesehen“ im Stilberater/Außenauge/Analyse.
+ * zurückgekehrt“ oder „38 Sekunden angesehen“ im Stilberater/Markenprofil/Analyse.
  * Anonymes Stöbern bleibt ungezählt, genau wie beim übrigen Geschmacksprofil.
  */
 export function usePageVisit(targetType: "designer" | "product", targetId: string | null | undefined) {

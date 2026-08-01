@@ -60,11 +60,11 @@ export default function StudioBrand() {
     setForm((f) => ({ ...f, [kind]: data?.signedUrl ?? "" }));
   };
 
-  if (loading) return <StudioShell title="Retrospektive"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Retrospektive"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title="Rückblick"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title="Rückblick"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
 
   return (
-    <StudioShell title="Retrospektive" eyebrow={`Öffentlich unter /designer/${designer.slug}`}>
+    <StudioShell title="Rückblick" eyebrow={`Öffentlich unter /designer/${designer.slug}`}>
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
           <p className="editorial-eyebrow">Porträt & Story</p>
@@ -108,12 +108,12 @@ export default function StudioBrand() {
 
       <div className="mt-12 border-[1.5px] border-black bg-white p-6 md:p-8">
         <p className="editorial-eyebrow text-black/50">DNA</p>
-        <h3 className="mt-1 font-serif text-xl leading-tight text-black">Euer Außenauge</h3>
+        <h3 className="mt-1 font-serif text-xl leading-tight text-black">Euer Markenprofil</h3>
         <p className="mt-2 max-w-xl text-sm text-black/60">
           PAWN sagt, wie eure Arbeit von außen ankommt — im Vergleich zu eurer eigenen Beschreibung, mit Beleg aus echtem Verhalten.
         </p>
         <Link to="/studio/dna" className="mt-4 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
-          Zum Außenauge →
+          Zum Markenprofil →
         </Link>
       </div>
 

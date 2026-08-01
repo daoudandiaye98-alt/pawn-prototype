@@ -24,7 +24,7 @@ export default function Versand() {
           </div>
           <div>
             <p className="palace-eyebrow">Hinweis</p>
-            <p className="mt-3 text-[0.9rem] text-[#7C7972]">
+            <p className="mt-3 text-[0.9rem] text-black/60">
               Diese Seite wird finalisiert, sobald Versanddienstleister und Retourenprozess mit den Ateliers
               abgestimmt sind.
             </p>
