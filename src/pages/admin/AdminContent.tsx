@@ -267,8 +267,10 @@ export default function AdminContent() {
                     >
                       <Sparkles className="h-3 w-3" /> {bulkSuggesting ? "…" : "Alle Texte neu übersetzen"}
                     </button>
+                    <TranslationWarmup />
                   </>
                 )}
+
 
                 <div className="flex border border-border">
                   {(["de", "en"] as const).map((l) => (
