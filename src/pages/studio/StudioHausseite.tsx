@@ -166,30 +166,67 @@ export default function StudioHausseite() {
     await supabase.from("designers").update({ page_published_at: on ? new Date().toISOString() : null }).eq("id", designer.id);
     setBusy(false);
     setPublished(on ? new Date().toISOString() : null);
-    toast.success(on ? "Hausseite veröffentlicht." : "Von der Ausstellung genommen.");
+    toast.success(on ? "Deine Markenseite ist online." : "Seite ist wieder offline.");
   };
 
-  if (loading) return <StudioShell title="Hausseite"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Hausseite"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  // Vor dem Veröffentlichen: drei einfache Bedingungen, damit die Seite nicht leer wirkt.
+  const hasMedia = blocks.some((b) => !!b.content.media_asset_id || ((b.content.media_asset_ids as string[] | undefined)?.length ?? 0) > 0 || !!b.content.media_asset_id_a);
+  const hasText = blocks.some((b) => !!b.content.text || !!b.content.heading || !!b.content.quote);
+  const hasProduct = blocks.some((b) => !!b.content.product_id || ((b.content.product_ids as string[] | undefined)?.length ?? 0) > 0);
+  const checklist = [
+    { ok: hasMedia, label: "Mindestens ein Bild oder Video" },
+    { ok: hasText, label: "Mindestens ein Text oder Zitat" },
+    { ok: hasProduct, label: "Mindestens ein Stück verlinkt" },
+  ];
+  const readyToPublish = checklist.every((c) => c.ok);
+
+  if (loading) return <StudioShell title="Deine Markenseite"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title="Deine Markenseite"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
 
   return (
-    <StudioShell title="Hausseite" eyebrow="Deine öffentliche Doppelseite">
+    <StudioShell title="Deine Markenseite" eyebrow="So sehen Besucher dein Haus">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Baue deine öffentliche Seite aus Bausteinen — jeder zieht sein Material aus der Mediathek. Reihenfolge über die Pfeile.
+          Setz deine Seite aus Bausteinen zusammen — Bilder kommen aus deinen hochgeladenen Dateien. Mit den Pfeilen änderst du die Reihenfolge.
         </p>
         <div className="flex items-center gap-2">
           <a href={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="flex min-h-[36px] items-center gap-1.5 border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
             Live ansehen <ExternalLink className="h-3 w-3" />
           </a>
-          <button onClick={() => void publish(!published)} disabled={busy}
+          <button onClick={() => void publish(!published)} disabled={busy || (!published && !readyToPublish)}
+            title={!published && !readyToPublish ? "Erst die drei Punkte unten erfüllen." : undefined}
             className="min-h-[36px] border border-foreground bg-foreground px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-50">
-            {published ? "Von der Ausstellung nehmen" : "Veröffentlichen"}
+            {published ? "Seite offline nehmen" : "Veröffentlichen"}
           </button>
         </div>
       </div>
-      {!published && <p className="mt-3 text-xs text-muted-foreground">Noch nicht veröffentlicht — Besucher sehen bis dahin deine bisherige Seite.</p>}
+
+      <div className="mt-4 border border-border bg-white p-4">
+        <p className="editorial-eyebrow">Bereit zum Veröffentlichen?</p>
+        <ul className="mt-2 space-y-1 text-sm">
+          {checklist.map((c) => (
+            <li key={c.label} className={c.ok ? "text-foreground" : "text-muted-foreground"}>
+              {c.ok ? "✓" : "○"} {c.label}
+            </li>
+          ))}
+        </ul>
+        {!published && <p className="mt-2 text-xs text-muted-foreground">Noch nicht veröffentlicht — bis dahin sehen Besucher deine bisherige Seite.</p>}
+      </div>
+
+      <div className="mt-6 border border-border bg-white p-4">
+        <p className="editorial-eyebrow">Mit einer Vorlage starten</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {TEMPLATES.map((t) => (
+            <button key={t.key} onClick={() => void addTemplate(t.kinds)}
+              className="border border-border p-3 text-left hover:border-foreground">
+              <span className="block text-sm">{t.label}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{t.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
 
       <div className="mt-8 border border-border bg-white p-5">
         <p className="editorial-eyebrow">Thema deines Hauses</p>
