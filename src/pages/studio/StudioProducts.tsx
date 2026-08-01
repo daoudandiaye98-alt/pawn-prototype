@@ -1076,15 +1076,15 @@ function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p:
   const total = sizes.reduce((s, v) => s + Math.max(0, Number(v.stock) || 0), 0);
 
   return (
-    <Section title="Größen & Maße" help="Ein Stück kann in mehreren Größen existieren — je Größe eigener Bestand, optional Aufpreis und Artikelnummer. Ausverkaufte Größen sind im Shop nicht wählbar. Die Maßtabelle darunter beantwortet die häufigste Frage vor dem Kauf.">
+    <Section title={profile.variantTitle} help={profile.variantHelp}>
       {sizes.length === 0
-        ? <p className="text-xs text-muted-foreground">Keine Größen — dann gilt der allgemeine Bestand oben. Passt für Unikate.</p>
-        : <p className="text-xs text-muted-foreground">Gesamtbestand aus allen Größen: <span className="text-foreground">{total}</span></p>}
+        ? <p className="text-xs text-muted-foreground">{profile.variantEmpty}</p>
+        : <p className="text-xs text-muted-foreground">Gesamtbestand aus allen {profile.variantSingular === "Größe" ? "Größen" : `${profile.variantSingular}en`}: <span className="text-foreground">{total}</span></p>}
 
       <div className="mt-3 space-y-2">
         {sizes.map((s, i) => (
           <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-end gap-2">
-            <Field label="Größe"><input value={s.size} onChange={(e) => setSize(i, { size: e.target.value })} placeholder="M" className="inp" /></Field>
+            <Field label={profile.variantSingular}><input value={s.size} onChange={(e) => setSize(i, { size: e.target.value })} placeholder={profile.variantPlaceholder} className="inp" /></Field>
             <Field label="Bestand"><input type="number" min={0} value={s.stock} onChange={(e) => setSize(i, { stock: Math.max(0, Number(e.target.value)) })} className="inp" /></Field>
             <Field label="Aufpreis (€)"><input type="number" min={0} step="0.5" value={s.surcharge} onChange={(e) => setSize(i, { surcharge: Number(e.target.value) })} className="inp" /></Field>
             <Field label="SKU"><input value={s.sku ?? ""} onChange={(e) => setSize(i, { sku: e.target.value || null })} className="inp" /></Field>
@@ -1092,12 +1092,13 @@ function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p:
           </div>
         ))}
       </div>
-      <button type="button" onClick={addSize} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ Größe hinzufügen</button>
+      <button type="button" onClick={addSize} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ {profile.variantSingular} hinzufügen</button>
 
       <div className="mt-6 border-t border-border pt-4">
-        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">Maßtabelle (cm)</p>
+        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{profile.measurementTitle}</p>
         {columns.length === 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">Trag zuerst mindestens eine Größe ein — dann kannst du je Größe messen.</p>
+          <p className="mt-2 text-xs text-muted-foreground">{profile.measurementHint}</p>
+
         ) : (
           <>
             <div className="mt-3 flex flex-wrap gap-2">
