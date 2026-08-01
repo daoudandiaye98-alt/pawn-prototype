@@ -1565,6 +1565,50 @@ async function insertLeads(
  * filtert Dubletten und offensichtliche Fehltreffer heraus und legt den Rest als Lead 'neu' an.
  * Ohne offene Jagden fällt er auf das alte Verhalten zurück (letzter Lauf eines fest konfigurierten Actors).
  */
+/**
+ * akquise_kontakt — sucht für qualifizierte Leads ohne E-Mail eine Kontaktadresse auf ihrer
+ * eigenen Website (Startseite, /kontakt, /impressum, /contact, /about). Reines Lesen, kein LLM.
+ * Findet er nichts, bleibt der Lead ein DM-Fall im Sende-Stapel.
+ */
+async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, website")
+    .eq("status", "qualifiziert").is("email", null).not("website", "is", null).limit(15);
+
+  const paths = ["", "/kontakt", "/impressum", "/contact", "/about"];
+  const bad = /(wixpress|sentry|example|godaddy|squarespace|shopify|\.png|\.jpg)/i;
+  let found = 0, checked = 0;
+
+  for (const lead of (leads ?? []) as { id: string; handle: string; website: string }[]) {
+    checked++;
+    let base: URL;
+    try { base = new URL(lead.website.startsWith("http") ? lead.website : `https://${lead.website}`); }
+    catch { continue; }
+
+    let email: string | null = null;
+    for (const path of paths) {
+      try {
+        const res = await fetch(new URL(path, base).toString(), {
+          headers: { "User-Agent": "PAWN-Jarvis/1.0 (+https://pawn.vision)" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) continue;
+        const html = (await res.text()).slice(0, 400_000);
+        const hits = html.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [];
+        const clean = hits.map((h) => h.toLowerCase()).filter((h) => !bad.test(h));
+        if (clean.length) { email = clean[0]; break; }
+      } catch { /* eine unerreichbare Seite ist kein Fehler */ }
+    }
+
+    if (email) {
+      await admin.from("acquisition_leads")
+        .update({ email, channel: "email", contact_source: "website" }).eq("id", lead.id);
+      found++;
+    }
+  }
+  return { ok: true, geprueft: checked, gefunden: found };
+}
+
 async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const token = Deno.env.get("APIFY_TOKEN");
   if (!token) return { ok: true, imported: 0, skipped: 0, message: "Kein APIFY_TOKEN hinterlegt — Import übersprungen." };
@@ -2374,7 +2418,7 @@ Deno.serve(async (req) => {
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen",
-      "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_import", "akquise_kontakt", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
     if (!validModes.includes(mode)) {
@@ -2387,7 +2431,7 @@ Deno.serve(async (req) => {
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen",
-      "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_import", "akquise_kontakt", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
@@ -2502,14 +2546,20 @@ Deno.serve(async (req) => {
     }
 
     // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
-    if (mode === "akquise_import" || mode === "akquise_senden") {
+    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt") {
       const trig = body.trigger === "cron" ? "cron" : "manual";
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
-      const result = mode === "akquise_import" ? await runAkquiseImport(admin) : await runAkquiseSenden(admin, (await loadJarvisZones(admin)).akquise_senden ?? "rot");
+      const result = mode === "akquise_import"
+        ? await runAkquiseImport(admin)
+        : mode === "akquise_kontakt"
+          ? await runAkquiseKontakt(admin)
+          : await runAkquiseSenden(admin, (await loadJarvisZones(admin)).akquise_senden ?? "rot");
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
-        : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
+        : mode === "akquise_kontakt"
+          ? `Kontaktsuche: ${(result as { gefunden?: number }).gefunden ?? 0} Adressen bei ${(result as { geprueft?: number }).geprueft ?? 0} Häusern`
+          : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
