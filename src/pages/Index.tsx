@@ -160,7 +160,7 @@ const Index = () => {
         className="pointer-events-none fixed inset-0 z-0"
         style={{
           background:
-            "radial-gradient(ellipse 90% 55% at 50% 78%, rgba(255,255,255,0.85) 0%, rgba(241,238,231,0.35) 55%, rgba(241,238,231,0) 100%), linear-gradient(180deg, #E8E5DE 0%, #FFFFFF 38%, #F6F3EC 100%)",
+            "radial-gradient(ellipse 90% 55% at 50% 78%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 55%, rgba(255,255,255,0) 100%), linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 38%, #FFFFFF 100%)",
         }}
       />
 
