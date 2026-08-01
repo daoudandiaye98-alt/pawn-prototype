@@ -1525,8 +1525,11 @@ function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: str
   const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
   const bio = String(item.biography ?? item.bio ?? "").trim() || null;
   const email = extractBusinessEmail(item, bio);
+  const links = Array.isArray(item.bioLinks) ? item.bioLinks as Array<{ url?: string }> : [];
+  const website = String(item.externalUrl ?? item.website ?? links[0]?.url ?? "").trim() || null;
   return {
-    handle, world, source, followers, bio, email,
+    handle, world, source, followers, bio, email, website,
+    contact_source: email ? "bio" : null,
     channel: email ? "email" : "dm", scrape_images: extractScrapeImages(item), status: "neu",
     hunt_id: huntId, discovery_source: source,
   };
@@ -1620,7 +1623,8 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
     let items: Record<string, unknown>[];
     try {
       const res = await fetch(url);
-      if (!res.ok) return { ok: false, error: `Apify ${res.status}: konnte letzten Lauf nicht lesen.` };
+      // Kein früherer Lauf vorhanden ist kein Fehler — nur nichts zu holen.
+      if (!res.ok) return { ok: true, imported: 0, skipped: 0, message: `Kein abholbarer Apify-Lauf (${res.status}).` };
       items = await res.json();
     } catch (e) {
       return { ok: false, error: `Apify nicht erreichbar: ${(e as Error).message}` };
