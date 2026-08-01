@@ -1,5 +1,5 @@
-// Stripe Connect — Onboarding + Status für Designer-Auszahlungskonten (Express-Accounts).
-// Geld fließt direkt vom Käufer auf das Konto des Designers; PAWN berührt es nie.
+// Stripe Connect — Onboarding, Status und Dashboard-Zugang für die Konten der Häuser.
+// Zahlungen entstehen direkt auf dem Konto des Hauses; PAWN erhält eine Application Fee.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     // Ownership: der Designer wird ausschließlich über die eigene Session gefunden, nie über eine
     // vom Client mitgeschickte ID — so kann niemand das Konto eines anderen Hauses onboarden/abfragen.
     const { data: designer } = await admin.from("designers")
-      .select("id, user_id, stripe_account_id, stripe_charges_enabled, stripe_details_submitted")
+      .select("id, user_id, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_payouts_enabled, stripe_country")
       .eq("user_id", user_id).maybeSingle();
     if (!designer) return ok({ error: "not_found", message: "Kein Designer-Profil gefunden." });
 
@@ -54,14 +54,23 @@ Deno.serve(async (req) => {
           const { data: userRes } = await admin.auth.admin.getUserById(user_id);
           email = userRes?.user?.email ?? undefined;
         } catch { /* best effort */ }
+        const country = (designer.stripe_country as string | null) || "DE";
+        // Express-Konto: die Zahlung entsteht direkt auf dem Konto des Hauses (Direct Charge).
+        // Stripe ordnet Zahlungsgebühren und Rückbuchungen diesem Konto zu; PAWN erhält
+        // die Application Fee. `type: "express"` und `controller` schließen sich in der
+        // Stripe-API gegenseitig aus — die Express-Voreinstellung entspricht genau dieser Verteilung.
         const account = await stripe.accounts.create({
           type: "express",
-          country: "DE",
+          country,
           email,
           capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
         });
+
         accountId = account.id;
-        await admin.from("designers").update({ stripe_account_id: accountId }).eq("id", designer.id);
+        await admin.from("designers").update({
+          stripe_account_id: accountId,
+          ...(account.country ? { stripe_country: account.country } : {}),
+        }).eq("id", designer.id);
       }
       const link = await stripe.accountLinks.create({
         account: accountId,
@@ -74,15 +83,28 @@ Deno.serve(async (req) => {
 
     if (action === "status") {
       if (!designer.stripe_account_id) {
-        return ok({ connected: false, charges_enabled: false, details_submitted: false });
+        return ok({ connected: false, charges_enabled: false, details_submitted: false, payouts_enabled: false, requirements_due: [] });
       }
       const account = await stripe.accounts.retrieve(designer.stripe_account_id);
       const charges_enabled = !!account.charges_enabled;
       const details_submitted = !!account.details_submitted;
+      const payouts_enabled = !!account.payouts_enabled;
+      const requirements = (account.requirements ?? {}) as unknown as Record<string, unknown>;
+      const requirements_due = (account.requirements?.currently_due ?? []) as string[];
       await admin.from("designers").update({
-        stripe_charges_enabled: charges_enabled, stripe_details_submitted: details_submitted,
+        stripe_charges_enabled: charges_enabled,
+        stripe_details_submitted: details_submitted,
+        stripe_payouts_enabled: payouts_enabled,
+        stripe_requirements: requirements,
+        ...(account.country ? { stripe_country: account.country } : {}),
       }).eq("id", designer.id);
-      return ok({ connected: true, charges_enabled, details_submitted });
+      return ok({ connected: true, charges_enabled, details_submitted, payouts_enabled, requirements_due });
+    }
+
+    if (action === "dashboard") {
+      if (!designer.stripe_account_id) return ok({ error: "not_connected", message: "Noch kein Konto verbunden." });
+      const link = await stripe.accounts.createLoginLink(designer.stripe_account_id);
+      return ok({ url: link.url });
     }
 
     return ok({ error: "unknown_action" });

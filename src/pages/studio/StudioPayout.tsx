@@ -7,9 +7,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check } from "lucide-react";
 
-type ConnectState = "none" | "pending" | "active" | "error";
+// Stripe nennt fehlende Angaben in Fachbegriffen — hier in Klartext übersetzt.
+const REQUIREMENT_LABELS: Record<string, string> = {
+  "individual.verification.document": "Ausweisfoto",
+  "individual.id_number": "Ausweisnummer",
+  "individual.address.line1": "Adresse",
+  "external_account": "Bankverbindung (IBAN)",
+  "business_profile.url": "Website oder Shop-Adresse",
+  "business_profile.mcc": "Branche",
+  "tos_acceptance.date": "Zustimmung zu den Stripe-Bedingungen",
+};
 
-interface ConnectStatus { connected: boolean; charges_enabled: boolean; details_submitted: boolean }
+type ConnectState = "none" | "pending" | "active" | "payouts" | "error";
+
+
+interface ConnectStatus {
+  connected: boolean;
+  charges_enabled: boolean;
+  details_submitted: boolean;
+  payouts_enabled?: boolean;
+  requirements_due?: string[];
+}
+
 
 interface BillingProfile {
   legal_name: string; address_line1: string; address_line2: string; postal_code: string; city: string; country: string;
@@ -125,14 +144,32 @@ export default function StudioPayout() {
     }
   }
 
+  async function openDashboard() {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "dashboard" } });
+      if (error) { toast.error("Das Stripe-Konto lässt sich gerade nicht öffnen."); return; }
+      const result = data as { error?: string; message?: string; url?: string };
+      if (result?.error) { toast.error(result.message ?? "Das Stripe-Konto lässt sich gerade nicht öffnen."); return; }
+      if (result?.url) window.open(result.url, "_blank", "noopener");
+    } catch {
+      toast.error("Das Stripe-Konto lässt sich gerade nicht öffnen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!designer) return <StudioShell title="Auszahlung"><p className="text-muted-foreground">Lädt…</p></StudioShell>;
 
   const retryParam = searchParams.get("connect") === "retry";
+  const requirementsDue = status?.requirements_due ?? [];
   const state: ConnectState = retryParam ? "error"
     : loadingStatus ? "none"
     : !status?.connected ? "none"
+    : status.charges_enabled && status.payouts_enabled ? "payouts"
     : status.charges_enabled ? "active"
     : "pending";
+
 
   return (
     <StudioShell title="Auszahlung" eyebrow="Zahlung">
@@ -181,26 +218,65 @@ export default function StudioPayout() {
             <p className="mt-2 text-sm text-muted-foreground">
               Stripe prüft gerade deine Angaben. Das dauert normalerweise nur kurz — sobald es fertig ist, kannst du direkt verkaufen.
             </p>
+            {requirementsDue.length > 0 && (
+              <div className="mt-4 border border-black p-4">
+                <p className="editorial-eyebrow">Stripe wartet noch auf</p>
+                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  {requirementsDue.slice(0, 6).map((r) => (
+                    <li key={r}>· {REQUIREMENT_LABELS[r] ?? r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <button
+              onClick={connect}
+              disabled={busy}
+              className="mt-4 bg-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] text-white disabled:opacity-40"
+            >
+              {busy ? "Öffnet Stripe…" : "Angaben vervollständigen"}
+            </button>
           </div>
-        ) : state === "active" ? (
+        ) : state === "active" || state === "payouts" ? (
           <div className="border-[1.5px] border-black p-6">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center bg-black text-white">
                 <Check className="h-4 w-4" />
               </span>
-              <p className="font-serif text-xl">Aktiv</p>
+              <p className="font-serif text-xl">{state === "payouts" ? "Aktiv — Auszahlungen laufen" : "Aktiv — Verkauf möglich"}</p>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Dein Konto ist verbunden. Jeder Verkauf fließt automatisch direkt zu dir.
+              {state === "payouts"
+                ? `Jeder Verkauf fließt direkt auf dein Konto. PAWN behält ${commissionPct} % auf den Warenwert — Versandkosten bleiben vollständig bei dir.`
+                : "Du kannst verkaufen. Die Auszahlung auf dein Bankkonto schaltet Stripe frei, sobald die letzten Angaben geprüft sind."}
             </p>
-            <button
-              onClick={connect}
-              disabled={busy}
-              className="mt-4 border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
-            >
-              {busy ? "Öffnet Stripe…" : "Konto verwalten"}
-            </button>
+            {requirementsDue.length > 0 && (
+              <div className="mt-4 border border-black p-4">
+                <p className="editorial-eyebrow">Stripe wartet noch auf</p>
+                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  {requirementsDue.slice(0, 6).map((r) => (
+                    <li key={r}>· {REQUIREMENT_LABELS[r] ?? r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={openDashboard}
+                disabled={busy}
+                className="border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
+              >
+                {busy ? "Öffnet Stripe…" : "Stripe-Konto öffnen"}
+              </button>
+              <button
+                onClick={connect}
+                disabled={busy}
+                className="border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
+              >
+                Angaben ändern
+              </button>
+            </div>
           </div>
+
         ) : (
           <div className="border-[1.5px] border-black p-6">
             <p className="editorial-eyebrow">Status</p>

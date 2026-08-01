@@ -112,7 +112,10 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // === One-off payment (Express-Checkout) ===
+    // === Einzelkauf (Express-Checkout) ===
+    // Zielarchitektur: die Zahlung entsteht auf dem Stripe-Konto des Hauses (Direct Charge),
+    // PAWN erhält automatisch eine Application Fee. Grundlage der Fee ist ausschließlich der
+    // Warenwert — Versandkosten bleiben vollständig beim Haus.
     const items = (body.items ?? []).filter((i) => i.name && i.unit_amount > 0 && i.qty > 0);
     if (items.length === 0) throw new Error("empty_cart");
 
@@ -120,10 +123,10 @@ Deno.serve(async (req) => {
     const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(url, svc, { auth: { persistSession: false } });
 
-    // Regel v1: ein Checkout = ein Haus, damit das Geld eindeutig einem Designer-Konto zugeordnet werden kann.
+    // Regel: ein Checkout = ein Haus, damit die Zahlung eindeutig einem Stripe-Konto gehört.
     const slugs = items.map((i) => i.slug).filter(Boolean) as string[];
     const amount_total = items.reduce((sum, i) => sum + i.unit_amount * i.qty, 0);
-    let destinationAccountId: string | null = null;
+    let connectedAccountId: string | null = null;
     let applicationFeeCents: number | null = null;
     let shippingRates: ShippingRates = {};
 
@@ -134,7 +137,7 @@ Deno.serve(async (req) => {
       if (designerIds.size > 1) {
         return new Response(JSON.stringify({
           error: "mixed_cart",
-          message: "Stücke verschiedener Häuser bitte getrennt bestellen — jedes Haus erhält sein Geld direkt.",
+          message: "Stücke verschiedener Häuser bitte getrennt bestellen — jedes Haus wickelt seine Zahlung selbst ab.",
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
       }
 
@@ -159,18 +162,34 @@ Deno.serve(async (req) => {
             }
             const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "platform_commission").maybeSingle();
             const commissionPct = Number(((cfg?.value ?? {}) as { pct?: number }).pct ?? 7);
-            destinationAccountId = designer.stripe_account_id;
+            connectedAccountId = designer.stripe_account_id;
+            // Nur Warenwert, ohne Versand.
             applicationFeeCents = Math.round(amount_total * (commissionPct / 100));
           }
-          // isAdminHouse: keine Connect-Aufteilung nötig, Zahlung läuft wie bisher direkt an die Plattform.
+          // isAdminHouse: Zahlung läuft wie bisher über das Plattformkonto.
         }
       }
     }
 
-    const session = await stripe.checkout.sessions.create({
+    // Bestellung zuerst anlegen — nur so kann die order_id in die Stripe-Metadaten,
+    // was bei Direct Charges die einzige verlässliche Zuordnung zwischen Konto und Bestellung ist.
+    const { data: orderRow, error: orderError } = await admin.from("orders").insert({
+      user_id, items: items as unknown as Record<string, unknown>[], amount_total, currency: "eur",
+      status: "pending", customer_email: body.customer_email ?? null,
+      application_fee_cents: applicationFeeCents, destination_account: connectedAccountId,
+      connected_account_id: connectedAccountId, buyer_locale: locale,
+    }).select("id").single();
+    if (orderError || !orderRow) throw new Error(orderError?.message ?? "order_insert_failed");
+
+    const metadata: Record<string, string> = {
+      order_id: orderRow.id,
+      platform: "pawn",
+      ...(connectedAccountId ? { connected_account: connectedAccountId } : {}),
+    };
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       // KEIN payment_method_types — dann greift automatic_payment_methods (Apple/Google Pay, PayPal, Klarna, Karte)
-
       locale,
       shipping_address_collection: { allowed_countries: ["DE", "AT", "CH", "FR", "IT", "NL", "BE", "LU", "ES", "DK", "SE", "FI", "IE", "PT"] },
       shipping_options: buildShippingOptions(shippingRates, amount_total, locale),
@@ -183,24 +202,24 @@ Deno.serve(async (req) => {
       success_url: body.success_url ?? `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: body.cancel_url ?? `${origin}/cart?checkout=cancelled`,
       customer_email: body.customer_email,
-      ...(destinationAccountId ? {
-        payment_intent_data: {
-          application_fee_amount: applicationFeeCents ?? 0,
-          transfer_data: { destination: destinationAccountId },
-        },
-      } : {}),
-    });
+      metadata,
+      payment_intent_data: {
+        metadata,
+        ...(connectedAccountId ? { application_fee_amount: applicationFeeCents ?? 0 } : {}),
+      },
+    };
 
+    let session: Stripe.Checkout.Session;
     try {
-      await admin.from("orders").insert({
-        user_id, items: items as unknown as Record<string, unknown>[], amount_total, currency: "eur",
-        status: "pending", stripe_session_id: session.id, customer_email: body.customer_email ?? null,
-        application_fee_cents: applicationFeeCents, destination_account: destinationAccountId,
-        buyer_locale: locale,
-      });
+      session = connectedAccountId
+        ? await stripe.checkout.sessions.create(sessionParams, { stripeAccount: connectedAccountId })
+        : await stripe.checkout.sessions.create(sessionParams);
     } catch (e) {
-      console.warn("orders insert skipped:", (e as Error)?.message);
+      await admin.from("orders").update({ status: "failed" }).eq("id", orderRow.id);
+      throw e;
     }
+
+    await admin.from("orders").update({ stripe_session_id: session.id }).eq("id", orderRow.id);
 
     return new Response(JSON.stringify({ url: session.url, id: session.id }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -209,3 +228,4 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
   }
 });
+

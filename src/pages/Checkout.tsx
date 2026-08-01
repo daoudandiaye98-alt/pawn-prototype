@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useCart } from "@/store/cart";
-import { useCommand, selectors } from "@/core";
-import * as commands from "@/core/commands";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,22 +17,35 @@ const METHODS = [
 type MethodKey = typeof METHODS[number]["key"];
 
 const Checkout = () => {
-  const { items, subtotal } = useCart();
-  const dispatch = useCommand();
+  const cart = useCart();
   const { user, profile } = useAuth();
   const { locale } = useI18n();
+  const [params] = useSearchParams();
   const [method, setMethod] = useState<MethodKey>("card");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done] = useState(false);
 
-  const shipping = 25;
+  // Ein Kauf gehört immer genau einem Haus — die Kasse zeigt nur dessen Stücke.
+  const houseKey = params.get("haus");
+  const items = useMemo(
+    () => (houseKey
+      ? cart.items.filter((i) => (i.product.designerSlug || i.product.designer) === houseKey)
+      : cart.items),
+    [cart.items, houseKey],
+  );
+  const subtotal = items.reduce((sum, i) => sum + i.product.price * i.qty, 0);
 
   async function placeOrderHandler(e: React.FormEvent) {
     e.preventDefault();
-    const label = [firstName, lastName].filter(Boolean).join(" ") || profile?.displayName || user?.email || "Gast";
+    if (items.length === 0 || busy) return;
+    void [firstName, lastName, profile, user];
+    setBusy(true);
 
     try {
+      const origin = window.location.origin;
+      const successSuffix = houseKey ? `&haus=${encodeURIComponent(houseKey)}` : "";
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
           items: items.map((i) => ({
@@ -42,38 +53,32 @@ const Checkout = () => {
             unit_amount: Math.round(i.product.price * 100),
             qty: i.qty,
             slug: i.product.slug,
+            size: i.size,
           })),
           customer_email: user?.email,
           locale,
+          success_url: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}${successSuffix}`,
+          cancel_url: `${origin}/cart?checkout=cancelled`,
         },
       });
+
       if (!error && data?.url) {
         window.location.href = data.url as string;
         return;
       }
-      // mixed_cart / designer_not_ready sind bewusste Sperren, kein technischer Ausfall —
-      // hier NICHT auf das interne Ledger zurückfallen, sondern die Meldung zeigen.
-      if (!error && (data?.error === "mixed_cart" || data?.error === "designer_not_ready")) {
+      // mixed_cart / designer_not_ready sind bewusste Sperren, kein technischer Ausfall.
+      if (!error && data?.error) {
         toast.error(data.message ?? "Kauf gerade nicht möglich.");
         return;
       }
-      if (error) toast.message("Zahlung wird gerade eingerichtet — deine Bestellung wird direkt vermerkt.");
-    } catch { /* fall through to internal ledger */ }
-
-    const result = dispatch(commands.placeOrder, {
-      identityId: selectors.defaultIdentityId,
-      customerLabel: label,
-      items: items.map((i) => ({
-        productId: i.product.id as never,
-        size: i.size,
-        qty: i.qty,
-        unitPrice: i.product.price,
-      })),
-      total: subtotal + shipping,
-    });
-    if (result.ok === false) { toast.error(result.reason); return; }
-    setDone(true);
+      toast.error("Die Zahlung konnte nicht gestartet werden. Bitte versuch es gleich noch einmal.");
+    } catch {
+      toast.error("Die Zahlung konnte nicht gestartet werden. Bitte versuch es gleich noch einmal.");
+    } finally {
+      setBusy(false);
+    }
   }
+
 
   if (done) {
     return (
@@ -101,7 +106,7 @@ const Checkout = () => {
   return (
     <PalaceLayout transparentHeader={false}>
       <section className="mx-auto max-w-[1400px] px-6 pt-36 pb-24 md:px-14 md:pt-44">
-        <p className="palace-eyebrow">Kasse · Prototyp</p>
+        <p className="palace-eyebrow">Kasse</p>
         <h1
           className="palace-serif mt-6 font-light text-[#000000]"
           style={{ fontSize: "clamp(2.2rem, 5vw, 4rem)", lineHeight: 0.96, letterSpacing: "-0.02em" }}
@@ -128,9 +133,11 @@ const Checkout = () => {
             <section className="border border-[rgba(0,0,0,.16)] bg-white p-8 md:p-10">
               <p className="palace-eyebrow">Zahlung</p>
               <h2 className="palace-serif mt-3 text-[1.6rem] font-light text-[#000000]">Wie?</h2>
-              <p className="mt-2 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">
-                Keine echte Zahlung — Prototyp.
+              <p className="mt-2 text-[0.8rem] leading-relaxed text-[#55534E]">
+                Zahlungsart, Lieferadresse und Versand wählst du im nächsten Schritt bei unserem
+                Zahlungspartner Stripe. Die Zahlung wird über das Stripe-Konto des Hauses abgewickelt.
               </p>
+
               <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
                 {METHODS.map((m) => (
                   <button
@@ -170,19 +177,20 @@ const Checkout = () => {
             <div className="my-5 h-px w-full bg-[rgba(0,0,0,.18)]" />
             <dl className="space-y-2 text-sm text-[#000000]">
               <div className="flex justify-between"><dt className="text-[#55534E]">Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
-              <div className="flex justify-between"><dt className="text-[#55534E]">Versand</dt><dd className="tabular-nums">€{shipping}</dd></div>
-              <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Gesamt</dt><dd className="tabular-nums">€{(subtotal + shipping).toLocaleString("de-DE")}</dd></div>
+              <div className="flex justify-between"><dt className="text-[#55534E]">Versand</dt><dd className="text-[0.8rem] text-[#55534E]">wird im nächsten Schritt gewählt</dd></div>
+              <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
             </dl>
             <button
               type="submit"
               className="mt-8 w-full border border-[#000000] bg-[#000000] px-6 py-4 text-[0.7rem] uppercase tracking-[0.32em] text-[#FFFFFF] transition-colors hover:bg-transparent hover:text-[#000000] disabled:opacity-40"
-              disabled={items.length === 0}
+              disabled={items.length === 0 || busy}
             >
-              Jetzt bezahlen
+              {busy ? "Öffnet Zahlung…" : "Jetzt bezahlen"}
             </button>
             <p className="mt-4 text-center text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
-              Verschlüsselt · nur zur Vorschau
+              Verschlüsselt · Zahlung über das Konto des Hauses
             </p>
+
           </aside>
         </form>
       </section>

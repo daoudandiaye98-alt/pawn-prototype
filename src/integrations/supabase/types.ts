@@ -1053,7 +1053,10 @@ export type Database = {
           story: string | null
           stripe_account_id: string | null
           stripe_charges_enabled: boolean
+          stripe_country: string
           stripe_details_submitted: boolean
+          stripe_payouts_enabled: boolean
+          stripe_requirements: Json
           tags: string[] | null
           updated_at: string
           user_id: string
@@ -1098,7 +1101,10 @@ export type Database = {
           story?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
+          stripe_country?: string
           stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
+          stripe_requirements?: Json
           tags?: string[] | null
           updated_at?: string
           user_id: string
@@ -1143,7 +1149,10 @@ export type Database = {
           story?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
+          stripe_country?: string
           stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
+          stripe_requirements?: Json
           tags?: string[] | null
           updated_at?: string
           user_id?: string
@@ -2086,16 +2095,20 @@ export type Database = {
           buyer_locale: string
           carrier: string | null
           confirmation_email_sent_at: string | null
+          connected_account_id: string | null
           created_at: string
           currency: string
           customer_email: string | null
           delivered_at: string | null
           destination_account: string | null
+          dispute_status: string | null
           fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
           id: string
           invoice_number: string | null
           items: Json
           last_email_error: string | null
+          paid_at: string | null
+          refunded_amount_cents: number
           shipped_at: string | null
           shipped_email_sent_at: string | null
           shipping_address_line1: string | null
@@ -2105,6 +2118,8 @@ export type Database = {
           shipping_name: string | null
           shipping_postal_code: string | null
           status: Database["public"]["Enums"]["order_status"]
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           tracking_number: string | null
           updated_at: string
@@ -2118,16 +2133,20 @@ export type Database = {
           buyer_locale?: string
           carrier?: string | null
           confirmation_email_sent_at?: string | null
+          connected_account_id?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
           delivered_at?: string | null
           destination_account?: string | null
+          dispute_status?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           invoice_number?: string | null
           items?: Json
           last_email_error?: string | null
+          paid_at?: string | null
+          refunded_amount_cents?: number
           shipped_at?: string | null
           shipped_email_sent_at?: string | null
           shipping_address_line1?: string | null
@@ -2137,6 +2156,8 @@ export type Database = {
           shipping_name?: string | null
           shipping_postal_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           tracking_number?: string | null
           updated_at?: string
@@ -2150,16 +2171,20 @@ export type Database = {
           buyer_locale?: string
           carrier?: string | null
           confirmation_email_sent_at?: string | null
+          connected_account_id?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
           delivered_at?: string | null
           destination_account?: string | null
+          dispute_status?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           invoice_number?: string | null
           items?: Json
           last_email_error?: string | null
+          paid_at?: string | null
+          refunded_amount_cents?: number
           shipped_at?: string | null
           shipped_email_sent_at?: string | null
           shipping_address_line1?: string | null
@@ -2169,6 +2194,8 @@ export type Database = {
           shipping_name?: string | null
           shipping_postal_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           tracking_number?: string | null
           updated_at?: string

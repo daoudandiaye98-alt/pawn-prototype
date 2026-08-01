@@ -42,6 +42,8 @@ interface GroupedOrder {
   shipping_country: string | null;
   invoice_number: string | null;
   last_email_error: string | null;
+  refunded_amount_cents: number;
+  dispute_status: string | null;
   lines: DesignerOrderLine[];
   total: number;
 }
@@ -93,6 +95,8 @@ export default function StudioOrders() {
         shipping_country: l.shipping_country,
         invoice_number: l.invoice_number,
         last_email_error: l.last_email_error,
+        refunded_amount_cents: l.refunded_amount_cents,
+        dispute_status: l.dispute_status,
         lines: [],
         total: 0,
       };
@@ -196,11 +200,39 @@ export default function StudioOrders() {
                   <span className="ml-2 text-xs text-muted-foreground">· {o.lines.length} Position(en)</span>
                 </span>
                 <span className="tabular-nums text-sm">€ {o.total.toLocaleString("de-DE")}</span>
-                <StatusPill status={o.order_status} />
+                <span className="flex flex-wrap items-center gap-1">
+                  <StatusPill status={o.order_status} />
+                  {o.refunded_amount_cents > 0 && (
+                    <span className="inline-block border border-black px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.28em]">
+                      Erstattet
+                    </span>
+                  )}
+                  {o.dispute_status && (
+                    <span className="inline-block border border-black bg-black px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.28em] text-white">
+                      Zahlungsstreit
+                    </span>
+                  )}
+                </span>
                 <span className="text-right text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{expanded === o.order_id ? "Zu" : "Auf"}</span>
               </button>
               {expanded === o.order_id && (
                 <div className="border-t-[1.5px] border-foreground bg-white px-5 py-5">
+                  {(o.refunded_amount_cents > 0 || o.dispute_status) && (
+                    <div className="mb-5 border-[1.5px] border-black p-4 text-sm">
+                      {o.refunded_amount_cents > 0 && (
+                        <p>
+                          <strong>Erstattet:</strong> € {(o.refunded_amount_cents / 100).toLocaleString("de-DE")} wurden
+                          an die Kund:in zurückgezahlt. Die PAWN-Gebühr wurde anteilig mit erstattet.
+                        </p>
+                      )}
+                      {o.dispute_status && (
+                        <p className="mt-2">
+                          <strong>Zahlungsstreit:</strong> Die Bank der Kund:in prüft diese Zahlung ({o.dispute_status}).
+                          Reiche in deinem Stripe-Konto Belege ein — Versandnachweis und Fotos helfen am meisten.
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {o.order_status === "paid" && (
                     <FulfillmentChain order={o} disabled={busy === o.order_id} onSet={(s) => setFulfillment(o.order_id, s)} />
                   )}

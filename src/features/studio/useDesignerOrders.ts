@@ -21,6 +21,10 @@ export interface DesignerOrderLine {
   shipping_country: string | null;
   invoice_number: string | null;
   last_email_error: string | null;
+  /** Wie viel bereits erstattet wurde (in Cent) — 0 bedeutet: nichts erstattet. */
+  refunded_amount_cents: number;
+  /** Zahlungsstreit bei Stripe, falls vorhanden. */
+  dispute_status: string | null;
   product_id: string;
   product_name: string;
   product_slug: string;
@@ -54,6 +58,8 @@ interface RawOrder {
   shipping_country: string | null;
   invoice_number: string | null;
   last_email_error: string | null;
+  refunded_amount_cents: number | null;
+  dispute_status: string | null;
 }
 interface RawProduct {
   id: string; slug: string; name: string; designer_id: string; price: number;
@@ -86,7 +92,7 @@ export function useDesignerOrders(designerId: string | undefined) {
       const { data: ords } = await supabase.from("orders")
         .select(`id, created_at, status, fulfillment_status, tracking_number, carrier, customer_email, amount_total, items, user_id,
           shipping_name, shipping_address_line1, shipping_address_line2, shipping_postal_code, shipping_city, shipping_country,
-          invoice_number, last_email_error`)
+          invoice_number, last_email_error, refunded_amount_cents, dispute_status`)
         .order("created_at", { ascending: false })
         .limit(500);
       const rows = ((ords ?? []) as RawOrder[]);
@@ -131,6 +137,9 @@ export function useDesignerOrders(designerId: string | undefined) {
             shipping_country: o.shipping_country ?? null,
             invoice_number: o.invoice_number ?? null,
             last_email_error: o.last_email_error ?? null,
+            refunded_amount_cents: o.refunded_amount_cents ?? 0,
+            dispute_status: o.dispute_status ?? null,
+
             product_id: prod.id,
             product_name: prod.name,
             product_slug: prod.slug,

@@ -62,7 +62,19 @@ const Cart = () => {
     );
   }
 
-  const shipping = 25;
+  // Jedes Haus wickelt seine Zahlung über sein eigenes Stripe-Konto ab — darum wird der
+  // Warenkorb nach Haus gruppiert und je Haus eine eigene Kasse geöffnet.
+  const houses = Array.from(
+    items.reduce((map, i) => {
+      const key = i.product.designerSlug || i.product.designer;
+      const entry = map.get(key) ?? { key, name: i.product.designer, subtotal: 0, count: 0 };
+      entry.subtotal += i.product.price * i.qty;
+      entry.count += i.qty;
+      map.set(key, entry);
+      return map;
+    }, new Map<string, { key: string; name: string; subtotal: number; count: number }>()).values(),
+  );
+
 
   return (
     <PalaceLayout>
@@ -128,32 +140,35 @@ const Cart = () => {
                 severity="medium"
               />
             )}
-            <div className="border border-[rgba(0,0,0,.18)] bg-white">
-              <div className="border-b border-[rgba(0,0,0,.14)] px-6 py-4">
-                <p className="palace-eyebrow">Bestellung</p>
+            {houses.length > 1 && (
+              <p className="border border-[rgba(0,0,0,.18)] bg-white px-6 py-4 text-[0.85rem] leading-relaxed text-[#55534E]">
+                Jedes Haus verkauft selbst — darum eine Zahlung pro Haus. Was du nicht bezahlst, bleibt im Warenkorb liegen.
+              </p>
+            )}
+            {houses.map((house) => (
+              <div key={house.key} className="border border-[rgba(0,0,0,.18)] bg-white">
+                <div className="border-b border-[rgba(0,0,0,.14)] px-6 py-4">
+                  <p className="palace-eyebrow">{house.name || "Bestellung"}</p>
+                </div>
+                <div className="p-6 md:p-8">
+                  <dl className="space-y-3 text-[0.95rem] text-[#000000]">
+                    <Row label={t("cart.subtotal")} value={formatPrice(house.subtotal, locale)} />
+                    <Row label={t("cart.shipping")} value={<span className="text-[0.8rem] text-[#55534E]">wird beim Bezahlen berechnet</span>} />
+                  </dl>
+                  <Link
+                    to={`/checkout?haus=${encodeURIComponent(house.key)}`}
+                    className="palace-btn mt-8 w-full justify-center border-[#000000] bg-[#000000] text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-[#000000]"
+                  >
+                    {houses.length > 1 ? "Bei diesem Haus kaufen" : t("cart.checkoutExpress")}
+                  </Link>
+                  <PaymentLogos className="mt-4" />
+                  <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-[#55534E]">
+                    <ShieldCheck className="h-3.5 w-3.5 text-[#000000]" /> {t("cart.securePayment")}
+                  </p>
+                </div>
               </div>
-              <div className="p-6 md:p-8">
-                <dl className="space-y-3 text-[0.95rem] text-[#000000]">
-                  <Row label={t("cart.subtotal")} value={formatPrice(subtotal, locale)} />
-                  <Row label={t("cart.shipping")} value={formatPrice(shipping, locale)} />
-                  <div className="h-px bg-[rgba(0,0,0,.18)] my-3" />
-                  <Row
-                    label={<span className="palace-serif italic text-[1.15rem]">{t("cart.total")}</span>}
-                    value={<span className="palace-serif italic text-[1.15rem] tabular-nums">{formatPrice(subtotal + shipping, locale)}</span>}
-                  />
-                </dl>
-                <Link
-                  to="/checkout"
-                  className="palace-btn mt-8 w-full justify-center border-[#000000] bg-[#000000] text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-[#000000]"
-                >
-                  {t("cart.checkoutExpress")}
-                </Link>
-                <PaymentLogos className="mt-4" />
-                <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-[#55534E]">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[#000000]" /> {t("cart.securePayment")}
-                </p>
-              </div>
-            </div>
+            ))}
+
           </aside>
         </div>
 
