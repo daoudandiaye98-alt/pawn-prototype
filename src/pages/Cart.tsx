@@ -62,7 +62,19 @@ const Cart = () => {
     );
   }
 
-  const shipping = 25;
+  // Jedes Haus wickelt seine Zahlung über sein eigenes Stripe-Konto ab — darum wird der
+  // Warenkorb nach Haus gruppiert und je Haus eine eigene Kasse geöffnet.
+  const houses = Array.from(
+    items.reduce((map, i) => {
+      const key = i.product.designerSlug || i.product.designer;
+      const entry = map.get(key) ?? { key, name: i.product.designer, subtotal: 0, count: 0 };
+      entry.subtotal += i.product.price * i.qty;
+      entry.count += i.qty;
+      map.set(key, entry);
+      return map;
+    }, new Map<string, { key: string; name: string; subtotal: number; count: number }>()).values(),
+  );
+
 
   return (
     <PalaceLayout>
