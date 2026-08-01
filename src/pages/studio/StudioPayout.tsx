@@ -52,6 +52,8 @@ export default function StudioPayout() {
       .then(({ data }) => { if (data) setBilling({ ...EMPTY_BILLING, ...(data as Partial<BillingProfile>) }); });
     const rates = designer.shipping_rates as Partial<ShippingRates> | null;
     if (rates) setShipping({ ...EMPTY_SHIPPING, ...rates, inland: { ...EMPTY_SHIPPING.inland, ...rates.inland }, eu: { ...EMPTY_SHIPPING.eu, ...rates.eu }, world: { ...EMPTY_SHIPPING.world, ...rates.world } });
+    setVatRate(Number(designer.vat_rate ?? 19));
+    setReturnDays(Number(designer.return_window_days ?? 14));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designer?.id]);
 
@@ -62,6 +64,18 @@ export default function StudioPayout() {
     setBillingSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Rechnungsdaten gespeichert.");
+  }
+
+  async function saveTax() {
+    if (!designer) return;
+    setTaxSaving(true);
+    const { error } = await supabase.from("designers")
+      .update({ vat_rate: vatRate, return_window_days: returnDays })
+      .eq("id", designer.id);
+    setTaxSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Steuerangaben gespeichert.");
+    void refresh();
   }
 
   async function saveShipping() {
