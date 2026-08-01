@@ -42,6 +42,9 @@ export default function StudioPayout() {
   const [billingSaving, setBillingSaving] = useState(false);
   const [shipping, setShipping] = useState<ShippingRates>(EMPTY_SHIPPING);
   const [shippingSaving, setShippingSaving] = useState(false);
+  const [vatRate, setVatRate] = useState<number>(19);
+  const [returnDays, setReturnDays] = useState<number>(14);
+  const [taxSaving, setTaxSaving] = useState(false);
 
   useEffect(() => {
     if (!designer) return;
