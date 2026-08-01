@@ -1,5 +1,7 @@
 // Lightweight i18n. Static dictionaries + Context + t().
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { seedMemory, startAutoTranslate, stopAutoTranslate } from "@/lib/autoTranslate";
+
 
 export type Locale = "de" | "en";
 const KEY = "pawn.locale";
