@@ -1160,6 +1160,7 @@ function MaterialSection({ local, patch }: { local: Partial<ProductRow>; patch: 
   const parts: MaterialPart[] = local.material_composition ?? [];
   const care = local.care_symbols ?? [];
   const sum = materialSum(parts);
+  const profile = worldProfile(local.world);
 
   const setPart = (i: number, p: Partial<MaterialPart>) => patch({ material_composition: parts.map((m, k) => (k === i ? { ...m, ...p } : m)) });
   const addPart = () => patch({ material_composition: [...parts, { material: "", percent: 0 }] });
@@ -1168,18 +1169,18 @@ function MaterialSection({ local, patch }: { local: Partial<ProductRow>; patch: 
     patch({ care_symbols: care.includes(key) ? care.filter((c) => c !== key) : [...care, key] });
 
   return (
-    <Section title="Material & Pflege" help="Die Zusammensetzung ist Pflicht, damit dein Stück veröffentlicht werden kann — Käufer:innen und Gesetz erwarten sie. Die Summe sollte 100 % ergeben.">
+    <Section title={profile.materialTitle} help={profile.materialHelp}>
       <div className="space-y-2">
         {parts.map((p, i) => (
           <div key={i} className="grid grid-cols-[2fr_1fr_auto] items-end gap-2">
-            <Field label="Material"><input value={p.material} onChange={(e) => setPart(i, { material: e.target.value })} placeholder="z. B. Wolle" className="inp" /></Field>
+            <Field label={profile.materialLabel}><input value={p.material} onChange={(e) => setPart(i, { material: e.target.value })} placeholder={profile.materialPlaceholder} className="inp" /></Field>
             <Field label="Anteil (%)"><input type="number" min={0} max={100} value={p.percent} onChange={(e) => setPart(i, { percent: Number(e.target.value) })} className="inp" /></Field>
             <button type="button" onClick={() => removePart(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">Entf.</button>
           </div>
         ))}
       </div>
       <div className="mt-2 flex items-center gap-4">
-        <button type="button" onClick={addPart} className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ Material hinzufügen</button>
+        <button type="button" onClick={addPart} className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ {profile.materialLabel} hinzufügen</button>
         {parts.length > 0 && (
           <span className={`text-xs ${sum === 100 ? "text-muted-foreground" : "text-destructive"}`}>
             Summe: {formatRate(sum)} %{sum === 100 ? "" : " — sollte 100 % ergeben."}
@@ -1187,15 +1188,16 @@ function MaterialSection({ local, patch }: { local: Partial<ProductRow>; patch: 
         )}
       </div>
 
-      <Field label="Futter, Beschläge, Details (optional)">
+      <Field label={profile.detailLabel}>
         <input value={local.lining_hardware ?? ""} onChange={(e) => patch({ lining_hardware: e.target.value })}
-          placeholder="z. B. Futter aus Bemberg, Messingknöpfe" className="inp" />
+          placeholder={profile.detailPlaceholder} className="inp" />
       </Field>
 
       <div className="mt-4">
-        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">Pflegehinweise</p>
+        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{profile.careTitle}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          {CARE_SYMBOLS.map((c) => {
+          {profile.careSymbols.map((c) => {
+
             const active = care.includes(c.key);
             return (
               <button key={c.key} type="button" onClick={() => toggleCare(c.key)}
