@@ -25,6 +25,10 @@ import { PrevNext } from "@/components/palace/PrevNext";
 import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PasstDas } from "@/components/palace/PasstDas";
+import {
+  careLabel, effectiveVatRate, materialLine, splitVat, vatNote, formatEuro,
+  type MaterialPart, type Measurements, type SizeVariant,
+} from "@/features/studio/productDetails";
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
