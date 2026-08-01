@@ -509,7 +509,12 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const nameMissing = !local.name || local.name.trim().length < 2;
   const priceMissing = !local.price || Number(local.price) <= 0;
   const imageMissing = !local.image_url;
-  const complete = !nameMissing && !priceMissing && !imageMissing;
+  const materialMissing = (local.material_composition ?? []).filter((m) => m.material.trim()).length === 0;
+  const weightMissing = local.weight_grams == null || Number(local.weight_grams) <= 0;
+  const complete = !nameMissing && !priceMissing && !imageMissing && !materialMissing && !weightMissing;
+
+  const houseVatRate = Number(designer.vat_rate ?? 19);
+  const vat = splitVat(Number(local.price ?? 0), effectiveVatRate(local.vat_rate, houseVatRate));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-6" onClick={onCancel}>
