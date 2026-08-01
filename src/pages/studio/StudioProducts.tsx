@@ -10,6 +10,11 @@ import { TagInput } from "@/features/ontology/TagInput";
 import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology";
 import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } from "@/features/share/shareKit";
 import { buildCreatorPackage } from "@/features/share/creatorPackage";
+import {
+  CARE_SYMBOLS, MEASUREMENT_PRESETS, effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
+  materialSum, splitVat, vatNote,
+  type MaterialPart, type Measurements, type SizeVariant,
+} from "@/features/studio/productDetails";
 
 type World = "Mode" | "Interior" | "Kunst";
 type Status = "draft" | "published" | "archived";
@@ -50,6 +55,13 @@ interface ProductRow {
   edition_info: string | null;
   designer_note: string | null;
   banner_media_asset_id: string | null;
+  size_variants: SizeVariant[];
+  measurements: Measurements;
+  material_composition: MaterialPart[];
+  care_symbols: string[];
+  lining_hardware: string | null;
+  sustainability_note: string | null;
+  vat_rate: number | null;
 }
 
 const emptyDNA = (): ProductDNA => ({ materials: [], silhouette: [], colors: [], mood: [] });
@@ -81,7 +93,7 @@ export default function StudioProducts() {
     const from = page * PAGE;
     const to = from + PAGE - 1;
     const { data, count } = await supabase.from("products")
-      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note, banner_media_asset_id", { count: "exact" })
+      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note, banner_media_asset_id, size_variants, measurements, material_composition, care_symbols, lining_hardware, sustainability_note, vat_rate", { count: "exact" })
       .eq("designer_id", designer.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -117,7 +129,9 @@ export default function StudioProducts() {
     image_url: e.image_url ?? null,
     status: (e.status ?? "draft") as Status,
     inventory_mode: (e.inventory_mode ?? "stock") as InventoryMode,
-    stock_quantity: Math.max(0, Number(e.stock_quantity ?? 0)),
+    stock_quantity: (e.size_variants ?? []).length > 0
+      ? (e.size_variants ?? []).reduce((s, v) => s + Math.max(0, Number(v.stock) || 0), 0)
+      : Math.max(0, Number(e.stock_quantity ?? 0)),
     allow_custom_requests: !!e.allow_custom_requests,
     sku: e.sku?.trim() || null,
     variants: (e.variants ?? []) as unknown as never,
@@ -132,6 +146,13 @@ export default function StudioProducts() {
     edition_info: e.edition_info?.trim() || null,
     designer_note: e.designer_note?.trim() || null,
     banner_media_asset_id: e.banner_media_asset_id ?? null,
+    size_variants: (e.size_variants ?? []) as unknown as never,
+    measurements: (e.measurements ?? emptyMeasurements()) as unknown as never,
+    material_composition: (e.material_composition ?? []) as unknown as never,
+    care_symbols: e.care_symbols ?? [],
+    lining_hardware: e.lining_hardware?.trim() || null,
+    sustainability_note: e.sustainability_note?.trim() || null,
+    vat_rate: e.vat_rate != null && !isNaN(Number(e.vat_rate)) ? Number(e.vat_rate) : null,
   });
 
   const save = async () => {
@@ -264,7 +285,7 @@ export default function StudioProducts() {
 
 interface EditorProps {
   initial: Partial<ProductRow>;
-  designer: { id: string; brand_name: string; slug: string; avatar_url: string | null; story: string | null };
+  designer: { id: string; brand_name: string; slug: string; avatar_url: string | null; story: string | null; vat_rate?: number };
   userId?: string;
   onCancel: () => void;
   onSaved: () => void;
@@ -488,7 +509,12 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const nameMissing = !local.name || local.name.trim().length < 2;
   const priceMissing = !local.price || Number(local.price) <= 0;
   const imageMissing = !local.image_url;
-  const complete = !nameMissing && !priceMissing && !imageMissing;
+  const materialMissing = (local.material_composition ?? []).filter((m) => m.material.trim()).length === 0;
+  const weightMissing = local.weight_grams == null || Number(local.weight_grams) <= 0;
+  const complete = !nameMissing && !priceMissing && !imageMissing && !materialMissing && !weightMissing;
+
+  const houseVatRate = Number(designer.vat_rate ?? 19);
+  const vat = splitVat(Number(local.price ?? 0), effectiveVatRate(local.vat_rate, houseVatRate));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-6" onClick={onCancel}>
@@ -531,8 +557,8 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                 placeholder="z. B. Kaschmirmantel Nº 3"
                 className={`inp ${nameMissing ? "border-destructive/60" : ""}`} />
             </Field>
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Preis in Euro" required missing={priceMissing}>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label="Endpreis in Euro (inkl. MwSt.)" required missing={priceMissing}>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
                   <input type="number" min={0} value={local.price ?? 0}
@@ -548,6 +574,18 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                     className="inp pl-8" />
                 </div>
               </Field>
+              <Field label="Mehrwertsteuer (%)" hint={`Leer = Haus-Standard (${formatRate(houseVatRate)} %).`}>
+                <input type="number" min={0} max={30} step={0.1} value={local.vat_rate ?? ""}
+                  onChange={(e) => patch({ vat_rate: e.target.value === "" ? null : Number(e.target.value) })}
+                  placeholder={formatRate(houseVatRate)} className="inp" />
+              </Field>
+            </div>
+            <div className="mt-3 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs">
+              <p>
+                Endpreis € {formatEuro(vat.gross)} · davon netto € {formatEuro(vat.net)} und € {formatEuro(vat.vat)} Mehrwertsteuer
+                {vat.rate > 0 ? ` (${formatRate(vat.rate)} %)` : ""}.
+              </p>
+              <p className="mt-1 text-muted-foreground">Auf der Produktseite steht: „{vatNote(vat.rate)}“.</p>
             </div>
           </Section>
 
@@ -734,9 +772,15 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             </label>
           </Section>
 
-          {/* Variants */}
-          <Section title="Varianten (optional)" help="Nur nötig, wenn dein Stück in verschiedenen Größen, Farben oder Formaten existiert.">
-            {(local.variants ?? []).length === 0 && <p className="text-xs text-muted-foreground">Keine Varianten — passt für Unikate und Editionen.</p>}
+          {/* Größen mit eigenem Bestand */}
+          <SizesSection local={local} patch={patch} />
+
+          {/* Material & Pflege */}
+          <MaterialSection local={local} patch={patch} />
+
+          {/* Weitere Varianten (Farbe, Format …) */}
+          <Section title="Weitere Varianten (optional)" help="Für alles außer Größe — etwa Farbe oder Format. Größen pflegst du oben in der Größentabelle.">
+            {(local.variants ?? []).length === 0 && <p className="text-xs text-muted-foreground">Keine weiteren Varianten — passt für Unikate und Editionen.</p>}
             <div className="space-y-3">
               {(local.variants ?? []).map((v, i) => (
                 <div key={i} className="grid grid-cols-[1fr_2fr_auto] items-end gap-2">
@@ -772,7 +816,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-border bg-white px-8 py-4">
           <div className="text-xs text-muted-foreground">
-            {!complete && <span>Noch fehlt: {[nameMissing && "Name", priceMissing && "Preis", imageMissing && "Bild"].filter(Boolean).join(", ")}.</span>}
+            {!complete && <span>Noch fehlt: {[nameMissing && "Name", priceMissing && "Preis", imageMissing && "Bild", materialMissing && "Material", weightMissing && "Versandgewicht"].filter(Boolean).join(", ")}.</span>}
           </div>
           <div className="flex items-center gap-3">
             <button onClick={onCancel} className="border border-border bg-white px-5 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Abbrechen</button>
@@ -985,5 +1029,191 @@ function DetailsSection({ local, patch }: { local: Partial<ProductRow>; patch: (
         </div>
       )}
     </section>
+  );
+}
+
+/* ---------- Größen mit eigenem Bestand + Maßtabelle ---------- */
+
+function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
+  const sizes: SizeVariant[] = local.size_variants ?? [];
+  const measurements: Measurements = local.measurements ?? emptyMeasurements();
+  const world = local.world ?? "Mode";
+  const presets = MEASUREMENT_PRESETS[world] ?? MEASUREMENT_PRESETS.Mode;
+
+  const setSize = (i: number, p: Partial<SizeVariant>) => {
+    const next = sizes.map((s, k) => (k === i ? { ...s, ...p } : s));
+    patch({ size_variants: next });
+  };
+  const addSize = () => patch({ size_variants: [...sizes, { size: "", stock: 0, surcharge: 0, sku: null }] });
+  const removeSize = (i: number) => {
+    const removed = sizes[i]?.size;
+    const values = { ...measurements.values };
+    for (const row of Object.keys(values)) {
+      if (removed && values[row]) { const copy = { ...values[row] }; delete copy[removed]; values[row] = copy; }
+    }
+    patch({ size_variants: sizes.filter((_, k) => k !== i), measurements: { ...measurements, values } });
+  };
+
+  const addRow = (row: string) => {
+    const name = row.trim();
+    if (!name || measurements.rows.includes(name)) return;
+    patch({ measurements: { rows: [...measurements.rows, name], values: { ...measurements.values, [name]: {} } } });
+  };
+  const removeRow = (row: string) => {
+    const values = { ...measurements.values };
+    delete values[row];
+    patch({ measurements: { rows: measurements.rows.filter((r) => r !== row), values } });
+  };
+  const setValue = (row: string, size: string, v: string) => {
+    patch({
+      measurements: {
+        ...measurements,
+        values: { ...measurements.values, [row]: { ...(measurements.values[row] ?? {}), [size]: v } },
+      },
+    });
+  };
+
+  const columns = sizes.map((s) => s.size).filter((s) => s.trim() !== "");
+  const total = sizes.reduce((s, v) => s + Math.max(0, Number(v.stock) || 0), 0);
+
+  return (
+    <Section title="Größen & Maße" help="Ein Stück kann in mehreren Größen existieren — je Größe eigener Bestand, optional Aufpreis und Artikelnummer. Ausverkaufte Größen sind im Shop nicht wählbar. Die Maßtabelle darunter beantwortet die häufigste Frage vor dem Kauf.">
+      {sizes.length === 0
+        ? <p className="text-xs text-muted-foreground">Keine Größen — dann gilt der allgemeine Bestand oben. Passt für Unikate.</p>
+        : <p className="text-xs text-muted-foreground">Gesamtbestand aus allen Größen: <span className="text-foreground">{total}</span></p>}
+
+      <div className="mt-3 space-y-2">
+        {sizes.map((s, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-end gap-2">
+            <Field label="Größe"><input value={s.size} onChange={(e) => setSize(i, { size: e.target.value })} placeholder="M" className="inp" /></Field>
+            <Field label="Bestand"><input type="number" min={0} value={s.stock} onChange={(e) => setSize(i, { stock: Math.max(0, Number(e.target.value)) })} className="inp" /></Field>
+            <Field label="Aufpreis (€)"><input type="number" min={0} step="0.5" value={s.surcharge} onChange={(e) => setSize(i, { surcharge: Number(e.target.value) })} className="inp" /></Field>
+            <Field label="SKU"><input value={s.sku ?? ""} onChange={(e) => setSize(i, { sku: e.target.value || null })} className="inp" /></Field>
+            <button type="button" onClick={() => removeSize(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">Entf.</button>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={addSize} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ Größe hinzufügen</button>
+
+      <div className="mt-6 border-t border-border pt-4">
+        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">Maßtabelle (cm)</p>
+        {columns.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">Trag zuerst mindestens eine Größe ein — dann kannst du je Größe messen.</p>
+        ) : (
+          <>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {presets.filter((p) => !measurements.rows.includes(p)).map((p) => (
+                <button key={p} type="button" onClick={() => addRow(p)} className="border border-border bg-white px-3 py-1 text-xs hover:border-foreground">+ {p}</button>
+              ))}
+            </div>
+            {measurements.rows.length > 0 && (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[420px] text-sm">
+                  <thead>
+                    <tr className="border-b border-foreground text-left">
+                      <th className="py-2 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Maß</th>
+                      {columns.map((c) => <th key={c} className="py-2 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{c}</th>)}
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {measurements.rows.map((row) => (
+                      <tr key={row} className="border-b border-border">
+                        <td className="py-2 pr-3">{row}</td>
+                        {columns.map((c) => (
+                          <td key={c} className="py-1 pr-2">
+                            <input value={measurements.values[row]?.[c] ?? ""} onChange={(e) => setValue(row, c, e.target.value)}
+                              className="inp" inputMode="decimal" placeholder="—" />
+                          </td>
+                        ))}
+                        <td className="py-1">
+                          <button type="button" onClick={() => removeRow(row)} className="px-2 text-[0.6rem] uppercase tracking-[0.24em] text-destructive">Entf.</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <AddCustomRow onAdd={addRow} />
+          </>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+function AddCustomRow({ onAdd }: { onAdd: (row: string) => void }) {
+  const [v, setV] = useState("");
+  return (
+    <div className="mt-3 flex gap-2">
+      <input value={v} onChange={(e) => setV(e.target.value)} placeholder="Eigene Maßzeile" className="inp max-w-xs" />
+      <button type="button" onClick={() => { onAdd(v); setV(""); }}
+        className="border border-border px-3 py-2 text-[0.62rem] uppercase tracking-[0.24em] hover:border-foreground">Hinzufügen</button>
+    </div>
+  );
+}
+
+/* ---------- Material & Pflege ---------- */
+
+function MaterialSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
+  const parts: MaterialPart[] = local.material_composition ?? [];
+  const care = local.care_symbols ?? [];
+  const sum = materialSum(parts);
+
+  const setPart = (i: number, p: Partial<MaterialPart>) => patch({ material_composition: parts.map((m, k) => (k === i ? { ...m, ...p } : m)) });
+  const addPart = () => patch({ material_composition: [...parts, { material: "", percent: 0 }] });
+  const removePart = (i: number) => patch({ material_composition: parts.filter((_, k) => k !== i) });
+  const toggleCare = (key: string) =>
+    patch({ care_symbols: care.includes(key) ? care.filter((c) => c !== key) : [...care, key] });
+
+  return (
+    <Section title="Material & Pflege" help="Die Zusammensetzung ist Pflicht, damit dein Stück veröffentlicht werden kann — Käufer:innen und Gesetz erwarten sie. Die Summe sollte 100 % ergeben.">
+      <div className="space-y-2">
+        {parts.map((p, i) => (
+          <div key={i} className="grid grid-cols-[2fr_1fr_auto] items-end gap-2">
+            <Field label="Material"><input value={p.material} onChange={(e) => setPart(i, { material: e.target.value })} placeholder="z. B. Wolle" className="inp" /></Field>
+            <Field label="Anteil (%)"><input type="number" min={0} max={100} value={p.percent} onChange={(e) => setPart(i, { percent: Number(e.target.value) })} className="inp" /></Field>
+            <button type="button" onClick={() => removePart(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">Entf.</button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-4">
+        <button type="button" onClick={addPart} className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ Material hinzufügen</button>
+        {parts.length > 0 && (
+          <span className={`text-xs ${sum === 100 ? "text-muted-foreground" : "text-destructive"}`}>
+            Summe: {formatRate(sum)} %{sum === 100 ? "" : " — sollte 100 % ergeben."}
+          </span>
+        )}
+      </div>
+
+      <Field label="Futter, Beschläge, Details (optional)">
+        <input value={local.lining_hardware ?? ""} onChange={(e) => patch({ lining_hardware: e.target.value })}
+          placeholder="z. B. Futter aus Bemberg, Messingknöpfe" className="inp" />
+      </Field>
+
+      <div className="mt-4">
+        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">Pflegehinweise</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {CARE_SYMBOLS.map((c) => {
+            const active = care.includes(c.key);
+            return (
+              <button key={c.key} type="button" onClick={() => toggleCare(c.key)}
+                className={`border px-3 py-1.5 text-xs ${active ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <Field label="Ergänzung zur Pflege (optional)">
+        <textarea rows={2} value={local.care_instructions ?? ""} onChange={(e) => patch({ care_instructions: e.target.value })} className="inp" />
+      </Field>
+
+      <Field label="Nachhaltigkeit / Herkunft (optional)" hint="Ein Satz zu Material-Herkunft, Resten, Reparatur.">
+        <textarea rows={2} value={local.sustainability_note ?? ""} onChange={(e) => patch({ sustainability_note: e.target.value })} className="inp" />
+      </Field>
+    </Section>
   );
 }

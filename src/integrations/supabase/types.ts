@@ -1045,6 +1045,7 @@ export type Database = {
           published: boolean
           quote: string | null
           quote_role: string | null
+          return_window_days: number
           revenue_share_pct: number
           shipping_rates: Json
           slug: string
@@ -1056,6 +1057,7 @@ export type Database = {
           tags: string[] | null
           updated_at: string
           user_id: string
+          vat_rate: number
           video_taste_weights: Json
           website: string | null
         }
@@ -1088,6 +1090,7 @@ export type Database = {
           published?: boolean
           quote?: string | null
           quote_role?: string | null
+          return_window_days?: number
           revenue_share_pct?: number
           shipping_rates?: Json
           slug: string
@@ -1099,6 +1102,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id: string
+          vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
         }
@@ -1131,6 +1135,7 @@ export type Database = {
           published?: boolean
           quote?: string | null
           quote_role?: string | null
+          return_window_days?: number
           revenue_share_pct?: number
           shipping_rates?: Json
           slug?: string
@@ -1142,6 +1147,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id?: string
+          vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
         }
@@ -2103,6 +2109,8 @@ export type Database = {
           tracking_number: string | null
           updated_at: string
           user_id: string | null
+          vat_amount_cents: number | null
+          vat_rate: number | null
         }
         Insert: {
           amount_total?: number
@@ -2133,6 +2141,8 @@ export type Database = {
           tracking_number?: string | null
           updated_at?: string
           user_id?: string | null
+          vat_amount_cents?: number | null
+          vat_rate?: number | null
         }
         Update: {
           amount_total?: number
@@ -2163,6 +2173,8 @@ export type Database = {
           tracking_number?: string | null
           updated_at?: string
           user_id?: string | null
+          vat_amount_cents?: number | null
+          vat_rate?: number | null
         }
         Relationships: []
       }
@@ -2323,6 +2335,7 @@ export type Database = {
           allow_custom_requests: boolean
           banner_media_asset_id: string | null
           care_instructions: string | null
+          care_symbols: string[]
           compare_at_price: number | null
           created_at: string
           description: string | null
@@ -2335,17 +2348,23 @@ export type Database = {
           inventory_mode: Database["public"]["Enums"]["inventory_mode"]
           lead_time_days: number | null
           length_cm: number | null
+          lining_hardware: string | null
           made_in: string | null
+          material_composition: Json
+          measurements: Json
           name: string
           price: number
           product_dna: Json
+          size_variants: Json
           sku: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
           stock_quantity: number
+          sustainability_note: string | null
           tags: string[]
           updated_at: string
           variants: Json
+          vat_rate: number | null
           view_count: number
           weight_grams: number | null
           width_cm: number | null
@@ -2355,6 +2374,7 @@ export type Database = {
           allow_custom_requests?: boolean
           banner_media_asset_id?: string | null
           care_instructions?: string | null
+          care_symbols?: string[]
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
@@ -2367,17 +2387,23 @@ export type Database = {
           inventory_mode?: Database["public"]["Enums"]["inventory_mode"]
           lead_time_days?: number | null
           length_cm?: number | null
+          lining_hardware?: string | null
           made_in?: string | null
+          material_composition?: Json
+          measurements?: Json
           name: string
           price?: number
           product_dna?: Json
+          size_variants?: Json
           sku?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
+          sustainability_note?: string | null
           tags?: string[]
           updated_at?: string
           variants?: Json
+          vat_rate?: number | null
           view_count?: number
           weight_grams?: number | null
           width_cm?: number | null
@@ -2387,6 +2413,7 @@ export type Database = {
           allow_custom_requests?: boolean
           banner_media_asset_id?: string | null
           care_instructions?: string | null
+          care_symbols?: string[]
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
@@ -2399,17 +2426,23 @@ export type Database = {
           inventory_mode?: Database["public"]["Enums"]["inventory_mode"]
           lead_time_days?: number | null
           length_cm?: number | null
+          lining_hardware?: string | null
           made_in?: string | null
+          material_composition?: Json
+          measurements?: Json
           name?: string
           price?: number
           product_dna?: Json
+          size_variants?: Json
           sku?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
+          sustainability_note?: string | null
           tags?: string[]
           updated_at?: string
           variants?: Json
+          vat_rate?: number | null
           view_count?: number
           weight_grams?: number | null
           width_cm?: number | null

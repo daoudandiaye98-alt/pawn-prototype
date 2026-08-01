@@ -130,6 +130,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     { to: "/studio/content-begleiter", label: "Content-Begleiter", icon: IContentBegleiter },
     { to: "/studio/produkte", label: "Kollektion", icon: ICollection },
     { to: "/studio/bestellungen", label: "Bestellungen", icon: IOrders, badge: badges.orders },
+    { to: "/studio/versand", label: "Versand", icon: IOrders },
     { to: "/studio/kampagnen", label: "Kampagnen", icon: ICampaigns, badge: badges.campaigns },
     { to: "/studio/videothek", label: "Videothek", icon: IVideothek },
     { to: "/studio/nachrichten", label: "Nachrichten", icon: IMessages, badge: badges.messages },

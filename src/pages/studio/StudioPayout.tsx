@@ -42,6 +42,9 @@ export default function StudioPayout() {
   const [billingSaving, setBillingSaving] = useState(false);
   const [shipping, setShipping] = useState<ShippingRates>(EMPTY_SHIPPING);
   const [shippingSaving, setShippingSaving] = useState(false);
+  const [vatRate, setVatRate] = useState<number>(19);
+  const [returnDays, setReturnDays] = useState<number>(14);
+  const [taxSaving, setTaxSaving] = useState(false);
 
   useEffect(() => {
     if (!designer) return;
@@ -49,6 +52,8 @@ export default function StudioPayout() {
       .then(({ data }) => { if (data) setBilling({ ...EMPTY_BILLING, ...(data as Partial<BillingProfile>) }); });
     const rates = designer.shipping_rates as Partial<ShippingRates> | null;
     if (rates) setShipping({ ...EMPTY_SHIPPING, ...rates, inland: { ...EMPTY_SHIPPING.inland, ...rates.inland }, eu: { ...EMPTY_SHIPPING.eu, ...rates.eu }, world: { ...EMPTY_SHIPPING.world, ...rates.world } });
+    setVatRate(Number(designer.vat_rate ?? 19));
+    setReturnDays(Number(designer.return_window_days ?? 14));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designer?.id]);
 
@@ -59,6 +64,18 @@ export default function StudioPayout() {
     setBillingSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Rechnungsdaten gespeichert.");
+  }
+
+  async function saveTax() {
+    if (!designer) return;
+    setTaxSaving(true);
+    const { error } = await supabase.from("designers")
+      .update({ vat_rate: vatRate, return_window_days: returnDays })
+      .eq("id", designer.id);
+    setTaxSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Steuerangaben gespeichert.");
+    void refresh();
   }
 
   async function saveShipping() {
@@ -228,6 +245,31 @@ export default function StudioPayout() {
           </div>
           <button onClick={saveBilling} disabled={billingSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
             {billingSaving ? "Speichert…" : "Rechnungsdaten speichern"}
+          </button>
+        </div>
+
+        <div className="border border-foreground bg-white p-5">
+          <p className="editorial-eyebrow">Mehrwertsteuer & Rückgabe</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Preise auf PAWN sind immer Endpreise inklusive Mehrwertsteuer. Trag hier den Satz deines Landes ein — einzelne Stücke können davon abweichen.
+            Kleinunternehmer tragen 0 ein; dann erscheint der Hinweis nach § 19 UStG statt eines Steuerausweises.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Mehrwertsteuersatz (%)</span>
+              <input type="number" min={0} max={30} step={0.1} value={vatRate}
+                onChange={(e) => setVatRate(Number(e.target.value))}
+                className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
+            </label>
+            <label className="block">
+              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Rückgabefrist (Tage)</span>
+              <input type="number" min={0} max={365} value={returnDays}
+                onChange={(e) => setReturnDays(Number(e.target.value))}
+                className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
+            </label>
+          </div>
+          <button onClick={saveTax} disabled={taxSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
+            {taxSaving ? "Speichert…" : "Steuerangaben speichern"}
           </button>
         </div>
 

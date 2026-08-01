@@ -1,38 +1,77 @@
-## Warum bisher nur das Menü übersetzt wird (geprüft)
+## Ziel
 
-- `site_content` hat **22 Zeilen, davon 0 mit englischem Text** — jeder CMS-Text fällt auf Deutsch zurück.
-- Im Code stehen **~99 Editable-Schlüssel**, aber nur 22 davon existieren überhaupt als Zeile in der Datenbank.
-- Der Rest der Seite (Shop, Warenkorb, Kasse, Produktseiten, Studio, Admin, Rechtstexte) besteht aus **fest im Code stehenden deutschen Sätzen**. Nur ~100 Menü-/Konto-Begriffe liegen im Wörterbuch `src/lib/i18n.tsx`. Der Schalter kann alles andere technisch gar nicht erreichen.
+Zwei Bausteine, damit ein Haus seinen Verkauf komplett selbst führen kann:
+1. Eine **Sendungsübersicht** (`/studio/versand`) — alles zum Verpacken, Frankieren und Versenden an einem Ort.
+2. Ein **vollständiges Stück-Formular** — mehrere Größen pro Stück, echte Maßtabelle, Material, Pflege, und ein Preis **inklusive Mehrwertsteuer**.
 
-Ein Wörterbuch von Hand für tausende Sätze zu pflegen ist unrealistisch. Deshalb: eine **automatische Übersetzungsschicht**, die einmal lernt und danach dauerhaft aus der Datenbank bedient wird.
+---
 
-## Was gebaut wird
+## 1. Sendungsübersicht (neue Seite im Studio)
 
-### 1. Übersetzungs-Gedächtnis in der Datenbank
-Neue Tabelle `ui_translations`: deutscher Satz (als Prüfsumme) → englische Fassung, plus Zeitstempel. Öffentlich lesbar, schreiben nur über die Übersetzungs-Funktion. So wird jeder Satz **einmal** übersetzt und danach für alle Besucher sofort ausgeliefert — keine laufenden KI-Kosten pro Besuch.
+Eigener Punkt in der Studio-Navigation, „Versand". Die bestehende Bestellliste bleibt wie sie ist (kaufmännische Sicht) — die neue Seite ist die Arbeitssicht fürs Packen.
 
-### 2. Automatische Erfassung sichtbarer Texte
-Ein globaler Übersetzungs-Wächter im Frontend:
-- Ist Englisch aktiv, sammelt er alle sichtbaren deutschen Textstellen der aktuellen Seite (auch nach Nachladen, über einen DOM-Beobachter).
-- Bekannte Sätze werden sofort aus dem Gedächtnis ersetzt.
-- Unbekannte Sätze gehen gebündelt an eine Edge Function `translate-batch` (Claude/OpenAI, Stil-Vorgabe: Modehaus-Ton, kurz, keine Erfindungen), das Ergebnis wird gespeichert und eingesetzt.
-- Nicht angefasst: Wortmarke PAWN, Eigennamen der Häuser, Preise, Zahlen, E-Mails, Links, Eingabefelder-Inhalte, Code-artige Zeichenketten. Elemente lassen sich mit `data-no-translate` ausnehmen.
+**Aufbau**
+- **Kopfzeile mit vier Zahlen**: Zu packen · Bereit zum Versand · Unterwegs · Zugestellt.
+- **Sendungskarten** statt Tabelle, eine pro Bestellung (nicht pro Artikel), jeweils mit:
+  - Lieferadresse als Block, ein Klick kopiert sie komplett in die Zwischenablage (fürs Einfügen ins Portal von DHL/GLS/Post).
+  - Inhalt der Sendung: Stück, Größe, Menge, Gewicht je Stück und **Gesamtgewicht** (aus `weight_grams`) — genau das, was das Versandformular braucht.
+  - Maße der größten Position als Packhinweis, falls hinterlegt.
+  - Feld für Versanddienst + Sendungsnummer, ein Knopf „Als versendet markieren" (setzt Status, Zeitstempel, löst die bestehende Versand-Mail aus).
+  - Knopf „Zugestellt".
+  - Lieferschein zum Ausdrucken (druckfreundliche Ansicht mit Absender aus den Rechnungsdaten, Empfänger, Positionen, Bestellnummer) — kein PDF-Dienst nötig, Browser-Druck.
+- **Filter**: Offen / Unterwegs / Erledigt, plus Suche nach Name oder Bestellnummer.
+- **Ehrlicher Leerzustand**: „Noch keine Sendung. Das erste Stück findet seinen Weg."
 
-### 3. CMS-Texte gleich mit
-- Alle ~99 Editable-Schlüssel werden beim ersten Speichern automatisch als Zeile angelegt (statt nur im Code zu existieren).
-- Der bestehende Admin-Knopf „Offene übersetzen" füllt `value_en` für alle Schlüssel; Editable bevorzugt weiterhin `value_en`, bevor die automatische Schicht greift.
+**Zusätzlich sinnvoll (Teil des Zugs)**
+- Absender-/Rückgabeadresse ist bereits in den Rechnungsdaten vorhanden — die Seite zeigt eine Warnung, wenn sie fehlt, weil sonst kein Lieferschein gedruckt werden kann.
+- Hinweis, wenn eine Bestellung länger als 48 Stunden bezahlt aber unversendet ist (gleiche Regel, die Jarvis intern schon prüft).
 
-### 4. Rechtstexte
-AGB, Impressum, Datenschutz, Widerruf werden mitübersetzt, mit einer Hinweiszeile oben in der englischen Fassung: „This is a non-binding translation. The German version is legally authoritative."
+---
 
-### 5. Vorwärmen
-Ein Admin-Knopf unter `/admin/inhalte`: „Englische Fassung vorwärmen" — läuft einmal über die wichtigsten Seiten und füllt das Gedächtnis, damit Besucher nie auf eine Übersetzung warten.
+## 2. Neues Stück anlegen — vollständige Angaben
+
+**a) Mehrere Größen mit eigenem Bestand**
+Heute gibt es Varianten nur als Namen ohne Bestand. Neu: eine Größen-Matrix — je Zeile Größe, Bestand, optional eigener Aufpreis und eigene Artikelnummer. Der Gesamtbestand ergibt sich daraus; ausverkaufte Größen sind im Shop nicht wählbar.
+
+**b) Maßtabelle**
+Statt nur Länge/Breite/Höhe (das sind Paketmaße) eine echte Maßtabelle pro Größe: frei wählbare Zeilen wie Schulter, Brust, Taille, Ärmellänge, Gesamtlänge — in cm, je Größe ein Wert. Auf der Produktseite erscheint sie als saubere Tabelle. Für Interior/Kunst bleiben die einfachen Objektmaße.
+
+**c) Material & Pflege**
+- Materialzusammensetzung als Liste mit Prozentangabe (z. B. 80 % Wolle, 20 % Seide) mit Summenprüfung auf 100 %.
+- Futter/Beschläge als Freitext.
+- Pflegehinweise als anklickbare Standardsymbole (Handwäsche, nicht bleichen, chemische Reinigung …) plus Freitext.
+- Herkunft der Fertigung (bereits vorhanden) bleibt.
+
+**d) Mehrwertsteuer**
+- Im Haus-Profil: **Mehrwertsteuersatz des Landes** (Standard, z. B. 19 %) und die bereits vorhandene Kleinunternehmer-Angabe.
+- Im Stück: der Satz kann pro Stück abweichen (ermäßigt/befreit).
+- Der eingetragene Preis ist immer der **Endpreis inklusive Mehrwertsteuer**. Direkt darunter rechnet das Formular live vor: Nettobetrag und enthaltene Steuer.
+- Überall wo der Preis erscheint (Shop, Produktseite, Warenkorb, Kasse): „inkl. MwSt., zzgl. Versand". Bei Kleinunternehmer stattdessen der gesetzliche Hinweis, dass keine Umsatzsteuer ausgewiesen wird.
+- Rechnungen und Bestellungen speichern Satz und Steueranteil mit, damit die Buchhaltung stimmt.
+
+**e) Was sonst noch fehlt — mit aufgenommen**
+- **Pflichtfeld-Prüfung vor dem Veröffentlichen**: ohne Bild, Preis, Material und Versandgewicht bleibt ein Stück Entwurf. Eine kleine Fortschrittsanzeige „Bereit zum Veröffentlichen" zeigt, was noch fehlt.
+- **Versandgewicht ist Pflicht**, weil ohne Gewicht kein Versandschein möglich ist.
+- **Rückgabefrist** je Haus (Standard 14 Tage) für die Produktseite.
+- **Nachhaltigkeits-/Herkunftsnotiz** optional, passt zur Handschrift von PAWN.
+
+---
 
 ## Technische Details
 
-- Neue Tabelle `ui_translations(hash text pk, de text, en text, created_at, updated_at)`, GRANT select für anon/authenticated, Schreibrechte nur service_role; Edge Function schreibt.
-- Neue Edge Function `translate-batch` (bis 50 Sätze pro Aufruf, Ergebnisse in einem Rutsch gespeichert) — **muss über Lovable deployt werden**.
-- Frontend: `src/lib/autoTranslate.ts` (Sammler + Ersetzer, MutationObserver, Debounce) und Einbindung im bestehenden Sprach-Kontext; `LanguageToggle` bleibt unverändert.
-- Anfangs-Wörterbuch aus `src/lib/i18n.tsx` wird beim Start ins Gedächtnis übernommen, damit bestehende Übersetzungen Vorrang haben.
-- Deutsch bleibt Standard und wird nie verändert — beim Zurückschalten wird der Originaltext wiederhergestellt.
-- Abschluss: `npm run build` und Typecheck grün, Prüfung auf 390px und Desktop.
+- Neue Spalten auf `products`: `size_variants` (jsonb: Größe, Bestand, Aufpreis, SKU), `measurements` (jsonb: Zeilen × Größen), `material_composition` (jsonb), `care_symbols` (text[]), `vat_rate` (numeric, nullable → Haus-Standard).
+- Neue Spalten auf `designers`: `vat_rate` (numeric, Standard 19), `return_window_days` (int, Standard 14).
+- `orders`: `vat_rate` und `vat_amount_cents` je Position beim Checkout mitschreiben.
+- Bestandsabbau (`decrement_stock_for_order`) berücksichtigt künftig die gewählte Größe.
+- `create-checkout` und `stripe-webhook` müssen die Steuerangaben mitführen → **beide brauchen ein Neu-Deploy über Lovable** (kostet Credits); alles andere läuft über Git.
+- Neue Datei `src/pages/studio/StudioVersand.tsx`, Route + Navigationseintrag in `StudioShell`; Datenzugriff über den vorhandenen `useDesignerOrders`-Hook, um eine Sendungssicht erweitert.
+- Produktformular in `StudioProducts.tsx` wird in kleinere Abschnittskomponenten zerlegt (Größen, Maße, Material, Preis & Steuer), damit die Datei nicht weiter wächst.
+- Design bleibt strikt Schwarz/Weiß, keine Rundungen, harte Kanten.
+
+## Reihenfolge
+
+1. Datenbank-Erweiterungen (eine Migration).
+2. Produktformular: Preis & Steuer, Größen-Matrix, Maße, Material/Pflege.
+3. Anzeige der Steuerhinweise in Shop, Produktseite, Warenkorb, Kasse.
+4. Sendungsübersicht inkl. Lieferschein-Druck.
+5. Checkout-/Webhook-Anpassung (Deploy nötig).
