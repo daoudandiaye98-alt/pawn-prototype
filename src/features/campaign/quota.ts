@@ -56,7 +56,7 @@ export function formatQuota(used: number, limit: number, noun: string): string {
 }
 
 /**
- * Monats-Kontingente statt Guthaben: was der Designer sieht, sind Videos und Shots,
+ * Monats-Limite statt Guthaben: was der Designer sieht, sind Videos und Shots,
  * keine Punkte. Grenzen kommen aus ai_config.plan_limits, Verbrauch aus dem, was
  * wirklich entstanden ist (video_assets) bzw. serverseitig gebucht wurde.
  */
@@ -118,10 +118,10 @@ export function planLabel(plan: Plan): string {
   return plan === "haus" ? "Haus" : plan === "atelier" ? "Atelier" : "Maison";
 }
 
-/** Sanfter Hinweis, wenn ein Kontingent endet — kein Dauerbanner. */
+/** Sanfter Hinweis, wenn ein Limit endet — kein Dauerbanner. */
 export function quotaExhaustedHint(plan: Plan, noun: string): string {
   const next = plan === "haus" ? "Atelier" : "Maison";
   return plan === "maison"
-    ? `Dein Kontingent an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da.`
-    : `Dein Kontingent an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle ins ${next}.`;
+    ? `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da.`
+    : `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle ins ${next}.`;
 }

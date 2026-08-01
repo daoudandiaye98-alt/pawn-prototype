@@ -353,7 +353,7 @@ export default function AdminDNA() {
                   <th className="px-4 py-3">Welt</th>
                   <th className="px-4 py-3">Palette</th>
                   <th className="px-4 py-3">Haltung</th>
-                  <th className="px-4 py-3">Selbstbild vs. Außenauge</th>
+                  <th className="px-4 py-3">Selbstbild vs. Markenprofil</th>
                   <th className="px-4 py-3">Strömung</th>
                   <th className="px-4 py-3">Verändert sich</th>
                 </tr>

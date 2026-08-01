@@ -1,7 +1,7 @@
 /**
  * Studio-Plan-Übersicht — eine Standortbestimmung, keine Preistabelle.
  * Kernbotschaft: 7% Provision bleibt immer 7%. Pläne sind optional.
- * Kontingente (Videos, Shots, Signaturen) kommen live aus ai_config.plan_limits.
+ * Limits (Videos, Shots, Signaturen) kommen live aus ai_config.plan_limits.
  */
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";

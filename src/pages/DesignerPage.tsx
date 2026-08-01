@@ -363,7 +363,7 @@ const DesignerPage = () => {
     : "—";
 
   // Neue Hausseite (Teil 12c): veröffentlicht und mit Bausteinen → ersetzt die
-  // gesamte alte Retrospektive. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
+  // gesamte alte Rückblick. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
   if (dbDesigner?.page_published_at && pageBlocks.length > 0) {
     const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
     return (
@@ -479,7 +479,7 @@ const DesignerPage = () => {
 
             {/* Top eyebrow */}
             <p className="palace-eyebrow absolute left-6 top-24 z-[10] md:left-14" style={{ color: "rgba(241,238,231,0.72)" }}>
-              PAWN präsentiert · Retrospektive · Ausgabe {edition}
+              PAWN präsentiert · Rückblick · Ausgabe {edition}
             </p>
 
             {/* Bottom corners */}

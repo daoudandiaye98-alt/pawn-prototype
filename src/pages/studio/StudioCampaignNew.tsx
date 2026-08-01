@@ -1352,7 +1352,7 @@ export default function StudioCampaignNew() {
                       <p className="text-sm text-muted-foreground">
                         {stagingSelectedIds.length === 0
                           ? "Wähle mindestens eine Variante."
-                          : `Dauert etwa 20–40 Sekunden für ${stagingSelectedIds.length} Varianten — zählt auf dein Monats-Kontingent.`}
+                          : `Dauert etwa 20–40 Sekunden für ${stagingSelectedIds.length} Varianten — zählt auf dein Monats-Limit.`}
                       </p>
                       <button type="button" onClick={() => void runStaging()}
                         disabled={stagingBusy || stagingSelectedIds.length === 0 || !quota.canDo("shots")}

@@ -217,7 +217,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Kontingent dauerhaft sichtbar, egal auf welcher Studio-Seite — Details liegen auf /studio/plan. */
+/** Limit dauerhaft sichtbar, egal auf welcher Studio-Seite — Details liegen auf /studio/plan. */
 function CreditsPill({ designerId, plan }: { designerId: string; plan: Plan }) {
   const quota = usePlanQuota(designerId, plan);
   if (quota.loading) return null;
@@ -259,7 +259,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
         {designer && (
           <Link to={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="hidden md:inline-flex items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-muted">
-            Meine Retrospektive ansehen <ExternalLink className="h-3 w-3" />
+            Meine Rückblick ansehen <ExternalLink className="h-3 w-3" />
           </Link>
         )}
         <LanguageToggle className="h-9" />

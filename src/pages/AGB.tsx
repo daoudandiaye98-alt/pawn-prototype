@@ -44,7 +44,7 @@ export default function AGB() {
             <p><strong>PAWN behält 7% des Bruttoverkaufspreises</strong> je Bestellung als Vermittlungsprovision. Der Provisions-Satz ist auf jeder Produktseite implizit — <em>7% bleiben immer 7%</em>, unabhängig vom gewählten Designer-Plan.</p>
           </S>
           <S title="5. Optionale Pläne für Designer:innen">
-            <p>Designer:innen können Zusatzpakete buchen: Haus (0 €/Monat, Basis), Atelier (19 €/Monat), Maison (79 €/Monat). Die Pakete enthalten unterschiedliche Kontingente an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. <strong>Monatliche Kündigung</strong> jederzeit im Studio möglich; keine Mindestlaufzeit. Kein Einfluss auf die 7%-Provision.</p>
+            <p>Designer:innen können Zusatzpakete buchen: Haus (0 €/Monat, Basis), Atelier (19 €/Monat), Maison (79 €/Monat). Die Pakete enthalten unterschiedliche Limits an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. <strong>Monatliche Kündigung</strong> jederzeit im Studio möglich; keine Mindestlaufzeit. Kein Einfluss auf die 7%-Provision.</p>
           </S>
           <S title="6. Lieferzeiten, Anfertigungen">
             <p>Lagerware wird nach Bestellung versendet; die Lieferzeit steht auf der Produktseite. <strong>Anfertigungs-Artikel</strong> (made-to-order, Unikate nach Kundenspezifikation) werden erst nach Bestellung produziert. Die auf der Produktseite genannte Lieferzeit ist verbindlich; Verzögerungen kommuniziert die Designer:in direkt.</p>
