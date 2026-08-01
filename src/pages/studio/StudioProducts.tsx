@@ -93,7 +93,7 @@ export default function StudioProducts() {
     const from = page * PAGE;
     const to = from + PAGE - 1;
     const { data, count } = await supabase.from("products")
-      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note, banner_media_asset_id", { count: "exact" })
+      .select("id, name, slug, world, price, compare_at_price, description, tags, image_url, status, inventory_mode, stock_quantity, allow_custom_requests, sku, variants, weight_grams, lead_time_days, product_dna, length_cm, width_cm, height_cm, care_instructions, made_in, edition_info, designer_note, banner_media_asset_id, size_variants, measurements, material_composition, care_symbols, lining_hardware, sustainability_note, vat_rate", { count: "exact" })
       .eq("designer_id", designer.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -129,7 +129,9 @@ export default function StudioProducts() {
     image_url: e.image_url ?? null,
     status: (e.status ?? "draft") as Status,
     inventory_mode: (e.inventory_mode ?? "stock") as InventoryMode,
-    stock_quantity: Math.max(0, Number(e.stock_quantity ?? 0)),
+    stock_quantity: (e.size_variants ?? []).length > 0
+      ? (e.size_variants ?? []).reduce((s, v) => s + Math.max(0, Number(v.stock) || 0), 0)
+      : Math.max(0, Number(e.stock_quantity ?? 0)),
     allow_custom_requests: !!e.allow_custom_requests,
     sku: e.sku?.trim() || null,
     variants: (e.variants ?? []) as unknown as never,
@@ -144,6 +146,13 @@ export default function StudioProducts() {
     edition_info: e.edition_info?.trim() || null,
     designer_note: e.designer_note?.trim() || null,
     banner_media_asset_id: e.banner_media_asset_id ?? null,
+    size_variants: (e.size_variants ?? []) as unknown as never,
+    measurements: (e.measurements ?? emptyMeasurements()) as unknown as never,
+    material_composition: (e.material_composition ?? []) as unknown as never,
+    care_symbols: e.care_symbols ?? [],
+    lining_hardware: e.lining_hardware?.trim() || null,
+    sustainability_note: e.sustainability_note?.trim() || null,
+    vat_rate: e.vat_rate != null && !isNaN(Number(e.vat_rate)) ? Number(e.vat_rate) : null,
   });
 
   const save = async () => {
