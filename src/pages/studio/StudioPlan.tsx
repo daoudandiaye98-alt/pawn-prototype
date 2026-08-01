@@ -1,7 +1,7 @@
 /**
- * Studio-Plan-Übersicht — Nutzen-orientiert, drei Ausbaustufen.
+ * Studio-Plan-Übersicht — eine Standortbestimmung, keine Preistabelle.
  * Kernbotschaft: 7% Provision bleibt immer 7%. Pläne sind optional.
- * Zahlen (Videos, Kontingente, Preise) kommen live aus ai_config — nichts hart verdrahtet.
+ * Kontingente (Videos, Shots, Signaturen) kommen live aus ai_config.plan_limits.
  */
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
@@ -9,7 +9,10 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useCredits, planLabel, creditExample, type Plan } from "@/features/campaign/quota";
+import {
+  usePlanQuota, planLabel, formatQuota, DEFAULT_PLAN_QUOTAS,
+  type Plan, type PlanQuota,
+} from "@/features/campaign/quota";
 import { useContentValue } from "@/components/palace/Editable";
 import { Check, Sparkles } from "lucide-react";
 
@@ -22,16 +25,12 @@ const STATIC_BENEFITS: Record<Plan, string[]> = {
     "KI-Kurator prüft deine Kollektion vor Veröffentlichung",
     "Text-Atelier für Produkttexte",
     "Persönlicher Welt-Spiegel mit Trend-Report",
-    "Konsistentes Modellgesicht bei Try-Ons",
     "PAWN+ Denkstufe — tiefere Analysen",
   ],
   maison: [
     "Monatliches Haus-Dossier",
-    "Saison-Lookbook (teilbarer Link + Druck-PDF)",
     "Vitrine-Rotation auf der Startseite",
-    "Première-Priorität",
-    "Editionen-Erstzugang",
-    "Quartals-Einrichtungs-Check",
+    "Première-Priorität und Editionen-Erstzugang",
     "PAWN+ Max — stärkstes Modell, längster Kontext",
   ],
 };
@@ -39,7 +38,7 @@ const STATIC_BENEFITS: Record<Plan, string[]> = {
 const HEADLINES: Record<Plan, string> = {
   haus: "Alles, um live zu sein.",
   atelier: "Wenn du regelmäßig veröffentlichst.",
-  maison: "Für Ateliers mit Serienbetrieb.",
+  maison: "Für Ateliers im Serienbetrieb.",
 };
 const BADGES: Record<Plan, string | undefined> = { haus: undefined, atelier: "PAWN+", maison: "PAWN+ Max" };
 
@@ -47,41 +46,23 @@ interface PlanPrices {
   atelier?: { eur_month?: number; stripe_price_id?: string | null };
   maison?: { eur_month?: number; stripe_price_id?: string | null };
 }
-interface ExampleVideo { plan: Plan; url: string }
-interface CreditPack { id: string; credits: number; eur: number; stripe_price_id: string | null }
-interface CreditHistoryItem { at: string; action: string; model: string | null; credits: number }
-interface PlanLimitEntry { signature_previews: number; emblem: boolean; tier: number }
 
 function fmt(n: number): string { return n < 0 ? "alle" : String(n); }
+function fmtCount(n: number, noun: string): string {
+  return n < 0 ? `unbegrenzt ${noun}` : `${n} ${noun}`;
+}
 
-const ACTION_LABEL: Record<string, string> = {
-  product_shot: "Freisteller", tryon_shot: "Model-Shot", tryon_clip: "Model-Clip",
-  clip_standard: "Kinematischer Clip", clip_premium: "Kinematischer Clip (Signatur)", kauf: "Aufgeladen",
-};
-
-function CreditCircle({ balance, grant }: { balance: number; grant: number }) {
-  const pct = grant > 0 ? Math.min(1, balance / grant) : 0;
-  const r = 42, c = 2 * Math.PI * r;
+/** Dein Monat — eine ruhige Zeile, kein Guthabenstand. */
+function MonthLine({ used, limits, unlimited }: { used: Record<"videos" | "cinematic" | "shots", number>; limits: PlanQuota; unlimited: boolean }) {
   return (
-    <div className="flex items-center gap-4">
-      <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="hsl(var(--border))" strokeWidth="7" />
-        <circle
-          cx="50" cy="50" r={r} fill="none" stroke="hsl(var(--foreground))" strokeWidth="7"
-          strokeDasharray={c} strokeDashoffset={c * (1 - pct)}
-          strokeLinecap="butt" transform="rotate(-90 50 50)"
-        />
-        <text x="50" y="54" textAnchor="middle" fontSize="16" fontFamily="Inter, sans-serif" fontWeight="600">
-          {grant > 0 ? balance : "—"}
-        </text>
-      </svg>
-      <div>
-        <p className="editorial-eyebrow">Guthaben diesen Monat</p>
-        <p className="mt-1 font-serif text-lg tabular-nums">{balance} von {grant} Credits</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Fotos ohne KI-Werkzeuge kosten nichts. Ungenutzte Credits verfallen zum Monatsende.
-        </p>
-      </div>
+    <div className="border border-border bg-white p-5">
+      <p className="editorial-eyebrow">Dein Monat</p>
+      <p className="mt-2 font-serif text-lg tabular-nums">
+        {formatQuota(used.videos, unlimited ? -1 : limits.videos, "Videos")} · {formatQuota(used.shots, unlimited ? -1 : limits.shots, "Shots")}
+      </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Fotos ohne KI-Werkzeuge zählen nicht mit. Am 1. beginnt der Monat neu.
+      </p>
     </div>
   );
 }
@@ -90,65 +71,26 @@ export default function StudioPlan() {
   const { user } = useAuth();
   const { designer } = useMyDesigner();
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const credits = useCredits(designer?.id, plan);
+  const quota = usePlanQuota(designer?.id, plan);
   const [prices, setPrices] = useState<PlanPrices>({});
   const [busy, setBusy] = useState<Plan | null>(null);
-  const [buyBusy, setBuyBusy] = useState<string | null>(null);
   const [examples, setExamples] = useState<Partial<Record<Plan, string>>>({});
   const [imageExamples, setImageExamples] = useState<Partial<Record<Plan, string>>>({});
-  const [planCreditsAll, setPlanCreditsAll] = useState<Record<Plan, number>>({ haus: 30, atelier: 300, maison: 1200 });
-  const [planLimits, setPlanLimits] = useState<Record<Plan, PlanLimitEntry>>({
-    haus: { signature_previews: 1, emblem: true, tier: 1 },
-    atelier: { signature_previews: 3, emblem: false, tier: 2 },
-    maison: { signature_previews: -1, emblem: false, tier: 3 },
-  });
-  const [packs, setPacks] = useState<CreditPack[]>([]);
-  const [history, setHistory] = useState<CreditHistoryItem[]>([]);
+  const [planLimits, setPlanLimits] = useState<Record<Plan, PlanQuota>>(DEFAULT_PLAN_QUOTAS);
 
   useEffect(() => {
     supabase.from("ai_config").select("value").eq("key", "plan_prices").maybeSingle()
       .then(({ data }) => data?.value && setPrices(data.value as unknown as PlanPrices));
-    supabase.from("ai_config").select("value").eq("key", "plan_credits").maybeSingle()
-      .then(({ data }) => data?.value && setPlanCreditsAll((prev) => ({ ...prev, ...(data.value as Partial<Record<Plan, number>>) })));
     supabase.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle()
-      .then(({ data }) => data?.value && setPlanLimits((prev) => ({ ...prev, ...(data.value as unknown as Record<Plan, PlanLimitEntry>) })));
-    supabase.from("ai_config").select("value").eq("key", "credit_packs").maybeSingle()
-      .then(({ data }) => Array.isArray(data?.value) && setPacks(data.value as unknown as CreditPack[]));
-  }, []);
-
-  useEffect(() => {
-    if (!designer) return;
-    const month = new Date().toISOString().slice(0, 7);
-    void supabase.from("credits_ledger" as never).select("history").eq("designer_id", designer.id).eq("month", month).maybeSingle()
       .then(({ data }) => {
-        const row = data as unknown as { history?: CreditHistoryItem[] } | null;
-        setHistory(((row?.history ?? []) as CreditHistoryItem[]).slice().reverse());
+        const cfg = (data?.value ?? {}) as Partial<Record<Plan, Partial<PlanQuota>>>;
+        setPlanLimits({
+          haus: { ...DEFAULT_PLAN_QUOTAS.haus, ...(cfg.haus ?? {}) },
+          atelier: { ...DEFAULT_PLAN_QUOTAS.atelier, ...(cfg.atelier ?? {}) },
+          maison: { ...DEFAULT_PLAN_QUOTAS.maison, ...(cfg.maison ?? {}) },
+        });
       });
-  }, [designer, plan, credits.balance]);
-
-  const buyPack = async (pack: CreditPack) => {
-    if (!user || !designer) { toast.error("Bitte melde dich an."); return; }
-    if (!pack.stripe_price_id) return;
-    setBuyBusy(pack.id);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: {
-          mode: "credits", price_id: pack.stripe_price_id, credits: pack.credits,
-          success_url: `${window.location.origin}/studio/plan?credits=1`,
-          cancel_url: `${window.location.origin}/studio/plan`,
-          customer_email: user.email,
-        },
-      });
-      if (error) throw error;
-      const url = (data as { url?: string; message?: string })?.url;
-      if (url) window.location.href = url;
-      else toast.error((data as { message?: string })?.message ?? "Kauf konnte nicht gestartet werden.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBuyBusy(null);
-    }
-  };
+  }, []);
 
   useEffect(() => {
     void supabase.from("video_assets" as never)
@@ -242,22 +184,23 @@ export default function StudioPlan() {
   };
 
   const benefitsFor = (p: Plan): string[] => {
-    const pc = planCreditsAll[p] ?? 0;
     const l = planLimits[p];
-    const creditsLine = `${pc} Credits pro Monat${p === "haus" ? " (Editorial-Regie kostenlos, PAWN-Emblem im Abspann)" : " — Editorial-Regie bleibt immer kostenlos"}`;
-    const exampleLine = creditExample(pc, credits.costs);
-    const sigLine = `${fmt(l.signature_previews)} Signatur${l.signature_previews === 1 ? "-Vorschau" : "en"}${p === "maison" ? " + 1 Wunsch-Signatur" : ""}`;
-    return [creditsLine, exampleLine, sigLine, ...resolvedStaticBenefits[p]].filter(Boolean);
+    const videoLine = l.cinematic > 0 || l.cinematic < 0
+      ? `${fmtCount(l.videos, "Videos")} pro Monat, ${fmt(l.cinematic)} davon kinematisch${l.emblem ? "" : " — ohne PAWN-Emblem"}`
+      : `${fmtCount(l.videos, "Videos")} pro Monat in Editorial-Regie${l.emblem ? ", mit PAWN-Emblem im Abspann" : ""}`;
+    const shotLine = `${fmtCount(l.shots, "Model-Shots & Freisteller")} pro Monat`;
+    const sigLine = `${fmt(l.signature_previews)} Signatur${l.signature_previews === 1 ? "" : "en"}${p === "maison" ? " + 1 Wunsch-Signatur" : ""}`;
+    return [videoLine, shotLine, sigLine, ...resolvedStaticBenefits[p]].filter(Boolean);
   };
 
   return (
     <StudioShell title="Plan" eyebrow="Dein Haus im PAWN">
       <div className="max-w-2xl">
-        <p className="text-sm text-muted-foreground">
-          Drei Ausbaustufen. Wähle, was zu deinem Rhythmus passt — jederzeit monatlich kündbar.
+        <p className="palace-serif text-lg">
+          <strong>7 % bleiben immer 7 %. Pläne sind optional.</strong>
         </p>
-        <p className="mt-3 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-sm">
-          <strong>7% Provision bleibt immer 7%</strong>, unabhängig vom Plan. Pläne unterscheiden sich nur in Kontingent und KI-Werkzeugen.
+        <p className="mt-3 text-sm text-muted-foreground">
+          Drei Ausbaustufen, monatlich kündbar. Sie unterscheiden sich nur darin, wie viel du im Monat produzieren kannst — nie in deiner Provision.
         </p>
       </div>
 
@@ -265,43 +208,9 @@ export default function StudioPlan() {
         Aktuell: <span className="font-medium">{planLabel(plan)}</span>.
       </p>
 
-      {!credits.loading && (
-        <div className="mt-4 max-w-md border border-border bg-white p-5">
-          <CreditCircle balance={credits.balance} grant={credits.grant} />
-        </div>
-      )}
-
-      {history.length > 0 && (
-        <div className="mt-4 max-w-md border border-border bg-white p-5">
-          <p className="editorial-eyebrow">Verlauf diesen Monat</p>
-          <ul className="mt-3 space-y-1.5 text-sm">
-            {history.slice(0, 10).map((h, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 text-muted-foreground">
-                <span>{new Date(h.at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} · {ACTION_LABEL[h.action] ?? h.action}</span>
-                <span className={`tabular-nums ${h.credits > 0 ? "font-medium text-foreground" : ""}`}>{h.credits > 0 ? "+" : ""}{h.credits}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {packs.length > 0 && (
-        <div className="mt-4 max-w-2xl border border-border bg-white p-5">
-          <p className="editorial-eyebrow">Credits nachkaufen</p>
-          <p className="mt-1 text-sm text-muted-foreground">Zusätzlich zum monatlichen Guthaben — verfällt nicht zum Monatsende.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            {packs.map((p) => (
-              <div key={p.id} className="border border-border p-4 text-center">
-                <p className="font-serif text-2xl tabular-nums">{p.credits}</p>
-                <p className="text-xs text-muted-foreground">Credits</p>
-                <p className="mt-2 tabular-nums">{p.eur} €</p>
-                <button onClick={() => buyPack(p)} disabled={!p.stripe_price_id || buyBusy === p.id}
-                  className="mt-3 w-full border border-foreground bg-foreground px-3 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-background disabled:opacity-40">
-                  {!p.stripe_price_id ? "Bald verfügbar" : buyBusy === p.id ? "…" : "Kaufen"}
-                </button>
-              </div>
-            ))}
-          </div>
+      {!quota.loading && (
+        <div className="mt-4 max-w-md">
+          <MonthLine used={quota.used} limits={quota.limits} unlimited={quota.unlimited} />
         </div>
       )}
 

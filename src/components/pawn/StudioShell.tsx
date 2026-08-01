@@ -10,7 +10,7 @@ import { useCopilot } from "./CopilotDrawer";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
-import { useCredits, type Plan } from "@/features/campaign/quota";
+import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota";
 import { Begleiter } from "./Begleiter";
 
 import { useDisplayName } from "@/lib/displayName";
@@ -188,14 +188,14 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Guthaben dauerhaft sichtbar, egal auf welcher Studio-Seite — Verlauf liegt auf /studio/plan. */
+/** Kontingent dauerhaft sichtbar, egal auf welcher Studio-Seite — Details liegen auf /studio/plan. */
 function CreditsPill({ designerId, plan }: { designerId: string; plan: Plan }) {
-  const credits = useCredits(designerId, plan);
-  if (credits.loading) return null;
+  const quota = usePlanQuota(designerId, plan);
+  if (quota.loading) return null;
   return (
-    <Link to="/studio/plan" title="Guthaben & Verlauf"
+    <Link to="/studio/plan" title="Dein Monat"
       className="hidden items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tabular-nums tracking-wide hover:border-foreground sm:inline-flex">
-      {credits.balance} / {credits.grant} Credits
+      {formatQuota(quota.used.videos, quota.unlimited ? -1 : quota.limits.videos, "Videos")}
     </Link>
   );
 }
@@ -272,11 +272,11 @@ function Inner({ children, title, eyebrow, begleiterStep }: Props) {
   const { designer } = useMyDesigner();
   const { pathname } = useLocation();
   const plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const credits = useCredits(designer?.id, plan);
+  const quota = usePlanQuota(designer?.id, plan);
   return (
     <div className="flex min-h-screen bg-background">
       <LevelUpOverlay designerId={designer?.id} />
-      {designer && <Begleiter pathname={pathname} step={begleiterStep} plan={plan} credits={credits} />}
+      {designer && <Begleiter pathname={pathname} step={begleiterStep} plan={plan} quota={quota} />}
       {/* Desktop sidebar */}
       <div className="hidden lg:block sticky top-0 h-screen">
         <Sidebar />

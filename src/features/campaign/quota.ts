@@ -1,75 +1,116 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Plan = "haus" | "atelier" | "maison";
 
-/** Was jede Handlung kostet — editierbar unter /admin/ki, nichts hart im Code. */
-export interface CreditCosts {
-  product_shot?: number;
-  tryon_shot?: number;
-  tryon_clip?: number;
-  clip_standard?: number;
-  clip_premium?: number;
-  [key: string]: number | undefined;
+/** Was ein Haus pro Monat bekommt — in echten Dingen, nicht in Punkten. -1 = unbegrenzt. */
+export interface PlanQuota {
+  videos: number;
+  cinematic: number;
+  shots: number;
+  signature_previews: number;
+  emblem: boolean;
+  tier: number;
 }
 
-const DEFAULT_CREDIT_COSTS: CreditCosts = {
-  product_shot: 1, tryon_shot: 2, tryon_clip: 8, clip_standard: 5, clip_premium: 12,
+export type QuotaKind = "videos" | "cinematic" | "shots";
+
+export const DEFAULT_PLAN_QUOTAS: Record<Plan, PlanQuota> = {
+  haus: { videos: 3, cinematic: 0, shots: 5, signature_previews: 1, emblem: true, tier: 1 },
+  atelier: { videos: 15, cinematic: 8, shots: 25, signature_previews: 3, emblem: false, tier: 2 },
+  maison: { videos: 40, cinematic: 40, shots: -1, signature_previews: -1, emblem: false, tier: 3 },
 };
 
-const DEFAULT_PLAN_CREDITS: Record<Plan, number> = { haus: 30, atelier: 300, maison: 1200 };
-
-export interface CreditStatus {
+export interface QuotaStatus {
   plan: Plan;
-  balance: number;
-  grant: number;
-  consumed: number;
   loading: boolean;
+  /** Admins und unbegrenzte Stufen kennen keine Grenze. */
   unlimited: boolean;
-  costs: CreditCosts;
+  limits: PlanQuota;
+  used: Record<QuotaKind, number>;
+  /** Verbleibende Einheiten; -1 bedeutet unbegrenzt. */
+  left: (kind: QuotaKind) => number;
+  canDo: (kind: QuotaKind) => boolean;
+  /** "2 von 3 Videos · 4 von 5 Shots" — eine ruhige Zeile statt Guthabenstand. */
+  summary: string;
   refresh: () => Promise<void>;
-  /** Reicht das aktuelle Guthaben für eine Handlung mit diesen Kosten? Admins sind immer unbegrenzt. */
-  canAfford: (cost: number) => boolean;
 }
+
+interface LedgerHistoryItem { at: string; action: string; credits: number }
 
 function currentMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
-export function useCredits(designerId?: string | null, plan: Plan = "haus", isAdmin = false): CreditStatus {
-  const [balance, setBalance] = useState(0);
-  const [grant, setGrant] = useState(DEFAULT_PLAN_CREDITS[plan] ?? 0);
-  const [consumed, setConsumed] = useState(0);
-  const [costs, setCosts] = useState<CreditCosts>(DEFAULT_CREDIT_COSTS);
+function isCinematicAction(action: string): boolean {
+  return action.startsWith("clip");
+}
+
+function isShotAction(action: string): boolean {
+  return action === "product_shot" || action === "tryon_shot" || action === "staging_shot";
+}
+
+export function formatQuota(used: number, limit: number, noun: string): string {
+  if (limit < 0) return `unbegrenzt ${noun}`;
+  return `${Math.min(used, limit)} von ${limit} ${noun}`;
+}
+
+/**
+ * Monats-Kontingente statt Guthaben: was der Designer sieht, sind Videos und Shots,
+ * keine Punkte. Grenzen kommen aus ai_config.plan_limits, Verbrauch aus dem, was
+ * wirklich entstanden ist (video_assets) bzw. serverseitig gebucht wurde.
+ */
+export function usePlanQuota(designerId?: string | null, plan: Plan = "haus", isAdmin = false): QuotaStatus {
+  const [limits, setLimits] = useState<PlanQuota>(DEFAULT_PLAN_QUOTAS[plan]);
+  const [used, setUsed] = useState<Record<QuotaKind, number>>({ videos: 0, cinematic: 0, shots: 0 });
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!designerId) { setLoading(false); return; }
     setLoading(true);
     const month = currentMonth();
-    const [{ data: ledger }, { data: planCreditsCfg }, { data: costsCfg }] = await Promise.all([
-      supabase.from("credits_ledger" as never).select("balance, consumed").eq("designer_id", designerId).eq("month", month).maybeSingle(),
-      supabase.from("ai_config").select("value").eq("key", "plan_credits").maybeSingle(),
-      supabase.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle(),
+    const monthStart = `${month}-01T00:00:00.000Z`;
+
+    const [{ data: limitsCfg }, { data: ledger }, { count: videoCount }] = await Promise.all([
+      supabase.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle(),
+      supabase.from("credits_ledger" as never).select("history").eq("designer_id", designerId).eq("month", month).maybeSingle(),
+      supabase.from("video_assets" as never)
+        .select("id", { count: "exact", head: true })
+        .eq("designer_id", designerId)
+        .gte("created_at", monthStart),
     ]);
-    const planGrants = { ...DEFAULT_PLAN_CREDITS, ...((planCreditsCfg?.value as Partial<Record<Plan, number>>) ?? {}) };
-    const thisGrant = planGrants[plan] ?? 0;
-    setGrant(thisGrant);
-    const row = ledger as unknown as { balance?: number; consumed?: number } | null;
-    setBalance(row ? (row.balance ?? 0) : thisGrant);
-    setConsumed(row?.consumed ?? 0);
-    if (costsCfg?.value) setCosts({ ...DEFAULT_CREDIT_COSTS, ...(costsCfg.value as CreditCosts) });
+
+    const cfg = (limitsCfg?.value ?? {}) as Partial<Record<Plan, Partial<PlanQuota>>>;
+    setLimits({ ...DEFAULT_PLAN_QUOTAS[plan], ...(cfg[plan] ?? {}) });
+
+    const history = ((ledger as unknown as { history?: LedgerHistoryItem[] } | null)?.history ?? [])
+      .filter((h) => h.credits < 0);
+    setUsed({
+      videos: videoCount ?? 0,
+      cinematic: history.filter((h) => isCinematicAction(h.action)).length,
+      shots: history.filter((h) => isShotAction(h.action)).length,
+    });
     setLoading(false);
+  }, [designerId, plan]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const left = (kind: QuotaKind): number => {
+    const limit = limits[kind];
+    if (isAdmin || limit < 0) return -1;
+    return Math.max(0, limit - used[kind]);
   };
 
-  useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [designerId, plan]);
-
   return {
-    plan, balance, grant, consumed, loading,
+    plan,
+    loading,
     unlimited: isAdmin,
-    costs,
+    limits,
+    used,
+    left,
+    canDo: (kind) => isAdmin || limits[kind] < 0 || used[kind] < limits[kind],
+    summary: `${formatQuota(used.videos, isAdmin ? -1 : limits.videos, "Videos")} · ${formatQuota(used.shots, isAdmin ? -1 : limits.shots, "Shots")}`,
     refresh,
-    canAfford: (cost: number) => isAdmin || balance >= cost,
   };
 }
 
@@ -77,14 +118,10 @@ export function planLabel(plan: Plan): string {
   return plan === "haus" ? "Haus" : plan === "atelier" ? "Atelier" : "Maison";
 }
 
-/** "300 Credits ≈ 25 Freisteller + 8 Clips" — grobe, ehrliche Beispielrechnung für die Plan-Seite. */
-export function creditExample(credits: number, costs: CreditCosts): string {
-  const shotCost = costs.product_shot ?? 1;
-  const clipCost = costs.clip_standard ?? 5;
-  if (credits <= 0) return "";
-  const shots = Math.floor((credits * 0.6) / shotCost);
-  const remaining = credits - shots * shotCost;
-  const clips = Math.floor(remaining / clipCost);
-  const parts = [shots > 0 ? `${shots} Freisteller` : null, clips > 0 ? `${clips} Clips` : null].filter(Boolean);
-  return parts.length ? `${credits} Credits ≈ ${parts.join(" + ")}` : `${credits} Credits`;
+/** Sanfter Hinweis, wenn ein Kontingent endet — kein Dauerbanner. */
+export function quotaExhaustedHint(plan: Plan, noun: string): string {
+  const next = plan === "haus" ? "Atelier" : "Maison";
+  return plan === "maison"
+    ? `Dein Kontingent an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da.`
+    : `Dein Kontingent an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle ins ${next}.`;
 }
