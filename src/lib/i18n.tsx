@@ -235,6 +235,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(KEY, locale); } catch { /* noop */ }
     if (typeof document !== "undefined") document.documentElement.lang = locale;
   }, [locale]);
+
+  // Teil 22b: Alles, was nicht im Wörterbuch steht, wird automatisch übersetzt —
+  // egal auf welcher Seite und auch bei Texten, die später geändert werden.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (locale !== "en") { stopAutoTranslate(); return; }
+    seedMemory((Object.keys(de) as Key[]).map((k) => [de[k], en[k]] as [string, string]));
+    startAutoTranslate();
+    return () => stopAutoTranslate();
+  }, [locale]);
+
   const value = useMemo<I18nCtx>(() => ({
     locale,
     setLocale: setLocaleState,
