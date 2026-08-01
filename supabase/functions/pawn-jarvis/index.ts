@@ -2514,8 +2514,12 @@ Deno.serve(async (req) => {
       return ok({ ok: false, error: `Monatslimit erreicht ($${spent.toFixed(2)} von $${config.monthly_limit_usd.toFixed(2)}). Jarvis antwortet erst wieder nächsten Monat, oder wenn das Limit erhöht wird.` });
     }
 
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) return ok({ ok: false, error: "ANTHROPIC_API_KEY fehlt. Bitte in den Projekt-Secrets hinterlegen." });
+    // Ein Schlüssel genügt: Anthropic, das Lovable-Gateway oder OpenAI. Fällt einer aus,
+    // übernimmt der nächste (siehe llm()).
+    const apiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+    if (!apiKey && !Deno.env.get("LOVABLE_API_KEY") && !Deno.env.get("OPENAI_API_KEY")) {
+      return ok({ ok: false, error: "Kein Denkmodell hinterlegt (ANTHROPIC_API_KEY, LOVABLE_API_KEY oder OPENAI_API_KEY)." });
+    }
 
     const trigger = body.trigger === "cron" ? "cron" : "manual";
     const prompt = typeof body.prompt === "string" ? body.prompt : undefined;
