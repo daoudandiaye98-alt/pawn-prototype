@@ -232,7 +232,7 @@ export default function StudioHausseite() {
         <p className="editorial-eyebrow">Look deiner Seite</p>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Beschreib deine Welt in eigenen Worten — z. B. „ein verlassenes Hallenbad bei Neonlicht" oder „Großmutters Nähzimmer im Spätsommer".
-          PAWN übersetzt das zusammen mit deiner Marken-DNA in Farben, Schrift, Abstände, Bewegung und Kanten deiner Hausseite.
+          PAWN übersetzt das zusammen mit deiner Marken-DNA in Farben, Schrift, Abstände, Bewegung und Kanten deiner Markenseite.
           {currentTheme ? ' Verfeinere jederzeit mit einem weiteren Satz — „wärmer", „strenger", „mehr Luft".' : ""}
         </p>
 
