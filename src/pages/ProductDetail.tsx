@@ -397,7 +397,7 @@ const ProductDetail = () => {
                 {/* Size */}
                 {product.sizes.length > 1 && (
                   <div className="mt-6">
-                    <p className="house-ink palace-eyebrow">Format · <span>{size}</span></p>
+                    <p className="house-ink palace-eyebrow">{worldProfile(product.world).variantPublicLabel} · <span>{size}</span></p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {product.sizes.map((s) => {
                         const variant = sizeVariants.find((v) => v.size === s);
@@ -407,7 +407,7 @@ const ProductDetail = () => {
                             key={s}
                             onClick={() => !outOfStock && setSize(s)}
                             disabled={outOfStock}
-                            title={outOfStock ? "Diese Größe ist ausverkauft." : undefined}
+                            title={outOfStock ? worldProfile(product.world).variantSoldOut : undefined}
                             className={cn(
                               "house-ink border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300",
                               outOfStock && "cursor-not-allowed line-through opacity-40",
