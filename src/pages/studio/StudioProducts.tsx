@@ -818,7 +818,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-border bg-white px-8 py-4">
           <div className="text-xs text-muted-foreground">
-            {!complete && <span>Noch fehlt: {[nameMissing && "Name", priceMissing && "Preis", imageMissing && "Bild", materialMissing && "Material", weightMissing && "Versandgewicht"].filter(Boolean).join(", ")}.</span>}
+            {!complete && <span>Noch fehlt: {[nameMissing && "Name", priceMissing && "Preis", imageMissing && "Bild", materialMissing && editorProfile.materialLabel, weightMissing && "Versandgewicht"].filter(Boolean).join(", ")}.</span>}
           </div>
           <div className="flex items-center gap-3">
             <button onClick={onCancel} className="border border-border bg-white px-5 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Abbrechen</button>
