@@ -3,6 +3,9 @@ project_id = "rnakubexbqfgfciynqpt"
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.stripe-webhook-connect]
+verify_jwt = false
+
 [functions.seed-admin]
 verify_jwt = false
 
