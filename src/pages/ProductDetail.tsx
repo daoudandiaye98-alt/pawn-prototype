@@ -281,6 +281,9 @@ const ProductDetail = () => {
                     <span className="house-ink palace-eyebrow opacity-60 line-through">{formatPrice(Number(dbProduct.compare_at_price), locale)}</span>
                   )}
                 </div>
+                <p className="house-ink mt-2 text-[0.7rem] opacity-70">
+                  {vatNote(effectiveVatRate(dbProduct?.vat_rate as number | null, (dbProduct?.designers as { vat_rate?: number } | null)?.vat_rate ?? 19))} · zzgl. Versand
+                </p>
 
                 {/* Availability badges */}
                 <div className="mt-4 flex flex-wrap gap-2">
