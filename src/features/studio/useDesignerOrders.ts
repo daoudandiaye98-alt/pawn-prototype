@@ -137,6 +137,9 @@ export function useDesignerOrders(designerId: string | undefined) {
             shipping_country: o.shipping_country ?? null,
             invoice_number: o.invoice_number ?? null,
             last_email_error: o.last_email_error ?? null,
+            refunded_amount_cents: o.refunded_amount_cents ?? 0,
+            dispute_status: o.dispute_status ?? null,
+
             product_id: prod.id,
             product_name: prod.name,
             product_slug: prod.slug,
