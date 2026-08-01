@@ -99,12 +99,21 @@ Deno.serve(async (req) => {
             stripe_charge_id: charge.id,
             ...(full ? { status: "refunded" } : {}),
           }).eq("id", order.id);
+          // Bei Vollerstattung gibt PAWN die Provision zurück — sie wird auf dem
+          // Plattformkonto als Application Fee geführt und kann von dort erstattet werden.
+          const feeRef = (charge as unknown as { application_fee?: string | { id?: string } }).application_fee;
+          const feeId = typeof feeRef === "string" ? feeRef : feeRef?.id ?? null;
+          if (full && feeId) {
+            try { await stripe.applicationFees.createRefund(feeId); }
+            catch (e) { console.error("[stripe-webhook-connect] fee refund failed:", (e as Error).message); }
+          }
           await notifyHouse(
             order.id,
             full ? "Eine Bestellung wurde vollständig erstattet." : "Eine Bestellung wurde teilweise erstattet.",
             `Erstatteter Betrag: € ${(refunded / 100).toFixed(2)}. Details findest du in deinem Stripe-Konto.`,
           );
         }
+
         break;
       }
 
