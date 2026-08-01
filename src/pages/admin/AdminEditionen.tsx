@@ -19,7 +19,7 @@ interface DesignerLite { id: string; brand_name: string; house_number: number | 
 
 const STATUS_LABEL: Record<Status, string> = { pending: "Wartet", ready: "Bereit", approved: "Freigegeben", declined: "Abgelehnt", failed: "Fehlgeschlagen" };
 
-export default function Admingemeinsame Kampagnen() {
+export default function AdminEditionen() {
   const { user, roles, loading } = useAuth();
   const [editions, setEditions] = useState<EditionRow[]>([]);
   const [designers, setDesigners] = useState<DesignerLite[]>([]);
@@ -54,7 +54,7 @@ export default function Admingemeinsame Kampagnen() {
     return next;
   });
 
-  const creategemeinsame Kampagne = async () => {
+  const createEdition = async () => {
     if (!theme.trim()) return toast.error("Thema fehlt.");
     if (chosen.size < 2) return toast.error("Mindestens 2 Häuser wählen.");
     setCreating(true);
@@ -76,7 +76,7 @@ export default function Admingemeinsame Kampagnen() {
     }
   };
 
-  const startgemeinsame Kampagne = async (id: string) => {
+  const startEdition = async (id: string) => {
     setStarting(id);
     try {
       const { data, error } = await supabase.functions.invoke("generate-edition-video", { body: { edition_id: id } });
@@ -117,7 +117,7 @@ export default function Admingemeinsame Kampagnen() {
             </button>
           ))}
         </div>
-        <button onClick={creategemeinsame Kampagne} disabled={creating}
+        <button onClick={createEdition} disabled={creating}
           className="mt-4 border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] text-background disabled:opacity-50">
           {creating ? "Lege an…" : "Als Entwurf anlegen"}
         </button>
@@ -133,7 +133,7 @@ export default function Admingemeinsame Kampagnen() {
                 <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{e.world ?? "—"} · {e.status}</p>
               </div>
               {e.status === "draft" && (
-                <button onClick={() => startgemeinsame Kampagne(e.id)} disabled={starting === e.id}
+                <button onClick={() => startEdition(e.id)} disabled={starting === e.id}
                   className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
                   <Play className="h-3.5 w-3.5" /> {starting === e.id ? "Startet…" : "Produzieren starten"}
                 </button>

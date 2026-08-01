@@ -74,7 +74,7 @@ export default function StudioCampaigns() {
 
   useEffect(() => { void refresh(); void refreshEditions(); /* eslint-disable-next-line */ }, [designer?.id]);
 
-  const decidegemeinsame Kampagne = async (card: EditionCard, approve: boolean) => {
+  const decideEdition = async (card: EditionCard, approve: boolean) => {
     if (!designer) return;
     setEditionBusy(card.id);
     try {
@@ -174,11 +174,11 @@ export default function StudioCampaigns() {
                     PAWN hat dieses Video in deiner Bildsprache erzeugt. Nichts wird veröffentlicht, ohne dass du zustimmst.
                   </p>
                   <div className="mt-4 flex gap-2">
-                    <button onClick={() => decidegemeinsame Kampagne(card, true)} disabled={editionBusy === card.id}
+                    <button onClick={() => decideEdition(card, true)} disabled={editionBusy === card.id}
                       className="border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
                       Umsetzen
                     </button>
-                    <button onClick={() => decidegemeinsame Kampagne(card, false)} disabled={editionBusy === card.id}
+                    <button onClick={() => decideEdition(card, false)} disabled={editionBusy === card.id}
                       className="border border-border px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] hover:border-foreground disabled:opacity-50">
                       Verwerfen
                     </button>
