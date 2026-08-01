@@ -175,19 +175,20 @@ const Checkout = () => {
             <div className="my-5 h-px w-full bg-[rgba(0,0,0,.18)]" />
             <dl className="space-y-2 text-sm text-[#000000]">
               <div className="flex justify-between"><dt className="text-[#55534E]">Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
-              <div className="flex justify-between"><dt className="text-[#55534E]">Versand</dt><dd className="tabular-nums">€{shipping}</dd></div>
-              <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Gesamt</dt><dd className="tabular-nums">€{(subtotal + shipping).toLocaleString("de-DE")}</dd></div>
+              <div className="flex justify-between"><dt className="text-[#55534E]">Versand</dt><dd className="text-[0.8rem] text-[#55534E]">wird im nächsten Schritt gewählt</dd></div>
+              <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
             </dl>
             <button
               type="submit"
               className="mt-8 w-full border border-[#000000] bg-[#000000] px-6 py-4 text-[0.7rem] uppercase tracking-[0.32em] text-[#FFFFFF] transition-colors hover:bg-transparent hover:text-[#000000] disabled:opacity-40"
-              disabled={items.length === 0}
+              disabled={items.length === 0 || busy}
             >
-              Jetzt bezahlen
+              {busy ? "Öffnet Zahlung…" : "Jetzt bezahlen"}
             </button>
             <p className="mt-4 text-center text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
-              Verschlüsselt · nur zur Vorschau
+              Verschlüsselt · Zahlung über das Konto des Hauses
             </p>
+
           </aside>
         </form>
       </section>
