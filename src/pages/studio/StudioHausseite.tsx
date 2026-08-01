@@ -229,7 +229,7 @@ export default function StudioHausseite() {
 
 
       <div className="mt-8 border border-border bg-white p-5">
-        <p className="editorial-eyebrow">Thema deines Hauses</p>
+        <p className="editorial-eyebrow">Look deiner Seite</p>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Beschreib deine Welt in eigenen Worten — z. B. „ein verlassenes Hallenbad bei Neonlicht" oder „Großmutters Nähzimmer im Spätsommer".
           PAWN übersetzt das zusammen mit deiner Marken-DNA in Farben, Schrift, Abstände, Bewegung und Kanten deiner Hausseite.
@@ -298,7 +298,7 @@ export default function StudioHausseite() {
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.1fr]">
         <div className="space-y-4">
-          {blocks.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Bausteine. Füge oben einen hinzu.</p>}
+          {blocks.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Bausteine — nimm oben eine Vorlage oder füge einzelne hinzu.</p>}
           {blocks.map((b, i) => (
             <div key={b.id} className="border border-border bg-white p-4">
               <div className="flex items-center justify-between">
