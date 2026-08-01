@@ -122,7 +122,9 @@ export async function handleOrderPaid(
       const resendKey = Deno.env.get("RESEND_API_KEY");
       if (!resendKey) throw new Error("Kein RESEND_API_KEY hinterlegt.");
       const { data: cfg } = await admin.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
-      const fromAddr = ((cfg?.value ?? {}) as { email_from?: string }).email_from || "PAWN <hallo@pawn.vision>";
+      const cfgv = (cfg?.value ?? {}) as { email_from?: string; email_reply_to?: string };
+      const fromAddr = cfgv.email_from || "PAWN <hallo@pawn.vision>";
+      const replyTo = cfgv.email_reply_to || "pawnstudio.co@gmail.com";
       const locale = o.buyer_locale === "en" ? "en" : "de";
       const subject = locale === "en" ? "Your PAWN order is confirmed" : "Deine PAWN-Bestellung ist bestätigt";
       const text = locale === "en"
@@ -131,7 +133,7 @@ export async function handleOrderPaid(
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
-        body: JSON.stringify({ from: fromAddr, to: [o.customer_email], subject, text }),
+        body: JSON.stringify({ from: fromAddr, to: [o.customer_email], reply_to: replyTo, subject, text }),
       });
       if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
       await admin.from("orders").update({ confirmation_email_sent_at: new Date().toISOString(), last_email_error: null }).eq("id", o.id);
