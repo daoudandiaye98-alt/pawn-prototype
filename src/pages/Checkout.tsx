@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useCart } from "@/store/cart";
-import { useCommand, selectors } from "@/core";
-import * as commands from "@/core/commands";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,22 +17,35 @@ const METHODS = [
 type MethodKey = typeof METHODS[number]["key"];
 
 const Checkout = () => {
-  const { items, subtotal } = useCart();
-  const dispatch = useCommand();
+  const cart = useCart();
   const { user, profile } = useAuth();
   const { locale } = useI18n();
+  const [params] = useSearchParams();
   const [method, setMethod] = useState<MethodKey>("card");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done] = useState(false);
 
-  const shipping = 25;
+  // Ein Kauf gehört immer genau einem Haus — die Kasse zeigt nur dessen Stücke.
+  const houseKey = params.get("haus");
+  const items = useMemo(
+    () => (houseKey
+      ? cart.items.filter((i) => (i.product.designerSlug || i.product.designer) === houseKey)
+      : cart.items),
+    [cart.items, houseKey],
+  );
+  const subtotal = items.reduce((sum, i) => sum + i.product.price * i.qty, 0);
 
   async function placeOrderHandler(e: React.FormEvent) {
     e.preventDefault();
-    const label = [firstName, lastName].filter(Boolean).join(" ") || profile?.displayName || user?.email || "Gast";
+    if (items.length === 0 || busy) return;
+    void [firstName, lastName, profile, user];
+    setBusy(true);
 
     try {
+      const origin = window.location.origin;
+      const successSuffix = houseKey ? `&haus=${encodeURIComponent(houseKey)}` : "";
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
           items: items.map((i) => ({
@@ -42,38 +53,32 @@ const Checkout = () => {
             unit_amount: Math.round(i.product.price * 100),
             qty: i.qty,
             slug: i.product.slug,
+            size: i.size,
           })),
           customer_email: user?.email,
           locale,
+          success_url: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}${successSuffix}`,
+          cancel_url: `${origin}/cart?checkout=cancelled`,
         },
       });
+
       if (!error && data?.url) {
         window.location.href = data.url as string;
         return;
       }
-      // mixed_cart / designer_not_ready sind bewusste Sperren, kein technischer Ausfall —
-      // hier NICHT auf das interne Ledger zurückfallen, sondern die Meldung zeigen.
-      if (!error && (data?.error === "mixed_cart" || data?.error === "designer_not_ready")) {
+      // mixed_cart / designer_not_ready sind bewusste Sperren, kein technischer Ausfall.
+      if (!error && data?.error) {
         toast.error(data.message ?? "Kauf gerade nicht möglich.");
         return;
       }
-      if (error) toast.message("Zahlung wird gerade eingerichtet — deine Bestellung wird direkt vermerkt.");
-    } catch { /* fall through to internal ledger */ }
-
-    const result = dispatch(commands.placeOrder, {
-      identityId: selectors.defaultIdentityId,
-      customerLabel: label,
-      items: items.map((i) => ({
-        productId: i.product.id as never,
-        size: i.size,
-        qty: i.qty,
-        unitPrice: i.product.price,
-      })),
-      total: subtotal + shipping,
-    });
-    if (result.ok === false) { toast.error(result.reason); return; }
-    setDone(true);
+      toast.error("Die Zahlung konnte nicht gestartet werden. Bitte versuch es gleich noch einmal.");
+    } catch {
+      toast.error("Die Zahlung konnte nicht gestartet werden. Bitte versuch es gleich noch einmal.");
+    } finally {
+      setBusy(false);
+    }
   }
+
 
   if (done) {
     return (
