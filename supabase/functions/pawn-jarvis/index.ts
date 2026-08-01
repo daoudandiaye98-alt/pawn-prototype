@@ -61,7 +61,7 @@ type Mode =
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_jagd" | "akquise_jagd_lernen"
-  | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
+  | "akquise_import" | "akquise_kontakt" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
 
 type Zone = "gruen" | "gelb" | "rot";
@@ -831,22 +831,148 @@ async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): P
 
 // --- Selbstheilung (mode: 'diagnose') ---
 
-async function claudeComplete(apiKey: string, system: string, user: string, maxTokens = 300): Promise<{ text: string; tokens: number }> {
+// --- Die Modell-Kette: Anthropic zuerst, dann das Lovable-Gateway, dann OpenAI. -------------
+// Kein Jarvis-Lauf darf mehr sterben, nur weil ein Anbieter kein Guthaben hat oder bremst.
+// Der zuletzt erfolgreich genutzte Anbieter landet in jarvis_runs.provider_used.
+
+const GATEWAY_MODEL = "openai/gpt-5.6-sol";
+const OPENAI_FALLBACK_MODEL = "gpt-4o";
+
+let PROVIDER_USED: string | null = null;
+function providerUsed(): string | null { return PROVIDER_USED; }
+
+interface LlmCall {
+  system?: string;
+  user: string;
+  maxTokens?: number;
+  images?: string[];
+}
+
+interface LlmResult { text: string; tokens: number; provider: string | null; error: string | null }
+
+/** Bilder einmal laden, damit jeder Anbieter dieselben Bytes bekommt. */
+async function loadImages(urls: string[], max = 4): Promise<{ data: string; media_type: string }[]> {
+  const out: { data: string; media_type: string }[] = [];
+  for (const url of urls.slice(0, max)) {
+    const img = await fetchImageAsBase64(url);
+    if (img) out.push(img);
+  }
+  return out;
+}
+
+async function callAnthropic(
+  apiKey: string, call: LlmCall, images: { data: string; media_type: string }[],
+): Promise<LlmResult> {
+  const content: Record<string, unknown>[] = images.map((img) => ({
+    type: "image", source: { type: "base64", media_type: img.media_type, data: img.data },
+  }));
+  content.push({ type: "text", text: call.user });
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
+      body: JSON.stringify({
+        model: MODEL, max_tokens: call.maxTokens ?? 600,
+        ...(call.system ? { system: call.system } : {}),
+        messages: [{ role: "user", content }],
+      }),
     });
-    if (!res.ok) return { text: "", tokens: 0 };
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { text: "", tokens: 0, provider: null, error: `Anthropic ${res.status}: ${body.slice(0, 200)}` };
+    }
     const data = await res.json();
     const text = (data.content ?? []).filter((b: { type: string }) => b.type === "text").map((b: { text?: string }) => b.text ?? "").join("\n").trim();
     const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
-    return { text, tokens };
-  } catch {
-    return { text: "", tokens: 0 };
+    return { text, tokens, provider: "anthropic", error: null };
+  } catch (e) {
+    return { text: "", tokens: 0, provider: null, error: `Anthropic nicht erreichbar: ${(e as Error).message}` };
   }
 }
+
+/** OpenAI-kompatibler Aufruf — deckt das Lovable-Gateway und OpenAI direkt ab. */
+async function callOpenAiCompatible(
+  endpoint: string, headers: Record<string, string>, model: string, call: LlmCall,
+  images: { data: string; media_type: string }[], label: string,
+): Promise<LlmResult> {
+  const parts: Record<string, unknown>[] = images.map((img) => ({
+    type: "image_url", image_url: { url: `data:${img.media_type};base64,${img.data}` },
+  }));
+  parts.push({ type: "text", text: call.user });
+  const messages: Record<string, unknown>[] = [];
+  if (call.system) messages.push({ role: "system", content: call.system });
+  messages.push({ role: "user", content: parts });
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        model, messages,
+        ...(model.startsWith("openai/gpt-5") ? { reasoning_effort: "none" } : {}),
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { text: "", tokens: 0, provider: null, error: `${label} ${res.status}: ${body.slice(0, 200)}` };
+    }
+    const data = await res.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: { total_tokens?: number };
+    };
+    const text = (data.choices?.[0]?.message?.content ?? "").trim();
+    if (!text) return { text: "", tokens: 0, provider: null, error: `${label}: leere Antwort` };
+    return { text, tokens: data.usage?.total_tokens ?? 0, provider: label, error: null };
+  } catch (e) {
+    return { text: "", tokens: 0, provider: null, error: `${label} nicht erreichbar: ${(e as Error).message}` };
+  }
+}
+
+/**
+ * Ein Denkaufruf mit Rückfallkette. Gibt immer eine Antwort oder eine klare Fehlermeldung —
+ * nie eine Ausnahme. Bilder werden nur einmal geladen, egal wie viele Anbieter probiert werden.
+ */
+async function llm(call: LlmCall): Promise<LlmResult> {
+  const images = call.images?.length ? await loadImages(call.images) : [];
+  if (call.images?.length && images.length === 0) {
+    return { text: "", tokens: 0, provider: null, error: "Keine der Bild-URLs war ladbar." };
+  }
+
+  const errors: string[] = [];
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (anthropicKey) {
+    const r = await callAnthropic(anthropicKey, call, images);
+    if (!r.error && r.text) { PROVIDER_USED = r.provider; return r; }
+    if (r.error) errors.push(r.error);
+  }
+
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (lovableKey) {
+    const r = await callOpenAiCompatible(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      { "Lovable-API-Key": lovableKey }, GATEWAY_MODEL, call, images, "gateway",
+    );
+    if (!r.error && r.text) { PROVIDER_USED = r.provider; return r; }
+    if (r.error) errors.push(r.error);
+  }
+
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openaiKey) {
+    const r = await callOpenAiCompatible(
+      "https://api.openai.com/v1/chat/completions",
+      { Authorization: `Bearer ${openaiKey}` }, OPENAI_FALLBACK_MODEL, call, images, "openai",
+    );
+    if (!r.error && r.text) { PROVIDER_USED = r.provider; return r; }
+    if (r.error) errors.push(r.error);
+  }
+
+  return { text: "", tokens: 0, provider: null, error: errors.join(" | ") || "Kein Denkmodell konfiguriert." };
+}
+
+async function claudeComplete(_apiKey: string, system: string, user: string, maxTokens = 300): Promise<{ text: string; tokens: number }> {
+  const r = await llm({ system, user, maxTokens });
+  return { text: r.text, tokens: r.tokens };
+}
+
 
 function extractJson(text: string): unknown | null {
   const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
@@ -870,32 +996,15 @@ async function fetchImageAsBase64(url: string): Promise<{ data: string; media_ty
   }
 }
 
-/** Ruft Claude mit Bildern + Text auf und erwartet reines JSON als Antwort. Ohne ladbare Bilder: null. */
+/** Bildbewertung mit JSON-Antwort — über die Modell-Kette. Ohne ladbare Bilder: null. */
 async function claudeVisionJson(
-  apiKey: string, prompt: string, images: string[], maxTokens = 500,
+  _apiKey: string, prompt: string, images: string[], maxTokens = 500,
 ): Promise<{ json: Record<string, unknown> | null; tokens: number }> {
-  const content: Record<string, unknown>[] = [];
-  for (const url of images.slice(0, 4)) {
-    const img = await fetchImageAsBase64(url);
-    if (img) content.push({ type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } });
-  }
-  if (content.length === 0) return { json: null, tokens: 0 };
-  content.push({ type: "text", text: prompt });
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, messages: [{ role: "user", content }] }),
-    });
-    if (!res.ok) return { json: null, tokens: 0 };
-    const data = await res.json();
-    const text = (data.content ?? []).filter((b: { type: string }) => b.type === "text").map((b: { text?: string }) => b.text ?? "").join("\n");
-    const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
-    return { json: extractJson(text) as Record<string, unknown> | null, tokens };
-  } catch {
-    return { json: null, tokens: 0 };
-  }
+  const r = await llm({ user: prompt, images, maxTokens });
+  if (r.error || !r.text) return { json: null, tokens: r.tokens };
+  return { json: extractJson(r.text) as Record<string, unknown> | null, tokens: r.tokens };
 }
+
 
 async function runDiagnose(admin: SupabaseClient, asCaller: SupabaseClient, apiKey: string): Promise<{ healed: string[]; needed: string[]; tokensUsed: number }> {
   const healed: string[] = [];
@@ -1293,21 +1402,13 @@ function huntInput(q: HuntQuery, config: AkquiseConfig): { actorId: string; inpu
 
 /** Ein einzelner Claude-Aufruf ohne Werkzeuge, der JSON zurückgibt. */
 async function claudeJsonOnce(
-  apiKey: string, system: string, user: string, maxTokens = 900,
+  _apiKey: string, system: string, user: string, maxTokens = 900,
 ): Promise<{ json: Record<string, unknown> | null; tokens: number }> {
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
-    });
-    if (!res.ok) return { json: null, tokens: 0 };
-    const data = await res.json() as AnthropicResponse;
-    const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
-    const text = data.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
-    return { json: extractJson(text) as Record<string, unknown> | null, tokens };
-  } catch { return { json: null, tokens: 0 }; }
+  const r = await llm({ system, user, maxTokens });
+  if (r.error || !r.text) return { json: null, tokens: r.tokens };
+  return { json: extractJson(r.text) as Record<string, unknown> | null, tokens: r.tokens };
 }
+
 
 /** Destilliert Suchbegriffe aus der Brand-DNA bestehender Häuser und der Ontologie. */
 async function destillHuntQueries(admin: SupabaseClient, apiKey: string): Promise<{ queries: HuntQuery[]; tokens: number }> {
@@ -1358,8 +1459,7 @@ async function runAkquiseJagd(admin: SupabaseClient, apiKey: string | null): Pro
   let queries = config.hunt_queries ?? [];
   let tokensUsed = 0;
   if (!queries.length) {
-    if (!apiKey) return { ok: true, started: 0, message: "Keine Suchbegriffe hinterlegt und kein ANTHROPIC_API_KEY für die Destillation." };
-    const distilled = await destillHuntQueries(admin, apiKey);
+    const distilled = await destillHuntQueries(admin, apiKey ?? "");
     tokensUsed = distilled.tokens;
     queries = distilled.queries;
     if (!queries.length) return { ok: false, error: "Konnte keine Suchbegriffe destillieren." };
@@ -1425,8 +1525,11 @@ function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: str
   const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
   const bio = String(item.biography ?? item.bio ?? "").trim() || null;
   const email = extractBusinessEmail(item, bio);
+  const links = Array.isArray(item.bioLinks) ? item.bioLinks as Array<{ url?: string }> : [];
+  const website = String(item.externalUrl ?? item.website ?? links[0]?.url ?? "").trim() || null;
   return {
-    handle, world, source, followers, bio, email,
+    handle, world, source, followers, bio, email, website,
+    contact_source: email ? "bio" : null,
     channel: email ? "email" : "dm", scrape_images: extractScrapeImages(item), status: "neu",
     hunt_id: huntId, discovery_source: source,
   };
@@ -1462,6 +1565,50 @@ async function insertLeads(
  * filtert Dubletten und offensichtliche Fehltreffer heraus und legt den Rest als Lead 'neu' an.
  * Ohne offene Jagden fällt er auf das alte Verhalten zurück (letzter Lauf eines fest konfigurierten Actors).
  */
+/**
+ * akquise_kontakt — sucht für qualifizierte Leads ohne E-Mail eine Kontaktadresse auf ihrer
+ * eigenen Website (Startseite, /kontakt, /impressum, /contact, /about). Reines Lesen, kein LLM.
+ * Findet er nichts, bleibt der Lead ein DM-Fall im Sende-Stapel.
+ */
+async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, website")
+    .eq("status", "qualifiziert").is("email", null).not("website", "is", null).limit(15);
+
+  const paths = ["", "/kontakt", "/impressum", "/contact", "/about"];
+  const bad = /(wixpress|sentry|example|godaddy|squarespace|shopify|\.png|\.jpg)/i;
+  let found = 0, checked = 0;
+
+  for (const lead of (leads ?? []) as { id: string; handle: string; website: string }[]) {
+    checked++;
+    let base: URL;
+    try { base = new URL(lead.website.startsWith("http") ? lead.website : `https://${lead.website}`); }
+    catch { continue; }
+
+    let email: string | null = null;
+    for (const path of paths) {
+      try {
+        const res = await fetch(new URL(path, base).toString(), {
+          headers: { "User-Agent": "PAWN-Jarvis/1.0 (+https://pawn.vision)" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) continue;
+        const html = (await res.text()).slice(0, 400_000);
+        const hits = html.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [];
+        const clean = hits.map((h) => h.toLowerCase()).filter((h) => !bad.test(h));
+        if (clean.length) { email = clean[0]; break; }
+      } catch { /* eine unerreichbare Seite ist kein Fehler */ }
+    }
+
+    if (email) {
+      await admin.from("acquisition_leads")
+        .update({ email, channel: "email", contact_source: "website" }).eq("id", lead.id);
+      found++;
+    }
+  }
+  return { ok: true, geprueft: checked, gefunden: found };
+}
+
 async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const token = Deno.env.get("APIFY_TOKEN");
   if (!token) return { ok: true, imported: 0, skipped: 0, message: "Kein APIFY_TOKEN hinterlegt — Import übersprungen." };
@@ -1520,7 +1667,8 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
     let items: Record<string, unknown>[];
     try {
       const res = await fetch(url);
-      if (!res.ok) return { ok: false, error: `Apify ${res.status}: konnte letzten Lauf nicht lesen.` };
+      // Kein früherer Lauf vorhanden ist kein Fehler — nur nichts zu holen.
+      if (!res.ok) return { ok: true, imported: 0, skipped: 0, message: `Kein abholbarer Apify-Lauf (${res.status}).` };
       items = await res.json();
     } catch (e) {
       return { ok: false, error: `Apify nicht erreichbar: ${(e as Error).message}` };
@@ -1665,6 +1813,23 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
 
+  // Ohne Anthropic-Schlüssel (oder wenn er nicht antwortet) schreibt die Modell-Kette den Entwurf
+  // ohne Websuche — lieber eine gute Nachricht ohne Recherche als gar keine.
+  const fallbackDraft = async (): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> => {
+    const r = await llm({
+      system,
+      user: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}. Keine Websuche verfügbar — stütze dich allein auf Handle, Welt und Bio.`,
+      maxTokens: 700,
+    });
+    if (r.error || !r.text) return null;
+    const json = extractJson(r.text) as { personal_line?: string; message?: string; language?: string } | null;
+    if (!json?.personal_line || !json?.message) return null;
+    const language = allowed.includes(json.language ?? "") ? json.language! : "de";
+    return { personal_line: json.personal_line, message: json.message, language, tokens: tokens + r.tokens };
+  };
+
+  if (!apiKey) return await fallbackDraft();
+
   for (let turn = 0; turn < 5; turn++) {
     let data: AnthropicResponse;
     try {
@@ -1673,10 +1838,10 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({ model: MODEL, max_tokens: 700, system, tools: minimalTools, messages }),
       });
-      if (!res.ok) return null;
+      if (!res.ok) return await fallbackDraft();
       data = await res.json();
     } catch {
-      return null;
+      return await fallbackDraft();
     }
     tokens += (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
     if (data.stop_reason !== "tool_use") {
@@ -1686,9 +1851,10 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
         const language = allowed.includes(json.language ?? "") ? json.language! : "de";
         return { personal_line: json.personal_line, message: json.message, language, tokens };
       }
-      return null;
+      return await fallbackDraft();
     }
     messages.push({ role: "assistant", content: data.content });
+
     const toolResults = data.content
       .filter((b) => b.type === "tool_use")
       .map((b) => ({ type: "tool_result", tool_use_id: (b as { id?: string }).id, content: "kein Werkzeug verfügbar" }));
@@ -2252,7 +2418,7 @@ Deno.serve(async (req) => {
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen",
-      "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_import", "akquise_kontakt", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
     if (!validModes.includes(mode)) {
@@ -2265,7 +2431,7 @@ Deno.serve(async (req) => {
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen",
-      "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_import", "akquise_kontakt", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
@@ -2288,6 +2454,12 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Aufräumen: Läufe, die vor über 30 Minuten begonnen haben und nie fertig wurden, sind tot.
+    // Sie blockierten bisher den Cron-Wächter ("laeuft_bereits"). Wir schließen sie ehrlich ab.
+    await admin.from("jarvis_runs")
+      .update({ status: "failed", finished_at: new Date().toISOString(), error: "abgebrochen (Zeitüberschreitung)" })
+      .eq("status", "running").lt("started_at", new Date(Date.now() - 30 * 60_000).toISOString());
+
     // --- Herzschlag: eigener, kostenloser Pfad ohne LLM-Aufruf (enthält auch den Evolutions-Kreislauf) ---
     if (mode === "heartbeat") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "cron", mode, status: "running" }).select("id").single();
@@ -2295,7 +2467,7 @@ Deno.serve(async (req) => {
       const result = await runHeartbeat(admin, runId);
       const parts = [result.skipped ? `Herzschlag übersprungen (${result.skipped})` : `Herzschlag: ${result.created ?? 0} neue Meldung(en)`];
       if (result.evolution) parts.push(result.evolution);
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary: parts.join(" · "), tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
       return ok({ ok: true, run_id: runId, ...result });
@@ -2332,7 +2504,7 @@ Deno.serve(async (req) => {
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runBrollEinsammeln(admin);
       const summary = `${(result as { collected?: number }).collected ?? 0} eingesammelt, ${(result as { failed?: number }).failed ?? 0} gescheitert, ${(result as { still_running?: number }).still_running ?? 0} noch offen.`;
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
       return ok({ run_id: runId, ...result });
@@ -2346,7 +2518,7 @@ Deno.serve(async (req) => {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: "manual", mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runEvolution(admin);
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary: result.summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
       return ok({ ok: true, run_id: runId, ...result });
@@ -2365,7 +2537,7 @@ Deno.serve(async (req) => {
       const summary = mode === "akquise_jagd"
         ? `Jagd: ${(result as { started?: number }).started ?? 0} Suchlauf/Suchläufe gestartet${(result as { message?: string }).message ? ` · ${(result as { message?: string }).message}` : ""}`
         : `Jagd-Auswertung: ${(result as { ausgewertet?: number }).ausgewertet ?? 0} Begriffe, ${(result as { aussortiert?: number }).aussortiert ?? 0} aussortiert`;
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
         tokens_used: tokensUsed, cost_estimate: (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2),
@@ -2374,15 +2546,21 @@ Deno.serve(async (req) => {
     }
 
     // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
-    if (mode === "akquise_import" || mode === "akquise_senden") {
+    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt") {
       const trig = body.trigger === "cron" ? "cron" : "manual";
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
-      const result = mode === "akquise_import" ? await runAkquiseImport(admin) : await runAkquiseSenden(admin, (await loadJarvisZones(admin)).akquise_senden ?? "rot");
+      const result = mode === "akquise_import"
+        ? await runAkquiseImport(admin)
+        : mode === "akquise_kontakt"
+          ? await runAkquiseKontakt(admin)
+          : await runAkquiseSenden(admin, (await loadJarvisZones(admin)).akquise_senden ?? "rot");
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
-        : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
-      if (runId) await admin.from("jarvis_runs").update({
+        : mode === "akquise_kontakt"
+          ? `Kontaktsuche: ${(result as { gefunden?: number }).gefunden ?? 0} Adressen bei ${(result as { geprueft?: number }).geprueft ?? 0} Häusern`
+          : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
         tokens_used: 0, cost_estimate: 0,
@@ -2395,8 +2573,12 @@ Deno.serve(async (req) => {
       return ok({ ok: false, error: `Monatslimit erreicht ($${spent.toFixed(2)} von $${config.monthly_limit_usd.toFixed(2)}). Jarvis antwortet erst wieder nächsten Monat, oder wenn das Limit erhöht wird.` });
     }
 
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) return ok({ ok: false, error: "ANTHROPIC_API_KEY fehlt. Bitte in den Projekt-Secrets hinterlegen." });
+    // Ein Schlüssel genügt: Anthropic, das Lovable-Gateway oder OpenAI. Fällt einer aus,
+    // übernimmt der nächste (siehe llm()).
+    const apiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+    if (!apiKey && !Deno.env.get("LOVABLE_API_KEY") && !Deno.env.get("OPENAI_API_KEY")) {
+      return ok({ ok: false, error: "Kein Denkmodell hinterlegt (ANTHROPIC_API_KEY, LOVABLE_API_KEY oder OPENAI_API_KEY)." });
+    }
 
     const trigger = body.trigger === "cron" ? "cron" : "manual";
     const prompt = typeof body.prompt === "string" ? body.prompt : undefined;
@@ -2415,7 +2597,7 @@ Deno.serve(async (req) => {
         kind: "diagnose", title, body: reportBody, data: { healed, needed },
       }).select("id, kind, title, body, created_at").single();
 
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary: title, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
 
@@ -2431,7 +2613,7 @@ Deno.serve(async (req) => {
       const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
       const summary = (result as { drafted?: boolean }).drafted ? "Bauauftrags-Entwurf geschrieben." : ((result as { message?: string }).message ?? "Kein Entwurf nötig.");
 
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
@@ -2448,7 +2630,7 @@ Deno.serve(async (req) => {
       const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
       const summary = `Regie: ${(result as { weighted_houses?: number }).weighted_houses ?? 0} Häuser ausgewertet${(result as { edition_proposed?: boolean }).edition_proposed ? ", 1 Edition vorgeschlagen" : ""}`;
 
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
 
@@ -2471,7 +2653,7 @@ Deno.serve(async (req) => {
 
       const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
       const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
@@ -2495,7 +2677,7 @@ Deno.serve(async (req) => {
     const costEstimate = (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2);
 
     if (error) {
-      if (runId) await admin.from("jarvis_runs").update({
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "failed", error, tokens_used: tokensUsed, cost_estimate: costEstimate,
       }).eq("id", runId);
       return ok({ ok: false, error, run_id: runId });
@@ -2505,7 +2687,7 @@ Deno.serve(async (req) => {
       kind: reportKind, title, body: text || "Keine Antwort erhalten.", data: { mode, prompt: prompt ?? null },
     }).select("id, kind, title, body, created_at").single();
 
-    if (runId) await admin.from("jarvis_runs").update({
+    if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
       finished_at: new Date().toISOString(), status: "done",
       summary: title, tokens_used: tokensUsed, cost_estimate: costEstimate,
     }).eq("id", runId);
@@ -2514,7 +2696,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     const message = (e as Error).message ?? String(e);
     if (runId) {
-      await admin.from("jarvis_runs").update({
+      await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "failed", error: message,
       }).eq("id", runId).catch(() => {});
     }

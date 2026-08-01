@@ -7,6 +7,7 @@ import { Navigate, useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { GenomeCard } from "@/components/palace/GenomeCard";
 import { JagdPanel } from "@/features/admin/JagdPanel";
+import { PruefStapel } from "@/features/admin/PruefStapel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -47,6 +48,11 @@ interface Lead {
   qc_passed: boolean | null;
   next_touch_at: string | null;
   opt_out: boolean;
+  website: string | null;
+  contact_source: string | null;
+  admin_decision: string | null;
+  decided_at: string | null;
+  scrape_images: unknown;
 }
 
 const WORLDS: World[] = ["Mode", "Kunst", "Interior"];
@@ -528,7 +534,8 @@ function buildStapel(rows: Lead[]): StapelItem[] {
   const items: StapelItem[] = [];
   for (const r of rows) {
     if (r.channel !== "dm" || r.opt_out) continue;
-    if (r.status === "qualifiziert" && r.message_draft) {
+    // Erstkontakt erst nach deinem Ja im Prüf-Stapel — nie automatisch.
+    if (r.status === "qualifiziert" && r.message_draft && r.admin_decision === "ja") {
       items.push({ lead: r, kind: "erstkontakt", text: r.message_draft });
     } else if (r.status === "kontaktiert" && !r.followup_at && r.next_touch_at && new Date(r.next_touch_at).getTime() <= now) {
       items.push({ lead: r, kind: "followup", text: FOLLOWUP_MESSAGE });
@@ -696,6 +703,8 @@ export default function AdminAkquise() {
       </div>
 
       <JagdPanel />
+
+      <PruefStapel rows={rows} onChange={(id, patch) => patchRow(id, patch as Partial<Lead>)} />
 
       <SendeStapel rows={rows} onChange={patchRow} />
 

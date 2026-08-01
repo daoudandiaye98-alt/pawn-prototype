@@ -28,6 +28,7 @@ export type Database = {
           qualified_count: number
           query: string
           query_type: string
+          source: string
           status: string
           world: string
         }
@@ -44,6 +45,7 @@ export type Database = {
           qualified_count?: number
           query: string
           query_type?: string
+          source?: string
           status?: string
           world?: string
         }
@@ -60,6 +62,7 @@ export type Database = {
           qualified_count?: number
           query?: string
           query_type?: string
+          source?: string
           status?: string
           world?: string
         }
@@ -67,11 +70,14 @@ export type Database = {
       }
       acquisition_leads: {
         Row: {
+          admin_decision: string | null
           bio: string | null
           channel: string | null
           clips: Json | null
+          contact_source: string | null
           contacted_at: string | null
           created_at: string | null
+          decided_at: string | null
           discovery_source: string | null
           email: string | null
           followers: number | null
@@ -93,14 +99,18 @@ export type Database = {
           status: string
           updated_at: string | null
           warmed_at: string | null
+          website: string | null
           world: string | null
         }
         Insert: {
+          admin_decision?: string | null
           bio?: string | null
           channel?: string | null
           clips?: Json | null
+          contact_source?: string | null
           contacted_at?: string | null
           created_at?: string | null
+          decided_at?: string | null
           discovery_source?: string | null
           email?: string | null
           followers?: number | null
@@ -122,14 +132,18 @@ export type Database = {
           status?: string
           updated_at?: string | null
           warmed_at?: string | null
+          website?: string | null
           world?: string | null
         }
         Update: {
+          admin_decision?: string | null
           bio?: string | null
           channel?: string | null
           clips?: Json | null
+          contact_source?: string | null
           contacted_at?: string | null
           created_at?: string | null
+          decided_at?: string | null
           discovery_source?: string | null
           email?: string | null
           followers?: number | null
@@ -151,6 +165,7 @@ export type Database = {
           status?: string
           updated_at?: string | null
           warmed_at?: string | null
+          website?: string | null
           world?: string | null
         }
         Relationships: [
@@ -1907,6 +1922,7 @@ export type Database = {
           finished_at: string | null
           id: string
           mode: string | null
+          provider_used: string | null
           started_at: string
           status: string
           summary: string | null
@@ -1919,6 +1935,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           mode?: string | null
+          provider_used?: string | null
           started_at?: string
           status?: string
           summary?: string | null
@@ -1931,6 +1948,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           mode?: string | null
+          provider_used?: string | null
           started_at?: string
           status?: string
           summary?: string | null
