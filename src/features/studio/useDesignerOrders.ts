@@ -77,7 +77,7 @@ export function useDesignerOrders(designerId: string | undefined) {
     (async () => {
       setLoading(true);
       const { data: prods } = await supabase.from("products")
-        .select("id, slug, name, designer_id, price")
+        .select("id, slug, name, designer_id, price, weight_grams, length_cm, width_cm, height_cm")
         .eq("designer_id", designerId);
       const myProds = ((prods ?? []) as RawProduct[]);
       const slugSet = new Set(myProds.map((p) => p.slug));
@@ -138,6 +138,10 @@ export function useDesignerOrders(designerId: string | undefined) {
             unit_price: unit,
             size: (it.size as string | undefined) ?? null,
             variant: (it.variant as Record<string, string> | undefined) ?? null,
+            weight_grams: prod.weight_grams ?? null,
+            length_cm: prod.length_cm ?? null,
+            width_cm: prod.width_cm ?? null,
+            height_cm: prod.height_cm ?? null,
           });
         }
       }
