@@ -161,7 +161,7 @@ export function hookTypo(hookLine: string): Scene {
       const gi = Math.min(groups.length - 1, Math.floor(t / perGroup));
       const localT = (t - gi * perGroup) / perGroup;
       const dark = gi % 2 === 0;
-      fill(ctx, dark ? "#0a0a0a" : "#fff", W, H);
+      fill(ctx, dark ? "#000000" : "#fff", W, H);
       const text = (groups[gi] || []).join(" ");
       const alpha = Math.min(1, easeOutCubic(localT * 2.2));
       const x = indentX(W);
@@ -177,7 +177,7 @@ export function hookTypo(hookLine: string): Scene {
       lines.forEach((line, i) => {
         drawText(ctx, line, x, y0 + i * lineH, {
           size, family: serif, weight: 600, align: "left",
-          color: dark ? "#fff" : "#0a0a0a", alpha,
+          color: dark ? "#fff" : "#000000", alpha,
         });
       });
       // Hairline frame (respects safe zones aesthetically)

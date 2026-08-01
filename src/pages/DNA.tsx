@@ -61,11 +61,11 @@ function SignalCard({ signal, onCorrect }: { signal: Signal; onCorrect: () => vo
         <button
           type="button"
           onClick={onCorrect}
-          className="palace-eyebrow uline text-[#6B6862] hover:text-[#000000] motion-micro"
+          className="palace-eyebrow uline text-black/60 hover:text-[#000000] motion-micro"
         >
           Stimmt nicht →
         </button>
-        <span className="text-[0.6rem] uppercase tracking-[0.32em] text-[#8F8B82]">
+        <span className="text-[0.6rem] uppercase tracking-[0.32em] text-black/50">
           {new Date(signal.at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
         </span>
       </div>
@@ -96,7 +96,7 @@ function EmptyInvitation() {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={"z.B. \u201eich mag ruhige, skulpturale Mode\u201c"}
-          className="flex-1 bg-transparent px-2 py-2 text-[0.95rem] text-[#000000] placeholder:text-[#8F8B82] focus:outline-none"
+          className="flex-1 bg-transparent px-2 py-2 text-[0.95rem] text-[#000000] placeholder:text-black/50 focus:outline-none"
         />
         <button type="submit" className="palace-eyebrow uline text-[#000000]">Los →</button>
       </form>
@@ -246,7 +246,7 @@ export default function DNA() {
                 <Link to="/auth" className="palace-eyebrow uline mt-6 inline-block text-[#000000]">Anmelden →</Link>
               </div>
             ) : loading && !hasSignals ? (
-              <p className="palace-eyebrow text-[#6B6862]">Lade Signale…</p>
+              <p className="palace-eyebrow text-black/60">Lade Signale…</p>
             ) : hasSignals ? (
               <div className="grid gap-x-16 md:grid-cols-2">
                 {signals.map((s) => (
@@ -263,7 +263,7 @@ export default function DNA() {
               <button
                 type="button"
                 onClick={() => { void refresh(); }}
-                className="palace-eyebrow uline text-[#6B6862] hover:text-[#000000]"
+                className="palace-eyebrow uline text-black/60 hover:text-[#000000]"
               >
                 Neu laden →
               </button>
@@ -307,7 +307,7 @@ export default function DNA() {
       <section className="border-t border-[rgba(0,0,0,.18)] bg-[#000000] px-6 py-24 text-[#FFFFFF] md:px-14 md:py-32">
         <div className="mx-auto grid max-w-[1200px] gap-16 md:grid-cols-[1fr_1.4fr]">
           <div>
-            <p className="palace-eyebrow" style={{ color: "#A8A49B" }}>Vertrauen</p>
+            <p className="palace-eyebrow" style={{ color: "#000000" }}>Vertrauen</p>
             <h2
               className="palace-serif mt-8 font-light"
               style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", lineHeight: 1.05, color: "#FFFFFF" }}

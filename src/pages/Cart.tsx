@@ -100,9 +100,9 @@ const Cart = () => {
                     <Link to={`/product/${i.product.slug}`} className="palace-serif mt-2 block text-[1.4rem] italic text-[#000000] hover:underline">
                       {i.product.name}
                     </Link>
-                    <p className="mt-1 text-[0.85rem] text-[#55534E]">{t("cart.size")} {i.size}</p>
+                    <p className="mt-1 text-[0.85rem] text-black/70">{t("cart.size")} {i.size}</p>
                     {max !== undefined && Number.isFinite(max) && (
-                      <p className="mt-1 text-[0.6rem] uppercase tracking-[0.28em] text-[#8F8B82]">
+                      <p className="mt-1 text-[0.6rem] uppercase tracking-[0.28em] text-black/50">
                         {max === 0 ? t("cart.outOfStock") : t("cart.inStock", { n: max })}
                       </p>
                     )}
@@ -122,7 +122,7 @@ const Cart = () => {
                   <div className="text-right">
                     <p className="palace-serif italic text-[1.15rem] tabular-nums text-[#000000]">{formatPrice(i.product.price * i.qty, locale)}</p>
                     <button onClick={() => remove(i.product.id, i.size)}
-                      className="mt-3 inline-flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] text-[#55534E] hover:text-[#000000]">
+                      className="mt-3 inline-flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] text-black/70 hover:text-[#000000]">
                       <X className="h-3 w-3" /> {t("cart.remove")}
                     </button>
                   </div>
@@ -141,7 +141,7 @@ const Cart = () => {
               />
             )}
             {houses.length > 1 && (
-              <p className="border border-[rgba(0,0,0,.18)] bg-white px-6 py-4 text-[0.85rem] leading-relaxed text-[#55534E]">
+              <p className="border border-[rgba(0,0,0,.18)] bg-white px-6 py-4 text-[0.85rem] leading-relaxed text-black/70">
                 Jedes Haus verkauft selbst — darum eine Zahlung pro Haus. Was du nicht bezahlst, bleibt im Warenkorb liegen.
               </p>
             )}
@@ -153,7 +153,7 @@ const Cart = () => {
                 <div className="p-6 md:p-8">
                   <dl className="space-y-3 text-[0.95rem] text-[#000000]">
                     <Row label={t("cart.subtotal")} value={formatPrice(house.subtotal, locale)} />
-                    <Row label={t("cart.shipping")} value={<span className="text-[0.8rem] text-[#55534E]">wird beim Bezahlen berechnet</span>} />
+                    <Row label={t("cart.shipping")} value={<span className="text-[0.8rem] text-black/70">wird beim Bezahlen berechnet</span>} />
                   </dl>
                   <Link
                     to={`/checkout?haus=${encodeURIComponent(house.key)}`}
@@ -162,7 +162,7 @@ const Cart = () => {
                     {houses.length > 1 ? "Bei diesem Haus kaufen" : t("cart.checkoutExpress")}
                   </Link>
                   <PaymentLogos className="mt-4" />
-                  <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-[#55534E]">
+                  <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-black/70">
                     <ShieldCheck className="h-3.5 w-3.5 text-[#000000]" /> {t("cart.securePayment")}
                   </p>
                 </div>

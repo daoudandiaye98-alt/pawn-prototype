@@ -169,7 +169,7 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
       <section className="px-6 py-24 md:px-14 md:py-32">
         <div className="mx-auto max-w-[1600px]">
           {visible.length === 0 ? (
-            <Editable as="p" contentKey="world.grid_empty" className="palace-eyebrow text-[#7C7972]">Nichts in dieser Kategorie — noch.</Editable>
+            <Editable as="p" contentKey="world.grid_empty" className="palace-eyebrow text-black/60">Nichts in dieser Kategorie — noch.</Editable>
           ) : (
             <div className="grid grid-cols-12 gap-6 md:gap-8">
               {visible.map((p, i) => {

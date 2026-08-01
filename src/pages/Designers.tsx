@@ -101,7 +101,7 @@ export default function Designers() {
               <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover"
                 style={{ filter: "grayscale(1) contrast(var(--palace-image-contrast, 1.06))" }} />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[#EFEDE8] palace-serif italic text-[#8F8B82]">{hover.brand}</div>
+              <div className="flex h-full w-full items-center justify-center bg-white palace-serif italic text-black/50">{hover.brand}</div>
             )}
           </div>
         )}
@@ -115,7 +115,7 @@ export default function Designers() {
               <Reveal key={d.id} delay={Math.min(400, i * 40)}>
                 <li onMouseEnter={() => setHover({ src: preview ?? undefined, brand: d.brand_name })} onMouseLeave={() => setHover(null)}>
                   <Link to={`/designer/${d.slug}`} className="group flex flex-col items-center gap-3 py-10 text-center transition-colors duration-500 md:py-14">
-                    <span className="palace-eyebrow text-[#8F8B82] group-hover:text-[#000000]">
+                    <span className="palace-eyebrow text-black/50 group-hover:text-[#000000]">
                       № {String(i + 1).padStart(3, "0")}
                       {fresh && <span className="ml-3 border border-[#000000]/40 px-1.5 py-0.5 text-[0.55rem]">Neu</span>}
                     </span>
@@ -123,7 +123,7 @@ export default function Designers() {
                       style={{ fontSize: "clamp(2.4rem, 7.4vw, 6.6rem)", lineHeight: 1, letterSpacing: "-0.025em", fontWeight: 500 }}>
                       {d.brand_name}
                     </span>
-                    <span className="palace-eyebrow text-[#6B6862] group-hover:text-[#000000]">
+                    <span className="palace-eyebrow text-black/60 group-hover:text-[#000000]">
                       {world} · {d.location ?? "—"}
                     </span>
                   </Link>

@@ -70,7 +70,7 @@ export default function OrderConfirmation() {
           E-Mail sobald es das Atelier verlässt.
         </p>
         {sessionId && (
-          <p className="palace-eyebrow mt-10 text-[#7C7972]">
+          <p className="palace-eyebrow mt-10 text-black/60">
             Referenz · {sessionId.slice(0, 14)}
           </p>
         )}

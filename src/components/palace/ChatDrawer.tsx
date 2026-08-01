@@ -100,23 +100,23 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}>
         <header className="flex items-center justify-between border-b border-[rgba(0,0,0,.18)] px-6 py-5">
           <div>
-            <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#7C7972]">PAWN</p>
+            <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/60">PAWN</p>
             <p className="mt-1 font-serif text-xl italic text-[#000000]">für dich da.</p>
           </div>
-          <button onClick={onClose} className="text-[0.65rem] uppercase tracking-[0.32em] text-[#7C7972] hover:text-[#000000]">Schließen</button>
+          <button onClick={onClose} className="text-[0.65rem] uppercase tracking-[0.32em] text-black/60 hover:text-[#000000]">Schließen</button>
         </header>
 
         <div ref={listRef} className="flex-1 space-y-6 overflow-y-auto px-6 py-8">
           {messages.map((m, i) => (
             <div key={i} className={m.role === "assistant" ? "" : "text-right"}>
               {m.meta === "consent" ? (
-                <p className="border border-[rgba(0,0,0,.18)] bg-white px-3 py-2 text-[0.7rem] leading-relaxed text-[#7C7972]">
+                <p className="border border-[rgba(0,0,0,.18)] bg-white px-3 py-2 text-[0.7rem] leading-relaxed text-black/60">
                   {t("chat.consent")}{" "}
                   <Link to="/datenschutz" onClick={onClose} className="underline hover:text-[#000000]">/datenschutz</Link>.
                 </p>
               ) : (
                 <>
-                  <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">{m.role === "assistant" ? "Pawn" : "Du"}</p>
+                  <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{m.role === "assistant" ? "Pawn" : "Du"}</p>
                   {m.imageUrl && (
                     <div className={`mt-2 ${m.role === "assistant" ? "" : "ml-auto"} inline-block max-w-[220px] border border-[rgba(0,0,0,.18)]`}>
                       <img src={m.imageUrl} alt="Hochgeladenes Bild" className="max-h-52 w-full object-cover" />
@@ -137,7 +137,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     <div className="mt-4 space-y-2">
                       {m.cards.map((c, k) => (
                         <Link key={k} to={c.href} onClick={onClose} className="block border border-[rgba(0,0,0,.18)] bg-white px-4 py-3 transition-colors hover:border-[#000000]">
-                          <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#7C7972]">
+                          <p className="text-[0.55rem] uppercase tracking-[0.42em] text-black/60">
                             {c.kind === "product" ? "Stück" : "Designer"}{c.subtitle ? ` · ${c.subtitle}` : ""}
                           </p>
                           <p className="mt-1 font-serif italic text-[1rem] text-[#000000]">{c.title}</p>
@@ -150,15 +150,15 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               )}
             </div>
           ))}
-          {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-[#A8A49B]">{t("chat.thinking")}</p>}
+          {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{t("chat.thinking")}</p>}
         </div>
 
 
         {pendingImage && (
           <div className="flex items-center gap-3 border-t border-[rgba(0,0,0,.18)] px-6 py-3">
             <img src={pendingImage.url} alt="" className="h-14 w-14 border border-[rgba(0,0,0,.18)] object-cover" />
-            <p className="flex-1 text-xs text-[#7C7972]">Bild bereit — schreib dazu oder schick es allein.</p>
-            <button onClick={() => setPendingImage(null)} className="text-[#7C7972] hover:text-[#000000]" aria-label="Entfernen"><X className="h-4 w-4" /></button>
+            <p className="flex-1 text-xs text-black/60">Bild bereit — schreib dazu oder schick es allein.</p>
+            <button onClick={() => setPendingImage(null)} className="text-black/60 hover:text-[#000000]" aria-label="Entfernen"><X className="h-4 w-4" /></button>
           </div>
         )}
         {uploadPct != null && (
@@ -168,7 +168,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         )}
 
         <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="border-t border-[rgba(0,0,0,.18)] px-6 py-5">
-          <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#7C7972]">
+          <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-black/60">
             <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 hover:text-[#000000]">
               <ImagePlus className="h-3.5 w-3.5" /> Bilder hochladen
             </button>
@@ -179,9 +179,9 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <textarea value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(input); } }}
               rows={1} placeholder={t("chat.placeholder")}
-              className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-[#000000] placeholder:text-[#A8A49B] focus:outline-none" />
+              className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-[#000000] placeholder:text-black/40 focus:outline-none" />
             <button type="submit" disabled={busy || (!input.trim() && !pendingImage)}
-              className="text-[0.6rem] uppercase tracking-[0.42em] text-[#000000] disabled:text-[#A8A49B]">
+              className="text-[0.6rem] uppercase tracking-[0.42em] text-[#000000] disabled:text-black/40">
               {t("chat.send")}
             </button>
           </div>

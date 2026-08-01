@@ -189,7 +189,7 @@ const Index = () => {
               <Editable as="span" contentKey="hero_headline_1" className="block font-light">Mode, Interior und Kunst —</Editable>
               <Editable as="span" contentKey="hero_headline_2" className="block italic font-light">von unabhängigen Designern.</Editable>
             </h1>
-            <Editable as="p" contentKey="hero_subline" className="mx-auto mt-8 block max-w-2xl text-[1.05rem] leading-[1.65] text-[#3A3833]" multiline>
+            <Editable as="p" contentKey="hero_subline" className="mx-auto mt-8 block max-w-2xl text-[1.05rem] leading-[1.65] text-black/70" multiline>
               {personalSubtitle ?? "PAWN ist die kuratierte Ausstellung, in der du sie zuerst entdeckst."}
             </Editable>
 
@@ -197,7 +197,7 @@ const Index = () => {
           </div>
 
           <div className="mt-14 flex flex-col items-center gap-4">
-            <span className="palace-eyebrow" style={{ color: "#55534E" }}>Scroll</span>
+            <span className="palace-eyebrow" style={{ color: "#000000" }}>Scroll</span>
             <span className="palace-drip block h-14 w-px bg-[#000000]" />
           </div>
         </div>
@@ -209,8 +209,8 @@ const Index = () => {
           {[...designers, ...designers].map((d, i) => (
             <span key={`${d.id}-${i}`} className="flex items-center gap-6 px-8 palace-eyebrow">
               <span className="text-[#000000]">{d.brand_name}</span>
-              <span className="text-[#A8A49B]">· {d.location ?? "—"}</span>
-              <span className="text-[#A8A49B]">◆</span>
+              <span className="text-black/40">· {d.location ?? "—"}</span>
+              <span className="text-black/40">◆</span>
             </span>
           ))}
         </div>
@@ -452,7 +452,7 @@ const Index = () => {
                 to="/apply"
                 className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
-                <Editable as="p" contentKey="landing.cta_label_apply" className="palace-eyebrow group-hover:text-[#A8A49B]">Bewerben</Editable>
+                <Editable as="p" contentKey="landing.cta_label_apply" className="palace-eyebrow group-hover:text-black/40">Bewerben</Editable>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
                   <Editable as="span" contentKey="cta_card_a">Als Designer<br/>bewerben.</Editable>
                 </p>
@@ -463,7 +463,7 @@ const Index = () => {
                 to="/neu"
                 className="group flex h-full flex-col justify-between border border-[rgba(0,0,0,.28)] p-10 text-left transition-colors duration-500 hover:bg-[#000000] hover:text-[#FFFFFF]"
               >
-                <Editable as="p" contentKey="landing.cta_label_view" className="palace-eyebrow group-hover:text-[#A8A49B]">Sehen</Editable>
+                <Editable as="p" contentKey="landing.cta_label_view" className="palace-eyebrow group-hover:text-black/40">Sehen</Editable>
                 <p className="palace-serif mt-16 font-light text-[1.8rem] italic leading-tight">
                   <Editable as="span" contentKey="cta_card_b">Zur laufenden<br/>Ausstellung.</Editable>
                 </p>
@@ -518,7 +518,7 @@ function HeroPrompt() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-transparent px-4 text-left text-[0.95rem] text-[#000000] placeholder:text-[#7C7972] focus:outline-none"
+        className="flex-1 bg-transparent px-4 text-left text-[0.95rem] text-[#000000] placeholder:text-black/60 focus:outline-none"
         aria-label="Frag PAWN"
       />
       <button

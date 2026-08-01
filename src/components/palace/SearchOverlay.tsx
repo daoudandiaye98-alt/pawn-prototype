@@ -67,11 +67,11 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Stücke, Ateliers, Welten …"
-          className="w-full border-0 border-b border-[rgba(0,0,0,.28)] bg-transparent pb-4 palace-serif text-[clamp(1.8rem,4vw,3rem)] font-light text-[#000000] placeholder:text-[#7C7972] focus:outline-none"
+          className="w-full border-0 border-b border-[rgba(0,0,0,.28)] bg-transparent pb-4 palace-serif text-[clamp(1.8rem,4vw,3rem)] font-light text-[#000000] placeholder:text-black/60 focus:outline-none"
         />
         <div className="mt-10 space-y-2">
           {q.trim().length < 2 && (
-            <p className="palace-eyebrow text-[#7C7972]">Tippe mindestens zwei Zeichen.</p>
+            <p className="palace-eyebrow text-black/60">Tippe mindestens zwei Zeichen.</p>
           )}
           {hits.map((h) => (
             <Link
@@ -82,13 +82,13 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
             >
               <div>
                 <p className="font-serif text-[1.4rem] text-[#000000]">{h.title}</p>
-                {h.subtitle && <p className="palace-eyebrow mt-1 text-[#7C7972]">{h.subtitle}</p>}
+                {h.subtitle && <p className="palace-eyebrow mt-1 text-black/60">{h.subtitle}</p>}
               </div>
-              <span className="palace-eyebrow text-[#7C7972]">{h.kind === "product" ? "Stück" : "Atelier"} →</span>
+              <span className="palace-eyebrow text-black/60">{h.kind === "product" ? "Stück" : "Atelier"} →</span>
             </Link>
           ))}
           {q.trim().length >= 2 && hits.length === 0 && (
-            <p className="palace-eyebrow text-[#7C7972]">Nichts gefunden. Versuch einen anderen Begriff.</p>
+            <p className="palace-eyebrow text-black/60">Nichts gefunden. Versuch einen anderen Begriff.</p>
           )}
         </div>
       </div>

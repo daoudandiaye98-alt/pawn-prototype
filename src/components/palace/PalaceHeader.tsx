@@ -150,7 +150,7 @@ export function PalaceHeader() {
                 {accountOpen && (
                   <div className="absolute right-0 top-full w-64 border-[1.5px] border-black bg-white shadow-[6px_6px_0_#000]">
                     <div className="border-b-[1.5px] border-black px-5 py-4">
-                      <p className="text-[0.55rem] uppercase tracking-[0.42em] text-[#55534E]">Zutritt</p>
+                      <p className="text-[0.55rem] uppercase tracking-[0.42em] text-black/70">Zutritt</p>
                       <p className="mt-1 font-serif italic text-[0.95rem] text-[#000000]" style={{ fontWeight: 500 }}>
                         {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
                       </p>
@@ -163,7 +163,7 @@ export function PalaceHeader() {
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="block w-full border-t-[1.5px] border-black px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-[#55534E] hover:bg-black hover:text-white"
+                      className="block w-full border-t-[1.5px] border-black px-5 py-3 text-left text-[0.68rem] uppercase tracking-[0.32em] text-black/70 hover:bg-black hover:text-white"
                     >
                       {t("nav.logout")}
                     </button>
@@ -249,7 +249,7 @@ export function PalaceHeader() {
               {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.myStudio")}</Link>}
               {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.applicationStatus")}</Link>}
               {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.adminCockpit")}</Link>}
-              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#55534E]">{t("nav.logout")}</button>
+              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-black/70">{t("nav.logout")}</button>
             </>
           ) : (
             <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.login")}</Link>

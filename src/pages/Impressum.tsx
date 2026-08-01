@@ -40,9 +40,9 @@ export default function Impressum() {
         <div className="mt-14 space-y-8 font-sans text-[0.95rem] leading-relaxed text-[#000000]/85">
           <Row title="Anbieter">
             {name}<br />
-            {b.address_line1 || <em className="text-[#7C7972]">[Adresse wird ergänzt]</em>}<br />
+            {b.address_line1 || <em className="text-black/60">[Adresse wird ergänzt]</em>}<br />
             {b.address_line2 && <>{b.address_line2}<br /></>}
-            {[b.postal_code, b.city].filter(Boolean).join(" ") || <em className="text-[#7C7972]">[PLZ Ort]</em>}<br />
+            {[b.postal_code, b.city].filter(Boolean).join(" ") || <em className="text-black/60">[PLZ Ort]</em>}<br />
             {b.country ?? "Deutschland"}
           </Row>
           <Row title="Vertretungsberechtigt">Daouda Ndiaye</Row>
@@ -57,7 +57,7 @@ export default function Impressum() {
             Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucher-schlichtungsstelle teilzunehmen.
           </Row>
           {addrMissing && (
-            <p className="border border-dashed border-[rgba(0,0,0,.28)] p-3 text-xs text-[#7C7972]">
+            <p className="border border-dashed border-[rgba(0,0,0,.28)] p-3 text-xs text-black/60">
               Adressfelder sind noch leer. Admins können sie in <code>ai_config.business_profile</code> ergänzen.
             </p>
           )}

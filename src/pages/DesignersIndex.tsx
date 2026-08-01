@@ -80,7 +80,7 @@ const DesignersIndex = () => {
         <div className="mx-auto max-w-[1600px]">
           <div className="mb-14 flex items-end justify-between">
             <Editable as="p" contentKey="dindex_dir_eyebrow" className="palace-eyebrow">Verzeichnis</Editable>
-            <span className="palace-eyebrow text-[#7C7972]">
+            <span className="palace-eyebrow text-black/60">
               {designers.length} Ateliers{totalViews != null && totalViews > 0 ? ` · gemeinsam ${totalViews.toLocaleString("de-DE")} Aufrufe` : ""}
             </span>
           </div>
@@ -97,7 +97,7 @@ const DesignersIndex = () => {
                     </div>
                     <div className="mt-4 flex items-baseline justify-between gap-4">
                       <div>
-                        <p className="palace-eyebrow text-[#7C7972]">
+                        <p className="palace-eyebrow text-black/60">
                           № {String(i + 1).padStart(3, "0")}
                         </p>
                         <p
@@ -107,7 +107,7 @@ const DesignersIndex = () => {
                           {d.name}
                         </p>
                       </div>
-                      <span className="palace-eyebrow text-[#7C7972] group-hover:text-[#000000]">{atelierCta}</span>
+                      <span className="palace-eyebrow text-black/60 group-hover:text-[#000000]">{atelierCta}</span>
                     </div>
                   </Link>
                 </li>

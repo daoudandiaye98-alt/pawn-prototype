@@ -68,7 +68,7 @@ export default function AGB() {
             <p>Gerichtsstand Deutschland, deutsches Recht. Sollte eine Klausel unwirksam sein, bleibt der Rest wirksam. EU-Streitbeilegungs-Plattform: <a href="https://ec.europa.eu/consumers/odr/" className="underline">https://ec.europa.eu/consumers/odr/</a>. PAWN ist zur Teilnahme an Streitschlichtungsverfahren nicht verpflichtet.</p>
           </S>
         </div>
-        <p className="mt-16 text-xs text-[#7C7972]">Stand: {new Date().toLocaleDateString("de-DE")} · Fassung v1 (vorläufig)</p>
+        <p className="mt-16 text-xs text-black/60">Stand: {new Date().toLocaleDateString("de-DE")} · Fassung v1 (vorläufig)</p>
       </section>
     </PalaceLayout>
   );

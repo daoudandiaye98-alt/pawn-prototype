@@ -557,7 +557,7 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
         <dl className="mt-4 divide-y divide-[rgba(0,0,0,.12)] border-y border-[rgba(0,0,0,.12)]">
           {filled.map(([label, value]) => (
             <div key={label} className="grid grid-cols-[140px_1fr] items-baseline gap-4 py-3">
-              <dt className="text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{label}</dt>
+              <dt className="text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{label}</dt>
               <dd className="text-[0.92rem] leading-relaxed text-[#000000]/85 whitespace-pre-line">{value}</dd>
             </div>
           ))}
@@ -570,9 +570,9 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
             <table className="w-full min-w-[380px] text-[0.9rem]">
               <thead>
                 <tr className="border-b border-[rgba(0,0,0,.3)] text-left">
-                  <th className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">Maß</th>
+                  <th className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">Maß</th>
                   {sizes.map((s) => (
-                    <th key={s.size} className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-[#7C7972]">{s.size}</th>
+                    <th key={s.size} className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{s.size}</th>
                   ))}
                 </tr>
               </thead>
