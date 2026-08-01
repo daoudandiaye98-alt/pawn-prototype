@@ -1766,6 +1766,23 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
 
+  // Ohne Anthropic-Schlüssel (oder wenn er nicht antwortet) schreibt die Modell-Kette den Entwurf
+  // ohne Websuche — lieber eine gute Nachricht ohne Recherche als gar keine.
+  const fallbackDraft = async (): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> => {
+    const r = await llm({
+      system,
+      user: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}. Keine Websuche verfügbar — stütze dich allein auf Handle, Welt und Bio.`,
+      maxTokens: 700,
+    });
+    if (r.error || !r.text) return null;
+    const json = extractJson(r.text) as { personal_line?: string; message?: string; language?: string } | null;
+    if (!json?.personal_line || !json?.message) return null;
+    const language = allowed.includes(json.language ?? "") ? json.language! : "de";
+    return { personal_line: json.personal_line, message: json.message, language, tokens: tokens + r.tokens };
+  };
+
+  if (!apiKey) return await fallbackDraft();
+
   for (let turn = 0; turn < 5; turn++) {
     let data: AnthropicResponse;
     try {
@@ -1774,10 +1791,10 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({ model: MODEL, max_tokens: 700, system, tools: minimalTools, messages }),
       });
-      if (!res.ok) return null;
+      if (!res.ok) return await fallbackDraft();
       data = await res.json();
     } catch {
-      return null;
+      return await fallbackDraft();
     }
     tokens += (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
     if (data.stop_reason !== "tool_use") {
@@ -1787,9 +1804,10 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
         const language = allowed.includes(json.language ?? "") ? json.language! : "de";
         return { personal_line: json.personal_line, message: json.message, language, tokens };
       }
-      return null;
+      return await fallbackDraft();
     }
     messages.push({ role: "assistant", content: data.content });
+
     const toolResults = data.content
       .filter((b) => b.type === "tool_use")
       .map((b) => ({ type: "tool_result", tool_use_id: (b as { id?: string }).id, content: "kein Werkzeug verfügbar" }));
