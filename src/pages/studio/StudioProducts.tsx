@@ -11,8 +11,8 @@ import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology"
 import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } from "@/features/share/shareKit";
 import { buildCreatorPackage } from "@/features/share/creatorPackage";
 import {
-  CARE_SYMBOLS, MEASUREMENT_PRESETS, effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
-  materialSum, splitVat, vatNote,
+  effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
+  materialSum, splitVat, vatNote, worldProfile,
   type MaterialPart, type Measurements, type SizeVariant,
 } from "@/features/studio/productDetails";
 
