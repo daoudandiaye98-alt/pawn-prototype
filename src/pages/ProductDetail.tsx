@@ -26,7 +26,7 @@ import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PasstDas } from "@/components/palace/PasstDas";
 import {
-  careLabel, effectiveVatRate, materialLine, vatNote, formatEuro,
+  careLabel, effectiveVatRate, materialLine, vatNote, formatEuro, worldProfile,
   type MaterialPart, type Measurements, type SizeVariant,
 } from "@/features/studio/productDetails";
 
@@ -397,7 +397,7 @@ const ProductDetail = () => {
                 {/* Size */}
                 {product.sizes.length > 1 && (
                   <div className="mt-6">
-                    <p className="house-ink palace-eyebrow">Format · <span>{size}</span></p>
+                    <p className="house-ink palace-eyebrow">{worldProfile(product.world).variantPublicLabel} · <span>{size}</span></p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {product.sizes.map((s) => {
                         const variant = sizeVariants.find((v) => v.size === s);
@@ -407,7 +407,7 @@ const ProductDetail = () => {
                             key={s}
                             onClick={() => !outOfStock && setSize(s)}
                             disabled={outOfStock}
-                            title={outOfStock ? "Diese Größe ist ausverkauft." : undefined}
+                            title={outOfStock ? worldProfile(product.world).variantSoldOut : undefined}
                             className={cn(
                               "house-ink border px-4 py-2 text-[0.6rem] uppercase tracking-[0.32em] transition-colors duration-300",
                               outOfStock && "cursor-not-allowed line-through opacity-40",
@@ -536,14 +536,15 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
   const sizes = ((dbProduct.size_variants ?? []) as unknown as SizeVariant[]).filter((s) => s?.size?.trim());
   const showTable = measurements.rows.length > 0 && sizes.length > 0;
 
+  const profile = worldProfile(dbProduct.world);
   const rows: [string, string | null][] = [
-    ["Maße", dims || null],
+    [dbProduct.world === "Mode" ? "Paketmaße" : "Maße", dims || null],
     ["Gewicht", weight],
-    ["Material", materials],
-    ["Futter & Details", dbProduct.lining_hardware ?? null],
-    ["Pflege", careText || null],
-    ["Gefertigt in", dbProduct.made_in ?? null],
-    ["Edition", dbProduct.edition_info ?? null],
+    [profile.materialPublicLabel, materials],
+    [profile.detailPublicLabel, dbProduct.lining_hardware ?? null],
+    [profile.carePublicLabel, careText || null],
+    [profile.originLabel === "Wo entstanden?" ? "Entstanden in" : "Gefertigt in", dbProduct.made_in ?? null],
+    [profile.editionPublicLabel, dbProduct.edition_info ?? null],
     ["Nachhaltigkeit", dbProduct.sustainability_note ?? null],
     ["Lieferzeit (Anfertigung)", dbProduct.inventory_mode === "made_to_order" && dbProduct.lead_time_days ? `ca. ${dbProduct.lead_time_days} Tage` : null],
   ];
@@ -564,7 +565,7 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
       )}
       {showTable && (
         <div className="mt-8">
-          <p className="palace-eyebrow">Maßtabelle (cm)</p>
+          <p className="palace-eyebrow">{profile.measurementTitle}</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[380px] text-[0.9rem]">
               <thead>
