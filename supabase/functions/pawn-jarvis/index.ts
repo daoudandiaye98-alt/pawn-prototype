@@ -60,6 +60,7 @@ type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
+  | "akquise_jagd" | "akquise_jagd_lernen"
   | "akquise_import" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
 
@@ -134,6 +135,8 @@ type JarvisZones = Record<string, Zone>;
 const DEFAULT_JARVIS_ZONES: JarvisZones = {
   heartbeat: "gruen",
   wissen: "gruen",
+  akquise_jagd: "gruen",
+  akquise_jagd_lernen: "gruen",
   akquise_kuratieren: "gruen",
   akquise_verfassen: "gruen",
   akquise_senden: "rot",
@@ -167,6 +170,14 @@ async function loadHouseStyleLaw(admin: SupabaseClient): Promise<string> {
   }
 }
 
+/** Ein Suchauftrag der Jagd: ein Hashtag/Begriff oder ein Nachbarschafts-Startpunkt (Handle). */
+interface HuntQuery {
+  query: string;
+  type: "hashtag" | "nachbarschaft";
+  world: string;
+  weight: number;
+}
+
 interface AkquiseConfig {
   apify_actor_id: string;
   default_world: string;
@@ -178,11 +189,28 @@ interface AkquiseConfig {
   followup_after_days: number;
   max_touches: number;
   languages: string[];
+  // Jagd (Teil 23): Jarvis startet Apify-Läufe selbst, statt nur den letzten Lauf zu lesen.
+  apify_actor_hashtag: string;
+  apify_actor_profile: string;
+  hunt_queries: HuntQuery[];
+  hunt_daily_runs: number;
+  hunt_results_per_run: number;
+  hunt_min_followers: number;
+  hunt_max_followers: number;
+  hunt_exclude_words: string[];
 }
 const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
   autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "pawnstudio.co@gmail.com",
   followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
+  apify_actor_hashtag: "apify~instagram-hashtag-scraper",
+  apify_actor_profile: "apify~instagram-profile-scraper",
+  hunt_queries: [],
+  hunt_daily_runs: 3,
+  hunt_results_per_run: 50,
+  hunt_min_followers: 300,
+  hunt_max_followers: 200000,
+  hunt_exclude_words: ["dropshipping", "reseller", "wholesale", "agency", "agentur", "marketing", "shopify expert", "link in bio deals"],
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -1204,46 +1232,373 @@ function extractScrapeImages(item: Record<string, unknown>): string[] {
   return out.slice(0, 5);
 }
 
-/** akquise_import — zieht den letzten erfolgreichen Apify-Lauf und legt neue Leads als 'neu' an. */
+// --- Die Jagd (Teil 23): Jarvis startet die Apify-Suche selbst ---
+
+const APIFY_BASE = "https://api.apify.com/v2";
+
+interface HuntRow {
+  id: string; query: string; query_type: string; world: string;
+  apify_run_id: string | null; apify_dataset_id: string | null;
+}
+
+/** Startet einen Apify-Actor-Lauf und gibt Run- und Dataset-ID zurück. */
+async function apifyStartRun(
+  token: string, actorId: string, input: Record<string, unknown>,
+): Promise<{ runId: string; datasetId: string | null } | { error: string }> {
+  try {
+    const res = await fetch(`${APIFY_BASE}/acts/${encodeURIComponent(actorId)}/runs?token=${encodeURIComponent(token)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
+    });
+    const body = await res.json().catch(() => null) as { data?: { id?: string; defaultDatasetId?: string }; error?: { message?: string } } | null;
+    if (!res.ok || !body?.data?.id) {
+      return { error: `Apify ${res.status}: ${body?.error?.message ?? "Lauf konnte nicht gestartet werden."}` };
+    }
+    return { runId: body.data.id, datasetId: body.data.defaultDatasetId ?? null };
+  } catch (e) {
+    return { error: `Apify nicht erreichbar: ${(e as Error).message}` };
+  }
+}
+
+async function apifyRunStatus(token: string, runId: string): Promise<{ status: string; datasetId: string | null } | null> {
+  try {
+    const res = await fetch(`${APIFY_BASE}/actor-runs/${encodeURIComponent(runId)}?token=${encodeURIComponent(token)}`);
+    if (!res.ok) return null;
+    const body = await res.json() as { data?: { status?: string; defaultDatasetId?: string } };
+    return { status: String(body.data?.status ?? "UNKNOWN"), datasetId: body.data?.defaultDatasetId ?? null };
+  } catch { return null; }
+}
+
+async function apifyDatasetItems(token: string, datasetId: string, limit: number): Promise<Record<string, unknown>[] | null> {
+  try {
+    const res = await fetch(`${APIFY_BASE}/datasets/${encodeURIComponent(datasetId)}/items?token=${encodeURIComponent(token)}&limit=${limit}&clean=true`);
+    if (!res.ok) return null;
+    const items = await res.json();
+    return Array.isArray(items) ? items as Record<string, unknown>[] : [];
+  } catch { return null; }
+}
+
+/** Baut die Actor-Eingabe je Jagd-Typ. Hashtag: Beiträge zum Begriff, Nachbarschaft: Profil-Umfeld. */
+function huntInput(q: HuntQuery, config: AkquiseConfig): { actorId: string; input: Record<string, unknown> } {
+  if (q.type === "nachbarschaft") {
+    return {
+      actorId: config.apify_actor_profile,
+      input: { usernames: [q.query.replace(/^@/, "")], resultsLimit: config.hunt_results_per_run },
+    };
+  }
+  return {
+    actorId: config.apify_actor_hashtag,
+    input: { hashtags: [q.query.replace(/^#/, "")], resultsLimit: config.hunt_results_per_run, resultsType: "posts" },
+  };
+}
+
+/** Ein einzelner Claude-Aufruf ohne Werkzeuge, der JSON zurückgibt. */
+async function claudeJsonOnce(
+  apiKey: string, system: string, user: string, maxTokens = 900,
+): Promise<{ json: Record<string, unknown> | null; tokens: number }> {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
+    });
+    if (!res.ok) return { json: null, tokens: 0 };
+    const data = await res.json() as AnthropicResponse;
+    const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
+    const text = data.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
+    return { json: extractJson(text) as Record<string, unknown> | null, tokens };
+  } catch { return { json: null, tokens: 0 }; }
+}
+
+/** Destilliert Suchbegriffe aus der Brand-DNA bestehender Häuser und der Ontologie. */
+async function destillHuntQueries(admin: SupabaseClient, apiKey: string): Promise<{ queries: HuntQuery[]; tokens: number }> {
+  const { data: houses } = await admin.from("designers").select("brand_name, country, brand_dna").eq("status", "active").limit(25);
+  const { data: terms } = await admin.from("fashion_ontology").select("term, kind").limit(60);
+  const houseText = (houses ?? []).map((h) => {
+    const dna = (h as { brand_dna: Record<string, unknown> | null }).brand_dna ?? {};
+    return `- ${(h as { brand_name: string }).brand_name} (${(h as { country: string | null }).country ?? "?"}): ${JSON.stringify(dna).slice(0, 300)}`;
+  }).join("\n") || "- Noch keine Häuser.";
+  const termText = (terms ?? []).map((t) => `${(t as { term: string }).term}`).join(", ") || "keine";
+
+  const system = `Du bist Jarvis und suchst für PAWN (kuratierte Ausstellung für unabhängige Designer aus Mode, Interior, Kunst) neue Häuser auf Instagram.
+Deine Aufgabe: Suchbegriffe (Hashtags) vorschlagen, unter denen unabhängige, handwerklich arbeitende Designer ihre eigenen Stücke zeigen — keine Reseller, keine Großlabels, keine Marketing-Accounts.
+Mische deutsche und internationale Begriffe, mische breite und sehr enge Nischen (Material, Technik, Stadt).
+Antworte NUR mit JSON: {"queries": [{"query": "handmadeleatherbag", "world": "Mode"}, ...]} — 12 bis 18 Einträge, world ist genau "Mode", "Interior" oder "Kunst", query ohne # und ohne Leerzeichen.`;
+  const user = `Bestehende Häuser (Ausschnitt ihrer Brand-DNA):\n${houseText}\n\nBekannte Begriffe aus unserer Ontologie: ${termText}`;
+
+  const { json, tokens } = await claudeJsonOnce(apiKey, system, user);
+  const raw = Array.isArray(json?.queries) ? json!.queries as Record<string, unknown>[] : [];
+  const queries: HuntQuery[] = raw
+    .map((r) => ({
+      query: String(r.query ?? "").replace(/^#/, "").trim(),
+      type: "hashtag" as const,
+      world: ["Mode", "Interior", "Kunst"].includes(String(r.world)) ? String(r.world) : "Mode",
+      weight: 1,
+    }))
+    .filter((q) => q.query.length > 2)
+    .slice(0, 20);
+  return { queries, tokens };
+}
+
+async function saveHuntQueries(admin: SupabaseClient, config: AkquiseConfig, queries: HuntQuery[]): Promise<void> {
+  await admin.from("ai_config").upsert(
+    { key: "akquise_config", value: { ...config, hunt_queries: queries } as never },
+    { onConflict: "key" },
+  );
+}
+
+/**
+ * akquise_jagd — startet die Suche. Wählt Suchaufträge nach Gewicht, ergänzt sie um
+ * Nachbarschafts-Startpunkte (Umfeld bereits qualifizierter Konten) und schickt sie an Apify.
+ */
+async function runAkquiseJagd(admin: SupabaseClient, apiKey: string | null): Promise<Record<string, unknown>> {
+  const token = Deno.env.get("APIFY_TOKEN");
+  if (!token) return { ok: true, started: 0, message: "Kein APIFY_TOKEN hinterlegt — Jagd übersprungen." };
+  const config = await loadAkquiseConfig(admin);
+
+  let queries = config.hunt_queries ?? [];
+  let tokensUsed = 0;
+  if (!queries.length) {
+    if (!apiKey) return { ok: true, started: 0, message: "Keine Suchbegriffe hinterlegt und kein ANTHROPIC_API_KEY für die Destillation." };
+    const distilled = await destillHuntQueries(admin, apiKey);
+    tokensUsed = distilled.tokens;
+    queries = distilled.queries;
+    if (!queries.length) return { ok: false, error: "Konnte keine Suchbegriffe destillieren." };
+    await saveHuntQueries(admin, config, queries);
+  }
+
+  // Begriffe, die in den letzten 7 Tagen schon gejagt wurden, hinten anstellen.
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { data: recent } = await admin.from("acquisition_hunts").select("query").gte("created_at", since);
+  const recentSet = new Set(((recent ?? []) as { query: string }[]).map((r) => r.query.toLowerCase()));
+
+  const ranked = [...queries].sort((a, b) => {
+    const freshA = recentSet.has(a.query.toLowerCase()) ? 0 : 1;
+    const freshB = recentSet.has(b.query.toLowerCase()) ? 0 : 1;
+    if (freshA !== freshB) return freshB - freshA;
+    return (b.weight ?? 1) - (a.weight ?? 1);
+  });
+
+  const slots = Math.max(1, config.hunt_daily_runs);
+  const chosen: HuntQuery[] = ranked.slice(0, Math.max(1, slots - 1));
+
+  // Ein Slot für die Nachbarschaft: das Umfeld eines gut bewerteten Kontos ist die stärkste Quelle.
+  const { data: seeds } = await admin.from("acquisition_leads")
+    .select("handle, world, kurator_score").in("status", ["qualifiziert", "registriert", "aktiviert"])
+    .order("kurator_score", { ascending: false, nullsFirst: false }).limit(20);
+  const seedList = ((seeds ?? []) as { handle: string; world: string }[])
+    .filter((s) => !recentSet.has(s.handle.toLowerCase()));
+  if (seedList.length) {
+    const seed = seedList[Math.floor(Math.random() * seedList.length)];
+    chosen.push({ query: seed.handle, type: "nachbarschaft", world: seed.world, weight: 1 });
+  }
+
+  let started = 0;
+  const failures: string[] = [];
+  for (const q of chosen.slice(0, slots)) {
+    const { actorId, input } = huntInput(q, config);
+    if (!actorId.trim()) { failures.push(`${q.query}: kein Actor konfiguriert`); continue; }
+    const run = await apifyStartRun(token, actorId, input);
+    if ("error" in run) { failures.push(`${q.query}: ${run.error}`); continue; }
+    await admin.from("acquisition_hunts").insert({
+      query: q.query, query_type: q.type, world: q.world,
+      apify_actor_id: actorId, apify_run_id: run.runId, apify_dataset_id: run.datasetId, status: "gestartet",
+    });
+    started++;
+  }
+
+  return { ok: true, started, geplant: chosen.length, tokensUsed, failures };
+}
+
+/** Vorfilter vor der teuren Bildbewertung: Follower-Spanne und Ausschlusswörter. */
+function passesPrefilter(row: { handle: string; followers: number | null; bio: string | null }, config: AkquiseConfig): boolean {
+  if (row.followers != null) {
+    if (row.followers < config.hunt_min_followers) return false;
+    if (config.hunt_max_followers > 0 && row.followers > config.hunt_max_followers) return false;
+  }
+  const haystack = `${row.handle} ${row.bio ?? ""}`.toLowerCase();
+  return !config.hunt_exclude_words.some((w) => w.trim() && haystack.includes(w.toLowerCase()));
+}
+
+function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: string | null, source: string) {
+  const handle = String(item.username ?? item.handle ?? item.ownerUsername ?? "").replace(/^@/, "").trim().toLowerCase();
+  const followersRaw = item.followersCount ?? item.followers ?? (item.edge_followed_by as { count?: number } | undefined)?.count;
+  const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
+  const bio = String(item.biography ?? item.bio ?? "").trim() || null;
+  const email = extractBusinessEmail(item, bio);
+  return {
+    handle, world, source, followers, bio, email,
+    channel: email ? "email" : "dm", scrape_images: extractScrapeImages(item), status: "neu",
+    hunt_id: huntId, discovery_source: source,
+  };
+}
+
+/** Handles, die bereits Haus sind oder schon als Lead existieren — die jagen wir nicht erneut. */
+async function knownHandles(admin: SupabaseClient): Promise<Set<string>> {
+  const known = new Set<string>();
+  const { data: designers } = await admin.from("designers").select("instagram, slug");
+  for (const d of (designers ?? []) as { instagram: string | null; slug: string | null }[]) {
+    const ig = (d.instagram ?? "").replace(/^@/, "").split("/").filter(Boolean).pop();
+    if (ig) known.add(ig.toLowerCase());
+    if (d.slug) known.add(d.slug.toLowerCase());
+  }
+  const { data: leads } = await admin.from("acquisition_leads").select("handle").limit(5000);
+  for (const l of (leads ?? []) as { handle: string }[]) known.add(l.handle.toLowerCase());
+  return known;
+}
+
+async function insertLeads(
+  admin: SupabaseClient, rows: Record<string, unknown>[],
+): Promise<{ imported: number; error?: string }> {
+  if (!rows.length) return { imported: 0 };
+  const { data, error } = await admin.from("acquisition_leads")
+    .upsert(rows as never, { onConflict: "handle", ignoreDuplicates: true })
+    .select("id");
+  if (error) return { imported: 0, error: error.message };
+  return { imported: data?.length ?? 0 };
+}
+
+/**
+ * akquise_import — holt die Ergebnisse aller offenen Jagden ab, sobald deren Apify-Lauf fertig ist,
+ * filtert Dubletten und offensichtliche Fehltreffer heraus und legt den Rest als Lead 'neu' an.
+ * Ohne offene Jagden fällt er auf das alte Verhalten zurück (letzter Lauf eines fest konfigurierten Actors).
+ */
 async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const token = Deno.env.get("APIFY_TOKEN");
   if (!token) return { ok: true, imported: 0, skipped: 0, message: "Kein APIFY_TOKEN hinterlegt — Import übersprungen." };
   const config = await loadAkquiseConfig(admin);
-  if (!config.apify_actor_id.trim()) {
-    return { ok: true, imported: 0, skipped: 0, message: "Kein Apify-Actor in ai_config.akquise_config.apify_actor_id konfiguriert." };
+
+  const { data: openHunts } = await admin.from("acquisition_hunts")
+    .select("id, query, query_type, world, apify_run_id, apify_dataset_id")
+    .eq("status", "gestartet").order("created_at", { ascending: true }).limit(20);
+  const hunts = (openHunts ?? []) as HuntRow[];
+
+  const known = await knownHandles(admin);
+  let imported = 0, skipped = 0, stillRunning = 0, finished = 0, failedRuns = 0;
+
+  for (const hunt of hunts) {
+    if (!hunt.apify_run_id) continue;
+    const status = await apifyRunStatus(token, hunt.apify_run_id);
+    if (!status) { stillRunning++; continue; }
+    if (status.status === "RUNNING" || status.status === "READY") { stillRunning++; continue; }
+    if (status.status !== "SUCCEEDED") {
+      await admin.from("acquisition_hunts").update({ status: "fehlgeschlagen", error: `Apify-Lauf ${status.status}`, finished_at: new Date().toISOString() }).eq("id", hunt.id);
+      failedRuns++;
+      continue;
+    }
+
+    const datasetId = hunt.apify_dataset_id ?? status.datasetId;
+    const items = datasetId ? await apifyDatasetItems(token, datasetId, 500) : null;
+    if (!items) {
+      await admin.from("acquisition_hunts").update({ status: "fehlgeschlagen", error: "Dataset nicht lesbar", finished_at: new Date().toISOString() }).eq("id", hunt.id);
+      failedRuns++;
+      continue;
+    }
+
+    const rows = items
+      .map((item) => mapScrapeItem(item, hunt.world || config.default_world, hunt.id, hunt.query_type === "nachbarschaft" ? "nachbarschaft" : "hashtag"))
+      .filter((r) => r.handle && !known.has(r.handle));
+    const deduped = Array.from(new Map(rows.map((r) => [r.handle, r])).values());
+    const passing = deduped.filter((r) => passesPrefilter(r, config));
+    passing.forEach((r) => known.add(r.handle));
+
+    const res = await insertLeads(admin, passing);
+    imported += res.imported;
+    skipped += items.length - res.imported;
+    finished++;
+    await admin.from("acquisition_hunts").update({
+      status: "fertig", items_found: items.length, leads_created: res.imported,
+      error: res.error ?? null, finished_at: new Date().toISOString(),
+    }).eq("id", hunt.id);
   }
 
-  const url = `https://api.apify.com/v2/acts/${encodeURIComponent(config.apify_actor_id)}/runs/last/dataset/items?token=${encodeURIComponent(token)}&status=SUCCEEDED&limit=200`;
-  let items: Record<string, unknown>[];
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return { ok: false, error: `Apify ${res.status}: konnte letzten Lauf nicht lesen.` };
-    items = await res.json();
-  } catch (e) {
-    return { ok: false, error: `Apify nicht erreichbar: ${(e as Error).message}` };
+  if (hunts.length === 0) {
+    // Rückfall: der alte Weg über einen fest konfigurierten Actor, damit bestehende Läufe weiter funktionieren.
+    if (!config.apify_actor_id.trim()) {
+      return { ok: true, imported: 0, skipped: 0, message: "Keine offenen Jagden und kein fester Apify-Actor konfiguriert." };
+    }
+    const url = `${APIFY_BASE}/acts/${encodeURIComponent(config.apify_actor_id)}/runs/last/dataset/items?token=${encodeURIComponent(token)}&status=SUCCEEDED&limit=200`;
+    let items: Record<string, unknown>[];
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return { ok: false, error: `Apify ${res.status}: konnte letzten Lauf nicht lesen.` };
+      items = await res.json();
+    } catch (e) {
+      return { ok: false, error: `Apify nicht erreichbar: ${(e as Error).message}` };
+    }
+    const rows = items
+      .map((item) => mapScrapeItem(item, config.default_world, null, "manuell"))
+      .filter((r) => r.handle && !known.has(r.handle))
+      .filter((r) => passesPrefilter(r, config));
+    const res = await insertLeads(admin, Array.from(new Map(rows.map((r) => [r.handle, r])).values()));
+    if (res.error) return { ok: false, error: res.error };
+    return { ok: true, imported: res.imported, skipped: items.length - res.imported };
   }
 
-  const rows = items.map((item) => {
-    const handle = String(item.username ?? item.handle ?? item.ownerUsername ?? "").replace(/^@/, "").trim().toLowerCase();
-    const followersRaw = item.followersCount ?? item.followers ?? (item.edge_followed_by as { count?: number } | undefined)?.count;
-    const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
-    const bio = String(item.biography ?? item.bio ?? "").trim() || null;
-    const email = extractBusinessEmail(item, bio);
-    return {
-      handle, world: config.default_world, source: "apify", followers, bio,
-      email, channel: email ? "email" : "dm", scrape_images: extractScrapeImages(item), status: "neu",
-    };
-  }).filter((r) => r.handle);
-
-  if (!rows.length) return { ok: true, imported: 0, skipped: 0, message: "Letzter Apify-Lauf enthielt keine verwertbaren Zeilen." };
-
-  const { data, error } = await admin.from("acquisition_leads")
-    .upsert(rows as never, { onConflict: "handle", ignoreDuplicates: true })
-    .select("id");
-  if (error) return { ok: false, error: error.message };
-  const imported = data?.length ?? 0;
-  return { ok: true, imported, skipped: rows.length - imported };
+  return { ok: true, imported, skipped, hunts_fertig: finished, hunts_offen: stillRunning, hunts_fehlgeschlagen: failedRuns };
 }
+
+/**
+ * akquise_jagd_lernen — schaut, welche Suchbegriffe wirklich gute Häuser gebracht haben,
+ * gewichtet sie neu und schreibt einen Bericht. Begriffe ohne einen einzigen Treffer fliegen raus.
+ */
+async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const config = await loadAkquiseConfig(admin);
+  const { data: huntRows } = await admin.from("acquisition_hunts")
+    .select("id, query, query_type, world, leads_created").eq("status", "fertig").limit(500);
+  const hunts = (huntRows ?? []) as { id: string; query: string; query_type: string; world: string; leads_created: number }[];
+  if (!hunts.length) return { ok: true, message: "Noch keine abgeschlossenen Jagden zum Auswerten." };
+
+  const { data: leadRows } = await admin.from("acquisition_leads")
+    .select("hunt_id, status, kurator_score").not("hunt_id", "is", null).limit(5000);
+  const leads = (leadRows ?? []) as { hunt_id: string; status: string; kurator_score: number | null }[];
+
+  const perHunt = new Map<string, { total: number; qualified: number }>();
+  for (const l of leads) {
+    const entry = perHunt.get(l.hunt_id) ?? { total: 0, qualified: 0 };
+    entry.total++;
+    if (["qualifiziert", "kontaktiert", "antwort", "registriert", "aktiviert"].includes(l.status)) entry.qualified++;
+    perHunt.set(l.hunt_id, entry);
+  }
+
+  const perQuery = new Map<string, { total: number; qualified: number; world: string; type: string }>();
+  for (const h of hunts) {
+    const stats = perHunt.get(h.id) ?? { total: 0, qualified: 0 };
+    const key = h.query.toLowerCase();
+    const entry = perQuery.get(key) ?? { total: 0, qualified: 0, world: h.world, type: h.query_type };
+    entry.total += stats.total;
+    entry.qualified += stats.qualified;
+    perQuery.set(key, entry);
+    // Trefferzahl je Jagd nachtragen, damit das Cockpit die Quote zeigen kann.
+    await admin.from("acquisition_hunts").update({ qualified_count: stats.qualified }).eq("id", h.id);
+  }
+
+  const updated: HuntQuery[] = [];
+  const dropped: string[] = [];
+  for (const q of config.hunt_queries ?? []) {
+    const stats = perQuery.get(q.query.toLowerCase());
+    if (!stats || stats.total === 0) { updated.push(q); continue; }
+    const rate = stats.qualified / stats.total;
+    if (stats.total >= 20 && stats.qualified === 0) { dropped.push(q.query); continue; }
+    const weight = Math.max(0.2, Math.min(3, Number((0.5 + rate * 4).toFixed(2))));
+    updated.push({ ...q, weight });
+  }
+  await saveHuntQueries(admin, config, updated);
+
+  const ranking = [...perQuery.entries()]
+    .filter(([, s]) => s.total > 0)
+    .sort((a, b) => (b[1].qualified / b[1].total) - (a[1].qualified / a[1].total))
+    .slice(0, 10)
+    .map(([q, s]) => `- ${q} (${s.world}): ${s.qualified} von ${s.total} qualifiziert`);
+
+  const body = `Was die Jagd gebracht hat:\n${ranking.length ? ranking.join("\n") : "- Noch keine auswertbaren Treffer."}\n\n${dropped.length ? `Aussortierte Begriffe (20+ Konten, kein einziger Treffer):\n${dropped.map((d) => `- ${d}`).join("\n")}` : "Kein Begriff musste aussortiert werden."}`;
+  await admin.from("jarvis_reports").insert({
+    kind: "jagd", title: `Jagd-Auswertung · ${new Date().toLocaleDateString("de-DE")}`, body,
+    data: { ranking, dropped, queries: updated },
+  });
+
+  return { ok: true, ausgewertet: perQuery.size, aussortiert: dropped.length, begriffe: updated.length };
+}
+
 
 /** akquise_kuratieren — bewertet bis zu 20 neue Leads per Bild-Analyse (Claude Vision). */
 async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
@@ -1896,6 +2251,7 @@ Deno.serve(async (req) => {
     const validModes: Mode[] = [
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
+      "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
@@ -1908,6 +2264,7 @@ Deno.serve(async (req) => {
     // confirm_action, reject_action, wochenbericht) bleiben strikt admin-only.
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
+      "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
@@ -1993,6 +2350,27 @@ Deno.serve(async (req) => {
         finished_at: new Date().toISOString(), status: "done", summary: result.summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
       return ok({ ok: true, run_id: runId, ...result });
+    }
+
+    // --- Die Jagd: startet Apify-Suchläufe. Braucht nur dann Claude, wenn noch keine Suchbegriffe
+    // hinterlegt sind (einmalige Destillation) — deshalb kostenlos und ohne Cost-Gate. ---
+    if (mode === "akquise_jagd" || mode === "akquise_jagd_lernen") {
+      const trig = body.trigger === "cron" || isCronSecretCaller ? "cron" : "manual";
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = mode === "akquise_jagd"
+        ? await runAkquiseJagd(admin, Deno.env.get("ANTHROPIC_API_KEY") ?? null)
+        : await runAkquiseJagdLernen(admin);
+      const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
+      const summary = mode === "akquise_jagd"
+        ? `Jagd: ${(result as { started?: number }).started ?? 0} Suchlauf/Suchläufe gestartet${(result as { message?: string }).message ? ` · ${(result as { message?: string }).message}` : ""}`
+        : `Jagd-Auswertung: ${(result as { ausgewertet?: number }).ausgewertet ?? 0} Begriffe, ${(result as { aussortiert?: number }).aussortiert ?? 0} aussortiert`;
+      if (runId) await admin.from("jarvis_runs").update({
+        finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
+        summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
+        tokens_used: tokensUsed, cost_estimate: (tokensUsed / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2),
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
     }
 
     // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
