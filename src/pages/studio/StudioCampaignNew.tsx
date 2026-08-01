@@ -1800,7 +1800,7 @@ export default function StudioCampaignNew() {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    {chosenImages.length} Foto{chosenImages.length === 1 ? "" : "s"} werden zu einem Video — mit „{chosenModelEntry?.label ?? "Modell"}", {durationS}s je Aufnahme, ~{estimatedCost} Credits.
+                    {chosenImages.length} Foto{chosenImages.length === 1 ? "" : "s"} werden zu einem Video — mit „{chosenModelEntry?.label ?? "Modell"}", {durationS}s je Aufnahme.
                   </p>
                   {needsModelShot && <p className="mt-2 text-sm text-foreground">Bestätige zuerst den Model-Shot oben, bevor die Bewegung startet.</p>}
                   {!motionDecided && <p className="mt-2 text-sm text-foreground">Wähle zuerst bei „Bewegung" ein Modell.</p>}
