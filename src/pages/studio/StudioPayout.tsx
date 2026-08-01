@@ -207,6 +207,19 @@ export default function StudioPayout() {
           </p>
         </div>
 
+        {setupBlocked && (
+          <div className="border-[1.5px] border-black bg-black p-5 text-white">
+            <p className="editorial-eyebrow">Kurz Geduld</p>
+            <p className="mt-2 text-sm">{setupBlocked}</p>
+            {isAdmin && (
+              <p className="mt-3 text-xs opacity-70">
+                Admin-Hinweis: Connect-Plattform-Profil bei Stripe ausfüllen (Einstellungen → Connect → Plattform-Profil), inklusive Verantwortung für Verluste — getrennt für Test- und Live-Modus.
+              </p>
+            )}
+          </div>
+        )}
+
+
         {loadingStatus ? (
           <div className="flex items-center gap-2 border border-border p-5 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Lädt Status…
