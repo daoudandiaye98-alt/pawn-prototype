@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useCredits, type Plan } from "@/features/campaign/quota";
+import { usePlanQuota, type Plan } from "@/features/campaign/quota";
 import { Upload, ArrowRight } from "lucide-react";
 
 type World = "Mode" | "Interior" | "Kunst";
@@ -57,7 +57,7 @@ export default function StudioStueckNeu() {
   const existingProductId = searchParams.get("product");
 
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const credits = useCredits(designer?.id, plan, hasRole("admin"));
+  const quota = usePlanQuota(designer?.id, plan, hasRole("admin"));
 
   // Minimal-Formular — nur für ein frisches Stück ohne ?product=.
   const [name, setName] = useState("");
@@ -136,7 +136,7 @@ export default function StudioStueckNeu() {
       const r = data as { ok?: boolean; results?: StagingResult[]; message?: string; error?: string } | null;
       if (!r?.ok && !r?.results?.length) throw new Error(r?.message ?? r?.error ?? "Inszenierung fehlgeschlagen.");
       setResults(r.results ?? []);
-      void credits.refresh();
+      void quota.refresh();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -306,17 +306,17 @@ export default function StudioStueckNeu() {
                               {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
                             </div>
                           </div>
-                          <p className="mt-1 text-[0.6rem] uppercase tracking-wide text-muted-foreground">{t.credits} Credits</p>
+                          
                         </div>
                       </label>
                     ))}
                   </div>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm text-muted-foreground">
-                      {selectedIds.length === 0 ? "Wähle mindestens eine Variante." : `Dieser Lauf kostet ${totalCredits} Credits, dauert etwa 20–40 Sekunden für ${selectedIds.length} Varianten.`}
+                      {selectedIds.length === 0 ? "Wähle mindestens eine Variante." : `Dauert etwa 20–40 Sekunden für ${selectedIds.length} Varianten — zählt auf dein Monats-Kontingent.`}
                     </p>
                     <button type="button" onClick={() => void runStaging()}
-                      disabled={stagingBusy || selectedIds.length === 0 || !credits.canAfford(totalCredits)}
+                      disabled={stagingBusy || selectedIds.length === 0 || !quota.canDo("shots")}
                       className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
                       {stagingBusy ? "PAWN inszeniert…" : "Inszenierung starten"}
                     </button>

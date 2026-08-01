@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
-import { useCredits } from "@/features/campaign/quota";
+import { usePlanQuota, quotaExhaustedHint } from "@/features/campaign/quota";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, Upload, Sparkles, Image as ImageIcon, Trash2, Send, Check, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -50,7 +50,7 @@ export default function StudioMediathek() {
   const { designer, loading } = useMyDesigner();
   const { user } = useAuth();
   const plan = (designer as unknown as { plan?: "haus" | "atelier" | "maison" })?.plan ?? "haus";
-  const credits = useCredits(designer?.id, plan);
+  const quota = usePlanQuota(designer?.id, plan);
 
   const [rows, setRows] = useState<MediaRow[]>([]);
   const [products, setProducts] = useState<ProductLite[]>([]);
@@ -122,8 +122,8 @@ export default function StudioMediathek() {
 
   const applyFreisteller = async (row: MediaRow) => {
     if (!designer) return;
-    if (!credits.canAfford(credits.costs.product_shot ?? 1)) {
-      toast.error(`Nicht genug Credits — Freisteller kostet ${credits.costs.product_shot ?? 1}, du hast ${credits.balance}.`);
+    if (!quota.canDo("shots")) {
+      toast.error(quotaExhaustedHint(plan, "Shots"));
       return;
     }
     setBusyId(row.id);
@@ -140,7 +140,7 @@ export default function StudioMediathek() {
       } as never);
       toast.success("Freisteller fertig — als neue Datei in der Mediathek.");
       void refresh();
-      void credits.refresh();
+      void quota.refresh();
     } catch (e) {
       toast.error((e as Error).message || "Freisteller fehlgeschlagen.");
     } finally {
@@ -253,7 +253,7 @@ export default function StudioMediathek() {
                   {row.kind === "bild" && (
                     <button onClick={() => void applyFreisteller(row)} disabled={busyId === row.id}
                       className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground disabled:opacity-50">
-                      <Sparkles className="h-3 w-3" /> Freisteller · {credits.costs.product_shot ?? 1} Cr.
+                      <Sparkles className="h-3 w-3" /> Freisteller
                     </button>
                   )}
                   <a href={row.url} download className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground">

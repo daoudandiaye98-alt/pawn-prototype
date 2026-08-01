@@ -47,10 +47,10 @@ interface BegleiterProps {
   pathname: string;
   step?: string;
   plan?: Plan;
-  credits?: { balance: number; grant: number; loading: boolean };
+  quota?: { summary: string; loading: boolean };
 }
 
-export function Begleiter({ pathname, step, plan, credits }: BegleiterProps) {
+export function Begleiter({ pathname, step, plan, quota }: BegleiterProps) {
   const [minimized, setMinimized] = useState(false);
   const [asking, setAsking] = useState(false);
   const [question, setQuestion] = useState("");
@@ -80,7 +80,7 @@ export function Begleiter({ pathname, step, plan, credits }: BegleiterProps) {
         `Seite ${pathname}`,
         step ? `Schritt ${step}` : null,
         plan ? `${planLabel(plan)}-Plan` : null,
-        credits && !credits.loading ? `${credits.balance}/${credits.grant} Credits` : null,
+        quota && !quota.loading ? quota.summary : null,
       ].filter(Boolean).join(", ");
       const { data, error } = await supabase.functions.invoke("studio-ai", {
         body: { mode: "chat", messages: [{ role: "user", content: `[Kontext: ${contextBits}] ${question.trim()}` }] },
