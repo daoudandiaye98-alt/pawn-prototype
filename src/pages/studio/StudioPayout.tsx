@@ -7,9 +7,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check } from "lucide-react";
 
-type ConnectState = "none" | "pending" | "active" | "error";
+type ConnectState = "none" | "pending" | "active" | "payouts" | "error";
 
-interface ConnectStatus { connected: boolean; charges_enabled: boolean; details_submitted: boolean }
+interface ConnectStatus {
+  connected: boolean;
+  charges_enabled: boolean;
+  details_submitted: boolean;
+  payouts_enabled?: boolean;
+  requirements_due?: string[];
+}
+
 
 interface BillingProfile {
   legal_name: string; address_line1: string; address_line2: string; postal_code: string; city: string; country: string;
