@@ -44,7 +44,7 @@ export function PublicFooter() {
         <FooterCol
           title="House"
           links={[
-            { label: "Contact", to: "mailto:kontakt@pawn.example" },
+            { label: "Contact", to: "mailto:pawnstudio.co@gmail.com" },
             { label: "Versand & Retoure", to: "/versand" },
             { label: "AGB", to: "/agb" },
             { label: "Datenschutz", to: "/datenschutz" },

@@ -18,7 +18,7 @@ export default function Versand() {
             <p className="palace-eyebrow">Rückgabe</p>
             <p className="mt-3">
               Innerhalb von 14&nbsp;Tagen nach Erhalt kannst du Lagerware zurücksenden. Anfertigungen sind vom
-              Widerruf ausgenommen. Schreib uns an <span className="underline">retoure@pawn.example</span> — wir
+              Widerruf ausgenommen. Schreib uns an <span className="underline">pawnstudio.co@gmail.com</span> — wir
               begleiten den Rückversand persönlich.
             </p>
           </div>

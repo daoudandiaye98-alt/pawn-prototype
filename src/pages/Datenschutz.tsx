@@ -23,7 +23,7 @@ export default function Datenschutz() {
 
         <div className="palace-serif mt-16 space-y-10 text-[#000000]/85">
           <Section title="1. Verantwortlicher">
-            <p>PAWN [TODO: Firmenname, Anschrift, Kontakt]. E-Mail: kontakt@pawn.example.</p>
+            <p>PAWN [TODO: Firmenname, Anschrift, Kontakt]. E-Mail: pawnstudio.co@gmail.com.</p>
           </Section>
 
           <Section title="2. Welche Daten wir verarbeiten">
@@ -93,7 +93,7 @@ export default function Datenschutz() {
 
 
           <Section title="10. Kontakt">
-            <p>Fragen zum Datenschutz: <a href="mailto:datenschutz@pawn.example" className="underline">datenschutz@pawn.example</a>.</p>
+            <p>Fragen zum Datenschutz: <a href="mailto:pawnstudio.co@gmail.com" className="underline">pawnstudio.co@gmail.com</a>.</p>
           </Section>
         </div>
       </section>
