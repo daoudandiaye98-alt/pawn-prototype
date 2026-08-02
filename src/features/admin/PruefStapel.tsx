@@ -24,6 +24,10 @@ export interface PruefLead {
   scrape_images?: unknown;
   message_draft?: string | null;
   language?: string | null;
+  lead_type?: string | null;
+  outlet?: string | null;
+  contact_name?: string | null;
+  personal_line?: string | null;
 }
 
 function images(lead: PruefLead): string[] {
@@ -38,20 +42,26 @@ function reasonText(lead: PruefLead): string | null {
 }
 
 export function PruefStapel({
-  rows, onChange,
+  rows, onChange, leadType = "designer", title,
 }: {
   rows: PruefLead[];
   onChange: (id: string, patch: Partial<PruefLead>) => void;
+  /** "designer" = Häuser-Akquise, "presse" = Presse-Kontakte. */
+  leadType?: "designer" | "presse";
+  title?: string;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const isPresse = leadType === "presse";
 
   const items = useMemo(
     () => rows
+      .filter((r) => (r.lead_type ?? "designer") === leadType)
       .filter((r) => r.status === "qualifiziert" && !r.admin_decision)
       .sort((a, b) => (b.kurator_score ?? 0) - (a.kurator_score ?? 0))
       .slice(0, 12),
-    [rows],
+    [rows, leadType],
   );
+
 
   async function decide(lead: PruefLead, decision: "ja" | "nein") {
     setBusy(lead.id);
