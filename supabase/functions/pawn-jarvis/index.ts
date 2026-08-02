@@ -1744,6 +1744,33 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
       continue;
     }
 
+    // Profil-Läufe legen keine neuen Leads an, sie füllen die bestehenden auf (Bio, Follower, E-Mail, Website).
+    if (hunt.query_type === "profil") {
+      let updated = 0;
+      for (const item of items) {
+        const mapped = mapScrapeItem(item, hunt.world || config.default_world, hunt.id, "profil");
+        if (!mapped.handle) continue;
+        const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (mapped.bio) patch.bio = mapped.bio;
+        if (mapped.followers != null) patch.followers = mapped.followers;
+        if (mapped.website) patch.website = mapped.website;
+        if (mapped.scrape_images.length) patch.scrape_images = mapped.scrape_images;
+        if (mapped.email) { patch.email = mapped.email; patch.channel = "email"; patch.contact_source = "bio"; }
+        const { data: touched } = await admin.from("acquisition_leads")
+          .update(patch as never).eq("handle", mapped.handle).is("email", null).select("id");
+        updated += (touched ?? []).length;
+      }
+      enriched += updated;
+      finished++;
+      await admin.from("acquisition_hunts").update({
+        status: "fertig", items_found: items.length, leads_created: 0,
+        finished_at: new Date().toISOString(),
+      }).eq("id", hunt.id);
+      continue;
+    }
+
+
+
     const rows = items
       .map((item) => mapScrapeItem(item, hunt.world || config.default_world, hunt.id, hunt.query_type === "nachbarschaft" ? "nachbarschaft" : "hashtag"))
       .filter((r) => r.handle && !known.has(r.handle));
