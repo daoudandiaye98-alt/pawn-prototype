@@ -705,7 +705,10 @@ export default function AdminAkquise() {
 
       <JagdPanel />
 
+      <ErstnachrichtVorlagen />
+
       <PruefStapel rows={rows} onChange={(id, patch) => patchRow(id, patch as Partial<Lead>)} />
+
 
       <SendeStapel rows={rows} onChange={patchRow} />
 
