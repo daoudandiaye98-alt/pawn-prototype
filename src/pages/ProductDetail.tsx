@@ -45,7 +45,8 @@ const ProductDetail = () => {
   // (core-Store) hat absichtlich leere Seed-Arrays (keine Markennamen, keine Fake-Daten) und
   // lieferte hier immer "kein Treffer", was die ganze Seite zum Absturz brachte.
   const sizeVariants = useMemo(
-    () => ((dbProduct?.size_variants ?? []) as unknown as SizeVariant[]).filter((v) => v?.size?.trim()),
+    () => (Array.isArray(dbProduct?.size_variants) ? dbProduct.size_variants : [] as unknown[])
+      .filter((v): v is SizeVariant => !!(v as SizeVariant)?.size?.trim()),
     [dbProduct],
   );
 
@@ -526,14 +527,19 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
     dbProduct.height_cm && `H ${dbProduct.height_cm} cm`,
   ].filter(Boolean).join(" × ");
   const dna = (dbProduct.product_dna ?? {}) as { materials?: string[] };
-  const parts = (dbProduct.material_composition ?? []) as unknown as MaterialPart[];
+  const parts = (Array.isArray(dbProduct.material_composition) ? dbProduct.material_composition : []) as unknown as MaterialPart[];
   const composition = materialLine(parts);
   const materials = composition || (Array.isArray(dna.materials) && dna.materials.length ? dna.materials.join(", ") : null);
   const weight = dbProduct.weight_grams ? `${dbProduct.weight_grams} g` : null;
-  const care = ((dbProduct.care_symbols ?? []) as string[]).map(careLabel).join(" · ");
+  const care = (Array.isArray(dbProduct.care_symbols) ? dbProduct.care_symbols as string[] : []).map(careLabel).join(" · ");
   const careText = [care || null, dbProduct.care_instructions ?? null].filter(Boolean).join("\n");
-  const measurements = (dbProduct.measurements ?? { rows: [], values: {} }) as unknown as Measurements;
-  const sizes = ((dbProduct.size_variants ?? []) as unknown as SizeVariant[]).filter((s) => s?.size?.trim());
+  const rawMeasurements = (dbProduct.measurements ?? {}) as Partial<Measurements>;
+  const measurements: Measurements = {
+    rows: Array.isArray(rawMeasurements.rows) ? rawMeasurements.rows : [],
+    values: (rawMeasurements.values ?? {}) as Measurements["values"],
+  };
+  const sizes = (Array.isArray(dbProduct.size_variants) ? dbProduct.size_variants : [] as unknown[])
+    .filter((s): s is SizeVariant => !!(s as SizeVariant)?.size?.trim());
   const showTable = measurements.rows.length > 0 && sizes.length > 0;
 
   const profile = worldProfile(dbProduct.world);
@@ -581,7 +587,7 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
                   <tr key={row} className="border-b border-[rgba(0,0,0,.12)]">
                     <td className="py-2 pr-4">{row}</td>
                     {sizes.map((s) => (
-                      <td key={s.size} className="py-2 pr-4 tabular-nums">{measurements.values[row]?.[s.size] || "—"}</td>
+                      <td key={s.size} className="py-2 pr-4 tabular-nums">{measurements.values?.[row]?.[s.size] || "—"}</td>
                     ))}
                   </tr>
                 ))}
