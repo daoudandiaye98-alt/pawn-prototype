@@ -192,9 +192,9 @@ const Shop = () => {
         {/* Raster */}
         <div>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[rgba(0,0,0,.18)] pb-4">
-            <p className="palace-eyebrow">
-              {loading ? "Wird geladen …" : `${filtered.length} ${filtered.length === 1 ? "Stück" : "Stücke"}`}
-            </p>
+            {loading
+              ? <p key="loading" className="palace-eyebrow">Wird geladen …</p>
+              : <p key="count" className="palace-eyebrow">{filtered.length} {filtered.length === 1 ? "Stück" : "Stücke"}</p>}
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
