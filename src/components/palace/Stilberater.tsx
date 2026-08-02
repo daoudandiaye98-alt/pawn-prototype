@@ -105,11 +105,17 @@ export function Stilberater({ className }: { className?: string }) {
                 <div className="h-full bg-black" style={{ width: `${Math.min(100, Math.round((fz.aktuell / fz.ziel) * 100))}%` }} />
               </div>
             </>
-          ) : (
+          ) : fz ? (
             <p className="text-sm text-black/70">
               Genug gesehen, um ein erstes Muster zu erkennen — willst du wissen, welches?
             </p>
+          ) : (
+            <p className="text-sm text-black/70">
+              Dein Stilberater liest mit, während du dich umsiehst. Sobald genug Blicke zusammengekommen sind,
+              sagt er dir, welches Muster darin steckt.
+            </p>
           )}
+
           <button type="button" onClick={() => void anfordern(false)} disabled={busy || (fz ? !fz.erreicht : false)}
             className="mt-4 border-[1.5px] border-black px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-black hover:text-white disabled:opacity-40">
             {busy ? "…" : "Einschätzung anfordern"}
