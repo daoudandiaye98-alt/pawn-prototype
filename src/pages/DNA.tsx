@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { usePersonalization, type Signal } from "@/features/personalization";
 import { supabase } from "@/integrations/supabase/client";
 import { Stilberater } from "@/components/palace/Stilberater";
+import { MeasurementsPanel } from "@/components/palace/MeasurementsPanel";
 import { DnaChat } from "@/components/palace/DnaChat";
 import { DnaKompass } from "@/components/palace/DnaKompass";
 import { PasstDas } from "@/components/palace/PasstDas";
