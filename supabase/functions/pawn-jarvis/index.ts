@@ -189,6 +189,9 @@ interface AkquiseConfig {
   followup_after_days: number;
   max_touches: number;
   languages: string[];
+  /** Feste Erstnachricht (von Daouda gesetzt). Leer = Jarvis formuliert frei. <personal_line> wird ersetzt. */
+  template_de: string;
+  template_en: string;
   // Jagd (Teil 23): Jarvis startet Apify-Läufe selbst, statt nur den letzten Lauf zu lesen.
   apify_actor_hashtag: string;
   apify_actor_profile: string;
