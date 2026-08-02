@@ -74,6 +74,7 @@ export type Database = {
           bio: string | null
           channel: string | null
           clips: Json | null
+          contact_name: string | null
           contact_source: string | null
           contacted_at: string | null
           created_at: string | null
@@ -87,10 +88,12 @@ export type Database = {
           id: string
           kurator_score: number | null
           language: string | null
+          lead_type: string
           message_draft: string | null
           next_touch_at: string | null
           notes: string | null
           opt_out: boolean
+          outlet: string | null
           personal_line: string | null
           qc_passed: boolean | null
           score_reasons: Json | null
@@ -107,6 +110,7 @@ export type Database = {
           bio?: string | null
           channel?: string | null
           clips?: Json | null
+          contact_name?: string | null
           contact_source?: string | null
           contacted_at?: string | null
           created_at?: string | null
@@ -120,10 +124,12 @@ export type Database = {
           id?: string
           kurator_score?: number | null
           language?: string | null
+          lead_type?: string
           message_draft?: string | null
           next_touch_at?: string | null
           notes?: string | null
           opt_out?: boolean
+          outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
           score_reasons?: Json | null
@@ -140,6 +146,7 @@ export type Database = {
           bio?: string | null
           channel?: string | null
           clips?: Json | null
+          contact_name?: string | null
           contact_source?: string | null
           contacted_at?: string | null
           created_at?: string | null
@@ -153,10 +160,12 @@ export type Database = {
           id?: string
           kurator_score?: number | null
           language?: string | null
+          lead_type?: string
           message_draft?: string | null
           next_touch_at?: string | null
           notes?: string | null
           opt_out?: boolean
+          outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
           score_reasons?: Json | null
@@ -1550,6 +1559,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      growth_channels: {
+        Row: {
+          config: Json
+          created_at: string
+          daily_cap: number
+          description: string | null
+          enabled: boolean
+          id: string
+          key: string
+          label: string
+          updated_at: string
+          zone: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          daily_cap?: number
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          key: string
+          label: string
+          updated_at?: string
+          zone?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          daily_cap?: number
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          key?: string
+          label?: string
+          updated_at?: string
+          zone?: string
+        }
+        Relationships: []
       }
       house_milestones: {
         Row: {

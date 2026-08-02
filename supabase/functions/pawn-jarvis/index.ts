@@ -62,6 +62,7 @@ type Mode =
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_jagd" | "akquise_jagd_lernen"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
+  | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
 
 type Zone = "gruen" | "gelb" | "rot";
@@ -1584,6 +1585,7 @@ async function runAkquiseProfile(admin: SupabaseClient): Promise<Record<string, 
 
   const { data: leads } = await admin.from("acquisition_leads")
     .select("handle, world")
+    .eq("lead_type", "designer")
     .in("status", ["neu", "qualifiziert", "angewaermt"])
     .is("email", null).is("website", null).eq("opt_out", false)
     .order("created_at", { ascending: true }).limit(60);
@@ -1890,7 +1892,7 @@ async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<strin
 async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, scrape_images").eq("status", "neu").limit(20);
+    .select("id, handle, world, bio, scrape_images").eq("lead_type", "designer").eq("status", "neu").limit(20);
 
   let qualified = 0, sortedOut = 0, tokensUsed = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; scrape_images: unknown }[]) {
@@ -2004,7 +2006,7 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email").eq("status", "qualifiziert").is("message_draft", null).limit(10);
+    .select("id, handle, world, bio, email").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null).limit(10);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
 
@@ -2027,10 +2029,195 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
 }
 
+/* ------------------------------------------------------------------ *
+ * Wachstum · Weg 1: der Presse-Jäger
+ * Gleiche Mechanik wie die Designer-Akquise (suchen → prüfen → Entwurf →
+ * dein Ja → raus), nur andere Beute: Journalist:innen, Newsletter,
+ * Kurator:innen und Blogs. Leads liegen in derselben Tabelle, unterschieden
+ * durch lead_type = 'presse'.
+ * ------------------------------------------------------------------ */
+
+const PRESSE_WELTEN = ["Mode", "Interior", "Kunst"] as const;
+
+interface PresseTreffer {
+  name?: string;
+  outlet?: string;
+  fokus?: string;
+  url?: string;
+  email?: string;
+  sprache?: string;
+  land?: string;
+  relevanz?: number;
+}
+
+/** Fragt das Modell mit Websuche (nur mit Anthropic-Schlüssel) und erwartet JSON zurück. */
+async function searchJson(
+  apiKey: string, system: string, user: string, maxTokens = 1600,
+): Promise<{ json: Record<string, unknown> | null; tokens: number }> {
+  if (!apiKey) return await claudeJsonOnce("", system, user, maxTokens);
+  const messages: unknown[] = [{ role: "user", content: user }];
+  let tokens = 0;
+  for (let turn = 0; turn < 4; turn++) {
+    let data: AnthropicResponse;
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: MODEL, max_tokens: maxTokens, system, messages,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+        }),
+      });
+      if (!res.ok) return await claudeJsonOnce("", system, user, maxTokens);
+      data = await res.json();
+    } catch {
+      return await claudeJsonOnce("", system, user, maxTokens);
+    }
+    tokens += (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
+    if (data.stop_reason !== "tool_use") {
+      const text = data.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
+      const json = extractJson(text) as Record<string, unknown> | null;
+      if (json) return { json, tokens };
+      const fb = await claudeJsonOnce("", system, user, maxTokens);
+      return { json: fb.json, tokens: tokens + fb.tokens };
+    }
+    messages.push({ role: "assistant", content: data.content });
+    messages.push({ role: "user", content: [{ type: "text", text: "(fahre fort und antworte jetzt mit dem JSON)" }] });
+  }
+  return { json: null, tokens };
+}
+
+function presseHandle(t: PresseTreffer): string | null {
+  const base = `${t.outlet ?? ""} ${t.name ?? ""}`.trim().toLowerCase();
+  const slug = base.replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "").slice(0, 48);
+  return slug ? `presse-${slug}` : null;
+}
+
+/** presse_jagd — sucht Journalist:innen, Newsletter und Blogs je Welt und legt sie als Presse-Leads an. */
+async function runPresseJagd(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: channel } = await admin.from("growth_channels").select("enabled, daily_cap, config").eq("key", "presse").maybeSingle();
+  const row = channel as { enabled?: boolean; daily_cap?: number } | null;
+  if (row && row.enabled === false) return { ok: true, gefunden: 0, angelegt: 0, message: "Presse-Kanal ist ausgeschaltet." };
+  const cap = Math.max(1, Math.min(30, row?.daily_cap ?? 10));
+
+  const known = new Set<string>();
+  const { data: existing } = await admin.from("acquisition_leads").select("handle").eq("lead_type", "presse").limit(2000);
+  for (const l of (existing ?? []) as { handle: string }[]) known.add(l.handle);
+
+  const { data: houses } = await admin.from("designers")
+    .select("brand_name, country").eq("status", "active").limit(15);
+  const housesText = ((houses ?? []) as { brand_name: string; country: string | null }[])
+    .map((h) => `${h.brand_name}${h.country ? ` (${h.country})` : ""}`).join(", ") || "noch keine öffentlichen Häuser";
+
+  let gefunden = 0, angelegt = 0, tokensUsed = 0;
+  for (const welt of PRESSE_WELTEN) {
+    if (angelegt >= cap) break;
+    const system = `Du recherchierst für PAWN (pawn.vision), einen kuratierten Marktplatz für unabhängige Designer aus Mode, Interior und Kunst. Finde echte, aktuell aktive Presse-Kontakte im deutschsprachigen und europäischen Raum, die über unabhängiges Design, Handwerk, Slow Fashion, Keramik, Interior oder junge Kunst schreiben: Journalist:innen, Newsletter-Autor:innen, Kurator:innen, Blogs, kleine Magazine.
+
+Erfinde nichts. Nur Kontakte, die du in der Websuche wirklich gesehen hast. Eine E-Mail-Adresse nur dann, wenn sie öffentlich auf der Seite steht (Impressum, Kontakt, Autorenprofil) — sonst lass das Feld leer.
+
+Antworte NUR mit JSON: {"treffer": [{"name": "...", "outlet": "...", "fokus": "worüber diese Person zuletzt geschrieben hat, ein Satz", "url": "...", "email": "", "sprache": "de", "land": "DE", "relevanz": 0}]}`;
+    const user = `Welt: ${welt}. Suche 6 passende Presse-Kontakte. Unsere Häuser: ${housesText}. Kleine und mittelgroße Titel sind uns lieber als große Hochglanz-Magazine, weil sie eher über neue Häuser schreiben.`;
+    const { json, tokens } = await searchJson(apiKey, system, user);
+    tokensUsed += tokens;
+    const treffer = Array.isArray((json as { treffer?: unknown } | null)?.treffer)
+      ? ((json as { treffer: PresseTreffer[] }).treffer) : [];
+    gefunden += treffer.length;
+
+    for (const t of treffer) {
+      if (angelegt >= cap) break;
+      const handle = presseHandle(t);
+      if (!handle || known.has(handle)) continue;
+      const relRaw = Number(t.relevanz);
+      const score = Number.isFinite(relRaw) ? Math.max(0, Math.min(100, Math.round(relRaw))) : 50;
+      const email = typeof t.email === "string" && t.email.includes("@") ? t.email.trim() : null;
+      const { error } = await admin.from("acquisition_leads").insert({
+        lead_type: "presse",
+        handle,
+        outlet: t.outlet ?? null,
+        contact_name: t.name ?? null,
+        world: welt,
+        source: "presse_jagd",
+        bio: t.fokus ?? null,
+        website: t.url ?? null,
+        email,
+        channel: email ? "email" : "dm",
+        language: t.sprache === "en" ? "en" : "de",
+        status: "qualifiziert",
+        kurator_score: score,
+        qc_passed: true,
+        score_reasons: { begruendung: t.fokus ?? null, outlet: t.outlet ?? null, quelle: t.url ?? null },
+      } as never);
+      if (!error) { known.add(handle); angelegt++; }
+    }
+  }
+  return { ok: true, gefunden, angelegt, tokensUsed };
+}
+
+/** presse_verfassen — schreibt je Presse-Lead einen Pitch über EIN konkretes Haus. */
+async function runPresseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, outlet, contact_name, world, bio, email, language")
+    .eq("lead_type", "presse").eq("status", "qualifiziert").is("message_draft", null).limit(8);
+  if (!(leads ?? []).length) return { ok: true, processed: 0, ready: 0 };
+
+  const { data: houses } = await admin.from("designers")
+    .select("brand_name, slug, story, country, brand_dna").eq("status", "active").eq("published", true).limit(30);
+  const houseList = (houses ?? []) as { brand_name: string; slug: string; story: string | null; country: string | null; brand_dna: Record<string, unknown> | null }[];
+  if (!houseList.length) return { ok: true, processed: 0, ready: 0, message: "Noch kein veröffentlichtes Haus, über das sich pitchen ließe." };
+
+  const styleLaw = await loadHouseStyleLaw(admin);
+  let ready = 0, tokensUsed = 0;
+
+  for (const lead of (leads ?? []) as { id: string; handle: string; outlet: string | null; contact_name: string | null; world: string; bio: string | null; email: string | null; language: string | null }[]) {
+    const passend = houseList.filter((h) => {
+      const worlds = (h.brand_dna as { worlds?: Record<string, number> } | null)?.worlds ?? {};
+      return Object.keys(worlds).includes(lead.world);
+    });
+    const pool = passend.length ? passend : houseList;
+    const haus = pool[Math.floor(Math.random() * pool.length)];
+    const sprache = lead.language === "en" ? "en" : "de";
+
+    const system = `Du schreibst als Daouda, Gründer von PAWN (pawn.vision, Köln), eine kurze Presse-Anfrage an eine:n Journalist:in. Sprache: ${sprache === "en" ? "Englisch" : "Deutsch"}.
+
+Regeln:
+- Höchstens 130 Wörter. Kein Marketing-Sprech, keine Superlative, keine erfundenen Zahlen oder Auszeichnungen.
+- Beginne mit einem konkreten Satz darüber, worüber diese Person zuletzt geschrieben hat.
+- Pitche GENAU EIN Haus, nicht die Plattform. Die Plattform ist nur der Nebensatz, in dem das Haus zu finden ist.
+- Ende mit einem einzigen, leichten Angebot (Bilder, Gespräch mit dem Haus) und dem Link.
+- Keine Anhänge, keine Anführungszeichen um die Nachricht.
+
+Stilgesetz: ${styleLaw}
+
+Antworte NUR mit JSON: {"betreff": "...", "nachricht": "..."}`;
+    const user = `Kontakt: ${lead.contact_name ?? "Redaktion"}${lead.outlet ? ` · ${lead.outlet}` : ""}. Schwerpunkt: ${lead.bio ?? "unbekannt"}. Welt: ${lead.world}.
+Haus: ${haus.brand_name}${haus.country ? ` aus ${haus.country}` : ""}. Geschichte des Hauses: ${(haus.story ?? "keine Angabe").slice(0, 600)}.
+Link: https://pawn.vision/designer/${haus.slug}`;
+
+    const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 800);
+    tokensUsed += tokens;
+    const nachricht = typeof json?.nachricht === "string" ? json.nachricht : null;
+    if (!nachricht) continue;
+    const betreff = typeof json?.betreff === "string" ? json.betreff : `${haus.brand_name} — ein unabhängiges Haus für deine nächste Geschichte`;
+
+    await admin.from("acquisition_leads").update({
+      message_draft: nachricht,
+      personal_line: betreff,
+      language: sprache,
+      channel: lead.email ? "email" : "dm",
+      notes: `Pitch über ${haus.brand_name}`,
+    }).eq("id", lead.id);
+    ready++;
+  }
+  return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
+}
+
 const FOLLOWUP_EMAIL_TEXT = `Kein Stress — wollte nur sichergehen, dass meine Nachricht nicht im Anfragen-Ordner versackt ist. Falls du reinschauen magst: pawn.vision. Kostet nichts, und Ausgabe 08 hat noch Platz. Wenn nicht, ist das auch völlig okay.`;
 
+const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio erkennbar war. Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe.";
+
 async function sendResendEmail(
-  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string,
+  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -2038,7 +2225,7 @@ async function sendResendEmail(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
       body: JSON.stringify({
         from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
-        text: `${text}\n\n—\nDu bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio erkennbar war. Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe.`,
+        text: `${text}\n\n—\n${footer ?? DEFAULT_MAIL_FOOTER}`,
       }),
     });
     if (!res.ok) {
@@ -2058,21 +2245,29 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, email, message_draft, status, opt_out, admin_decision").in("id", leadIds);
+    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet").in("id", leadIds);
 
   let sent = 0;
   const failed: string[] = [];
   const skipped: string[] = [];
-  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null }[]) {
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null }[]) {
     // Ohne dein "Ja" geht nie etwas raus (Follow-ups an bereits Kontaktierte ausgenommen).
     if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja") { skipped.push(lead.handle); continue; }
     if (lead.opt_out) { skipped.push(lead.handle); continue; }
     if (!lead.email) { skipped.push(lead.handle); continue; }
     if (!lead.message_draft) { skipped.push(lead.handle); continue; }
+    const isPresse = lead.lead_type === "presse";
     const isFollowup = lead.status === "kontaktiert";
-    const subject = isFollowup ? "Kurz nachgefragt — PAWN" : "PAWN — eine Ausstellung für unabhängige Designer";
+    const subject = isFollowup
+      ? (isPresse ? "Kurz nachgefragt — PAWN" : "Kurz nachgefragt — PAWN")
+      : isPresse
+        ? (lead.personal_line?.trim() || "Ein unabhängiges Haus für deine nächste Geschichte")
+        : "PAWN — eine Ausstellung für unabhängige Designer";
     const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
-    const result = await sendResendEmail(resendKey, config, lead.email, subject, text);
+    const footer = isPresse
+      ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Kein Interesse? Kurz antworten reicht, dann ist Ruhe."
+      : undefined;
+    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer);
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
     await admin.from("ai_actions_log").insert({
       source: "jarvis", action: isFollowup ? "akquise_followup_email" : "akquise_erstkontakt_email",
@@ -2582,6 +2777,7 @@ Deno.serve(async (req) => {
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
     if (!validModes.includes(mode)) {
@@ -2595,6 +2791,7 @@ Deno.serve(async (req) => {
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
@@ -2810,18 +3007,25 @@ Deno.serve(async (req) => {
       return ok({ run_id: runId, ...result });
     }
 
-    if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen") {
+    if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
+        || mode === "presse_jagd" || mode === "presse_verfassen") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
+        : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
+        : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
         : await runBewerbungPruefen(admin, apiKey);
 
       const summary = mode === "akquise_kuratieren"
         ? `Kuratiert: ${(result as { qualified?: number }).qualified ?? 0} qualifiziert, ${(result as { sorted_out?: number }).sorted_out ?? 0} aussortiert`
         : mode === "akquise_verfassen"
         ? `Verfasst: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : mode === "presse_jagd"
+        ? `Presse-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
+        : mode === "presse_verfassen"
+        ? `Presse-Pitches: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
         : `Bewerbungen geprüft: ${(result as { processed?: number }).processed ?? 0}`;
 
       const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
