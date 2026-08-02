@@ -8,6 +8,7 @@ import { AdminShell } from "@/components/pawn/AdminShell";
 import { GenomeCard } from "@/components/palace/GenomeCard";
 import { JagdPanel } from "@/features/admin/JagdPanel";
 import { PruefStapel } from "@/features/admin/PruefStapel";
+import { ErstnachrichtVorlagen } from "@/features/admin/ErstnachrichtVorlagen";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
