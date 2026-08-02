@@ -1890,7 +1890,7 @@ async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<strin
 async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, scrape_images").eq("status", "neu").limit(20);
+    .select("id, handle, world, bio, scrape_images").eq("lead_type", "designer").eq("status", "neu").limit(20);
 
   let qualified = 0, sortedOut = 0, tokensUsed = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; scrape_images: unknown }[]) {
@@ -2004,7 +2004,7 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email").eq("status", "qualifiziert").is("message_draft", null).limit(10);
+    .select("id, handle, world, bio, email").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null).limit(10);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
 
