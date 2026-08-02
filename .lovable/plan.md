@@ -1,45 +1,49 @@
-## Wie der Akquise-Rhythmus heute läuft (geprüft in der Datenbank)
+## Entscheidung vorab
 
-Feste Zeitpläne, jeden Tag (UTC):
+**Ein Pfad, nicht drei.** Drei getrennte Seiten würden dreifachen Pflegeaufwand, dreifache Texte und drei Einstiegspunkte bedeuten — und PAWN gerade das nehmen, was es besonders macht: dass Mode, Interior und Kunst unter einem Dach stehen. Effektiver ist **eine Seite mit einer Weiche**: Der Bewerber wählt gleich zu Beginn seine Disziplin, danach spricht die Seite in seiner Sprache (Beispiele, Bilder, Felder, Formulierungen). Ein Ort, drei Handschriften.
 
-```text
-22:00  Jagd            Jarvis startet Apify-Läufe auf Instagram (3 Läufe/Tag, je 50 Konten)
-23:30  Abholen         Ergebnisse werden als Leads importiert
-01:00  Abholen         zweiter Import-Lauf
-01:30  Prüfen          bis 20 Leads werden per Bild-Analyse bewertet (Score, ab 60 = qualifiziert)
-01:45  Kontaktsuche    E-Mail-Adressen über Website/Impressum finden
-02:15  Verfassen       Erstnachricht wird für bis zu 10 Leads geschrieben
-04:45  Versand         bis 10 E-Mails am Tag (Follow-up nach 5 Tagen, max. 2 Berührungen)
-Mo 05:30 Lernen        schwache Suchbegriffe werden aussortiert, starke höher gewichtet
-```
+## 1. Die Bewerbungsseite (`/apply`)
 
-Wege: Instagram-Hashtags (17 aktive Begriffe über Mode/Interior/Kunst) plus Nachbarschafts-Konten. Kontaktweg: E-Mail, wenn eine Adresse gefunden wurde, sonst DM (DM bleibt bewusst manuell). Aktueller Stand: 50 neue, 24 qualifizierte, 20 aussortierte Leads — bei **keinem** ist bisher eine E-Mail-Adresse gefunden worden, deshalb ist noch nichts rausgegangen.
+Aufbau von oben nach unten, streng schwarz/weiß, Playfair + Inter, harte Kanten:
 
-## Zwei Lücken, die dein Wunsch aufdeckt
+1. **Kopf** — „Werde ein Haus." bleibt (stark, markentypisch), darunter eine neue Unterzeile, die alle drei anspricht: Kleidung, Räume, Werke.
+2. **Neu: Disziplin-Weiche** — drei große Karten direkt unter dem Kopf: *Mode · Interior · Kunst*. Klick setzt die Disziplin (bleibt in der URL, z. B. `/apply?welt=mode`) und **verändert die restliche Seite**: die fünf Leistungs-Akte bekommen je Disziplin passende Beispiele und Formulierungen (Video-Kampagne bei Mode = Lookbook-Clip, bei Interior = Raum-Szene, bei Kunst = Werkbetrachtung). Wer nichts wählt, sieht eine neutrale Fassung — niemand wird ausgeschlossen.
+3. **Was du bekommst** (die heutigen fünf Akte, Texte überarbeitet und auf den heutigen Stand gebracht): eigene Hausseite, kuratiertes Publikum, Kampagnen-Studio inkl. KI-Video und Produktfotos, direkte Auszahlung über Stripe (93 % zu dir, 7 % Plattform), Einblicke/Kennzahlen. Die alte Formulierung „Wir beteiligen uns prozentual" wird durch die echte, heutige Regelung ersetzt.
+4. **Was wir suchen / was wir nicht suchen** — neuer, kurzer Block. Ehrliche Kriterien schrecken die Falschen ab und ziehen die Richtigen an; senkt die Prüfarbeit.
+5. **Ablauf** — vier Schritte, aber mit echten Angaben: Bewerbung ≈ 10 Minuten, Antwort in 7 Tagen, Onboarding, erster Auftritt.
+6. **Häufige Fragen** — ausklappbar, sechs bis acht Fragen (Kosten, Mindestanzahl Stücke, Versand, Steuer/Umsatzsteuer, Rechte an Bildern, Kündigung).
+7. **Abschluss-CTA** — „Bewerbung starten" führt die gewählte Disziplin ins Formular mit.
 
-1. Dein „Ja/Nein" im Prüf-Stapel wird gespeichert, aber der Versand-Lauf ignoriert es — er nimmt jeden qualifizierten Lead mit Entwurf. Dein Ja löst also nichts aus.
-2. Die Erstnachricht wird jedes Mal frei formuliert. Du willst eine **von dir festgelegte** Vorlage, DE oder EN je nach Konto.
+Alle Texte laufen weiter über `Editable`/`site_content`, damit du sie ohne Code ändern kannst — inklusive der neuen Blöcke.
 
-## Plan
+## 2. Der Bewerbungspfad (`/apply/form`)
 
-**1. Deine Vorlagen werden die Quelle der Wahrheit**
-Neues Feld in der Akquise-Konfiguration: `template_de` und `template_en`. Wenn gefüllt, schreibt Jarvis nur noch den persönlichen Einstiegssatz (`<personal_line>`) und setzt ihn in deine Vorlage ein — Rest wortgleich. Sprachwahl bleibt automatisch: Bio eindeutig englisch → EN, sonst DE.
+Heute: fünf gleich aussehende Formularschritte in Standard-Optik, die nicht zur Site passt und nicht führt. Neu:
 
-**2. Editor im Admin (`/admin/akquise`)**
-Neuer Block „Erstnachricht" mit zwei Textfeldern (Deutsch / English), Platzhalter-Hinweis `<personal_line>`, Vorschau mit einem Beispiel-Lead und Speichern-Knopf. Rein Frontend gegen `ai_config`.
+- **Optik angleichen**: gleiche Designsprache wie Studio/Admin (harte Kanten, Serifen-Überschriften, Fortschrittslinie statt Standard-Stepper), mobil zuerst.
+- **Führung statt Formular**: pro Schritt eine kurze Erklärzeile in einfacher Sprache („Warum wir das fragen"), sichtbarer Fortschritt („Schritt 2 von 5 · noch ca. 6 Minuten").
+- **Schritt-Reihenfolge neu**: 
+  1. *Deine Disziplin* (vorbelegt aus der Landing) 
+  2. *Dein Haus* (Name, Ort, Land) 
+  3. *Deine Arbeit* — **hier greift die Weiche**: Mode fragt nach Kollektion/Fertigung/Größen, Interior nach Material/Maßanfertigung/Lieferung, Kunst nach Technik/Unikat oder Edition/Format. Portfolio-Upload bleibt, mit klarer Vorgabe (3–8 Bilder, was wir sehen wollen).
+  4. *Verträge* — unverändert in der Mechanik, nur bessere Darstellung.
+  5. *Absenden* — Übersicht in Klartext.
+- **Zwischenstand sichern**: Eingaben landen im Browser-Speicher, damit ein Abbruch nichts kostet.
+- **Bessere Fehlermeldungen** in einfachem Deutsch, direkt am Feld statt nur als Toast.
+- **Erfolgsseite** mit klarer Erwartung: was jetzt passiert, wann Antwort kommt, was du inzwischen vorbereiten kannst.
 
-**3. Ja = senden**
-Im Prüf-Stapel löst „Ja" künftig aus: `admin_decision = ja` setzen → sofort Jarvis mit `mode: akquise_senden` und der Lead-ID rufen → Rückmeldung im Toast („Nachricht an @handle raus" bzw. „nur DM möglich — Text kopieren"). „Nein" bleibt wie heute.
+## 3. Sprache
 
-**4. Versand nur mit deinem Ja**
-Der nächtliche Versand-Lauf filtert zusätzlich auf `admin_decision = ja`. Ohne dein Ja geht nie etwas raus — auch dann nicht, wenn die Zone auf Grün stünde.
-
-**5. Wenn keine E-Mail existiert**
-Lead bleibt auf Kanal DM, bekommt aber denselben fertigen Text: im Prüf-Stapel erscheint nach dem Ja ein „Text kopieren"-Knopf plus Link zum Instagram-Profil. Automatische DMs bleiben aus (Instagram sperrt Konten dafür).
+Alle Texte auf beiden Seiten werden überarbeitet: kein Jargon, keine veralteten Versprechen (Credits, „Sichtbarkeitspakete"), aktuelle Fakten (Stripe-Auszahlung, Pläne Haus/Atelier/Maison, KI-Studio). Englische Reste im Formular („Apply once. Be seen forever.", „Back to designers") verschwinden — die Seite läuft über den vorhandenen Sprach-Umschalter.
 
 ## Technische Details
 
-- `supabase/functions/pawn-jarvis/index.ts`: Konfig-Felder `template_de`/`template_en`, Vorlagen-Ersetzung nach dem Entwurf in `runAkquiseVerfassen`, `.eq("admin_decision","ja")` in `runAkquiseSenden`, neuer Body-Parameter `lead_ids` für gezielten Einzelversand (nur Admin).
-- `src/features/admin/PruefStapel.tsx`: Ja ruft die Funktion, zeigt Ergebnis, DM-Fallback mit Kopier-Knopf.
-- Neu `src/features/admin/ErstnachrichtVorlagen.tsx`, eingebunden in `src/pages/admin/AdminAkquise.tsx`.
-- Danach nötig: ein Lovable-Deploy von `pawn-jarvis` (kostet Credits) — die Frontend-Teile laufen sofort.
+- `src/pages/ApplyLanding.tsx`: Disziplin-Zustand über Query-Parameter `welt`, Inhalte aus einer neuen Datei `src/features/apply/disciplines.ts` (ein Objekt je Welt: Beispiele, Feldbezeichnungen, Fragen). Neue Abschnitte als kleine Komponenten unter `src/features/apply/`.
+- `src/pages/Apply.tsx` wird in Schritt-Komponenten zerlegt (`src/features/apply/steps/*`), Zod-Schemas bleiben, kommen ein disziplinabhängiges Zusatzschema dazu.
+- Speicherung der Disziplin: `designer_applications` hat heute keine passende Spalte. Vorschlag: eine Spalte `world text` per Migration ergänzen (nur Hinzufügen, keine Änderung bestehender Regeln/Policies) und im Edge-Function-Aufruf `submit-application` mitschicken. Falls du keine Migration willst, schreiben wir die Disziplin ersatzweise als ersten Eintrag in `tags` — dann ist kein Backend-Eingriff nötig.
+- Edge Function `submit-application` müsste im Migrationsfall ein Feld mehr durchreichen — **das kostet einen Lovable-Deploy**. Ohne Migration (Tag-Variante) bleibt alles reine Frontend-Arbeit über Git und damit kostenlos.
+- Kein neues Farbschema, keine neuen Abhängigkeiten. Typecheck grün vor Abschluss, Prüfung bei 390 px und iPad.
+
+## Offene Entscheidung
+
+Disziplin als **eigene Spalte** (sauber, kostet einen Function-Deploy) oder vorerst als **erster Tag** (kostenlos, minimal unsauber)? Wenn du nichts sagst, baue ich die Tag-Variante und markiere die Spalte als späteren Schritt.
