@@ -1584,6 +1584,7 @@ async function runAkquiseProfile(admin: SupabaseClient): Promise<Record<string, 
 
   const { data: leads } = await admin.from("acquisition_leads")
     .select("handle, world")
+    .eq("lead_type", "designer")
     .in("status", ["neu", "qualifiziert", "angewaermt"])
     .is("email", null).is("website", null).eq("opt_out", false)
     .order("created_at", { ascending: true }).limit(60);
