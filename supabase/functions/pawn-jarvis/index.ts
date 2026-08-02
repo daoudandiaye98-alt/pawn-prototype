@@ -1956,12 +1956,19 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
  * Jarvis versendet direkt und meldet es.
  * DM-Kanal wird hier NIE automatisiert — der bleibt vollständig im Sende-Stapel von AdminAkquise.
  */
-async function runAkquiseSenden(admin: SupabaseClient, zone: Zone): Promise<Record<string, unknown>> {
+async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: string[]): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const nowIso = new Date().toISOString();
 
+  // Gezielter Einzelversand aus dem Prüf-Stapel: dein "Ja" schickt sofort.
+  if (leadIds && leadIds.length) {
+    return { ok: true, mode: "direkt", ...(await sendAkquiseBatch(admin, leadIds)) };
+  }
+
+  // Erstkontakt geht NUR raus, wenn du den Lead im Prüf-Stapel mit "Ja" freigegeben hast.
   const { data: firstTouch } = await admin.from("acquisition_leads")
     .select("id").eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
+    .eq("admin_decision", "ja")
     .not("message_draft", "is", null).not("email", "is", null)
     .order("created_at", { ascending: true }).limit(config.email_daily_cap);
 
@@ -1973,7 +1980,7 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone): Promise<Reco
     : { data: [] as { id: string }[] };
 
   const candidateIds = [...(firstTouch ?? []).map((r: { id: string }) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
-  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden." };
+  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden — kein freigegebener Kontakt offen." };
 
   if (zone !== "rot") {
     const result = await sendAkquiseBatch(admin, candidateIds);
