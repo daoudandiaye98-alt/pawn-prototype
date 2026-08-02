@@ -167,6 +167,8 @@ export default function StudioStueckNeu() {
     const priceNum = Number(price);
     if (!price || isNaN(priceNum) || priceNum <= 0) { toast.error("Bitte einen Preis eintragen."); return; }
     if (!sourceUrl) { toast.error("Bitte zuerst ein Foto hochladen."); return; }
+    const stockNum = Math.max(0, Math.floor(Number(stock) || 0));
+    if (!madeToOrder && stockNum < 1) { toast.error("Trag ein, wie viele Stücke du vorrätig hast — sonst steht dein Stück sofort auf ausverkauft."); return; }
     setBusy(true);
     try {
       const description = [story.trim(), size.trim() ? `Größe: ${size.trim()}` : null].filter(Boolean).join("\n\n") || null;
@@ -174,6 +176,8 @@ export default function StudioStueckNeu() {
       const { data, error } = await supabase.from("products").insert({
         designer_id: designer.id, name: name.trim(), slug, price: priceNum, world, description,
         image_url: sourceUrl, status: "published",
+        inventory_mode: madeToOrder ? "made_to_order" : "stock",
+        stock_quantity: madeToOrder ? 0 : stockNum,
       }).select("id, name, slug, price, image_url").single();
       if (error) throw error;
       setProduct(data as LiveProduct);
