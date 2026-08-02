@@ -218,32 +218,48 @@ const ProductDetail = () => {
     <PalaceLayout transparentHeader={false}>
       <div className="palace house-theme" data-typografie={themeForPage.typografie} data-textur={themeForPage.hintergrundtextur.typ} style={themeCssVars(themeForPage)}>
       {/* Banner: hero image always first, directly under the nav */}
-      <section className="relative pt-20 md:pt-24">
-        <Reveal>
-          <EditorialImage
-            seed={`prd-${product.slug}-hero`}
-            ratio="16/9"
-            className="w-full"
-          />
-        </Reveal>
-        <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
-          <div className="pointer-events-auto">
-            <PrevNextForProduct slug={product.slug} />
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 pt-12 md:px-14 md:pt-16">
-        <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
-          {/* Left: gallery thumbnails */}
+      {heroImage && (
+        <section className="relative pt-20 md:pt-24">
           <Reveal>
-            <EditorialImage seed={`prd-${product.slug}`} ratio="4/5" className="w-full" />
-            <div className="mt-6 grid grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <EditorialImage key={i} seed={`prd-${product.slug}-${i}`} ratio="1/1" />
-              ))}
-            </div>
+            <EditorialImage
+              src={heroImage}
+              seed={`prd-${product.slug}-hero`}
+              ratio="16/9"
+              className="w-full"
+              alt={product.name}
+              priority
+              color
+            />
           </Reveal>
+          <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
+            <div className="pointer-events-auto">
+              <PrevNextForProduct slug={product.slug} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className={heroImage ? "px-6 pt-12 md:px-14 md:pt-16" : "px-6 pt-32 md:px-14 md:pt-40"}>
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
+          {/* Left: gallery */}
+          <Reveal>
+            <EditorialImage
+              src={heroImage}
+              seed={`prd-${product.slug}`}
+              ratio="4/5"
+              className="w-full"
+              alt={product.name}
+              color
+            />
+            {gallery.length > 0 && (
+              <div className="mt-6 grid grid-cols-3 gap-4">
+                {gallery.map((url, i) => (
+                  <EditorialImage key={url} src={url} seed={`prd-${product.slug}-${i}`} ratio="1/1" alt={product.name} color />
+                ))}
+              </div>
+            )}
+          </Reveal>
+
 
           {banner && (
             <Reveal>
