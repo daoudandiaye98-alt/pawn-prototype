@@ -55,41 +55,70 @@ function parseQueries(value: unknown): HuntQuery[] {
     }));
 }
 
+interface KontaktStats {
+  qualifiziert: number;
+  mitEmail: number;
+  nurDm: number;
+  heuteGesendet: number;
+}
+
+type JagdMode = "akquise_jagd" | "akquise_import" | "akquise_jagd_lernen" | "akquise_profile" | "akquise_kontakt";
+
 export function JagdPanel() {
   const [hunts, setHunts] = useState<Hunt[]>([]);
   const [queries, setQueries] = useState<HuntQuery[]>([]);
   const [queryText, setQueryText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [stats, setStats] = useState<KontaktStats | null>(null);
 
   const load = useCallback(async () => {
-    const [huntsRes, configRes] = await Promise.all([
+    const seit = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+    const [huntsRes, configRes, leadsRes, sentRes] = await Promise.all([
       supabase.from("acquisition_hunts").select("*").order("created_at", { ascending: false }).limit(25),
       supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle(),
+      supabase.from("acquisition_leads").select("status, email").in("status", ["neu", "qualifiziert", "angewaermt"]),
+      supabase.from("acquisition_leads").select("id").gte("contacted_at", seit),
     ]);
     setHunts((huntsRes.data as Hunt[] | null) ?? []);
     const parsed = parseQueries(configRes.data?.value);
     setQueries(parsed);
     setQueryText(parsed.map((q) => `${q.query} · ${q.world}`).join("\n"));
+
+    const leads = (leadsRes.data as { status: string; email: string | null }[] | null) ?? [];
+    setStats({
+      qualifiziert: leads.filter((l) => l.status === "qualifiziert").length,
+      mitEmail: leads.filter((l) => !!l.email).length,
+      nurDm: leads.filter((l) => !l.email).length,
+      heuteGesendet: (sentRes.data as { id: string }[] | null)?.length ?? 0,
+    });
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  async function run(mode: "akquise_jagd" | "akquise_import" | "akquise_jagd_lernen", label: string) {
+  async function run(mode: JagdMode, label: string) {
     setBusy(mode);
     const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode } });
     setBusy(null);
     if (error) { toast.error(`${label}: ${error.message}`); return; }
-    const result = data as { ok?: boolean; error?: string; message?: string; started?: number; imported?: number; ausgewertet?: number } | null;
+    const result = data as {
+      ok?: boolean; error?: string; message?: string; started?: number; imported?: number;
+      ausgewertet?: number; gestartet?: number; gefunden?: number; geprueft?: number; angereichert?: number;
+    } | null;
     if (result?.ok === false) { toast.error(result.error ?? `${label} fehlgeschlagen.`); return; }
     const detail = mode === "akquise_jagd"
       ? `${result?.started ?? 0} Suchlauf/Suchläufe gestartet`
       : mode === "akquise_import"
-        ? `${result?.imported ?? 0} neue Konten übernommen`
-        : `${result?.ausgewertet ?? 0} Begriffe ausgewertet`;
+        ? `${result?.imported ?? 0} neue Konten, ${result?.angereichert ?? 0} angereichert`
+        : mode === "akquise_profile"
+          ? `${result?.gestartet ?? 0} Anreicherungslauf/-läufe gestartet`
+          : mode === "akquise_kontakt"
+            ? `${result?.gefunden ?? 0} Adressen bei ${result?.geprueft ?? 0} Konten`
+            : `${result?.ausgewertet ?? 0} Begriffe ausgewertet`;
     toast.success(`${label}: ${detail}${result?.message ? ` · ${result.message}` : ""}`);
     void load();
   }
+
 
   async function saveQueries() {
     const parsed: HuntQuery[] = queryText
