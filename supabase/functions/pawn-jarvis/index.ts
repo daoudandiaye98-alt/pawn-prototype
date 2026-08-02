@@ -62,6 +62,7 @@ type Mode =
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_jagd" | "akquise_jagd_lernen"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
+  | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
 
 type Zone = "gruen" | "gelb" | "rot";
@@ -2776,6 +2777,7 @@ Deno.serve(async (req) => {
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
     if (!validModes.includes(mode)) {
@@ -2789,6 +2791,7 @@ Deno.serve(async (req) => {
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
