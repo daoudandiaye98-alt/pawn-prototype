@@ -713,6 +713,51 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_measurements: {
+        Row: {
+          chest_cm: number | null
+          created_at: string
+          fit_preference: string
+          foot_cm: number | null
+          height_cm: number | null
+          hip_cm: number | null
+          inseam_cm: number | null
+          room_note: string | null
+          shoulder_cm: number | null
+          updated_at: string
+          user_id: string
+          waist_cm: number | null
+        }
+        Insert: {
+          chest_cm?: number | null
+          created_at?: string
+          fit_preference?: string
+          foot_cm?: number | null
+          height_cm?: number | null
+          hip_cm?: number | null
+          inseam_cm?: number | null
+          room_note?: string | null
+          shoulder_cm?: number | null
+          updated_at?: string
+          user_id: string
+          waist_cm?: number | null
+        }
+        Update: {
+          chest_cm?: number | null
+          created_at?: string
+          fit_preference?: string
+          foot_cm?: number | null
+          height_cm?: number | null
+          hip_cm?: number | null
+          inseam_cm?: number | null
+          room_note?: string | null
+          shoulder_cm?: number | null
+          updated_at?: string
+          user_id?: string
+          waist_cm?: number | null
+        }
+        Relationships: []
+      }
       designer_applications: {
         Row: {
           admin_notes: string | null
