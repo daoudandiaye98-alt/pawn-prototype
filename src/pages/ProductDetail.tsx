@@ -26,6 +26,8 @@ import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PasstDas } from "@/components/palace/PasstDas";
 import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
+import { ProductDetailsAccordion } from "@/components/palace/ProductDetailsAccordion";
+
 import {
   careLabel, effectiveVatRate, materialLine, vatNote, formatEuro, worldProfile,
   type MaterialPart, type Measurements, type SizeVariant,
