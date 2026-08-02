@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { MeasurementsPanel } from "@/components/palace/MeasurementsPanel";
 import { useAuth } from "@/lib/auth";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { cn } from "@/lib/utils";
