@@ -1723,7 +1723,7 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
   const hunts = (openHunts ?? []) as HuntRow[];
 
   const known = await knownHandles(admin);
-  let imported = 0, skipped = 0, stillRunning = 0, finished = 0, failedRuns = 0;
+  let imported = 0, skipped = 0, stillRunning = 0, finished = 0, failedRuns = 0, enriched = 0;
 
   for (const hunt of hunts) {
     if (!hunt.apify_run_id) continue;
