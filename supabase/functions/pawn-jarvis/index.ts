@@ -204,7 +204,7 @@ interface AkquiseConfig {
 }
 const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
-  autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "pawnstudio.co@gmail.com",
+  autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "hallo@pawn.vision",
   followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
   template_de: "", template_en: "",
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
