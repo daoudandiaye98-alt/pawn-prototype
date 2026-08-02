@@ -1,63 +1,53 @@
-## Was ich geprüft habe (mit Nachweis)
+# Feinschliff: Produktdetails, Passform, Empfehlungen, DNA
 
-**Der Testartikel von Haus Obara ist in der Datenbank völlig in Ordnung.** Ich habe ihn über die öffentliche Schnittstelle abgerufen: Status `published`, Haus `obara` aktiv, Bild-Link liefert HTTP 200. Es liegt also nicht an Rechten oder Daten.
+Vier Baustellen, eine Richtung: mehr Substanz pro Stück, ehrliche Zustände, kein Rest von abgeschafften Credits.
 
-**Der Fehler liegt im Frontend.** Ich habe die Seite `/product/obara-test-msa28gai` in einem Testbrowser geöffnet — sie bleibt weiß. Im Protokoll steht:
+## 1. Anlegen mit Raum für Details (Studio)
+
+Die Kurzseite „Neues Stück" bleibt der schnelle Einstieg (Foto → Name → Preis → live), bekommt danach aber direkt einen zweiten Schritt statt eines Sackgassen-Hinweises: **„Stück vervollständigen"** — aufklappbare Abschnitte, die aus den bereits vorhandenen Welt-Profilen (Mode / Interior / Kunst) gespeist werden:
+
+- **Größen & Maßtabelle** — pro Größe (S/M/L oder Ausführung/Format) eigene Zeilen in cm. Weil „M" bei jedem Haus etwas anderes heißt, ist die Tabelle die Wahrheit, nicht das Etikett. Zusätzlich: Feld „getragen vom Model in Größe … / Model ist … cm groß" (ASOS-Standard).
+- **Material & Herstellung** — Zusammensetzung in Prozent, Herkunft, Fertigungsart, Gewicht.
+- **Pflege** — je Welt andere Symbole/Felder (Waschen vs. Reinigung von Keramik/Holz vs. Konservierung & Licht bei Kunst). Das steckt schon in den Welt-Profilen und wird nur konsequent in den Anlege-Fluss geholt.
+- **Die Geschichte des Stücks** — längerer Text, plus optional „Warum es existiert" (ein Satz vom Haus).
+- **Versand & Rückgabe** — Bearbeitungszeit, Sonderfall Anfertigung, Rückgabe-Hinweis.
+
+Alle Abschnitte einzeln speicherbar, ein Fortschrittsbalken oben („4 von 7 Angaben"), nichts ist Pflicht außer Preis/Foto. Vollständige Stücke bekommen in der Kollektion ein sichtbares Signal.
+
+## 2. Artikelseite: ausklappbare Abschnitte
+
+Auf der Produktseite ersetzen wir die feste Tabelle durch Akkordeons in PAWN-Optik (harte Kanten, 1.5px Linien): *Maße & Passform · Material · Pflege · Die Geschichte · Versand & Rückgabe*. Leere Abschnitte erscheinen gar nicht — keine leeren Hüllen. Erster Abschnitt standardmäßig offen.
+
+## 3. Passformassistent (Quality of Life)
+
+Kunden hinterlegen im Konto ihre Maße (Brust, Taille, Hüfte, Innenbein, Schulter, Fußlänge; optional Körpergröße und Passform-Vorliebe „eng/gerade/weit"). Auf jeder Artikelseite steht dann direkt an der Größenwahl ein Urteil:
 
 ```text
-PAGEERROR  Cannot read properties of undefined (reading 'length')
-The above error occurred in the <ProductDetailsTable> component
-    at ProductDetail.tsx
+DEINE PASSFORM
+M — passt (Brust +4 cm Spielraum)
+L — zu weit an der Taille
 ```
 
-Ursache: In `ProductDetailsTable` wird `measurements.rows.length` gelesen. Beim Obara-Stück ist `measurements` ein leeres Objekt `{}` — `rows` existiert nicht, der Zugriff stürzt ab und reißt die ganze Seite mit. **Jedes Stück ohne ausgefüllte Maßtabelle ist damit unerreichbar.** Das trifft alle bisher angelegten Artikel.
+Rein rechnerisch, kein KI-Aufruf: Vergleich der Kundenmaße mit der Maßtabelle des Hauses. Ohne hinterlegte Maße: eine Zeile „Maße hinterlegen und wir sagen dir sofort, was passt." Gilt sinngemäß auch für Interior („passt in deinen Raum?" über hinterlegte Raummaße — Ausbaustufe, zuerst Mode).
 
-**Zweiter, sichtbarer Fehler:** Auf der Hausseite steht bei „Akt III · Kollektion" *NO IMAGE*, obwohl ein Bild hinterlegt ist. Grund: die Abfrage in `DesignerPage.tsx` (Zeile 244) holt nur `id, slug, name, price` — das Feld `image_url` fehlt. Eine zweite Abfrage weiter oben holt es korrekt, die für den Kollektions-Akt nicht.
+## 4. Empfehlungen im Studio ohne Credits
 
-**Dritter Fund:** Die Boutique `/shop` zeigt „0 Stücke". Sie liest aus dem alten lokalen Beispiel-Speicher (`useStore(marketplaceSelectors)`), nicht aus der Datenbank. Echte Artikel können dort gar nicht erscheinen.
+Die Seite verspricht heute eine KI-Credit-Gutschrift, die es nicht mehr gibt. Neu: der Empfehlungslink bleibt, die Belohnung wird an das Kontingent-System angebunden — **ein Monat der nächsthöheren Stufe** bzw. zusätzliche Videos/Shots im laufenden Monat, plus eine sichtbare Liste „Wen du gebracht hast". Text und Zahlen kommen weiter aus der Konfiguration, nichts hart verdrahtet.
 
----
+## 5. DNA-Seite: ehrlich, dann größer
 
-## Plan
+Heute steht oben sinngemäß „genug gesammelt — fordere einen Bericht an", und beim Anfordern kommt „zu wenig Daten". Ursache: die Überschrift prüft den Schwellenwert nicht, der Server tut es. Fix: der Zustand kommt aus einer Quelle, der Knopf erscheint nur, wenn die Schwelle wirklich erreicht ist — sonst steht dort, was noch fehlt („Noch 3 Blicke, dann kann ich etwas über dich sagen"), mit einem konkreten nächsten Schritt.
 
-### 1. Sofortfixes — Artikel sichtbar machen
-- `ProductDetailsTable` gegen leere Felder absichern (`measurements`, `size_variants`, `material_composition`, `care_symbols` defensiv lesen). Kein Absturz mehr bei unvollständigen Stücken.
-- Eine Fehlerbrücke (Error Boundary) um die Produktseite: falls doch etwas fehlt, sieht der Kunde das Stück statt einer weißen Seite.
-- `image_url` in die Kollektions-Abfrage der Hausseite aufnehmen; Produktseite und Karten zeigen das echte Foto statt des Platzhalters, Platzhalter nur wenn wirklich kein Bild da ist.
+Darüber hinaus wird die Seite zu einem echten Profil:
+- **Dein Maßband** — die hinterlegten Maße aus Punkt 3, hier sichtbar und änderbar.
+- **Was dir passt** — Stücke, die laut Maßtabelle *und* Geschmack zusammenpassen, mit „Warum wir dir das zeigen".
+- **Deine Entwicklung** — wie sich dein Geschmack über Zeit verschoben hat (aus den vorhandenen Signalen).
+- **Alles bleibt löschbar** — jedes Signal, jedes Maß, jede Notiz.
 
-### 2. Boutique an die echte Datenbank hängen
-- `Shop.tsx` liest künftig aus `products` (nur `status = published`) mit Haus-Name, Bild, Preis, Welt.
-- Filter auf echte Werte umstellen: Welt (Mode/Interior/Kunst), Haus, Preis, Größe aus `size_variants` — keine erfundenen Kategorien mehr, die nie treffen.
-- Ehrlicher Leerzustand statt „0 Stücke" mit vollen Filterlisten.
+## Technische Notizen
 
-### 3. Artikel anlegen — auf Launch-Niveau
-- Pflichtfelder-Prüfung vor dem Veröffentlichen (Bild, Preis, Welt, mindestens eine Größe/Variante, Bestand oder Anfertigung, Mehrwertsteuersatz) mit klarer Liste statt stiller Fehler.
-- Entwurf-Automatik: unvollständige Stücke bleiben Entwurf, mit Hinweis was fehlt.
-- Vorschau „So sieht dein Stück für Kunden aus" direkt im Editor.
-- Bestand 0 + Lagerware = Stück wird als ausverkauft angezeigt statt kaufbar (heute steht Obara auf 0 und wäre trotzdem im Verkauf).
-
-### 4. Anmeldung Kunde & Designer
-- `/auth` und `/apply` durchklicken und die Kanten glätten: Passwort vergessen (Seite `/reset-password` existiert noch nicht — wird angelegt), verständliche Fehlermeldungen auf Deutsch, klarer Hinweis „Bitte bestätige deine E-Mail" nach Registrierung.
-- Nach Anmeldung Weiterleitung je Rolle prüfen (Kunde → Konto, Designer → Studio, Admin → Cockpit).
-
-### 5. Admin-Cockpit verständlicher
-- Gleiche Behandlung wie das Studio: Menü in vier Bereiche gruppiert (**Häuser · Verkauf · Sichtbarkeit · System**) mit einer Erklärzeile je Punkt.
-- Startseite des Cockpits: die drei Dinge, die heute Aufmerksamkeit brauchen, in Klartext („2 Bewerbungen warten", „1 Bestellung seit 48 h nicht versendet").
-
-### 6. Deine-DNA-Seite: was sie ist und wohin sie geht
-**Heute** kann `/dna`: ein Stil-Urteil in Worten (Stilberater), einen Kompass mit Zielrichtung, ein Gespräch mit Bild-Upload, „Steht mir das?" und eine Liste der Signale, die PAWN sich gemerkt hat — jedes einzeln löschbar.
-
-**Was fehlt, damit sie trägt:** Die Signale beeinflussen die Boutique bisher kaum sichtbar. Geplant:
-- Direkt unter dem Urteil eine Reihe **„Deshalb zeigen wir dir das"** — echte Stücke aus der Datenbank, jedes mit einem Satz Begründung.
-- Ein Zustand für Erstbesucher, der in drei Fragen zu einem ersten Profil führt, statt einer leeren Seite.
-- Der Kompass wirkt auf die Sortierung in `/shop` und auf die Startseite — sichtbar, abschaltbar.
-
-### 7. Abschluss
-Typecheck grün, danach ein Durchklick-Nachweis je Punkt: Produktseite lädt, Boutique zeigt Obara, Anmeldung funktioniert, Admin-Menü sauber.
-
----
-
-### Technische Details
-- Betroffene Dateien: `src/pages/ProductDetail.tsx`, `src/pages/DesignerPage.tsx` (Z. 244), `src/pages/Shop.tsx`, `src/features/products/useDbProduct.ts`, `src/pages/studio/StudioStueckNeu.tsx`, `src/pages/Auth.tsx` (+ neue `ResetPassword.tsx`), `src/components/pawn/AdminShell.tsx`, `src/pages/admin/AdminOverview.tsx`, `src/pages/DNA.tsx`.
-- Keine Datenbank-Migration nötig; keine Edge-Function-Änderung, also keine Deploy-Kosten.
-- Bestehende Rechte-Regeln bleiben unangetastet (öffentliches Lesen ist bereits korrekt konfiguriert).
+- Neue Produktfelder gehen soweit möglich in die bestehenden Spalten (`measurements`, `care_symbols`, `material_composition`, `product_dna`, `description`); nur für Versandzeit/Model-Angaben braucht es ggf. eine kleine Erweiterung.
+- Kundenmaße: neue Tabelle `customer_measurements` (nur der Kunde selbst darf lesen/schreiben, plus Zugriff für Serverfunktionen) — Maße sind persönliche Daten und gehören nicht ins offene Profil.
+- Passform-Logik als reine Funktion in `src/features/fit/`, getestet, ohne KI-Kosten.
+- Produktdetail-Akkordeons als eigene Komponente, damit Haus- und Boutique-Seiten sie mitbenutzen können.
+- Kein neuer Farbwert, keine Rundungen, keine Fake-Daten in leeren Zuständen.
