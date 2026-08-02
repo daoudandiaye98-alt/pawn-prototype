@@ -26,10 +26,13 @@ import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PasstDas } from "@/components/palace/PasstDas";
 import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
+import { ProductDetailsAccordion } from "@/components/palace/ProductDetailsAccordion";
+
 import {
-  careLabel, effectiveVatRate, materialLine, vatNote, formatEuro, worldProfile,
-  type MaterialPart, type Measurements, type SizeVariant,
+  effectiveVatRate, vatNote, formatEuro, worldProfile,
+  type SizeVariant,
 } from "@/features/studio/productDetails";
+
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
@@ -382,10 +385,11 @@ const ProductDetail = () => {
                   </div>
                 )}
 
-                {/* Detail-Tabelle */}
+                {/* Details als ausklappbare Abschnitte */}
                 <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
-                  <ProductDetailsTable dbProduct={dbProduct} />
+                  <ProductDetailsAccordion dbProduct={dbProduct} onPickSize={(s) => setSize(s)} />
                 </ErrorBoundary>
+
 
                 {/* Frag PAWN zu diesem Stück */}
                 <button
@@ -581,87 +585,6 @@ function PrevNextForProduct({ slug }: { slug: string }) {
   const { prev, next } = useProductPrevNext(slug);
   if (!prev && !next) return null;
   return <PrevNext prev={prev} next={next} />;
-}
-
-function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDbProductBySlug>["product"] }) {
-  if (!dbProduct) return null;
-  const dims = [
-    dbProduct.length_cm && `L ${dbProduct.length_cm} cm`,
-    dbProduct.width_cm && `B ${dbProduct.width_cm} cm`,
-    dbProduct.height_cm && `H ${dbProduct.height_cm} cm`,
-  ].filter(Boolean).join(" × ");
-  const dna = (dbProduct.product_dna ?? {}) as { materials?: string[] };
-  const parts = (Array.isArray(dbProduct.material_composition) ? dbProduct.material_composition : []) as unknown as MaterialPart[];
-  const composition = materialLine(parts);
-  const materials = composition || (Array.isArray(dna.materials) && dna.materials.length ? dna.materials.join(", ") : null);
-  const weight = dbProduct.weight_grams ? `${dbProduct.weight_grams} g` : null;
-  const care = (Array.isArray(dbProduct.care_symbols) ? dbProduct.care_symbols as string[] : []).map(careLabel).join(" · ");
-  const careText = [care || null, dbProduct.care_instructions ?? null].filter(Boolean).join("\n");
-  const rawMeasurements = (dbProduct.measurements ?? {}) as Partial<Measurements>;
-  const measurements: Measurements = {
-    rows: Array.isArray(rawMeasurements.rows) ? rawMeasurements.rows : [],
-    values: (rawMeasurements.values ?? {}) as Measurements["values"],
-  };
-  const sizes = (Array.isArray(dbProduct.size_variants) ? dbProduct.size_variants : [] as unknown[])
-    .filter((s): s is SizeVariant => !!(s as SizeVariant)?.size?.trim());
-  const showTable = measurements.rows.length > 0 && sizes.length > 0;
-
-  const profile = worldProfile(dbProduct.world);
-  const rows: [string, string | null][] = [
-    [dbProduct.world === "Mode" ? "Paketmaße" : "Maße", dims || null],
-    ["Gewicht", weight],
-    [profile.materialPublicLabel, materials],
-    [profile.detailPublicLabel, dbProduct.lining_hardware ?? null],
-    [profile.carePublicLabel, careText || null],
-    [profile.originLabel === "Wo entstanden?" ? "Entstanden in" : "Gefertigt in", dbProduct.made_in ?? null],
-    [profile.editionPublicLabel, dbProduct.edition_info ?? null],
-    ["Nachhaltigkeit", dbProduct.sustainability_note ?? null],
-    ["Lieferzeit (Anfertigung)", dbProduct.inventory_mode === "made_to_order" && dbProduct.lead_time_days ? `ca. ${dbProduct.lead_time_days} Tage` : null],
-  ];
-  const filled = rows.filter(([, v]) => v && String(v).trim() !== "");
-  if (filled.length === 0 && !showTable) return null;
-  return (
-    <div className="mt-10 border-t border-[rgba(0,0,0,.18)] pt-8">
-      <p className="palace-eyebrow">Details</p>
-      {filled.length > 0 && (
-        <dl className="mt-4 divide-y divide-[rgba(0,0,0,.12)] border-y border-[rgba(0,0,0,.12)]">
-          {filled.map(([label, value]) => (
-            <div key={label} className="grid grid-cols-[140px_1fr] items-baseline gap-4 py-3">
-              <dt className="text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{label}</dt>
-              <dd className="text-[0.92rem] leading-relaxed text-[#000000]/85 whitespace-pre-line">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {showTable && (
-        <div className="mt-8">
-          <p className="palace-eyebrow">{profile.measurementTitle}</p>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[380px] text-[0.9rem]">
-              <thead>
-                <tr className="border-b border-[rgba(0,0,0,.3)] text-left">
-                  <th className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">Maß</th>
-                  {sizes.map((s) => (
-                    <th key={s.size} className="py-2 pr-4 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{s.size}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {measurements.rows.map((row) => (
-                  <tr key={row} className="border-b border-[rgba(0,0,0,.12)]">
-                    <td className="py-2 pr-4">{row}</td>
-                    {sizes.map((s) => (
-                      <td key={s.size} className="py-2 pr-4 tabular-nums">{measurements.values?.[row]?.[s.size] || "—"}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default ProductDetail;

@@ -106,16 +106,20 @@ export default function StudioProducts() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const dnaId = searchParams.get("dna");
-    if (!dnaId || items.length === 0) return;
-    const p = items.find((x) => x.id === dnaId);
+    const editId = searchParams.get("edit");
+    const targetId = dnaId ?? editId;
+    if (!targetId || items.length === 0) return;
+    const p = items.find((x) => x.id === targetId);
     if (!p) return;
     setEditing(p);
     setTimeout(() => {
-      document.getElementById("dna")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(dnaId ? "dna" : "details")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 250);
     searchParams.delete("dna");
+    searchParams.delete("edit");
     setSearchParams(searchParams, { replace: true });
   }, [items, searchParams, setSearchParams]);
+
 
   const buildPayload = (e: Partial<ProductRow>) => ({
     designer_id: designer!.id,
@@ -775,10 +779,13 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Größen mit eigenem Bestand */}
-          <SizesSection local={local} patch={patch} />
+          <div id="details" className="scroll-mt-24">
+            <SizesSection local={local} patch={patch} />
+          </div>
 
           {/* Material & Pflege */}
           <MaterialSection local={local} patch={patch} />
+
 
           {/* Weitere Varianten (Farbe, Format …) */}
           <Section title="Weitere Varianten (optional)" help="Für alles außer Größe — etwa Farbe oder Format. Größen pflegst du oben in der Größentabelle.">
