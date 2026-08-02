@@ -189,6 +189,9 @@ interface AkquiseConfig {
   followup_after_days: number;
   max_touches: number;
   languages: string[];
+  /** Feste Erstnachricht (von Daouda gesetzt). Leer = Jarvis formuliert frei. <personal_line> wird ersetzt. */
+  template_de: string;
+  template_en: string;
   // Jagd (Teil 23): Jarvis startet Apify-Läufe selbst, statt nur den letzten Lauf zu lesen.
   apify_actor_hashtag: string;
   apify_actor_profile: string;
@@ -203,6 +206,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
   autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "pawnstudio.co@gmail.com",
   followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
+  template_de: "", template_en: "",
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
   apify_actor_profile: "apify~instagram-profile-scraper",
   hunt_queries: [],
@@ -1875,8 +1879,14 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     const draft = await researchAndDraftLead(apiKey, lead, styleLaw, config.languages);
     if (!draft) continue;
     tokensUsed += draft.tokens;
+    // Feste Vorlage schlägt den freien Entwurf: Jarvis liefert nur den persönlichen Satz,
+    // der Rest bleibt wortgleich so, wie Daouda ihn festgelegt hat.
+    const template = draft.language === "en" ? config.template_en : config.template_de;
+    const message = template && template.trim()
+      ? template.replaceAll("<personal_line>", draft.personal_line)
+      : draft.message;
     await admin.from("acquisition_leads").update({
-      personal_line: draft.personal_line, message_draft: draft.message, language: draft.language, channel: lead.email ? "email" : "dm",
+      personal_line: draft.personal_line, message_draft: message, language: draft.language, channel: lead.email ? "email" : "dm",
     }).eq("id", lead.id);
     ready++;
   }
@@ -1914,12 +1924,17 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, email, message_draft, status, opt_out").in("id", leadIds);
+    .select("id, handle, email, message_draft, status, opt_out, admin_decision").in("id", leadIds);
 
   let sent = 0;
   const failed: string[] = [];
-  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean }[]) {
-    if (lead.opt_out || !lead.email || !lead.message_draft) continue;
+  const skipped: string[] = [];
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null }[]) {
+    // Ohne dein "Ja" geht nie etwas raus (Follow-ups an bereits Kontaktierte ausgenommen).
+    if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja") { skipped.push(lead.handle); continue; }
+    if (lead.opt_out) { skipped.push(lead.handle); continue; }
+    if (!lead.email) { skipped.push(lead.handle); continue; }
+    if (!lead.message_draft) { skipped.push(lead.handle); continue; }
     const isFollowup = lead.status === "kontaktiert";
     const subject = isFollowup ? "Kurz nachgefragt — PAWN" : "PAWN — eine Ausstellung für unabhängige Designer";
     const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
@@ -1936,7 +1951,7 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
       }).eq("id", lead.id);
     }
   }
-  return { ok: true, sent, failed };
+  return { ok: true, sent, failed, skipped };
 }
 
 /**
@@ -1946,12 +1961,19 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
  * Jarvis versendet direkt und meldet es.
  * DM-Kanal wird hier NIE automatisiert — der bleibt vollständig im Sende-Stapel von AdminAkquise.
  */
-async function runAkquiseSenden(admin: SupabaseClient, zone: Zone): Promise<Record<string, unknown>> {
+async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: string[]): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const nowIso = new Date().toISOString();
 
+  // Gezielter Einzelversand aus dem Prüf-Stapel: dein "Ja" schickt sofort.
+  if (leadIds && leadIds.length) {
+    return { ok: true, mode: "direkt", ...(await sendAkquiseBatch(admin, leadIds)) };
+  }
+
+  // Erstkontakt geht NUR raus, wenn du den Lead im Prüf-Stapel mit "Ja" freigegeben hast.
   const { data: firstTouch } = await admin.from("acquisition_leads")
     .select("id").eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
+    .eq("admin_decision", "ja")
     .not("message_draft", "is", null).not("email", "is", null)
     .order("created_at", { ascending: true }).limit(config.email_daily_cap);
 
@@ -1963,7 +1985,7 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone): Promise<Reco
     : { data: [] as { id: string }[] };
 
   const candidateIds = [...(firstTouch ?? []).map((r: { id: string }) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
-  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden." };
+  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden — kein freigegebener Kontakt offen." };
 
   if (zone !== "rot") {
     const result = await sendAkquiseBatch(admin, candidateIds);
@@ -2554,7 +2576,12 @@ Deno.serve(async (req) => {
         ? await runAkquiseImport(admin)
         : mode === "akquise_kontakt"
           ? await runAkquiseKontakt(admin)
-          : await runAkquiseSenden(admin, (await loadJarvisZones(admin)).akquise_senden ?? "rot");
+          : await runAkquiseSenden(
+              admin,
+              (await loadJarvisZones(admin)).akquise_senden ?? "rot",
+              // Einzelversand aus dem Prüf-Stapel — nur Admins dürfen das auslösen.
+              isAdmin && Array.isArray(body.lead_ids) ? (body.lead_ids as string[]).map(String) : undefined,
+            );
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
         : mode === "akquise_kontakt"
