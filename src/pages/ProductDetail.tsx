@@ -223,6 +223,42 @@ const ProductDetail = () => {
     return list.filter((u): u is string => typeof u === "string" && u.trim() !== "" && u !== heroImage).slice(0, 3);
   }, [dbProduct, heroImage]);
 
+  if (productLoading) {
+    return (
+      <PalaceLayout transparentHeader={false}>
+        <section className="mx-auto max-w-[1600px] px-6 pt-40 pb-32 md:px-14">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+            <div className="aspect-[4/5] w-full animate-pulse border border-[rgba(0,0,0,.12)]" />
+            <div className="space-y-4">
+              <div className="h-4 w-32 animate-pulse bg-black/10" />
+              <div className="h-10 w-2/3 animate-pulse bg-black/10" />
+              <div className="h-4 w-24 animate-pulse bg-black/10" />
+            </div>
+          </div>
+        </section>
+      </PalaceLayout>
+    );
+  }
+
+  if (!dbProduct) {
+    return (
+      <PalaceLayout transparentHeader={false}>
+        <section className="mx-auto max-w-[720px] px-6 pt-40 pb-32 text-center md:px-14">
+          <p className="palace-eyebrow">Nicht gefunden</p>
+          <h1 className="palace-serif mt-6 text-[2.4rem] font-light leading-tight text-[#000000]">
+            Dieses Stück steht nicht mehr im Raum.
+          </h1>
+          <p className="mt-6 font-serif italic text-[1.05rem] text-[#000000]/70">
+            Vielleicht ist es verkauft oder das Haus hat es zurückgezogen.
+          </p>
+          <Link to="/shop" className="palace-btn mt-10 inline-flex hover:bg-[#000000] hover:text-[#FFFFFF]">
+            Zur Boutique
+          </Link>
+        </section>
+      </PalaceLayout>
+    );
+  }
+
 
   return (
     <PalaceLayout transparentHeader={false}>
