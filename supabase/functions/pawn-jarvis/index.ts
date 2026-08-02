@@ -2702,7 +2702,7 @@ Deno.serve(async (req) => {
     }
 
     // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
-    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt") {
+    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt" || mode === "akquise_profile") {
       const trig = body.trigger === "cron" ? "cron" : "manual";
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
@@ -2710,17 +2710,22 @@ Deno.serve(async (req) => {
         ? await runAkquiseImport(admin)
         : mode === "akquise_kontakt"
           ? await runAkquiseKontakt(admin)
-          : await runAkquiseSenden(
-              admin,
-              (await loadJarvisZones(admin)).akquise_senden ?? "rot",
-              // Einzelversand aus dem Prüf-Stapel — nur Admins dürfen das auslösen.
-              isAdmin && Array.isArray(body.lead_ids) ? (body.lead_ids as string[]).map(String) : undefined,
-            );
+          : mode === "akquise_profile"
+            ? await runAkquiseProfile(admin)
+            : await runAkquiseSenden(
+                admin,
+                (await loadJarvisZones(admin)).akquise_senden ?? "rot",
+                // Einzelversand aus dem Prüf-Stapel — nur Admins dürfen das auslösen.
+                isAdmin && Array.isArray(body.lead_ids) ? (body.lead_ids as string[]).map(String) : undefined,
+              );
       const summary = mode === "akquise_import"
-        ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
+        ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { angereichert?: number }).angereichert ?? 0} angereichert`
         : mode === "akquise_kontakt"
           ? `Kontaktsuche: ${(result as { gefunden?: number }).gefunden ?? 0} Adressen bei ${(result as { geprueft?: number }).geprueft ?? 0} Häusern`
-          : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
+          : mode === "akquise_profile"
+            ? `Profil-Anreicherung: ${(result as { gestartet?: number }).gestartet ?? 0} Lauf/Läufe gestartet`
+            : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
+
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
