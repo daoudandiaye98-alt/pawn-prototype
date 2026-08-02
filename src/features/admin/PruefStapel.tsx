@@ -133,7 +133,11 @@ export function PruefStapel({
                   {lead.kurator_score !== null ? ` · Score ${lead.kurator_score}` : " · noch nicht bewertet"}
                   {lead.email ? ` · E-Mail · Ja sendet sofort${lead.language === "en" ? " (English)" : " (Deutsch)"}` : " · nur DM · Text kopieren"}
                 </p>
+                {lead.email && (
+                  <p className="mt-1 text-xs text-muted-foreground">Gefunden: {lead.email}</p>
+                )}
                 {lead.bio && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{lead.bio}</p>}
+
                 {reason && <p className="mt-2 text-sm">{reason}</p>}
                 {lead.message_draft && (
                   <details className="mt-2">
