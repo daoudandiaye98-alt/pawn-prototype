@@ -2576,7 +2576,12 @@ Deno.serve(async (req) => {
         ? await runAkquiseImport(admin)
         : mode === "akquise_kontakt"
           ? await runAkquiseKontakt(admin)
-          : await runAkquiseSenden(admin, (await loadJarvisZones(admin)).akquise_senden ?? "rot");
+          : await runAkquiseSenden(
+              admin,
+              (await loadJarvisZones(admin)).akquise_senden ?? "rot",
+              // Einzelversand aus dem Prüf-Stapel — nur Admins dürfen das auslösen.
+              isAdmin && Array.isArray(body.lead_ids) ? (body.lead_ids as string[]).map(String) : undefined,
+            );
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { skipped?: number }).skipped ?? 0} übersprungen`
         : mode === "akquise_kontakt"
