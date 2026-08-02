@@ -65,6 +65,8 @@ export default function StudioStueckNeu() {
   const [world, setWorld] = useState<World>("Mode");
   const [size, setSize] = useState("");
   const [story, setStory] = useState("");
+  const [madeToOrder, setMadeToOrder] = useState(false);
+  const [stock, setStock] = useState("1");
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
 
