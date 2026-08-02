@@ -25,6 +25,7 @@ import { PrevNext } from "@/components/palace/PrevNext";
 import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PasstDas } from "@/components/palace/PasstDas";
+import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
 import {
   careLabel, effectiveVatRate, materialLine, vatNote, formatEuro, worldProfile,
   type MaterialPart, type Measurements, type SizeVariant,
@@ -36,7 +37,7 @@ const ProductDetail = () => {
   const { user } = useAuth();
   const { locale } = useI18n();
 
-  const { product: dbProduct } = useDbProductBySlug(slug);
+  const { product: dbProduct, loading: productLoading } = useDbProductBySlug(slug);
   const cart = useCart();
   const { push } = useRoomShift();
   const wishlist = useWishlist();
@@ -45,7 +46,8 @@ const ProductDetail = () => {
   // (core-Store) hat absichtlich leere Seed-Arrays (keine Markennamen, keine Fake-Daten) und
   // lieferte hier immer "kein Treffer", was die ganze Seite zum Absturz brachte.
   const sizeVariants = useMemo(
-    () => ((dbProduct?.size_variants ?? []) as unknown as SizeVariant[]).filter((v) => v?.size?.trim()),
+    () => (Array.isArray(dbProduct?.size_variants) ? dbProduct.size_variants : [] as unknown[])
+      .filter((v): v is SizeVariant => !!(v as SizeVariant)?.size?.trim()),
     [dbProduct],
   );
 
@@ -212,37 +214,98 @@ const ProductDetail = () => {
   // Teil 15b: Produktseiten erben den Raum ihres Hauses vollständig (die Kasse — eine
   // eigene Route — bleibt davon unberührt und PAWN-streng).
   const themeForPage = houseTheme ?? DEFAULT_HOUSE_THEME;
+  // Echtes Produktfoto statt Platzhalter. Zusatzbilder kommen — falls hinterlegt —
+  // aus dem Bildfeld der Produkt-DNA; ohne Bild bleibt die Fläche ehrlich leer.
+  const heroImage = dbProduct?.image_url ?? null;
+  const gallery = useMemo(() => {
+    const dna = (dbProduct?.product_dna ?? {}) as { images?: unknown };
+    const list = Array.isArray(dna.images) ? (dna.images as unknown[]) : [];
+    return list.filter((u): u is string => typeof u === "string" && u.trim() !== "" && u !== heroImage).slice(0, 3);
+  }, [dbProduct, heroImage]);
+
+  if (productLoading) {
+    return (
+      <PalaceLayout transparentHeader={false}>
+        <section className="mx-auto max-w-[1600px] px-6 pt-40 pb-32 md:px-14">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+            <div className="aspect-[4/5] w-full animate-pulse border border-[rgba(0,0,0,.12)]" />
+            <div className="space-y-4">
+              <div className="h-4 w-32 animate-pulse bg-black/10" />
+              <div className="h-10 w-2/3 animate-pulse bg-black/10" />
+              <div className="h-4 w-24 animate-pulse bg-black/10" />
+            </div>
+          </div>
+        </section>
+      </PalaceLayout>
+    );
+  }
+
+  if (!dbProduct) {
+    return (
+      <PalaceLayout transparentHeader={false}>
+        <section className="mx-auto max-w-[720px] px-6 pt-40 pb-32 text-center md:px-14">
+          <p className="palace-eyebrow">Nicht gefunden</p>
+          <h1 className="palace-serif mt-6 text-[2.4rem] font-light leading-tight text-[#000000]">
+            Dieses Stück steht nicht mehr im Raum.
+          </h1>
+          <p className="mt-6 font-serif italic text-[1.05rem] text-[#000000]/70">
+            Vielleicht ist es verkauft oder das Haus hat es zurückgezogen.
+          </p>
+          <Link to="/shop" className="palace-btn mt-10 inline-flex hover:bg-[#000000] hover:text-[#FFFFFF]">
+            Zur Boutique
+          </Link>
+        </section>
+      </PalaceLayout>
+    );
+  }
+
 
   return (
     <PalaceLayout transparentHeader={false}>
       <div className="palace house-theme" data-typografie={themeForPage.typografie} data-textur={themeForPage.hintergrundtextur.typ} style={themeCssVars(themeForPage)}>
       {/* Banner: hero image always first, directly under the nav */}
-      <section className="relative pt-20 md:pt-24">
-        <Reveal>
-          <EditorialImage
-            seed={`prd-${product.slug}-hero`}
-            ratio="16/9"
-            className="w-full"
-          />
-        </Reveal>
-        <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
-          <div className="pointer-events-auto">
-            <PrevNextForProduct slug={product.slug} />
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 pt-12 md:px-14 md:pt-16">
-        <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
-          {/* Left: gallery thumbnails */}
+      {heroImage && (
+        <section className="relative pt-20 md:pt-24">
           <Reveal>
-            <EditorialImage seed={`prd-${product.slug}`} ratio="4/5" className="w-full" />
-            <div className="mt-6 grid grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <EditorialImage key={i} seed={`prd-${product.slug}-${i}`} ratio="1/1" />
-              ))}
-            </div>
+            <EditorialImage
+              src={heroImage}
+              seed={`prd-${product.slug}-hero`}
+              ratio="16/9"
+              className="w-full"
+              alt={product.name}
+              priority
+              color
+            />
           </Reveal>
+          <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
+            <div className="pointer-events-auto">
+              <PrevNextForProduct slug={product.slug} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className={heroImage ? "px-6 pt-12 md:px-14 md:pt-16" : "px-6 pt-32 md:px-14 md:pt-40"}>
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
+          {/* Left: gallery */}
+          <Reveal>
+            <EditorialImage
+              src={heroImage}
+              seed={`prd-${product.slug}`}
+              ratio="4/5"
+              className="w-full"
+              alt={product.name}
+              color
+            />
+            {gallery.length > 0 && (
+              <div className="mt-6 grid grid-cols-3 gap-4">
+                {gallery.map((url, i) => (
+                  <EditorialImage key={url} src={url} seed={`prd-${product.slug}-${i}`} ratio="1/1" alt={product.name} color />
+                ))}
+              </div>
+            )}
+          </Reveal>
+
 
           {banner && (
             <Reveal>
@@ -320,7 +383,9 @@ const ProductDetail = () => {
                 )}
 
                 {/* Detail-Tabelle */}
-                <ProductDetailsTable dbProduct={dbProduct} />
+                <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
+                  <ProductDetailsTable dbProduct={dbProduct} />
+                </ErrorBoundary>
 
                 {/* Frag PAWN zu diesem Stück */}
                 <button
@@ -526,14 +591,19 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
     dbProduct.height_cm && `H ${dbProduct.height_cm} cm`,
   ].filter(Boolean).join(" × ");
   const dna = (dbProduct.product_dna ?? {}) as { materials?: string[] };
-  const parts = (dbProduct.material_composition ?? []) as unknown as MaterialPart[];
+  const parts = (Array.isArray(dbProduct.material_composition) ? dbProduct.material_composition : []) as unknown as MaterialPart[];
   const composition = materialLine(parts);
   const materials = composition || (Array.isArray(dna.materials) && dna.materials.length ? dna.materials.join(", ") : null);
   const weight = dbProduct.weight_grams ? `${dbProduct.weight_grams} g` : null;
-  const care = ((dbProduct.care_symbols ?? []) as string[]).map(careLabel).join(" · ");
+  const care = (Array.isArray(dbProduct.care_symbols) ? dbProduct.care_symbols as string[] : []).map(careLabel).join(" · ");
   const careText = [care || null, dbProduct.care_instructions ?? null].filter(Boolean).join("\n");
-  const measurements = (dbProduct.measurements ?? { rows: [], values: {} }) as unknown as Measurements;
-  const sizes = ((dbProduct.size_variants ?? []) as unknown as SizeVariant[]).filter((s) => s?.size?.trim());
+  const rawMeasurements = (dbProduct.measurements ?? {}) as Partial<Measurements>;
+  const measurements: Measurements = {
+    rows: Array.isArray(rawMeasurements.rows) ? rawMeasurements.rows : [],
+    values: (rawMeasurements.values ?? {}) as Measurements["values"],
+  };
+  const sizes = (Array.isArray(dbProduct.size_variants) ? dbProduct.size_variants : [] as unknown[])
+    .filter((s): s is SizeVariant => !!(s as SizeVariant)?.size?.trim());
   const showTable = measurements.rows.length > 0 && sizes.length > 0;
 
   const profile = worldProfile(dbProduct.world);
@@ -581,7 +651,7 @@ function ProductDetailsTable({ dbProduct }: { dbProduct: ReturnType<typeof useDb
                   <tr key={row} className="border-b border-[rgba(0,0,0,.12)]">
                     <td className="py-2 pr-4">{row}</td>
                     {sizes.map((s) => (
-                      <td key={s.size} className="py-2 pr-4 tabular-nums">{measurements.values[row]?.[s.size] || "—"}</td>
+                      <td key={s.size} className="py-2 pr-4 tabular-nums">{measurements.values?.[row]?.[s.size] || "—"}</td>
                     ))}
                   </tr>
                 ))}

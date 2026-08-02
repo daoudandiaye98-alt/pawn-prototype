@@ -236,14 +236,14 @@ const DesignerPage = () => {
   // Kollektion für die Standarddarstellung (Akt III) — unabhängig davon, ob das Haus eine
   // eigens gestaltete Hausseite veröffentlicht hat. Kommt direkt aus der products-Tabelle,
   // nie aus dem alten Mock-Store (dessen Seed-Arrays absichtlich leer sind).
-  const [dbProducts, setDbProducts] = useState<Array<{ id: string; slug: string; name: string; price: number }>>([]);
+  const [dbProducts, setDbProducts] = useState<Array<{ id: string; slug: string; name: string; price: number; image_url: string | null }>>([]);
   useEffect(() => {
     if (!dbDesigner) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("products").select("id, slug, name, price")
+      const { data } = await supabase.from("products").select("id, slug, name, price, image_url")
         .eq("designer_id", dbDesigner.id).eq("status", "published").order("created_at", { ascending: false });
-      if (!cancelled) setDbProducts((data ?? []) as Array<{ id: string; slug: string; name: string; price: number }>);
+      if (!cancelled) setDbProducts((data ?? []) as Array<{ id: string; slug: string; name: string; price: number; image_url: string | null }>);
     })();
     return () => { cancelled = true; };
   }, [dbDesigner]);
@@ -643,7 +643,7 @@ const DesignerPage = () => {
                       >
                         {String(i + 1).padStart(2, "0")}
                       </span>
-                      <EditorialImage seed={`d-${p.slug}`} ratio={odd ? "3/4" : "4/5"} />
+                      <EditorialImage src={p.image_url} alt={p.name} color seed={`d-${p.slug}`} ratio={odd ? "3/4" : "4/5"} />
                       <div className="mt-4 flex items-baseline justify-between gap-4">
                         <p className="palace-serif italic text-[1.15rem] text-[#000000]">{p.name}</p>
                         <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>

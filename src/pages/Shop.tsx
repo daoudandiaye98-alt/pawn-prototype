@@ -1,60 +1,106 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable } from "@/components/palace/Editable";
-import { useStore, marketplaceSelectors, toProductView } from "@/core";
-import type { GenomeAxis } from "@/core";
+import { supabase } from "@/integrations/supabase/client";
 
-const CATEGORIES = ["Mäntel", "Oberteile", "Hosen", "Taschen", "Accessoires"] as const;
-const COLORS = ["Bone", "Tinte", "Onyx", "Obsidian", "Sand", "Asche", "Roh-Indigo", "Cognac"];
-const SIZES = ["XS", "S", "M", "L", "XL"];
-const DNA_DIRECTIONS: { key: GenomeAxis; label: string }[] = [
-  { key: "structure", label: "Struktur" },
-  { key: "edge", label: "Kante" },
-  { key: "elegance", label: "Eleganz" },
-  { key: "darkness", label: "Schatten" },
-  { key: "sensuality", label: "Sinnlichkeit" },
-  { key: "utility", label: "Funktion" },
-];
+type World = "Mode" | "Interior" | "Kunst";
 
-// Map original English categories → German equivalents for filter compatibility.
-const CATEGORY_MAP: Record<string, string> = {
-  "Mäntel": "Outerwear",
-  "Oberteile": "Tops",
-  "Hosen": "Bottoms",
-  "Taschen": "Bags",
-  "Accessoires": "Accessories",
-};
+interface ShopProduct {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  world: World;
+  image_url: string | null;
+  created_at: string;
+  inventory_mode: "stock" | "made_to_order";
+  stock_quantity: number | null;
+  size_variants: unknown;
+  designers: { slug: string; brand_name: string } | null;
+}
+
+type SortKey = "curated" | "price_asc" | "price_desc" | "newest";
+
+const WORLDS: World[] = ["Mode", "Interior", "Kunst"];
+
+function sizesOf(product: ShopProduct): string[] {
+  const list = Array.isArray(product.size_variants) ? (product.size_variants as Array<{ size?: string }>) : [];
+  return list.map((v) => (typeof v?.size === "string" ? v.size.trim() : "")).filter(Boolean);
+}
+
+function useShopProducts() {
+  const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error: err } = await supabase
+        .from("products")
+        .select("id, slug, name, price, world, image_url, created_at, inventory_mode, stock_quantity, size_variants, designers ( slug, brand_name )")
+        .eq("status", "published")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (cancelled) return;
+      if (err) setError("Die Boutique lässt sich gerade nicht laden.");
+      setProducts((data ?? []) as unknown as ShopProduct[]);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { products, loading, error };
+}
 
 const Shop = () => {
-  const coreProducts = useStore(marketplaceSelectors.getAllProducts);
-  const coreDesigners = useStore(marketplaceSelectors.getAllDesigners);
+  const { products, loading, error } = useShopProducts();
 
-  const products = useMemo(() => {
-    const designerById = new Map(coreDesigners.map((d) => [d.id as string, d]));
-    return coreProducts.map((p) => toProductView(p, designerById.get(p.designerId as string)));
-  }, [coreProducts, coreDesigners]);
-
-  const designerNames = useMemo(() => Array.from(new Set(products.map((p) => p.designer))), [products]);
   const [search, setSearch] = useState("");
-  const [cat, setCat] = useState<string | null>(null);
+  const [world, setWorld] = useState<World | null>(null);
   const [designer, setDesigner] = useState<string | null>(null);
-  const [dnaAxis, setDnaAxis] = useState<GenomeAxis | null>(null);
-  const [maxPrice, setMaxPrice] = useState(2000);
+  const [size, setSize] = useState<string | null>(null);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [sort, setSort] = useState<SortKey>("curated");
 
-  const filtered = products.filter((p) => {
-    if (cat) {
-      const original = CATEGORY_MAP[cat] ?? cat;
-      if (p.category !== original) return false;
-    }
-    if (designer && p.designer !== designer) return false;
-    if (dnaAxis && (p.genomeAffinity[dnaAxis] ?? 0) < 0.5) return false;
-    if (p.price > maxPrice) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const houses = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of products) if (p.designers?.slug) map.set(p.designers.slug, p.designers.brand_name);
+    return Array.from(map, ([slug, name]) => ({ slug, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
+
+  const sizes = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) for (const s of sizesOf(p)) set.add(s);
+    return Array.from(set).sort();
+  }, [products]);
+
+  const priceCeiling = useMemo(
+    () => (products.length ? Math.ceil(Math.max(...products.map((p) => Number(p.price))) / 50) * 50 : 1000),
+    [products],
+  );
+  const activeMax = maxPrice ?? priceCeiling;
+
+  const filtered = useMemo(() => {
+    const list = products.filter((p) => {
+      if (world && p.world !== world) return false;
+      if (designer && p.designers?.slug !== designer) return false;
+      if (size && !sizesOf(p).includes(size)) return false;
+      if (Number(p.price) > activeMax) return false;
+      if (search && !`${p.name} ${p.designers?.brand_name ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+    const sorted = [...list];
+    if (sort === "price_asc") sorted.sort((a, b) => Number(a.price) - Number(b.price));
+    if (sort === "price_desc") sorted.sort((a, b) => Number(b.price) - Number(a.price));
+    if (sort === "newest" || sort === "curated") sorted.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return sorted;
+  }, [products, world, designer, size, activeMax, search, sort]);
+
+  const hasFilters = !!(world || designer || size || search || maxPrice !== null);
 
   return (
     <PalaceLayout transparentHeader={false}>
@@ -85,7 +131,7 @@ const Shop = () => {
       </section>
 
       <section className="mx-auto grid max-w-[1600px] gap-10 px-6 py-14 md:px-14 md:py-20 lg:grid-cols-[240px_1fr]">
-        {/* Filters */}
+        {/* Filter */}
         <aside className="space-y-10">
           <input
             placeholder="Boutique durchsuchen"
@@ -93,73 +139,121 @@ const Shop = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-2 text-sm text-[#000000] placeholder:text-black/60 focus:border-[#000000] focus:outline-none"
           />
-          <FilterGroup title="DNA-Richtung">
-            {DNA_DIRECTIONS.map((d) => (
-              <FilterPill key={d.key} active={dnaAxis === d.key} onClick={() => setDnaAxis(dnaAxis === d.key ? null : d.key)}>{d.label}</FilterPill>
+
+          <FilterGroup title="Welt">
+            {WORLDS.map((w) => (
+              <FilterPill key={w} active={world === w} onClick={() => setWorld(world === w ? null : w)}>{w}</FilterPill>
             ))}
           </FilterGroup>
-          <FilterGroup title="Kategorien">
-            {CATEGORIES.map((c) => (
-              <FilterPill key={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)}>{c}</FilterPill>
-            ))}
-          </FilterGroup>
-          <FilterGroup title="Designer">
-            {designerNames.map((d) => (
-              <FilterPill key={d} active={designer === d} onClick={() => setDesigner(designer === d ? null : d)}>{d}</FilterPill>
-            ))}
-          </FilterGroup>
-          <FilterGroup title="Farben">
-            <div className="flex flex-wrap gap-2">
-              {COLORS.map((c) => <FilterPill key={c}>{c}</FilterPill>)}
-            </div>
-          </FilterGroup>
-          <FilterGroup title="Größen">
-            <div className="flex flex-wrap gap-2">
-              {SIZES.map((s) => <FilterPill key={s}>{s}</FilterPill>)}
-            </div>
-          </FilterGroup>
-          <FilterGroup title={`Preis · bis €${maxPrice}`}>
+
+          {houses.length > 0 && (
+            <FilterGroup title="Haus">
+              {houses.map((h) => (
+                <FilterPill key={h.slug} active={designer === h.slug} onClick={() => setDesigner(designer === h.slug ? null : h.slug)}>
+                  {h.name}
+                </FilterPill>
+              ))}
+            </FilterGroup>
+          )}
+
+          {sizes.length > 0 && (
+            <FilterGroup title="Größe">
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((s) => (
+                  <FilterPill key={s} active={size === s} onClick={() => setSize(size === s ? null : s)}>{s}</FilterPill>
+                ))}
+              </div>
+            </FilterGroup>
+          )}
+
+          <FilterGroup title={`Preis · bis €${activeMax.toLocaleString("de-DE")}`}>
             <input
               type="range"
-              min={100}
-              max={3000}
+              min={0}
+              max={priceCeiling}
               step={50}
-              value={maxPrice}
+              value={activeMax}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
               className="w-full accent-[#000000]"
             />
           </FilterGroup>
+
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={() => { setWorld(null); setDesigner(null); setSize(null); setSearch(""); setMaxPrice(null); }}
+              className="palace-eyebrow uline text-black/60 hover:text-[#000000]"
+            >
+              Filter zurücksetzen
+            </button>
+          )}
         </aside>
 
-        {/* Grid */}
+        {/* Raster */}
         <div>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[rgba(0,0,0,.18)] pb-4">
-            <p className="palace-eyebrow">{filtered.length} Stücke</p>
-            <select className="border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-[#000000]">
-              <option>Kurator-Auswahl</option>
-              <option>Preis · aufsteigend</option>
-              <option>Preis · absteigend</option>
-              <option>Neueste</option>
+            {loading
+              ? <p key="loading" className="palace-eyebrow">Wird geladen …</p>
+              : <p key="count" className="palace-eyebrow">{filtered.length} {filtered.length === 1 ? "Stück" : "Stücke"}</p>}
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-[#000000]"
+            >
+              <option value="curated">Kurator-Auswahl</option>
+              <option value="price_asc">Preis · aufsteigend</option>
+              <option value="price_desc">Preis · absteigend</option>
+              <option value="newest">Neueste</option>
             </select>
           </div>
-          <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((p, i) => (
-              <Reveal key={p.id} delay={Math.min(400, i * 40)}>
-                <Link to={`/product/${p.slug}`} className="group block">
-                  <EditorialImage seed={`shop-${p.slug}`} ratio="4/5" />
-                  <div className="mt-4 flex items-baseline justify-between gap-4">
-                    <div>
-                      <p className="palace-serif italic text-[1.1rem] leading-tight text-[#000000]">{p.name}</p>
-                      <p className="palace-eyebrow mt-2">{p.designer}</p>
-                    </div>
-                    <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-          {filtered.length === 0 && (
-            <p className="mt-16 text-center font-serif italic text-[1rem] text-[#000000]/70">Nichts passt zu deinen Filtern — noch.</p>
+
+          {error && (
+            <p className="mt-16 text-center font-serif italic text-[1rem] text-[#000000]/70">{error}</p>
+          )}
+
+          {loading && !error && (
+            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="aspect-[4/5] w-full animate-pulse border border-[rgba(0,0,0,.12)]" />
+              ))}
+            </div>
+          )}
+
+          {!loading && !error && (
+            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((p, i) => {
+                const soldOut = p.inventory_mode === "stock" && Number(p.stock_quantity ?? 0) <= 0;
+                return (
+                  <Reveal key={p.id} delay={Math.min(400, i * 40)}>
+                    <Link to={`/product/${p.slug}`} className="group block">
+                      <div className="relative">
+                        <EditorialImage src={p.image_url} alt={p.name} color seed={`shop-${p.slug}`} ratio="4/5" />
+                        {soldOut && (
+                          <span className="absolute left-0 top-0 bg-[#000000] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#FFFFFF]">
+                            Ausverkauft
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-4 flex items-baseline justify-between gap-4">
+                        <div>
+                          <p className="palace-serif italic text-[1.1rem] leading-tight text-[#000000]">{p.name}</p>
+                          <p className="palace-eyebrow mt-2">{p.designers?.brand_name ?? "PAWN"}</p>
+                        </div>
+                        <p className="palace-eyebrow text-[#000000]">€{Number(p.price).toLocaleString("de-DE")}</p>
+                      </div>
+                    </Link>
+                  </Reveal>
+                );
+              })}
+            </div>
+          )}
+
+          {!loading && !error && filtered.length === 0 && (
+            <p className="mt-16 text-center font-serif italic text-[1rem] text-[#000000]/70">
+              {products.length === 0
+                ? "Die ersten Stücke ziehen ein."
+                : "Nichts passt zu deinen Filtern — noch."}
+            </p>
           )}
         </div>
       </section>

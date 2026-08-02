@@ -65,6 +65,8 @@ export default function StudioStueckNeu() {
   const [world, setWorld] = useState<World>("Mode");
   const [size, setSize] = useState("");
   const [story, setStory] = useState("");
+  const [madeToOrder, setMadeToOrder] = useState(false);
+  const [stock, setStock] = useState("1");
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -165,6 +167,8 @@ export default function StudioStueckNeu() {
     const priceNum = Number(price);
     if (!price || isNaN(priceNum) || priceNum <= 0) { toast.error("Bitte einen Preis eintragen."); return; }
     if (!sourceUrl) { toast.error("Bitte zuerst ein Foto hochladen."); return; }
+    const stockNum = Math.max(0, Math.floor(Number(stock) || 0));
+    if (!madeToOrder && stockNum < 1) { toast.error("Trag ein, wie viele Stücke du vorrätig hast — sonst steht dein Stück sofort auf ausverkauft."); return; }
     setBusy(true);
     try {
       const description = [story.trim(), size.trim() ? `Größe: ${size.trim()}` : null].filter(Boolean).join("\n\n") || null;
@@ -172,6 +176,8 @@ export default function StudioStueckNeu() {
       const { data, error } = await supabase.from("products").insert({
         designer_id: designer.id, name: name.trim(), slug, price: priceNum, world, description,
         image_url: sourceUrl, status: "published",
+        inventory_mode: madeToOrder ? "made_to_order" : "stock",
+        stock_quantity: madeToOrder ? 0 : stockNum,
       }).select("id, name, slug, price, image_url").single();
       if (error) throw error;
       setProduct(data as LiveProduct);
@@ -244,6 +250,30 @@ export default function StudioStueckNeu() {
               <textarea value={story} onChange={(e) => setStory(e.target.value)} placeholder="Ein Satz Geschichte" rows={2}
                 className="w-full border border-border bg-white p-3 text-sm" />
             </div>
+
+            <p className="editorial-eyebrow mt-8">Verfügbarkeit</p>
+            <div className="mt-2 space-y-3">
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setMadeToOrder(false)}
+                  className={`flex-1 border p-2 text-sm ${!madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                  Vorrätig
+                </button>
+                <button type="button" onClick={() => setMadeToOrder(true)}
+                  className={`flex-1 border p-2 text-sm ${madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                  Auf Anfertigung
+                </button>
+              </div>
+              {!madeToOrder ? (
+                <label className="block">
+                  <span className="text-xs text-muted-foreground">Wie viele Stücke hast du davon?</span>
+                  <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" min="1" step="1"
+                    className="mt-1 w-full border border-border bg-white p-3 text-sm" />
+                </label>
+              ) : (
+                <p className="text-xs text-muted-foreground">Wird auf Bestellung gefertigt — kein Bestand nötig, das Stück bleibt kaufbar.</p>
+              )}
+            </div>
+
 
             <button onClick={createProduct} disabled={busy}
               className="mt-6 flex min-h-[44px] w-full items-center justify-center gap-2 border border-foreground bg-foreground px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
