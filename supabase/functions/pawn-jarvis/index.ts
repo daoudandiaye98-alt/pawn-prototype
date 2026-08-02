@@ -2212,8 +2212,10 @@ Link: https://pawn.vision/designer/${haus.slug}`;
 
 const FOLLOWUP_EMAIL_TEXT = `Kein Stress — wollte nur sichergehen, dass meine Nachricht nicht im Anfragen-Ordner versackt ist. Falls du reinschauen magst: pawn.vision. Kostet nichts, und Ausgabe 08 hat noch Platz. Wenn nicht, ist das auch völlig okay.`;
 
+const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio erkennbar war. Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe.";
+
 async function sendResendEmail(
-  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string,
+  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -2221,7 +2223,7 @@ async function sendResendEmail(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
       body: JSON.stringify({
         from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
-        text: `${text}\n\n—\nDu bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio erkennbar war. Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe.`,
+        text: `${text}\n\n—\n${footer ?? DEFAULT_MAIL_FOOTER}`,
       }),
     });
     if (!res.ok) {
