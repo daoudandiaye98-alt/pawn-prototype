@@ -193,6 +193,16 @@ export default function DNA() {
         </section>
       )}
 
+      {/* 01b-2 · Dein Maßband — Grundlage des Passform-Assistenten */}
+      {user && (
+        <section id="massband" className="scroll-mt-24 border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+          <div className="mx-auto max-w-[900px]">
+            <MeasurementsPanel />
+          </div>
+        </section>
+      )}
+
+
       {/* 01c · Das Ziel und der Weg (Teil 21b) */}
       {user && (
         <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
