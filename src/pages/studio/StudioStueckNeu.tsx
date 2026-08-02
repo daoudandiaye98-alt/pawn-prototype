@@ -251,6 +251,30 @@ export default function StudioStueckNeu() {
                 className="w-full border border-border bg-white p-3 text-sm" />
             </div>
 
+            <p className="editorial-eyebrow mt-8">Verfügbarkeit</p>
+            <div className="mt-2 space-y-3">
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setMadeToOrder(false)}
+                  className={`flex-1 border p-2 text-sm ${!madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                  Vorrätig
+                </button>
+                <button type="button" onClick={() => setMadeToOrder(true)}
+                  className={`flex-1 border p-2 text-sm ${madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                  Auf Anfertigung
+                </button>
+              </div>
+              {!madeToOrder ? (
+                <label className="block">
+                  <span className="text-xs text-muted-foreground">Wie viele Stücke hast du davon?</span>
+                  <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" min="1" step="1"
+                    className="mt-1 w-full border border-border bg-white p-3 text-sm" />
+                </label>
+              ) : (
+                <p className="text-xs text-muted-foreground">Wird auf Bestellung gefertigt — kein Bestand nötig, das Stück bleibt kaufbar.</p>
+              )}
+            </div>
+
+
             <button onClick={createProduct} disabled={busy}
               className="mt-6 flex min-h-[44px] w-full items-center justify-center gap-2 border border-foreground bg-foreground px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
               {busy ? "Legt an…" : "Stück ist live"} <ArrowRight className="h-3.5 w-3.5" />
