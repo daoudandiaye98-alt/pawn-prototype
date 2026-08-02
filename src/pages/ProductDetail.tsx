@@ -25,6 +25,7 @@ import { PrevNext } from "@/components/palace/PrevNext";
 import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PasstDas } from "@/components/palace/PasstDas";
+import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
 import {
   careLabel, effectiveVatRate, materialLine, vatNote, formatEuro, worldProfile,
   type MaterialPart, type Measurements, type SizeVariant,
@@ -36,7 +37,7 @@ const ProductDetail = () => {
   const { user } = useAuth();
   const { locale } = useI18n();
 
-  const { product: dbProduct } = useDbProductBySlug(slug);
+  const { product: dbProduct, loading: productLoading } = useDbProductBySlug(slug);
   const cart = useCart();
   const { push } = useRoomShift();
   const wishlist = useWishlist();
@@ -346,7 +347,9 @@ const ProductDetail = () => {
                 )}
 
                 {/* Detail-Tabelle */}
-                <ProductDetailsTable dbProduct={dbProduct} />
+                <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
+                  <ProductDetailsTable dbProduct={dbProduct} />
+                </ErrorBoundary>
 
                 {/* Frag PAWN zu diesem Stück */}
                 <button
