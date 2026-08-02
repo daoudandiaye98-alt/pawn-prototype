@@ -1951,7 +1951,7 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
       }).eq("id", lead.id);
     }
   }
-  return { ok: true, sent, failed };
+  return { ok: true, sent, failed, skipped };
 }
 
 /**
