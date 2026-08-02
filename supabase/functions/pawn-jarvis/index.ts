@@ -61,7 +61,7 @@ type Mode =
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_jagd" | "akquise_jagd_lernen"
-  | "akquise_import" | "akquise_kontakt" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
+  | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
 
 type Zone = "gruen" | "gelb" | "rot";
