@@ -2073,8 +2073,15 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
     const subject = isFollowup ? "Kurz nachgefragt — PAWN" : "PAWN — eine Ausstellung für unabhängige Designer";
     const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
     const result = await sendResendEmail(resendKey, config, lead.email, subject, text);
-    if (!result.ok) { failed.push(lead.handle); continue; }
+    // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
+    await admin.from("ai_actions_log").insert({
+      source: "jarvis", action: isFollowup ? "akquise_followup_email" : "akquise_erstkontakt_email",
+      params: { lead_id: lead.id, handle: lead.handle, to: lead.email, from: config.email_from, subject } as never,
+      status: result.ok ? "ok" : "failed", error: result.ok ? null : result.error ?? null,
+    } as never);
+    if (!result.ok) { failed.push(`${lead.handle}: ${result.error ?? "unbekannter Fehler"}`); continue; }
     sent++;
+
     const now = new Date().toISOString();
     if (isFollowup) {
       await admin.from("acquisition_leads").update({ followup_at: now, status: "ruhe", updated_at: now }).eq("id", lead.id);
