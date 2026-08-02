@@ -647,6 +647,7 @@ export default function AdminAkquise() {
     const { data, error } = await supabase
       .from("acquisition_leads")
       .select("*")
+      .eq("lead_type", "designer")
       .order("created_at", { ascending: false })
       .limit(2000);
     if (error) toast.error(error.message);
