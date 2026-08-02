@@ -1,42 +1,49 @@
-## Was ich geprüft habe
+## Wo Jarvis heute steht
 
-- Absender ist bereits `PAWN <hallo@pawn.vision>` (in `ai_config.akquise_config`), Antwort-Adresse `pawnstudio.co@gmail.com`.
-- In der Datenbank: **94 Leads, davon 0 mit E-Mail-Adresse und 0 mit Website.** 22 sind qualifiziert, 13 haben einen fertigen Nachrichtenentwurf, 2 gelten als „kontaktiert".
-- Deshalb steht in Resend nichts: Der Versand überspringt jeden Lead ohne E-Mail (`if (!lead.email) skip`). Es wurde also nie eine Mail losgeschickt — nicht wegen Resend, sondern weil keine Adresse existiert.
-- Ursache: Die Jagd läuft ausschließlich über Hashtag-Suchen. Die liefern Beiträge, keine Profildaten — also keine Bio, kein `externalUrl`, keine Geschäfts-E-Mail. Die vorhandene Website-Suche (Impressum/Kontakt) greift nur bei Leads *mit* Website und findet dadurch nie etwas.
+Jarvis kann bisher genau einen Weg nach außen: **Designer suchen** (Instagram-Jagd → Profile → Kontakt → E-Mail). Alles andere — Kunden gewinnen, Presse, Sichtbarkeit bei Google, Weiterempfehlung — passiert gar nicht oder nur von Hand.
 
-## Der Plan
+Der Gedanke: Akquise ist nur *ein* Organ. Jarvis soll ein **Wachstums-Organ** dazubekommen, mit mehreren Wegen, die alle dieselbe Mechanik nutzen, die schon funktioniert: suchen → prüfen → Entwurf → dein Ja/Nein → raus.
 
-**1. Absender festziehen (pawn.vision)**
-- Absender bleibt `PAWN <hallo@pawn.vision>`, weil pawn.vision die in Resend hinterlegte Domain ist. `hausofpawn.vision` wäre nur möglich, wenn diese Domain in Resend separat verifiziert wird — sonst lehnt Resend jede Mail ab.
-- Antwort-Adresse wird ebenfalls auf `hallo@pawn.vision` gestellt (statt Gmail), damit Antworten im Marken-Postfach landen; Gmail kann als Weiterleitung dahinter hängen.
+Wichtig vorweg: Jeder neue Weg läuft in derselben Sicherheits-Logik wie heute (Zone Gelb — Jarvis bereitet vor, du gibst frei). Nichts geht ohne dein Ja raus.
 
-**2. Profil-Anreicherung in der Jagd (der eigentliche Fix)**
-- Nach jeder Hashtag-Jagd läuft ein zweiter Apify-Durchgang mit dem Profil-Scraper über die gefundenen Konten. Der liefert Bio, Follower, Geschäfts-E-Mail und Website-Link.
-- Diese Daten werden in den Lead geschrieben; hat ein Konto eine E-Mail, wechselt der Kanal automatisch von „DM" auf „E-Mail".
+## Die fünf Wege (nach Wirkung pro Aufwand sortiert)
 
-**3. Kontaktsuche verbessern**
-- Läuft künftig auch für Leads im Status „neu", nicht nur „qualifiziert".
-- Mehr Seiten (`/legal`, `/imprint`, `/contact-us`), Erkennung von `mailto:`-Links und verschleierten Schreibweisen („name (at) domain.com"), Auflösung von Linktree/Beacons-Seiten.
-- Rollen-Adressen (`noreply@`, `support@`) werden abgewertet, persönliche/Studio-Adressen bevorzugt.
+**1. Der Presse-Jäger (Zone Gelb)**
+Jarvis sucht laufend nach Journalist:innen, Newsletter-Autor:innen, Kurator:innen und Blogs, die über unabhängiges Design, Slow Fashion, Keramik oder junge Kunst schreiben. Für jeden Treffer schreibt er einen kurzen, persönlichen Pitch — nicht über PAWN allgemein, sondern über *ein konkretes Haus*, das zu genau dem passt, was diese Person zuletzt veröffentlicht hat. Gleiche Prüf-Stapel-Mechanik wie bei den Designern: Ja/Nein, dann raus.
+*Warum:* Ein einziger Artikel bringt mehr als 500 Instagram-Beiträge — und passt zur Marke, weil PAWN redaktionell auftritt.
 
-**4. Nachlauf für die vorhandenen 94 Leads**
-- Einmaliger Anreicherungslauf über alle bestehenden Leads, damit der aktuelle Stapel nicht leer bleibt.
+**2. Die Kunden-Seite der Jagd (Zone Gelb)**
+Dieselbe Jagd-Maschine, andere Beute: Sammler:innen, Interior-Fans, Menschen, die genau solchen Häusern folgen. Daraus wird kein Kaltkontakt, sondern eine **Nachbarschafts-Karte**: Jarvis erkennt, welche Communities, Orte und Themen unsere Käufer:innen teilen, und leitet daraus ab, wo PAWN sichtbar sein muss.
+*Warum:* Wir wissen heute nicht, wer unsere Käufer sind. Ohne das ist jede Werbung geraten.
 
-**5. Sichtbarkeit im Admin**
-- Im Prüf-Stapel steht pro Lead klar: „E-Mail gefunden (Quelle: Bio/Website)" oder „nur DM möglich".
-- Panel-Kopfzeile mit Zahlen: qualifiziert / davon mit E-Mail / heute versendet / Tageslimit.
-- Knopf „Kontakt suchen" für einen manuellen Anreicherungslauf.
-- Jeder Sendeversuch schreibt Erfolg **oder** Resend-Fehlertext ins Aktionen-Log, damit Fehlschläge nicht mehr stumm bleiben.
+**3. Der Redakteur — PAWN publiziert selbst (Zone Gelb)**
+Jarvis schreibt aus echten Daten wiederkehrende redaktionelle Stücke: Haus-Porträts, „Die Woche in Mode/Interior/Kunst" aus den Trend-Daten, Material-Geschichten. Das landet als Entwurf im Admin, du gibst frei → wird eine Seite auf pawn.vision (findbar bei Google, teilbar) und gleichzeitig Futter für die Posting-Queue.
+*Warum:* Das ist der einzige Kanal, der auf Dauer *kostenlos* Besucher bringt und niemandem gehört außer uns.
+
+**4. Der Verstärker — Häuser tragen PAWN (Zone Grün)**
+Jarvis bemerkt, wenn ein Haus ein Video oder eine Première fertig hat, und legt dem Designer im Studio ein fertiges Paket hin: Clip, Caption, Hashtags, Link auf seine Hausseite. Ein Klick, geteilt. Dazu ein monatlicher Anstupser an Häuser, die lange nichts gezeigt haben.
+*Warum:* Unsere Designer haben zusammen mehr Reichweite als PAWN je kaufen könnte — sie nutzen sie nur nicht.
+
+**5. Der Späher — bezahlte Wege vorbereiten (Zone Gelb)**
+Jarvis wertet aus, welche Häuser/Stücke organisch am besten laufen, und schlägt daraus fertige Anzeigen-Entwürfe vor (Bild, Text, Zielgruppe) — inklusive ehrlicher Warnung, wenn die Zahlen noch zu dünn für Werbebudget sind.
+*Warum:* Geld erst ausgeben, wenn Daten sagen, wofür.
+
+## Was ich zuerst bauen würde
+
+Nicht alles auf einmal. Vorschlag Reihenfolge: **1 (Presse) → 4 (Verstärker) → 3 (Redakteur) → 2 (Kunden-Karte) → 5 (Späher)**. Presse und Verstärker nutzen fast nur Bausteine, die es schon gibt, und wirken sofort.
+
+## Ein gemeinsames Fundament
+
+Statt fünf Insellösungen bekommt Jarvis **einen** Wachstums-Rahmen, in den sich jeder Weg einhängt: gleiche Prüf-Logik, gleiches Aktionen-Log, gleiche Tageslimits, ein Admin-Bereich `/admin/wachstum` mit einem Stapel für alle Kanäle. So kostet jeder weitere Weg später wenig.
 
 ## Technische Details
 
-- `supabase/functions/pawn-jarvis/index.ts`: neue Funktion `enrichProfilesViaApify()` (Actor `apify~instagram-profile-scraper`, Batch nach Handles), Aufruf am Ende von `runHunt` und als eigener Modus `akquise_kontakte`; `discoverContactViaWebsite()` um Status-Filter, Pfade, mailto-/Obfuskations-Regex und Linktree-Auflösung erweitert; `sendResendEmail` protokolliert Statuscode und Fehlerbody.
-- Migration: `ai_config.akquise_config.email_reply_to` → `hallo@pawn.vision`.
-- Frontend: `PruefStapel.tsx` und `JagdPanel.tsx` um Kontaktstatus, Kennzahlen und den Knopf erweitern.
-- Nach der Änderung muss `pawn-jarvis` neu deployt werden (Lovable-Deploy, kostet Credits) — das ist der einzige nötige Deploy.
+- **Datenmodell:** `acquisition_leads` wird um `lead_type` erweitert (`designer` | `presse` | `kunde`), damit Jagd, Prüf-Stapel und Versand ohne Duplikate wiederverwendet werden. Neue Tabellen nur wo nötig: `growth_channels` (Kanal-Konfiguration + Tageslimits) und `editorial_drafts` (Weg 3).
+- **Jarvis-Modi (`supabase/functions/pawn-jarvis/index.ts`):** `presse_jagd`, `presse_verfassen`, `redakteur`, `verstaerker`, `spaeher` — alle über die bestehende `runMode`-Verzweigung, LLM-Fallback-Kette und `jarvis_runs`/`jarvis_reports` unverändert.
+- **Quellen:** Presse über Websuche + bestehende Apify-Profil-Anreicherung; Redakteur liest `fashion_ontology`, `video_assets.performance` und `designers.brand_dna` — keine neuen externen Dienste nötig.
+- **Frontend:** `/admin/wachstum` mit kanal-gefiltertem Prüf-Stapel (Wiederverwendung von `PruefStapel.tsx` und `JagdPanel.tsx`), Studio-Karte für Weg 4 auf `/studio/videothek`.
+- **Deploys:** Jede Ausbaustufe braucht genau *einen* Lovable-Deploy von `pawn-jarvis` — deshalb die Bündelung in Stufen statt vieler kleiner Züge.
 
-## Dein Teil in Resend
+## Deine Entscheidung
 
-- Prüfen, dass `pawn.vision` unter „Domains" auf **verified** steht (DKIM/SPF grün). Nur dann geht überhaupt etwas raus.
-- Wenn du `hausofpawn.vision` als Absender willst: Domain in Resend hinzufügen und die DNS-Einträge setzen — dann stelle ich den Absender um.
+Sag mir, ob wir mit **Stufe 1 (Presse-Jäger + gemeinsames Fundament)** starten, oder ob du eine andere Reihenfolge willst.
