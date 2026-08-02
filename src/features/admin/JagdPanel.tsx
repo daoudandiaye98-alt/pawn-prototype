@@ -176,8 +176,40 @@ export function JagdPanel() {
             {busy === "akquise_jagd_lernen" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
             Auswerten
           </Button>
+          <Button
+            size="sm" variant="outline" disabled={busy !== null} onClick={() => void run("akquise_profile", "Profile laden")}
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {busy === "akquise_profile" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserSearch className="mr-2 h-4 w-4" />}
+            Profile laden
+          </Button>
+          <Button
+            size="sm" variant="outline" disabled={busy !== null} onClick={() => void run("akquise_kontakt", "Kontakt suchen")}
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {busy === "akquise_kontakt" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+            Kontakt suchen
+          </Button>
         </div>
       </header>
+
+      {stats && (
+        <dl className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border sm:grid-cols-4 sm:divide-y-0">
+          {[
+            { label: "Qualifiziert", value: stats.qualifiziert },
+            { label: "Mit E-Mail", value: stats.mitEmail },
+            { label: "Nur DM", value: stats.nurDm },
+            { label: "Heute gesendet", value: stats.heuteGesendet },
+          ].map((s) => (
+            <div key={s.label} className="px-5 py-3">
+              <dt className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">{s.label}</dt>
+              <dd className="mt-1 font-serif text-2xl tabular-nums">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+
 
       <div className="border-b border-border px-5 py-4">
         <div className="flex items-center justify-between gap-3">
