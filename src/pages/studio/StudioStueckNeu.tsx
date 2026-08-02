@@ -293,9 +293,15 @@ export default function StudioStueckNeu() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
+                <Link to={`/studio/produkte?edit=${product.id}`} className="border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] text-background hover:bg-black">Details ergänzen</Link>
                 <Link to={`/product/${product.slug}`} className="border border-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">Zum Stück ansehen</Link>
                 <Link to="/studio/produkte" className="border border-border px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-muted">Zur Kollektion</Link>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Maßtabelle, Material, Pflege und die Geschichte des Stücks trägst du unter „Details ergänzen" ein —
+                sie erscheinen auf der Artikelseite als ausklappbare Abschnitte und speisen den Passform-Hinweis für Kundinnen.
+              </p>
+
             </div>
 
             <div className="mt-8 border-t border-border pt-8">
