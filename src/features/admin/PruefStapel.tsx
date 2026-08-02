@@ -111,12 +111,18 @@ export function PruefStapel({
   return (
     <section className="mb-8 border-[1.5px] border-black">
       <header className="border-b-[1.5px] border-black px-5 py-3">
-        <p className="editorial-eyebrow">Prüfen · dein Ja verschickt die Nachricht · {items.length}</p>
+        <p className="editorial-eyebrow">
+          {title ?? "Prüfen · dein Ja verschickt die Nachricht"} · {items.length}
+        </p>
       </header>
 
       <ul className="divide-y divide-border">
         {items.map((lead) => {
           const reason = reasonText(lead);
+          const label = isPresse ? (lead.contact_name || lead.outlet || lead.handle) : `@${lead.handle}`;
+          const href = isPresse
+            ? (lead.website ?? undefined)
+            : `https://instagram.com/${lead.handle}`;
           return (
             <li key={lead.id} className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-start">
               <div className="flex gap-2">
@@ -130,22 +136,31 @@ export function PruefStapel({
 
               <div className="min-w-0 flex-1">
                 <p className="font-serif text-lg">
-                  <a
-                    href={`https://instagram.com/${lead.handle}`} target="_blank" rel="noreferrer"
-                    className="inline-flex items-center gap-1 hover:underline"
-                  >
-                    @{lead.handle} <ExternalLink className="h-3 w-3" />
-                  </a>
+                  {href ? (
+                    <a
+                      href={href} target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-1 hover:underline"
+                    >
+                      {label} <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : label}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {isPresse && lead.outlet && lead.contact_name ? `${lead.outlet} · ` : ""}
                   {lead.world}
-                  {lead.followers ? ` · ${lead.followers.toLocaleString("de-DE")} Follower` : ""}
+                  {!isPresse && lead.followers ? ` · ${lead.followers.toLocaleString("de-DE")} Follower` : ""}
                   {lead.kurator_score !== null ? ` · Score ${lead.kurator_score}` : " · noch nicht bewertet"}
-                  {lead.email ? ` · E-Mail · Ja sendet sofort${lead.language === "en" ? " (English)" : " (Deutsch)"}` : " · nur DM · Text kopieren"}
+                  {lead.email
+                    ? ` · E-Mail · Ja sendet sofort${lead.language === "en" ? " (English)" : " (Deutsch)"}`
+                    : isPresse ? " · keine Adresse · Text kopieren" : " · nur DM · Text kopieren"}
                 </p>
                 {lead.email && (
                   <p className="mt-1 text-xs text-muted-foreground">Gefunden: {lead.email}</p>
                 )}
+                {isPresse && lead.personal_line && (
+                  <p className="mt-1 text-xs text-muted-foreground">Betreff: {lead.personal_line}</p>
+                )}
+
                 {lead.bio && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{lead.bio}</p>}
 
                 {reason && <p className="mt-2 text-sm">{reason}</p>}
