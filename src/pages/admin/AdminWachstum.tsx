@@ -63,7 +63,7 @@ export default function AdminWachstum() {
   const kontaktiert = rows.filter((r) => r.status === "kontaktiert").length;
 
   return (
-    <AdminShell title="Wachstum" subtitle="Wie PAWN in die Welt kommt">
+    <AdminShell title="Wachstum" eyebrow="Wie PAWN in die Welt kommt">
       <section className="mb-8 border-[1.5px] border-black">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b-[1.5px] border-black px-5 py-3">
           <p className="editorial-eyebrow">Presse · Jarvis sucht Redaktionen</p>
