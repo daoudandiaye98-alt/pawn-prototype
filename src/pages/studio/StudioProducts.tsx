@@ -779,10 +779,13 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Größen mit eigenem Bestand */}
-          <SizesSection local={local} patch={patch} />
+          <div id="details" className="scroll-mt-24">
+            <SizesSection local={local} patch={patch} />
+          </div>
 
           {/* Material & Pflege */}
           <MaterialSection local={local} patch={patch} />
+
 
           {/* Weitere Varianten (Farbe, Format …) */}
           <Section title="Weitere Varianten (optional)" help="Für alles außer Größe — etwa Farbe oder Format. Größen pflegst du oben in der Größentabelle.">
