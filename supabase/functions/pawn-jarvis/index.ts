@@ -3004,18 +3004,25 @@ Deno.serve(async (req) => {
       return ok({ run_id: runId, ...result });
     }
 
-    if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen") {
+    if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
+        || mode === "presse_jagd" || mode === "presse_verfassen") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
+        : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
+        : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
         : await runBewerbungPruefen(admin, apiKey);
 
       const summary = mode === "akquise_kuratieren"
         ? `Kuratiert: ${(result as { qualified?: number }).qualified ?? 0} qualifiziert, ${(result as { sorted_out?: number }).sorted_out ?? 0} aussortiert`
         : mode === "akquise_verfassen"
         ? `Verfasst: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : mode === "presse_jagd"
+        ? `Presse-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
+        : mode === "presse_verfassen"
+        ? `Presse-Pitches: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
         : `Bewerbungen geprüft: ${(result as { processed?: number }).processed ?? 0}`;
 
       const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
