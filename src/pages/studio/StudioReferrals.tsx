@@ -62,9 +62,11 @@ export default function StudioReferrals() {
       <div className="mx-auto max-w-2xl">
         <p className="text-sm text-muted-foreground">
           Wer über deinen Link zu PAWN kommt und seine erste Bestellung abschließt — bei irgendeinem Haus,
-          nicht nur bei dir — bringt dir {credits} KI-Credits ein. Nie Geld, kein Selbstkauf, keine Gutschrift
-          vor abgeschlossener Bestellung.
+          nicht nur bei dir — schaltet dir einen Monat zusätzliche Sichtbarkeit frei: dein Kontingent an
+          Videos, Produktfotos und Signaturen steigt für 30 Tage auf die nächste Stufe. Nie Geld,
+          kein Selbstkauf, keine Gutschrift vor abgeschlossener Bestellung.
         </p>
+
 
         <div className="mt-8 border-[1.5px] border-foreground bg-white p-6">
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Dein Link</p>
@@ -99,7 +101,7 @@ export default function StudioReferrals() {
               {referrals.map((r) => (
                 <li key={r.id} className="flex items-center justify-between px-4 py-3 text-sm">
                   <span>{new Date(r.created_at).toLocaleDateString("de-DE")}</span>
-                  <span className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">+{credits} Credits gutgeschrieben</span>
+                  <span className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">Monat Sichtbarkeit gutgeschrieben</span>
                 </li>
               ))}
             </ul>
