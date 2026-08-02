@@ -1570,18 +1570,109 @@ async function insertLeads(
  * Ohne offene Jagden fällt er auf das alte Verhalten zurück (letzter Lauf eines fest konfigurierten Actors).
  */
 /**
- * akquise_kontakt — sucht für qualifizierte Leads ohne E-Mail eine Kontaktadresse auf ihrer
- * eigenen Website (Startseite, /kontakt, /impressum, /contact, /about). Reines Lesen, kein LLM.
- * Findet er nichts, bleibt der Lead ein DM-Fall im Sende-Stapel.
+ * akquise_profile — die Hashtag-Jagd liefert nur Beiträge, keine Profildaten. Deshalb schickt
+ * Jarvis die gefundenen Konten in einem zweiten Apify-Lauf durch den Profil-Scraper: Bio,
+ * Follower, Geschäfts-E-Mail und Website-Link. Die Läufe werden als Jagd vom Typ "profil"
+ * geparkt und beim nächsten Import eingesammelt (dort aktualisieren sie bestehende Leads).
+ */
+async function runAkquiseProfile(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const token = Deno.env.get("APIFY_TOKEN");
+  if (!token) return { ok: true, gestartet: 0, message: "Kein APIFY_TOKEN hinterlegt — Anreicherung übersprungen." };
+  const config = await loadAkquiseConfig(admin);
+  const actorId = config.apify_actor_profile || config.apify_actor_id;
+  if (!actorId.trim()) return { ok: false, error: "Kein Profil-Actor konfiguriert (apify_actor_profile)." };
+
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("handle, world")
+    .in("status", ["neu", "qualifiziert", "angewaermt"])
+    .is("email", null).is("website", null).eq("opt_out", false)
+    .order("created_at", { ascending: true }).limit(60);
+  const rows = (leads ?? []) as { handle: string; world: string | null }[];
+  if (!rows.length) return { ok: true, gestartet: 0, message: "Alle Konten sind bereits angereichert." };
+
+  // Handles, die schon in einem laufenden Profil-Lauf stecken, nicht doppelt schicken.
+  const { data: openRuns } = await admin.from("acquisition_hunts")
+    .select("query").eq("query_type", "profil").eq("status", "gestartet");
+  const pending = new Set(
+    ((openRuns ?? []) as { query: string }[]).flatMap((r) => r.query.split(",").map((h) => h.trim().toLowerCase())),
+  );
+  const handles = rows.map((r) => r.handle.toLowerCase()).filter((h) => !pending.has(h));
+  if (!handles.length) return { ok: true, gestartet: 0, message: "Anreicherung läuft bereits für diese Konten." };
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < handles.length; i += 25) chunks.push(handles.slice(i, i + 25));
+
+  let started = 0;
+  const failures: string[] = [];
+  for (const chunk of chunks.slice(0, 3)) {
+    const run = await apifyStartRun(token, actorId, { usernames: chunk, resultsLimit: 1 });
+    if ("error" in run) { failures.push(run.error); continue; }
+    await admin.from("acquisition_hunts").insert({
+      query: chunk.join(","), query_type: "profil", world: rows[0].world ?? config.default_world,
+      apify_actor_id: actorId, apify_run_id: run.runId, apify_dataset_id: run.datasetId, status: "gestartet",
+    });
+    started++;
+  }
+  return { ok: true, gestartet: started, konten: Math.min(handles.length, 75), failures };
+}
+
+/** Kandidaten-Adressen bewerten: persönliche Studio-Adressen schlagen Rollen-Postfächer. */
+const BAD_EMAIL = /(wixpress|sentry|example|godaddy|squarespace|shopify|cloudflare|jsdelivr|\.png|\.jpg|\.jpeg|\.gif|\.webp|\.svg|@(sentry|domain)\.)/i;
+const ROLE_EMAIL = /^(noreply|no-reply|donotreply|postmaster|abuse|privacy|dsgvo|webmaster|admin|support|newsletter)@/i;
+
+function pickBestEmail(candidates: string[], host: string): string | null {
+  const clean = Array.from(new Set(candidates.map((c) => c.trim().toLowerCase())))
+    .filter((c) => /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(c))
+    .filter((c) => !BAD_EMAIL.test(c));
+  if (!clean.length) return null;
+  const domain = host.replace(/^www\./, "");
+  const score = (e: string): number => {
+    let s = 0;
+    if (e.endsWith(`@${domain}`)) s += 3;
+    if (ROLE_EMAIL.test(e)) s -= 3;
+    if (/^(hallo|hello|hi|studio|kontakt|contact|info|mail|office)@/.test(e)) s += 1;
+    return s;
+  };
+  return clean.sort((a, b) => score(b) - score(a))[0];
+}
+
+/** Findet E-Mails im HTML: mailto-Links, Klartext und verschleierte Schreibweisen („name (at) domain.de"). */
+function extractEmailsFromHtml(html: string): string[] {
+  const out: string[] = [];
+  for (const m of html.matchAll(/mailto:([^"'?>\s]+)/gi)) out.push(decodeURIComponent(m[1]));
+  for (const m of html.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)) out.push(m[0]);
+  for (const m of html.matchAll(/([A-Za-z0-9._%+-]+)\s*(?:\(at\)|\[at\]|\s@\s|&#64;)\s*([A-Za-z0-9.-]+)\s*(?:\(dot\)|\[dot\]|\.)\s*([A-Za-z]{2,})/gi)) {
+    out.push(`${m[1]}@${m[2]}.${m[3]}`);
+  }
+  return out;
+}
+
+/**
+ * akquise_kontakt — sucht für Leads ohne E-Mail eine Kontaktadresse auf ihrer eigenen Website
+ * (Startseite, Kontakt, Impressum, Legal) und löst Linktree-artige Sammelseiten auf.
+ * Reines Lesen, kein LLM. Findet er nichts, bleibt der Lead ein DM-Fall im Sende-Stapel.
  */
 async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, website")
-    .eq("status", "qualifiziert").is("email", null).not("website", "is", null).limit(15);
+    .in("status", ["neu", "qualifiziert", "angewaermt"])
+    .is("email", null).not("website", "is", null).eq("opt_out", false)
+    .order("created_at", { ascending: true }).limit(20);
 
-  const paths = ["", "/kontakt", "/impressum", "/contact", "/about"];
-  const bad = /(wixpress|sentry|example|godaddy|squarespace|shopify|\.png|\.jpg)/i;
+  const paths = ["", "/kontakt", "/impressum", "/contact", "/contact-us", "/about", "/legal", "/imprint"];
+  const linkAggregator = /(linktr\.ee|beacons\.ai|linkin\.bio|bio\.link|milkshake\.app|taplink)/i;
   let found = 0, checked = 0;
+
+  async function fetchHtml(url: string): Promise<string | null> {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "PAWN-Jarvis/1.0 (+https://pawn.vision)" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) return null;
+      return (await res.text()).slice(0, 400_000);
+    } catch { return null; }
+  }
 
   for (const lead of (leads ?? []) as { id: string; handle: string; website: string }[]) {
     checked++;
@@ -1589,29 +1680,37 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
     try { base = new URL(lead.website.startsWith("http") ? lead.website : `https://${lead.website}`); }
     catch { continue; }
 
+    // Sammelseiten (Linktree & Co.) auflösen: die erste echte eigene Domain dahinter zählt.
+    if (linkAggregator.test(base.hostname)) {
+      const html = await fetchHtml(base.toString());
+      const links = html ? Array.from(html.matchAll(/https?:\/\/[^"'\s\\]+/g)).map((m) => m[0]) : [];
+      const own = links.find((l) => {
+        try {
+          const h = new URL(l).hostname;
+          return !linkAggregator.test(h) && !/(instagram|facebook|tiktok|youtube|pinterest|twitter|x\.com|spotify|apple|google|cdn|gstatic)/i.test(h);
+        } catch { return false; }
+      });
+      if (own) { try { base = new URL(own); } catch { /* Sammelseite bleibt */ } }
+    }
+
     let email: string | null = null;
     for (const path of paths) {
-      try {
-        const res = await fetch(new URL(path, base).toString(), {
-          headers: { "User-Agent": "PAWN-Jarvis/1.0 (+https://pawn.vision)" },
-          signal: AbortSignal.timeout(8000),
-        });
-        if (!res.ok) continue;
-        const html = (await res.text()).slice(0, 400_000);
-        const hits = html.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [];
-        const clean = hits.map((h) => h.toLowerCase()).filter((h) => !bad.test(h));
-        if (clean.length) { email = clean[0]; break; }
-      } catch { /* eine unerreichbare Seite ist kein Fehler */ }
+      const html = await fetchHtml(new URL(path, base).toString());
+      if (!html) continue;
+      const best = pickBestEmail(extractEmailsFromHtml(html), base.hostname);
+      if (best) { email = best; break; }
     }
 
     if (email) {
       await admin.from("acquisition_leads")
-        .update({ email, channel: "email", contact_source: "website" }).eq("id", lead.id);
+        .update({ email, channel: "email", contact_source: "website", updated_at: new Date().toISOString() })
+        .eq("id", lead.id);
       found++;
     }
   }
   return { ok: true, geprueft: checked, gefunden: found };
 }
+
 
 async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const token = Deno.env.get("APIFY_TOKEN");
