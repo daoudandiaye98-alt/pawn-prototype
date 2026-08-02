@@ -1924,12 +1924,17 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, email, message_draft, status, opt_out").in("id", leadIds);
+    .select("id, handle, email, message_draft, status, opt_out, admin_decision").in("id", leadIds);
 
   let sent = 0;
   const failed: string[] = [];
-  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean }[]) {
-    if (lead.opt_out || !lead.email || !lead.message_draft) continue;
+  const skipped: string[] = [];
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null }[]) {
+    // Ohne dein "Ja" geht nie etwas raus (Follow-ups an bereits Kontaktierte ausgenommen).
+    if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja") { skipped.push(lead.handle); continue; }
+    if (lead.opt_out) { skipped.push(lead.handle); continue; }
+    if (!lead.email) { skipped.push(lead.handle); continue; }
+    if (!lead.message_draft) { skipped.push(lead.handle); continue; }
     const isFollowup = lead.status === "kontaktiert";
     const subject = isFollowup ? "Kurz nachgefragt — PAWN" : "PAWN — eine Ausstellung für unabhängige Designer";
     const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
