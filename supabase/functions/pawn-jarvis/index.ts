@@ -2574,7 +2574,7 @@ Deno.serve(async (req) => {
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen",
-      "akquise_import", "akquise_kontakt", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
     ];
     if (!validModes.includes(mode)) {
@@ -2587,7 +2587,7 @@ Deno.serve(async (req) => {
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen",
-      "akquise_import", "akquise_kontakt", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
