@@ -1,49 +1,42 @@
-## Entscheidung vorab
+## Was ich geprüft habe
 
-**Ein Pfad, nicht drei.** Drei getrennte Seiten würden dreifachen Pflegeaufwand, dreifache Texte und drei Einstiegspunkte bedeuten — und PAWN gerade das nehmen, was es besonders macht: dass Mode, Interior und Kunst unter einem Dach stehen. Effektiver ist **eine Seite mit einer Weiche**: Der Bewerber wählt gleich zu Beginn seine Disziplin, danach spricht die Seite in seiner Sprache (Beispiele, Bilder, Felder, Formulierungen). Ein Ort, drei Handschriften.
+- Absender ist bereits `PAWN <hallo@pawn.vision>` (in `ai_config.akquise_config`), Antwort-Adresse `pawnstudio.co@gmail.com`.
+- In der Datenbank: **94 Leads, davon 0 mit E-Mail-Adresse und 0 mit Website.** 22 sind qualifiziert, 13 haben einen fertigen Nachrichtenentwurf, 2 gelten als „kontaktiert".
+- Deshalb steht in Resend nichts: Der Versand überspringt jeden Lead ohne E-Mail (`if (!lead.email) skip`). Es wurde also nie eine Mail losgeschickt — nicht wegen Resend, sondern weil keine Adresse existiert.
+- Ursache: Die Jagd läuft ausschließlich über Hashtag-Suchen. Die liefern Beiträge, keine Profildaten — also keine Bio, kein `externalUrl`, keine Geschäfts-E-Mail. Die vorhandene Website-Suche (Impressum/Kontakt) greift nur bei Leads *mit* Website und findet dadurch nie etwas.
 
-## 1. Die Bewerbungsseite (`/apply`)
+## Der Plan
 
-Aufbau von oben nach unten, streng schwarz/weiß, Playfair + Inter, harte Kanten:
+**1. Absender festziehen (pawn.vision)**
+- Absender bleibt `PAWN <hallo@pawn.vision>`, weil pawn.vision die in Resend hinterlegte Domain ist. `hausofpawn.vision` wäre nur möglich, wenn diese Domain in Resend separat verifiziert wird — sonst lehnt Resend jede Mail ab.
+- Antwort-Adresse wird ebenfalls auf `hallo@pawn.vision` gestellt (statt Gmail), damit Antworten im Marken-Postfach landen; Gmail kann als Weiterleitung dahinter hängen.
 
-1. **Kopf** — „Werde ein Haus." bleibt (stark, markentypisch), darunter eine neue Unterzeile, die alle drei anspricht: Kleidung, Räume, Werke.
-2. **Neu: Disziplin-Weiche** — drei große Karten direkt unter dem Kopf: *Mode · Interior · Kunst*. Klick setzt die Disziplin (bleibt in der URL, z. B. `/apply?welt=mode`) und **verändert die restliche Seite**: die fünf Leistungs-Akte bekommen je Disziplin passende Beispiele und Formulierungen (Video-Kampagne bei Mode = Lookbook-Clip, bei Interior = Raum-Szene, bei Kunst = Werkbetrachtung). Wer nichts wählt, sieht eine neutrale Fassung — niemand wird ausgeschlossen.
-3. **Was du bekommst** (die heutigen fünf Akte, Texte überarbeitet und auf den heutigen Stand gebracht): eigene Hausseite, kuratiertes Publikum, Kampagnen-Studio inkl. KI-Video und Produktfotos, direkte Auszahlung über Stripe (93 % zu dir, 7 % Plattform), Einblicke/Kennzahlen. Die alte Formulierung „Wir beteiligen uns prozentual" wird durch die echte, heutige Regelung ersetzt.
-4. **Was wir suchen / was wir nicht suchen** — neuer, kurzer Block. Ehrliche Kriterien schrecken die Falschen ab und ziehen die Richtigen an; senkt die Prüfarbeit.
-5. **Ablauf** — vier Schritte, aber mit echten Angaben: Bewerbung ≈ 10 Minuten, Antwort in 7 Tagen, Onboarding, erster Auftritt.
-6. **Häufige Fragen** — ausklappbar, sechs bis acht Fragen (Kosten, Mindestanzahl Stücke, Versand, Steuer/Umsatzsteuer, Rechte an Bildern, Kündigung).
-7. **Abschluss-CTA** — „Bewerbung starten" führt die gewählte Disziplin ins Formular mit.
+**2. Profil-Anreicherung in der Jagd (der eigentliche Fix)**
+- Nach jeder Hashtag-Jagd läuft ein zweiter Apify-Durchgang mit dem Profil-Scraper über die gefundenen Konten. Der liefert Bio, Follower, Geschäfts-E-Mail und Website-Link.
+- Diese Daten werden in den Lead geschrieben; hat ein Konto eine E-Mail, wechselt der Kanal automatisch von „DM" auf „E-Mail".
 
-Alle Texte laufen weiter über `Editable`/`site_content`, damit du sie ohne Code ändern kannst — inklusive der neuen Blöcke.
+**3. Kontaktsuche verbessern**
+- Läuft künftig auch für Leads im Status „neu", nicht nur „qualifiziert".
+- Mehr Seiten (`/legal`, `/imprint`, `/contact-us`), Erkennung von `mailto:`-Links und verschleierten Schreibweisen („name (at) domain.com"), Auflösung von Linktree/Beacons-Seiten.
+- Rollen-Adressen (`noreply@`, `support@`) werden abgewertet, persönliche/Studio-Adressen bevorzugt.
 
-## 2. Der Bewerbungspfad (`/apply/form`)
+**4. Nachlauf für die vorhandenen 94 Leads**
+- Einmaliger Anreicherungslauf über alle bestehenden Leads, damit der aktuelle Stapel nicht leer bleibt.
 
-Heute: fünf gleich aussehende Formularschritte in Standard-Optik, die nicht zur Site passt und nicht führt. Neu:
-
-- **Optik angleichen**: gleiche Designsprache wie Studio/Admin (harte Kanten, Serifen-Überschriften, Fortschrittslinie statt Standard-Stepper), mobil zuerst.
-- **Führung statt Formular**: pro Schritt eine kurze Erklärzeile in einfacher Sprache („Warum wir das fragen"), sichtbarer Fortschritt („Schritt 2 von 5 · noch ca. 6 Minuten").
-- **Schritt-Reihenfolge neu**: 
-  1. *Deine Disziplin* (vorbelegt aus der Landing) 
-  2. *Dein Haus* (Name, Ort, Land) 
-  3. *Deine Arbeit* — **hier greift die Weiche**: Mode fragt nach Kollektion/Fertigung/Größen, Interior nach Material/Maßanfertigung/Lieferung, Kunst nach Technik/Unikat oder Edition/Format. Portfolio-Upload bleibt, mit klarer Vorgabe (3–8 Bilder, was wir sehen wollen).
-  4. *Verträge* — unverändert in der Mechanik, nur bessere Darstellung.
-  5. *Absenden* — Übersicht in Klartext.
-- **Zwischenstand sichern**: Eingaben landen im Browser-Speicher, damit ein Abbruch nichts kostet.
-- **Bessere Fehlermeldungen** in einfachem Deutsch, direkt am Feld statt nur als Toast.
-- **Erfolgsseite** mit klarer Erwartung: was jetzt passiert, wann Antwort kommt, was du inzwischen vorbereiten kannst.
-
-## 3. Sprache
-
-Alle Texte auf beiden Seiten werden überarbeitet: kein Jargon, keine veralteten Versprechen (Credits, „Sichtbarkeitspakete"), aktuelle Fakten (Stripe-Auszahlung, Pläne Haus/Atelier/Maison, KI-Studio). Englische Reste im Formular („Apply once. Be seen forever.", „Back to designers") verschwinden — die Seite läuft über den vorhandenen Sprach-Umschalter.
+**5. Sichtbarkeit im Admin**
+- Im Prüf-Stapel steht pro Lead klar: „E-Mail gefunden (Quelle: Bio/Website)" oder „nur DM möglich".
+- Panel-Kopfzeile mit Zahlen: qualifiziert / davon mit E-Mail / heute versendet / Tageslimit.
+- Knopf „Kontakt suchen" für einen manuellen Anreicherungslauf.
+- Jeder Sendeversuch schreibt Erfolg **oder** Resend-Fehlertext ins Aktionen-Log, damit Fehlschläge nicht mehr stumm bleiben.
 
 ## Technische Details
 
-- `src/pages/ApplyLanding.tsx`: Disziplin-Zustand über Query-Parameter `welt`, Inhalte aus einer neuen Datei `src/features/apply/disciplines.ts` (ein Objekt je Welt: Beispiele, Feldbezeichnungen, Fragen). Neue Abschnitte als kleine Komponenten unter `src/features/apply/`.
-- `src/pages/Apply.tsx` wird in Schritt-Komponenten zerlegt (`src/features/apply/steps/*`), Zod-Schemas bleiben, kommen ein disziplinabhängiges Zusatzschema dazu.
-- Speicherung der Disziplin: `designer_applications` hat heute keine passende Spalte. Vorschlag: eine Spalte `world text` per Migration ergänzen (nur Hinzufügen, keine Änderung bestehender Regeln/Policies) und im Edge-Function-Aufruf `submit-application` mitschicken. Falls du keine Migration willst, schreiben wir die Disziplin ersatzweise als ersten Eintrag in `tags` — dann ist kein Backend-Eingriff nötig.
-- Edge Function `submit-application` müsste im Migrationsfall ein Feld mehr durchreichen — **das kostet einen Lovable-Deploy**. Ohne Migration (Tag-Variante) bleibt alles reine Frontend-Arbeit über Git und damit kostenlos.
-- Kein neues Farbschema, keine neuen Abhängigkeiten. Typecheck grün vor Abschluss, Prüfung bei 390 px und iPad.
+- `supabase/functions/pawn-jarvis/index.ts`: neue Funktion `enrichProfilesViaApify()` (Actor `apify~instagram-profile-scraper`, Batch nach Handles), Aufruf am Ende von `runHunt` und als eigener Modus `akquise_kontakte`; `discoverContactViaWebsite()` um Status-Filter, Pfade, mailto-/Obfuskations-Regex und Linktree-Auflösung erweitert; `sendResendEmail` protokolliert Statuscode und Fehlerbody.
+- Migration: `ai_config.akquise_config.email_reply_to` → `hallo@pawn.vision`.
+- Frontend: `PruefStapel.tsx` und `JagdPanel.tsx` um Kontaktstatus, Kennzahlen und den Knopf erweitern.
+- Nach der Änderung muss `pawn-jarvis` neu deployt werden (Lovable-Deploy, kostet Credits) — das ist der einzige nötige Deploy.
 
-## Offene Entscheidung
+## Dein Teil in Resend
 
-Disziplin als **eigene Spalte** (sauber, kostet einen Function-Deploy) oder vorerst als **erster Tag** (kostenlos, minimal unsauber)? Wenn du nichts sagst, baue ich die Tag-Variante und markiere die Spalte als späteren Schritt.
+- Prüfen, dass `pawn.vision` unter „Domains" auf **verified** steht (DKIM/SPF grün). Nur dann geht überhaupt etwas raus.
+- Wenn du `hausofpawn.vision` als Absender willst: Domain in Resend hinzufügen und die DNS-Einträge setzen — dann stelle ich den Absender um.
