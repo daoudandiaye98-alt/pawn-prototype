@@ -172,27 +172,31 @@ const Account = () => {
             {tab === "Anfragen" && <Card><Requests /></Card>}
             {tab === "Merkzettel" && <Card><Empty title="Dein Merkzettel ist noch leer." to="/neu" cta="Ausstellung ansehen" /></Card>}
             {tab === "Einstellungen" && (
-              <AccountSettingsPanel
-                role="customer"
-                paymentSlot={
-                  <div className="space-y-4">
-                    <p className="text-sm text-foreground/70">
-                      Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.
-                    </p>
-                    <p className="text-sm text-foreground/70">
-                      Rechnungs- und Lieferadresse gibst du beim Bezahlen an; sie hängen an der jeweiligen Bestellung.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setTab("Bestellungen")}
-                      className="border-[1.5px] border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-white"
-                    >
-                      Zur Bestellhistorie →
-                    </button>
-                  </div>
-                }
-              />
+              <div className="space-y-8">
+                <MeasurementsPanel />
+                <AccountSettingsPanel
+                  role="customer"
+                  paymentSlot={
+                    <div className="space-y-4">
+                      <p className="text-sm text-foreground/70">
+                        Deine Zahlungsmethode wird bei der ersten Bestellung sicher über Stripe hinterlegt — verschlüsselt, nie auf unseren Servern gespeichert.
+                      </p>
+                      <p className="text-sm text-foreground/70">
+                        Rechnungs- und Lieferadresse gibst du beim Bezahlen an; sie hängen an der jeweiligen Bestellung.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setTab("Bestellungen")}
+                        className="border-[1.5px] border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-white"
+                      >
+                        Zur Bestellhistorie →
+                      </button>
+                    </div>
+                  }
+                />
+              </div>
             )}
+
           </div>
         </div>
       </section>
