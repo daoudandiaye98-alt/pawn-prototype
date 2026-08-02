@@ -213,6 +213,15 @@ const ProductDetail = () => {
   // Teil 15b: Produktseiten erben den Raum ihres Hauses vollständig (die Kasse — eine
   // eigene Route — bleibt davon unberührt und PAWN-streng).
   const themeForPage = houseTheme ?? DEFAULT_HOUSE_THEME;
+  // Echtes Produktfoto statt Platzhalter. Zusatzbilder kommen — falls hinterlegt —
+  // aus dem Bildfeld der Produkt-DNA; ohne Bild bleibt die Fläche ehrlich leer.
+  const heroImage = dbProduct?.image_url ?? null;
+  const gallery = useMemo(() => {
+    const dna = (dbProduct?.product_dna ?? {}) as { images?: unknown };
+    const list = Array.isArray(dna.images) ? (dna.images as unknown[]) : [];
+    return list.filter((u): u is string => typeof u === "string" && u.trim() !== "" && u !== heroImage).slice(0, 3);
+  }, [dbProduct, heroImage]);
+
 
   return (
     <PalaceLayout transparentHeader={false}>
