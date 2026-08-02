@@ -382,10 +382,11 @@ const ProductDetail = () => {
                   </div>
                 )}
 
-                {/* Detail-Tabelle */}
+                {/* Details als ausklappbare Abschnitte */}
                 <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
-                  <ProductDetailsTable dbProduct={dbProduct} />
+                  <ProductDetailsAccordion dbProduct={dbProduct} onPickSize={(s) => setSize(s)} />
                 </ErrorBoundary>
+
 
                 {/* Frag PAWN zu diesem Stück */}
                 <button
