@@ -1,0 +1,1 @@
+update public.ai_config set value = jsonb_set(jsonb_set(value, '{email_from}', '"PAWN <support@pawn.vision>"'), '{email_reply_to}', '"support@pawn.vision"'), updated_at = now() where key = 'akquise_config';
