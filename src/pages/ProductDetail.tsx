@@ -29,9 +29,10 @@ import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
 import { ProductDetailsAccordion } from "@/components/palace/ProductDetailsAccordion";
 
 import {
-  careLabel, effectiveVatRate, materialLine, vatNote, formatEuro, worldProfile,
-  type MaterialPart, type Measurements, type SizeVariant,
+  effectiveVatRate, vatNote, formatEuro, worldProfile,
+  type SizeVariant,
 } from "@/features/studio/productDetails";
+
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
