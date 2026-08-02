@@ -1879,8 +1879,14 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     const draft = await researchAndDraftLead(apiKey, lead, styleLaw, config.languages);
     if (!draft) continue;
     tokensUsed += draft.tokens;
+    // Feste Vorlage schlägt den freien Entwurf: Jarvis liefert nur den persönlichen Satz,
+    // der Rest bleibt wortgleich so, wie Daouda ihn festgelegt hat.
+    const template = draft.language === "en" ? config.template_en : config.template_de;
+    const message = template && template.trim()
+      ? template.replaceAll("<personal_line>", draft.personal_line)
+      : draft.message;
     await admin.from("acquisition_leads").update({
-      personal_line: draft.personal_line, message_draft: draft.message, language: draft.language, channel: lead.email ? "email" : "dm",
+      personal_line: draft.personal_line, message_draft: message, language: draft.language, channel: lead.email ? "email" : "dm",
     }).eq("id", lead.id);
     ready++;
   }
