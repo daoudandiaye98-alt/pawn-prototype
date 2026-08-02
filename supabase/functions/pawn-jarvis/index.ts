@@ -1812,7 +1812,15 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
     return { ok: true, imported: res.imported, skipped: items.length - res.imported };
   }
 
-  return { ok: true, imported, skipped, hunts_fertig: finished, hunts_offen: stillRunning, hunts_fehlgeschlagen: failedRuns };
+  // Direkt im Anschluss die Profil-Anreicherung anstoßen: ohne Bio/Website/E-Mail ist ein Lead nur ein Name.
+  const profile = await runAkquiseProfile(admin);
+
+  return {
+    ok: true, imported, skipped, angereichert: enriched,
+    hunts_fertig: finished, hunts_offen: stillRunning, hunts_fehlgeschlagen: failedRuns,
+    profil_laeufe: (profile as { gestartet?: number }).gestartet ?? 0,
+  };
+
 }
 
 /**
