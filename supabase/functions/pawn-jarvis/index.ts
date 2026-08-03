@@ -1933,42 +1933,39 @@ async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Prom
   return { ok: true, processed: (leads ?? []).length, qualified, sorted_out: sortedOut, tokensUsed };
 }
 
+/** Erkennt Verneinungs-Muster, die in einer Erstansprache nichts verloren haben. */
+const NEGATION_PATTERN = /\b(kein|keine|keinen|keiner|keinem|nicht|niemals|nichts für dich|no cost|no fee|no catalog|not for you|doesn't|don't|isn't)\b/i;
+function hatVerneinung(text: string): boolean {
+  return NEGATION_PATTERN.test(text);
+}
+
 /** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
 async function researchAndDraftLead(
-  apiKey: string, lead: { handle: string; world: string; bio: string | null }, styleLaw: string, languages: string[],
+  apiKey: string, lead: { handle: string; world: string; bio: string | null; name?: string | null },
+  styleLaw: string, languages: string[], sprachgesetze: string,
 ): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> {
   const allowed = languages.length ? languages : ["de", "en"];
   const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision.
 
-Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe die Nachricht in dieser Sprache mit der englischen Vorlage unten. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
+Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe in dieser Sprache. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
 
-Halte dich STRIKT an die passende Vorlage (nur <personal_line> ersetzt du durch einen warmen, konkreten Satz ohne Anführungszeichen und ohne Grußwort, in derselben Sprache wie die Vorlage):
+SPRACHGESETZE (bindend, jede Zeile gilt):
+${sprachgesetze}
 
-DEUTSCHE VORLAGE:
-"Hey, ich bin Daouda aus Köln. <personal_line>
+TON UND AUFBAU (nach dieser Fassung von Daouda):
+1. Persönliche Anrede mit Namen, wenn bekannt.
+2. Ein konkreter Satz zu genau dieser Arbeit — Material, Haltung, Handschrift — der zeigt, dass wirklich hingesehen wurde (das ist die personal_line).
+3. Was PAWN ist: ein neuer kuratierter Marktplatz für unabhängige Designer:innen, Künstler:innen und die Geschichten hinter ihrer Arbeit.
+4. Warum: Großartiges Design wird kraftvoller, wenn man den Menschen, die Idee und den Weg dahinter kennt. Marken mit einem Gesicht. Stücke mit einer Geschichte. Künstler:innen, deren Arbeit gesehen wird.
+5. Der Moment: PAWN steht am Anfang und bringt gerade die ersten Häuser zusammen, die es mitprägen.
+6. Die Konditionen als Zusage: Teilnahme ist kostenlos, du bestimmst deine Preise selbst, du behältst 93 % jedes Verkaufs — PAWN wächst also genau dann, wenn du wächst.
+7. Einladung zum Schluss: wir zeigen dir gerne, was gerade entsteht. Link: pawn.vision. Gruß im Namen von PAWN.
 
-Ich baue gerade PAWN — eine kuratierte Ausstellung für unabhängige Designer aus Mode, Interior und Kunst. Kein Katalog, kein Marktplatz-Grau: ein ruhiger Raum, in dem jedes Haus seine eigene Geschichte erzählt und gesehen wird.
+Länge: 120–200 Wörter. Keine Aufzählungszeichen, keine Anführungszeichen um die Nachricht, keine erfundenen Fakten.
 
-Für dich entstehen keine Kosten. Keine Grundgebühr, keine Mindestlaufzeit. Du lädst deine Stücke einmal hoch — die Fotos hast du ja längst — und wir kümmern uns darum, dass man dich sieht. Wenn etwas verkauft wird, bleiben 93% bei dir.
+Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht>"}
 
-Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
-
-Wenn's nichts für dich ist — auch gut, mach weiter so."
-
-ENGLISH TEMPLATE:
-"Hey, I'm Daouda from Cologne. <personal_line>
-
-I'm building PAWN — a curated exhibition for independent designers in fashion, interior and art. No catalog, no marketplace grey: a quiet room where every house tells its own story and gets seen.
-
-There's no cost for you. No base fee, no minimum term. You upload your pieces once — you've already got the photos — and we make sure you're seen. If something sells, 93% stays with you.
-
-Issue 08 is opening right now, the first houses are moving in: pawn.vision
-
-If it's not for you — that's fine too, keep doing your thing."
-
-Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — nutze das für personal_line, damit klar wird, dass die Arbeit wirklich angesehen wurde. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht mit eingesetzter personal_line>"}
-
-Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
+Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
   const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
