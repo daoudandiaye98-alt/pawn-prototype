@@ -190,9 +190,13 @@ interface AkquiseConfig {
   followup_after_days: number;
   max_touches: number;
   languages: string[];
-  /** Feste Erstnachricht (von Daouda gesetzt). Leer = Jarvis formuliert frei. <personal_line> wird ersetzt. */
+  /** Feste Erstnachricht (von Daouda gesetzt). Leer = Jarvis formuliert frei. <personal_line> und <name> werden ersetzt. */
   template_de: string;
   template_en: string;
+  /** Sprachgesetze für jede Erstnachricht — positiv formulieren, Verneinungen drehen. */
+  sprachgesetze: string;
+  /** Ab diesem Kurator-Score darf eine E-Mail ohne Freigabe rausgehen. */
+  autosend_min_score: number;
   // Jagd (Teil 23): Jarvis startet Apify-Läufe selbst, statt nur den letzten Lauf zu lesen.
   apify_actor_hashtag: string;
   apify_actor_profile: string;
