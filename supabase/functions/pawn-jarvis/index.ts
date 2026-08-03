@@ -207,6 +207,20 @@ interface AkquiseConfig {
   hunt_max_followers: number;
   hunt_exclude_words: string[];
 }
+/**
+ * Sprachgesetze der Erstansprache: Jede Nachricht bleibt eine Einladung.
+ * Verneinungen werden in Zusagen gedreht, der Wert steht vor den Konditionen,
+ * der Schluss öffnet eine Tür statt eine Absage anzubieten.
+ */
+const DEFAULT_SPRACHGESETZE = [
+  "Schreibe durchgehend positiv. Jede Verneinung wird zur Zusage: statt \"keine Kosten\" -> \"kostenlos\"; statt \"kein Katalog\" -> \"ein kuratierter Ort\"; statt \"nur ein kleiner Anteil\" -> \"du behältst 93 %\".",
+  "Vermeide die Wörter kein, keine, keinen, nicht, niemals, ohne … zu, sowie jede Formulierung, die beschreibt, was PAWN nicht ist.",
+  "Wert vor Konditionen: erst die Idee und die Arbeit dieser Person, dann Preise und Bedingungen.",
+  "Sprich die Person mit Namen an, wenn ein Name bekannt ist.",
+  "Der letzte Satz ist eine Einladung, nie ein Ausstieg oder eine vorweggenommene Absage.",
+  "Warm, konkret, menschlich — keine Superlative, keine erfundenen Zahlen, keine Auszeichnungen.",
+].join("\n");
+
 const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
   autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "hallo@pawn.vision",
