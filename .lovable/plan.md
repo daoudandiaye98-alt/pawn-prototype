@@ -1,51 +1,39 @@
-## Was ich in der versendeten Mail gefunden habe
+## Ziel
 
-Der Text aus deinem Screenshot ist die **im Code fest verdrahtete Vorlage**, nicht deine. Fehlerpunkte:
+Eine Seite **„PAWNs Vision"** unter `/vision` — kein Funktionsüberblick, kein Wort über Geld. Sie beschreibt, was für ein Ort PAWN ist: ein Haus, in dem sich unabhängige Gestalter versammeln, und in dem Menschen sie finden. Wer dort landet, versteht sofort, wofür PAWN steht und wohin er als Nächstes geht.
 
-1. **Verneinungen häufen sich:** „Kein Katalog, kein Marktplatz-Grau", „Für dich entstehen keine Kosten. Keine Grundgebühr, keine Mindestlaufzeit."
-2. **Ausstieg als Schlusssatz:** „Wenn's nichts für dich ist — auch gut, mach weiter so." endet auf einer Absage statt einer Einladung.
-3. **Defensiver Fußtext:** „Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe."
-4. **Preis vor Wert:** 93 % kommt vor der Idee; die Geschichte hinter der Arbeit fehlt fast völlig.
-5. **Kein Name:** „Hey," statt „Hey Barbara," — obwohl der Name oft bekannt ist.
+## Ton
 
-Dazu ein stiller Bug: Deine in der Datenbank hinterlegte Vorlage enthält **kein `<personal_line>`**. Jarvis recherchiert also den persönlichen Satz, setzt ihn aber nirgends ein — jede Mail geht identisch raus.
+Editorial, ruhig, erste Person Plural. Große Serifensätze, viel Weißraum, streng schwarz/weiß, harte Kanten. Keine Preise, keine Prozentsätze, keine Plan- oder Konditionsangaben. Positiv formuliert — die Gegenwart wird benannt, der Text bleibt eine Einladung.
 
-## Wie der Rest steht (geprüft)
+## Aufbau
 
-- Leads: 169 „neu" unbearbeitet, 26 qualifiziert, davon 8 mit E-Mail. Nur 3 je kontaktiert.
-- Versand steht auf **Zone Rot** und verlangt zusätzlich dein „Ja" — deshalb läuft nichts von selbst.
-- **Presse-Jäger: 0 Kontakte** — der Kanal ist eingeschaltet, wurde aber nie ausgelöst (kein Zeitplan).
-- Verstärker, Redakteur, Kunden-Karte, Späher: angelegt, aber ausgeschaltet und ohne Logik.
+1. **Manifest-Kopf** — ein einziger großer Satz, sinngemäß: „Ein Ort für die, die noch selbst machen." Darunter eine Zeile Kontext.
+2. **Warum es uns gibt** — drei bis vier Sätze: Vieles wird heute im Wochentakt produziert und im Feed vergessen. Die Menschen dahinter bleiben unsichtbar. Wir bauen den Gegenort — langsam, kuratiert, mit Namen.
+3. **Was für ein Ort das ist** — vier Überzeugungen, je Überschrift + zwei Sätze:
+   - **Ein Haus, kein Feed** — Arbeiten bekommen Raum statt Scroll-Sekunden.
+   - **Jedes Stück hat eine Herkunft** — wer es gemacht hat, woraus, warum.
+   - **Wenige statt viele** — kuratiert. Was hier steht, soll bleiben.
+   - **Die Gestalter behalten ihre Handschrift** — PAWN gibt Werkzeuge, keine Vorgaben.
+4. **Eine Versammlung** — kurzer Absatz als Einladung an Mode-, Interior- und Kunstschaffende: hier findet ihr einander und ein Publikum, das genau danach sucht. Ein Link: *Werde Teil davon* (`/apply`).
+5. **Für die, die suchen** — kurzer Absatz an Besucher: nicht Katalog, sondern Ausstellung. Links: *Ausstellung ansehen* (`/shop`), *Deine DNA* (`/dna`).
+6. **Die Welten** — Mode · Interior · Kunst als drei Links (`/mode`, `/interior`, `/kunst`).
+7. **Zähler ganz unten** — große Zahlen in Serifenschrift, live aus der Datenbank:
+   - Häuser (Anzahl veröffentlichter Häuser)
+   - Länder (Anzahl verschiedener Länder dieser Häuser)
+   - Welten (Mode · Interior · Kunst)
+   Solange die Zahlen klein sind, steht daneben ehrlich: „Die ersten Häuser ziehen ein." Keine erfundenen Werte.
 
-## Der Plan
+## Technisch
 
-**1. Neue Sprachgesetze für jede Nachricht**
-Deine Fassung wird zur Grundlage (DE + EN), mit `<personal_line>` an der richtigen Stelle und `<name>` für die Anrede. Dazu bekommt Jarvis harte Leitsätze: positiv formulieren, jede Verneinung in eine Zusage drehen („kostenlos" statt „keine Kosten", „du behältst 93 %" statt „nur ein kleiner Anteil"), Wert vor Konditionen, Schluss als Einladung. Eine kurze Prüfung nach dem Schreiben verwirft Entwürfe mit Verneinungs-Mustern und schreibt sie einmal neu.
+- Neue Datei `src/pages/Vision.tsx` mit `PalaceLayout` (Header, Footer, SEO kommen von dort), Titel und Beschreibung als Props.
+- Routen in `src/App.tsx`: `/vision`, Alias `/about` auf dieselbe Seite.
+- Zähler: eine schlanke Abfrage auf `designers` (nur `published = true`) — Anzahl Häuser und Anzahl verschiedener `country`-Werte. Bestätigt: beide Felder existieren. Ladezustand zeigt zurückhaltende Platzhalterstriche, kein Sprung im Layout.
+- Alle Texte über `Editable` / `useContentValue` an `site_content` angebunden — später ohne Code änderbar; DE/EN über die bestehende Übersetzungslogik.
+- Auffindbarkeit: Link „Vision" in der Fußzeilen-Spalte „Haus" (`PalaceLayout`) und im Hauptmenü (`PalaceHeader`).
+- Keine Bildgenerierung, keine Edge Function, keine Migration — reine Frontend-Arbeit über Git.
+- Prüfung: Typecheck grün, Ansicht bei 390 px und Desktop, alle Links angeklickt, Zählerwerte gegen die Datenbank gegengeprüft.
 
-**2. Persönlicher Satz wieder scharf**
-`<personal_line>` und `<name>` werden eingesetzt; fehlt der Name, greift eine warme Anrede ohne Lücke. Ein Entwurf ohne echten Rechercheinhalt geht nicht raus.
+## Nicht enthalten
 
-**3. Akquise läuft 24/7 von selbst — für E-Mail**
-Der Versand an Leads **mit gefundener E-Mail** braucht künftig keine Freigabe mehr: qualifiziert + Entwurf fertig + Score über der Schwelle → raus, im Rahmen des Tageslimits (aktuell 10/Tag). Der DM-Weg bleibt bei dir im Prüf-Stapel, genau wie du es willst. Der Zeitplan zieht die ganze Kette mehrmals täglich durch: jagen → Profile laden → prüfen → schreiben → senden. Jede Mail landet weiter im Aktionen-Log; ein Not-Aus-Schalter im Admin hält alles sofort an.
-
-**4. Der Stau wird aufgelöst**
-Die 169 „neu"-Leads laufen automatisch durch Profil-Anreicherung und Bewertung, statt liegen zu bleiben.
-
-**5. Presse zum Laufen bringen**
-Presse-Jagd und Pitch-Schreiben kommen in den Zeitplan (Tageslimit 10). Presse bleibt bewusst bei deinem „Ja" — ein Journalist verzeiht eine schwache Mail schlechter als ein Studio. Die Pitches bekommen dieselben Sprachgesetze.
-
-**6. Verstärker einschalten (der günstigste nächste Weg)**
-Häuser mit fertigem Video bekommen im Studio ein fertiges Teil-Paket (Clip, Caption, Hashtags, Link). Läuft still, keine Freigabe nötig.
-
-Redakteur, Kunden-Karte und Späher bleiben in diesem Zug aus — die kommen erst, wenn Presse und Verstärker Zahlen liefern.
-
-## Technische Details
-
-- `ai_config.akquise_config`: neue `template_de`/`template_en` mit `<name>`/`<personal_line>`, neues Feld `sprachgesetze`, `autosend_email: true`, `autosend_min_score`.
-- `ai_config.jarvis_zones.akquise_senden` → `gelb`.
-- `supabase/functions/pawn-jarvis/index.ts`: Prompt in `researchAndDraftLead` positiv umschreiben + Verneinungs-Prüfung, `runAkquiseVerfassen` setzt `<name>` ein, `runAkquiseSenden` löst die `admin_decision = 'ja'`-Pflicht für Kanal E-Mail (DM unverändert), neuer Modus `akquise_zyklus` als eine Kette für den Cron.
-- Cron (pg_cron, bestehendes `JARVIS_CRON_SECRET`-Muster): `akquise_zyklus` alle 6 h, `presse_jagd` täglich, `presse_verfassen` täglich, `verstaerker` täglich.
-- Frontend: `/admin/akquise` bekommt Not-Aus-Schalter und eine Zeile „Automatik läuft · X heute gesendet"; `/admin/wachstum` zeigt Laufzeiten je Kanal.
-- **Ein Lovable-Deploy** von `pawn-jarvis` am Ende (Credits).
-
-Sag Bescheid, ob ich so bauen soll — oder ob der Automatik-Versand zusätzlich eine Score-Schwelle (z. B. erst ab 75) bekommen soll.
+Alles zu Geld, Plänen und Konditionen (bleibt auf `/apply` und `/studio/plan`), Rechtstexte, Team- oder Gründerseite.

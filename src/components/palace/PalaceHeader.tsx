@@ -26,6 +26,7 @@ export function PalaceHeader() {
     { label: t("nav.designer"), to: "/designers" },
     { label: t("nav.dna"), to: "/dna" },
     { label: t("nav.forDesigners"), to: "/apply" },
+    { label: "Vision", to: "/vision" },
   ];
 
   const navigate = useNavigate();

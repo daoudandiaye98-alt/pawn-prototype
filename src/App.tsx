@@ -25,6 +25,7 @@ import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
 import Ausgabe from "./pages/Ausgabe.tsx";
+import Vision from "./pages/Vision.tsx";
 import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
@@ -136,6 +137,8 @@ const App = () => (
                 <Route path="/dna" element={<DNA />} />
                 <Route path="/designers" element={<Designers />} />
                 <Route path="/ausgabe" element={<Ausgabe />} />
+                <Route path="/vision" element={<Vision />} />
+                <Route path="/about" element={<Vision />} />
                 <Route path="/designers/all" element={<DesignersIndex />} />
                 <Route path="/designer/:slug" element={<DesignerPage />} />
                 <Route path="/apply" element={<ApplyLanding />} />
