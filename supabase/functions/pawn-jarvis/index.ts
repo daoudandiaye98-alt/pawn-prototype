@@ -2225,6 +2225,8 @@ async function runPresseVerfassen(admin: SupabaseClient, apiKey: string): Promis
   if (!houseList.length) return { ok: true, processed: 0, ready: 0, message: "Noch kein veröffentlichtes Haus, über das sich pitchen ließe." };
 
   const styleLaw = await loadHouseStyleLaw(admin);
+  const presseConfig = await loadAkquiseConfig(admin);
+  const gesetze = presseConfig.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   let ready = 0, tokensUsed = 0;
 
   for (const lead of (leads ?? []) as { id: string; handle: string; outlet: string | null; contact_name: string | null; world: string; bio: string | null; email: string | null; language: string | null }[]) {
@@ -2239,11 +2241,14 @@ async function runPresseVerfassen(admin: SupabaseClient, apiKey: string): Promis
     const system = `Du schreibst als Daouda, Gründer von PAWN (pawn.vision, Köln), eine kurze Presse-Anfrage an eine:n Journalist:in. Sprache: ${sprache === "en" ? "Englisch" : "Deutsch"}.
 
 Regeln:
-- Höchstens 130 Wörter. Kein Marketing-Sprech, keine Superlative, keine erfundenen Zahlen oder Auszeichnungen.
+- Höchstens 130 Wörter. Nüchtern und konkret, mit echten Angaben.
 - Beginne mit einem konkreten Satz darüber, worüber diese Person zuletzt geschrieben hat.
 - Pitche GENAU EIN Haus, nicht die Plattform. Die Plattform ist nur der Nebensatz, in dem das Haus zu finden ist.
 - Ende mit einem einzigen, leichten Angebot (Bilder, Gespräch mit dem Haus) und dem Link.
-- Keine Anhänge, keine Anführungszeichen um die Nachricht.
+- Sprich die Person mit Namen an, wenn ein Name bekannt ist. Text ohne Anführungszeichen, ohne Anhänge.
+
+SPRACHGESETZE (bindend):
+${gesetze}
 
 Stilgesetz: ${styleLaw}
 
