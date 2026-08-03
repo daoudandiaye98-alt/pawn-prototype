@@ -2020,30 +2020,71 @@ Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
   return null;
 }
 
+/** Dreht Verneinungen in Zusagen — ein einziger Nachschlag, danach bleibt es beim Entwurf. */
+async function entverneinen(text: string, sprachgesetze: string): Promise<{ text: string; tokens: number }> {
+  const r = await llm({
+    system: `Du bist Lektor für PAWN. Schreibe den Text so um, dass er durchgehend positiv formuliert ist. Inhalt, Sprache, Reihenfolge und Länge bleiben gleich — nur Verneinungen werden zu Zusagen.
+
+${sprachgesetze}
+
+Antworte NUR mit dem umgeschriebenen Text, ohne Anführungszeichen und ohne Kommentar.`,
+    user: text,
+    maxTokens: 700,
+  });
+  const out = (r.text ?? "").trim();
+  return { text: out && !hatVerneinung(out) ? out : text, tokens: r.tokens };
+}
+
+/** Setzt Vorname und persönlichen Satz in die feste Vorlage ein. */
+function fillTemplate(template: string, personalLine: string, name: string | null): string {
+  const anrede = name ? `${name},` : "";
+  return template
+    .replaceAll("<personal_line>", personalLine)
+    .replaceAll("<name>", anrede)
+    .replace(/Hey\s+,/g, "Hey,")
+    .replace(/Hey\s{2,}/g, "Hey ");
+}
+
+/** Vorname aus einem bekannten Kontaktnamen — nie geraten, nie aus dem Handle konstruiert. */
+function vornameVon(name: string | null | undefined): string | null {
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first && /^[\p{L}][\p{L}'-]{1,}$/u.test(first) ? first : null;
+}
+
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null).limit(10);
+    .select("id, handle, world, bio, email, contact_name").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null).limit(10);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
+  const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
 
-  let ready = 0, tokensUsed = 0;
-  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null }[]) {
-    const draft = await researchAndDraftLead(apiKey, lead, styleLaw, config.languages);
+  let ready = 0, tokensUsed = 0, entverneint = 0;
+  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_name: string | null }[]) {
+    const name = vornameVon(lead.contact_name);
+    const draft = await researchAndDraftLead(apiKey, { ...lead, name }, styleLaw, config.languages, gesetze);
     if (!draft) continue;
     tokensUsed += draft.tokens;
     // Feste Vorlage schlägt den freien Entwurf: Jarvis liefert nur den persönlichen Satz,
     // der Rest bleibt wortgleich so, wie Daouda ihn festgelegt hat.
     const template = draft.language === "en" ? config.template_en : config.template_de;
-    const message = template && template.trim()
-      ? template.replaceAll("<personal_line>", draft.personal_line)
+    let message = template && template.trim()
+      ? fillTemplate(template, draft.personal_line, name)
       : draft.message;
+
+    // Letzte Kontrolle: eine Erstansprache bleibt eine Einladung.
+    if (hatVerneinung(message)) {
+      const fixed = await entverneinen(message, gesetze);
+      tokensUsed += fixed.tokens;
+      if (fixed.text !== message) { message = fixed.text; entverneint++; }
+    }
+
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language: draft.language, channel: lead.email ? "email" : "dm",
     }).eq("id", lead.id);
     ready++;
   }
-  return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
+  return { ok: true, processed: (leads ?? []).length, ready, entverneint, tokensUsed };
 }
 
 /* ------------------------------------------------------------------ *
