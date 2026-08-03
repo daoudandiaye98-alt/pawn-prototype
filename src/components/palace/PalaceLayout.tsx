@@ -72,6 +72,7 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
             {
               title: "Haus",
               links: [
+                { label: "Vision", to: "/vision" },
                 { label: "Kontakt", to: "/kontakt" },
                 { label: "Versand", to: "/versand" },
                 { label: "AGB", to: "/agb" },
