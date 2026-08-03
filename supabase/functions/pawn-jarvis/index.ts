@@ -212,6 +212,8 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "hallo@pawn.vision",
   followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
   template_de: "", template_en: "",
+  sprachgesetze: DEFAULT_SPRACHGESETZE,
+  autosend_min_score: 70,
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
   apify_actor_profile: "apify~instagram-profile-scraper",
   hunt_queries: [],
