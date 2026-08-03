@@ -137,6 +137,8 @@ const App = () => (
                 <Route path="/dna" element={<DNA />} />
                 <Route path="/designers" element={<Designers />} />
                 <Route path="/ausgabe" element={<Ausgabe />} />
+                <Route path="/vision" element={<Vision />} />
+                <Route path="/about" element={<Vision />} />
                 <Route path="/designers/all" element={<DesignersIndex />} />
                 <Route path="/designer/:slug" element={<DesignerPage />} />
                 <Route path="/apply" element={<ApplyLanding />} />
