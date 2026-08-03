@@ -2940,6 +2940,7 @@ Deno.serve(async (req) => {
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
+      "akquise_zyklus", "verstaerker",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
