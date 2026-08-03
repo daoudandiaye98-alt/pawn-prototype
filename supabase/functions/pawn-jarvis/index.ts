@@ -3093,7 +3093,8 @@ Deno.serve(async (req) => {
     }
 
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
-        || mode === "presse_jagd" || mode === "presse_verfassen") {
+        || mode === "presse_jagd" || mode === "presse_verfassen"
+        || mode === "akquise_zyklus" || mode === "verstaerker") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
@@ -3101,6 +3102,8 @@ Deno.serve(async (req) => {
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
+        : mode === "akquise_zyklus" ? await runAkquiseZyklus(admin, apiKey)
+        : mode === "verstaerker" ? await runVerstaerker(admin)
         : await runBewerbungPruefen(admin, apiKey);
 
       const summary = mode === "akquise_kuratieren"
@@ -3111,6 +3114,10 @@ Deno.serve(async (req) => {
         ? `Presse-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
         : mode === "presse_verfassen"
         ? `Presse-Pitches: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : mode === "akquise_zyklus"
+        ? `Zyklus: ${(result as { qualifiziert?: number }).qualifiziert ?? 0} geprüft, ${(result as { verfasst?: number }).verfasst ?? 0} geschrieben, ${(result as { gesendet?: number }).gesendet ?? 0} gesendet`
+        : mode === "verstaerker"
+        ? `Verstärker: ${(result as { angestupst?: number }).angestupst ?? 0} Haus/Häuser mit Teil-Paket`
         : `Bewerbungen geprüft: ${(result as { processed?: number }).processed ?? 0}`;
 
       const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
