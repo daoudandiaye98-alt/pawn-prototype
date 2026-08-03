@@ -2428,6 +2428,78 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
   return { ok: true, mode: "queued", pending_action_id: (pendingRow as { id: string } | null)?.id, count: candidateIds.length };
 }
 
+/**
+ * akquise_zyklus — die ganze Kette in einem Lauf: Profile anreichern → prüfen → schreiben → senden.
+ * Damit läuft die Akquise rund um die Uhr, ohne dass für jeden Schritt ein eigener Zeitplan nötig ist.
+ */
+async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const zones = await loadJarvisZones(admin);
+  const profile = await runAkquiseProfile(admin);
+  const importiert = await runAkquiseImport(admin);
+  const kuratiert = await runAkquiseKuratieren(admin, apiKey);
+  const verfasst = await runAkquiseVerfassen(admin, apiKey);
+  const gesendet = await runAkquiseSenden(admin, zones.akquise_senden ?? "rot");
+
+  const tokensUsed = ((kuratiert as { tokensUsed?: number }).tokensUsed ?? 0)
+    + ((verfasst as { tokensUsed?: number }).tokensUsed ?? 0);
+  return {
+    ok: true,
+    profile_laeufe: (profile as { gestartet?: number }).gestartet ?? 0,
+    importiert: (importiert as { imported?: number }).imported ?? 0,
+    qualifiziert: (kuratiert as { qualified?: number }).qualified ?? 0,
+    verfasst: (verfasst as { ready?: number }).ready ?? 0,
+    gesendet: (gesendet as { sent?: number }).sent ?? 0,
+    versand_modus: (gesendet as { mode?: string }).mode ?? "keiner",
+    tokensUsed,
+  };
+}
+
+/**
+ * verstaerker — Häuser tragen PAWN weiter. Jedes Haus mit einem fertigen Video, das noch
+ * nicht geteilt wurde, bekommt einen Hinweis auf sein fertiges Teil-Paket in der Videothek.
+ * Zone Grün: läuft still, kein Versand nach außen.
+ */
+async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: kanal } = await admin.from("growth_channels")
+    .select("enabled, daily_cap").eq("key", "verstaerker").maybeSingle();
+  const channel = kanal as { enabled: boolean; daily_cap: number } | null;
+  if (channel && channel.enabled === false) return { ok: true, angestupst: 0, message: "Verstärker ist ausgeschaltet." };
+  const cap = channel?.daily_cap ?? 20;
+
+  const seit = new Date(Date.now() - 14 * 86_400_000).toISOString();
+  const { data: assets } = await admin.from("video_assets")
+    .select("id, designer_id, created_at").gte("created_at", seit)
+    .order("created_at", { ascending: false }).limit(cap * 3);
+
+  let angestupst = 0;
+  const gesehen = new Set<string>();
+  for (const asset of (assets ?? []) as { id: string; designer_id: string | null }[]) {
+    if (angestupst >= cap) break;
+    if (!asset.designer_id || gesehen.has(asset.designer_id)) continue;
+    gesehen.add(asset.designer_id);
+
+    const { data: haus } = await admin.from("designers")
+      .select("user_id, brand_name").eq("id", asset.designer_id).maybeSingle();
+    const user = (haus as { user_id: string | null; brand_name: string } | null);
+    if (!user?.user_id) continue;
+
+    // Ein Haus wird höchstens alle 14 Tage angestupst.
+    const { data: bereits } = await admin.from("notifications")
+      .select("id").eq("user_id", user.user_id).eq("type", "verstaerker.paket")
+      .gte("created_at", seit).limit(1);
+    if ((bereits ?? []).length) continue;
+
+    await admin.from("notifications").insert({
+      user_id: user.user_id, type: "verstaerker.paket",
+      title: "Dein Teil-Paket liegt bereit",
+      body: "Dein neues Video wartet mit fertigem Text, Hashtags und Link auf deine Kanäle. Einmal laden, einmal posten.",
+      link: "/studio/videothek",
+    });
+    angestupst++;
+  }
+  return { ok: true, angestupst };
+}
+
 /** bewerbung_pruefen — bewertet neue Bewerbungen per Vision gegen denselben Kurator-Standard wie Akquise-Leads. */
 async function runBewerbungPruefen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: apps } = await admin.from("designer_applications")
