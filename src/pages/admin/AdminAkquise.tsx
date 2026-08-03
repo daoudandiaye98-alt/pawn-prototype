@@ -705,7 +705,10 @@ export default function AdminAkquise() {
         </p>
       </div>
 
+      <AutomatikPanel />
+
       <JagdPanel />
+
 
       <ErstnachrichtVorlagen />
 
