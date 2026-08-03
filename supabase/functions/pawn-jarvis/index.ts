@@ -2364,10 +2364,10 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
 
 /**
  * akquise_senden — Kanal E-Mail: Erstkontakt (qualifiziert, Entwurf fertig) + fällige Follow-ups.
- * Zone Rot (Standard): eine Sendeliste als jarvis_pending_actions-Eintrag, ein Tipp bestätigt den ganzen Stapel.
- * Zone Gelb/Grün (ai_config.jarvis_zones.akquise_senden, ersetzt das alte akquise_config.autosend_email):
- * Jarvis versendet direkt und meldet es.
- * DM-Kanal wird hier NIE automatisiert — der bleibt vollständig im Sende-Stapel von AdminAkquise.
+ * Zone Rot: eine Sendeliste als jarvis_pending_actions-Eintrag, ein Tipp bestätigt den ganzen Stapel.
+ * Zone Gelb/Grün: Jarvis versendet direkt und meldet es.
+ * Läuft die Automatik (akquise_config.autosend_email), gehen Studios MIT gefundener E-Mail und
+ * Score >= autosend_min_score ohne Freigabe raus — der DM-Weg und die Presse bleiben bei deinem "Ja".
  */
 async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: string[]): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
@@ -2378,22 +2378,35 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
     return { ok: true, mode: "direkt", ...(await sendAkquiseBatch(admin, leadIds)) };
   }
 
-  // Erstkontakt geht NUR raus, wenn du den Lead im Prüf-Stapel mit "Ja" freigegeben hast.
-  const { data: firstTouch } = await admin.from("acquisition_leads")
-    .select("id").eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
-    .eq("admin_decision", "ja")
-    .not("message_draft", "is", null).not("email", "is", null)
+  const basis = () => admin.from("acquisition_leads").select("id")
+    .eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
+    .not("message_draft", "is", null).not("email", "is", null);
+
+  // Freigegebene Kontakte zuerst — sie warten am längsten auf dich.
+  const { data: freigegeben } = await basis().eq("admin_decision", "ja")
     .order("created_at", { ascending: true }).limit(config.email_daily_cap);
 
-  const remainingCap = Math.max(0, config.email_daily_cap - (firstTouch?.length ?? 0));
+  let firstTouch = (freigegeben ?? []) as { id: string }[];
+
+  // Automatik: Studios mit E-Mail und starkem Score gehen ohne Freigabe raus.
+  const autoCap = Math.max(0, config.email_daily_cap - firstTouch.length);
+  if (config.autosend_email && autoCap > 0) {
+    const { data: auto } = await basis()
+      .eq("lead_type", "designer").is("admin_decision", null)
+      .gte("kurator_score", config.autosend_min_score)
+      .order("kurator_score", { ascending: false }).limit(autoCap);
+    firstTouch = [...firstTouch, ...((auto ?? []) as { id: string }[])];
+  }
+
+  const remainingCap = Math.max(0, config.email_daily_cap - firstTouch.length);
   const { data: followups } = remainingCap > 0 && config.max_touches >= 2
     ? await admin.from("acquisition_leads").select("id")
       .eq("status", "kontaktiert").eq("channel", "email").eq("opt_out", false)
       .is("followup_at", null).lte("next_touch_at", nowIso).limit(remainingCap)
     : { data: [] as { id: string }[] };
 
-  const candidateIds = [...(firstTouch ?? []).map((r: { id: string }) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
-  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden — kein freigegebener Kontakt offen." };
+  const candidateIds = [...firstTouch.map((r) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
+  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden — kein Kontakt mit Adresse und fertigem Text offen." };
 
   if (zone !== "rot") {
     const result = await sendAkquiseBatch(admin, candidateIds);
