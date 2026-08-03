@@ -63,7 +63,8 @@ type Mode =
   | "akquise_jagd" | "akquise_jagd_lernen"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "presse_jagd" | "presse_verfassen"
-  | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
+  | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
+  | "akquise_zyklus" | "verstaerker";
 
 type Zone = "gruen" | "gelb" | "rot";
 
