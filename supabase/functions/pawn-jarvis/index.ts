@@ -2313,27 +2313,31 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet").in("id", leadIds);
+    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score").in("id", leadIds);
 
   let sent = 0;
   const failed: string[] = [];
   const skipped: string[] = [];
-  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null }[]) {
-    // Ohne dein "Ja" geht nie etwas raus (Follow-ups an bereits Kontaktierte ausgenommen).
-    if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja") { skipped.push(lead.handle); continue; }
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null; kurator_score: number | null }[]) {
+    const isPresse = lead.lead_type === "presse";
+    // Studios mit gefundener E-Mail dürfen automatisch angeschrieben werden, sobald die Automatik
+    // läuft und der Kurator-Score hoch genug ist. Presse und DM bleiben bei deinem "Ja".
+    const autoErlaubt = config.autosend_email && !isPresse && !!lead.email
+      && (lead.kurator_score ?? 0) >= config.autosend_min_score;
+    if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja" && !autoErlaubt) { skipped.push(lead.handle); continue; }
+    if (lead.admin_decision === "nein") { skipped.push(lead.handle); continue; }
     if (lead.opt_out) { skipped.push(lead.handle); continue; }
     if (!lead.email) { skipped.push(lead.handle); continue; }
     if (!lead.message_draft) { skipped.push(lead.handle); continue; }
-    const isPresse = lead.lead_type === "presse";
     const isFollowup = lead.status === "kontaktiert";
     const subject = isFollowup
-      ? (isPresse ? "Kurz nachgefragt — PAWN" : "Kurz nachgefragt — PAWN")
+      ? "Kurz nachgefragt — PAWN"
       : isPresse
         ? (lead.personal_line?.trim() || "Ein unabhängiges Haus für deine nächste Geschichte")
         : "PAWN — eine Ausstellung für unabhängige Designer";
     const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
     const footer = isPresse
-      ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Kein Interesse? Kurz antworten reicht, dann ist Ruhe."
+      ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Eine kurze Antwort genügt, dann lassen wir es dabei."
       : undefined;
     const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer);
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
