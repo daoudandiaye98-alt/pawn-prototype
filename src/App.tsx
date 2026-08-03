@@ -25,6 +25,7 @@ import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
 import Ausgabe from "./pages/Ausgabe.tsx";
+import Vision from "./pages/Vision.tsx";
 import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
