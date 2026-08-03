@@ -63,7 +63,8 @@ type Mode =
   | "akquise_jagd" | "akquise_jagd_lernen"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "presse_jagd" | "presse_verfassen"
-  | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln";
+  | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
+  | "akquise_zyklus" | "verstaerker";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -146,6 +147,10 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   evolution: "gruen",
   jarvis_bauplan: "gruen",
   broll_einsammeln: "gruen",
+  akquise_zyklus: "gruen",
+  presse_jagd: "gelb",
+  presse_verfassen: "gelb",
+  verstaerker: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -190,9 +195,13 @@ interface AkquiseConfig {
   followup_after_days: number;
   max_touches: number;
   languages: string[];
-  /** Feste Erstnachricht (von Daouda gesetzt). Leer = Jarvis formuliert frei. <personal_line> wird ersetzt. */
+  /** Feste Erstnachricht (von Daouda gesetzt). Leer = Jarvis formuliert frei. <personal_line> und <name> werden ersetzt. */
   template_de: string;
   template_en: string;
+  /** Sprachgesetze für jede Erstnachricht — positiv formulieren, Verneinungen drehen. */
+  sprachgesetze: string;
+  /** Ab diesem Kurator-Score darf eine E-Mail ohne Freigabe rausgehen. */
+  autosend_min_score: number;
   // Jagd (Teil 23): Jarvis startet Apify-Läufe selbst, statt nur den letzten Lauf zu lesen.
   apify_actor_hashtag: string;
   apify_actor_profile: string;
@@ -203,11 +212,27 @@ interface AkquiseConfig {
   hunt_max_followers: number;
   hunt_exclude_words: string[];
 }
+/**
+ * Sprachgesetze der Erstansprache: Jede Nachricht bleibt eine Einladung.
+ * Verneinungen werden in Zusagen gedreht, der Wert steht vor den Konditionen,
+ * der Schluss öffnet eine Tür statt eine Absage anzubieten.
+ */
+const DEFAULT_SPRACHGESETZE = [
+  "Schreibe durchgehend positiv. Jede Verneinung wird zur Zusage: statt \"keine Kosten\" -> \"kostenlos\"; statt \"kein Katalog\" -> \"ein kuratierter Ort\"; statt \"nur ein kleiner Anteil\" -> \"du behältst 93 %\".",
+  "Vermeide die Wörter kein, keine, keinen, nicht, niemals, ohne … zu, sowie jede Formulierung, die beschreibt, was PAWN nicht ist.",
+  "Wert vor Konditionen: erst die Idee und die Arbeit dieser Person, dann Preise und Bedingungen.",
+  "Sprich die Person mit Namen an, wenn ein Name bekannt ist.",
+  "Der letzte Satz ist eine Einladung, nie ein Ausstieg oder eine vorweggenommene Absage.",
+  "Warm, konkret, menschlich — keine Superlative, keine erfundenen Zahlen, keine Auszeichnungen.",
+].join("\n");
+
 const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
   autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "hallo@pawn.vision",
   followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
   template_de: "", template_en: "",
+  sprachgesetze: DEFAULT_SPRACHGESETZE,
+  autosend_min_score: 70,
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
   apify_actor_profile: "apify~instagram-profile-scraper",
   hunt_queries: [],
@@ -1913,42 +1938,39 @@ async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Prom
   return { ok: true, processed: (leads ?? []).length, qualified, sorted_out: sortedOut, tokensUsed };
 }
 
+/** Erkennt Verneinungs-Muster, die in einer Erstansprache nichts verloren haben. */
+const NEGATION_PATTERN = /\b(kein|keine|keinen|keiner|keinem|nicht|niemals|nichts für dich|no cost|no fee|no catalog|not for you|doesn't|don't|isn't)\b/i;
+function hatVerneinung(text: string): boolean {
+  return NEGATION_PATTERN.test(text);
+}
+
 /** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
 async function researchAndDraftLead(
-  apiKey: string, lead: { handle: string; world: string; bio: string | null }, styleLaw: string, languages: string[],
+  apiKey: string, lead: { handle: string; world: string; bio: string | null; name?: string | null },
+  styleLaw: string, languages: string[], sprachgesetze: string,
 ): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> {
   const allowed = languages.length ? languages : ["de", "en"];
   const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision.
 
-Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe die Nachricht in dieser Sprache mit der englischen Vorlage unten. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
+Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe in dieser Sprache. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
 
-Halte dich STRIKT an die passende Vorlage (nur <personal_line> ersetzt du durch einen warmen, konkreten Satz ohne Anführungszeichen und ohne Grußwort, in derselben Sprache wie die Vorlage):
+SPRACHGESETZE (bindend, jede Zeile gilt):
+${sprachgesetze}
 
-DEUTSCHE VORLAGE:
-"Hey, ich bin Daouda aus Köln. <personal_line>
+TON UND AUFBAU (nach dieser Fassung von Daouda):
+1. Persönliche Anrede mit Namen, wenn bekannt.
+2. Ein konkreter Satz zu genau dieser Arbeit — Material, Haltung, Handschrift — der zeigt, dass wirklich hingesehen wurde (das ist die personal_line).
+3. Was PAWN ist: ein neuer kuratierter Marktplatz für unabhängige Designer:innen, Künstler:innen und die Geschichten hinter ihrer Arbeit.
+4. Warum: Großartiges Design wird kraftvoller, wenn man den Menschen, die Idee und den Weg dahinter kennt. Marken mit einem Gesicht. Stücke mit einer Geschichte. Künstler:innen, deren Arbeit gesehen wird.
+5. Der Moment: PAWN steht am Anfang und bringt gerade die ersten Häuser zusammen, die es mitprägen.
+6. Die Konditionen als Zusage: Teilnahme ist kostenlos, du bestimmst deine Preise selbst, du behältst 93 % jedes Verkaufs — PAWN wächst also genau dann, wenn du wächst.
+7. Einladung zum Schluss: wir zeigen dir gerne, was gerade entsteht. Link: pawn.vision. Gruß im Namen von PAWN.
 
-Ich baue gerade PAWN — eine kuratierte Ausstellung für unabhängige Designer aus Mode, Interior und Kunst. Kein Katalog, kein Marktplatz-Grau: ein ruhiger Raum, in dem jedes Haus seine eigene Geschichte erzählt und gesehen wird.
+Länge: 120–200 Wörter. Keine Aufzählungszeichen, keine Anführungszeichen um die Nachricht, keine erfundenen Fakten.
 
-Für dich entstehen keine Kosten. Keine Grundgebühr, keine Mindestlaufzeit. Du lädst deine Stücke einmal hoch — die Fotos hast du ja längst — und wir kümmern uns darum, dass man dich sieht. Wenn etwas verkauft wird, bleiben 93% bei dir.
+Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht>"}
 
-Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
-
-Wenn's nichts für dich ist — auch gut, mach weiter so."
-
-ENGLISH TEMPLATE:
-"Hey, I'm Daouda from Cologne. <personal_line>
-
-I'm building PAWN — a curated exhibition for independent designers in fashion, interior and art. No catalog, no marketplace grey: a quiet room where every house tells its own story and gets seen.
-
-There's no cost for you. No base fee, no minimum term. You upload your pieces once — you've already got the photos — and we make sure you're seen. If something sells, 93% stays with you.
-
-Issue 08 is opening right now, the first houses are moving in: pawn.vision
-
-If it's not for you — that's fine too, keep doing your thing."
-
-Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — nutze das für personal_line, damit klar wird, dass die Arbeit wirklich angesehen wurde. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht mit eingesetzter personal_line>"}
-
-Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
+Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
   const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
@@ -2003,30 +2025,71 @@ Haus-Stilgesetz für personal_line (gilt sprachübergreifend): ${styleLaw}`;
   return null;
 }
 
+/** Dreht Verneinungen in Zusagen — ein einziger Nachschlag, danach bleibt es beim Entwurf. */
+async function entverneinen(text: string, sprachgesetze: string): Promise<{ text: string; tokens: number }> {
+  const r = await llm({
+    system: `Du bist Lektor für PAWN. Schreibe den Text so um, dass er durchgehend positiv formuliert ist. Inhalt, Sprache, Reihenfolge und Länge bleiben gleich — nur Verneinungen werden zu Zusagen.
+
+${sprachgesetze}
+
+Antworte NUR mit dem umgeschriebenen Text, ohne Anführungszeichen und ohne Kommentar.`,
+    user: text,
+    maxTokens: 700,
+  });
+  const out = (r.text ?? "").trim();
+  return { text: out && !hatVerneinung(out) ? out : text, tokens: r.tokens };
+}
+
+/** Setzt Vorname und persönlichen Satz in die feste Vorlage ein. */
+function fillTemplate(template: string, personalLine: string, name: string | null): string {
+  const anrede = name ? `${name},` : "";
+  return template
+    .replaceAll("<personal_line>", personalLine)
+    .replaceAll("<name>", anrede)
+    .replace(/Hey\s+,/g, "Hey,")
+    .replace(/Hey\s{2,}/g, "Hey ");
+}
+
+/** Vorname aus einem bekannten Kontaktnamen — nie geraten, nie aus dem Handle konstruiert. */
+function vornameVon(name: string | null | undefined): string | null {
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first && /^[\p{L}][\p{L}'-]{1,}$/u.test(first) ? first : null;
+}
+
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null).limit(10);
+    .select("id, handle, world, bio, email, contact_name").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null).limit(10);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
+  const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
 
-  let ready = 0, tokensUsed = 0;
-  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null }[]) {
-    const draft = await researchAndDraftLead(apiKey, lead, styleLaw, config.languages);
+  let ready = 0, tokensUsed = 0, entverneint = 0;
+  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_name: string | null }[]) {
+    const name = vornameVon(lead.contact_name);
+    const draft = await researchAndDraftLead(apiKey, { ...lead, name }, styleLaw, config.languages, gesetze);
     if (!draft) continue;
     tokensUsed += draft.tokens;
     // Feste Vorlage schlägt den freien Entwurf: Jarvis liefert nur den persönlichen Satz,
     // der Rest bleibt wortgleich so, wie Daouda ihn festgelegt hat.
     const template = draft.language === "en" ? config.template_en : config.template_de;
-    const message = template && template.trim()
-      ? template.replaceAll("<personal_line>", draft.personal_line)
+    let message = template && template.trim()
+      ? fillTemplate(template, draft.personal_line, name)
       : draft.message;
+
+    // Letzte Kontrolle: eine Erstansprache bleibt eine Einladung.
+    if (hatVerneinung(message)) {
+      const fixed = await entverneinen(message, gesetze);
+      tokensUsed += fixed.tokens;
+      if (fixed.text !== message) { message = fixed.text; entverneint++; }
+    }
+
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language: draft.language, channel: lead.email ? "email" : "dm",
     }).eq("id", lead.id);
     ready++;
   }
-  return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
+  return { ok: true, processed: (leads ?? []).length, ready, entverneint, tokensUsed };
 }
 
 /* ------------------------------------------------------------------ *
@@ -2167,6 +2230,8 @@ async function runPresseVerfassen(admin: SupabaseClient, apiKey: string): Promis
   if (!houseList.length) return { ok: true, processed: 0, ready: 0, message: "Noch kein veröffentlichtes Haus, über das sich pitchen ließe." };
 
   const styleLaw = await loadHouseStyleLaw(admin);
+  const presseConfig = await loadAkquiseConfig(admin);
+  const gesetze = presseConfig.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   let ready = 0, tokensUsed = 0;
 
   for (const lead of (leads ?? []) as { id: string; handle: string; outlet: string | null; contact_name: string | null; world: string; bio: string | null; email: string | null; language: string | null }[]) {
@@ -2181,11 +2246,14 @@ async function runPresseVerfassen(admin: SupabaseClient, apiKey: string): Promis
     const system = `Du schreibst als Daouda, Gründer von PAWN (pawn.vision, Köln), eine kurze Presse-Anfrage an eine:n Journalist:in. Sprache: ${sprache === "en" ? "Englisch" : "Deutsch"}.
 
 Regeln:
-- Höchstens 130 Wörter. Kein Marketing-Sprech, keine Superlative, keine erfundenen Zahlen oder Auszeichnungen.
+- Höchstens 130 Wörter. Nüchtern und konkret, mit echten Angaben.
 - Beginne mit einem konkreten Satz darüber, worüber diese Person zuletzt geschrieben hat.
 - Pitche GENAU EIN Haus, nicht die Plattform. Die Plattform ist nur der Nebensatz, in dem das Haus zu finden ist.
 - Ende mit einem einzigen, leichten Angebot (Bilder, Gespräch mit dem Haus) und dem Link.
-- Keine Anhänge, keine Anführungszeichen um die Nachricht.
+- Sprich die Person mit Namen an, wenn ein Name bekannt ist. Text ohne Anführungszeichen, ohne Anhänge.
+
+SPRACHGESETZE (bindend):
+${gesetze}
 
 Stilgesetz: ${styleLaw}
 
@@ -2196,8 +2264,13 @@ Link: https://pawn.vision/designer/${haus.slug}`;
 
     const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 800);
     tokensUsed += tokens;
-    const nachricht = typeof json?.nachricht === "string" ? json.nachricht : null;
+    let nachricht = typeof json?.nachricht === "string" ? json.nachricht : null;
     if (!nachricht) continue;
+    if (hatVerneinung(nachricht)) {
+      const fixed = await entverneinen(nachricht, gesetze);
+      tokensUsed += fixed.tokens;
+      nachricht = fixed.text;
+    }
     const betreff = typeof json?.betreff === "string" ? json.betreff : `${haus.brand_name} — ein unabhängiges Haus für deine nächste Geschichte`;
 
     await admin.from("acquisition_leads").update({
@@ -2212,9 +2285,9 @@ Link: https://pawn.vision/designer/${haus.slug}`;
   return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
 }
 
-const FOLLOWUP_EMAIL_TEXT = `Kein Stress — wollte nur sichergehen, dass meine Nachricht nicht im Anfragen-Ordner versackt ist. Falls du reinschauen magst: pawn.vision. Kostet nichts, und Ausgabe 08 hat noch Platz. Wenn nicht, ist das auch völlig okay.`;
+const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sichtbar bleibt. Falls du reinschauen magst: pawn.vision — die Teilnahme ist kostenlos, und Ausgabe 08 hat noch Platz. Melde dich gern, wann immer es für dich passt.`;
 
-const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio erkennbar war. Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe.";
+const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio sichtbar ist. Eine kurze Antwort genügt, dann lassen wir dich in Ruhe weiterarbeiten.";
 
 async function sendResendEmail(
   resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string,
@@ -2245,27 +2318,31 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet").in("id", leadIds);
+    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score").in("id", leadIds);
 
   let sent = 0;
   const failed: string[] = [];
   const skipped: string[] = [];
-  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null }[]) {
-    // Ohne dein "Ja" geht nie etwas raus (Follow-ups an bereits Kontaktierte ausgenommen).
-    if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja") { skipped.push(lead.handle); continue; }
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null; kurator_score: number | null }[]) {
+    const isPresse = lead.lead_type === "presse";
+    // Studios mit gefundener E-Mail dürfen automatisch angeschrieben werden, sobald die Automatik
+    // läuft und der Kurator-Score hoch genug ist. Presse und DM bleiben bei deinem "Ja".
+    const autoErlaubt = config.autosend_email && !isPresse && !!lead.email
+      && (lead.kurator_score ?? 0) >= config.autosend_min_score;
+    if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja" && !autoErlaubt) { skipped.push(lead.handle); continue; }
+    if (lead.admin_decision === "nein") { skipped.push(lead.handle); continue; }
     if (lead.opt_out) { skipped.push(lead.handle); continue; }
     if (!lead.email) { skipped.push(lead.handle); continue; }
     if (!lead.message_draft) { skipped.push(lead.handle); continue; }
-    const isPresse = lead.lead_type === "presse";
     const isFollowup = lead.status === "kontaktiert";
     const subject = isFollowup
-      ? (isPresse ? "Kurz nachgefragt — PAWN" : "Kurz nachgefragt — PAWN")
+      ? "Kurz nachgefragt — PAWN"
       : isPresse
         ? (lead.personal_line?.trim() || "Ein unabhängiges Haus für deine nächste Geschichte")
         : "PAWN — eine Ausstellung für unabhängige Designer";
     const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
     const footer = isPresse
-      ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Kein Interesse? Kurz antworten reicht, dann ist Ruhe."
+      ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Eine kurze Antwort genügt, dann lassen wir es dabei."
       : undefined;
     const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer);
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
@@ -2292,10 +2369,10 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
 
 /**
  * akquise_senden — Kanal E-Mail: Erstkontakt (qualifiziert, Entwurf fertig) + fällige Follow-ups.
- * Zone Rot (Standard): eine Sendeliste als jarvis_pending_actions-Eintrag, ein Tipp bestätigt den ganzen Stapel.
- * Zone Gelb/Grün (ai_config.jarvis_zones.akquise_senden, ersetzt das alte akquise_config.autosend_email):
- * Jarvis versendet direkt und meldet es.
- * DM-Kanal wird hier NIE automatisiert — der bleibt vollständig im Sende-Stapel von AdminAkquise.
+ * Zone Rot: eine Sendeliste als jarvis_pending_actions-Eintrag, ein Tipp bestätigt den ganzen Stapel.
+ * Zone Gelb/Grün: Jarvis versendet direkt und meldet es.
+ * Läuft die Automatik (akquise_config.autosend_email), gehen Studios MIT gefundener E-Mail und
+ * Score >= autosend_min_score ohne Freigabe raus — der DM-Weg und die Presse bleiben bei deinem "Ja".
  */
 async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: string[]): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
@@ -2306,22 +2383,35 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
     return { ok: true, mode: "direkt", ...(await sendAkquiseBatch(admin, leadIds)) };
   }
 
-  // Erstkontakt geht NUR raus, wenn du den Lead im Prüf-Stapel mit "Ja" freigegeben hast.
-  const { data: firstTouch } = await admin.from("acquisition_leads")
-    .select("id").eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
-    .eq("admin_decision", "ja")
-    .not("message_draft", "is", null).not("email", "is", null)
+  const basis = () => admin.from("acquisition_leads").select("id")
+    .eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
+    .not("message_draft", "is", null).not("email", "is", null);
+
+  // Freigegebene Kontakte zuerst — sie warten am längsten auf dich.
+  const { data: freigegeben } = await basis().eq("admin_decision", "ja")
     .order("created_at", { ascending: true }).limit(config.email_daily_cap);
 
-  const remainingCap = Math.max(0, config.email_daily_cap - (firstTouch?.length ?? 0));
+  let firstTouch = (freigegeben ?? []) as { id: string }[];
+
+  // Automatik: Studios mit E-Mail und starkem Score gehen ohne Freigabe raus.
+  const autoCap = Math.max(0, config.email_daily_cap - firstTouch.length);
+  if (config.autosend_email && autoCap > 0) {
+    const { data: auto } = await basis()
+      .eq("lead_type", "designer").is("admin_decision", null)
+      .gte("kurator_score", config.autosend_min_score)
+      .order("kurator_score", { ascending: false }).limit(autoCap);
+    firstTouch = [...firstTouch, ...((auto ?? []) as { id: string }[])];
+  }
+
+  const remainingCap = Math.max(0, config.email_daily_cap - firstTouch.length);
   const { data: followups } = remainingCap > 0 && config.max_touches >= 2
     ? await admin.from("acquisition_leads").select("id")
       .eq("status", "kontaktiert").eq("channel", "email").eq("opt_out", false)
       .is("followup_at", null).lte("next_touch_at", nowIso).limit(remainingCap)
     : { data: [] as { id: string }[] };
 
-  const candidateIds = [...(firstTouch ?? []).map((r: { id: string }) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
-  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden — kein freigegebener Kontakt offen." };
+  const candidateIds = [...firstTouch.map((r) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
+  if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden — kein Kontakt mit Adresse und fertigem Text offen." };
 
   if (zone !== "rot") {
     const result = await sendAkquiseBatch(admin, candidateIds);
@@ -2341,6 +2431,78 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
     expires_at: expiresAt,
   }).select("id").single();
   return { ok: true, mode: "queued", pending_action_id: (pendingRow as { id: string } | null)?.id, count: candidateIds.length };
+}
+
+/**
+ * akquise_zyklus — die ganze Kette in einem Lauf: Profile anreichern → prüfen → schreiben → senden.
+ * Damit läuft die Akquise rund um die Uhr, ohne dass für jeden Schritt ein eigener Zeitplan nötig ist.
+ */
+async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const zones = await loadJarvisZones(admin);
+  const profile = await runAkquiseProfile(admin);
+  const importiert = await runAkquiseImport(admin);
+  const kuratiert = await runAkquiseKuratieren(admin, apiKey);
+  const verfasst = await runAkquiseVerfassen(admin, apiKey);
+  const gesendet = await runAkquiseSenden(admin, zones.akquise_senden ?? "rot");
+
+  const tokensUsed = ((kuratiert as { tokensUsed?: number }).tokensUsed ?? 0)
+    + ((verfasst as { tokensUsed?: number }).tokensUsed ?? 0);
+  return {
+    ok: true,
+    profile_laeufe: (profile as { gestartet?: number }).gestartet ?? 0,
+    importiert: (importiert as { imported?: number }).imported ?? 0,
+    qualifiziert: (kuratiert as { qualified?: number }).qualified ?? 0,
+    verfasst: (verfasst as { ready?: number }).ready ?? 0,
+    gesendet: (gesendet as { sent?: number }).sent ?? 0,
+    versand_modus: (gesendet as { mode?: string }).mode ?? "keiner",
+    tokensUsed,
+  };
+}
+
+/**
+ * verstaerker — Häuser tragen PAWN weiter. Jedes Haus mit einem fertigen Video, das noch
+ * nicht geteilt wurde, bekommt einen Hinweis auf sein fertiges Teil-Paket in der Videothek.
+ * Zone Grün: läuft still, kein Versand nach außen.
+ */
+async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: kanal } = await admin.from("growth_channels")
+    .select("enabled, daily_cap").eq("key", "verstaerker").maybeSingle();
+  const channel = kanal as { enabled: boolean; daily_cap: number } | null;
+  if (channel && channel.enabled === false) return { ok: true, angestupst: 0, message: "Verstärker ist ausgeschaltet." };
+  const cap = channel?.daily_cap ?? 20;
+
+  const seit = new Date(Date.now() - 14 * 86_400_000).toISOString();
+  const { data: assets } = await admin.from("video_assets")
+    .select("id, designer_id, created_at").gte("created_at", seit)
+    .order("created_at", { ascending: false }).limit(cap * 3);
+
+  let angestupst = 0;
+  const gesehen = new Set<string>();
+  for (const asset of (assets ?? []) as { id: string; designer_id: string | null }[]) {
+    if (angestupst >= cap) break;
+    if (!asset.designer_id || gesehen.has(asset.designer_id)) continue;
+    gesehen.add(asset.designer_id);
+
+    const { data: haus } = await admin.from("designers")
+      .select("user_id, brand_name").eq("id", asset.designer_id).maybeSingle();
+    const user = (haus as { user_id: string | null; brand_name: string } | null);
+    if (!user?.user_id) continue;
+
+    // Ein Haus wird höchstens alle 14 Tage angestupst.
+    const { data: bereits } = await admin.from("notifications")
+      .select("id").eq("user_id", user.user_id).eq("type", "verstaerker.paket")
+      .gte("created_at", seit).limit(1);
+    if ((bereits ?? []).length) continue;
+
+    await admin.from("notifications").insert({
+      user_id: user.user_id, type: "verstaerker.paket",
+      title: "Dein Teil-Paket liegt bereit",
+      body: "Dein neues Video wartet mit fertigem Text, Hashtags und Link auf deine Kanäle. Einmal laden, einmal posten.",
+      link: "/studio/videothek",
+    });
+    angestupst++;
+  }
+  return { ok: true, angestupst };
 }
 
 /** bewerbung_pruefen — bewertet neue Bewerbungen per Vision gegen denselben Kurator-Standard wie Akquise-Leads. */
@@ -2779,6 +2941,7 @@ Deno.serve(async (req) => {
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
+      "akquise_zyklus", "verstaerker",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -2793,6 +2956,7 @@ Deno.serve(async (req) => {
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
+      "akquise_zyklus", "verstaerker",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -3008,7 +3172,8 @@ Deno.serve(async (req) => {
     }
 
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
-        || mode === "presse_jagd" || mode === "presse_verfassen") {
+        || mode === "presse_jagd" || mode === "presse_verfassen"
+        || mode === "akquise_zyklus" || mode === "verstaerker") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
@@ -3016,6 +3181,8 @@ Deno.serve(async (req) => {
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
+        : mode === "akquise_zyklus" ? await runAkquiseZyklus(admin, apiKey)
+        : mode === "verstaerker" ? await runVerstaerker(admin)
         : await runBewerbungPruefen(admin, apiKey);
 
       const summary = mode === "akquise_kuratieren"
@@ -3026,6 +3193,10 @@ Deno.serve(async (req) => {
         ? `Presse-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
         : mode === "presse_verfassen"
         ? `Presse-Pitches: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : mode === "akquise_zyklus"
+        ? `Zyklus: ${(result as { qualifiziert?: number }).qualifiziert ?? 0} geprüft, ${(result as { verfasst?: number }).verfasst ?? 0} geschrieben, ${(result as { gesendet?: number }).gesendet ?? 0} gesendet`
+        : mode === "verstaerker"
+        ? `Verstärker: ${(result as { angestupst?: number }).angestupst ?? 0} Haus/Häuser mit Teil-Paket`
         : `Bewerbungen geprüft: ${(result as { processed?: number }).processed ?? 0}`;
 
       const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;

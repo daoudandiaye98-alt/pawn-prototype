@@ -9,6 +9,7 @@ import { GenomeCard } from "@/components/palace/GenomeCard";
 import { JagdPanel } from "@/features/admin/JagdPanel";
 import { PruefStapel } from "@/features/admin/PruefStapel";
 import { ErstnachrichtVorlagen } from "@/features/admin/ErstnachrichtVorlagen";
+import { AutomatikPanel } from "@/features/admin/AutomatikPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -704,7 +705,10 @@ export default function AdminAkquise() {
         </p>
       </div>
 
+      <AutomatikPanel />
+
       <JagdPanel />
+
 
       <ErstnachrichtVorlagen />
 
