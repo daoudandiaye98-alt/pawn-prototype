@@ -2259,8 +2259,13 @@ Link: https://pawn.vision/designer/${haus.slug}`;
 
     const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 800);
     tokensUsed += tokens;
-    const nachricht = typeof json?.nachricht === "string" ? json.nachricht : null;
+    let nachricht = typeof json?.nachricht === "string" ? json.nachricht : null;
     if (!nachricht) continue;
+    if (hatVerneinung(nachricht)) {
+      const fixed = await entverneinen(nachricht, gesetze);
+      tokensUsed += fixed.tokens;
+      nachricht = fixed.text;
+    }
     const betreff = typeof json?.betreff === "string" ? json.betreff : `${haus.brand_name} — ein unabhängiges Haus für deine nächste Geschichte`;
 
     await admin.from("acquisition_leads").update({
@@ -2275,9 +2280,9 @@ Link: https://pawn.vision/designer/${haus.slug}`;
   return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
 }
 
-const FOLLOWUP_EMAIL_TEXT = `Kein Stress — wollte nur sichergehen, dass meine Nachricht nicht im Anfragen-Ordner versackt ist. Falls du reinschauen magst: pawn.vision. Kostet nichts, und Ausgabe 08 hat noch Platz. Wenn nicht, ist das auch völlig okay.`;
+const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sichtbar bleibt. Falls du reinschauen magst: pawn.vision — die Teilnahme ist kostenlos, und Ausgabe 08 hat noch Platz. Melde dich gern, wann immer es für dich passt.`;
 
-const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio erkennbar war. Keine Lust auf weitere Nachrichten? Kurz antworten reicht, dann ist Ruhe.";
+const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio sichtbar ist. Eine kurze Antwort genügt, dann lassen wir dich in Ruhe weiterarbeiten.";
 
 async function sendResendEmail(
   resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string,
