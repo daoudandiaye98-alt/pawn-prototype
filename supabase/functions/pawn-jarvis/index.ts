@@ -146,6 +146,10 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   evolution: "gruen",
   jarvis_bauplan: "gruen",
   broll_einsammeln: "gruen",
+  akquise_zyklus: "gruen",
+  presse_jagd: "gelb",
+  presse_verfassen: "gelb",
+  verstaerker: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
