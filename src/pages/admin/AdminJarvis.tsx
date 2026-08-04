@@ -10,6 +10,7 @@ import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { MarkenwissenPanel } from "@/features/admin/MarkenwissenPanel";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -512,6 +513,8 @@ export default function AdminJarvis() {
           </div>
         )}
       </section>
+
+      <MarkenwissenPanel />
 
       <section className="mb-8 border-[1.5px] border-black p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
