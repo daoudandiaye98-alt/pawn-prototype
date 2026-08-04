@@ -401,8 +401,9 @@ export default function AdminJarvis() {
         <div className="border-[1.5px] border-black p-5">
           <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Geschätzte Kosten · diesen Monat</p>
           <p className="mt-3 font-serif text-2xl leading-none tabular-nums">
-            ${costThisMonth.toFixed(2)} <span className="text-sm text-muted-foreground">/ ${monthlyLimit.toFixed(2)}</span>
+            ${costThisMonth.toFixed(2)} <span className="text-sm text-muted-foreground">· ohne Limit</span>
           </p>
+
         </div>
       </div>
 
