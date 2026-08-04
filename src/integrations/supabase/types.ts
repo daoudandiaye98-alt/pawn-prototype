@@ -442,6 +442,48 @@ export type Database = {
           },
         ]
       }
+      brand_knowledge: {
+        Row: {
+          approved: boolean
+          body: string
+          created_at: string
+          example: string | null
+          headline: string
+          id: string
+          source_title: string | null
+          source_url: string | null
+          topic: string
+          updated_at: string
+          world: string | null
+        }
+        Insert: {
+          approved?: boolean
+          body: string
+          created_at?: string
+          example?: string | null
+          headline: string
+          id?: string
+          source_title?: string | null
+          source_url?: string | null
+          topic: string
+          updated_at?: string
+          world?: string | null
+        }
+        Update: {
+          approved?: boolean
+          body?: string
+          created_at?: string
+          example?: string | null
+          headline?: string
+          id?: string
+          source_title?: string | null
+          source_url?: string | null
+          topic?: string
+          updated_at?: string
+          world?: string | null
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           content: Json
@@ -1206,6 +1248,7 @@ export type Database = {
           vat_rate: number
           video_taste_weights: Json
           website: string | null
+          weekly_impulse: boolean
         }
         Insert: {
           application_id?: string | null
@@ -1254,6 +1297,7 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
+          weekly_impulse?: boolean
         }
         Update: {
           application_id?: string | null
@@ -1302,6 +1346,7 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
+          weekly_impulse?: boolean
         }
         Relationships: [
           {
