@@ -2541,14 +2541,12 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
 }
 
 /**
- * akquise_zyklus — die ganze Kette in einem Lauf: Profile anreichern → einsammeln →
- * Adressen suchen → prüfen → schreiben → senden. Damit bleibt kein Lead zwischen zwei
- * Stufen liegen und die Akquise läuft rund um die Uhr weiter.
+ * akquise_zyklus — der kurze Rundlauf: Adressen suchen → prüfen → schreiben → senden.
+ * Profile laden und Ergebnisse einsammeln haben eigene, häufige Zeitpläne; hier bleibt der Lauf
+ * bewusst schlank, damit er zuverlässig in einem Stück durchkommt.
  */
 async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const zones = await loadJarvisZones(admin);
-  const profile = await runAkquiseProfile(admin);
-  const importiert = await runAkquiseImport(admin);
   const kontakt = await runAkquiseKontakt(admin);
   const kuratiert = await runAkquiseKuratieren(admin, apiKey);
   const verfasst = await runAkquiseVerfassen(admin, apiKey);
@@ -2558,8 +2556,6 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
     + ((verfasst as { tokensUsed?: number }).tokensUsed ?? 0);
   return {
     ok: true,
-    profile_laeufe: (profile as { gestartet?: number }).gestartet ?? 0,
-    importiert: (importiert as { imported?: number }).imported ?? 0,
     adressen: (kontakt as { gefunden?: number }).gefunden ?? 0,
     formulare: (kontakt as { formulare?: number }).formulare ?? 0,
     qualifiziert: (kuratiert as { qualified?: number }).qualified ?? 0,
