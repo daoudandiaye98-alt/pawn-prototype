@@ -3102,10 +3102,8 @@ Deno.serve(async (req) => {
       return ok({ run_id: runId, ...result });
     }
 
-    const spent = await monthlyCostSoFar(admin);
-    if (spent >= config.monthly_limit_usd) {
-      return ok({ ok: false, error: `Monatslimit erreicht ($${spent.toFixed(2)} von $${config.monthly_limit_usd.toFixed(2)}). Jarvis antwortet erst wieder nächsten Monat, oder wenn das Limit erhöht wird.` });
-    }
+    // Kein Monatslimit mehr: Jarvis arbeitet ohne Ausgabengrenze, die Kosten bleiben rein informativ.
+
 
     // Ein Schlüssel genügt: Anthropic, das Lovable-Gateway oder OpenAI. Fällt einer aus,
     // übernimmt der nächste (siehe llm()).
