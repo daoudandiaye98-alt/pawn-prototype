@@ -74,8 +74,11 @@ export type Database = {
           bio: string | null
           channel: string | null
           clips: Json | null
+          contact_attempts: number
+          contact_channel: string | null
           contact_name: string | null
           contact_source: string | null
+          contact_url: string | null
           contacted_at: string | null
           created_at: string | null
           decided_at: string | null
@@ -110,8 +113,11 @@ export type Database = {
           bio?: string | null
           channel?: string | null
           clips?: Json | null
+          contact_attempts?: number
+          contact_channel?: string | null
           contact_name?: string | null
           contact_source?: string | null
+          contact_url?: string | null
           contacted_at?: string | null
           created_at?: string | null
           decided_at?: string | null
@@ -146,8 +152,11 @@ export type Database = {
           bio?: string | null
           channel?: string | null
           clips?: Json | null
+          contact_attempts?: number
+          contact_channel?: string | null
           contact_name?: string | null
           contact_source?: string | null
+          contact_url?: string | null
           contacted_at?: string | null
           created_at?: string | null
           decided_at?: string | null

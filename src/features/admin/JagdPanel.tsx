@@ -58,6 +58,7 @@ function parseQueries(value: unknown): HuntQuery[] {
 interface KontaktStats {
   qualifiziert: number;
   mitEmail: number;
+  formular: number;
   nurDm: number;
   heuteGesendet: number;
 }
@@ -77,7 +78,7 @@ export function JagdPanel() {
     const [huntsRes, configRes, leadsRes, sentRes] = await Promise.all([
       supabase.from("acquisition_hunts").select("*").order("created_at", { ascending: false }).limit(25),
       supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle(),
-      supabase.from("acquisition_leads").select("status, email").in("status", ["neu", "qualifiziert", "angewaermt"]),
+      supabase.from("acquisition_leads").select("status, email, contact_url").in("status", ["neu", "qualifiziert", "angewaermt"]),
       supabase.from("acquisition_leads").select("id").gte("contacted_at", seit),
     ]);
     setHunts((huntsRes.data as Hunt[] | null) ?? []);
@@ -85,11 +86,12 @@ export function JagdPanel() {
     setQueries(parsed);
     setQueryText(parsed.map((q) => `${q.query} · ${q.world}`).join("\n"));
 
-    const leads = (leadsRes.data as { status: string; email: string | null }[] | null) ?? [];
+    const leads = (leadsRes.data as { status: string; email: string | null; contact_url: string | null }[] | null) ?? [];
     setStats({
       qualifiziert: leads.filter((l) => l.status === "qualifiziert").length,
       mitEmail: leads.filter((l) => !!l.email).length,
-      nurDm: leads.filter((l) => !l.email).length,
+      formular: leads.filter((l) => !l.email && !!l.contact_url).length,
+      nurDm: leads.filter((l) => !l.email && !l.contact_url).length,
       heuteGesendet: (sentRes.data as { id: string }[] | null)?.length ?? 0,
     });
   }, []);
@@ -194,10 +196,11 @@ export function JagdPanel() {
       </header>
 
       {stats && (
-        <dl className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border sm:grid-cols-4 sm:divide-y-0">
+        <dl className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border sm:grid-cols-5 sm:divide-y-0">
           {[
             { label: "Qualifiziert", value: stats.qualifiziert },
             { label: "Mit E-Mail", value: stats.mitEmail },
+            { label: "Formular", value: stats.formular },
             { label: "Nur DM", value: stats.nurDm },
             { label: "Heute gesendet", value: stats.heuteGesendet },
           ].map((s) => (

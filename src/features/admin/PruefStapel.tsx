@@ -1,13 +1,13 @@
 /**
- * Der Prüf-Stapel: die letzte menschliche Instanz vor dem Kontakt. Jarvis hat vorbewertet,
- * hier entscheidest du in einem Zug Ja oder Nein — mit Bild, Bio, Score und Begründung vor Augen.
- * "Ja" gibt frei UND verschickt sofort die hinterlegte Erstnachricht (Deutsch oder Englisch,
- * je nach Konto). Gibt es keine E-Mail-Adresse, bleibt es beim DM-Weg: Text kopieren, selbst senden.
+ * Der Prüf-Stapel: nur noch das, was wirklich deine Hand braucht.
+ * Studios mit gefundener E-Mail schickt Jarvis selbstständig an — die tauchen hier gar nicht auf.
+ * Übrig bleiben Konten ohne Adresse: Kontaktformular öffnen oder Text kopieren und per DM senden.
+ * Presse-Kontakte bleiben unverändert bei deiner Freigabe.
  */
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Check, X, ExternalLink, Copy, Loader2 } from "lucide-react";
+import { Check, X, ExternalLink, Copy, Loader2, Send } from "lucide-react";
 
 export interface PruefLead {
   id: string;
@@ -28,6 +28,8 @@ export interface PruefLead {
   outlet?: string | null;
   contact_name?: string | null;
   personal_line?: string | null;
+  contact_url?: string | null;
+  contact_channel?: string | null;
 }
 
 function images(lead: PruefLead): string[] {
@@ -57,9 +59,11 @@ export function PruefStapel({
     () => rows
       .filter((r) => (r.lead_type ?? "designer") === leadType)
       .filter((r) => r.status === "qualifiziert" && !r.admin_decision)
+      // Häuser mit Adresse gehen automatisch raus — hier bleibt, was einen Menschen braucht.
+      .filter((r) => isPresse || !r.email)
       .sort((a, b) => (b.kurator_score ?? 0) - (a.kurator_score ?? 0))
-      .slice(0, 12),
-    [rows, leadType],
+      .slice(0, 20),
+    [rows, leadType, isPresse],
   );
 
 
@@ -112,8 +116,14 @@ export function PruefStapel({
     <section className="mb-8 border-[1.5px] border-black">
       <header className="border-b-[1.5px] border-black px-5 py-3">
         <p className="editorial-eyebrow">
-          {title ?? "Prüfen · dein Ja verschickt die Nachricht"} · {items.length}
+          {title ?? "Von Hand · Formular oder DM"} · {items.length}
         </p>
+        {!isPresse && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Studios mit gefundener Adresse schreibt Jarvis selbst an. Hier stehen die Konten, bei denen ein
+            Formular oder eine DM den Weg öffnet.
+          </p>
+        )}
       </header>
 
       <ul className="divide-y divide-border">
@@ -192,6 +202,15 @@ export function PruefStapel({
                   >
                     <Copy className="h-4 w-4" /> Text kopieren
                   </button>
+                )}
+                {!lead.email && lead.contact_url && (
+                  <a
+                    href={lead.contact_url} target="_blank" rel="noreferrer"
+                    onClick={() => void copyDraft(lead)}
+                    className="flex items-center gap-2 border-[1.5px] border-black px-4 py-2 text-xs uppercase tracking-[0.18em] transition-colors hover:bg-black hover:text-white"
+                  >
+                    <Send className="h-4 w-4" /> Formular öffnen
+                  </a>
                 )}
               </div>
             </li>
