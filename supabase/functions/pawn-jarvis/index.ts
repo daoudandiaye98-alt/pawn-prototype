@@ -64,7 +64,7 @@ type Mode =
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
-  | "akquise_zyklus" | "verstaerker";
+  | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -2311,6 +2311,67 @@ Antworte NUR mit JSON: {"treffer": [{"name": "...", "outlet": "...", "fokus": "w
   return { ok: true, gefunden, angelegt, tokensUsed };
 }
 
+
+/** wissen_markenaufbau — Jarvis lernt Markenaufbau: destilliert Merksätze in brand_knowledge (Entwurf). */
+const MARKENAUFBAU_THEMEN = [
+  "Content-Rhythmus und Postingfrequenz für kleine Labels",
+  "Wie unabhängige Designer ihre ersten Käufer finden",
+  "Storytelling und Markenstimme für Handwerk und Kunst",
+  "Produktfotografie und Videoformate, die verkaufen",
+  "Preisgestaltung und Wertkommunikation bei Unikaten",
+  "Community und Wiederkäufer für kleine Marken",
+];
+
+interface WissensBaustein { thema?: string; kernsatz?: string; erklaerung?: string; beispiel?: string; welt?: string; quelle_titel?: string; quelle_url?: string }
+
+async function runMarkenaufbauWissen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { count } = await admin.from("brand_knowledge").select("id", { count: "exact", head: true });
+  const thema = MARKENAUFBAU_THEMEN[(count ?? 0) % MARKENAUFBAU_THEMEN.length];
+
+  const { data: vorhanden } = await admin.from("brand_knowledge").select("headline").limit(200);
+  const bekannt = ((vorhanden ?? []) as { headline: string }[]).map((r) => r.headline).slice(0, 60).join(" | ") || "noch nichts";
+
+  const system = `Du sammelst für PAWN (pawn.vision) praktisches Wissen zum Markenaufbau, das unabhängige Designer aus Mode, Interior und Kunst sofort anwenden können.
+
+Recherchiere mit web_search in öffentlich zugänglichen Ratgebern, Interviews, Fallbeispielen und Leitfäden. Fasse in eigenen Worten zusammen und nenne für jeden Baustein die Quelle. Übernimm keine Textpassagen wörtlich und keine kostenpflichtigen Kursinhalte.
+
+Jeder Baustein sagt, was zu tun ist — konkret, in einem Satz umsetzbar, auf Deutsch, ohne Marketing-Floskeln und ohne Verneinungen als Stilmittel.
+
+Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkregel", "erklaerung": "zwei Sätze, warum das wirkt", "beispiel": "ein konkretes Beispiel für ein kleines Label", "welt": "Mode|Interior|Kunst|", "quelle_titel": "...", "quelle_url": "https://..."}]}`;
+  const user = `Thema dieser Woche: "${thema}". Sammle 5 bis 8 neue Bausteine. Diese Kernsätze gibt es schon, finde andere: ${bekannt}`;
+
+  const { json, tokens } = await searchJson(apiKey, system, user);
+  const bausteine = Array.isArray((json as { bausteine?: unknown } | null)?.bausteine)
+    ? ((json as { bausteine: WissensBaustein[] }).bausteine) : [];
+
+  let angelegt = 0;
+  for (const b of bausteine) {
+    const headline = (b.kernsatz ?? "").trim();
+    const body = (b.erklaerung ?? "").trim();
+    if (!headline || !body) continue;
+    const welt = ["Mode", "Interior", "Kunst"].includes(b.welt ?? "") ? b.welt : null;
+    const { error } = await admin.from("brand_knowledge").insert({
+      topic: (b.thema ?? thema).slice(0, 120),
+      world: welt,
+      headline: headline.slice(0, 200),
+      body,
+      example: (b.beispiel ?? "").trim() || null,
+      source_url: (b.quelle_url ?? "").trim() || null,
+      source_title: (b.quelle_titel ?? "").trim() || null,
+      approved: false,
+    } as never);
+    if (!error) angelegt++;
+  }
+
+  await admin.from("jarvis_reports").insert({
+    kind: "markenaufbau",
+    title: `Markenaufbau-Wissen · ${thema.slice(0, 60)}`,
+    body: `Thema: ${thema}\nNeue Bausteine als Entwurf: ${angelegt} von ${bausteine.length} gefundenen.\nFreigabe im Cockpit unter Jarvis.`,
+  } as never);
+
+  return { ok: true, thema, gefunden: bausteine.length, angelegt, tokensUsed: tokens };
+}
+
 /** presse_verfassen — schreibt je Presse-Lead einen Pitch über EIN konkretes Haus. */
 async function runPresseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
@@ -3278,11 +3339,12 @@ Deno.serve(async (req) => {
 
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
         || mode === "presse_jagd" || mode === "presse_verfassen"
-        || mode === "akquise_zyklus" || mode === "verstaerker") {
+        || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
-      const result = mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
+      const result = mode === "wissen_markenaufbau" ? await runMarkenaufbauWissen(admin, apiKey)
+        : mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
@@ -3290,7 +3352,9 @@ Deno.serve(async (req) => {
         : mode === "verstaerker" ? await runVerstaerker(admin)
         : await runBewerbungPruefen(admin, apiKey);
 
-      const summary = mode === "akquise_kuratieren"
+      const summary = mode === "wissen_markenaufbau"
+        ? `Markenaufbau-Wissen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Bausteine als Entwurf`
+        : mode === "akquise_kuratieren"
         ? `Kuratiert: ${(result as { qualified?: number }).qualified ?? 0} qualifiziert, ${(result as { sorted_out?: number }).sorted_out ?? 0} aussortiert`
         : mode === "akquise_verfassen"
         ? `Verfasst: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`

@@ -4,7 +4,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft" | "chat";
+type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft" | "chat" | "aufbau";
 type Msg = { role: "user" | "assistant" | "system"; content: string };
 
 const DEFAULT_PROMPT = `Du bist PAWN Copilot — ein leiser, präziser Partner für unabhängige Designer. Antworte auf Deutsch, sachlich, ohne Marketing-Floskeln.`;
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   // Parse body up front so fallbacks can reference mode
-  let body: { mode?: Mode; product_id?: string; question?: string; messages?: Msg[] } = {};
+  let body: { mode?: Mode; product_id?: string; question?: string; messages?: Msg[]; stage?: string; open_steps?: string[] } = {};
   try { body = await req.json(); } catch { /* ignore */ }
   const mode: Mode = (body.mode ?? "chat") as Mode;
 
@@ -320,6 +320,53 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
 
       await logResponse(admin, user_id, mode, designer.id, promptUser, caption, aiRes.provider);
       return ok({ campaign_id, caption, hashtags, provider: aiRes.provider });
+    }
+
+    if (mode === "aufbau") {
+      // Wochenplan + Tagesimpuls für den Marken-Begleiter.
+      const worldKey = ((designer.tags ?? []).find((t) => ["Mode", "Interior", "Kunst"].includes(t))) ?? "Mode";
+      let knowledge = "";
+      try {
+        const { data: kb } = await admin.from("brand_knowledge")
+          .select("headline, body, example, world")
+          .eq("approved", true)
+          .order("created_at", { ascending: false })
+          .limit(12);
+        const rows = ((kb ?? []) as { headline: string; body: string; example: string | null; world: string | null }[])
+          .filter((r) => !r.world || r.world === worldKey)
+          .slice(0, 8);
+        if (rows.length) {
+          knowledge = "Erprobte Merksätze zum Markenaufbau:\n" + rows.map((r) => `- ${r.headline}: ${r.body}${r.example ? ` (Beispiel: ${r.example})` : ""}`).join("\n");
+        }
+      } catch { /* soft */ }
+
+      const promptUser = `Ein unabhängiges Haus baut gerade seine Marke auf und braucht konkrete, machbare Vorschläge.
+Marke: ${designer.brand_name}
+Welt: ${worldKey}
+Story: ${designer.story ?? "—"}
+Etappe: ${body.stage ?? "ankommen"}
+Offene Schritte: ${(body.open_steps ?? []).join("; ") || "—"}
+${knowledge}
+
+Gib genau dieses JSON zurück, deutsch, ohne Erklärung drumherum:
+{"zuspruch":"ein Satz Zuspruch, warm und konkret","impuls":"eine einzige Sache, die heute in unter 30 Minuten machbar ist","plan":[{"tag":"Montag","format":"Story","idee":"..."},{"tag":"Mittwoch","format":"Video, 15 Sekunden","idee":"..."},{"tag":"Freitag","format":"Beitrag","idee":"..."},{"tag":"Sonntag","format":"Story","idee":"..."}]}
+Jede Idee bezieht sich auf die tatsächliche Arbeit dieses Hauses, ist in einem Satz umsetzbar und sagt, was zu tun ist — nie, was zu lassen ist.`;
+
+      const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
+      let out: Record<string, unknown> = {};
+      if (aiRes.text) {
+        try {
+          const m = aiRes.text.match(/\{[\s\S]*\}/);
+          if (m) out = JSON.parse(m[0]) as Record<string, unknown>;
+        } catch { /* fallback unten */ }
+      }
+      if (!out.plan && !out.impuls) {
+        return ok({ provider: "fallback", fallback: true,
+          zuspruch: "Ein Schritt heute ist mehr wert als zehn Pläne für morgen.",
+          impuls: "Nimm dein Telefon und filme 15 Sekunden deiner Arbeit — ohne Schnitt, mit deiner Stimme dazu." });
+      }
+      await logResponse(admin, user_id, mode, designer.id, promptUser, JSON.stringify(out).slice(0, 800), aiRes.provider);
+      return ok({ ...out, provider: aiRes.provider });
     }
 
     if (mode === "chat") {

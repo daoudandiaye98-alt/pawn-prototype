@@ -129,6 +129,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       title: "Verkaufen",
       items: [
         { to: "/studio", label: "Start", hint: "Dein nächster Schritt", icon: IStage, end: true },
+        { to: "/studio/aufbau", label: "Deine Marke aufbauen", hint: "Schritt für Schritt zum ersten Verkauf", icon: IWerkbuch },
         { to: "/studio/produkte", label: "Kollektion", hint: "Deine Stücke anlegen und pflegen", icon: ICollection },
         { to: "/studio/bestellungen", label: "Bestellungen", hint: "Was verkauft wurde", icon: IOrders, badge: badges.orders },
         { to: "/studio/versand", label: "Versand", hint: "Pakete vorbereiten und verschicken", icon: IOrders },
