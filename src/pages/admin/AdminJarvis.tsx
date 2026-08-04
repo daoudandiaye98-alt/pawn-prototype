@@ -126,7 +126,6 @@ export default function AdminJarvis() {
   const [experiments, setExperiments] = useState<JarvisExperiment[]>([]);
   const [rawConfig, setRawConfig] = useState<Record<string, unknown> | null>(null);
   const [enabled, setEnabled] = useState(true);
-  const [monthlyLimit, setMonthlyLimit] = useState(20);
   const [houseStyleLaw, setHouseStyleLaw] = useState<string>("");
   const [directives, setDirectives] = useState<string[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -168,7 +167,6 @@ export default function AdminJarvis() {
         const cfgValue = (configRes.value.data?.value as Record<string, unknown>) ?? null;
         setRawConfig(cfgValue);
         setEnabled((cfgValue?.enabled as boolean | undefined) ?? true);
-        setMonthlyLimit((cfgValue?.monthly_limit_usd as number | undefined) ?? 20);
       }
       if (styleLawRes.status === "fulfilled") {
         setHouseStyleLaw(((styleLawRes.value.data?.value as { text?: string } | undefined)?.text) ?? "");
