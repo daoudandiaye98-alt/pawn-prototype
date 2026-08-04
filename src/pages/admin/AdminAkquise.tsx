@@ -52,6 +52,9 @@ interface Lead {
   opt_out: boolean;
   website: string | null;
   contact_source: string | null;
+  contact_url: string | null;
+  contact_channel: string | null;
+  contact_attempts: number | null;
   admin_decision: string | null;
   decided_at: string | null;
   scrape_images: unknown;

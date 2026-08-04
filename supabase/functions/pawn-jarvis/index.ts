@@ -211,7 +211,16 @@ interface AkquiseConfig {
   hunt_min_followers: number;
   hunt_max_followers: number;
   hunt_exclude_words: string[];
+  // Durchsatz (Teil 24): wie viele Leads eine Stufe je Lauf schafft.
+  batch_profile: number;
+  batch_kontakt: number;
+  batch_kuratieren: number;
+  batch_verfassen: number;
+  /** Obergrenze pro Lauf; die Tagesgrenze bleibt email_daily_cap. */
+  email_run_cap: number;
 }
+
+
 /**
  * Sprachgesetze der Erstansprache: Jede Nachricht bleibt eine Einladung.
  * Verneinungen werden in Zusagen gedreht, der Wert steht vor den Konditionen,
@@ -227,20 +236,22 @@ const DEFAULT_SPRACHGESETZE = [
 ].join("\n");
 
 const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
-  apify_actor_id: "", default_world: "Mode", min_score: 60, email_daily_cap: 10,
-  autosend_email: false, email_from: "PAWN <hallo@pawn.vision>", email_reply_to: "hallo@pawn.vision",
+  apify_actor_id: "", default_world: "Mode", min_score: 55, email_daily_cap: 50,
+  autosend_email: true, email_from: "PAWN <support@pawn.vision>", email_reply_to: "support@pawn.vision",
   followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
   template_de: "", template_en: "",
   sprachgesetze: DEFAULT_SPRACHGESETZE,
-  autosend_min_score: 70,
+  autosend_min_score: 55,
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
   apify_actor_profile: "apify~instagram-profile-scraper",
   hunt_queries: [],
-  hunt_daily_runs: 3,
-  hunt_results_per_run: 50,
+  hunt_daily_runs: 8,
+  hunt_results_per_run: 80,
   hunt_min_followers: 300,
   hunt_max_followers: 200000,
   hunt_exclude_words: ["dropshipping", "reseller", "wholesale", "agency", "agentur", "marketing", "shopify expert", "link in bio deals"],
+  batch_profile: 40, batch_kontakt: 60, batch_kuratieren: 60, batch_verfassen: 40,
+  email_run_cap: 12,
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -1613,7 +1624,7 @@ async function runAkquiseProfile(admin: SupabaseClient): Promise<Record<string, 
     .eq("lead_type", "designer")
     .in("status", ["neu", "qualifiziert", "angewaermt"])
     .is("email", null).is("website", null).eq("opt_out", false)
-    .order("created_at", { ascending: true }).limit(60);
+    .order("created_at", { ascending: true }).limit(Math.max(20, config.batch_profile * 2));
   const rows = (leads ?? []) as { handle: string; world: string | null }[];
   if (!rows.length) return { ok: true, gestartet: 0, message: "Alle Konten sind bereits angereichert." };
 
@@ -1631,7 +1642,7 @@ async function runAkquiseProfile(admin: SupabaseClient): Promise<Record<string, 
 
   let started = 0;
   const failures: string[] = [];
-  for (const chunk of chunks.slice(0, 3)) {
+  for (const chunk of chunks.slice(0, Math.max(1, Math.ceil(config.batch_profile / 25)))) {
     const run = await apifyStartRun(token, actorId, { usernames: chunk, resultsLimit: 1 });
     if ("error" in run) { failures.push(run.error); continue; }
     await admin.from("acquisition_hunts").insert({
@@ -1675,36 +1686,88 @@ function extractEmailsFromHtml(html: string): string[] {
 }
 
 /**
- * akquise_kontakt — sucht für Leads ohne E-Mail eine Kontaktadresse auf ihrer eigenen Website
- * (Startseite, Kontakt, Impressum, Legal) und löst Linktree-artige Sammelseiten auf.
- * Reines Lesen, kein LLM. Findet er nichts, bleibt der Lead ein DM-Fall im Sende-Stapel.
+ * akquise_kontakt — die Kontakt-Kette. Für jeden Lead ohne Adresse geht Jarvis der Reihe nach
+ * vor: eigene Website (Start, Kontakt, Impressum, Legal) → Sammelseiten wie Linktree auflösen →
+ * ohne bekannte Website eine Websuche nach der Marke → als letzte Stufe die Kontaktformular-URL
+ * merken. Reines Lesen, kein LLM. Bleibt alles leer, wird der Lead ein DM-Fall.
  */
 async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, website")
+    .select("id, handle, website, bio, contact_attempts")
     .in("status", ["neu", "qualifiziert", "angewaermt"])
-    .is("email", null).not("website", "is", null).eq("opt_out", false)
-    .order("created_at", { ascending: true }).limit(20);
+    .is("email", null).eq("opt_out", false)
+    .lt("contact_attempts", 3)
+    .order("contact_attempts", { ascending: true })
+    .order("kurator_score", { ascending: false, nullsFirst: false })
+    .limit(Math.min(config.batch_kontakt, 8));
 
-  const paths = ["", "/kontakt", "/impressum", "/contact", "/contact-us", "/about", "/legal", "/imprint"];
-  const linkAggregator = /(linktr\.ee|beacons\.ai|linkin\.bio|bio\.link|milkshake\.app|taplink)/i;
-  let found = 0, checked = 0;
+  // Zeitbudget: ein Lauf bleibt unter der Grenze der Laufzeitumgebung, der Rest kommt beim nächsten.
+  const deadline = Date.now() + 55_000;
+  const paths = ["", "/kontakt", "/impressum", "/contact", "/about", "/pages/contact"];
+  const formPaths = ["/kontakt", "/contact", "/pages/contact"];
+  const linkAggregator = /(linktr\.ee|beacons\.ai|linkin\.bio|bio\.link|milkshake\.app|taplink|komi\.io|solo\.to)/i;
+  const fremd = /(instagram|facebook|tiktok|youtube|pinterest|twitter|x\.com|spotify|apple|google|cdn|gstatic|etsy|amazon|paypal|whatsapp)/i;
+  let found = 0, checked = 0, formulare = 0, viaSuche = 0;
 
   async function fetchHtml(url: string): Promise<string | null> {
     try {
       const res = await fetch(url, {
         headers: { "User-Agent": "PAWN-Jarvis/1.0 (+https://pawn.vision)" },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(6000),
       });
       if (!res.ok) return null;
-      return (await res.text()).slice(0, 400_000);
+      return (await res.text()).slice(0, 60_000);
     } catch { return null; }
   }
 
-  for (const lead of (leads ?? []) as { id: string; handle: string; website: string }[]) {
+  /** Findet über eine offene Websuche die eigene Domain einer Marke. */
+  async function sucheWebsite(handle: string, bio: string | null): Promise<string | null> {
+    const begriff = encodeURIComponent(`${handle.replace(/[._-]+/g, " ")} ${bio?.slice(0, 40) ?? ""} shop kontakt impressum`);
+    const html = await fetchHtml(`https://duckduckgo.com/html/?q=${begriff}`);
+    if (!html) return null;
+    for (const m of html.matchAll(/uddg=([^"&]+)/g)) {
+      try {
+        const url = new URL(decodeURIComponent(m[1]));
+        if (!fremd.test(url.hostname) && !linkAggregator.test(url.hostname) && !/duckduckgo/i.test(url.hostname)) {
+          return url.origin;
+        }
+      } catch { /* nächster Treffer */ }
+    }
+    return null;
+  }
+
+  for (const lead of (leads ?? []) as { id: string; handle: string; website: string | null; bio: string | null; contact_attempts: number }[]) {
+    if (Date.now() > deadline) break;
     checked++;
+    let quelle = "website";
+    let start = lead.website;
+
+    // Bio zuerst durchsehen — manche schreiben ihre Adresse direkt hinein.
+    const ausBio = lead.bio ? pickBestEmail(extractEmailsFromHtml(lead.bio), "") : null;
+    if (ausBio) {
+      await admin.from("acquisition_leads").update({
+        email: ausBio, channel: "email", contact_channel: "email", contact_source: "bio",
+        contact_attempts: lead.contact_attempts + 1, updated_at: new Date().toISOString(),
+      }).eq("id", lead.id);
+      found++;
+      continue;
+    }
+
+    if (!start) {
+      start = await sucheWebsite(lead.handle, lead.bio);
+      quelle = "websuche";
+      if (start) viaSuche++;
+    }
+    if (!start) {
+      await admin.from("acquisition_leads").update({
+        contact_attempts: lead.contact_attempts + 1, contact_channel: "dm", updated_at: new Date().toISOString(),
+      }).eq("id", lead.id);
+      continue;
+    }
+
     let base: URL;
-    try { base = new URL(lead.website.startsWith("http") ? lead.website : `https://${lead.website}`); }
+    try { base = new URL(start.startsWith("http") ? start : `https://${start}`); }
     catch { continue; }
 
     // Sammelseiten (Linktree & Co.) auflösen: die erste echte eigene Domain dahinter zählt.
@@ -1714,28 +1777,49 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       const own = links.find((l) => {
         try {
           const h = new URL(l).hostname;
-          return !linkAggregator.test(h) && !/(instagram|facebook|tiktok|youtube|pinterest|twitter|x\.com|spotify|apple|google|cdn|gstatic)/i.test(h);
+          return !linkAggregator.test(h) && !fremd.test(h);
         } catch { return false; }
       });
       if (own) { try { base = new URL(own); } catch { /* Sammelseite bleibt */ } }
     }
 
     let email: string | null = null;
-    for (const path of paths) {
-      const html = await fetchHtml(new URL(path, base).toString());
-      if (!html) continue;
-      const best = pickBestEmail(extractEmailsFromHtml(html), base.hostname);
-      if (best) { email = best; break; }
+    let formular: string | null = null;
+    // Alle Seiten gleichzeitig holen — ein Lead ist damit in Sekunden geprüft statt in Minuten.
+    const seiten = await Promise.all(paths.map(async (path) => {
+      const url = new URL(path, base).toString();
+      return { path, url, html: await fetchHtml(url) };
+    }));
+    for (const seite of seiten) {
+      if (!seite.html) continue;
+      if (!email) {
+        const best = pickBestEmail(extractEmailsFromHtml(seite.html), base.hostname);
+        if (best) email = best;
+      }
+      if (!formular && formPaths.includes(seite.path)
+          && /<form/i.test(seite.html) && /name=["']?email/i.test(seite.html)) {
+        formular = seite.url;
+      }
+      if (email && formular) break;
     }
 
+    const patch: Record<string, unknown> = {
+      website: base.origin,
+      contact_attempts: lead.contact_attempts + 1,
+      updated_at: new Date().toISOString(),
+    };
     if (email) {
-      await admin.from("acquisition_leads")
-        .update({ email, channel: "email", contact_source: "website", updated_at: new Date().toISOString() })
-        .eq("id", lead.id);
+      patch.email = email; patch.channel = "email"; patch.contact_channel = "email"; patch.contact_source = quelle;
       found++;
+    } else if (formular) {
+      patch.contact_url = formular; patch.contact_channel = "formular"; patch.contact_source = "formular";
+      formulare++;
+    } else {
+      patch.contact_channel = "dm";
     }
+    await admin.from("acquisition_leads").update(patch).eq("id", lead.id);
   }
-  return { ok: true, geprueft: checked, gefunden: found };
+  return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche };
 }
 
 
@@ -1917,7 +2001,8 @@ async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<strin
 async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, scrape_images").eq("lead_type", "designer").eq("status", "neu").limit(20);
+    .select("id, handle, world, bio, scrape_images").eq("lead_type", "designer").eq("status", "neu")
+    .order("created_at", { ascending: true }).limit(config.batch_kuratieren);
 
   let qualified = 0, sortedOut = 0, tokensUsed = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; scrape_images: unknown }[]) {
@@ -2059,13 +2144,19 @@ function vornameVon(name: string | null | undefined): string | null {
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email, contact_name").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null).limit(10);
+    .select("id, handle, world, bio, email, contact_url, contact_name").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
+    .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
 
+  // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
+  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null }[])
+    .sort((a, b) => Number(!!b.email) - Number(!!a.email));
+  const stapel = alle.slice(0, config.batch_verfassen);
+
   let ready = 0, tokensUsed = 0, entverneint = 0;
-  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_name: string | null }[]) {
+  for (const lead of stapel) {
     const name = vornameVon(lead.contact_name);
     const draft = await researchAndDraftLead(apiKey, { ...lead, name }, styleLaw, config.languages, gesetze);
     if (!draft) continue;
@@ -2084,12 +2175,15 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
       if (fixed.text !== message) { message = fixed.text; entverneint++; }
     }
 
+    // Der Weg entscheidet sich hier: Adresse -> E-Mail, Formular -> Formular, sonst DM.
+    const weg = lead.email ? "email" : lead.contact_url ? "formular" : "dm";
     await admin.from("acquisition_leads").update({
-      personal_line: draft.personal_line, message_draft: message, language: draft.language, channel: lead.email ? "email" : "dm",
+      personal_line: draft.personal_line, message_draft: message, language: draft.language,
+      channel: weg === "formular" ? "dm" : weg, contact_channel: weg,
     }).eq("id", lead.id);
     ready++;
   }
-  return { ok: true, processed: (leads ?? []).length, ready, entverneint, tokensUsed };
+  return { ok: true, processed: stapel.length, ready, entverneint, tokensUsed };
 }
 
 /* ------------------------------------------------------------------ *
@@ -2383,18 +2477,30 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
     return { ok: true, mode: "direkt", ...(await sendAkquiseBatch(admin, leadIds)) };
   }
 
+  // Tagesgrenze ehrlich rechnen: was heute schon rausging, zählt mit.
+  const tagStart = new Date(); tagStart.setUTCHours(0, 0, 0, 0);
+  const { count: heute } = await admin.from("ai_actions_log")
+    .select("id", { count: "exact", head: true })
+    .in("action", ["akquise_erstkontakt_email", "akquise_followup_email"])
+    .eq("status", "ok").gte("created_at", tagStart.toISOString());
+  const restHeute = Math.max(0, config.email_daily_cap - (heute ?? 0));
+  const cap = Math.min(restHeute, Math.max(1, config.email_run_cap));
+  if (cap === 0) {
+    return { ok: true, sent: 0, message: `Tagesgrenze erreicht (${config.email_daily_cap}).` };
+  }
+
   const basis = () => admin.from("acquisition_leads").select("id")
-    .eq("status", "qualifiziert").eq("channel", "email").eq("opt_out", false)
+    .eq("status", "qualifiziert").eq("opt_out", false)
     .not("message_draft", "is", null).not("email", "is", null);
 
   // Freigegebene Kontakte zuerst — sie warten am längsten auf dich.
   const { data: freigegeben } = await basis().eq("admin_decision", "ja")
-    .order("created_at", { ascending: true }).limit(config.email_daily_cap);
+    .order("created_at", { ascending: true }).limit(cap);
 
   let firstTouch = (freigegeben ?? []) as { id: string }[];
 
-  // Automatik: Studios mit E-Mail und starkem Score gehen ohne Freigabe raus.
-  const autoCap = Math.max(0, config.email_daily_cap - firstTouch.length);
+  // Automatik: Studios mit Adresse und tragfähigem Score gehen ohne Freigabe raus.
+  const autoCap = Math.max(0, cap - firstTouch.length);
   if (config.autosend_email && autoCap > 0) {
     const { data: auto } = await basis()
       .eq("lead_type", "designer").is("admin_decision", null)
@@ -2403,11 +2509,12 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
     firstTouch = [...firstTouch, ...((auto ?? []) as { id: string }[])];
   }
 
-  const remainingCap = Math.max(0, config.email_daily_cap - firstTouch.length);
-  const { data: followups } = remainingCap > 0 && config.max_touches >= 2
+  // Nachfassen hat sein eigenes kleines Kontingent, damit es Erstkontakte nie verdrängt.
+  const followupCap = Math.max(0, Math.min(cap - firstTouch.length, Math.ceil(cap / 3)));
+  const { data: followups } = followupCap > 0 && config.max_touches >= 2
     ? await admin.from("acquisition_leads").select("id")
-      .eq("status", "kontaktiert").eq("channel", "email").eq("opt_out", false)
-      .is("followup_at", null).lte("next_touch_at", nowIso).limit(remainingCap)
+      .eq("status", "kontaktiert").eq("opt_out", false).not("email", "is", null)
+      .is("followup_at", null).lte("next_touch_at", nowIso).limit(followupCap)
     : { data: [] as { id: string }[] };
 
   const candidateIds = [...firstTouch.map((r) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
@@ -2421,7 +2528,7 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
       kind: "akquise_gesendet", title: "Akquise-Mails verschickt",
       body: `${sentCount} E-Mail(s) verschickt${failedList.length ? `, ${failedList.length} fehlgeschlagen (${failedList.join(", ")})` : ""} — Zone ${zone === "gruen" ? "Grün" : "Gelb"}, automatisch.`,
     });
-    return { ok: true, mode: "autosend", ...result };
+    return { ok: true, mode: "autosend", heute_bereits: heute ?? 0, tagesgrenze: config.email_daily_cap, ...result };
   }
 
   const expiresAt = new Date(Date.now() + 48 * 3600_000).toISOString();
@@ -2434,13 +2541,15 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
 }
 
 /**
- * akquise_zyklus — die ganze Kette in einem Lauf: Profile anreichern → prüfen → schreiben → senden.
- * Damit läuft die Akquise rund um die Uhr, ohne dass für jeden Schritt ein eigener Zeitplan nötig ist.
+ * akquise_zyklus — die ganze Kette in einem Lauf: Profile anreichern → einsammeln →
+ * Adressen suchen → prüfen → schreiben → senden. Damit bleibt kein Lead zwischen zwei
+ * Stufen liegen und die Akquise läuft rund um die Uhr weiter.
  */
 async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const zones = await loadJarvisZones(admin);
   const profile = await runAkquiseProfile(admin);
   const importiert = await runAkquiseImport(admin);
+  const kontakt = await runAkquiseKontakt(admin);
   const kuratiert = await runAkquiseKuratieren(admin, apiKey);
   const verfasst = await runAkquiseVerfassen(admin, apiKey);
   const gesendet = await runAkquiseSenden(admin, zones.akquise_senden ?? "rot");
@@ -2451,6 +2560,8 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
     ok: true,
     profile_laeufe: (profile as { gestartet?: number }).gestartet ?? 0,
     importiert: (importiert as { imported?: number }).imported ?? 0,
+    adressen: (kontakt as { gefunden?: number }).gefunden ?? 0,
+    formulare: (kontakt as { formulare?: number }).formulare ?? 0,
     qualifiziert: (kuratiert as { qualified?: number }).qualified ?? 0,
     verfasst: (verfasst as { ready?: number }).ready ?? 0,
     gesendet: (gesendet as { sent?: number }).sent ?? 0,
