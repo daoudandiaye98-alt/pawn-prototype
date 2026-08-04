@@ -428,6 +428,15 @@ export default function StudioOverview() {
         </div>
       </section>
 
+      {/* Begleiter — der Weg zur eigenen Marke, immer einen Klick entfernt */}
+      <Link to="/studio/aufbau" className="mb-6 flex flex-wrap items-center justify-between gap-4 border-[1.5px] border-foreground bg-white px-6 py-4 hover:bg-foreground hover:text-background">
+        <div>
+          <p className="text-[0.6rem] uppercase tracking-[0.28em] opacity-60">Dein Begleiter</p>
+          <p className="mt-1 font-serif text-lg">Deine Marke aufbauen — Schritt für Schritt.</p>
+        </div>
+        <span className="text-[0.62rem] uppercase tracking-[0.28em]">Weiter →</span>
+      </Link>
+
       {/* DEIN NÄCHSTER ZUG — die grösste Karte */}
       <section className="mb-6 border-[1.5px] border-foreground bg-white p-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
