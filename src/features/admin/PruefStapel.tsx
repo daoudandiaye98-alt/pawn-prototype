@@ -21,6 +21,7 @@ export interface PruefLead {
   kurator_score: number | null;
   score_reasons: Record<string, unknown> | null;
   admin_decision?: string | null;
+  channel?: string | null;
   scrape_images?: unknown;
   message_draft?: string | null;
   language?: string | null;
@@ -61,6 +62,8 @@ export function PruefStapel({
       .filter((r) => r.status === "qualifiziert" && !r.admin_decision)
       // Häuser mit Adresse gehen automatisch raus — hier bleibt, was einen Menschen braucht.
       .filter((r) => isPresse || !r.email)
+      // Reine Instagram-Leads laufen über die eigene Sendemappe (eigener Reiter) — nicht hier.
+      .filter((r) => r.channel !== "instagram")
       .sort((a, b) => (b.kurator_score ?? 0) - (a.kurator_score ?? 0))
       .slice(0, 20),
     [rows, leadType, isPresse],

@@ -10,6 +10,7 @@ import { JagdPanel } from "@/features/admin/JagdPanel";
 import { PruefStapel } from "@/features/admin/PruefStapel";
 import { ErstnachrichtVorlagen } from "@/features/admin/ErstnachrichtVorlagen";
 import { AutomatikPanel } from "@/features/admin/AutomatikPanel";
+import { InstagramSendemappe } from "@/features/admin/InstagramSendemappe";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -630,11 +631,13 @@ function SendeStapel({ rows, onChange }: { rows: Lead[]; onChange: (id: string, 
 /* ─────────────────────── Hauptseite ─────────────────────── */
 
 type SortField = "created_at" | "followers";
+type Tab = "pipeline" | "sendemappe";
 
 export default function AdminAkquise() {
   const { user, roles, loading } = useAuth();
   const [searchParams] = useSearchParams();
   const initialStatus = searchParams.get("status");
+  const [tab, setTab] = useState<Tab>("pipeline");
   const [rows, setRows] = useState<Lead[]>([]);
   const [fetching, setFetching] = useState(true);
   const [statusFilter, setStatusFilter] = useState<Status | "all">(
@@ -708,6 +711,28 @@ export default function AdminAkquise() {
         </p>
       </div>
 
+      <div className="mb-6 flex gap-2 border-b-[1.5px] border-black">
+        {([
+          { key: "pipeline" as const, label: "Pipeline" },
+          { key: "sendemappe" as const, label: "Sendemappe · Instagram" },
+        ]).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "border-[1.5px] border-b-0 border-black px-4 py-2 text-[0.65rem] uppercase tracking-[0.22em] -mb-[1.5px]",
+              tab === t.key ? "bg-black text-white" : "bg-background hover:bg-black hover:text-white",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "sendemappe" ? (
+        <InstagramSendemappe rows={rows} onChange={(id, patch) => patchRow(id, patch as Partial<Lead>)} />
+      ) : (
+      <>
       <AutomatikPanel />
 
       <JagdPanel />
@@ -855,6 +880,8 @@ export default function AdminAkquise() {
       <div className="mt-8">
         <ImportPanel onImported={load} />
       </div>
+      </>
+      )}
 
       {selected && (
         <LeadDrawer
