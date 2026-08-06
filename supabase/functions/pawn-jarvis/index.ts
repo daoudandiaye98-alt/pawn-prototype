@@ -220,11 +220,8 @@ interface AkquiseConfig {
   batch_verfassen: number;
   /** Obergrenze pro Lauf; die Tagesgrenze bleibt email_daily_cap. */
   email_run_cap: number;
-  // Instagram-Sendemappe (Teil 23): reine Handarbeit, PAWN bereitet nur vor.
-  /** Höchstens so viele Karten pro Tag in der Sendemappe — schützt das Konto vor auffälligem Verhalten. */
+  /** Höchstens so viele DM-Karten pro Tag im Sende-Stapel — schützt das Konto vor auffälligem Verhalten (Teil 23). */
   dm_daily_cap: number;
-  /** Nach so vielen Tagen ohne Antwort erscheint die Karte einmal erneut, mit kurzem Nachfass-Text. */
-  dm_followup_after_days: number;
 }
 
 
@@ -260,7 +257,6 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   batch_profile: 40, batch_kontakt: 60, batch_kuratieren: 60, batch_verfassen: 40,
   email_run_cap: 12,
   dm_daily_cap: 20,
-  dm_followup_after_days: 7,
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -2161,7 +2157,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
 
   // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
   // Reine Instagram-Leads (keine E-Mail, kein Kontaktformular) schreibt akquise_dm_vorbereiten —
-  // die kürzere DM-Fassung für die Sendemappe, nicht diese lange Mail-Fassung.
+  // die kürzere DM-Fassung für den Sende-Stapel, nicht diese lange Mail-Fassung.
   const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null }[])
     .filter((l) => l.email || l.contact_url)
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
@@ -2199,11 +2195,12 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
 }
 
 /**
- * akquise_dm_vorbereiten (Instagram-Sendemappe) — kurze DM-Fassung der Erstnachricht für
- * qualifizierte Leads ohne erreichbare Adresse (keine E-Mail, kein Kontaktformular), aber mit
- * Instagram-Handle. Schreibt NIE selbst an Instagram — bereitet nur den Text vor. Der Versand
- * bleibt Handarbeit in der Sendemappe unter /admin/akquise, damit Instagrams Bedingungen gewahrt
- * bleiben (kein Drittanbieter-Werkzeug, keine Automatisierung des Versands selbst).
+ * akquise_dm_vorbereiten (Teil 23) — kurze DM-Fassung der Erstnachricht für qualifizierte Leads
+ * ohne erreichbare Adresse (keine E-Mail, kein Kontaktformular), aber mit Instagram-Handle.
+ * Schreibt NIE selbst an Instagram — bereitet nur den Text vor (channel/contact_channel auf
+ * 'instagram'). Der Versand bleibt Handarbeit im bestehenden Sende-Stapel unter /admin/akquise,
+ * damit Instagrams Bedingungen gewahrt bleiben (kein Drittanbieter-Werkzeug, keine Automatisierung
+ * des Versands selbst).
  */
 async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
@@ -2690,7 +2687,7 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
   const kontakt = await runAkquiseKontakt(admin);
   const kuratiert = await runAkquiseKuratieren(admin, apiKey);
   const verfasst = await runAkquiseVerfassen(admin, apiKey);
-  // Reine Instagram-Leads (keine Adresse) bekommen ihre kurze DM-Fassung für die Sendemappe —
+  // Reine Instagram-Leads (keine Adresse) bekommen ihre kurze DM-Fassung für den Sende-Stapel —
   // eigener Modus, weil dort nie automatisch versendet wird, nur vorbereitet.
   const dmVorbereitet = await runAkquiseDmVorbereiten(admin, apiKey);
   const gesendet = await runAkquiseSenden(admin, zones.akquise_senden ?? "rot");
