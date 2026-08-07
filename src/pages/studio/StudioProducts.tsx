@@ -10,6 +10,7 @@ import { TagInput } from "@/features/ontology/TagInput";
 import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology";
 import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } from "@/features/share/shareKit";
 import { buildCreatorPackage } from "@/features/share/creatorPackage";
+import { CoverMoment } from "@/features/studio/CoverMoment";
 import {
   effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
   materialSum, splitVat, vatNote, worldProfile,
@@ -86,7 +87,21 @@ export default function StudioProducts() {
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<Partial<ProductRow> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [coverMoment, setCoverMoment] = useState<{ imageUrl: string; productId: string } | null>(null);
   const { user } = useAuth();
+
+  // Teil 27b: Der Cover-Moment — einmalig pro Stück, wenn es zum ersten Mal live geht.
+  const maybeShowCover = async (product: { id: string; image_url: string | null }) => {
+    if (!product.image_url) return;
+    const { data } = await supabase.from("products").select("cover_shown_at").eq("id", product.id).maybeSingle();
+    if (data && !(data as { cover_shown_at: string | null }).cover_shown_at) {
+      setCoverMoment({ imageUrl: product.image_url, productId: product.id });
+    }
+  };
+  const dismissCoverMoment = async () => {
+    if (coverMoment) await supabase.from("products").update({ cover_shown_at: new Date().toISOString() }).eq("id", coverMoment.productId);
+    setCoverMoment(null);
+  };
 
   const refresh = async () => {
     if (!designer) return;
@@ -167,7 +182,7 @@ export default function StudioProducts() {
     const q = editing.id
       ? supabase.from("products").update(payload).eq("id", editing.id)
       : supabase.from("products").insert(payload).select("id").single();
-    const { error } = await q;
+    const { data, error } = await q;
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Gespeichert.");
@@ -177,6 +192,10 @@ export default function StudioProducts() {
     for (const term of tags.slice(0, 12)) {
       supabase.functions.invoke("classify-term", { body: { term, world } }).catch(() => { /* soft */ });
     }
+    if (payload.status === "published") {
+      const productId = editing.id ?? (data as { id: string } | null)?.id;
+      if (productId) await maybeShowCover({ id: productId, image_url: payload.image_url });
+    }
     setEditing(null);
     void refresh();
   };
@@ -185,6 +204,7 @@ export default function StudioProducts() {
     const next: Status = p.status === "published" ? "draft" : "published";
     const { error } = await supabase.from("products").update({ status: next }).eq("id", p.id);
     if (error) return toast.error(error.message);
+    if (next === "published") await maybeShowCover(p);
     void refresh();
   };
 
@@ -279,6 +299,16 @@ export default function StudioProducts() {
           save={save}
           busy={busy}
           setEditing={setEditing}
+        />
+      )}
+
+      {coverMoment && designer && (
+        <CoverMoment
+          imageUrl={coverMoment.imageUrl}
+          brandName={designer.brand_name}
+          houseNumber={designer.house_number}
+          variant="product"
+          onDone={() => void dismissCoverMoment()}
         />
       )}
     </StudioShell>

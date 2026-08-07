@@ -142,6 +142,79 @@ export async function renderShareKit(format: ShareFormat, input: ShareKitInput):
   });
 }
 
+export interface CoverShareKitInput {
+  imageUrl: string;
+  brandName: string;
+  houseNumber: number | null;
+}
+
+/**
+ * Teil 27b — der Cover-Moment als Bild: das Werk läuft randlos über die ganze Fläche
+ * (kein Textbalken, der es beschneidet), der Hausname liegt groß direkt auf dem Bild wie
+ * auf einem Magazin-Cover, darunter klein die Ausgabennummer. Bewusst kein Preis, kein
+ * Produktname — dieser Moment gehört dem Haus, nicht dem einzelnen Stück.
+ */
+export async function renderCoverShareKit(input: CoverShareKitInput): Promise<Blob> {
+  const w = 1080, h = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas_unavailable");
+
+  await document.fonts.ready;
+  const img = await loadImage(input.imageUrl);
+
+  drawCover(ctx, img, 0, 0, w, h);
+
+  // Weicher Verlauf nur hinter dem Text — das Bild bleibt der Held, der Verlauf sorgt nur
+  // dafür, dass weiße Schrift auf jedem Motiv lesbar bleibt.
+  const scrimH = Math.round(h * 0.45);
+  const gradient = ctx.createLinearGradient(0, h - scrimH, 0, h);
+  gradient.addColorStop(0, "rgba(0,0,0,0)");
+  gradient.addColorStop(1, "rgba(0,0,0,0.72)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, h - scrimH, w, scrimH);
+
+  const pad = Math.round(w * 0.08);
+  const nameSize = Math.round(w * 0.11);
+  const numberSize = Math.round(w * 0.026);
+
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#fff";
+  let fittedNameSize = nameSize;
+  const maxNameWidth = w - pad * 2;
+  ctx.font = `600 ${fittedNameSize}px "Playfair Display", Georgia, serif`;
+  while (ctx.measureText(input.brandName).width > maxNameWidth && fittedNameSize > numberSize * 2) {
+    fittedNameSize -= 2;
+    ctx.font = `600 ${fittedNameSize}px "Playfair Display", Georgia, serif`;
+  }
+  const nameY = h - pad - numberSize - Math.round(pad * 0.4);
+  ctx.fillText(input.brandName, pad, nameY);
+
+  ctx.font = `${numberSize}px Inter, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  const numberLabel = `№ ${String(input.houseNumber ?? 0).padStart(3, "0")}`;
+  ctx.fillText(numberLabel, pad, h - pad);
+
+  // Kleine Herkunftsmarke oben links, wie bei den übrigen Share-Kits.
+  const markSize = Math.round(w * 0.022);
+  ctx.font = `600 ${markSize}px Inter, sans-serif`;
+  const markPad = Math.round(w * 0.03);
+  const markText = "PAWN";
+  const markW = ctx.measureText(markText).width + markPad * 1.6;
+  const markH = markSize + markPad * 1.4;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = Math.max(1.5, w * 0.0012);
+  ctx.strokeRect(markPad, markPad, markW, markH);
+  ctx.fillStyle = "#fff";
+  ctx.fillText(markText, markPad + markPad * 0.8, markPad + markH / 2 + markSize / 3);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("canvas_export_failed"))), "image/png", 0.95);
+  });
+}
+
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
