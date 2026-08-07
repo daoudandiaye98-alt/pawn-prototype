@@ -99,8 +99,7 @@ export default function Designers() {
           <div className="pointer-events-none absolute z-30 hidden overflow-hidden border border-[rgba(0,0,0,.28)] bg-[#FFFFFF] shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)] transition-opacity duration-300 md:block"
             style={{ left: pos.x + 20, top: pos.y - 90, width: 200, height: 260, opacity: hover.src ? 1 : 0.5 }}>
             {hover.src ? (
-              <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover"
-                style={{ filter: "grayscale(1) contrast(var(--palace-image-contrast, 1.06))" }} />
+              <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-white palace-serif italic text-black/50">{hover.brand}</div>
             )}

@@ -20,6 +20,7 @@ const DEFAULT_SEO = {
  * PalaceLayout — final black/white system.
  */
 export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true, title, description }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean; title?: string; description?: string }) {
+  const headerVariant = transparentHeader && !showBreadcrumbs ? "transparent-on-hero" : "solid";
   const { locale } = useI18n();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
   const colTitleHaeuser = useContentValue(FOOTER_COLUMN_KEYS[0], "Häuser");
@@ -31,9 +32,9 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
     <div className="palace min-h-screen bg-white text-black">
       <Seo title={title ?? DEFAULT_SEO[locale].title} description={description ?? DEFAULT_SEO[locale].description} />
       <BuilderBar />
-      <PalaceHeader />
+      <PalaceHeader variant={headerVariant} />
       {showBreadcrumbs && <div className="pt-[68px] md:pt-[76px]"><Breadcrumbs /></div>}
-      <main className={transparentHeader && !showBreadcrumbs ? "" : ""}>{children}</main>
+      <main>{children}</main>
       <footer className="border-t-[1.5px] border-black bg-white">
         <div className="mx-auto max-w-[1600px] px-6 pt-16 md:px-14">
           <PawnWordmark

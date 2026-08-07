@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronUp, ChevronDown, Trash2, ExternalLink } from "lucide-react";
 import { HausseiteBlocks, type PageBlockKind, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
+import { CoverMoment } from "@/features/studio/CoverMoment";
 import {
   DEFAULT_HOUSE_THEME, resolveTheme, type HouseTheme,
   TYPOGRAFIE_LABEL, FLAECHENRHYTHMUS_LABEL, KANTENHAERTE_LABEL, BEWEGUNGSCHARAKTER_LABEL, TEXTUR_LABEL,
@@ -58,6 +59,7 @@ export default function StudioHausseite() {
   const [products, setProducts] = useState<BlockProductLite[]>([]);
   const [published, setPublished] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [coverMoment, setCoverMoment] = useState<string | null>(null);
 
   const [themeHistory, setThemeHistory] = useState<ThemeRow[]>([]);
   const [vibeText, setVibeText] = useState("");
@@ -169,6 +171,17 @@ export default function StudioHausseite() {
     setBusy(false);
     setPublished(on ? new Date().toISOString() : null);
     toast.success(on ? t("studio.hausseite.publish.onSuccess") : t("studio.hausseite.publish.offSuccess"));
+    // Teil 27b: Der Cover-Moment, kleiner inszeniert — einmalig beim ersten Veröffentlichen der Hausseite.
+    if (on && !designer.hausseite_cover_shown_at) {
+      const image = designer.hero_image_url ?? designer.banner_url ?? media[0]?.url ?? null;
+      if (image) setCoverMoment(image);
+    }
+  };
+
+  const dismissHausseiteCover = async () => {
+    if (!designer) return;
+    await supabase.from("designers").update({ hausseite_cover_shown_at: new Date().toISOString() }).eq("id", designer.id);
+    setCoverMoment(null);
   };
 
   // Vor dem Veröffentlichen: drei einfache Bedingungen, damit die Seite nicht leer wirkt.
@@ -338,6 +351,15 @@ export default function StudioHausseite() {
           </div>
         </div>
       </div>
+      {coverMoment && (
+        <CoverMoment
+          imageUrl={coverMoment}
+          brandName={designer.brand_name}
+          houseNumber={designer.house_number}
+          variant="hausseite"
+          onDone={() => void dismissHausseiteCover()}
+        />
+      )}
     </StudioShell>
   );
 }

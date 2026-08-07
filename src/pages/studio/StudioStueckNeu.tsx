@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePlanQuota, type Plan } from "@/features/campaign/quota";
 import { Upload, ArrowRight } from "lucide-react";
+import { CoverMoment } from "@/features/studio/CoverMoment";
 import { useI18n } from "@/lib/i18n";
 
 type World = "Mode" | "Interior" | "Kunst";
@@ -74,6 +75,18 @@ export default function StudioStueckNeu() {
 
   const [product, setProduct] = useState<LiveProduct | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(!!existingProductId);
+  const [coverMoment, setCoverMoment] = useState<string | null>(null);
+
+  // Teil 27b: Der Cover-Moment — einmalig pro Stück, wenn es zum ersten Mal live geht.
+  const maybeShowCover = async (productId: string, imageUrl: string | null) => {
+    if (!imageUrl) return;
+    const { data } = await supabase.from("products").select("cover_shown_at").eq("id", productId).maybeSingle();
+    if (data && !(data as { cover_shown_at: string | null }).cover_shown_at) setCoverMoment(imageUrl);
+  };
+  const dismissCoverMoment = async (productId: string) => {
+    await supabase.from("products").update({ cover_shown_at: new Date().toISOString() }).eq("id", productId);
+    setCoverMoment(null);
+  };
 
   // Inszenierung — identischer Ablauf wie im Kampagnen-Studio (Teil 16a).
   const [stagingTemplatesAll, setStagingTemplatesAll] = useState<Record<string, StagingTemplate[]>>({});
@@ -184,6 +197,7 @@ export default function StudioStueckNeu() {
       if (error) throw error;
       setProduct(data as LiveProduct);
       toast.success(t("studio.stueckNeu.toast.productLive"));
+      await maybeShowCover((data as LiveProduct).id, sourceUrl);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -203,6 +217,7 @@ export default function StudioStueckNeu() {
       }
       setProduct((p) => (p ? { ...p, image_url: result.result_url } : p));
       toast.success(t("studio.stueckNeu.toast.adopted"));
+      await maybeShowCover(product.id, result.result_url);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -390,6 +405,15 @@ export default function StudioStueckNeu() {
           </>
         )}
       </div>
+      {coverMoment && (
+        <CoverMoment
+          imageUrl={coverMoment}
+          brandName={designer.brand_name}
+          houseNumber={designer.house_number}
+          variant="product"
+          onDone={() => void dismissCoverMoment(product!.id)}
+        />
+      )}
     </StudioShell>
   );
 }
