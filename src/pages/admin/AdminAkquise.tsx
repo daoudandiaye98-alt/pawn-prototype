@@ -526,7 +526,7 @@ function ImportPanel({ onImported }: { onImported: () => void }) {
   );
 }
 
-/* ─────────────────────── Sende-Stapel (DM, nie automatisiert) ─────────────────────── */
+/* ─────────────────────── Sende-Stapel (DM/Instagram, nie automatisiert) ─────────────────────── */
 
 interface StapelItem {
   lead: Lead;
@@ -534,11 +534,31 @@ interface StapelItem {
   text: string;
 }
 
+function isManualChannel(channel: string | null): boolean {
+  return channel === "dm" || channel === "instagram";
+}
+
+function isMobileDevice(): boolean {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function stapelImages(lead: Lead): string[] {
+  return Array.isArray(lead.scrape_images) ? (lead.scrape_images as string[]).slice(0, 3) : [];
+}
+
+function openInstagram(handle: string) {
+  if (isMobileDevice()) {
+    window.location.href = `instagram://user?username=${encodeURIComponent(handle)}`;
+  } else {
+    window.open(`https://instagram.com/${handle}`, "_blank", "noopener,noreferrer");
+  }
+}
+
 function buildStapel(rows: Lead[]): StapelItem[] {
   const now = Date.now();
   const items: StapelItem[] = [];
   for (const r of rows) {
-    if (r.channel !== "dm" || r.opt_out) continue;
+    if (!isManualChannel(r.channel) || r.opt_out) continue;
     // Erstkontakt erst nach deinem Ja im Prüf-Stapel — nie automatisch.
     if (r.status === "qualifiziert" && r.message_draft && r.admin_decision === "ja") {
       items.push({ lead: r, kind: "erstkontakt", text: r.message_draft });
@@ -555,10 +575,35 @@ function buildStapel(rows: Lead[]): StapelItem[] {
 
 function SendeStapel({ rows, onChange }: { rows: Lead[]; onChange: (id: string, patch: Partial<Lead>) => void }) {
   const [busyId, setBusyId] = useState<string | null>(null);
-  const items = useMemo(() => buildStapel(rows), [rows]);
+  const [dailyCap, setDailyCap] = useState(20);
+  const [editOpen, setEditOpen] = useState<Record<string, boolean>>({});
+  const [edited, setEdited] = useState<Record<string, string>>({});
 
-  async function copyText(text: string) {
-    await navigator.clipboard.writeText(text);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
+      const v = (data?.value ?? {}) as { dm_daily_cap?: number };
+      setDailyCap(v.dm_daily_cap ?? 20);
+    })();
+  }, []);
+
+  const allItems = useMemo(() => buildStapel(rows), [rows]);
+
+  // Tagesportion statt Fließband: Instagram drosselt auffälliges Verhalten auch bei Handarbeit.
+  const sentToday = useMemo(() => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    return rows.filter((r) => isManualChannel(r.channel) && r.contacted_at && new Date(r.contacted_at).getTime() >= start.getTime()).length;
+  }, [rows]);
+  const remainingToday = Math.max(0, dailyCap - sentToday);
+  const items = allItems.slice(0, remainingToday);
+  const waitingCount = Math.max(0, allItems.length - items.length);
+
+  function textFor(item: StapelItem): string {
+    return edited[item.lead.id] ?? item.text;
+  }
+
+  async function copyText(item: StapelItem) {
+    await navigator.clipboard.writeText(textFor(item));
     toast.success("Nachricht kopiert.");
   }
 
@@ -576,37 +621,73 @@ function SendeStapel({ rows, onChange }: { rows: Lead[]; onChange: (id: string, 
     toast.success("Als gesendet markiert.");
   }
 
-  if (items.length === 0) return null;
+  if (allItems.length === 0) return null;
 
   return (
     <section className="mb-8 border-[1.5px] border-black">
       <header className="border-b-[1.5px] border-black px-5 py-3">
-        <p className="editorial-eyebrow">Sende-Stapel · DM heute · {items.length}</p>
+        <p className="editorial-eyebrow">Sende-Stapel · DM heute · {items.length} / {dailyCap}</p>
       </header>
+      {items.length === 0 ? (
+        <p className="px-5 py-6 text-sm text-muted-foreground">
+          Für heute erledigt. {waitingCount} {waitingCount === 1 ? "wartet" : "warten"} noch — morgen geht's weiter.
+        </p>
+      ) : (
       <ul className="divide-y divide-border">
-        {items.map((item) => (
-          <li key={`${item.lead.id}-${item.kind}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <a
-                  href={`https://instagram.com/${item.lead.handle}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-serif text-base underline-offset-4 hover:underline"
-                >
-                  @{item.lead.handle}
-                </a>
-                <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">
-                  {item.kind === "erstkontakt" ? "Erstkontakt" : "Follow-up"}
-                </span>
+        {items.map((item) => {
+          const images = stapelImages(item.lead);
+          const isEditing = editOpen[item.lead.id];
+          return (
+          <li key={`${item.lead.id}-${item.kind}`} className="flex flex-col gap-3 px-5 py-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openInstagram(item.lead.handle)}
+                    className="font-serif text-base underline-offset-4 hover:underline"
+                  >
+                    @{item.lead.handle}
+                  </button>
+                  <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">
+                    {item.kind === "erstkontakt" ? "Erstkontakt" : "Follow-up"}
+                  </span>
+                </div>
+                {images.length > 0 && (
+                  <div className="mt-2 flex gap-2">
+                    {images.map((src) => (
+                      <img key={src} src={src} alt={`Arbeit von @${item.lead.handle}`} loading="lazy"
+                        className="h-16 w-16 border border-black object-cover" />
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <p className="text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground">Nachricht</p>
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen((s) => ({ ...s, [item.lead.id]: !s[item.lead.id] }))}
+                    className="text-[0.6rem] uppercase tracking-[0.18em] underline-offset-4 hover:underline"
+                  >
+                    Text ändern
+                  </button>
+                </div>
+                {isEditing ? (
+                  <Textarea
+                    value={textFor(item)}
+                    onChange={(e) => setEdited((s) => ({ ...s, [item.lead.id]: e.target.value }))}
+                    rows={4}
+                    className="mt-1 rounded-none border-black text-sm"
+                  />
+                ) : (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{textFor(item)}</p>
+                )}
               </div>
-              <p className="mt-1 truncate text-sm text-muted-foreground">{item.text}</p>
             </div>
             <div className="flex shrink-0 gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => copyText(item.text)}
+                onClick={() => copyText(item)}
                 className="rounded-none border-black hover:bg-black hover:text-white"
               >
                 <Copy className="h-4 w-4" />
@@ -621,8 +702,15 @@ function SendeStapel({ rows, onChange }: { rows: Lead[]; onChange: (id: string, 
               </Button>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
+      )}
+      {waitingCount > 0 && items.length > 0 && (
+        <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          {waitingCount} weitere {waitingCount === 1 ? "wartet" : "warten"} auf morgen — die Tagesportion schützt dein Konto.
+        </p>
+      )}
     </section>
   );
 }

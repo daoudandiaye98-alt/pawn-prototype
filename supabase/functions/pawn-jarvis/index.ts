@@ -62,6 +62,7 @@ type Mode =
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_jagd" | "akquise_jagd_lernen"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
+  | "akquise_dm_vorbereiten"
   | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau";
@@ -148,6 +149,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   jarvis_bauplan: "gruen",
   broll_einsammeln: "gruen",
   akquise_zyklus: "gruen",
+  akquise_dm_vorbereiten: "gruen",
   presse_jagd: "gelb",
   presse_verfassen: "gelb",
   verstaerker: "gruen",
@@ -218,6 +220,8 @@ interface AkquiseConfig {
   batch_verfassen: number;
   /** Obergrenze pro Lauf; die Tagesgrenze bleibt email_daily_cap. */
   email_run_cap: number;
+  /** Höchstens so viele DM-Karten pro Tag im Sende-Stapel — schützt das Konto vor auffälligem Verhalten (Teil 23). */
+  dm_daily_cap: number;
 }
 
 
@@ -252,6 +256,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   hunt_exclude_words: ["dropshipping", "reseller", "wholesale", "agency", "agentur", "marketing", "shopify expert", "link in bio deals"],
   batch_profile: 40, batch_kontakt: 60, batch_kuratieren: 60, batch_verfassen: 40,
   email_run_cap: 12,
+  dm_daily_cap: 20,
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -2151,7 +2156,10 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
 
   // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
+  // Reine Instagram-Leads (keine E-Mail, kein Kontaktformular) schreibt akquise_dm_vorbereiten —
+  // die kürzere DM-Fassung für den Sende-Stapel, nicht diese lange Mail-Fassung.
   const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null }[])
+    .filter((l) => l.email || l.contact_url)
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
   const stapel = alle.slice(0, config.batch_verfassen);
 
@@ -2180,6 +2188,74 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language: draft.language,
       channel: weg === "formular" ? "dm" : weg, contact_channel: weg,
+    }).eq("id", lead.id);
+    ready++;
+  }
+  return { ok: true, processed: stapel.length, ready, entverneint, tokensUsed };
+}
+
+/**
+ * akquise_dm_vorbereiten (Teil 23) — kurze DM-Fassung der Erstnachricht für qualifizierte Leads
+ * ohne erreichbare Adresse (keine E-Mail, kein Kontaktformular), aber mit Instagram-Handle.
+ * Schreibt NIE selbst an Instagram — bereitet nur den Text vor (channel/contact_channel auf
+ * 'instagram'). Der Versand bleibt Handarbeit im bestehenden Sende-Stapel unter /admin/akquise,
+ * damit Instagrams Bedingungen gewahrt bleiben (kein Drittanbieter-Werkzeug, keine Automatisierung
+ * des Versands selbst).
+ */
+async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, world, bio, contact_name")
+    .eq("lead_type", "designer").eq("status", "qualifiziert")
+    .is("email", null).is("contact_url", null).is("message_draft", null)
+    .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const config = await loadAkquiseConfig(admin);
+  const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
+  const allowed = config.languages.length ? config.languages : ["de", "en"];
+
+  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null }[])
+    .filter((l) => l.handle)
+    .slice(0, config.batch_verfassen);
+
+  let ready = 0, tokensUsed = 0, entverneint = 0;
+  for (const lead of stapel) {
+    const name = vornameVon(lead.contact_name);
+    const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine kurze Instagram-Direktnachricht an einen unabhängigen Designer für pawn.vision.
+
+Instagram-DMs werden nach wenigen Zeilen abgeschnitten — die Nachricht muss deutlich kürzer sein als eine E-Mail: 40–70 Wörter, ein Fließtext, keine Betreffzeile, keine Aufzählung.
+
+Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe in dieser Sprache. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
+
+SPRACHGESETZE (bindend, jede Zeile gilt):
+${gesetze}
+
+AUFBAU (kurz, fließend, in dieser Reihenfolge, keine Aufzählungszeichen):
+1. Anrede mit Namen, wenn bekannt.
+2. Eine persönliche Zeile zur konkreten Arbeit dieser Person (das ist die personal_line) — zeigt, dass wirklich hingesehen wurde.
+3. Ein Satz, was PAWN ist: ein kuratierter Marktplatz für unabhängige Designer:innen.
+4. Die Konditionen als Zusage in einem Halbsatz: kostenlos, du behältst 93 % jedes Verkaufs.
+5. Eine kurze Einladung mit pawn.vision zum Schluss.
+
+Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige DM, 40–70 Wörter>"}
+
+Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
+    const user = `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.`;
+    const { json, tokens } = await searchJson(apiKey, system, user, 500);
+    tokensUsed += tokens;
+    const draft = json as { language?: string; personal_line?: string; message?: string } | null;
+    if (!draft?.personal_line || !draft?.message) continue;
+    const language = allowed.includes(draft.language ?? "") ? draft.language! : "de";
+
+    let message = draft.message;
+    if (hatVerneinung(message)) {
+      const fixed = await entverneinen(message, gesetze);
+      tokensUsed += fixed.tokens;
+      if (fixed.text !== message) { message = fixed.text; entverneint++; }
+    }
+
+    await admin.from("acquisition_leads").update({
+      personal_line: draft.personal_line, message_draft: message, language,
+      channel: "instagram", contact_channel: "instagram",
     }).eq("id", lead.id);
     ready++;
   }
@@ -2611,16 +2687,21 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
   const kontakt = await runAkquiseKontakt(admin);
   const kuratiert = await runAkquiseKuratieren(admin, apiKey);
   const verfasst = await runAkquiseVerfassen(admin, apiKey);
+  // Reine Instagram-Leads (keine Adresse) bekommen ihre kurze DM-Fassung für den Sende-Stapel —
+  // eigener Modus, weil dort nie automatisch versendet wird, nur vorbereitet.
+  const dmVorbereitet = await runAkquiseDmVorbereiten(admin, apiKey);
   const gesendet = await runAkquiseSenden(admin, zones.akquise_senden ?? "rot");
 
   const tokensUsed = ((kuratiert as { tokensUsed?: number }).tokensUsed ?? 0)
-    + ((verfasst as { tokensUsed?: number }).tokensUsed ?? 0);
+    + ((verfasst as { tokensUsed?: number }).tokensUsed ?? 0)
+    + ((dmVorbereitet as { tokensUsed?: number }).tokensUsed ?? 0);
   return {
     ok: true,
     adressen: (kontakt as { gefunden?: number }).gefunden ?? 0,
     formulare: (kontakt as { formulare?: number }).formulare ?? 0,
     qualifiziert: (kuratiert as { qualified?: number }).qualified ?? 0,
     verfasst: (verfasst as { ready?: number }).ready ?? 0,
+    dm_vorbereitet: (dmVorbereitet as { ready?: number }).ready ?? 0,
     gesendet: (gesendet as { sent?: number }).sent ?? 0,
     versand_modus: (gesendet as { mode?: string }).mode ?? "keiner",
     tokensUsed,
@@ -3107,6 +3188,7 @@ Deno.serve(async (req) => {
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker",
@@ -3122,6 +3204,7 @@ Deno.serve(async (req) => {
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
+      "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker",
@@ -3338,6 +3421,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
+        || mode === "akquise_dm_vorbereiten"
         || mode === "presse_jagd" || mode === "presse_verfassen"
         || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
@@ -3346,6 +3430,7 @@ Deno.serve(async (req) => {
       const result = mode === "wissen_markenaufbau" ? await runMarkenaufbauWissen(admin, apiKey)
         : mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
+        : mode === "akquise_dm_vorbereiten" ? await runAkquiseDmVorbereiten(admin, apiKey)
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
         : mode === "akquise_zyklus" ? await runAkquiseZyklus(admin, apiKey)
@@ -3358,12 +3443,14 @@ Deno.serve(async (req) => {
         ? `Kuratiert: ${(result as { qualified?: number }).qualified ?? 0} qualifiziert, ${(result as { sorted_out?: number }).sorted_out ?? 0} aussortiert`
         : mode === "akquise_verfassen"
         ? `Verfasst: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : mode === "akquise_dm_vorbereiten"
+        ? `DM-Entwürfe: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
         : mode === "presse_jagd"
         ? `Presse-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
         : mode === "presse_verfassen"
         ? `Presse-Pitches: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
         : mode === "akquise_zyklus"
-        ? `Zyklus: ${(result as { qualifiziert?: number }).qualifiziert ?? 0} geprüft, ${(result as { verfasst?: number }).verfasst ?? 0} geschrieben, ${(result as { gesendet?: number }).gesendet ?? 0} gesendet`
+        ? `Zyklus: ${(result as { qualifiziert?: number }).qualifiziert ?? 0} geprüft, ${(result as { verfasst?: number }).verfasst ?? 0} geschrieben, ${(result as { dm_vorbereitet?: number }).dm_vorbereitet ?? 0} DM vorbereitet, ${(result as { gesendet?: number }).gesendet ?? 0} gesendet`
         : mode === "verstaerker"
         ? `Verstärker: ${(result as { angestupst?: number }).angestupst ?? 0} Haus/Häuser mit Teil-Paket`
         : `Bewerbungen geprüft: ${(result as { processed?: number }).processed ?? 0}`;

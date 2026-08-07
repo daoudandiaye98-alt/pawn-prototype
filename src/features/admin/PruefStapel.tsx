@@ -53,19 +53,30 @@ export function PruefStapel({
   title?: string;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [threshold, setThreshold] = useState(70);
   const isPresse = leadType === "presse";
 
-  const items = useMemo(
+  const decidablePool = useMemo(
     () => rows
       .filter((r) => (r.lead_type ?? "designer") === leadType)
       .filter((r) => r.status === "qualifiziert" && !r.admin_decision)
       // Häuser mit Adresse gehen automatisch raus — hier bleibt, was einen Menschen braucht.
-      .filter((r) => isPresse || !r.email)
-      .sort((a, b) => (b.kurator_score ?? 0) - (a.kurator_score ?? 0))
-      .slice(0, 20),
+      .filter((r) => isPresse || !r.email),
     [rows, leadType, isPresse],
   );
 
+  const items = useMemo(
+    () => [...decidablePool].sort((a, b) => (b.kurator_score ?? 0) - (a.kurator_score ?? 0)).slice(0, 20),
+    [decidablePool],
+  );
+
+  // Vorschau für die Sammel-Freigabe: dieselbe Grundmenge wie oben, nur zusätzlich nach Punktzahl gefiltert —
+  // 156 Leads einzeln bestätigen ist unzumutbar, also zeigen wir zuerst, wie viele betroffen wären.
+  const bulkPool = useMemo(
+    () => decidablePool.filter((r) => (r.kurator_score ?? 0) >= threshold),
+    [decidablePool, threshold],
+  );
 
   async function decide(lead: PruefLead, decision: "ja" | "nein") {
     setBusy(lead.id);
@@ -104,6 +115,33 @@ export function PruefStapel({
     toast.success(`Nachricht an @${lead.handle} ist raus.`);
   }
 
+  async function bulkApprove() {
+    if (bulkPool.length === 0) return;
+    setBulkBusy(true);
+    const now = new Date().toISOString();
+    const withoutEmail = bulkPool.filter((l) => !l.email);
+    const withEmail = bulkPool.filter((l) => l.email);
+
+    if (withoutEmail.length > 0) {
+      const { error } = await supabase.from("acquisition_leads")
+        .update({ admin_decision: "ja", decided_at: now })
+        .in("id", withoutEmail.map((l) => l.id));
+      if (error) { setBulkBusy(false); toast.error(error.message); return; }
+      withoutEmail.forEach((l) => onChange(l.id, { admin_decision: "ja", decided_at: now }));
+    }
+
+    // Leads mit Adresse verschickt Jarvis wie bei Einzel-Freigabe — einzeln, damit Vorlage und Folgetermin stimmen.
+    for (const lead of withEmail) {
+      await decide(lead, "ja");
+    }
+
+    setBulkBusy(false);
+    toast.success(
+      `${bulkPool.length} ab Punktzahl ${threshold} freigegeben` +
+      (withoutEmail.length ? ` — ${withoutEmail.length} warten jetzt im Sende-Stapel.` : "."),
+    );
+  }
+
   async function copyDraft(lead: PruefLead) {
     if (!lead.message_draft) { toast.error("Noch kein Text verfasst — Jarvis schreibt ihn im nächsten Lauf."); return; }
     await navigator.clipboard.writeText(lead.message_draft);
@@ -116,7 +154,8 @@ export function PruefStapel({
     <section className="mb-8 border-[1.5px] border-black">
       <header className="border-b-[1.5px] border-black px-5 py-3">
         <p className="editorial-eyebrow">
-          {title ?? "Von Hand · Formular oder DM"} · {items.length}
+          {title ?? "Von Hand · Formular oder DM"} · {decidablePool.length}
+          {decidablePool.length > items.length ? ` (zeigt ${items.length})` : ""}
         </p>
         {!isPresse && (
           <p className="mt-1 text-xs text-muted-foreground">
@@ -125,6 +164,28 @@ export function PruefStapel({
           </p>
         )}
       </header>
+
+      {decidablePool.length > 5 && (
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3">
+          <label className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            Ab Punktzahl
+            <input
+              type="number" min={0} max={100} value={threshold}
+              onChange={(e) => setThreshold(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+              className="w-16 border-[1.5px] border-black px-2 py-1 text-sm text-foreground"
+            />
+          </label>
+          <span className="text-xs text-muted-foreground">
+            {bulkPool.length} {bulkPool.length === 1 ? "Lead betroffen" : "Leads betroffen"}
+          </span>
+          <button
+            type="button" disabled={bulkBusy || bulkPool.length === 0} onClick={() => void bulkApprove()}
+            className="ml-auto flex items-center gap-2 border-[1.5px] border-black bg-black px-4 py-2 text-xs uppercase tracking-[0.18em] text-white transition-colors hover:bg-white hover:text-black disabled:opacity-40"
+          >
+            {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Alle ab {threshold} freigeben
+          </button>
+        </div>
+      )}
 
       <ul className="divide-y divide-border">
         {items.map((lead) => {
