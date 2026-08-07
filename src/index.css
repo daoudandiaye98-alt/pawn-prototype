@@ -13,8 +13,6 @@
     --foreground: 0 0% 0%;
 
     --ivory: 0 0% 100%;
-    --ivory-soft: 0 0% 100%;
-    --ivory-deep: 0 0% 100%;
     --paper: 0 0% 100%;
     --bone: 0 0% 100%;
     --ink: 0 0% 0%;
@@ -34,13 +32,7 @@
     --accent: 0 0% 0%;
     --accent-foreground: 0 0% 100%;
 
-    --wine: 0 0% 0%;
-    --wine-soft: 0 0% 0%;
-    --beige: 0 0% 100%;
-    --charcoal: 0 0% 0%;
     --oxblood: 0 0% 0%;
-    --gold: 0 0% 0%;
-    --gold-soft: 0 0% 0%;
 
     --destructive: 0 0% 0%;
     --destructive-foreground: 0 0% 100%;
@@ -60,12 +52,6 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 100% / 0.22;
     --sidebar-ring: 0 0% 100%;
-
-    --gradient-light: none;
-    --gradient-shadow: none;
-    --gradient-wine: none;
-    --shadow-editorial: 6px 6px 0 0 #000;
-    --shadow-card: 6px 6px 0 0 #000;
 
     /* Motion — harder */
     --ease-pawn: cubic-bezier(0.76, 0, 0.18, 1);

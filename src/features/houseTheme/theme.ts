@@ -68,6 +68,12 @@ const REVEAL: Record<Bewegungscharakter, { dur: string; dist: string }> = {
   ausdrucksstark: { dur: "1.1s", dist: "44px" },
 };
 
+/**
+ * Teil 26a — bewusste Ausnahme vom Farb- und Kantengesetz (nicht verhandelbar für den Rest der
+ * App): innerhalb von .house-theme darf ein Designer freie Farben (farbwelt) und Rundungen
+ * (kantenhaerte → --house-radius, 0/6/20px) wählen. Das ist Absicht, kein Verstoß — siehe
+ * CLAUDE.md "Design-Gesetze" und den Kommentar über der .house-theme-Regel in index.css.
+ */
 export function themeCssVars(theme: HouseTheme): CSSProperties {
   return {
     "--house-bg": theme.farbwelt.bg,

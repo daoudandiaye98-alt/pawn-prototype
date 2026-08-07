@@ -151,7 +151,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       {isOpen && (
         <>
           <div onClick={ctx.close} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" />
-          <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border bg-white text-foreground shadow-2xl">
+          <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border bg-white text-foreground shadow-hard">
             <header className="flex h-16 items-center justify-between border-b border-border px-6">
               <div className="flex items-center gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-white">

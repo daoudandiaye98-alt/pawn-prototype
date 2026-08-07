@@ -35,7 +35,7 @@ export function NotificationBell({ tone = "dark" }: { tone?: "dark" | "light" })
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 border border-border bg-card shadow-xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 border border-border bg-card shadow-hard">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <p className="text-[0.62rem] uppercase tracking-[0.32em] text-muted-foreground">Meldungen</p>
             <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{items.length}</span>

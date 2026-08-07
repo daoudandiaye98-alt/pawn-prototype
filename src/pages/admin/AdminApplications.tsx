@@ -290,7 +290,7 @@ function DetailDrawer({ app, onClose, onChange }: { app: Application; onClose: (
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/50" onClick={onClose}>
       <div
-        className="h-full w-full max-w-2xl overflow-y-auto bg-background shadow-xl"
+        className="h-full w-full max-w-2xl overflow-y-auto bg-background shadow-hard"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-6 py-4 backdrop-blur">

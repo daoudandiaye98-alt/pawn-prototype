@@ -98,7 +98,7 @@ export function PalaceHeader() {
                 to={item.to}
                 className={({ isActive }) =>
                   `flex items-center whitespace-nowrap border-r border-[rgba(0,0,0,.18)] px-5 text-[0.66rem] uppercase tracking-[0.3em] transition-colors duration-200 hover:bg-black hover:text-white ${
-                    isActive ? "bg-black text-white" : "text-[#111]"
+                    isActive ? "bg-black text-white" : "text-black"
                   }`
                 }
               >
@@ -122,7 +122,7 @@ export function PalaceHeader() {
               type="button"
               aria-label="Suche"
               onClick={() => setSearchOpen(true)}
-              className="hidden items-center border-l-[1.5px] border-black px-4 text-[#111] hover:bg-black hover:text-white md:inline-flex"
+              className="hidden items-center border-l-[1.5px] border-black px-4 text-black hover:bg-black hover:text-white md:inline-flex"
             >
               <PawnSearchIcon className="h-5 w-5" />
             </button>
@@ -131,7 +131,7 @@ export function PalaceHeader() {
             <button
               type="button"
               onClick={() => setLocale(locale === "de" ? "en" : "de")}
-              className="hidden items-center whitespace-nowrap border-l border-[rgba(0,0,0,.18)] px-3 text-[0.6rem] uppercase tracking-[0.28em] text-[#111] hover:bg-black hover:text-white xl:inline-flex"
+              className="hidden items-center whitespace-nowrap border-l border-[rgba(0,0,0,.18)] px-3 text-[0.6rem] uppercase tracking-[0.28em] text-black hover:bg-black hover:text-white xl:inline-flex"
               aria-label="Sprache wechseln"
             >
               {locale.toUpperCase()}
@@ -144,7 +144,7 @@ export function PalaceHeader() {
                   type="button"
                   aria-label="Konto"
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="flex h-full items-center px-4 text-[#111] hover:bg-black hover:text-white"
+                  className="flex h-full items-center px-4 text-black hover:bg-black hover:text-white"
                 >
                   <PawnProfileIcon className="h-5 w-5" />
                 </button>
@@ -175,7 +175,7 @@ export function PalaceHeader() {
               <Link
                 to="/auth"
                 aria-label="Anmelden"
-                className="hidden items-center border-l-[1.5px] border-black px-4 text-[#111] hover:bg-black hover:text-white xl:inline-flex"
+                className="hidden items-center border-l-[1.5px] border-black px-4 text-black hover:bg-black hover:text-white xl:inline-flex"
               >
                 <PawnProfileIcon className="h-5 w-5" />
               </Link>
@@ -185,7 +185,7 @@ export function PalaceHeader() {
             <Link
               to="/cart"
               aria-label={`Warenkorb${cartCount > 0 ? ` (${cartCount})` : ""}`}
-              className="flex items-center border-l-[1.5px] border-black px-4 text-[#111] hover:bg-black hover:text-white"
+              className="flex items-center border-l-[1.5px] border-black px-4 text-black hover:bg-black hover:text-white"
             >
               <PawnBagIcon count={cartCount} className="h-5 w-5" />
             </Link>

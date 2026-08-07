@@ -23,11 +23,7 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        ivory: {
-          DEFAULT: "hsl(var(--ivory))",
-          soft: "hsl(var(--ivory-soft))",
-          deep: "hsl(var(--ivory-deep))",
-        },
+        ivory: "hsl(var(--ivory))",
         paper: "hsl(var(--paper))",
         bone: "hsl(var(--bone))",
         ink: {
@@ -35,12 +31,6 @@ export default {
           soft: "hsl(var(--ink-soft))",
         },
         oxblood: "hsl(var(--oxblood))",
-        wine: {
-          DEFAULT: "hsl(var(--wine))",
-          soft: "hsl(var(--wine-soft))",
-        },
-        beige: "hsl(var(--beige))",
-        charcoal: "hsl(var(--charcoal))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -79,15 +69,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-      },
-      backgroundImage: {
-        "gradient-light": "var(--gradient-light)",
-        "gradient-shadow": "var(--gradient-shadow)",
-        "gradient-wine": "var(--gradient-wine)",
-      },
-      boxShadow: {
-        editorial: "var(--shadow-editorial)",
-        card: "var(--shadow-card)",
       },
       borderRadius: {
         lg: "var(--radius)",

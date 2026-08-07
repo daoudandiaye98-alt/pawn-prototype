@@ -202,7 +202,7 @@ export function EditableImage({ contentKey, fallback, alt, className, loading = 
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="absolute left-2 top-2 z-10 bg-white/95 px-2 py-1 text-[0.6rem] uppercase tracking-[0.28em] text-black shadow-sm hover:bg-white"
+            className="absolute left-2 top-2 z-10 bg-white/95 px-2 py-1 text-[0.6rem] uppercase tracking-[0.28em] text-black shadow-hard-sm hover:bg-white"
             disabled={uploading}
           >
             {uploading ? "Lädt…" : "Bild ändern"}

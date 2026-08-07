@@ -178,7 +178,7 @@ const Index = () => {
         <div className="mx-auto max-w-[1400px] text-center">
           {/* Soft white plate keeps text legible over the 3D canvas without hiding the pawn */}
           <div className="mx-auto max-w-[1100px] rounded-none px-2 py-6 md:px-8 md:py-10"
-               style={{ background: "radial-gradient(ellipse at center, rgba(241,238,231,.92) 0%, rgba(241,238,231,.72) 55%, rgba(241,238,231,0) 100%)" }}>
+               style={{ background: "radial-gradient(ellipse at center, rgba(255,255,255,.92) 0%, rgba(255,255,255,.72) 55%, rgba(255,255,255,0) 100%)" }}>
             <p className="palace-eyebrow motion-reveal">
               <Editable as="span" contentKey="landing.hero_eyebrow">Kuratierte Ausstellung</Editable> · <Link to="/ausgabe" className="underline underline-offset-4 hover:text-[#000000]">Ausgabe {ausgabeNummer}</Link>
             </p>
