@@ -5,6 +5,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
 import { handleOrderPaid, handleCreditsPurchase, type PaidSessionLike } from "../_shared/orderPaid.ts";
+import { pickByLang } from "../_shared/locale.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -54,15 +55,15 @@ Deno.serve(async (req) => {
         stripe_payouts_enabled: !!account.payouts_enabled,
         stripe_requirements: requirements,
         ...(account.country ? { stripe_country: account.country } : {}),
-      }).eq("stripe_account_id", account.id).select("id, user_id, stripe_charges_enabled").maybeSingle();
+      }).eq("stripe_account_id", account.id).select("id, user_id, stripe_charges_enabled, preferred_language").maybeSingle();
 
       const dueNow = (account.requirements?.currently_due ?? []) as string[];
       if (designer?.user_id && dueNow.length > 0) {
         await admin.from("notifications").insert({
           user_id: designer.user_id,
           type: "payout.requirements",
-          title: "Stripe braucht noch Angaben von dir.",
-          body: "Ohne diese Nachweise kann dein Haus keine Zahlungen annehmen. Ein Klick führt dich hin.",
+          title: pickByLang(designer.preferred_language, "Stripe braucht noch Angaben von dir.", "Stripe still needs information from you."),
+          body: pickByLang(designer.preferred_language, "Ohne diese Nachweise kann dein Haus keine Zahlungen annehmen. Ein Klick führt dich hin.", "Without this evidence your house can't accept payments. One click takes you there."),
           link: "/studio/auszahlung",
         });
       }
@@ -77,13 +78,17 @@ Deno.serve(async (req) => {
       const cancelled = event.type === "customer.subscription.deleted" || sub.status === "canceled" || sub.status === "incomplete_expired";
       const targetPlan = cancelled ? "haus" : (plan === "atelier" || plan === "maison" ? plan : null);
       if (user_id && targetPlan) {
-        const { data: designer } = await admin.from("designers").update({ plan: targetPlan }).eq("user_id", user_id).select("id, user_id").maybeSingle();
+        const { data: designer } = await admin.from("designers").update({ plan: targetPlan }).eq("user_id", user_id).select("id, user_id, preferred_language").maybeSingle();
         if (designer) {
           await admin.from("notifications").insert({
             user_id: designer.user_id,
             type: "plan.updated",
-            title: cancelled ? "Dein Plan wurde beendet." : `Willkommen im Plan ${targetPlan}.`,
-            body: cancelled ? "Du bist zurück im Haus-Plan." : "Deine neuen Kontingente sind sofort aktiv.",
+            title: pickByLang(designer.preferred_language,
+              cancelled ? "Dein Plan wurde beendet." : `Willkommen im Plan ${targetPlan}.`,
+              cancelled ? "Your plan has ended." : `Welcome to the ${targetPlan} plan.`),
+            body: pickByLang(designer.preferred_language,
+              cancelled ? "Du bist zurück im Haus-Plan." : "Deine neuen Kontingente sind sofort aktiv.",
+              cancelled ? "You're back on the Haus plan." : "Your new quotas are active immediately."),
             link: "/studio/plan",
           });
           await admin.from("domain_events").insert({

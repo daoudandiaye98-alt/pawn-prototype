@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowUpRight, Sparkles, Package, MessageSquare, Truck, Wallet, Dna } from "lucide-react";
 import { Panel, Metric, Command, Status, Recommendation } from "@/components/pawn/primitives";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Designer Studio — the tenant surface.
@@ -26,20 +27,21 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 }
 
 function StudioBody() {
+  const { t } = useI18n();
   const studio = useStore((s) => portalSelectors.getStudioOverview(s, "primary"));
   const { products, revenueSeries, months } = studio;
 
   // Studio-local publishing queue (client only — designers wouldn't see events)
   const [drafts, setDrafts] = useState([
-    { id: "d1", label: "SS26 · Look 04 · Deconstructed Blazer", status: "Draft", updated: "vor 12 Min" },
-    { id: "d2", label: "SS26 · Look 09 · Tailored Trouser", status: "Review", updated: "vor 2 Std" },
-    { id: "d3", label: "SS26 · Look 11 · Cropped Vest", status: "Ready", updated: "gestern" },
+    { id: "d1", label: "SS26 · Look 04 · Deconstructed Blazer", status: "Draft", updated: t("portal.overview.time.minutesAgo", { n: 12 }) },
+    { id: "d2", label: "SS26 · Look 09 · Tailored Trouser", status: "Review", updated: t("portal.overview.time.hoursAgo", { n: 2 }) },
+    { id: "d3", label: "SS26 · Look 11 · Cropped Vest", status: "Ready", updated: t("portal.overview.time.yesterday") },
   ]);
 
   const suggestions = [
-    { title: "Dein Shadow-Cluster wächst", body: "132 neue Kunden passen zu deiner Ästhetik. Ein Look-Drop wäre jetzt sinnvoll.", cta: "Kollektion planen" },
-    { title: "Preisgestaltung Look 04", body: "Predicted CTR +18 % bei €890 statt €780. AOV-Gewinn: geschätzt €4.2k / Monat.", cta: "Preis testen" },
-    { title: "Fehlender Kontext", body: "Deine Beschreibung enthält keine Materialangabe. Kunden fragen 12× diese Woche danach.", cta: "Ergänzen" },
+    { title: t("portal.overview.suggestions.s1.title"), body: t("portal.overview.suggestions.s1.body"), cta: t("portal.overview.suggestions.s1.cta") },
+    { title: t("portal.overview.suggestions.s2.title"), body: t("portal.overview.suggestions.s2.body"), cta: t("portal.overview.suggestions.s2.cta") },
+    { title: t("portal.overview.suggestions.s3.title"), body: t("portal.overview.suggestions.s3.body"), cta: t("portal.overview.suggestions.s3.cta") },
   ];
 
   return (
@@ -47,27 +49,26 @@ function StudioBody() {
       {/* Header */}
       <div className="border border-border bg-card p-8">
         <p className="editorial-eyebrow">Studio · Y/PROJECT</p>
-        <h2 className="mt-2 font-serif text-4xl">Guten Abend, Studio Y/PROJECT.</h2>
+        <h2 className="mt-2 font-serif text-4xl">{t("portal.overview.greeting", { brand: "Y/PROJECT" })}</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Dein Studio läuft ruhig. 284 Bestellungen im laufenden Monat, 3 Kollektionen im Entwurf,
-          nächste Auszahlung Montag. Alles unten ist deins — kein Blick auf die Plattform.
+          {t("portal.overview.subtitle")}
         </p>
       </div>
 
       {/* KPI row */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="Umsatz (Monat)" value="€128.460" sub="+8.2 % ggü. Vormonat" />
-        <Kpi label="Bestellungen" value="284" sub="+24 diese Woche" />
-        <Kpi label="Konversion" value="4.2 %" sub="Marktplatz-Ø 3.1 %" />
-        <Kpi label="Nächste Auszahlung" value="€18.420" sub="Montag, 6. Juli" tone="accent" />
+        <Kpi label={t("portal.overview.kpi.revenue")} value="€128.460" sub={t("portal.overview.kpi.revenueSub")} />
+        <Kpi label={t("portal.overview.kpi.orders")} value="284" sub={t("portal.overview.kpi.ordersSub")} />
+        <Kpi label={t("portal.overview.kpi.conversion")} value="4.2 %" sub={t("portal.overview.kpi.conversionSub")} />
+        <Kpi label={t("portal.overview.kpi.nextPayout")} value="€18.420" sub={t("portal.overview.kpi.nextPayoutSub")} tone="accent" />
       </div>
 
       {/* Revenue + Countries */}
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <Card title="Umsatzentwicklung" eyebrow="12 Monate">
+        <Card title={t("portal.overview.chart.revenueTitle")} eyebrow={t("portal.overview.chart.revenueEyebrow")}>
           <div className="p-6"><ChartPlaceholder series={revenueSeries} labels={months} variant="area" /></div>
         </Card>
-        <Card title="Umsatz nach Land" eyebrow="Top 6">
+        <Card title={t("portal.overview.chart.countryTitle")} eyebrow="Top 6">
           <div className="p-6">
             <ChartPlaceholder variant="bars" series={[42, 28, 22, 16, 12, 8]} labels={["DE", "FR", "UK", "US", "JP", "IT"]} />
           </div>
@@ -76,7 +77,7 @@ function StudioBody() {
 
       {/* AI suggestions + Publishing queue + Customer DNA alignment */}
       <div className="grid gap-6 xl:grid-cols-3">
-        <Card title="Deine KI-Empfehlungen" eyebrow="Beobachtung → Handlung">
+        <Card title={t("portal.overview.suggestions.title")} eyebrow={t("portal.overview.suggestions.eyebrow")}>
           <ul className="divide-y divide-border">
             {suggestions.map((s) => (
               <li key={s.title} className="px-6 py-4">
@@ -98,9 +99,9 @@ function StudioBody() {
           </ul>
         </Card>
 
-        <Card title="Publishing" eyebrow="Kollektionen · 3 offen"
-          action={<button onClick={() => toast.success("Kollektion veröffentlicht")}
-            className="border border-accent bg-accent px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] text-accent-foreground hover:opacity-90">Publish</button>}>
+        <Card title="Publishing" eyebrow={t("portal.overview.publishing.eyebrow", { n: 3 })}
+          action={<button onClick={() => toast.success(t("portal.overview.publishing.publishedToast"))}
+            className="border border-accent bg-accent px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] text-accent-foreground hover:opacity-90">{t("portal.overview.publishing.publish")}</button>}>
           <ul className="divide-y divide-border">
             {drafts.map((d) => (
               <li key={d.id} className="flex items-center justify-between px-6 py-4">
@@ -117,21 +118,21 @@ function StudioBody() {
             ))}
           </ul>
           <div className="border-t border-border p-4">
-            <button onClick={() => setDrafts((prev) => [{ id: `d${prev.length + 1}`, label: "Neuer Entwurf", status: "Draft", updated: "gerade eben" }, ...prev])}
+            <button onClick={() => setDrafts((prev) => [{ id: `d${prev.length + 1}`, label: t("portal.overview.publishing.newDraftLabel"), status: "Draft", updated: t("portal.overview.publishing.justNow") }, ...prev])}
               className="w-full border border-dashed border-border py-2 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground hover:border-foreground hover:text-foreground">
-              + Neuer Entwurf
+              {t("portal.overview.publishing.addDraft")}
             </button>
           </div>
         </Card>
 
-        <Card title="Customer DNA Alignment" eyebrow="dein Kundenprofil">
+        <Card title="Customer DNA Alignment" eyebrow={t("portal.overview.dna.eyebrow")}>
           <div className="p-6">
-            <p className="text-sm text-muted-foreground">Deine Kunden verteilen sich auf drei DNA-Cluster.</p>
+            <p className="text-sm text-muted-foreground">{t("portal.overview.dna.intro")}</p>
             <ul className="mt-4 space-y-3 text-sm">
               {[
-                ["Shadow", 62, "wächst"],
-                ["Editorial", 24, "stabil"],
-                ["Minimal", 14, "leicht rückläufig"],
+                ["Shadow", 62, t("portal.overview.dna.trend.growing")],
+                ["Editorial", 24, t("portal.overview.dna.trend.stable")],
+                ["Minimal", 14, t("portal.overview.dna.trend.slightlyDeclining")],
               ].map(([label, pct, trend]) => (
                 <li key={String(label)}>
                   <div className="flex justify-between">
@@ -151,14 +152,14 @@ function StudioBody() {
 
       {/* Fulfillment queue + Top products + Payouts */}
       <div className="grid gap-6 xl:grid-cols-3">
-        <Card title="Fulfillment Queue" eyebrow="offen · 6"
-          action={<span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">SLA 24 h</span>}>
+        <Card title="Fulfillment Queue" eyebrow={t("portal.overview.fulfillment.eyebrow", { n: 6 })}
+          action={<span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">{t("portal.overview.fulfillment.sla")}</span>}>
           <ul className="divide-y divide-border">
             {[
-              ["#P-24818", "Berlin, DE", "vor 2 Std", <Truck key="a" className="h-3 w-3" />],
-              ["#P-24817", "Paris, FR", "vor 4 Std", <Truck key="b" className="h-3 w-3" />],
-              ["#P-24816", "Tokyo, JP", "vor 6 Std", <Package key="c" className="h-3 w-3" />],
-              ["#P-24815", "London, UK", "gestern", <Package key="d" className="h-3 w-3" />],
+              ["#P-24818", "Berlin, DE", t("portal.overview.time.hoursAgo", { n: 2 }), <Truck key="a" className="h-3 w-3" />],
+              ["#P-24817", "Paris, FR", t("portal.overview.time.hoursAgo", { n: 4 }), <Truck key="b" className="h-3 w-3" />],
+              ["#P-24816", "Tokyo, JP", t("portal.overview.time.hoursAgo", { n: 6 }), <Package key="c" className="h-3 w-3" />],
+              ["#P-24815", "London, UK", t("portal.overview.time.yesterday"), <Package key="d" className="h-3 w-3" />],
             ].map(([id, city, when, icon]) => (
               <li key={String(id)} className="flex items-center justify-between px-6 py-3 text-sm">
                 <div className="flex items-center gap-3">
@@ -168,14 +169,14 @@ function StudioBody() {
                     <p className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">{city} · {when}</p>
                   </div>
                 </div>
-                <button onClick={() => toast(`${id} · Label gedruckt`)}
-                  className="text-[0.65rem] uppercase tracking-[0.22em] underline-offset-4 hover:underline">Label</button>
+                <button onClick={() => toast(t("portal.overview.fulfillment.labelPrinted", { id: String(id) }))}
+                  className="text-[0.65rem] uppercase tracking-[0.22em] underline-offset-4 hover:underline">{t("portal.overview.fulfillment.label")}</button>
               </li>
             ))}
           </ul>
         </Card>
 
-        <Card title="Top Produkte" eyebrow="30 Tage">
+        <Card title={t("portal.overview.topProducts.title")} eyebrow={t("portal.overview.topProducts.eyebrow")}>
           <ul className="divide-y divide-border">
             {products.slice(0, 5).map((p, i) => (
               <li key={p.id} className="px-6 py-3">
@@ -191,17 +192,21 @@ function StudioBody() {
           </ul>
         </Card>
 
-        <Card title="Auszahlungen" eyebrow="Historie">
+        <Card title={t("portal.overview.payouts.title")} eyebrow={t("portal.overview.payouts.eyebrow")}>
           <div className="p-6">
             <div className="flex items-center gap-3">
               <Wallet className="h-4 w-4 text-accent" />
               <div>
                 <p className="font-serif text-2xl tabular-nums">€18.420</p>
-                <p className="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">Nächste Auszahlung Mo. · Commerzbank ••00</p>
+                <p className="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">{t("portal.overview.payouts.nextPayoutLine")}</p>
               </div>
             </div>
             <ul className="mt-4 divide-y divide-border text-sm">
-              {[["Juni 2026", "€18.420", "geplant"], ["Mai 2026", "€21.900", "ausgezahlt"], ["Apr 2026", "€19.180", "ausgezahlt"]].map(([m, v, s]) => (
+              {[
+                [t("portal.overview.payouts.month.june2026"), "€18.420", t("portal.overview.payouts.status.scheduled")],
+                [t("portal.overview.payouts.month.may2026"), "€21.900", t("portal.overview.payouts.status.paidOut")],
+                [t("portal.overview.payouts.month.apr2026"), "€19.180", t("portal.overview.payouts.status.paidOut")],
+              ].map(([m, v, s]) => (
                 <li key={m} className="flex items-center justify-between py-2">
                   <span>{m}</span>
                   <div className="flex items-center gap-3">
@@ -216,13 +221,13 @@ function StudioBody() {
       </div>
 
       {/* Messages */}
-      <Card title="Nachrichten & Feedback" eyebrow="4 offen"
-        action={<button onClick={() => toast("Inbox geöffnet")} className="text-[0.65rem] uppercase tracking-[0.22em] underline-offset-4 hover:underline">Öffnen</button>}>
+      <Card title={t("portal.overview.messages.title")} eyebrow={t("portal.overview.messages.eyebrow", { n: 4 })}
+        action={<button onClick={() => toast(t("portal.overview.messages.inboxOpened"))} className="text-[0.65rem] uppercase tracking-[0.22em] underline-offset-4 hover:underline">{t("portal.overview.messages.open")}</button>}>
         <ul className="divide-y divide-border">
           {[
-            ["Marie L.", "Frage zur Passform Look 04", "vor 20 Min", "hoch"],
-            ["Support PAWN", "Deine Kollektion wurde reviewed", "vor 3 Std", "info"],
-            ["Kunde JP-1284", "Rücksendung eingegangen", "gestern", "normal"],
+            ["Marie L.", t("portal.overview.messages.m1"), t("portal.overview.time.minutesAgo", { n: 20 }), t("portal.overview.messages.prio.high")],
+            ["Support PAWN", t("portal.overview.messages.m2"), t("portal.overview.time.hoursAgo", { n: 3 }), t("portal.overview.messages.prio.info")],
+            [t("portal.overview.messages.customerLabel", { id: "JP-1284" }), t("portal.overview.messages.m3"), t("portal.overview.time.yesterday"), t("portal.overview.messages.prio.normal")],
           ].map(([name, msg, when, prio]) => (
             <li key={String(msg)} className="flex items-start gap-3 px-6 py-4">
               <MessageSquare className="mt-0.5 h-4 w-4 text-muted-foreground" />
@@ -230,8 +235,8 @@ function StudioBody() {
                 <p className="text-sm"><span className="font-medium">{name}</span> <span className="text-muted-foreground">— {msg}</span></p>
                 <p className="mt-0.5 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">{when} · {prio}</p>
               </div>
-              <button onClick={() => toast(`Antwort an ${name}`)}
-                className="text-[0.65rem] uppercase tracking-[0.22em] underline-offset-4 hover:underline">Antworten</button>
+              <button onClick={() => toast(t("portal.overview.messages.replyToast", { name: String(name) }))}
+                className="text-[0.65rem] uppercase tracking-[0.22em] underline-offset-4 hover:underline">{t("portal.overview.messages.reply")}</button>
             </li>
           ))}
         </ul>
@@ -240,13 +245,16 @@ function StudioBody() {
   );
 }
 
-const PortalOverview = () => (
-  <RoleGate role="designer">
-    <PortalShell eyebrow="Y/PROJECT · Studio" title="Übersicht">
-      <PrototypeAccessBanner role="Designer Studio" />
-      <StudioBody />
-    </PortalShell>
-  </RoleGate>
-);
+const PortalOverview = () => {
+  const { t } = useI18n();
+  return (
+    <RoleGate role="designer">
+      <PortalShell eyebrow="Y/PROJECT · Studio" title={t("account.overview")}>
+        <PrototypeAccessBanner role="Designer Studio" />
+        <StudioBody />
+      </PortalShell>
+    </RoleGate>
+  );
+};
 
 export default PortalOverview;

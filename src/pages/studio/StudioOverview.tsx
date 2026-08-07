@@ -13,6 +13,7 @@ import { useDisplayName } from "@/lib/displayName";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sparkles, Plus, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, Check, X } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 type World = "Mode" | "Interior" | "Kunst";
 
@@ -30,11 +31,11 @@ function toCampaign(r: CampaignRow): Campaign {
 }
 
 
-function greetingByHour() {
+function greetingByHour(t: (k: string) => string) {
   const h = new Date().getHours();
-  if (h < 11) return "Guten Morgen";
-  if (h < 18) return "Guten Tag";
-  return "Guten Abend";
+  if (h < 11) return t("studio.overview.greeting.morning");
+  if (h < 18) return t("studio.overview.greeting.day");
+  return t("studio.overview.greeting.evening");
 }
 
 function useDaySeries(designerId?: string, days = 30) {
@@ -87,33 +88,37 @@ function Sparkline({ data, className }: { data: number[]; className?: string }) 
   return <svg viewBox={`0 0 ${w} ${h}`} className={className} preserveAspectRatio="none"><polyline fill="none" stroke="currentColor" strokeWidth="1.25" points={pts} /></svg>;
 }
 
-const WELCOME_STEPS = [
-  {
-    title: "Was PAWN ist",
-    body: "Ein kuratierter Marktplatz für unabhängige Designer aus Mode, Interior und Kunst — und ein KI-Betriebssystem, das dir Bilder, Texte und Kampagnen abnimmt, die sonst Zeit oder ein Team brauchen.",
-  },
-  {
-    title: "Was dein Haus bekommt",
-    body: null,
-    bullets: [
-      "Eine eigene Seite, kein Baukasten-Gefühl.",
-      "Verkäufe zahlen direkt auf dein eigenes Konto.",
-      "KI-Werkzeuge für Bild, Video und Text, im Rahmen deines Plans.",
-    ],
-  },
-  {
-    title: "Dein erster Zug",
-    body: "Ein Foto, ein Preis, ein Satz — dein erstes Stück ist in ein paar Minuten live. Alles Weitere kannst du danach in Ruhe ergänzen.",
-  },
-] as const;
+function useWelcomeSteps(t: (k: string, vars?: Record<string, string | number>) => string) {
+  return [
+    {
+      title: t("studio.overview.welcome.step1.title"),
+      body: t("studio.overview.welcome.step1.body"),
+    },
+    {
+      title: t("studio.overview.welcome.step2.title"),
+      body: null,
+      bullets: [
+        t("studio.overview.welcome.step2.bullet1"),
+        t("studio.overview.welcome.step2.bullet2"),
+        t("studio.overview.welcome.step2.bullet3"),
+      ],
+    },
+    {
+      title: t("studio.overview.welcome.step3.title"),
+      body: t("studio.overview.welcome.step3.body"),
+    },
+  ] as const;
+}
 
 function DesignerWelcome({ name, onSkip }: { name: string; onSkip: () => void }) {
+  const { t } = useI18n();
+  const WELCOME_STEPS = useWelcomeSteps(t);
   const [step, setStep] = useState(0);
   const last = step === WELCOME_STEPS.length - 1;
   const current = WELCOME_STEPS[step];
   return (
     <div className="mx-auto max-w-xl border-[1.5px] border-foreground bg-white p-8 sm:p-10">
-      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Willkommen, {name} · Schritt {step + 1} / {WELCOME_STEPS.length}</p>
+      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.welcome.progress", { name, step: step + 1, total: WELCOME_STEPS.length })}</p>
       <h2 className="mt-3 font-serif text-2xl font-medium sm:text-3xl">{current.title}</h2>
       {current.body && <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{current.body}</p>}
       {"bullets" in current && current.bullets && (
@@ -125,21 +130,21 @@ function DesignerWelcome({ name, onSkip }: { name: string; onSkip: () => void })
       )}
       <div className="mt-8 flex items-center justify-between gap-3">
         <button type="button" onClick={onSkip} className="text-[0.65rem] uppercase tracking-[0.24em] text-muted-foreground underline hover:text-foreground">
-          Überspringen
+          {t("studio.overview.welcome.skip")}
         </button>
         <div className="flex items-center gap-3">
           {step > 0 && (
             <button type="button" onClick={() => setStep((s) => s - 1)} className="border border-border bg-white px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:border-foreground">
-              Zurück
+              {t("common.back")}
             </button>
           )}
           {last ? (
             <Link to="/studio/produkte/neu" onClick={onSkip} className="inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
-              <Plus className="h-3 w-3" /> Erstes Stück anlegen
+              <Plus className="h-3 w-3" /> {t("studio.overview.welcome.createFirst")}
             </Link>
           ) : (
             <button type="button" onClick={() => setStep((s) => s + 1)} className="inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
-              Weiter <ArrowRight className="h-3 w-3" />
+              {t("studio.overview.welcome.next")} <ArrowRight className="h-3 w-3" />
             </button>
           )}
         </div>
@@ -151,11 +156,12 @@ function DesignerWelcome({ name, onSkip }: { name: string; onSkip: () => void })
 interface Suggestion { key: string; label: string; reason: string; to: string }
 
 function DailyList({ suggestions, onDismiss }: { suggestions: Suggestion[]; onDismiss: (key: string) => void }) {
+  const { t } = useI18n();
   return (
     <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
-      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Heute</p>
+      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.today")}</p>
       {suggestions.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">Für heute nichts Neues. Schau später wieder vorbei.</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("studio.overview.today.empty")}</p>
       ) : (
         <ol className="mt-4 space-y-2">
           {suggestions.map((s) => (
@@ -164,7 +170,7 @@ function DailyList({ suggestions, onDismiss }: { suggestions: Suggestion[]; onDi
                 <p className="text-sm">{s.label}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{s.reason}</p>
               </Link>
-              <button type="button" onClick={() => onDismiss(s.key)} aria-label="Weglegen" className="shrink-0 text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => onDismiss(s.key)} aria-label={t("studio.overview.today.dismiss")} className="shrink-0 text-muted-foreground hover:text-foreground">
                 <X className="h-3.5 w-3.5" />
               </button>
             </li>
@@ -176,10 +182,11 @@ function DailyList({ suggestions, onDismiss }: { suggestions: Suggestion[]; onDi
 }
 
 function DesignerJourney({ steps, doneCount }: { steps: JourneyStep[]; doneCount: number }) {
+  const { t } = useI18n();
   if (steps.length === 0) return null;
   return (
     <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
-      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Dein Weg · {doneCount} von {steps.length}</p>
+      <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.journey.progress", { done: doneCount, total: steps.length })}</p>
       <ol className="mt-4 space-y-2">
         {steps.map((s, i) => (
           <li key={s.key} className={`border-[1.5px] px-4 py-3 ${s.done ? "border-border" : "border-foreground"}`}>
@@ -194,7 +201,7 @@ function DesignerJourney({ steps, doneCount }: { steps: JourneyStep[]; doneCount
                 </div>
               </div>
               {!s.done && (
-                <Link to={s.to} className="shrink-0 text-[0.62rem] uppercase tracking-[0.2em] underline hover:text-foreground">Los</Link>
+                <Link to={s.to} className="shrink-0 text-[0.62rem] uppercase tracking-[0.2em] underline hover:text-foreground">{t("studio.overview.journey.go")}</Link>
               )}
             </div>
           </li>
@@ -211,6 +218,7 @@ export default function StudioOverview() {
   const { milestones } = useHouseMilestones(designer?.id);
   const { firstName } = useDisplayName();
   const copilot = useCopilot();
+  const { t, locale } = useI18n();
   const { series, ordersSeries, wishSeries } = useDaySeries(designer?.id);
   const [showKpi, setShowKpi] = useState(false);
   const [showLower, setShowLower] = useState(false);
@@ -261,7 +269,7 @@ export default function StudioOverview() {
   useEffect(() => {
     if (!designer) return;
     (async () => {
-      const { data } = await supabase.functions.invoke("studio-ai", { body: { mode: "weekly_mirror" } });
+      const { data } = await supabase.functions.invoke("studio-ai", { body: { mode: "weekly_mirror", locale } });
       if (data) setMirror(data as { text: string; stats: { views_total: number; wish_total: number; orders_count: number } });
     })();
   }, [designer]);
@@ -306,19 +314,19 @@ export default function StudioOverview() {
     const { error } = await supabase.from("products").update({ status: next }).eq("id", p.id);
     if (error) { toast.error(error.message); return; }
     setProducts((arr) => arr.map((x) => x.id === p.id ? { ...x, status: next } : x));
-    toast.success(next === "published" ? "Veröffentlicht" : "Als Entwurf gespeichert");
+    toast.success(next === "published" ? t("studio.overview.toast.published") : t("studio.overview.toast.savedAsDraft"));
   };
 
   const approveCampaign = async (id: string) => {
     const { error } = await supabase.from("campaigns").update({ status: "approved" }).eq("id", id);
     if (error) { toast.error(error.message); return; }
-    setPendingCampaign(null); toast.success("Kampagne freigegeben");
+    setPendingCampaign(null); toast.success(t("studio.overview.toast.campaignApproved"));
   };
 
   const generateCampaign = async () => {
-    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", channel: "editorial" } });
+    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", channel: "editorial", locale } });
     if (error) { toast.error(error.message); return; }
-    toast.success("Kampagne im Entwurf");
+    toast.success(t("studio.overview.toast.campaignDrafted"));
     // reload pending
     if (designer) {
       const { data: c } = await supabase.from("campaigns").select("id, title, content, status").eq("designer_id", designer.id).eq("status", "proposed").order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -357,17 +365,17 @@ export default function StudioOverview() {
   const dailySuggestions = useMemo(() => {
     if (!designer) return [];
     const pool: { key: string; label: string; reason: string; to: string }[] = [];
-    if (!hasPortrait) pool.push({ key: "portrait", label: "Porträt hochladen", reason: "Ein Gesicht schafft Vertrauen.", to: "/studio/brand" });
-    if (!hasStory) pool.push({ key: "manifest", label: "Manifest schreiben", reason: "Deine Geschichte ist dein bestes Verkaufsargument.", to: "/studio/brand" });
-    if (dnaMissingProduct) pool.push({ key: "dna", label: "DNA deines Stücks ergänzen", reason: "Hilft PAWN, dein Stück den richtigen Menschen zu zeigen.", to: `/studio/produkte?dna=${dnaMissingProduct.id}` });
-    if (criticalStock > 0) pool.push({ key: "stock", label: "Lagerbestand prüfen", reason: `${criticalStock} ${criticalStock === 1 ? "Stück ist" : "Stücke sind"} fast ausverkauft.`, to: "/studio/produkte" });
-    if (staleOrdersCount > 0) pool.push({ key: "stale-orders", label: "Liegengebliebene Bestellung bearbeiten", reason: `${staleOrdersCount} ${staleOrdersCount === 1 ? "Bestellung wartet" : "Bestellungen warten"} seit über 3 Tagen auf den nächsten Schritt.`, to: "/studio/bestellungen" });
-    if (messages.some((m) => m.unread)) pool.push({ key: "messages", label: "Nachrichten beantworten", reason: "Jemand wartet auf deine Antwort.", to: "/studio/nachrichten" });
-    if (pendingCampaign) pool.push({ key: "campaign", label: "Kampagnen-Entwurf ansehen", reason: "Ein Vorschlag wartet auf deine Freigabe.", to: "/studio/kampagnen" });
-    if (unsubmittedMediaCount > 0) pool.push({ key: "archiv", label: "Material fürs PAWN-Archiv einreichen", reason: "Ausgewähltes Material kann PAWN mit Credit auf der Plattform zeigen — mehr Reichweite für dich.", to: "/studio/mediathek" });
+    if (!hasPortrait) pool.push({ key: "portrait", label: t("studio.overview.suggestion.portrait.label"), reason: t("studio.overview.suggestion.portrait.reason"), to: "/studio/brand" });
+    if (!hasStory) pool.push({ key: "manifest", label: t("studio.overview.suggestion.manifest.label"), reason: t("studio.overview.suggestion.manifest.reason"), to: "/studio/brand" });
+    if (dnaMissingProduct) pool.push({ key: "dna", label: t("studio.overview.suggestion.dna.label"), reason: t("studio.overview.suggestion.dna.reason"), to: `/studio/produkte?dna=${dnaMissingProduct.id}` });
+    if (criticalStock > 0) pool.push({ key: "stock", label: t("studio.overview.suggestion.stock.label"), reason: criticalStock === 1 ? t("studio.overview.suggestion.stock.reason.one") : t("studio.overview.suggestion.stock.reason.many", { n: criticalStock }), to: "/studio/produkte" });
+    if (staleOrdersCount > 0) pool.push({ key: "stale-orders", label: t("studio.overview.suggestion.staleOrders.label"), reason: staleOrdersCount === 1 ? t("studio.overview.suggestion.staleOrders.reason.one") : t("studio.overview.suggestion.staleOrders.reason.many", { n: staleOrdersCount }), to: "/studio/bestellungen" });
+    if (messages.some((m) => m.unread)) pool.push({ key: "messages", label: t("studio.overview.suggestion.messages.label"), reason: t("studio.overview.suggestion.messages.reason"), to: "/studio/nachrichten" });
+    if (pendingCampaign) pool.push({ key: "campaign", label: t("studio.overview.suggestion.campaign.label"), reason: t("studio.overview.suggestion.campaign.reason"), to: "/studio/kampagnen" });
+    if (unsubmittedMediaCount > 0) pool.push({ key: "archiv", label: t("studio.overview.suggestion.archiv.label"), reason: t("studio.overview.suggestion.archiv.reason"), to: "/studio/mediathek" });
     return pool.filter((s) => !isDismissed(s.key)).slice(0, 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [designer, hasPortrait, hasStory, dnaMissingProduct, criticalStock, messages, pendingCampaign, unsubmittedMediaCount, staleOrdersCount]);
+  }, [designer, hasPortrait, hasStory, dnaMissingProduct, criticalStock, messages, pendingCampaign, unsubmittedMediaCount, staleOrdersCount, t]);
 
   const dismissSuggestion = async (key: string) => {
     if (!designer) return;
@@ -391,38 +399,38 @@ export default function StudioOverview() {
   };
   const showWelcome = !!designer && productsLoaded && products.length === 0 && !welcomeDismissed;
 
-  if (loading) return <StudioShell title="Übersicht"><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.overview.title")}><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
 
   if (!designer) return (
-    <StudioShell title="Übersicht" eyebrow="Willkommen">
+    <StudioShell title={t("studio.overview.title")} eyebrow={t("studio.overview.eyebrow.welcome")}>
       <div className="mx-auto max-w-xl border border-border bg-white p-10 text-center">
-        <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Kein Studio-Zugang</p>
-        <h2 className="mt-3 font-serif text-3xl">Dein Studio steht noch nicht.</h2>
-        <p className="mt-4 text-sm text-muted-foreground">Sobald deine Bewerbung angenommen ist, findest du hier deine Übersicht.</p>
-        <Link to="/apply" className="mt-6 inline-flex border border-foreground px-6 py-2 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">Zur Bewerbung</Link>
+        <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.noAccess")}</p>
+        <h2 className="mt-3 font-serif text-3xl">{t("studio.overview.noAccess.title")}</h2>
+        <p className="mt-4 text-sm text-muted-foreground">{t("studio.overview.noAccess.body")}</p>
+        <Link to="/apply" className="mt-6 inline-flex border border-foreground px-6 py-2 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">{t("studio.overview.noAccess.cta")}</Link>
       </div>
     </StudioShell>
   );
 
   if (showWelcome) return (
-    <StudioShell title="Übersicht" eyebrow="Willkommen">
+    <StudioShell title={t("studio.overview.title")} eyebrow={t("studio.overview.eyebrow.welcome")}>
       <DesignerWelcome name={firstName} onSkip={dismissWelcome} />
     </StudioShell>
   );
 
   return (
-    <StudioShell title="Übersicht" eyebrow="Übersicht">
+    <StudioShell title={t("studio.overview.title")} eyebrow={t("studio.overview.eyebrow.overview")}>
       {/* Greeting */}
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl font-medium md:text-4xl">
-            {greetingByHour()}, <span className="capitalize">{firstName}</span>.
+            {greetingByHour(t)}, <span className="capitalize">{firstName}</span>.
           </h1>
           <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-serif text-lg text-foreground leading-none">{level.glyph}</span>
             {level.label}
             {visitorsYesterday !== null && visitorsYesterday > 0 && (
-              <> · gestern {visitorsYesterday} Besucher</>
+              <> · {t("studio.overview.visitorsYesterday", { n: visitorsYesterday })}</>
             )}
           </p>
         </div>
@@ -431,10 +439,10 @@ export default function StudioOverview() {
       {/* Begleiter — der Weg zur eigenen Marke, immer einen Klick entfernt */}
       <Link to="/studio/aufbau" className="mb-6 flex flex-wrap items-center justify-between gap-4 border-[1.5px] border-foreground bg-white px-6 py-4 hover:bg-foreground hover:text-background">
         <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] opacity-60">Dein Begleiter</p>
-          <p className="mt-1 font-serif text-lg">Deine Marke aufbauen — Schritt für Schritt.</p>
+          <p className="text-[0.6rem] uppercase tracking-[0.28em] opacity-60">{t("studio.overview.companion.eyebrow")}</p>
+          <p className="mt-1 font-serif text-lg">{t("studio.overview.companion.body")}</p>
         </div>
-        <span className="text-[0.62rem] uppercase tracking-[0.28em]">Weiter →</span>
+        <span className="text-[0.62rem] uppercase tracking-[0.28em]">{t("studio.overview.companion.cta")}</span>
       </Link>
 
       {/* DEIN NÄCHSTER ZUG — die grösste Karte */}
@@ -442,8 +450,8 @@ export default function StudioOverview() {
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0 max-w-2xl">
             <p className="flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
-              <ArrowRight className="h-3 w-3" /> Dein nächster Zug
-              {nextMove.urgency === "hoch" && <span className="border-[1.5px] border-destructive px-1.5 text-destructive">jetzt</span>}
+              <ArrowRight className="h-3 w-3" /> {t("studio.overview.nextMove.eyebrow")}
+              {nextMove.urgency === "hoch" && <span className="border-[1.5px] border-destructive px-1.5 text-destructive">{t("studio.overview.nextMove.urgent")}</span>}
             </p>
             <h2 className="mt-3 font-serif text-2xl leading-tight md:text-3xl">{nextMove.headline}</h2>
             <p className="mt-3 text-sm text-foreground/70">{nextMove.reason}</p>
@@ -467,7 +475,7 @@ export default function StudioOverview() {
       <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
         <div className="flex items-center justify-between gap-4">
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">
-            {milestones.verwandlung_at ? "Die Verwandlung ist erreicht" : "Die Verwandlung"}
+            {milestones.verwandlung_at ? t("studio.overview.verwandlung.reached") : t("studio.overview.verwandlung.title")}
           </p>
           {milestones.verwandlung_at && <span className="font-serif text-lg leading-none">♛</span>}
         </div>
@@ -493,7 +501,7 @@ export default function StudioOverview() {
           })}
         </ol>
         <p className="mt-3 text-xs text-muted-foreground">
-          Jede Stufe entsteht aus echtem Tun — nie durch einen Plan. Pläne kaufen Werkzeuge, keine Ränge.
+          {t("studio.overview.verwandlung.hint")}
         </p>
       </section>
 
@@ -503,7 +511,7 @@ export default function StudioOverview() {
           {(["all", ...availableWorlds] as const).map((w) => (
             <button key={w} onClick={() => setWorldFilter(w as "all" | World)}
               className={`border-[1.5px] px-3 py-1.5 text-[0.68rem] tracking-wide ${worldFilter === w ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:bg-muted"}`}>
-              {w === "all" ? "Alle" : w}
+              {w === "all" ? t("studio.overview.worldFilter.all") : w}
             </button>
           ))}
         </div>
@@ -515,32 +523,32 @@ export default function StudioOverview() {
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <span className="flex h-8 w-8 items-center justify-center border border-background/25 font-serif">♟</span>
-              <p className="text-[0.62rem] uppercase tracking-[0.28em] text-background/60">PAWN Copilot · Wochenspiegel</p>
+              <p className="text-[0.62rem] uppercase tracking-[0.28em] text-background/60">{t("studio.overview.copilot.eyebrow")}</p>
             </div>
             <p className="mt-4 font-serif text-xl leading-relaxed md:text-2xl">
-              {mirror?.text ?? "Ich schaue mir gerade deine Woche an…"}
+              {mirror?.text ?? t("studio.overview.copilot.thinking")}
             </p>
           </div>
           <Sparkles className="h-5 w-5 shrink-0 text-background/60" />
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
-          <button onClick={generateCampaign} className="border border-background bg-background px-4 py-2 text-[0.68rem] tracking-wide text-foreground hover:bg-background/90">Kampagne entwerfen</button>
-          <button onClick={copilot.open} className="border border-background/50 px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-background/10">Nachfragen</button>
+          <button onClick={generateCampaign} className="border border-background bg-background px-4 py-2 text-[0.68rem] tracking-wide text-foreground hover:bg-background/90">{t("studio.overview.copilot.draftCampaign")}</button>
+          <button onClick={copilot.open} className="border border-background/50 px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-background/10">{t("studio.overview.copilot.ask")}</button>
         </div>
       </section>
 
       {/* KPIs — einklappbar */}
       <section className="mb-6 border-[1.5px] border-border bg-white">
         <button type="button" onClick={() => setShowKpi((v) => !v)} className="flex w-full items-center justify-between px-5 py-3">
-          <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Zahlen · Woche</span>
+          <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.kpi.eyebrow")}</span>
           {showKpi ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {showKpi && (
           <div className="grid gap-3 border-t border-border p-4 md:grid-cols-4">
-            <KpiCard label="Umsatz 30T" value={`€ ${revenue30.toLocaleString("de-DE", { maximumFractionDigits: 0 })}`} sparkline={series} />
-            <KpiCard label="Bestellungen 30T" value={String(orderCount)} sparkline={ordersSeries} link="/studio/bestellungen" />
-            <KpiCard label="Merkzettel-Zugänge" value={String(wishTotal)} sparkline={wishSeries} />
-            <KpiCard label="Bestand kritisch" value={String(criticalStock)} link="/studio/produkte" highlight={criticalStock > 0} />
+            <KpiCard label={t("studio.overview.kpi.revenue30")} value={`€ ${revenue30.toLocaleString("de-DE", { maximumFractionDigits: 0 })}`} sparkline={series} />
+            <KpiCard label={t("studio.overview.kpi.orders30")} value={String(orderCount)} sparkline={ordersSeries} link="/studio/bestellungen" />
+            <KpiCard label={t("studio.overview.kpi.wishlist")} value={String(wishTotal)} sparkline={wishSeries} />
+            <KpiCard label={t("studio.overview.kpi.criticalStock")} value={String(criticalStock)} link="/studio/produkte" highlight={criticalStock > 0} />
           </div>
         )}
       </section>
@@ -550,42 +558,42 @@ export default function StudioOverview() {
       <section className="mb-8">
         <div className="mb-4 flex items-baseline justify-between">
           <div>
-            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Kollektion</p>
-            <h2 className="mt-1 font-serif text-2xl">{filteredProducts.length} {filteredProducts.length === 1 ? "Stück" : "Stücke"}</h2>
+            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.collection.eyebrow")}</p>
+            <h2 className="mt-1 font-serif text-2xl">{filteredProducts.length === 1 ? t("studio.overview.collection.count.one", { n: filteredProducts.length }) : t("studio.overview.collection.count.many", { n: filteredProducts.length })}</h2>
           </div>
-          <Link to="/studio/produkte" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">Alle Produkte →</Link>
+          <Link to="/studio/produkte" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">{t("studio.overview.collection.allProducts")}</Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.slice(0, 7).map((p) => (
             <article key={p.id} className="group border border-border bg-white">
               <div className="relative aspect-[4/5] overflow-hidden bg-muted">
-                {p.image_url ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Kein Bild</div>}
+                {p.image_url ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{t("studio.overview.product.noImage")}</div>}
                 <span className={`absolute left-3 top-3 border px-2 py-1 text-[0.6rem] tracking-wider ${p.inventory_mode === "stock" ? "border-border bg-background text-foreground" : "border-transparent bg-foreground text-background"}`}>
-                  {p.inventory_mode === "stock" ? `Lager · ${p.stock_quantity}` : `Auf Anfertigung · ${p.lead_time_days ?? "—"} T`}
+                  {p.inventory_mode === "stock" ? t("studio.overview.product.stock", { n: p.stock_quantity }) : t("studio.overview.product.madeToOrder", { days: p.lead_time_days ?? "—" })}
                 </span>
               </div>
               <div className="p-4">
                 <p className="truncate font-serif text-base">{p.name}</p>
                 <p className="mt-0.5 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{p.world}</p>
                 {p.inventory_mode === "stock" && p.stock_quantity < 3 && (
-                  <p className="mt-2 flex items-center gap-1 text-[0.68rem] text-destructive"><AlertTriangle className="h-3 w-3" /> {p.stock_quantity === 0 ? "Ausverkauft" : `Nur noch ${p.stock_quantity}`}</p>
+                  <p className="mt-2 flex items-center gap-1 text-[0.68rem] text-destructive"><AlertTriangle className="h-3 w-3" /> {p.stock_quantity === 0 ? t("studio.overview.product.soldOut") : t("studio.overview.product.lowStock", { n: p.stock_quantity })}</p>
                 )}
                 <div className="mt-3 flex items-center justify-between">
                   <p className="tabular-nums text-sm">€ {p.price.toLocaleString("de-DE")}</p>
                   <label className="flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
                     <input type="checkbox" checked={p.status === "published"} onChange={() => togglePublish(p)} className="h-4 w-8 cursor-pointer appearance-none rounded-full border border-border bg-muted transition-colors checked:bg-foreground" />
-                    <span>{p.status === "published" ? "Live" : "Entwurf"}</span>
+                    <span>{p.status === "published" ? t("studio.overview.product.live") : t("studio.overview.product.draft")}</span>
                   </label>
                 </div>
                 <p className="mt-2 text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
-                  {p.view_count ?? 0} Aufrufe · {shopClicksByProduct[p.id] ?? 0} Shop-Klicks · {salesBySlug[p.slug] ?? 0} verkauft
+                  {t("studio.overview.product.stats", { views: p.view_count ?? 0, clicks: shopClicksByProduct[p.id] ?? 0, sales: salesBySlug[p.slug] ?? 0 })}
                 </p>
               </div>
             </article>
           ))}
           <Link to="/studio/produkte/neu" className="flex aspect-[4/5] flex-col items-center justify-center border border-dashed border-border bg-white text-muted-foreground hover:border-foreground hover:text-foreground">
             <Plus className="h-6 w-6" />
-            <p className="mt-3 text-[0.68rem] uppercase tracking-[0.24em]">Neues Stück anlegen</p>
+            <p className="mt-3 text-[0.68rem] uppercase tracking-[0.24em]">{t("studio.overview.product.addNew")}</p>
           </Link>
         </div>
       </section>
@@ -593,7 +601,7 @@ export default function StudioOverview() {
       {/* Bottom two-column — einklappbar */}
       <section className="mb-2 border-[1.5px] border-border bg-white">
         <button type="button" onClick={() => setShowLower((v) => !v)} className="flex w-full items-center justify-between px-5 py-3">
-          <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Bestellungen · Kampagnen · Nachrichten</span>
+          <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.lower.eyebrow")}</span>
           {showLower ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       </section>
@@ -603,13 +611,13 @@ export default function StudioOverview() {
         {/* Orders */}
         <div className="border border-border bg-white p-6">
           <div className="mb-4 flex items-baseline justify-between">
-            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Letzte Bestellungen</p>
-            <Link to="/studio/bestellungen" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">Alle →</Link>
+            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.orders.eyebrow")}</p>
+            <Link to="/studio/bestellungen" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">{t("studio.overview.viewAll")}</Link>
           </div>
           {paid.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">Noch keine bezahlten Bestellungen.</p>
-              <p className="mt-1 text-xs text-muted-foreground">Sobald deine ersten Stücke verkauft werden, erscheinen sie hier.</p>
+              <p className="text-sm text-muted-foreground">{t("studio.overview.orders.empty.title")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("studio.overview.orders.empty.body")}</p>
             </div>
           ) : (
             <ul className="divide-y divide-border">
@@ -618,12 +626,12 @@ export default function StudioOverview() {
                   <div className="min-w-0">
                     <p className="truncate font-serif text-base">{l.product_name}</p>
                     <p className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">
-                      {(l.customer_first_name ?? "Kund·in")}{l.customer_country ? ` · ${l.customer_country}` : ""} · {new Date(l.order_created_at).toLocaleDateString("de-DE")}
+                      {(l.customer_first_name ?? t("studio.overview.orders.customerFallback"))}{l.customer_country ? ` · ${l.customer_country}` : ""} · {new Date(l.order_created_at).toLocaleDateString("de-DE")}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="tabular-nums text-sm">€ {(l.unit_price * l.qty).toLocaleString("de-DE")}</p>
-                    <span className="text-[0.6rem] uppercase tracking-[0.22em] text-foreground">Bezahlt</span>
+                    <span className="text-[0.6rem] uppercase tracking-[0.22em] text-foreground">{t("studio.overview.orders.paid")}</span>
                   </div>
                 </li>
               ))}
@@ -634,13 +642,13 @@ export default function StudioOverview() {
         {/* Pending campaign */}
         <div className="border border-border bg-white p-6">
           <div className="mb-4 flex items-baseline justify-between">
-            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Kampagne wartet auf dich</p>
-            <Link to="/studio/kampagnen" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">Alle →</Link>
+            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.campaign.eyebrow")}</p>
+            <Link to="/studio/kampagnen" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">{t("studio.overview.viewAll")}</Link>
           </div>
           {!pendingCampaign ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">Gerade wartet nichts.</p>
-              <button onClick={generateCampaign} className="mt-3 border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">Kampagne mit Copilot entwerfen</button>
+              <p className="text-sm text-muted-foreground">{t("studio.overview.campaign.empty")}</p>
+              <button onClick={generateCampaign} className="mt-3 border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.overview.campaign.draftWithCopilot")}</button>
             </div>
           ) : (
             <>
@@ -652,10 +660,10 @@ export default function StudioOverview() {
                 )}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={() => approveCampaign(pendingCampaign.id)} className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] tracking-wide text-background">Freigeben</button>
-                <Link to={`/studio/kampagnen`} className="border border-border px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Änderungen wünschen</Link>
+                <button onClick={() => approveCampaign(pendingCampaign.id)} className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] tracking-wide text-background">{t("studio.overview.campaign.approve")}</button>
+                <Link to={`/studio/kampagnen`} className="border border-border px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">{t("studio.overview.campaign.requestChanges")}</Link>
               </div>
-              <p className="mt-3 text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">Nichts wird ohne deine Freigabe veröffentlicht.</p>
+              <p className="mt-3 text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">{t("studio.overview.campaign.noAutoPublish")}</p>
             </>
           )}
         </div>
@@ -663,11 +671,11 @@ export default function StudioOverview() {
         {/* Messages */}
         <div className="border border-border bg-white p-6 lg:col-span-2">
           <div className="mb-4 flex items-baseline justify-between">
-            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Nachrichten</p>
-            <Link to="/studio/nachrichten" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">Alle →</Link>
+            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.messages.eyebrow")}</p>
+            <Link to="/studio/nachrichten" className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">{t("studio.overview.viewAll")}</Link>
           </div>
           {messages.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Kein Posteingang zu zeigen.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("studio.overview.messages.empty")}</p>
           ) : (
             <ul className="divide-y divide-border">
               {messages.map((m) => (

@@ -5,6 +5,9 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
 import { handleOrderPaid, type PaidSessionLike } from "../_shared/orderPaid.ts";
+import { pickByLang } from "../_shared/locale.ts";
+
+interface Bilingual { de: string; en: string }
 
 function ok(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -48,18 +51,21 @@ Deno.serve(async (req) => {
       return data;
     }
 
-    async function notifyHouse(orderId: string, title: string, body: string) {
+    async function notifyHouse(orderId: string, title: Bilingual, body: Bilingual) {
       const { data: order } = await admin.from("orders").select("items").eq("id", orderId).maybeSingle();
       const items = ((order?.items ?? []) as { slug?: string }[]).map((i) => i.slug).filter(Boolean) as string[];
       if (!items.length) return;
       const { data: prods } = await admin.from("products").select("designer_id").in("slug", items);
       const ids = Array.from(new Set((prods ?? []).map((p) => p.designer_id).filter(Boolean)));
       if (!ids.length) return;
-      const { data: designers } = await admin.from("designers").select("user_id").in("id", ids);
+      const { data: designers } = await admin.from("designers").select("user_id, preferred_language").in("id", ids);
       for (const d of designers ?? []) {
         if (!d.user_id) continue;
         await admin.from("notifications").insert({
-          user_id: d.user_id, type: "order.payment", title, body, link: "/studio/bestellungen",
+          user_id: d.user_id, type: "order.payment",
+          title: pickByLang(d.preferred_language, title.de, title.en),
+          body: pickByLang(d.preferred_language, body.de, body.en),
+          link: "/studio/bestellungen",
         });
       }
     }
@@ -110,8 +116,13 @@ Deno.serve(async (req) => {
           }
           await notifyHouse(
             order.id,
-            full ? "Eine Bestellung wurde vollständig erstattet." : "Eine Bestellung wurde teilweise erstattet.",
-            `Erstatteter Betrag: € ${(refunded / 100).toFixed(2)}. Details findest du in deinem Stripe-Konto.`,
+            full
+              ? { de: "Eine Bestellung wurde vollständig erstattet.", en: "An order was fully refunded." }
+              : { de: "Eine Bestellung wurde teilweise erstattet.", en: "An order was partially refunded." },
+            {
+              de: `Erstatteter Betrag: € ${(refunded / 100).toFixed(2)}. Details findest du in deinem Stripe-Konto.`,
+              en: `Refunded amount: € ${(refunded / 100).toFixed(2)}. Details are in your Stripe account.`,
+            },
           );
         }
 
@@ -129,8 +140,13 @@ Deno.serve(async (req) => {
           await admin.from("orders").update({ dispute_status: dispute.status, stripe_charge_id: chargeId }).eq("id", target);
           await notifyHouse(
             target,
-            event.type === "charge.dispute.created" ? "Zu einer Bestellung gibt es eine Rückbuchung." : "Eine Rückbuchung wurde abgeschlossen.",
-            "Die Zahlung läuft über das Stripe-Konto deines Hauses — Nachweise reichst du direkt in deinem Stripe-Dashboard ein.",
+            event.type === "charge.dispute.created"
+              ? { de: "Zu einer Bestellung gibt es eine Rückbuchung.", en: "An order has a chargeback." }
+              : { de: "Eine Rückbuchung wurde abgeschlossen.", en: "A chargeback has been resolved." },
+            {
+              de: "Die Zahlung läuft über das Stripe-Konto deines Hauses — Nachweise reichst du direkt in deinem Stripe-Dashboard ein.",
+              en: "The payment runs through your house's Stripe account — submit evidence directly in your Stripe dashboard.",
+            },
           );
         }
         break;
@@ -140,13 +156,17 @@ Deno.serve(async (req) => {
       case "payout.failed": {
         const payout = event.data.object as Stripe.Payout;
         if (account) {
-          const { data: designer } = await admin.from("designers").select("id, user_id").eq("stripe_account_id", account).maybeSingle();
+          const { data: designer } = await admin.from("designers").select("id, user_id, preferred_language").eq("stripe_account_id", account).maybeSingle();
           if (designer?.user_id) {
             await admin.from("notifications").insert({
               user_id: designer.user_id,
               type: event.type === "payout.paid" ? "payout.paid" : "payout.failed",
-              title: event.type === "payout.paid" ? "Auszahlung unterwegs." : "Eine Auszahlung ist fehlgeschlagen.",
-              body: `Betrag: € ${((payout.amount ?? 0) / 100).toFixed(2)}. Details in deinem Stripe-Konto.`,
+              title: pickByLang(designer.preferred_language,
+                event.type === "payout.paid" ? "Auszahlung unterwegs." : "Eine Auszahlung ist fehlgeschlagen.",
+                event.type === "payout.paid" ? "Payout on its way." : "A payout has failed."),
+              body: pickByLang(designer.preferred_language,
+                `Betrag: € ${((payout.amount ?? 0) / 100).toFixed(2)}. Details in deinem Stripe-Konto.`,
+                `Amount: € ${((payout.amount ?? 0) / 100).toFixed(2)}. Details are in your Stripe account.`),
               link: "/studio/auszahlung",
             });
           }

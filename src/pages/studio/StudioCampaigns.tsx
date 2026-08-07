@@ -5,6 +5,7 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Check, MessageSquare, X } from "lucide-react";
 
@@ -22,10 +23,10 @@ interface CampaignRow {
   created_at: string;
 }
 
-const STATUS_LABEL: Record<Status, string> = {
-  draft: "Entwurf", proposed: "Vorgeschlagen", in_review: "In Prüfung",
-  changes_requested: "Änderung gewünscht", approved: "Freigegeben",
-  published: "Veröffentlicht", declined: "Abgelehnt",
+const STATUS_LABEL_KEY: Record<Status, string> = {
+  draft: "studio.campaigns.status.draft", proposed: "studio.campaigns.status.proposed", in_review: "studio.campaigns.status.inReview",
+  changes_requested: "studio.campaigns.status.changesRequested", approved: "studio.campaigns.status.approved",
+  published: "studio.campaigns.status.published", declined: "studio.campaigns.status.declined",
 };
 
 const STATUS_TONE: Record<Status, string> = {
@@ -45,6 +46,7 @@ interface EditionCard {
 }
 
 export default function StudioCampaigns() {
+  const { t } = useI18n();
   const { designer, loading } = useMyDesigner();
   const { user } = useAuth();
   const [items, setItems] = useState<CampaignRow[]>([]);
@@ -98,10 +100,10 @@ export default function StudioCampaigns() {
         } as never);
         if (card.campaign_id) await supabase.from("campaigns").update({ status: "approved" }).eq("id", card.campaign_id);
         await supabase.from("edition_participants" as never).update({ status: "approved" } as never).eq("id", card.id);
-        toast.success("Umgesetzt — landet im Archiv.");
+        toast.success(t("studio.campaigns.edition.approvedToast"));
       } else {
         await supabase.from("edition_participants" as never).update({ status: "declined" } as never).eq("id", card.id);
-        toast.success("Verworfen.");
+        toast.success(t("studio.campaigns.edition.declinedToast"));
       }
       void refreshEditions();
     } catch (e) {
@@ -114,7 +116,7 @@ export default function StudioCampaigns() {
   const decide = async (status: "approved" | "changes_requested", comment?: string) => {
     if (!active || !user) return;
     if (status === "changes_requested" && !comment?.trim()) {
-      return toast.error("Bitte beschreibe kurz, was du geändert haben möchtest.");
+      return toast.error(t("studio.campaigns.changeCommentRequired"));
     }
     setBusy(true);
     const newFeedback: FeedbackEntry[] = [
@@ -126,61 +128,60 @@ export default function StudioCampaigns() {
       .eq("id", active.id);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success(status === "approved" ? "Freigegeben." : "Änderungswunsch gesendet.");
+    toast.success(status === "approved" ? t("studio.campaigns.approvedToast") : t("studio.campaigns.changesRequestedToast"));
     setActive(null); setFeedbackText("");
     void refresh();
   };
 
-  if (loading) return <StudioShell title="Kampagnen"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Kampagnen"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.campaigns.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.campaigns.title")}><p className="text-muted-foreground">{t("studio.campaigns.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title="Kampagnen" eyebrow="Nichts geht ohne deine Freigabe raus">
+    <StudioShell title={t("studio.campaigns.title")} eyebrow={t("studio.campaigns.eyebrow")}>
       <HowItWorks
         storageKey="campaigns"
-        title="Kampagnen"
-        intro="Eine Kampagne ist ein kurzes Video oder Bild, das ein Stück auf PAWN und – sobald verbunden – auf sozialen Kanälen zeigt. Du siehst jeden Vorschlag zuerst und gibst ihn frei."
+        title={t("studio.campaigns.title")}
+        intro={t("studio.campaigns.howItWorks.intro")}
         steps={[
-          "PAWN oder du entwerft eine Kampagne zu einem Stück.",
-          "Prüf den Vorschlag, gib frei oder wünsche Änderungen.",
-          "Freigegebene Kampagnen landen in der Warteschlange und werden geplant.",
+          t("studio.campaigns.howItWorks.step1"),
+          t("studio.campaigns.howItWorks.step2"),
+          t("studio.campaigns.howItWorks.step3"),
         ]}
       />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Aus deinen Produkten entstehen Kampagnenvorschläge — als Video, Post oder Text. Du entscheidest,
-          was veröffentlicht wird. Jeder Änderungswunsch fließt in die nächste Runde.
+          {t("studio.campaigns.intro")}
         </p>
         <a href="/studio/kampagnen/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:opacity-90">
-          + Neue Kampagne
+          + {t("studio.campaigns.newCampaign")}
         </a>
       </div>
 
       {editionCards.length > 0 && (
         <div className="mt-8 space-y-4">
-          <p className="editorial-eyebrow">Gemeinsame Kampagne — PAWN schlägt vor</p>
+          <p className="editorial-eyebrow">{t("studio.campaigns.edition.sectionTitle")}</p>
           {editionCards.map((card) => (
             <div key={card.id} className="border-[1.5px] border-black bg-white p-5">
-              <p className="font-serif text-xl">{card.editions?.theme ?? "Gemeinsame Kampagne"}</p>
+              <p className="font-serif text-xl">{card.editions?.theme ?? t("studio.campaigns.edition.fallbackTheme")}</p>
               <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{card.editions?.world ?? "—"}</p>
               {card.status === "pending" ? (
-                <p className="mt-3 text-sm text-muted-foreground">Dein Video wird gerade produziert — das dauert ein paar Minuten.</p>
+                <p className="mt-3 text-sm text-muted-foreground">{t("studio.campaigns.edition.producing")}</p>
               ) : (
                 <>
                   {card.video_url && (
                     <video src={card.video_url} controls playsInline className="mt-4 aspect-[9/16] w-full max-w-xs border border-border bg-black object-contain" />
                   )}
                   <p className="mt-3 text-sm text-muted-foreground">
-                    PAWN hat dieses Video in deiner Bildsprache erzeugt. Nichts wird veröffentlicht, ohne dass du zustimmst.
+                    {t("studio.campaigns.edition.disclaimer")}
                   </p>
                   <div className="mt-4 flex gap-2">
                     <button onClick={() => decideEdition(card, true)} disabled={editionBusy === card.id}
                       className="border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] text-background disabled:opacity-50">
-                      Umsetzen
+                      {t("studio.campaigns.edition.approveBtn")}
                     </button>
                     <button onClick={() => decideEdition(card, false)} disabled={editionBusy === card.id}
                       className="border border-border px-4 py-2 text-[0.65rem] uppercase tracking-[0.2em] hover:border-foreground disabled:opacity-50">
-                      Verwerfen
+                      {t("studio.campaigns.edition.declineBtn")}
                     </button>
                   </div>
                 </>
@@ -192,9 +193,9 @@ export default function StudioCampaigns() {
 
       {items.length === 0 ? (
         <div className="mt-8 border border-dashed border-border p-12 text-center">
-          <p className="editorial-eyebrow">Ruhig</p>
-          <p className="mt-3 font-serif text-2xl">Noch keine Kampagnenvorschläge.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Starte deine erste Kampagne — dein Reel entsteht in wenigen Minuten.</p>
+          <p className="editorial-eyebrow">{t("studio.campaigns.empty.eyebrow")}</p>
+          <p className="mt-3 font-serif text-2xl">{t("studio.campaigns.empty.title")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("studio.campaigns.empty.body")}</p>
         </div>
       ) : (
         <ul className="mt-8 divide-y divide-border border border-border bg-card">
@@ -204,12 +205,12 @@ export default function StudioCampaigns() {
                 <div className="flex items-center gap-3">
                   <p className="font-serif text-lg">{c.title}</p>
                   <span className={`px-2 py-0.5 text-[0.55rem] uppercase tracking-[0.28em] ${STATUS_TONE[c.status]}`}>
-                    {STATUS_LABEL[c.status]}
+                    {t(STATUS_LABEL_KEY[c.status])}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{c.kind} · {new Date(c.created_at).toLocaleDateString("de-DE")}</p>
               </div>
-              {c.status === "proposed" && <span className="text-[0.62rem] uppercase tracking-[0.28em] text-accent">Prüfung offen →</span>}
+              {c.status === "proposed" && <span className="text-[0.62rem] uppercase tracking-[0.28em] text-accent">{t("studio.campaigns.reviewOpen")}</span>}
             </li>
           ))}
         </ul>
@@ -220,7 +221,7 @@ export default function StudioCampaigns() {
           <div className="w-full max-w-2xl border border-border bg-card p-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="editorial-eyebrow">{active.kind} · {STATUS_LABEL[active.status]}</p>
+                <p className="editorial-eyebrow">{active.kind} · {t(STATUS_LABEL_KEY[active.status])}</p>
                 <h2 className="mt-1 font-serif text-2xl">{active.title}</h2>
               </div>
               <button onClick={() => setActive(null)}><X className="h-4 w-4" /></button>
@@ -236,13 +237,13 @@ export default function StudioCampaigns() {
               )}
               {active.content.script && (
                 <div>
-                  <p className="editorial-eyebrow">Skript</p>
+                  <p className="editorial-eyebrow">{t("studio.campaigns.script")}</p>
                   <p className="mt-2 whitespace-pre-wrap font-serif italic">{active.content.script}</p>
                 </div>
               )}
               {active.content.caption && (
                 <div>
-                  <p className="editorial-eyebrow">Caption</p>
+                  <p className="editorial-eyebrow">{t("studio.campaigns.caption")}</p>
                   <p className="mt-2 text-sm">{active.content.caption}</p>
                 </div>
               )}
@@ -252,16 +253,16 @@ export default function StudioCampaigns() {
               {active.status === "approved" && active.content.asset_url && (
                 <div className="border border-border bg-muted/40 p-4">
                   <a href={active.content.asset_url} download className="border border-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
-                    Für deinen eigenen Kanal herunterladen
+                    {t("studio.campaigns.downloadForOwnChannel")}
                   </a>
-                  <p className="mt-3 text-xs text-muted-foreground">Musik fügst du direkt in Reels oder TikTok hinzu — dort ist sie lizenzsicher.</p>
+                  <p className="mt-3 text-xs text-muted-foreground">{t("studio.campaigns.musicNote")}</p>
                 </div>
               )}
             </section>
 
             {active.feedback && active.feedback.length > 0 && (
               <section className="mt-6 border-t border-border pt-6">
-                <p className="editorial-eyebrow">Verlauf</p>
+                <p className="editorial-eyebrow">{t("studio.campaigns.history")}</p>
                 <ul className="mt-3 space-y-2 text-sm">
                   {active.feedback.map((f, i) => (
                     <li key={i} className="border-l-2 border-border pl-3">
@@ -278,22 +279,22 @@ export default function StudioCampaigns() {
             {(active.status === "proposed" || active.status === "in_review") && (
               <section className="mt-6 border-t border-border pt-6">
                 <label className="block">
-                  <span className="editorial-eyebrow flex items-center gap-2"><MessageSquare className="h-3 w-3" /> Deine Notiz (Pflicht bei Änderungswunsch)</span>
+                  <span className="editorial-eyebrow flex items-center gap-2"><MessageSquare className="h-3 w-3" /> {t("studio.campaigns.noteLabel")}</span>
                   <textarea
                     value={feedbackText}
                     onChange={(e) => setFeedbackText(e.target.value)}
                     className="mt-2 w-full border border-border bg-background p-3 text-sm min-h-24"
-                    placeholder="Was soll sich ändern? Was passt schon?"
+                    placeholder={t("studio.campaigns.notePlaceholder")}
                   />
                 </label>
                 <div className="mt-4 flex gap-3">
                   <button onClick={() => decide("approved", feedbackText || undefined)} disabled={busy}
                     className="flex items-center gap-2 border border-accent bg-accent px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-accent-foreground disabled:opacity-50">
-                    <Check className="h-3 w-3" /> Freigeben
+                    <Check className="h-3 w-3" /> {t("studio.campaigns.approveBtn")}
                   </button>
                   <button onClick={() => decide("changes_requested", feedbackText)} disabled={busy}
                     className="border border-destructive px-5 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-destructive disabled:opacity-50">
-                    Änderung wünschen
+                    {t("studio.campaigns.requestChangesBtn")}
                   </button>
                 </div>
               </section>

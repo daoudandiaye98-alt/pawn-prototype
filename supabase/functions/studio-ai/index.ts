@@ -3,6 +3,7 @@
 // FEHLERTOLERANT: bei internem Fehler immer 200 + fallback-Inhalt, nie non-2xx.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { normalizeLocale, localeInstruction } from "../_shared/locale.ts";
 
 type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft" | "chat" | "aufbau";
 type Msg = { role: "user" | "assistant" | "system"; content: string };
@@ -136,23 +137,28 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   // Parse body up front so fallbacks can reference mode
-  let body: { mode?: Mode; product_id?: string; question?: string; messages?: Msg[]; stage?: string; open_steps?: string[] } = {};
+  let body: { mode?: Mode; product_id?: string; question?: string; messages?: Msg[]; stage?: string; open_steps?: string[]; locale?: string } = {};
   try { body = await req.json(); } catch { /* ignore */ }
   const mode: Mode = (body.mode ?? "chat") as Mode;
+  const locale = normalizeLocale(body.locale);
 
+  const fallbackLocale = normalizeLocale(body.locale);
   const fallbackFor = (): Record<string, unknown> => {
     if (mode === "weekly_mirror") {
-      return { text: "Ich schaue mir gerade deine Woche an — noch keine belastbaren Signale. Ein neues Stück oder eine Kampagne hilft, den Raum zu füllen.",
+      return { text: fallbackLocale === "en"
+          ? "I'm looking at your week right now — no solid signals yet. A new piece or a campaign helps fill the space."
+          : "Ich schaue mir gerade deine Woche an — noch keine belastbaren Signale. Ein neues Stück oder eine Kampagne hilft, den Raum zu füllen.",
         stats: { views_total: 0, wish_total: 0, orders_count: 0, revenue_eur: 0, top: [] },
         provider: "fallback", fallback: true };
     }
     if (mode === "campaign_draft") {
-      return { caption: "Ein Stück, das sich langsam liest.", hashtags: ["#pawn", "#independentdesign", "#slowfashion", "#craft"], provider: "fallback", fallback: true };
+      return { caption: fallbackLocale === "en" ? "A piece that reads slowly." : "Ein Stück, das sich langsam liest.",
+        hashtags: ["#pawn", "#independentdesign", "#slowfashion", "#craft"], provider: "fallback", fallback: true };
     }
     if (mode === "product_text" || mode === "product_note") {
-      return { text: "Ein Stück, das seine Geschichte selbst erzählt.", provider: "fallback", fallback: true };
+      return { text: fallbackLocale === "en" ? "A piece that tells its own story." : "Ein Stück, das seine Geschichte selbst erzählt.", provider: "fallback", fallback: true };
     }
-    return { reply: "Ich bin gerade kurz still — versuch's in einem Moment noch einmal.", provider: "fallback", fallback: true };
+    return { reply: fallbackLocale === "en" ? "I'm quiet for a moment — try again in a bit." : "Ich bin gerade kurz still — versuch's in einem Moment noch einmal.", provider: "fallback", fallback: true };
   };
 
   try {
@@ -170,7 +176,7 @@ Deno.serve(async (req) => {
     const personaText = await loadPrompt(admin);
     const tier: Tier = PLAN_TO_TIER[designer.plan ?? "haus"] ?? "standard";
     const model = await loadModelForTier(admin, tier);
-    const system = personaText;
+    const system = `${personaText}\n\n${localeInstruction(locale)}`;
     void providerName; // provider is now derived from ai() return value
 
     if (mode === "product_text" || mode === "product_note") {
@@ -194,8 +200,8 @@ Welt: ${p.world}
 Tags: ${tags}`;
       const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
       const generated = aiRes.text ?? (isNote
-        ? `Dieses Stück ist entstanden, weil ich ${p.name.toLowerCase()} anders denken wollte — leiser, ehrlicher.`
-        : `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim());
+        ? (locale === "en" ? `This piece exists because I wanted to think about ${p.name.toLowerCase()} differently — quieter, more honest.` : `Dieses Stück ist entstanden, weil ich ${p.name.toLowerCase()} anders denken wollte — leiser, ehrlicher.`)
+        : (locale === "en" ? `${p.name} — a ${p.world} piece from the house of ${designer.brand_name}. ${designer.story ?? ""}`.trim() : `${p.name} — ein ${p.world}-Stück aus dem Atelier ${designer.brand_name}. ${designer.story ?? ""}`.trim()));
       await logResponse(admin, user_id, mode, designer.id, promptUser, generated, aiRes.provider);
       return ok({ text: generated, provider: aiRes.provider });
     }

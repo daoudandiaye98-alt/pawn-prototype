@@ -1227,6 +1227,7 @@ export type Database = {
           page_published_at: string | null
           plan: Database["public"]["Enums"]["designer_plan"]
           portrait_url: string | null
+          preferred_language: string
           published: boolean
           quote: string | null
           quote_role: string | null
@@ -1276,6 +1277,7 @@ export type Database = {
           page_published_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
+          preferred_language?: string
           published?: boolean
           quote?: string | null
           quote_role?: string | null
@@ -1325,6 +1327,7 @@ export type Database = {
           page_published_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
+          preferred_language?: string
           published?: boolean
           quote?: string | null
           quote_role?: string | null
@@ -1899,6 +1902,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      i18n_overrides: {
+        Row: {
+          key: string
+          updated_at: string
+          value_en: string
+          value_en_source: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value_en: string
+          value_en_source?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value_en?: string
+          value_en_source?: string | null
+        }
+        Relationships: []
       }
       jarvis_experiments: {
         Row: {
