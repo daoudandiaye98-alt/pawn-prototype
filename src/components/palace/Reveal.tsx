@@ -1,11 +1,12 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 
 /** Scroll-in reveal via IntersectionObserver. */
-export function Reveal({ children, className = "", delay = 0, as: As = "div" }: {
+export function Reveal({ children, className = "", delay = 0, as: As = "div", style }: {
   children: ReactNode;
   className?: string;
   delay?: number;
   as?: keyof React.JSX.IntrinsicElements;
+  style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
@@ -31,7 +32,7 @@ export function Reveal({ children, className = "", delay = 0, as: As = "div" }: 
     <Tag
       ref={ref as any}
       className={`palace-reveal ${visible ? "is-visible" : ""} ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
+      style={{ ...style, transitionDelay: `${delay}ms` }}
     >
       {children}
     </Tag>
