@@ -4,10 +4,12 @@ import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
 
 export default function StudioBrand() {
+  const { t } = useI18n();
   const { designer, loading, refresh } = useMyDesigner();
   const { user } = useAuth();
   const [form, setForm] = useState({
@@ -47,7 +49,7 @@ export default function StudioBrand() {
     const { error } = await supabase.from("designers").update(form).eq("id", designer.id);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Brand-Page gespeichert.");
+    toast.success(t("studio.brand.toast.saved"));
     void refresh();
   };
 
@@ -60,60 +62,60 @@ export default function StudioBrand() {
     setForm((f) => ({ ...f, [kind]: data?.signedUrl ?? "" }));
   };
 
-  if (loading) return <StudioShell title="Rückblick"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Rückblick"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.brand.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.brand.title")}><p className="text-muted-foreground">{t("studio.brand.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title="Rückblick" eyebrow={`Öffentlich unter /designer/${designer.slug}`}>
+    <StudioShell title={t("studio.brand.title")} eyebrow={t("studio.brand.publicUnder", { slug: designer.slug })}>
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
-          <p className="editorial-eyebrow">Porträt & Story</p>
-          <Field label="Story · für den Katalog">
+          <p className="editorial-eyebrow">{t("studio.brand.section.portraitStory")}</p>
+          <Field label={t("studio.brand.field.story")}>
             <textarea value={form.story} onChange={(e) => setForm({ ...form, story: e.target.value })} className="input min-h-40" />
           </Field>
 
-          <p className="editorial-eyebrow pt-4">Manifest & Zitat</p>
-          <Field label="Manifest / Zitat (groß gesetzt)">
-            <textarea value={form.manifesto} onChange={(e) => setForm({ ...form, manifesto: e.target.value })} className="input min-h-32" placeholder="Ein Satz, der eure Handschrift auf den Punkt bringt." />
+          <p className="editorial-eyebrow pt-4">{t("studio.brand.section.manifestoQuote")}</p>
+          <Field label={t("studio.brand.field.manifesto")}>
+            <textarea value={form.manifesto} onChange={(e) => setForm({ ...form, manifesto: e.target.value })} className="input min-h-32" placeholder={t("studio.brand.field.manifestoPlaceholder")} />
           </Field>
-          <Field label="Kurz-Zitat (optional, zusätzlich)">
+          <Field label={t("studio.brand.field.quote")}>
             <textarea value={form.quote} onChange={(e) => setForm({ ...form, quote: e.target.value })} className="input min-h-20" />
           </Field>
-          <Field label="Signatur · Autor:in / Rolle">
+          <Field label={t("studio.brand.field.quoteRole")}>
             <input value={form.quote_role} onChange={(e) => setForm({ ...form, quote_role: e.target.value })} className="input" />
           </Field>
 
-          <p className="editorial-eyebrow pt-4">Kollektion</p>
-          <Field label={"Kollektionstitel (z.B. \u201eAusgabe 07 — Marmor\u201c)"}>
+          <p className="editorial-eyebrow pt-4">{t("studio.brand.section.collection")}</p>
+          <Field label={t("studio.brand.field.collectionTitle")}>
             <input value={form.collection_title} onChange={(e) => setForm({ ...form, collection_title: e.target.value })} className="input" />
           </Field>
 
-          <p className="editorial-eyebrow pt-4">Atelier</p>
-          <Field label={"Atelier-Caption (z.B. \u201eBerlin · 06:14 Uhr\u201c)"}>
+          <p className="editorial-eyebrow pt-4">{t("studio.brand.section.atelier")}</p>
+          <Field label={t("studio.brand.field.atelierCaption")}>
             <input value={form.atelier_caption} onChange={(e) => setForm({ ...form, atelier_caption: e.target.value })} className="input" />
           </Field>
         </div>
         <div className="space-y-6">
-          <ImageField label="Header-/Porträtbild" url={form.portrait_url || form.hero_image_url} onUpload={(f) => upload("portrait_url", f)} />
-          <ImageField label="Hero-Bild (alternativer Header)" url={form.hero_image_url} onUpload={(f) => upload("hero_image_url", f)} />
-          <ImageField label="Atelier-Bild (Parallax)" url={form.atelier_image_url} onUpload={(f) => upload("atelier_image_url", f)} />
-          <ImageField label="Banner" url={form.banner_url} onUpload={(f) => upload("banner_url", f)} />
+          <ImageField label={t("studio.brand.image.portrait")} url={form.portrait_url || form.hero_image_url} onUpload={(f) => upload("portrait_url", f)} />
+          <ImageField label={t("studio.brand.image.hero")} url={form.hero_image_url} onUpload={(f) => upload("hero_image_url", f)} />
+          <ImageField label={t("studio.brand.image.atelier")} url={form.atelier_image_url} onUpload={(f) => upload("atelier_image_url", f)} />
+          <ImageField label={t("studio.brand.image.banner")} url={form.banner_url} onUpload={(f) => upload("banner_url", f)} />
         </div>
       </div>
       <div className="mt-8 flex justify-end">
         <button onClick={save} disabled={busy} className="border border-accent bg-accent px-6 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-accent-foreground disabled:opacity-50">
-          {busy ? "…" : "Speichern"}
+          {busy ? "…" : t("common.save")}
         </button>
       </div>
 
       <div className="mt-12 border-[1.5px] border-black bg-white p-6 md:p-8">
-        <p className="editorial-eyebrow text-black/50">DNA</p>
-        <h3 className="mt-1 font-serif text-xl leading-tight text-black">Euer Markenprofil</h3>
+        <p className="editorial-eyebrow text-black/50">{t("studio.brand.dna.eyebrow")}</p>
+        <h3 className="mt-1 font-serif text-xl leading-tight text-black">{t("studio.brand.dna.heading")}</h3>
         <p className="mt-2 max-w-xl text-sm text-black/60">
-          PAWN sagt, wie eure Arbeit von außen ankommt — im Vergleich zu eurer eigenen Beschreibung, mit Beleg aus echtem Verhalten.
+          {t("studio.brand.dna.description")}
         </p>
         <Link to="/studio/dna" className="mt-4 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
-          Zum Markenprofil →
+          {t("studio.brand.dna.link")}
         </Link>
       </div>
 
@@ -130,6 +132,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ImageField({ label, url, onUpload }: { label: string; url: string; onUpload: (f: File) => void }) {
+  const { t } = useI18n();
   return (
     <div>
       <p className="editorial-eyebrow">{label}</p>
@@ -137,7 +140,7 @@ function ImageField({ label, url, onUpload }: { label: string; url: string; onUp
         {url && <img src={url} alt="" className="h-full w-full object-cover grayscale" />}
       </div>
       <label className="mt-2 inline-flex cursor-pointer items-center gap-2 border border-dashed border-border px-4 py-2 text-xs">
-        <Upload className="h-3 w-3" /> Neu hochladen
+        <Upload className="h-3 w-3" /> {t("studio.brand.image.uploadNew")}
         <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
       </label>
     </div>
@@ -145,6 +148,7 @@ function ImageField({ label, url, onUpload }: { label: string; url: string; onUp
 }
 
 function ImageUsageConsent() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const [state, setState] = useState<{ contractId: string | null; accepted: boolean; revoked: boolean; loading: boolean }>({ contractId: null, accepted: false, revoked: false, loading: true });
   const [busy, setBusy] = useState(false);
@@ -167,7 +171,7 @@ function ImageUsageConsent() {
     setBusy(false);
     if (error) return toast.error(error.message);
     await supabase.from("domain_events").insert({ type: "designer.consent_accepted", actor: user.id, payload: { kind: "image_usage" } } as never);
-    toast.success("Einwilligung erteilt.");
+    toast.success(t("studio.brand.consent.toastAccepted"));
     void load();
   };
   const revoke = async () => {
@@ -179,7 +183,7 @@ function ImageUsageConsent() {
     setBusy(false);
     if (error) return toast.error(error.message);
     await supabase.from("domain_events").insert({ type: "consent.revoked", actor: user.id, payload: { kind: "image_usage" } } as never);
-    toast.message("Einwilligung widerrufen. Laufende Kampagnen mit diesen Bildern werden pausiert.");
+    toast.message(t("studio.brand.consent.toastRevoked"));
     void load();
   };
 
@@ -188,19 +192,19 @@ function ImageUsageConsent() {
 
   return (
     <section className="mt-12 border border-border bg-card p-6">
-      <p className="editorial-eyebrow">Bildnutzung · Einwilligung</p>
+      <p className="editorial-eyebrow">{t("studio.brand.consent.eyebrow")}</p>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Deine Zustimmung erlaubt PAWN, die von dir eingereichten Bilder für Ausstellungs- und Werbezwecke auf pawn.com und in PAWN-Kanälen zu verwenden. Bildrechte bleiben bei dir. Widerruf jederzeit — laufende Kampagnen mit diesen Bildern werden dann pausiert.
+        {t("studio.brand.consent.description")}
       </p>
       <div className="mt-4 flex items-center gap-3">
         <span className={`inline-flex items-center gap-2 border px-3 py-1 text-[0.62rem] uppercase tracking-[0.28em] ${active ? "border-foreground text-foreground" : "border-border text-muted-foreground"}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-foreground" : "border border-muted-foreground"}`} />
-          {active ? "Aktiv" : state.revoked ? "Widerrufen" : "Nicht erteilt"}
+          {active ? t("studio.brand.consent.active") : state.revoked ? t("studio.brand.consent.revoked") : t("studio.brand.consent.notGranted")}
         </span>
         {active ? (
-          <button type="button" disabled={busy} onClick={revoke} className="border border-destructive px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-destructive disabled:opacity-50">Widerrufen</button>
+          <button type="button" disabled={busy} onClick={revoke} className="border border-destructive px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-destructive disabled:opacity-50">{t("studio.brand.consent.revoke")}</button>
         ) : (
-          <button type="button" disabled={busy} onClick={accept} className="border border-accent bg-accent px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-accent-foreground disabled:opacity-50">Zustimmen</button>
+          <button type="button" disabled={busy} onClick={accept} className="border border-accent bg-accent px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-accent-foreground disabled:opacity-50">{t("studio.brand.consent.accept")}</button>
         )}
       </div>
     </section>

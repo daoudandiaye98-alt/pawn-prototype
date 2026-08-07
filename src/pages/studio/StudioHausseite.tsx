@@ -19,26 +19,27 @@ import {
   DEFAULT_HOUSE_THEME, resolveTheme, type HouseTheme,
   TYPOGRAFIE_LABEL, FLAECHENRHYTHMUS_LABEL, KANTENHAERTE_LABEL, BEWEGUNGSCHARAKTER_LABEL, TEXTUR_LABEL,
 } from "@/features/houseTheme/theme";
+import { useI18n } from "@/lib/i18n";
 
-const BLOCK_LABEL: Record<PageBlockKind, string> = {
-  auftakt: "Großes Bild oben", editorial_text: "Text-Abschnitt", zitat: "Zitat",
-  produktreihe: "Reihe mit Stücken", lookbook_streifen: "Bilderstreifen zum Wischen",
-  banner_seitlich: "Bild seitlich", banner_vollbreite: "Bild über die ganze Breite",
-  ueberlappend: "Zwei Bilder versetzt",
+const BLOCK_LABEL_KEY: Record<PageBlockKind, string> = {
+  auftakt: "studio.hausseite.block.auftakt", editorial_text: "studio.hausseite.block.editorialText", zitat: "studio.hausseite.block.zitat",
+  produktreihe: "studio.hausseite.block.produktreihe", lookbook_streifen: "studio.hausseite.block.lookbookStreifen",
+  banner_seitlich: "studio.hausseite.block.bannerSeitlich", banner_vollbreite: "studio.hausseite.block.bannerVollbreite",
+  ueberlappend: "studio.hausseite.block.ueberlappend",
 };
 
 /** Startvorlagen: ein Klick legt eine sinnvolle Grundstruktur an. */
-const TEMPLATES: { key: string; label: string; hint: string; kinds: PageBlockKind[] }[] = [
-  { key: "ein_stueck", label: "Ein Stück im Mittelpunkt", hint: "Großes Bild, kurzer Text, ein Stück verlinkt", kinds: ["auftakt", "editorial_text", "banner_seitlich"] },
-  { key: "kollektion", label: "Geschichte einer Kollektion", hint: "Bild, Text, Zitat, Reihe mit Stücken", kinds: ["auftakt", "editorial_text", "zitat", "produktreihe"] },
-  { key: "lookbook", label: "Lookbook zum Wischen", hint: "Bilderstreifen, Text, Reihe mit Stücken", kinds: ["lookbook_streifen", "editorial_text", "produktreihe"] },
+const TEMPLATES: { key: string; labelKey: string; hintKey: string; kinds: PageBlockKind[] }[] = [
+  { key: "ein_stueck", labelKey: "studio.hausseite.template.einStueck.label", hintKey: "studio.hausseite.template.einStueck.hint", kinds: ["auftakt", "editorial_text", "banner_seitlich"] },
+  { key: "kollektion", labelKey: "studio.hausseite.template.kollektion.label", hintKey: "studio.hausseite.template.kollektion.hint", kinds: ["auftakt", "editorial_text", "zitat", "produktreihe"] },
+  { key: "lookbook", labelKey: "studio.hausseite.template.lookbook.label", hintKey: "studio.hausseite.template.lookbook.hint", kinds: ["lookbook_streifen", "editorial_text", "produktreihe"] },
 ];
 
 
 const ABSTAND_OPTIONS = [
-  { value: "", label: "Wie Flächenrhythmus des Themas" },
-  { value: "eng", label: "Eng" }, { value: "ruhig", label: "Ruhig" },
-  { value: "luftig", label: "Luftig" }, { value: "episch", label: "Episch" },
+  { value: "", labelKey: "studio.hausseite.abstand.default" },
+  { value: "eng", labelKey: "studio.hausseite.abstand.eng" }, { value: "ruhig", labelKey: "studio.hausseite.abstand.ruhig" },
+  { value: "luftig", labelKey: "studio.hausseite.abstand.luftig" }, { value: "episch", labelKey: "studio.hausseite.abstand.episch" },
 ] as const;
 /** Bausteine, die eine eigene Video-Tonspur erlauben können. */
 const TON_FAEHIG: PageBlockKind[] = ["auftakt", "banner_seitlich", "banner_vollbreite", "lookbook_streifen"];
@@ -51,6 +52,7 @@ const PRODUKT_LINK_FAEHIG: PageBlockKind[] = ["banner_seitlich", "banner_vollbre
 interface ThemeRow extends HouseTheme { id: string; version: number; is_current: boolean; created_at: string }
 
 export default function StudioHausseite() {
+  const { t, locale } = useI18n();
   const { designer, loading } = useMyDesigner();
   const [blocks, setBlocks] = useState<PageBlockRow[]>([]);
   const [media, setMedia] = useState<BlockMediaLite[]>([]);
@@ -87,13 +89,13 @@ export default function StudioHausseite() {
     if (!designer) return;
     setThemeBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-house-theme", { body: { prompt: vibeText.trim() || undefined } });
+      const { data, error } = await supabase.functions.invoke("generate-house-theme", { body: { prompt: vibeText.trim() || undefined, locale } });
       if (error) throw error;
       const r = data as { ok?: boolean; message?: string; error?: string; guardrail_notes?: { grund: string }[] } | null;
-      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Thema konnte nicht erzeugt werden.");
+      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? t("studio.hausseite.theme.genericError"));
       setVibeText("");
       if (r.guardrail_notes?.length) toast.info(r.guardrail_notes.map((n) => n.grund).join(" · "));
-      toast.success("Thema aktualisiert.");
+      toast.success(t("studio.hausseite.theme.updated"));
       void refresh();
     } catch (e) {
       toast.error((e as Error).message);
@@ -108,8 +110,8 @@ export default function StudioHausseite() {
       const { data, error } = await supabase.functions.invoke("generate-house-theme", { body: { action: "revert", revert_to_version: version } });
       if (error) throw error;
       const r = data as { ok?: boolean; message?: string; error?: string } | null;
-      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Fassung konnte nicht übernommen werden.");
-      toast.success(`Fassung ${version} ist jetzt aktiv.`);
+      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? t("studio.hausseite.theme.revertError"));
+      toast.success(t("studio.hausseite.theme.versionActive", { version }));
       void refresh();
     } catch (e) {
       toast.error((e as Error).message);
@@ -137,7 +139,7 @@ export default function StudioHausseite() {
       kinds.map((kind, i) => ({ designer_id: designer.id, kind, position: start + i, content: {} })) as never,
     );
     if (error) return toast.error(error.message);
-    toast.success("Vorlage eingefügt — jetzt Bilder und Text ergänzen.");
+    toast.success(t("studio.hausseite.templateInserted"));
     void refresh();
   };
 
@@ -168,7 +170,7 @@ export default function StudioHausseite() {
     await supabase.from("designers").update({ page_published_at: on ? new Date().toISOString() : null }).eq("id", designer.id);
     setBusy(false);
     setPublished(on ? new Date().toISOString() : null);
-    toast.success(on ? "Deine Markenseite ist online." : "Seite ist wieder offline.");
+    toast.success(on ? t("studio.hausseite.publish.onSuccess") : t("studio.hausseite.publish.offSuccess"));
     // Teil 27b: Der Cover-Moment, kleiner inszeniert — einmalig beim ersten Veröffentlichen der Hausseite.
     if (on && !designer.hausseite_cover_shown_at) {
       const image = designer.hero_image_url ?? designer.banner_url ?? media[0]?.url ?? null;
@@ -187,54 +189,54 @@ export default function StudioHausseite() {
   const hasText = blocks.some((b) => !!b.content.text || !!b.content.heading || !!b.content.quote);
   const hasProduct = blocks.some((b) => !!b.content.product_id || ((b.content.product_ids as string[] | undefined)?.length ?? 0) > 0);
   const checklist = [
-    { ok: hasMedia, label: "Mindestens ein Bild oder Video" },
-    { ok: hasText, label: "Mindestens ein Text oder Zitat" },
-    { ok: hasProduct, label: "Mindestens ein Stück verlinkt" },
+    { ok: hasMedia, labelKey: "studio.hausseite.checklist.media" },
+    { ok: hasText, labelKey: "studio.hausseite.checklist.text" },
+    { ok: hasProduct, labelKey: "studio.hausseite.checklist.product" },
   ];
   const readyToPublish = checklist.every((c) => c.ok);
 
-  if (loading) return <StudioShell title="Deine Markenseite"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Deine Markenseite"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.hausseite.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.hausseite.title")}><p className="text-muted-foreground">{t("studio.hausseite.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title="Deine Markenseite" eyebrow="So sehen Besucher dein Haus">
+    <StudioShell title={t("studio.hausseite.title")} eyebrow={t("studio.hausseite.eyebrow")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Setz deine Seite aus Bausteinen zusammen — Bilder kommen aus deinen hochgeladenen Dateien. Mit den Pfeilen änderst du die Reihenfolge.
+          {t("studio.hausseite.intro")}
         </p>
         <div className="flex items-center gap-2">
           <a href={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="flex min-h-[36px] items-center gap-1.5 border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
-            Live ansehen <ExternalLink className="h-3 w-3" />
+            {t("studio.hausseite.liveView")} <ExternalLink className="h-3 w-3" />
           </a>
           <button onClick={() => void publish(!published)} disabled={busy || (!published && !readyToPublish)}
-            title={!published && !readyToPublish ? "Erst die drei Punkte unten erfüllen." : undefined}
+            title={!published && !readyToPublish ? t("studio.hausseite.publishBlockedHint") : undefined}
             className="min-h-[36px] border border-foreground bg-foreground px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-50">
-            {published ? "Seite offline nehmen" : "Veröffentlichen"}
+            {published ? t("studio.hausseite.takeOffline") : t("studio.hausseite.publishButton")}
           </button>
         </div>
       </div>
 
       <div className="mt-4 border border-border bg-white p-4">
-        <p className="editorial-eyebrow">Bereit zum Veröffentlichen?</p>
+        <p className="editorial-eyebrow">{t("studio.hausseite.readyTitle")}</p>
         <ul className="mt-2 space-y-1 text-sm">
           {checklist.map((c) => (
-            <li key={c.label} className={c.ok ? "text-foreground" : "text-muted-foreground"}>
-              {c.ok ? "✓" : "○"} {c.label}
+            <li key={c.labelKey} className={c.ok ? "text-foreground" : "text-muted-foreground"}>
+              {c.ok ? "✓" : "○"} {t(c.labelKey)}
             </li>
           ))}
         </ul>
-        {!published && <p className="mt-2 text-xs text-muted-foreground">Noch nicht veröffentlicht — bis dahin sehen Besucher deine bisherige Seite.</p>}
+        {!published && <p className="mt-2 text-xs text-muted-foreground">{t("studio.hausseite.notPublishedHint")}</p>}
       </div>
 
       <div className="mt-6 border border-border bg-white p-4">
-        <p className="editorial-eyebrow">Mit einer Vorlage starten</p>
+        <p className="editorial-eyebrow">{t("studio.hausseite.templatesTitle")}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          {TEMPLATES.map((t) => (
-            <button key={t.key} onClick={() => void addTemplate(t.kinds)}
+          {TEMPLATES.map((tpl) => (
+            <button key={tpl.key} onClick={() => void addTemplate(tpl.kinds)}
               className="border border-border p-3 text-left hover:border-foreground">
-              <span className="block text-sm">{t.label}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">{t.hint}</span>
+              <span className="block text-sm">{t(tpl.labelKey)}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{t(tpl.hintKey)}</span>
             </button>
           ))}
         </div>
@@ -242,26 +244,25 @@ export default function StudioHausseite() {
 
 
       <div className="mt-8 border border-border bg-white p-5">
-        <p className="editorial-eyebrow">Look deiner Seite</p>
+        <p className="editorial-eyebrow">{t("studio.hausseite.theme.title")}</p>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Beschreib deine Welt in eigenen Worten — z. B. „ein verlassenes Hallenbad bei Neonlicht" oder „Großmutters Nähzimmer im Spätsommer".
-          PAWN übersetzt das zusammen mit deiner Marken-DNA in Farben, Schrift, Abstände, Bewegung und Kanten deiner Markenseite.
-          {currentTheme ? ' Verfeinere jederzeit mit einem weiteren Satz — „wärmer", „strenger", „mehr Luft".' : ""}
+          {t("studio.hausseite.theme.description")}
+          {currentTheme ? " " + t("studio.hausseite.theme.refineHint") : ""}
         </p>
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <textarea value={vibeText} onChange={(e) => setVibeText(e.target.value)} rows={2}
-            placeholder={currentTheme ? "z. B. wärmer, mehr Luft, strenger…" : "Beschreib deine Welt in ein bis zwei Sätzen…"}
+            placeholder={currentTheme ? t("studio.hausseite.theme.placeholderRefine") : t("studio.hausseite.theme.placeholderNew")}
             className="w-full flex-1 border border-border bg-white p-3 text-sm" />
           <button onClick={() => void generateTheme()} disabled={themeBusy || (!vibeText.trim() && !!currentTheme)}
             className="min-h-[44px] shrink-0 border border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-50">
-            {themeBusy ? "Einen Moment…" : currentTheme ? "Verfeinern" : "Thema erzeugen"}
+            {themeBusy ? t("studio.hausseite.theme.busy") : currentTheme ? t("studio.hausseite.theme.refineButton") : t("studio.hausseite.theme.generateButton")}
           </button>
         </div>
         {!currentTheme && (
           <button onClick={() => void generateTheme()} disabled={themeBusy}
             className="mt-2 text-[0.62rem] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-50">
-            Oder: Vorschlag direkt aus meiner DNA
+            {t("studio.hausseite.theme.suggestFromDna")}
           </button>
         )}
 
@@ -272,26 +273,26 @@ export default function StudioHausseite() {
                 <span key={i} className="h-6 w-6 border border-border" style={{ background: hex }} title={hex} />
               ))}
             </div>
-            <p className="text-sm">{currentTheme.name || "Ohne Namen"} <span className="text-muted-foreground">· v{currentTheme.version}</span></p>
+            <p className="text-sm">{currentTheme.name || t("studio.hausseite.theme.unnamed")} <span className="text-muted-foreground">· v{currentTheme.version}</span></p>
             <p className="text-xs text-muted-foreground">
               {TYPOGRAFIE_LABEL[currentTheme.typografie]} · {FLAECHENRHYTHMUS_LABEL[currentTheme.flaechenrhythmus]} · {KANTENHAERTE_LABEL[currentTheme.kantenhaerte]} · {BEWEGUNGSCHARAKTER_LABEL[currentTheme.bewegungscharakter]} · {TEXTUR_LABEL[currentTheme.hintergrundtextur.typ]}
             </p>
           </div>
         )}
         {!!currentTheme?.guardrail_notes?.length && (
-          <p className="mt-3 text-xs text-muted-foreground">Automatisch angepasst: {currentTheme.guardrail_notes.map((n) => n.grund).join(" · ")}</p>
+          <p className="mt-3 text-xs text-muted-foreground">{t("studio.hausseite.theme.autoAdjusted")} {currentTheme.guardrail_notes.map((n) => n.grund).join(" · ")}</p>
         )}
 
         {themeHistory.length > 1 && (
           <div className="mt-5 border-t border-border pt-4">
-            <p className="editorial-eyebrow">Frühere Fassungen</p>
+            <p className="editorial-eyebrow">{t("studio.hausseite.theme.previousVersions")}</p>
             <div className="mt-2 space-y-1.5">
-              {themeHistory.filter((t) => !t.is_current).map((t) => (
-                <div key={t.id} className="flex items-center justify-between text-xs">
-                  <span>v{t.version} — {t.name || "Ohne Namen"} <span className="text-muted-foreground">({new Date(t.created_at).toLocaleDateString("de-DE")})</span></span>
-                  <button onClick={() => void revertTheme(t.version)} disabled={themeBusy}
+              {themeHistory.filter((th) => !th.is_current).map((th) => (
+                <div key={th.id} className="flex items-center justify-between text-xs">
+                  <span>v{th.version} — {th.name || t("studio.hausseite.theme.unnamed")} <span className="text-muted-foreground">({new Date(th.created_at).toLocaleDateString("de-DE")})</span></span>
+                  <button onClick={() => void revertTheme(th.version)} disabled={themeBusy}
                     className="border border-border px-2 py-1 uppercase tracking-widest hover:border-foreground disabled:opacity-50">
-                    Übernehmen
+                    {t("studio.hausseite.theme.applyVersion")}
                   </button>
                 </div>
               ))}
@@ -301,49 +302,49 @@ export default function StudioHausseite() {
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
-        {(Object.keys(BLOCK_LABEL) as PageBlockKind[]).map((k) => (
+        {(Object.keys(BLOCK_LABEL_KEY) as PageBlockKind[]).map((k) => (
           <button key={k} onClick={() => void addBlock(k)}
             className="min-h-[36px] border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
-            + {BLOCK_LABEL[k]}
+            + {t(BLOCK_LABEL_KEY[k])}
           </button>
         ))}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.1fr]">
         <div className="space-y-4">
-          {blocks.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Bausteine — nimm oben eine Vorlage oder füge einzelne hinzu.</p>}
+          {blocks.length === 0 && <p className="text-sm text-muted-foreground">{t("studio.hausseite.noBlocks")}</p>}
           {blocks.map((b, i) => (
             <div key={b.id} className="border border-border bg-white p-4">
               <div className="flex items-center justify-between">
-                <p className="editorial-eyebrow">{BLOCK_LABEL[b.kind]}</p>
+                <p className="editorial-eyebrow">{t(BLOCK_LABEL_KEY[b.kind])}</p>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => void move(i, -1)} disabled={i === 0} className="p-1 hover:text-foreground disabled:opacity-30" aria-label="Nach oben"><ChevronUp className="h-4 w-4" /></button>
-                  <button onClick={() => void move(i, 1)} disabled={i === blocks.length - 1} className="p-1 hover:text-foreground disabled:opacity-30" aria-label="Nach unten"><ChevronDown className="h-4 w-4" /></button>
-                  <button onClick={() => void removeBlock(b)} className="p-1 text-muted-foreground hover:text-foreground" aria-label="Löschen"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => void move(i, -1)} disabled={i === 0} className="p-1 hover:text-foreground disabled:opacity-30" aria-label={t("studio.hausseite.moveUp")}><ChevronUp className="h-4 w-4" /></button>
+                  <button onClick={() => void move(i, 1)} disabled={i === blocks.length - 1} className="p-1 hover:text-foreground disabled:opacity-30" aria-label={t("studio.hausseite.moveDown")}><ChevronDown className="h-4 w-4" /></button>
+                  <button onClick={() => void removeBlock(b)} className="p-1 text-muted-foreground hover:text-foreground" aria-label={t("common.delete")}><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
-              <BlockEditor block={b} media={media} products={products} onChange={(c) => void updateContent(b, c)} />
+              <BlockEditor block={b} media={media} products={products} onChange={(c) => void updateContent(b, c)} t={t} />
             </div>
           ))}
         </div>
 
         <div className="lg:sticky lg:top-20 lg:self-start">
           <div className="mb-3 flex items-center justify-between">
-            <p className="editorial-eyebrow">Vorschau — vor dem Veröffentlichen prüfen</p>
+            <p className="editorial-eyebrow">{t("studio.hausseite.previewTitle")}</p>
             <div className="flex border border-border">
               <button onClick={() => setPreviewDevice("desktop")}
                 className={`min-h-[32px] px-3 text-[0.6rem] uppercase tracking-widest ${previewDevice === "desktop" ? "bg-foreground text-background" : "hover:bg-muted"}`}>
-                Bildschirm
+                {t("studio.hausseite.deviceDesktop")}
               </button>
               <button onClick={() => setPreviewDevice("telefon")}
                 className={`min-h-[32px] border-l border-border px-3 text-[0.6rem] uppercase tracking-widest ${previewDevice === "telefon" ? "bg-foreground text-background" : "hover:bg-muted"}`}>
-                Telefon
+                {t("studio.hausseite.deviceMobile")}
               </button>
             </div>
           </div>
           <div className={`mx-auto max-h-[80vh] overflow-y-auto border border-border ${previewDevice === "telefon" ? "max-w-[390px]" : ""}`}>
             {blocks.length === 0 ? (
-              <p className="p-8 text-center text-sm text-muted-foreground">Noch nichts zu zeigen.</p>
+              <p className="p-8 text-center text-sm text-muted-foreground">{t("studio.hausseite.previewEmpty")}</p>
             ) : (
               <HausseiteBlocks blocks={blocks} mediaById={mediaById} products={products} theme={currentTheme ? resolveTheme(currentTheme) : DEFAULT_HOUSE_THEME} />
             )}
@@ -364,12 +365,12 @@ export default function StudioHausseite() {
 }
 
 function BlockEditor({
-  block, media, products, onChange,
-}: { block: PageBlockRow; media: BlockMediaLite[]; products: BlockProductLite[]; onChange: (c: Record<string, unknown>) => void }) {
+  block, media, products, onChange, t,
+}: { block: PageBlockRow; media: BlockMediaLite[]; products: BlockProductLite[]; onChange: (c: Record<string, unknown>) => void; t: (key: string, vars?: Record<string, string | number>) => string }) {
   const c = block.content;
   const mediaPicker = (value: string, onSelect: (id: string) => void, filterKind?: "bild" | "video") => (
     <select value={value} onChange={(e) => onSelect(e.target.value)} className="mt-2 w-full border border-border bg-white p-2 text-sm">
-      <option value="">Aus der Mediathek wählen…</option>
+      <option value="">{t("studio.hausseite.mediaPicker.placeholder")}</option>
       {media.filter((m) => !filterKind || m.kind === filterKind).map((m) => (
         <option key={m.id} value={m.id}>{m.kind === "video" ? "🎬" : "🖼"} {m.id.slice(0, 8)}</option>
       ))}
@@ -386,18 +387,18 @@ function BlockEditor({
         return (
           <div className="mt-2 space-y-2">
             <input defaultValue={(c.heading as string) ?? ""} onBlur={(e) => onChange({ ...c, heading: e.target.value })}
-              placeholder="Überschrift" className="w-full border border-border bg-white p-2 text-sm" />
+              placeholder={t("studio.hausseite.field.heading")} className="w-full border border-border bg-white p-2 text-sm" />
             <textarea defaultValue={(c.text as string) ?? ""} onBlur={(e) => onChange({ ...c, text: e.target.value })}
-              placeholder="Text" rows={3} className="w-full border border-border bg-white p-2 text-sm" />
+              placeholder={t("studio.hausseite.field.text")} rows={3} className="w-full border border-border bg-white p-2 text-sm" />
           </div>
         );
       case "zitat":
         return (
           <div className="mt-2 space-y-2">
             <textarea defaultValue={(c.quote as string) ?? ""} onBlur={(e) => onChange({ ...c, quote: e.target.value })}
-              placeholder="Zitat" rows={2} className="w-full border border-border bg-white p-2 text-sm" />
+              placeholder={t("studio.hausseite.field.quote")} rows={2} className="w-full border border-border bg-white p-2 text-sm" />
             <input defaultValue={(c.author as string) ?? ""} onBlur={(e) => onChange({ ...c, author: e.target.value })}
-              placeholder="Wer sagt das?" className="w-full border border-border bg-white p-2 text-sm" />
+              placeholder={t("studio.hausseite.field.author")} className="w-full border border-border bg-white p-2 text-sm" />
           </div>
         );
       case "produktreihe": {
@@ -414,7 +415,7 @@ function BlockEditor({
                 {p.name}
               </label>
             ))}
-            {products.length === 0 && <p className="col-span-2 text-muted-foreground">Noch keine Produkte.</p>}
+            {products.length === 0 && <p className="col-span-2 text-muted-foreground">{t("studio.hausseite.noProducts")}</p>}
           </div>
         );
       }
@@ -432,16 +433,16 @@ function BlockEditor({
                 {m.kind === "video" ? "🎬" : "🖼"} {m.id.slice(0, 8)}
               </label>
             ))}
-            {media.length === 0 && <p className="col-span-2 text-muted-foreground">Noch nichts in der Mediathek.</p>}
+            {media.length === 0 && <p className="col-span-2 text-muted-foreground">{t("studio.hausseite.mediaEmpty")}</p>}
           </div>
         );
       }
       case "ueberlappend":
         return (
           <div className="mt-2 space-y-2">
-            <p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">Hinteres Medium</p>
+            <p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{t("studio.hausseite.field.backMedia")}</p>
             {mediaPicker((c.media_asset_id_a as string) ?? "", (id) => onChange({ ...c, media_asset_id_a: id }))}
-            <p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">Vorderes Medium (versetzt)</p>
+            <p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{t("studio.hausseite.field.frontMedia")}</p>
             {mediaPicker((c.media_asset_id_b as string) ?? "", (id) => onChange({ ...c, media_asset_id_b: id }))}
           </div>
         );
@@ -456,21 +457,21 @@ function BlockEditor({
       {ABSTAND_FAEHIG.includes(block.kind) && (
         <select value={(c.abstand as string) ?? ""} onChange={(e) => onChange({ ...c, abstand: e.target.value || undefined })}
           className="mt-2 w-full border border-border bg-white p-2 text-sm">
-          {ABSTAND_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {ABSTAND_OPTIONS.map((o) => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
         </select>
       )}
       {TON_FAEHIG.includes(block.kind) && (
         <label className="mt-2 flex items-center gap-1.5 text-sm">
           <input type="checkbox" checked={!!c.ton} onChange={(e) => onChange({ ...c, ton: e.target.checked })} />
-          Ton erlauben (Video startet trotzdem stumm, Besucher können ihn einschalten)
+          {t("studio.hausseite.field.allowSound")}
         </label>
       )}
       {PRODUKT_LINK_FAEHIG.includes(block.kind) && (
         <div className="mt-2">
-          <label className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">Führt zum Stück (optional)</label>
+          <label className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{t("studio.hausseite.field.linkToProduct")}</label>
           <select value={(c.product_id as string) ?? ""} onChange={(e) => onChange({ ...c, product_id: e.target.value || undefined })}
             className="mt-1 w-full border border-border bg-white p-2 text-sm">
-            <option value="">Kein direktes Ziel</option>
+            <option value="">{t("studio.hausseite.field.noTarget")}</option>
             {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>

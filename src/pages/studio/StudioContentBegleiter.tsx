@@ -18,6 +18,7 @@ import { useContentValue } from "@/components/palace/Editable";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { World } from "@/core/types/entities";
+import { useI18n } from "@/lib/i18n";
 
 type Kind = "bild" | "video";
 
@@ -75,6 +76,7 @@ async function extractFrames(url: string): Promise<string[]> {
 export default function StudioContentBegleiter() {
   const { designer, loading } = useMyDesigner();
   const { user } = useAuth();
+  const { t, locale } = useI18n();
   const [params] = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -107,25 +109,25 @@ export default function StudioContentBegleiter() {
     if (!designer) return;
     setBusy(true);
     setResult(null);
-    setStatus(kind === "video" ? "Ziehe Einzelbilder aus dem Video…" : "PAWN sieht sich das Bild an…");
+    setStatus(kind === "video" ? t("studio.contentBegleiter.statusExtractingFrames") : t("studio.contentBegleiter.statusLookingAtImage"));
     try {
       let body: Record<string, unknown>;
       if (kind === "video") {
         const frames = await extractFrames(url);
         if (frames.length === 0) {
-          toast.error("Aus diesem Video ließen sich keine Bilder ziehen — versuch es mit dem Vorschaubild als Foto.");
+          toast.error(t("studio.contentBegleiter.errorNoFrames"));
           setBusy(false); setStatus(null);
           return;
         }
-        body = { designer_id: designer.id, kind: "video", frames };
+        body = { designer_id: designer.id, kind: "video", frames, locale };
       } else {
-        body = { designer_id: designer.id, kind: "bild", source_url: url };
+        body = { designer_id: designer.id, kind: "bild", source_url: url, locale };
       }
-      setStatus("PAWN gibt Feedback…");
+      setStatus(t("studio.contentBegleiter.statusGivingFeedback"));
       const { data, error } = await supabase.functions.invoke("generate-content-feedback", { body });
       if (error) throw error;
       const r = data as { ok?: boolean; punkte?: string[]; geschichte?: string | null; wiederholung_tipp?: string | null; message?: string; error?: string } | null;
-      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? "Feedback fehlgeschlagen.");
+      if (!r?.ok) throw new Error(r?.message ?? r?.error ?? t("studio.contentBegleiter.errorFeedbackFailed"));
       setResult({ punkte: r.punkte ?? [], geschichte: r.geschichte ?? null, wiederholung_tipp: r.wiederholung_tipp ?? null });
     } catch (e) {
       toast.error((e as Error).message);
@@ -139,9 +141,9 @@ export default function StudioContentBegleiter() {
     const file = files?.[0];
     if (!file || !designer || !user) return;
     const kind = kindOf(file);
-    if (!kind) { toast.error("Nur Bilder oder Videos."); return; }
+    if (!kind) { toast.error(t("studio.contentBegleiter.errorInvalidFile")); return; }
     setBusy(true);
-    setStatus("Lade hoch…");
+    setStatus(t("studio.contentBegleiter.statusUploading"));
     try {
       const ext = file.name.split(".").pop() || (kind === "bild" ? "jpg" : "mp4");
       const path = `${user.id}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
@@ -158,7 +160,7 @@ export default function StudioContentBegleiter() {
       setStatus(null);
       void runFeedback(signed.signedUrl, kind);
     } catch (e) {
-      toast.error((e as Error).message || "Upload fehlgeschlagen");
+      toast.error((e as Error).message || t("studio.contentBegleiter.errorUploadFailed"));
       setBusy(false);
       setStatus(null);
     }
@@ -179,13 +181,13 @@ export default function StudioContentBegleiter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designer]);
 
-  if (loading) return <StudioShell title="Content-Begleiter"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Content-Begleiter"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.contentBegleiter.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.contentBegleiter.title")}><p className="text-muted-foreground">{t("studio.contentBegleiter.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title="Content-Begleiter" eyebrow="Material" begleiterStep="content-begleiter">
+    <StudioShell title={t("studio.contentBegleiter.title")} eyebrow={t("studio.contentBegleiter.eyebrow")} begleiterStep="content-begleiter">
       <p className="max-w-2xl text-sm text-muted-foreground">
-        PAWN erzeugt keine Beiträge für deine Kanäle — hier bekommst du konkretes Feedback zu deinem eigenen Foto oder Video, und einen Leitfaden für deine Welt.
+        {t("studio.contentBegleiter.intro")}
       </p>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1fr]">
@@ -193,9 +195,9 @@ export default function StudioContentBegleiter() {
           {!previewUrl ? (
             <div className="border-2 border-dashed border-border bg-white p-8 text-center">
               <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
-              <p className="mt-3 text-sm">Zieh ein eigenes Foto oder kurzes Video hierher, oder wähle es aus.</p>
+              <p className="mt-3 text-sm">{t("studio.contentBegleiter.dropHint")}</p>
               <label className="mt-4 inline-flex min-h-[44px] cursor-pointer items-center border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
-                Datei auswählen
+                {t("studio.contentBegleiter.chooseFile")}
                 <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" disabled={busy}
                   onChange={(e) => { void onUpload(e.target.files); e.target.value = ""; }} />
               </label>
@@ -212,7 +214,7 @@ export default function StudioContentBegleiter() {
           {previewUrl && (
             <button type="button" onClick={() => { setPreviewUrl(null); setPreviewKind(null); setResult(null); }}
               className="mt-3 text-[0.62rem] uppercase tracking-widest text-muted-foreground hover:text-foreground">
-              Anderes Material wählen
+              {t("studio.contentBegleiter.chooseOther")}
             </button>
           )}
 
@@ -220,19 +222,19 @@ export default function StudioContentBegleiter() {
 
           {result && (
             <div className="mt-6 border border-border bg-white p-5">
-              <p className="editorial-eyebrow">Feedback</p>
+              <p className="editorial-eyebrow">{t("studio.contentBegleiter.feedbackHeading")}</p>
               <ul className="mt-2 space-y-1.5 text-sm">
                 {result.punkte.map((p, i) => <li key={i}>· {p}</li>)}
               </ul>
               {result.geschichte && (
                 <>
-                  <p className="editorial-eyebrow mt-5">Welche Geschichte das trägt</p>
+                  <p className="editorial-eyebrow mt-5">{t("studio.contentBegleiter.storyHeading")}</p>
                   <p className="mt-1 text-sm">{result.geschichte}</p>
                 </>
               )}
               {result.wiederholung_tipp && (
                 <>
-                  <p className="editorial-eyebrow mt-5">Für eine Wiederholung</p>
+                  <p className="editorial-eyebrow mt-5">{t("studio.contentBegleiter.repeatTipHeading")}</p>
                   <p className="mt-1 text-sm">{result.wiederholung_tipp}</p>
                 </>
               )}
@@ -241,7 +243,11 @@ export default function StudioContentBegleiter() {
         </div>
 
         <div>
-          <p className="editorial-eyebrow">Leitfaden · {world === "Mode" ? "Mode" : world === "Interior" ? "Interior" : "Kunst"}</p>
+          <p className="editorial-eyebrow">
+            {t("studio.contentBegleiter.guideHeading", {
+              world: world === "Mode" ? t("nav.mode") : world === "Interior" ? t("nav.interior") : t("nav.kunst"),
+            })}
+          </p>
           <p className="mt-2 text-sm text-muted-foreground">{guides[world]}</p>
         </div>
       </div>

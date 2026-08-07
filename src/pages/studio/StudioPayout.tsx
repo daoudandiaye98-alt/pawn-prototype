@@ -8,16 +8,17 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 // Stripe nennt fehlende Angaben in Fachbegriffen — hier in Klartext übersetzt.
-const REQUIREMENT_LABELS: Record<string, string> = {
-  "individual.verification.document": "Ausweisfoto",
-  "individual.id_number": "Ausweisnummer",
-  "individual.address.line1": "Adresse",
-  "external_account": "Bankverbindung (IBAN)",
-  "business_profile.url": "Website oder Shop-Adresse",
-  "business_profile.mcc": "Branche",
-  "tos_acceptance.date": "Zustimmung zu den Stripe-Bedingungen",
+const REQUIREMENT_LABEL_KEYS: Record<string, string> = {
+  "individual.verification.document": "studio.payout.requirement.idPhoto",
+  "individual.id_number": "studio.payout.requirement.idNumber",
+  "individual.address.line1": "studio.payout.requirement.address",
+  "external_account": "studio.payout.requirement.bankAccount",
+  "business_profile.url": "studio.payout.requirement.website",
+  "business_profile.mcc": "studio.payout.requirement.industry",
+  "tos_acceptance.date": "studio.payout.requirement.tosAcceptance",
 };
 
 type ConnectState = "none" | "pending" | "active" | "payouts" | "error";
@@ -52,6 +53,7 @@ const EMPTY_SHIPPING: ShippingRates = {
 };
 
 export default function StudioPayout() {
+  const { t } = useI18n();
   const { designer, refresh } = useMyDesigner();
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
@@ -88,7 +90,7 @@ export default function StudioPayout() {
     const { error } = await supabase.from("designer_billing_profiles").upsert({ designer_id: designer.id, ...billing }, { onConflict: "designer_id" });
     setBillingSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Rechnungsdaten gespeichert.");
+    toast.success(t("studio.payout.billing.saved"));
   }
 
   async function saveTax() {
@@ -99,7 +101,7 @@ export default function StudioPayout() {
       .eq("id", designer.id);
     setTaxSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Steuerangaben gespeichert.");
+    toast.success(t("studio.payout.tax.saved"));
     void refresh();
   }
 
@@ -109,7 +111,7 @@ export default function StudioPayout() {
     const { error } = await supabase.from("designers").update({ shipping_rates: JSON.parse(JSON.stringify(shipping)) }).eq("id", designer.id);
     setShippingSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Versandkosten gespeichert.");
+    toast.success(t("studio.payout.shipping.saved"));
   }
 
   useEffect(() => {
@@ -125,9 +127,9 @@ export default function StudioPayout() {
     setLoadingStatus(true);
     void supabase.functions.invoke("stripe-connect", { body: { action: "status" } })
       .then(({ data, error }) => {
-        if (error) { toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht."); setLoadingStatus(false); return; }
+        if (error) { toast.error(t("studio.payout.error.settingUp")); setLoadingStatus(false); return; }
         const result = data as { error?: string; message?: string } & ConnectStatus;
-        if (result?.error) { toast.error(result.message ?? "Status konnte nicht geladen werden."); setLoadingStatus(false); return; }
+        if (result?.error) { toast.error(result.message ?? t("studio.payout.error.statusLoadFailed")); setLoadingStatus(false); return; }
         setStatus(result);
         setLoadingStatus(false);
         void refresh();
@@ -139,18 +141,18 @@ export default function StudioPayout() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "onboard" } });
-      if (error) { toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht."); return; }
+      if (error) { toast.error(t("studio.payout.error.settingUp")); return; }
       const result = data as { error?: string; message?: string; url?: string; detail?: string };
       if (result?.error === "platform_setup_required") {
-        setSetupBlocked(result.message ?? "PAWN schließt gerade die Freigabe beim Zahlungspartner ab.");
+        setSetupBlocked(result.message ?? t("studio.payout.error.platformSetup"));
         if (isAdmin && result.detail) toast.error(result.detail, { duration: 12000 });
-        else toast.error(result.message ?? "PAWN schließt gerade die Freigabe beim Zahlungspartner ab.");
+        else toast.error(result.message ?? t("studio.payout.error.platformSetup"));
         return;
       }
-      if (result?.error) { toast.error(result.message ?? "Verbindung konnte nicht gestartet werden."); return; }
+      if (result?.error) { toast.error(result.message ?? t("studio.payout.error.connectFailed")); return; }
       if (result?.url) window.location.href = result.url;
     } catch {
-      toast.error("Auszahlungen werden gerade eingerichtet — melde dich, sobald es weitergeht.");
+      toast.error(t("studio.payout.error.settingUp"));
     } finally {
       setBusy(false);
     }
@@ -161,18 +163,18 @@ export default function StudioPayout() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect", { body: { action: "dashboard" } });
-      if (error) { toast.error("Das Stripe-Konto lässt sich gerade nicht öffnen."); return; }
+      if (error) { toast.error(t("studio.payout.error.dashboardUnavailable")); return; }
       const result = data as { error?: string; message?: string; url?: string };
-      if (result?.error) { toast.error(result.message ?? "Das Stripe-Konto lässt sich gerade nicht öffnen."); return; }
+      if (result?.error) { toast.error(result.message ?? t("studio.payout.error.dashboardUnavailable")); return; }
       if (result?.url) window.open(result.url, "_blank", "noopener");
     } catch {
-      toast.error("Das Stripe-Konto lässt sich gerade nicht öffnen.");
+      toast.error(t("studio.payout.error.dashboardUnavailable"));
     } finally {
       setBusy(false);
     }
   }
 
-  if (!designer) return <StudioShell title="Auszahlung"><p className="text-muted-foreground">Lädt…</p></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.payout.title")}><p className="text-muted-foreground">{t("common.loading")}</p></StudioShell>;
 
   const retryParam = searchParams.get("connect") === "retry";
   const requirementsDue = status?.requirements_due ?? [];
@@ -185,35 +187,35 @@ export default function StudioPayout() {
 
 
   return (
-    <StudioShell title="Auszahlung" eyebrow="Zahlung">
+    <StudioShell title={t("studio.payout.title")} eyebrow={t("studio.payout.eyebrow")}>
       <HowItWorks
         storageKey="payout-connect"
-        title="Auszahlungen"
-        intro="Dein Verkaufserlös fließt direkt auf dein eigenes Konto — PAWN berührt das Geld nie."
+        title={t("studio.payout.howItWorks.title")}
+        intro={t("studio.payout.howItWorks.intro")}
         steps={[
-          "Auszahlungskonto bei unserem Zahlungspartner Stripe verbinden (5 Minuten).",
-          "Stripe prüft deine Angaben.",
-          "Sobald aktiv: jeder Verkauf fließt automatisch und direkt zu dir.",
+          t("studio.payout.howItWorks.step1"),
+          t("studio.payout.howItWorks.step2"),
+          t("studio.payout.howItWorks.step3"),
         ]}
       />
       <div className="max-w-xl space-y-6">
         <div className="border border-foreground bg-white p-5">
-          <p className="editorial-eyebrow">Dein Anteil</p>
+          <p className="editorial-eyebrow">{t("studio.payout.share.title")}</p>
           <p className="mt-2 font-serif text-2xl">
-            Du erhältst <span className="tabular-nums">{100 - commissionPct} %</span> jedes Verkaufs.
+            {t("studio.payout.share.youReceivePrefix")} <span className="tabular-nums">{100 - commissionPct} %</span> {t("studio.payout.share.youReceiveSuffix")}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            PAWN nimmt {commissionPct} % — bewusst weit unter Galerien und klassischen Marktplätzen. Kein Aufpreis für Rückgaben, keine Listing-Gebühr.
+            {t("studio.payout.share.pawnTakes", { pct: commissionPct })}
           </p>
         </div>
 
         {setupBlocked && (
           <div className="border-[1.5px] border-black bg-black p-5 text-white">
-            <p className="editorial-eyebrow">Kurz Geduld</p>
+            <p className="editorial-eyebrow">{t("studio.payout.setupBlocked.title")}</p>
             <p className="mt-2 text-sm">{setupBlocked}</p>
             {isAdmin && (
               <p className="mt-3 text-xs opacity-70">
-                Admin-Hinweis: Connect-Plattform-Profil bei Stripe ausfüllen (Einstellungen → Connect → Plattform-Profil), inklusive Verantwortung für Verluste — getrennt für Test- und Live-Modus.
+                {t("studio.payout.setupBlocked.adminHint")}
               </p>
             )}
           </div>
@@ -222,7 +224,7 @@ export default function StudioPayout() {
 
         {loadingStatus ? (
           <div className="flex items-center gap-2 border border-border p-5 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Lädt Status…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("studio.payout.loadingStatus")}
           </div>
         ) : state === "none" ? (
           <div className="border-[1.5px] border-black p-6">
@@ -231,25 +233,25 @@ export default function StudioPayout() {
               disabled={busy}
               className="w-full bg-black px-6 py-4 text-[0.72rem] uppercase tracking-[0.24em] text-white disabled:opacity-40"
             >
-              {busy ? "Öffnet Stripe…" : "Auszahlungskonto verbinden"}
+              {busy ? t("studio.payout.openingStripe") : t("studio.payout.connectAccount")}
             </button>
             <p className="mt-4 text-sm text-muted-foreground">
-              5 Minuten bei unserem Zahlungspartner Stripe: Name, IBAN, Ausweis. Danach fließt dein Geld direkt zu dir — PAWN berührt es nie. Du erhältst {100 - commissionPct}% jedes Verkaufs.
+              {t("studio.payout.none.description", { pct: 100 - commissionPct })}
             </p>
           </div>
         ) : state === "pending" ? (
           <div className="border-[1.5px] border-black p-6">
-            <p className="editorial-eyebrow">Status</p>
-            <p className="mt-2 font-serif text-xl">In Prüfung</p>
+            <p className="editorial-eyebrow">{t("studio.payout.status.label")}</p>
+            <p className="mt-2 font-serif text-xl">{t("studio.payout.status.pending")}</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Stripe prüft gerade deine Angaben. Das dauert normalerweise nur kurz — sobald es fertig ist, kannst du direkt verkaufen.
+              {t("studio.payout.pending.description")}
             </p>
             {requirementsDue.length > 0 && (
               <div className="mt-4 border border-black p-4">
-                <p className="editorial-eyebrow">Stripe wartet noch auf</p>
+                <p className="editorial-eyebrow">{t("studio.payout.requirementsDue")}</p>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                   {requirementsDue.slice(0, 6).map((r) => (
-                    <li key={r}>· {REQUIREMENT_LABELS[r] ?? r}</li>
+                    <li key={r}>· {REQUIREMENT_LABEL_KEYS[r] ? t(REQUIREMENT_LABEL_KEYS[r]) : r}</li>
                   ))}
                 </ul>
               </div>
@@ -259,7 +261,7 @@ export default function StudioPayout() {
               disabled={busy}
               className="mt-4 bg-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] text-white disabled:opacity-40"
             >
-              {busy ? "Öffnet Stripe…" : "Angaben vervollständigen"}
+              {busy ? t("studio.payout.openingStripe") : t("studio.payout.completeDetails")}
             </button>
           </div>
         ) : state === "active" || state === "payouts" ? (
@@ -268,19 +270,19 @@ export default function StudioPayout() {
               <span className="flex h-6 w-6 items-center justify-center bg-black text-white">
                 <Check className="h-4 w-4" />
               </span>
-              <p className="font-serif text-xl">{state === "payouts" ? "Aktiv — Auszahlungen laufen" : "Aktiv — Verkauf möglich"}</p>
+              <p className="font-serif text-xl">{state === "payouts" ? t("studio.payout.status.activePayouts") : t("studio.payout.status.activeSelling")}</p>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
               {state === "payouts"
-                ? `Jeder Verkauf fließt direkt auf dein Konto. PAWN behält ${commissionPct} % auf den Warenwert — Versandkosten bleiben vollständig bei dir.`
-                : "Du kannst verkaufen. Die Auszahlung auf dein Bankkonto schaltet Stripe frei, sobald die letzten Angaben geprüft sind."}
+                ? t("studio.payout.active.payoutsDescription", { pct: commissionPct })
+                : t("studio.payout.active.sellingDescription")}
             </p>
             {requirementsDue.length > 0 && (
               <div className="mt-4 border border-black p-4">
-                <p className="editorial-eyebrow">Stripe wartet noch auf</p>
+                <p className="editorial-eyebrow">{t("studio.payout.requirementsDue")}</p>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                   {requirementsDue.slice(0, 6).map((r) => (
-                    <li key={r}>· {REQUIREMENT_LABELS[r] ?? r}</li>
+                    <li key={r}>· {REQUIREMENT_LABEL_KEYS[r] ? t(REQUIREMENT_LABEL_KEYS[r]) : r}</li>
                   ))}
                 </ul>
               </div>
@@ -291,101 +293,100 @@ export default function StudioPayout() {
                 disabled={busy}
                 className="border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
               >
-                {busy ? "Öffnet Stripe…" : "Stripe-Konto öffnen"}
+                {busy ? t("studio.payout.openingStripe") : t("studio.payout.openStripeAccount")}
               </button>
               <button
                 onClick={connect}
                 disabled={busy}
                 className="border border-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-black hover:text-white disabled:opacity-40"
               >
-                Angaben ändern
+                {t("studio.payout.changeDetails")}
               </button>
             </div>
           </div>
 
         ) : (
           <div className="border-[1.5px] border-black p-6">
-            <p className="editorial-eyebrow">Status</p>
-            <p className="mt-2 font-serif text-xl">Es gab ein Problem</p>
+            <p className="editorial-eyebrow">{t("studio.payout.status.label")}</p>
+            <p className="mt-2 font-serif text-xl">{t("studio.payout.status.error")}</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Die Verbindung zu Stripe wurde nicht abgeschlossen. Versuch es noch einmal.
+              {t("studio.payout.error.description")}
             </p>
             <button
               onClick={connect}
               disabled={busy}
               className="mt-4 bg-black px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] text-white disabled:opacity-40"
             >
-              {busy ? "Öffnet Stripe…" : "Erneut versuchen"}
+              {busy ? t("studio.payout.openingStripe") : t("studio.payout.retry")}
             </button>
           </div>
         )}
 
         <div className="border border-foreground bg-white p-5">
-          <p className="editorial-eyebrow">Rechnungsdaten</p>
+          <p className="editorial-eyebrow">{t("studio.payout.billing.title")}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Ohne diese Angaben kann keine Bestellung als versendet markiert werden — jede Rechnung trägt deine Daten, nicht die von PAWN.
+            {t("studio.payout.billing.description")}
           </p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Firmierung / Name" value={billing.legal_name} onChange={(v) => setBilling((b) => ({ ...b, legal_name: v }))} full />
-            <Field label="Straße, Hausnummer" value={billing.address_line1} onChange={(v) => setBilling((b) => ({ ...b, address_line1: v }))} full />
-            <Field label="Adresszusatz" value={billing.address_line2} onChange={(v) => setBilling((b) => ({ ...b, address_line2: v }))} full optional />
-            <Field label="PLZ" value={billing.postal_code} onChange={(v) => setBilling((b) => ({ ...b, postal_code: v }))} />
-            <Field label="Stadt" value={billing.city} onChange={(v) => setBilling((b) => ({ ...b, city: v }))} />
-            <Field label="Land" value={billing.country} onChange={(v) => setBilling((b) => ({ ...b, country: v }))} />
-            <Field label="Steuernummer / USt-IdNr." value={billing.tax_id} onChange={(v) => setBilling((b) => ({ ...b, tax_id: v }))} optional={billing.kleinunternehmer} />
+            <Field label={t("studio.payout.billing.legalName")} value={billing.legal_name} onChange={(v) => setBilling((b) => ({ ...b, legal_name: v }))} full />
+            <Field label={t("studio.payout.billing.street")} value={billing.address_line1} onChange={(v) => setBilling((b) => ({ ...b, address_line1: v }))} full />
+            <Field label={t("studio.payout.billing.addressLine2")} value={billing.address_line2} onChange={(v) => setBilling((b) => ({ ...b, address_line2: v }))} full optional />
+            <Field label={t("studio.payout.billing.postalCode")} value={billing.postal_code} onChange={(v) => setBilling((b) => ({ ...b, postal_code: v }))} />
+            <Field label={t("studio.payout.billing.city")} value={billing.city} onChange={(v) => setBilling((b) => ({ ...b, city: v }))} />
+            <Field label={t("studio.payout.billing.country")} value={billing.country} onChange={(v) => setBilling((b) => ({ ...b, country: v }))} />
+            <Field label={t("studio.payout.billing.taxId")} value={billing.tax_id} onChange={(v) => setBilling((b) => ({ ...b, tax_id: v }))} optional={billing.kleinunternehmer} />
           </div>
           <label className="mt-4 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={billing.kleinunternehmer} onChange={(e) => setBilling((b) => ({ ...b, kleinunternehmer: e.target.checked }))} />
-            Kleinunternehmer nach § 19 UStG (keine Umsatzsteuer auf Rechnungen)
+            {t("studio.payout.billing.kleinunternehmer")}
           </label>
-          <p className="mt-6 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Rückversandadresse (falls abweichend)</p>
+          <p className="mt-6 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.billing.returnAddress")}</p>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Straße, Hausnummer" value={billing.return_address_line1} onChange={(v) => setBilling((b) => ({ ...b, return_address_line1: v }))} full optional />
-            <Field label="PLZ" value={billing.return_postal_code} onChange={(v) => setBilling((b) => ({ ...b, return_postal_code: v }))} optional />
-            <Field label="Stadt" value={billing.return_city} onChange={(v) => setBilling((b) => ({ ...b, return_city: v }))} optional />
-            <Field label="Land" value={billing.return_country} onChange={(v) => setBilling((b) => ({ ...b, return_country: v }))} optional />
+            <Field label={t("studio.payout.billing.street")} value={billing.return_address_line1} onChange={(v) => setBilling((b) => ({ ...b, return_address_line1: v }))} full optional />
+            <Field label={t("studio.payout.billing.postalCode")} value={billing.return_postal_code} onChange={(v) => setBilling((b) => ({ ...b, return_postal_code: v }))} optional />
+            <Field label={t("studio.payout.billing.city")} value={billing.return_city} onChange={(v) => setBilling((b) => ({ ...b, return_city: v }))} optional />
+            <Field label={t("studio.payout.billing.country")} value={billing.return_country} onChange={(v) => setBilling((b) => ({ ...b, return_country: v }))} optional />
           </div>
           <button onClick={saveBilling} disabled={billingSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
-            {billingSaving ? "Speichert…" : "Rechnungsdaten speichern"}
+            {billingSaving ? t("common.saving") : t("studio.payout.billing.save")}
           </button>
         </div>
 
         <div className="border border-foreground bg-white p-5">
-          <p className="editorial-eyebrow">Mehrwertsteuer & Rückgabe</p>
+          <p className="editorial-eyebrow">{t("studio.payout.tax.title")}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Preise auf PAWN sind immer Endpreise inklusive Mehrwertsteuer. Trag hier den Satz deines Landes ein — einzelne Stücke können davon abweichen.
-            Kleinunternehmer tragen 0 ein; dann erscheint der Hinweis nach § 19 UStG statt eines Steuerausweises.
+            {t("studio.payout.tax.description")}
           </p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Mehrwertsteuersatz (%)</span>
+              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.tax.vatRate")}</span>
               <input type="number" min={0} max={30} step={0.1} value={vatRate}
                 onChange={(e) => setVatRate(Number(e.target.value))}
                 className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
             </label>
             <label className="block">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Rückgabefrist (Tage)</span>
+              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.tax.returnWindow")}</span>
               <input type="number" min={0} max={365} value={returnDays}
                 onChange={(e) => setReturnDays(Number(e.target.value))}
                 className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
             </label>
           </div>
           <button onClick={saveTax} disabled={taxSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
-            {taxSaving ? "Speichert…" : "Steuerangaben speichern"}
+            {taxSaving ? t("common.saving") : t("studio.payout.tax.save")}
           </button>
         </div>
 
         <div className="border border-foreground bg-white p-5">
-          <p className="editorial-eyebrow">Versandkosten</p>
+          <p className="editorial-eyebrow">{t("studio.payout.shipping.title")}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Pauschale je Zone. Leer lassen = kostenlos. Käufer:innen wählen ihre Zone selbst beim Bezahlen.
+            {t("studio.payout.shipping.description")}
           </p>
           <div className="mt-4 space-y-3">
             {(["inland", "eu", "world"] as const).map((zone) => (
               <div key={zone} className="grid grid-cols-1 items-end gap-3 border-b border-border pb-3 sm:grid-cols-3">
-                <p className="text-sm font-medium sm:col-span-1">{zone === "inland" ? "Inland (DE)" : zone === "eu" ? "EU" : "Weltweit"}</p>
+                <p className="text-sm font-medium sm:col-span-1">{zone === "inland" ? t("studio.payout.shipping.zone.inland") : zone === "eu" ? t("studio.payout.shipping.zone.eu") : t("studio.payout.shipping.zone.world")}</p>
                 <label className="block">
-                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Pauschale (€)</span>
+                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.shipping.flatRate")}</span>
                   <input
                     type="number" min={0} step={0.5}
                     value={shipping[zone].flat_cents / 100}
@@ -394,7 +395,7 @@ export default function StudioPayout() {
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Kostenlos ab (€, optional)</span>
+                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.shipping.freeFrom")}</span>
                   <input
                     type="number" min={0} step={1}
                     value={shipping[zone].free_from_cents != null ? shipping[zone].free_from_cents! / 100 : ""}
@@ -406,7 +407,7 @@ export default function StudioPayout() {
             ))}
           </div>
           <button onClick={saveShipping} disabled={shippingSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
-            {shippingSaving ? "Speichert…" : "Versandkosten speichern"}
+            {shippingSaving ? t("common.saving") : t("studio.payout.shipping.save")}
           </button>
         </div>
       </div>
@@ -415,9 +416,10 @@ export default function StudioPayout() {
 }
 
 function Field({ label, value, onChange, full, optional }: { label: string; value: string; onChange: (v: string) => void; full?: boolean; optional?: boolean }) {
+  const { t } = useI18n();
   return (
     <label className={`block ${full ? "sm:col-span-2" : ""}`}>
-      <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{label}{optional ? " (optional)" : ""}</span>
+      <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{label}{optional ? ` ${t("studio.payout.optionalSuffix")}` : ""}</span>
       <input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
     </label>
   );

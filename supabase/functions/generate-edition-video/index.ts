@@ -8,6 +8,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { pickByLang } from "../_shared/locale.ts";
 
 function jwtSub(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
@@ -63,7 +64,7 @@ async function processParticipant(
 ): Promise<void> {
   try {
     const { data: designer } = await admin.from("designers")
-      .select("id, brand_name, user_id, house_number").eq("id", participant.designer_id).maybeSingle();
+      .select("id, brand_name, user_id, house_number, preferred_language").eq("id", participant.designer_id).maybeSingle();
     if (!designer) throw new Error("designer_not_found");
 
     const { data: products } = await admin.from("products")
@@ -101,10 +102,14 @@ async function processParticipant(
     const finalUrl = signed?.signedUrl ?? "";
 
     await admin.from("edition_participants").update({ status: "ready", video_url: finalUrl, error: null } as never).eq("id", participant.id);
+    const lang = (designer as { preferred_language?: string | null }).preferred_language;
     await admin.from("notifications").insert({
       user_id: (designer as { user_id: string }).user_id,
-      type: "edition.ready", title: `Edition „${edition.theme}" bereit`,
-      body: "PAWN hat einen Video-Vorschlag in deiner Signatur erzeugt — schau ihn dir im Studio an.",
+      type: "edition.ready",
+      title: pickByLang(lang, `Edition „${edition.theme}" bereit`, `Edition "${edition.theme}" ready`),
+      body: pickByLang(lang,
+        "PAWN hat einen Video-Vorschlag in deiner Signatur erzeugt — schau ihn dir im Studio an.",
+        "PAWN has generated a video suggestion in your signature — take a look in the Studio."),
       link: "/studio/kampagnen",
     } as never);
   } catch (e) {

@@ -16,12 +16,15 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Image as ImageIcon, Search, Sparkles } from "lucide-react";
 import { TranslationWarmup } from "./TranslationWarmup";
+import { deDict, enDict, useI18n } from "@/lib/i18n";
 
 
 type Lang = "de" | "en";
 interface Row { key: string; value: unknown; value_en: unknown; value_en_source: unknown; updated_at: string }
+interface I18nOverrideRow { key: string; value_en: string; value_en_source: string | null; updated_at: string }
 
 export default function AdminContent() {
+  const { refreshOverrides } = useI18n();
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [editLang, setEditLang] = useState<Lang>("de");
@@ -35,6 +38,15 @@ export default function AdminContent() {
   const [showSeedContent, setShowSeedContent] = useState(true);
   const [settingsBusy, setSettingsBusy] = useState(false);
 
+  // Teil 25, Punkt 5: Übersteuerungen für fehlende/verbesserte englische Fassungen
+  // der Studio-Oberflächentexte (statisches Wörterbuch in src/lib/i18n.tsx).
+  const [i18nOverrides, setI18nOverrides] = useState<Record<string, I18nOverrideRow>>({});
+  const [i18nSearch, setI18nSearch] = useState("");
+  const [i18nBusyKey, setI18nBusyKey] = useState<string | null>(null);
+  const [i18nSuggestingKey, setI18nSuggestingKey] = useState<string | null>(null);
+  const [i18nBulkBusy, setI18nBulkBusy] = useState(false);
+  const [i18nOpen, setI18nOpen] = useState(false);
+
   const load = async () => {
     const { data } = await supabase.from("site_content").select("key, value, value_en, value_en_source, updated_at");
     const map: Record<string, Row> = {};
@@ -45,7 +57,14 @@ export default function AdminContent() {
     setLoaded(true);
   };
 
-  useEffect(() => { void load(); }, []);
+  const loadI18nOverrides = async () => {
+    const { data } = await supabase.from("i18n_overrides").select("key, value_en, value_en_source, updated_at");
+    const map: Record<string, I18nOverrideRow> = {};
+    for (const r of (data ?? []) as I18nOverrideRow[]) map[r.key] = r;
+    setI18nOverrides(map);
+  };
+
+  useEffect(() => { void load(); void loadI18nOverrides(); }, []);
 
   // Drafts folgen der aktiven Bearbeitungssprache — Bilder bleiben immer die
   // gemeinsame (deutsche) URL, egal welche Sprache gerade bearbeitet wird.
@@ -199,6 +218,63 @@ export default function AdminContent() {
   };
 
 
+  /** Alle Studio-Oberflächen-Schlüssel (statisches Wörterbuch) mit ihrem Deckungsstatus. */
+  const i18nEntries = useMemo(() => {
+    const q = i18nSearch.trim().toLowerCase();
+    return Object.keys(deDict)
+      .map((key) => {
+        const german = deDict[key as keyof typeof deDict];
+        const override = i18nOverrides[key];
+        const staticEnglish = enDict[key as keyof typeof enDict];
+        const english = override?.value_en ?? staticEnglish ?? "";
+        // Fehlt komplett, oder wurde nie wirklich übersetzt (identisch mit Deutsch,
+        // bei Texten, die länger als ein einzelnes Wort/Markenname sind).
+        const missing = !override && (!staticEnglish || (staticEnglish.trim().toLowerCase() === german.trim().toLowerCase() && german.length > 3));
+        return { key, german, english, missing, hasOverride: !!override };
+      })
+      .filter((e) => !q || e.key.toLowerCase().includes(q) || e.german.toLowerCase().includes(q))
+      .sort((a, b) => (a.missing === b.missing ? a.key.localeCompare(b.key) : a.missing ? -1 : 1));
+  }, [i18nSearch, i18nOverrides]);
+  const i18nMissingCount = useMemo(() => i18nEntries.filter((e) => e.missing).length, [i18nEntries]);
+
+  const i18nSaveOverride = async (key: string, valueEn: string, source: string) => {
+    setI18nBusyKey(key);
+    const { error } = await supabase.from("i18n_overrides").upsert({ key, value_en: valueEn, value_en_source: source } as never);
+    setI18nBusyKey(null);
+    if (error) return toast.error(error.message);
+    setI18nOverrides((prev) => ({ ...prev, [key]: { key, value_en: valueEn, value_en_source: source, updated_at: new Date().toISOString() } }));
+    refreshOverrides();
+  };
+
+  const i18nSuggestOne = async (key: string, german: string): Promise<boolean> => {
+    const { data, error } = await supabase.functions.invoke("suggest-translation", { body: { key, text: german } });
+    const res = data as { suggestion?: string; error?: string } | null;
+    if (error || res?.error || !res?.suggestion) return false;
+    await i18nSaveOverride(key, res.suggestion, german);
+    return true;
+  };
+
+  const i18nSuggest = async (key: string, german: string) => {
+    setI18nSuggestingKey(key);
+    const ok = await i18nSuggestOne(key, german);
+    setI18nSuggestingKey(null);
+    if (!ok) return toast.error("Übersetzung fehlgeschlagen.");
+    toast.success("Übersetzt und gespeichert.");
+  };
+
+  const i18nSuggestAllMissing = async () => {
+    const missing = i18nEntries.filter((e) => e.missing);
+    if (missing.length === 0) return toast.success("Alle Studio-Texte sind bereits übersetzt.");
+    setI18nBulkBusy(true);
+    let ok = 0;
+    for (const e of missing) {
+      if (await i18nSuggestOne(e.key, e.german)) ok++;
+    }
+    setI18nBulkBusy(false);
+    if (ok === 0) toast.error("Keine Übersetzung erhalten.");
+    else toast.success(`${ok} von ${missing.length} Studio-Texten übersetzt und gespeichert.`);
+  };
+
   const saveSettings = async () => {
     setSettingsBusy(true);
     const { error } = await supabase.from("site_content").upsert([
@@ -324,6 +400,72 @@ export default function AdminContent() {
                 </div>
               </section>
             ))}
+
+            <section className="border border-border bg-card p-6">
+              <button type="button" onClick={() => setI18nOpen((v) => !v)} className="flex w-full items-center justify-between gap-4 text-left">
+                <span>
+                  <p className="editorial-eyebrow">Studio-Oberfläche (Englisch)</p>
+                  <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                    Knopfbeschriftungen, Menüs und Meldungen im Studio — {i18nMissingCount > 0 ? `${i18nMissingCount} von ${i18nEntries.length} ohne Englisch` : `alle ${i18nEntries.length} übersetzt`}.
+                  </p>
+                </span>
+                <span className="shrink-0 text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">{i18nOpen ? "Einklappen" : "Anzeigen"}</span>
+              </button>
+
+              {i18nOpen && (
+                <div className="mt-6">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="relative max-w-md flex-1">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        value={i18nSearch}
+                        onChange={(e) => setI18nSearch(e.target.value)}
+                        placeholder="Schlüssel oder deutschen Text suchen …"
+                        className="w-full border border-border bg-background py-2 pl-9 pr-3 text-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void i18nSuggestAllMissing()}
+                      disabled={i18nBulkBusy || i18nMissingCount === 0}
+                      className="flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] text-background disabled:opacity-50"
+                    >
+                      <Sparkles className="h-3 w-3" /> {i18nBulkBusy ? "…" : `Englisch vorschlagen (${i18nMissingCount})`}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {i18nEntries.map((e) => (
+                      <div key={e.key} className={cn("border border-border bg-background p-3", e.missing && "border-dashed")}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[0.58rem] uppercase tracking-[0.22em] text-muted-foreground/70">{e.key}</span>
+                          {e.missing && <span className="border border-border px-1.5 py-0.5 text-[0.58rem] text-foreground">Fehlt · Rückfall Deutsch</span>}
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">{e.german}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            value={e.english}
+                            onChange={(ev) => setI18nOverrides((prev) => ({ ...prev, [e.key]: { key: e.key, value_en: ev.target.value, value_en_source: e.german, updated_at: prev[e.key]?.updated_at ?? new Date().toISOString() } }))}
+                            onBlur={(ev) => void i18nSaveOverride(e.key, ev.target.value, e.german)}
+                            className="w-full border border-border bg-white p-2 text-sm"
+                            placeholder={e.german}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void i18nSuggest(e.key, e.german)}
+                            disabled={i18nSuggestingKey === e.key}
+                            className="flex shrink-0 items-center gap-1.5 border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
+                          >
+                            <Sparkles className="h-3 w-3" /> {i18nSuggestingKey === e.key ? "…" : "Vorschlagen"}
+                          </button>
+                        </div>
+                        {i18nBusyKey === e.key && <p className="mt-1 text-[0.6rem] text-muted-foreground">Speichert…</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
         )}
       </AdminShell>

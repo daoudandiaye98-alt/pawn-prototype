@@ -13,6 +13,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { normalizeLocale, localeInstruction } from "../_shared/locale.ts";
 
 const MODEL = "claude-sonnet-4-5";
 const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
@@ -70,8 +71,9 @@ Deno.serve(async (req) => {
     if (!user_id) return json({ ok: false, error: "auth_required" }, 401);
 
     const body = await req.json().catch(() => ({})) as {
-      designer_id?: string; kind?: "bild" | "video"; source_url?: string; frames?: string[];
+      designer_id?: string; kind?: "bild" | "video"; source_url?: string; frames?: string[]; locale?: string;
     };
+    const locale = normalizeLocale(body.locale);
     if (!body.designer_id || !body.kind) return json({ ok: false, error: "designer_id_and_kind_required" }, 400);
 
     const url = Deno.env.get("SUPABASE_URL")!;
@@ -110,6 +112,8 @@ Deno.serve(async (req) => {
 Gib konkretes Feedback in wenigen Punkten — Bildaufbau, Licht, Hintergrund, was das Stück verdeckt, welcher Ausschnitt stärker wäre, was gut gelungen ist. Kollegial und konkret, nie belehrend, nie in Schulnoten. Schlage vor, welche Geschichte dieses Material trägt — was hier interessant ist, in einem Satz. Falls eine Wiederholung erkennbar besser würde, gib einen knappen, konkreten Hinweis, sonst lass ihn weg.
 
 Haus-Stilgesetz: ${styleLaw}
+
+${localeInstruction(locale)}
 
 Antworte NUR mit JSON, kein weiterer Text:
 {"punkte": ["3-5 kurze, konkrete Feedback-Punkte"], "geschichte": "ein Satz, welche Geschichte dieses Material trägt", "wiederholung_tipp": "ein knapper, konkreter Tipp oder null"}`;
