@@ -4,6 +4,7 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
+import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { ProductView } from "@/core";
 import { useDnaMatch } from "@/features/dna/hooks";
@@ -253,9 +254,9 @@ const ProductDetail = () => {
           <p className="mt-6 font-serif italic text-[1.05rem] text-[#000000]/70">
             Vielleicht ist es verkauft oder das Haus hat es zurückgezogen.
           </p>
-          <Link to="/shop" className="palace-btn mt-10 inline-flex hover:bg-[#000000] hover:text-[#FFFFFF]">
-            Zur Boutique
-          </Link>
+          <Button asChild variant="editorial" size="chip" className="mt-10">
+            <Link to="/shop">Zur Boutique</Link>
+          </Button>
         </section>
       </PalaceLayout>
     );
@@ -326,33 +327,39 @@ const ProductDetail = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
+              <Button
                 type="button"
+                variant="editorial"
+                size="chip"
                 onClick={buyNow}
-                disabled={buyBusy || (soldOut && !isMto)}
-                className="palace-btn text-center disabled:opacity-40"
+                loading={buyBusy}
+                disabled={soldOut && !isMto}
                 style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
               >
-                {buyBusy ? "Öffne Kasse…" : soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
-              </button>
-              <button
+                {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
+              </Button>
+              <Button
                 type="button"
+                variant="editorial"
+                size="chip"
                 onClick={addToBag}
                 disabled={soldOut && !isMto}
-                className="palace-btn house-ink house-hair border text-center disabled:opacity-40"
+                className="house-ink house-hair"
                 style={{ background: "var(--house-bg)" }}
               >
                 {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="editorial"
+                size="chip"
                 onClick={onSave}
                 aria-label="Merken"
-                className="palace-btn house-hair border text-center"
+                className="house-hair"
                 style={(saved || wished) ? { background: "var(--house-fg)", color: "var(--house-bg)" } : { background: "var(--house-bg)", color: "var(--house-fg)" }}
               >
                 <Heart className={cn("h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -530,10 +537,10 @@ const ProductDetail = () => {
               <input value={reqBudget} onChange={(e) => setReqBudget(e.target.value)} placeholder="z.B. 800–1200 €" className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
             </label>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setReqOpen(false)} className="palace-btn house-hair house-ink border" style={{ background: "var(--house-bg)" }}>Abbrechen</button>
-              <button type="button" onClick={submitRequest} disabled={reqBusy} className="palace-btn disabled:opacity-50" style={{ background: "var(--house-fg)", color: "var(--house-bg)" }}>
-                {reqBusy ? "Sende …" : "Anfrage senden"}
-              </button>
+              <Button type="button" variant="editorial" size="chip" onClick={() => setReqOpen(false)} className="house-hair house-ink" style={{ background: "var(--house-bg)" }}>Abbrechen</Button>
+              <Button type="button" variant="editorial" size="chip" onClick={submitRequest} loading={reqBusy} style={{ background: "var(--house-fg)", color: "var(--house-bg)" }}>
+                Anfrage senden
+              </Button>
             </div>
           </div>
         </div>

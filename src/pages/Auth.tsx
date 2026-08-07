@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -104,13 +105,15 @@ export default function Auth() {
           )}
           <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" required />
           <Field label={t("auth.password")} value={password} onChange={setPassword} type="password" required />
-          <button
+          <Button
             type="submit"
-            disabled={busy}
-            className="palace-btn w-full justify-center text-center hover:bg-[#000000] hover:text-[#FFFFFF] disabled:opacity-50"
+            variant="editorial"
+            size="chip"
+            loading={busy}
+            className="w-full justify-center text-center hover:bg-black hover:text-white"
           >
-            {busy ? "…" : mode === "in" ? t("auth.signIn") : t("auth.signUp")}
-          </button>
+            {mode === "in" ? t("auth.signIn") : t("auth.signUp")}
+          </Button>
         </form>
 
         <div className="my-10 flex items-center gap-4">
@@ -119,14 +122,16 @@ export default function Auth() {
           <div className="h-px flex-1 bg-[rgba(0,0,0,.18)]" />
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="editorial"
+          size="chip"
           onClick={handleGoogle}
           disabled={busy}
-          className="palace-btn w-full justify-center text-center disabled:opacity-50"
+          className="w-full justify-center text-center"
         >
           {t("auth.continueGoogle")}
-        </button>
+        </Button>
 
         <p className="mt-10 text-center palace-eyebrow">
           <Link to="/" className="uline text-[#000000]">{t("auth.backToExhibition")}</Link>
