@@ -230,8 +230,9 @@
   }
   .palace .uline:hover { background: #000; color: #fff; }
 
+  /* Teil 27: Schwarz-Weiß gilt für die Halle, nie für die Kunst — Werkbilder zeigen ihre
+     echten Farben, kein Graustufen-Filter mehr. */
   .palace .palace-image-inner {
-    filter: grayscale(1) contrast(var(--palace-image-contrast));
     transition: transform .8s var(--ease-pawn);
     will-change: transform;
   }
