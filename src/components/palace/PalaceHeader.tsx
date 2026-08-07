@@ -78,7 +78,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
   const solid = variant !== "transparent-on-hero" || scrolled;
   const border = solid ? "border-black" : "border-white/30";
   const borderSoft = solid ? "border-[rgba(0,0,0,.18)]" : "border-white/20";
-  const text = solid ? "text-[#111]" : "text-white";
+  const text = solid ? "text-black" : "text-white";
 
   return (
     <>

@@ -33,10 +33,10 @@ export function ChartPlaceholder({
   const path = points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
   const area = `${path} L${points[points.length - 1][0]},${height - padding} L${points[0][0]},${height - padding} Z`;
 
-  const stroke = tone === "dark" ? "hsl(0 0% 90%)" : "hsl(0 0% 12%)";
-  const accent = "hsl(0 0% 35%)";
-  const grid = tone === "dark" ? "hsl(0 0% 20%)" : "hsl(0 0% 82%)";
-  const label = tone === "dark" ? "hsl(0 0% 60%)" : "hsl(0 0% 40%)";
+  const stroke = tone === "dark" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.88)";
+  const accent = "rgba(0,0,0,0.65)";
+  const grid = tone === "dark" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)";
+  const label = tone === "dark" ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)";
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className={cn("w-full", className)} role="img" aria-label="Chart">
@@ -86,23 +86,23 @@ export function RadarPlaceholder({ values = [70, 88, 62, 80, 55, 74], labels = [
   return (
     <svg viewBox={`0 0 ${size} ${size}`} className={cn("w-full", className)} role="img" aria-label="Style DNA radar">
       {[0.25, 0.5, 0.75, 1].map((s) => (
-        <polygon key={s} points={polygon(new Array(n).fill(100), s)} fill="none" stroke="hsl(0 0% 78%)" strokeDasharray="2 3" />
+        <polygon key={s} points={polygon(new Array(n).fill(100), s)} fill="none" stroke="rgba(0,0,0,0.22)" strokeDasharray="2 3" />
       ))}
       {values.map((_, i) => {
         const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-        return <line key={i} x1={c} y1={c} x2={c + Math.cos(angle) * r} y2={c + Math.sin(angle) * r} stroke="hsl(0 0% 78%)" strokeDasharray="2 3" />;
+        return <line key={i} x1={c} y1={c} x2={c + Math.cos(angle) * r} y2={c + Math.sin(angle) * r} stroke="rgba(0,0,0,0.22)" strokeDasharray="2 3" />;
       })}
-      <polygon points={polygon(values)} fill="hsl(0 0% 22% / 0.18)" stroke="hsl(0 0% 22%)" strokeWidth={1.5} />
+      <polygon points={polygon(values)} fill="rgba(0,0,0,0.18)" stroke="rgba(0,0,0,0.78)" strokeWidth={1.5} />
       {values.map((v, i) => {
         const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
         const rad = (v / 100) * r;
-        return <circle key={i} cx={c + Math.cos(angle) * rad} cy={c + Math.sin(angle) * rad} r={3} fill="hsl(0 0% 22%)" />;
+        return <circle key={i} cx={c + Math.cos(angle) * rad} cy={c + Math.sin(angle) * rad} r={3} fill="rgba(0,0,0,0.78)" />;
       })}
       {labels.map((label, i) => {
         const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
         const lr = r + 20;
         return (
-          <text key={label} x={c + Math.cos(angle) * lr} y={c + Math.sin(angle) * lr + 4} textAnchor="middle" fontSize="10" fontFamily="Inter" fill="hsl(0 0% 22%)" className="uppercase tracking-[0.18em]">
+          <text key={label} x={c + Math.cos(angle) * lr} y={c + Math.sin(angle) * lr + 4} textAnchor="middle" fontSize="10" fontFamily="Inter" fill="rgba(0,0,0,0.78)" className="uppercase tracking-[0.18em]">
             {label}
           </text>
         );

@@ -60,7 +60,7 @@ export function DynamicBanner({
       <div className="absolute inset-0 bg-[#000000]/50" />
       <div className="relative flex items-center justify-center px-6 py-24 text-center" style={{ minHeight }}>
         <Reveal>
-          <p className="palace-eyebrow" style={{ color: "rgba(241,238,231,.75)" }}>
+          <p className="palace-eyebrow" style={{ color: "rgba(255,255,255,.75)" }}>
             Im Rampenlicht{world ? ` · ${world}` : ""}
           </p>
           <blockquote className="mx-auto mt-8 max-w-3xl">
@@ -81,13 +81,13 @@ export function DynamicBanner({
                 {fallbackQuote}
               </Editable>
             )}
-            <cite className="mt-8 block not-italic palace-eyebrow" style={{ color: "rgba(241,238,231,.75)" }}>
+            <cite className="mt-8 block not-italic palace-eyebrow" style={{ color: "rgba(255,255,255,.75)" }}>
               {pick.quote_role ?? pick.brand_name}
             </cite>
           </blockquote>
           <Link
             to={`/designer/${pick.slug}`}
-            className="mt-10 inline-block whitespace-nowrap border border-[rgba(241,238,231,.6)] px-6 py-3 text-[0.65rem] uppercase tracking-[0.32em] text-[#FFFFFF] transition-colors duration-500 hover:bg-[#FFFFFF] hover:text-[#000000]"
+            className="mt-10 inline-block whitespace-nowrap border border-[rgba(255,255,255,.6)] px-6 py-3 text-[0.65rem] uppercase tracking-[0.32em] text-[#FFFFFF] transition-colors duration-500 hover:bg-[#FFFFFF] hover:text-[#000000]"
           >
             Zum Atelier von {pick.brand_name} →
           </Link>

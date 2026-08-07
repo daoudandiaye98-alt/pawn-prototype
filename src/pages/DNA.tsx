@@ -332,9 +332,9 @@ export default function DNA() {
               { t: "Deine Daten arbeiten nur für deine Auswahl.", b: "Sie helfen dir, Handschriften zu finden, die zu dir passen. Sie bleiben bei uns." },
               { t: "Volle Kontrolle: Konto löschen entfernt alles, sofort.", b: "Konto → Einstellungen → Datenschutz → Konto löschen. Profil, Signale, Sessions — vollständig entfernt." },
             ].map((x) => (
-              <li key={x.t} className="border-t border-[rgba(241,238,231,0.16)] pt-6">
+              <li key={x.t} className="border-t border-[rgba(255,255,255,0.16)] pt-6">
                 <p className="palace-serif text-[1.4rem] italic" style={{ color: "#FFFFFF" }}>{x.t}</p>
-                <p className="mt-3 max-w-md text-[0.95rem] leading-[1.65]" style={{ color: "rgba(241,238,231,0.75)" }}>{x.b}</p>
+                <p className="mt-3 max-w-md text-[0.95rem] leading-[1.65]" style={{ color: "rgba(255,255,255,0.75)" }}>{x.b}</p>
               </li>
             ))}
           </ul>

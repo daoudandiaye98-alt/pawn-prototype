@@ -1012,7 +1012,7 @@ function PersonaWithSuggestion(props: {
 
 function SuggestionDiff({ sugg, onAccept, onDismiss }: { sugg: { key: string; oldText: string; newText: string }; onAccept: () => void; onDismiss: () => void }) {
   return (
-    <div className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-5xl border-[1.5px] border-foreground bg-white shadow-2xl">
+    <div className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-5xl border-[1.5px] border-foreground bg-white shadow-hard">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <p className="text-[0.62rem] uppercase tracking-[0.28em]">Vorschlag · {sugg.key}</p>
         <div className="flex gap-2">

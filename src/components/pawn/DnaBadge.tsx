@@ -45,7 +45,7 @@ export function DnaBadge({ match, size = "sm", variant = "ivory", className, sho
             cy={dim / 2}
             r={r}
             fill="none"
-            stroke={isInk ? "hsl(0 0% 90%)" : "hsl(0 0% 22%)"}
+            stroke={isInk ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.78)"}
             strokeWidth={stroke}
             strokeDasharray={`${dash} ${c - dash}`}
             strokeDashoffset={c / 4}
