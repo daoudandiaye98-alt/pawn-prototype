@@ -14,32 +14,37 @@ import {
   type Plan, type PlanQuota,
 } from "@/features/campaign/quota";
 import { useContentValue } from "@/components/palace/Editable";
+import { useI18n } from "@/lib/i18n";
 import { Check, Sparkles } from "lucide-react";
 
-const STATIC_BENEFITS: Record<Plan, string[]> = {
-  haus: [
-    "7% bleiben immer 7%",
-    "PAWN-KI · Standard-Denkstufe",
-  ],
-  atelier: [
-    "KI-Kurator prüft deine Kollektion vor Veröffentlichung",
-    "Text-Atelier für Produkttexte",
-    "Persönlicher Welt-Spiegel mit Trend-Report",
-    "PAWN+ Denkstufe — tiefere Analysen",
-  ],
-  maison: [
-    "Monatliches Haus-Dossier",
-    "Vitrine-Rotation auf der Startseite",
-    "Dein Video zuerst auf der Startseite, früher Zugang zu gemeinsamen Kampagnen",
-    "PAWN+ Max — stärkstes Modell, längster Kontext",
-  ],
-};
+function useStaticBenefits(t: (key: string, vars?: Record<string, string | number>) => string): Record<Plan, string[]> {
+  return {
+    haus: [
+      t("studio.plan.benefits.haus.commission"),
+      t("studio.plan.benefits.haus.aiTier"),
+    ],
+    atelier: [
+      t("studio.plan.benefits.atelier.curator"),
+      t("studio.plan.benefits.atelier.textAtelier"),
+      t("studio.plan.benefits.atelier.trendMirror"),
+      t("studio.plan.benefits.atelier.aiTier"),
+    ],
+    maison: [
+      t("studio.plan.benefits.maison.dossier"),
+      t("studio.plan.benefits.maison.showcase"),
+      t("studio.plan.benefits.maison.priority"),
+      t("studio.plan.benefits.maison.aiTier"),
+    ],
+  };
+}
 
-const HEADLINES: Record<Plan, string> = {
-  haus: "Alles, um live zu sein.",
-  atelier: "Wenn du regelmäßig veröffentlichst.",
-  maison: "Für Ateliers im Serienbetrieb.",
-};
+function useHeadlines(t: (key: string, vars?: Record<string, string | number>) => string): Record<Plan, string> {
+  return {
+    haus: t("studio.plan.headline.haus"),
+    atelier: t("studio.plan.headline.atelier"),
+    maison: t("studio.plan.headline.maison"),
+  };
+}
 const BADGES: Record<Plan, string | undefined> = { haus: undefined, atelier: "PAWN+", maison: "PAWN+ Max" };
 
 interface PlanPrices {
@@ -47,21 +52,22 @@ interface PlanPrices {
   maison?: { eur_month?: number; stripe_price_id?: string | null };
 }
 
-function fmt(n: number): string { return n < 0 ? "alle" : String(n); }
-function fmtCount(n: number, noun: string): string {
-  return n < 0 ? `unbegrenzt ${noun}` : `${n} ${noun}`;
+function fmt(t: (key: string, vars?: Record<string, string | number>) => string, n: number): string { return n < 0 ? t("studio.plan.all") : String(n); }
+function fmtCount(t: (key: string, vars?: Record<string, string | number>) => string, n: number, noun: string): string {
+  return n < 0 ? t("studio.plan.unlimitedNoun", { noun }) : `${n} ${noun}`;
 }
 
 /** Dein Monat — eine ruhige Zeile, kein Guthabenstand. */
 function MonthLine({ used, limits, unlimited }: { used: Record<"videos" | "cinematic" | "shots", number>; limits: PlanQuota; unlimited: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="border border-border bg-white p-5">
-      <p className="editorial-eyebrow">Dein Monat</p>
+      <p className="editorial-eyebrow">{t("studio.plan.yourMonth")}</p>
       <p className="mt-2 font-serif text-lg tabular-nums">
-        {formatQuota(used.videos, unlimited ? -1 : limits.videos, "Videos")} · {formatQuota(used.shots, unlimited ? -1 : limits.shots, "Shots")}
+        {formatQuota(used.videos, unlimited ? -1 : limits.videos, t("studio.plan.videosNoun"))} · {formatQuota(used.shots, unlimited ? -1 : limits.shots, t("studio.plan.shotsNoun"))}
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Fotos ohne KI-Werkzeuge zählen nicht mit. Am 1. beginnt der Monat neu.
+        {t("studio.plan.monthHint")}
       </p>
     </div>
   );
@@ -70,6 +76,7 @@ function MonthLine({ used, limits, unlimited }: { used: Record<"videos" | "cinem
 export default function StudioPlan() {
   const { user } = useAuth();
   const { designer } = useMyDesigner();
+  const { t } = useI18n();
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = usePlanQuota(designer?.id, plan);
   const [prices, setPrices] = useState<PlanPrices>({});
@@ -125,6 +132,9 @@ export default function StudioPlan() {
       });
   }, []);
 
+  const HEADLINES = useHeadlines(t);
+  const STATIC_BENEFITS = useStaticBenefits(t);
+
   const headlineHaus = useContentValue("studio_plan.haus.headline", HEADLINES.haus);
   const headlineAtelier = useContentValue("studio_plan.atelier.headline", HEADLINES.atelier);
   const headlineMaison = useContentValue("studio_plan.maison.headline", HEADLINES.maison);
@@ -140,12 +150,14 @@ export default function StudioPlan() {
   };
 
   const upgrade = async (target: Plan) => {
-    if (!user || !designer) { toast.error("Bitte melde dich an."); return; }
+    if (!user || !designer) { toast.error(t("studio.plan.toast.pleaseSignIn")); return; }
     if (target === "haus" || target === plan) return;
     setBusy(target);
     try {
       const priceId = target === "atelier" ? prices.atelier?.stripe_price_id : prices.maison?.stripe_price_id;
       if (!priceId) {
+        // Hinweis: Betreff/Text dieser internen Nachricht an das PAWN-Team bleiben bewusst
+        // Deutsch, unabhängig von der Studio-Sprache — der Admin liest Deutsch.
         const { data: thread, error } = await supabase.from("message_threads").insert({
           designer_id: designer.id, created_by: user.id,
           subject: `Plan-Upgrade auf ${planLabel(target)}`,
@@ -156,7 +168,7 @@ export default function StudioPlan() {
           thread_id: (thread as { id: string }).id, sender_id: user.id,
           body: `Ich möchte auf den Plan ${planLabel(target)} wechseln. Bitte meldet euch zur Freischaltung.`,
         } as never);
-        toast.success("Anfrage gesendet — wir melden uns.");
+        toast.success(t("studio.plan.toast.requestSent"));
         return;
       }
       const { data, error } = await supabase.functions.invoke("create-checkout", {
@@ -186,26 +198,36 @@ export default function StudioPlan() {
   const benefitsFor = (p: Plan): string[] => {
     const l = planLimits[p];
     const videoLine = l.cinematic > 0 || l.cinematic < 0
-      ? `${fmtCount(l.videos, "Videos")} pro Monat, ${fmt(l.cinematic)} davon kinematisch${l.emblem ? "" : " — ohne PAWN-Emblem"}`
-      : `${fmtCount(l.videos, "Videos")} pro Monat in Editorial-Regie${l.emblem ? ", mit PAWN-Emblem im Abspann" : ""}`;
-    const shotLine = `${fmtCount(l.shots, "Model-Shots & Freisteller")} pro Monat`;
-    const sigLine = `${fmt(l.signature_previews)} Bildsprache${l.signature_previews === 1 ? "" : "en"}${p === "maison" ? " + 1 Wunsch-Bildsprache" : ""}`;
+      ? t("studio.plan.benefitLine.videosCinematic", {
+          videos: fmtCount(t, l.videos, t("studio.plan.videosNoun")),
+          cinematic: fmt(t, l.cinematic),
+          emblemNote: l.emblem ? "" : t("studio.plan.benefitLine.noEmblemSuffix"),
+        })
+      : t("studio.plan.benefitLine.videosEditorial", {
+          videos: fmtCount(t, l.videos, t("studio.plan.videosNoun")),
+          emblemNote: l.emblem ? t("studio.plan.benefitLine.emblemSuffix") : "",
+        });
+    const shotLine = t("studio.plan.benefitLine.shots", { count: fmtCount(t, l.shots, t("studio.plan.shotsAndCutoutsNoun")) });
+    const sigBase = l.signature_previews === 1
+      ? t("studio.plan.benefitLine.signatureOne", { count: fmt(t, l.signature_previews) })
+      : t("studio.plan.benefitLine.signatureMany", { count: fmt(t, l.signature_previews) });
+    const sigLine = sigBase + (p === "maison" ? t("studio.plan.benefitLine.wishSignatureSuffix") : "");
     return [videoLine, shotLine, sigLine, ...resolvedStaticBenefits[p]].filter(Boolean);
   };
 
   return (
-    <StudioShell title="Plan" eyebrow="Dein Haus im PAWN">
+    <StudioShell title={t("studio.plan.title")} eyebrow={t("studio.plan.eyebrow")}>
       <div className="max-w-2xl">
         <p className="palace-serif text-lg">
-          <strong>7 % bleiben immer 7 %. Pläne sind optional.</strong>
+          <strong>{t("studio.plan.commissionHeadline")}</strong>
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
-          Drei Ausbaustufen, monatlich kündbar. Sie unterscheiden sich nur darin, wie viel du im Monat produzieren kannst — nie in deiner Provision.
+          {t("studio.plan.commissionSub")}
         </p>
       </div>
 
       <p className="mt-8 text-sm">
-        Aktuell: <span className="font-medium">{planLabel(plan)}</span>.
+        {t("studio.plan.currently")} <span className="font-medium">{planLabel(plan)}</span>.
       </p>
 
       {!quota.loading && (
@@ -228,9 +250,9 @@ export default function StudioPlan() {
                   <Sparkles className="h-2.5 w-2.5" /> {badge}
                 </span>
               )}
-              <p className="editorial-eyebrow">Plan</p>
+              <p className="editorial-eyebrow">{t("studio.plan.planLabel")}</p>
               <h3 className="mt-2 font-serif text-3xl">{planLabel(key)}</h3>
-              <p className="mt-2 tabular-nums text-xl">{priceFor(key)}<span className="text-sm text-muted-foreground"> / Monat</span></p>
+              <p className="mt-2 tabular-nums text-xl">{priceFor(key)}<span className="text-sm text-muted-foreground"> {t("studio.plan.perMonth")}</span></p>
               <p className="mt-4 font-serif text-sm italic text-muted-foreground">{resolvedHeadlines[key]}</p>
 
               <div className="mt-4 border border-border bg-black">
@@ -239,11 +261,11 @@ export default function StudioPlan() {
                 ) : example ? (
                   <div className="relative">
                     <video src={example} muted playsInline loop autoPlay className="aspect-[9/16] w-full bg-black object-contain" />
-                    <span className="absolute right-2 top-2 border border-white/70 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-white/90">Video · Beta</span>
+                    <span className="absolute right-2 top-2 border border-white/70 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-white/90">{t("studio.plan.videoBeta")}</span>
                   </div>
                 ) : (
                   <div className="flex aspect-[9/16] items-center justify-center p-4 text-center text-xs text-white/50">
-                    Beispiel folgt, sobald das erste Haus in dieser Stufe produziert.
+                    {t("studio.plan.exampleComingSoon")}
                   </div>
                 )}
               </div>
@@ -257,13 +279,13 @@ export default function StudioPlan() {
               </ul>
               <div className="mt-6">
                 {current ? (
-                  <span className="inline-block border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em]">Dein Plan</span>
+                  <span className="inline-block border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em]">{t("studio.plan.yourPlan")}</span>
                 ) : key === "haus" ? (
-                  <span className="text-xs text-muted-foreground">Basiszugang</span>
+                  <span className="text-xs text-muted-foreground">{t("studio.plan.baseAccess")}</span>
                 ) : (
                   <button onClick={() => upgrade(key)} disabled={busy === key}
                     className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
-                    {busy === key ? "…" : "Wechseln"}
+                    {busy === key ? "…" : t("studio.plan.switchTo")}
                   </button>
                 )}
               </div>
@@ -273,12 +295,11 @@ export default function StudioPlan() {
       </div>
 
       <p className="mt-8 text-xs text-muted-foreground">
-        Kündigung jederzeit im Studio zum Monatsende. Details in den <a href="/agb" className="underline">AGB</a>.
-        Bestehende Abos behalten ihren bisherigen Preis.
+        {t("studio.plan.cancelHint.pre")} <a href="/agb" className="underline">{t("studio.plan.cancelHint.linkLabel")}</a>{t("studio.plan.cancelHint.post")}
       </p>
       {(!prices.atelier?.stripe_price_id || !prices.maison?.stripe_price_id) && (
         <p className="mt-3 text-xs text-muted-foreground">
-          Zahlung ist noch nicht vollständig eingerichtet — Upgrade-Wünsche gehen als Nachricht an unser Team.
+          {t("studio.plan.paymentNotSetUp")}
         </p>
       )}
     </StudioShell>

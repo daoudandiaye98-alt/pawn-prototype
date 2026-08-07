@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Search, Plus } from "lucide-react";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useStore, marketplaceSelectors } from "@/core";
 import { ProductImage } from "@/components/pawn/ProductImage";
-import { Panel, Command, Status } from "@/components/pawn/primitives";
 import { cn } from "@/lib/utils";
 
 const AdminProducts = () => {
@@ -38,10 +39,16 @@ const AdminProducts = () => {
             ))}
           </div>
         </div>
-        <Command><Plus className="mr-2 h-4 w-4" /> New product</Command>
+        <Button><Plus className="mr-2 h-4 w-4" /> New product</Button>
       </div>
 
-      <Panel className="mt-8" padding="none" headerBorder={false} eyebrow={`${filtered.length} pieces`} title="Catalog">
+      <div className="mt-8 border border-[hsl(var(--border-strong))] bg-card">
+        <div className="flex items-baseline justify-between gap-4 px-6 py-4">
+          <div>
+            <p className="t-eyebrow">{`${filtered.length} pieces`}</p>
+            <h3 className="mt-1 t-display-sm">Catalog</h3>
+          </div>
+        </div>
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
@@ -65,7 +72,7 @@ const AdminProducts = () => {
                 <td className="px-6 py-3 text-muted-foreground">{p.designer}</td>
                 <td className="px-6 py-3">{p.category}</td>
                 <td className="px-6 py-3">
-                  <Status tone={p.status === "Active" ? "live" : "muted"} label={p.status} />
+                  <Badge variant={p.status === "Active" ? "default" : "outline"}>{p.status}</Badge>
                 </td>
                 <td className="px-6 py-3 text-right tabular-nums">€{p.price.toLocaleString("de-DE")}</td>
               </tr>
@@ -73,7 +80,7 @@ const AdminProducts = () => {
           </tbody>
         </table>
         </div>
-      </Panel>
+      </div>
     </AdminShell>
   );
 };

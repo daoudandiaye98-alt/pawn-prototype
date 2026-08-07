@@ -1214,6 +1214,7 @@ export type Database = {
           country: string | null
           created_at: string
           dismissed_suggestions: Json
+          hausseite_cover_shown_at: string | null
           hero_image_url: string | null
           house_number: number | null
           id: string
@@ -1227,6 +1228,7 @@ export type Database = {
           page_published_at: string | null
           plan: Database["public"]["Enums"]["designer_plan"]
           portrait_url: string | null
+          preferred_language: string
           published: boolean
           quote: string | null
           quote_role: string | null
@@ -1263,6 +1265,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           dismissed_suggestions?: Json
+          hausseite_cover_shown_at?: string | null
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
@@ -1276,6 +1279,7 @@ export type Database = {
           page_published_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
+          preferred_language?: string
           published?: boolean
           quote?: string | null
           quote_role?: string | null
@@ -1312,6 +1316,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           dismissed_suggestions?: Json
+          hausseite_cover_shown_at?: string | null
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
@@ -1325,6 +1330,7 @@ export type Database = {
           page_published_at?: string | null
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
+          preferred_language?: string
           published?: boolean
           quote?: string | null
           quote_role?: string | null
@@ -1899,6 +1905,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      i18n_overrides: {
+        Row: {
+          key: string
+          updated_at: string
+          value_en: string
+          value_en_source: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value_en: string
+          value_en_source?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value_en?: string
+          value_en_source?: string | null
+        }
+        Relationships: []
       }
       jarvis_experiments: {
         Row: {
@@ -2594,6 +2621,7 @@ export type Database = {
           care_instructions: string | null
           care_symbols: string[]
           compare_at_price: number | null
+          cover_shown_at: string | null
           created_at: string
           description: string | null
           designer_id: string
@@ -2633,6 +2661,7 @@ export type Database = {
           care_instructions?: string | null
           care_symbols?: string[]
           compare_at_price?: number | null
+          cover_shown_at?: string | null
           created_at?: string
           description?: string | null
           designer_id: string
@@ -2672,6 +2701,7 @@ export type Database = {
           care_instructions?: string | null
           care_symbols?: string[]
           compare_at_price?: number | null
+          cover_shown_at?: string | null
           created_at?: string
           description?: string | null
           designer_id?: string

@@ -11,11 +11,13 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Copy } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface ReferralRow { id: string; created_at: string }
 
 export default function StudioReferrals() {
   const { designer, loading } = useMyDesigner();
+  const { t } = useI18n();
   const [qr, setQr] = useState<string | null>(null);
   const [credits, setCredits] = useState<number>(20);
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
@@ -51,57 +53,53 @@ export default function StudioReferrals() {
   }, []);
 
   const copyLink = () => {
-    navigator.clipboard.writeText(link).then(() => toast.success("Link kopiert.")).catch(() => toast.error("Kopieren fehlgeschlagen."));
+    navigator.clipboard.writeText(link).then(() => toast.success(t("studio.referrals.linkCopiedToast"))).catch(() => toast.error(t("studio.referrals.copyFailedToast")));
   };
 
-  if (loading) return <StudioShell title="Empfehlungen"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Empfehlungen"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.referrals.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.referrals.title")}><p className="text-muted-foreground">{t("studio.referrals.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title="Empfehlungen" eyebrow="Reichweite teilen">
+    <StudioShell title={t("studio.referrals.title")} eyebrow={t("studio.referrals.eyebrow")}>
       <div className="mx-auto max-w-2xl">
         <p className="text-sm text-muted-foreground">
-          Wer über deinen Link zu PAWN kommt und seine erste Bestellung abschließt — bei irgendeinem Haus,
-          nicht nur bei dir — schaltet dir einen Monat zusätzliche Sichtbarkeit frei: dein Kontingent an
-          Videos, Produktfotos und Signaturen steigt für 30 Tage auf die nächste Stufe. Nie Geld,
-          kein Selbstkauf, keine Gutschrift vor abgeschlossener Bestellung.
+          {t("studio.referrals.intro")}
         </p>
 
 
         <div className="mt-8 border-[1.5px] border-foreground bg-white p-6">
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Dein Link</p>
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.referrals.yourLink")}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <code className="min-w-0 flex-1 break-all border border-border bg-muted/40 px-3 py-2 text-sm">{link}</code>
             <button type="button" onClick={copyLink}
               className="inline-flex shrink-0 items-center gap-1.5 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] text-background hover:bg-black">
-              <Copy className="h-3.5 w-3.5" /> Kopieren
+              <Copy className="h-3.5 w-3.5" /> {t("studio.referrals.copy")}
             </button>
           </div>
           {qr && (
             <div className="mt-6 flex flex-col items-center gap-2">
-              <img src={qr} alt="QR-Code für deinen Empfehlungslink" className="border border-border" width={160} height={160} />
-              <p className="text-xs text-muted-foreground">Zum Scannen — für Karten, Aufsteller oder Stories.</p>
+              <img src={qr} alt={t("studio.referrals.qrAlt")} className="border border-border" width={160} height={160} />
+              <p className="text-xs text-muted-foreground">{t("studio.referrals.qrHint")}</p>
             </div>
           )}
         </div>
 
         {reach && (
           <p className="mt-6 text-sm text-muted-foreground">
-            Gemeinsam erreichen die {reach.houses} veröffentlichten Häuser von PAWN {reach.views.toLocaleString("de-DE")} Aufrufe —
-            das ist das Netzwerk, das dein Link mitnutzt.
+            {t("studio.referrals.reach", { houses: reach.houses, views: reach.views.toLocaleString("de-DE") })}
           </p>
         )}
 
         <div className="mt-10">
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Deine Empfehlungen · {referrals.length}</p>
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.referrals.yourReferrals", { n: referrals.length })}</p>
           {referrals.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">Noch keine — sobald der erste Kauf über deinen Link abgeschlossen ist, steht er hier.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{t("studio.referrals.emptyReferrals")}</p>
           ) : (
             <ul className="mt-3 divide-y divide-border border border-border bg-white">
               {referrals.map((r) => (
                 <li key={r.id} className="flex items-center justify-between px-4 py-3 text-sm">
                   <span>{new Date(r.created_at).toLocaleDateString("de-DE")}</span>
-                  <span className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">Monat Sichtbarkeit gutgeschrieben</span>
+                  <span className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{t("studio.referrals.creditedLabel")}</span>
                 </li>
               ))}
             </ul>

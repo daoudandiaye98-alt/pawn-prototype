@@ -4,9 +4,9 @@ import { Minus, Plus, X, ShieldCheck } from "lucide-react";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { PaymentLogos } from "@/components/pawn/PaymentLogos";
+import { Button } from "@/components/ui/button";
 import { useCart } from "@/store/cart";
 import { useCartWardrobeImpact } from "@/features/dna/hooks";
-import { Insight } from "@/components/pawn/primitives";
 import { useCartStockLimits } from "@/features/commerce/hooks";
 import { CartRecommendations } from "@/features/commerce/CartRecommendations";
 import { useI18n } from "@/lib/i18n";
@@ -48,12 +48,9 @@ const Cart = () => {
           <p className="mx-auto mt-6 max-w-md text-[0.98rem] leading-relaxed text-[#000000]/75">
             {t("cart.emptyBody")}
           </p>
-          <Link
-            to="/mode"
-            className="palace-btn mt-10 justify-center border-[#000000] bg-[#000000] text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-[#000000]"
-          >
-            {t("cart.enter")}
-          </Link>
+          <Button asChild variant="editorial" size="chip" className="mt-10 justify-center border-black bg-black text-white hover:bg-white hover:text-black">
+            <Link to="/mode">{t("cart.enter")}</Link>
+          </Button>
         </section>
         <section className="mx-auto max-w-[1400px] px-6 pb-24 md:px-14">
           <CartRecommendations variant="empty-cart" title="Deine DNA · Vorschläge" limit={3} />
@@ -133,12 +130,13 @@ const Cart = () => {
 
           <aside className="h-fit space-y-6">
             {impact.dominant && (
-              <Insight
-                title={`Diese Auswahl schärft dein ${impact.dominantLabel}.`}
-                cause={`+${impact.delta} Punkte auf deine ${impact.dominantLabel.toLowerCase()}-Signatur`}
-                effect="Deine nächste DNA-Lesung nimmt das auf."
-                severity="medium"
-              />
+              <div className="border border-[rgba(0,0,0,.18)] bg-white p-6">
+                <p className="palace-eyebrow">Beobachtung</p>
+                <p className="mt-2 t-display-sm">{`Diese Auswahl schärft dein ${impact.dominantLabel}.`}</p>
+                <p className="mt-3 text-[0.8rem] leading-relaxed text-black/70">
+                  {`+${impact.delta} Punkte auf deine ${impact.dominantLabel.toLowerCase()}-Signatur — deine nächste DNA-Lesung nimmt das auf.`}
+                </p>
+              </div>
             )}
             {houses.length > 1 && (
               <p className="border border-[rgba(0,0,0,.18)] bg-white px-6 py-4 text-[0.85rem] leading-relaxed text-black/70">
@@ -155,12 +153,11 @@ const Cart = () => {
                     <Row label={t("cart.subtotal")} value={formatPrice(house.subtotal, locale)} />
                     <Row label={t("cart.shipping")} value={<span className="text-[0.8rem] text-black/70">wird beim Bezahlen berechnet</span>} />
                   </dl>
-                  <Link
-                    to={`/checkout?haus=${encodeURIComponent(house.key)}`}
-                    className="palace-btn mt-8 w-full justify-center border-[#000000] bg-[#000000] text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-[#000000]"
-                  >
-                    {houses.length > 1 ? "Bei diesem Haus kaufen" : t("cart.checkoutExpress")}
-                  </Link>
+                  <Button asChild variant="editorial" size="chip" className="mt-8 w-full justify-center border-black bg-black text-white hover:bg-white hover:text-black">
+                    <Link to={`/checkout?haus=${encodeURIComponent(house.key)}`}>
+                      {houses.length > 1 ? "Bei diesem Haus kaufen" : t("cart.checkoutExpress")}
+                    </Link>
+                  </Button>
                   <PaymentLogos className="mt-4" />
                   <p className="mt-3 flex items-center justify-center gap-2 text-[0.75rem] text-black/70">
                     <ShieldCheck className="h-3.5 w-3.5 text-[#000000]" /> {t("cart.securePayment")}

@@ -15,7 +15,7 @@ import { PawnWordmark } from "@/components/pawn/PawnWordmark";
  *   so we never quetsch items on iPad and 13" laptops.
  * - All nav items and utility buttons use whitespace-nowrap.
  */
-export function PalaceHeader() {
+export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "transparent-on-hero" }) {
   const { user, roles, signOut } = useAuth();
   const { count: cartCount } = useCart();
   const { locale, setLocale, t } = useI18n();
@@ -74,10 +74,16 @@ export function PalaceHeader() {
   const isDesigner = roles.includes("designer");
   const isApplicant = roles.includes("designer_applicant" as never);
 
+  // Teil 27: auf dem Cover transparent mit weißer Schrift, danach wie überall solide.
+  const solid = variant !== "transparent-on-hero" || scrolled;
+  const border = solid ? "border-black" : "border-white/30";
+  const borderSoft = solid ? "border-[rgba(0,0,0,.18)]" : "border-white/20";
+  const text = solid ? "text-black" : "text-white";
+
   return (
     <>
       <header
-        className="fixed inset-x-0 top-0 z-50 border-b-[1.5px] border-black bg-white"
+        className={`fixed inset-x-0 top-0 z-50 border-b-[1.5px] transition-colors duration-300 ${border} ${solid ? "bg-white" : "bg-transparent"}`}
         style={{ transitionTimingFunction: "cubic-bezier(.76,0,.18,1)" }}
       >
         <div className="mx-auto flex h-14 max-w-[1600px] items-stretch">
@@ -85,7 +91,7 @@ export function PalaceHeader() {
           <Link
             to="/"
             aria-label="PAWN"
-            className="flex items-center whitespace-nowrap border-r-[1.5px] border-black px-5 text-black md:px-7 hover-invert"
+            className={`flex items-center whitespace-nowrap border-r-[1.5px] px-5 md:px-7 hover-invert ${border} ${text}`}
           >
             <PawnWordmark className="text-[1.35rem] md:text-[1.5rem]" />
           </Link>
@@ -97,8 +103,8 @@ export function PalaceHeader() {
                 key={item.label}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center whitespace-nowrap border-r border-[rgba(0,0,0,.18)] px-5 text-[0.66rem] uppercase tracking-[0.3em] transition-colors duration-200 hover:bg-black hover:text-white ${
-                    isActive ? "bg-black text-white" : "text-black"
+                  `flex items-center whitespace-nowrap border-r px-5 text-[0.66rem] uppercase tracking-[0.3em] transition-colors duration-200 hover:bg-black hover:text-white ${borderSoft} ${
+                    isActive ? "bg-black text-white" : text
                   }`
                 }
               >
@@ -111,7 +117,7 @@ export function PalaceHeader() {
             {/* Frag PAWN — solid black cell with blinking dot */}
             <button
               onClick={() => setChatOpen(true)}
-              className="hidden items-center gap-2 whitespace-nowrap border-l-[1.5px] border-black bg-black px-4 text-[0.62rem] uppercase tracking-[0.32em] text-white transition-colors duration-200 hover:bg-white hover:text-black xl:flex xl:px-5"
+              className={`hidden items-center gap-2 whitespace-nowrap border-l-[1.5px] bg-black px-4 text-[0.62rem] uppercase tracking-[0.32em] text-white transition-colors duration-200 hover:bg-white hover:text-black xl:flex xl:px-5 ${border}`}
             >
               <span className="inline-block h-[6px] w-[6px] animate-pulse rounded-full bg-current" />
               {t("nav.frag")}
@@ -122,7 +128,7 @@ export function PalaceHeader() {
               type="button"
               aria-label="Suche"
               onClick={() => setSearchOpen(true)}
-              className="hidden items-center border-l-[1.5px] border-black px-4 text-black hover:bg-black hover:text-white md:inline-flex"
+              className={`hidden items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white md:inline-flex ${border} ${text}`}
             >
               <PawnSearchIcon className="h-5 w-5" />
             </button>
@@ -131,7 +137,7 @@ export function PalaceHeader() {
             <button
               type="button"
               onClick={() => setLocale(locale === "de" ? "en" : "de")}
-              className="hidden items-center whitespace-nowrap border-l border-[rgba(0,0,0,.18)] px-3 text-[0.6rem] uppercase tracking-[0.28em] text-black hover:bg-black hover:text-white xl:inline-flex"
+              className={`hidden items-center whitespace-nowrap border-l px-3 text-[0.6rem] uppercase tracking-[0.28em] hover:bg-black hover:text-white xl:inline-flex ${borderSoft} ${text}`}
               aria-label="Sprache wechseln"
             >
               {locale.toUpperCase()}
@@ -139,12 +145,12 @@ export function PalaceHeader() {
 
             {/* Account cell */}
             {user ? (
-              <div ref={accountRef} className="relative hidden border-l-[1.5px] border-black xl:block">
+              <div ref={accountRef} className={`relative hidden border-l-[1.5px] xl:block ${border}`}>
                 <button
                   type="button"
                   aria-label="Konto"
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="flex h-full items-center px-4 text-black hover:bg-black hover:text-white"
+                  className={`flex h-full items-center px-4 hover:bg-black hover:text-white ${text}`}
                 >
                   <PawnProfileIcon className="h-5 w-5" />
                 </button>
@@ -175,7 +181,7 @@ export function PalaceHeader() {
               <Link
                 to="/auth"
                 aria-label="Anmelden"
-                className="hidden items-center border-l-[1.5px] border-black px-4 text-black hover:bg-black hover:text-white xl:inline-flex"
+                className={`hidden items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white xl:inline-flex ${border} ${text}`}
               >
                 <PawnProfileIcon className="h-5 w-5" />
               </Link>
@@ -185,7 +191,7 @@ export function PalaceHeader() {
             <Link
               to="/cart"
               aria-label={`Warenkorb${cartCount > 0 ? ` (${cartCount})` : ""}`}
-              className="flex items-center border-l-[1.5px] border-black px-4 text-black hover:bg-black hover:text-white"
+              className={`flex items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white ${border} ${text}`}
             >
               <PawnBagIcon count={cartCount} className="h-5 w-5" />
             </Link>
@@ -195,7 +201,7 @@ export function PalaceHeader() {
               type="button"
               aria-label="Menü öffnen"
               onClick={() => setMenuOpen(true)}
-              className="flex items-center border-l-[1.5px] border-black px-4 text-[#000000] hover:bg-black hover:text-white xl:hidden"
+              className={`flex items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white xl:hidden ${border} ${text}`}
             >
               <PawnMenuIcon className="h-5 w-5" />
             </button>

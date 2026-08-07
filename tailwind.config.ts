@@ -75,6 +75,19 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      // Teil 26b: eine Skala für alle Overlays statt frei erfundener Werte je Datei.
+      // Reihenfolge: overlay (Dialog-Scrim) < modal (Inhalt) < flyout (Chat/Menü) <
+      // modal-top (Overlay über Overlay) < nav-overlay (mobiles Menü) < toast (immer
+      // zuoberst) < transition (Vollbild-Übergang, schlägt ausnahmsweise sogar Toasts).
+      zIndex: {
+        overlay: "50",
+        modal: "60",
+        flyout: "70",
+        "modal-top": "80",
+        "nav-overlay": "90",
+        toast: "100",
+        transition: "200",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

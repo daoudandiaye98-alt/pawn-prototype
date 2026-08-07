@@ -13,6 +13,7 @@ import { usePlanQuota, quotaExhaustedHint } from "@/features/campaign/quota";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, Upload, Sparkles, Image as ImageIcon, Trash2, Send, Check, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 type Kind = "bild" | "video";
 type Origin = "upload" | "erzeugt" | "edition";
@@ -33,10 +34,6 @@ interface MediaRow {
 
 interface ProductLite { id: string; name: string; }
 
-const KIND_LABEL: Record<Kind, string> = { bild: "Bild", video: "Video" };
-const ORIGIN_LABEL: Record<Origin, string> = { upload: "Eigener Upload", erzeugt: "KI erzeugt", edition: "Edition" };
-const REVIEW_LABEL: Record<ReviewStatus, string> = { privat: "Privat", eingereicht: "Eingereicht", angenommen: "Angenommen", abgelehnt: "Abgelehnt" };
-
 const MAX_IMAGE_MB = 20;
 const MAX_VIDEO_MB = 300;
 
@@ -49,8 +46,22 @@ function kindOf(file: File): Kind | null {
 export default function StudioMediathek() {
   const { designer, loading } = useMyDesigner();
   const { user } = useAuth();
+  const { t } = useI18n();
   const plan = (designer as unknown as { plan?: "haus" | "atelier" | "maison" })?.plan ?? "haus";
   const quota = usePlanQuota(designer?.id, plan);
+
+  const KIND_LABEL: Record<Kind, string> = { bild: t("studio.mediathek.kind.bild"), video: t("studio.mediathek.kind.video") };
+  const ORIGIN_LABEL: Record<Origin, string> = {
+    upload: t("studio.mediathek.origin.upload"),
+    erzeugt: t("studio.mediathek.origin.erzeugt"),
+    edition: t("studio.mediathek.origin.edition"),
+  };
+  const REVIEW_LABEL: Record<ReviewStatus, string> = {
+    privat: t("studio.mediathek.review.privat"),
+    eingereicht: t("studio.mediathek.review.eingereicht"),
+    angenommen: t("studio.mediathek.review.angenommen"),
+    abgelehnt: t("studio.mediathek.review.abgelehnt"),
+  };
 
   const [rows, setRows] = useState<MediaRow[]>([]);
   const [products, setProducts] = useState<ProductLite[]>([]);
@@ -87,13 +98,13 @@ export default function StudioMediathek() {
     for (const file of list) {
       const kind = kindOf(file);
       if (!kind) {
-        toast.error(`${file.name}: nur Bilder oder Videos.`);
+        toast.error(t("studio.mediathek.toast.invalidType", { file: file.name }));
         setUploadProgress((p) => p ? { ...p, done: p.done + 1 } : p);
         continue;
       }
       const maxMb = kind === "bild" ? MAX_IMAGE_MB : MAX_VIDEO_MB;
       if (file.size > maxMb * 1024 * 1024) {
-        toast.error(`${file.name}: zu groß (max. ${maxMb} MB).`);
+        toast.error(t("studio.mediathek.toast.tooLarge", { file: file.name, maxMb }));
         setUploadProgress((p) => p ? { ...p, done: p.done + 1 } : p);
         continue;
       }
@@ -110,14 +121,17 @@ export default function StudioMediathek() {
         if (insErr) throw insErr;
         ok++;
       } catch (e) {
-        toast.error(`${file.name}: ${(e as Error).message || "Upload fehlgeschlagen"}`);
+        toast.error(`${file.name}: ${(e as Error).message || t("studio.mediathek.toast.uploadFailedGeneric")}`);
       } finally {
         setUploadProgress((p) => p ? { ...p, done: p.done + 1 } : p);
       }
     }
     setUploading(false);
     setUploadProgress(null);
-    if (ok > 0) { toast.success(`${ok} Datei${ok === 1 ? "" : "en"} hochgeladen.`); void refresh(); }
+    if (ok > 0) {
+      toast.success(ok === 1 ? t("studio.mediathek.toast.uploadedOne", { n: ok }) : t("studio.mediathek.toast.uploadedMany", { n: ok }));
+      void refresh();
+    }
   };
 
   const applyFreisteller = async (row: MediaRow) => {
@@ -133,16 +147,16 @@ export default function StudioMediathek() {
       });
       if (error) throw error;
       const r = data as { result_url?: string; error?: string; message?: string } | null;
-      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "Freisteller fehlgeschlagen.");
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? t("studio.mediathek.toast.freistellerFailed"));
       await supabase.from("media_assets" as never).insert({
         designer_id: designer.id, kind: "bild", origin: "erzeugt", url: r.result_url,
-        title: row.title ? `${row.title} · Freisteller` : "Freisteller", note: `Aus: ${row.id}`,
+        title: row.title ? `${row.title} · ${t("studio.mediathek.freistellerLabel")}` : t("studio.mediathek.freistellerLabel"), note: `Aus: ${row.id}`,
       } as never);
-      toast.success("Freisteller fertig — als neue Datei in der Mediathek.");
+      toast.success(t("studio.mediathek.toast.freistellerDone"));
       void refresh();
       void quota.refresh();
     } catch (e) {
-      toast.error((e as Error).message || "Freisteller fehlgeschlagen.");
+      toast.error((e as Error).message || t("studio.mediathek.toast.freistellerFailed"));
     } finally {
       setBusyId(null);
     }
@@ -157,10 +171,10 @@ export default function StudioMediathek() {
       await supabase.from("media_assets" as never).update({
         usages: [...row.usages, { type: "produkt", product_id: productId }],
       } as never).eq("id", row.id);
-      toast.success("Als Produktbild gesetzt.");
+      toast.success(t("studio.mediathek.toast.setAsProductImage"));
       void refresh();
     } catch (e) {
-      toast.error((e as Error).message || "Fehler");
+      toast.error((e as Error).message || t("studio.mediathek.toast.genericError"));
     } finally {
       setBusyId(null);
     }
@@ -171,7 +185,7 @@ export default function StudioMediathek() {
     await supabase.from("media_assets" as never).update({
       usages: [...row.usages, { type: "banner_vormerkung" }],
     } as never).eq("id", row.id);
-    toast.success("Für Banner vorgemerkt — sichtbar wird das mit den Hausseiten-Bausteinen.");
+    toast.success(t("studio.mediathek.toast.markedForBanner"));
     setBusyId(null);
     void refresh();
   };
@@ -179,13 +193,13 @@ export default function StudioMediathek() {
   const submitToArchive = async (row: MediaRow) => {
     setBusyId(row.id);
     await supabase.from("media_assets" as never).update({ review_status: "eingereicht" } as never).eq("id", row.id);
-    toast.success("Ins PAWN-Archiv eingereicht — die Entscheidung liegt beim Admin.");
+    toast.success(t("studio.mediathek.toast.submittedToArchive"));
     setBusyId(null);
     void refresh();
   };
 
   const remove = async (row: MediaRow) => {
-    if (!confirm("Diese Datei wirklich löschen?")) return;
+    if (!confirm(t("studio.mediathek.confirmDelete"))) return;
     setBusyId(row.id);
     await supabase.from("media_assets" as never).delete().eq("id", row.id);
     setBusyId(null);
@@ -197,25 +211,25 @@ export default function StudioMediathek() {
     await supabase.from("media_assets" as never).update({ title } as never).eq("id", row.id);
   };
 
-  if (loading) return <StudioShell title="Mediathek"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Mediathek"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.mediathek.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.mediathek.title")}><p className="text-muted-foreground">{t("studio.mediathek.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title="Mediathek" eyebrow="Material">
+    <StudioShell title={t("studio.mediathek.title")} eyebrow={t("studio.mediathek.eyebrow")}>
       <p className="max-w-2xl text-sm text-muted-foreground">
-        Alles, was dein Haus erzeugt oder hochlädt, landet hier — eigene Fotos und Videos gleichberechtigt neben KI-Material aus dem Kampagnen-Studio.
+        {t("studio.mediathek.intro")}
       </p>
 
       <div className="mt-6 border-2 border-dashed border-border bg-white p-8 text-center">
         <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
-        <p className="mt-3 text-sm">Zieh Fotos oder Videos hierher, oder wähle sie aus. Mehrfachauswahl möglich.</p>
+        <p className="mt-3 text-sm">{t("studio.mediathek.dropzone")}</p>
         <label className="mt-4 inline-flex min-h-[44px] cursor-pointer items-center border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
-          Dateien auswählen
+          {t("studio.mediathek.chooseFiles")}
           <input type="file" accept="image/*,video/*" multiple className="hidden" disabled={uploading}
             onChange={(e) => { void onUpload(e.target.files); e.target.value = ""; }} />
         </label>
         {uploadProgress && (
-          <p className="mt-3 text-xs text-muted-foreground">Lade hoch … {uploadProgress.done} / {uploadProgress.total}</p>
+          <p className="mt-3 text-xs text-muted-foreground">{t("studio.mediathek.uploadingProgress", { done: uploadProgress.done, total: uploadProgress.total })}</p>
         )}
       </div>
 
@@ -223,13 +237,15 @@ export default function StudioMediathek() {
         {(["alle", "bild", "video"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
             className={`min-h-[36px] border px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] ${filter === f ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-            {f === "alle" ? "Alle" : f === "bild" ? "Bilder" : "Videos"}
+            {f === "alle" ? t("studio.mediathek.filter.all") : f === "bild" ? t("studio.mediathek.filter.images") : t("studio.mediathek.filter.videos")}
           </button>
         ))}
       </div>
 
       {filtered.length === 0 ? (
-        <p className="mt-10 text-sm text-muted-foreground">Noch nichts hier. Lade eine Datei hoch, oder erzeuge Material im <a href="/studio/kampagnen/neu" className="underline">Kampagnen-Studio</a>.</p>
+        <p className="mt-10 text-sm text-muted-foreground">
+          {t("studio.mediathek.empty.pre")} <a href="/studio/kampagnen/neu" className="underline">{t("studio.mediathek.empty.linkLabel")}</a>{t("studio.mediathek.empty.post")}
+        </p>
       ) : (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((row) => (
@@ -242,7 +258,7 @@ export default function StudioMediathek() {
                 )}
               </div>
               <div className="p-3">
-                <input defaultValue={row.title ?? ""} placeholder="Titel"
+                <input defaultValue={row.title ?? ""} placeholder={t("studio.mediathek.titlePlaceholder")}
                   onBlur={(e) => void saveTitle(row, e.target.value)}
                   className="w-full border-0 border-b border-transparent bg-transparent text-sm font-medium focus:border-border focus:outline-none" />
                 <p className="mt-1 text-[0.58rem] uppercase tracking-[0.18em] text-muted-foreground">
@@ -253,31 +269,31 @@ export default function StudioMediathek() {
                   {row.kind === "bild" && (
                     <button onClick={() => void applyFreisteller(row)} disabled={busyId === row.id}
                       className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground disabled:opacity-50">
-                      <Sparkles className="h-3 w-3" /> Freisteller
+                      <Sparkles className="h-3 w-3" /> {t("studio.mediathek.freistellerLabel")}
                     </button>
                   )}
                   <a href={row.url} download className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground">
-                    <Download className="h-3 w-3" /> Download
+                    <Download className="h-3 w-3" /> {t("common.download")}
                   </a>
                   {row.origin === "upload" && (
                     <Link to={`/studio/content-begleiter?media=${row.id}`}
                       className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground">
-                      <MessageSquare className="h-3 w-3" /> Feedback
+                      <MessageSquare className="h-3 w-3" /> {t("studio.mediathek.feedback")}
                     </Link>
                   )}
                   {row.review_status === "privat" && (
                     <button onClick={() => void submitToArchive(row)} disabled={busyId === row.id}
                       className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground disabled:opacity-50">
-                      <Send className="h-3 w-3" /> Ins Archiv
+                      <Send className="h-3 w-3" /> {t("studio.mediathek.toArchive")}
                     </button>
                   )}
                   <button onClick={() => void markForBanner(row)} disabled={busyId === row.id}
                     className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide hover:border-foreground disabled:opacity-50">
-                    <ImageIcon className="h-3 w-3" /> Für Banner vormerken
+                    <ImageIcon className="h-3 w-3" /> {t("studio.mediathek.markForBanner")}
                   </button>
                   <button onClick={() => void remove(row)} disabled={busyId === row.id}
                     className="flex min-h-[32px] items-center gap-1 border border-border px-2 py-1 text-[0.58rem] uppercase tracking-wide text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-50">
-                    <Trash2 className="h-3 w-3" /> Löschen
+                    <Trash2 className="h-3 w-3" /> {t("common.delete")}
                   </button>
                 </div>
 
@@ -285,14 +301,14 @@ export default function StudioMediathek() {
                   <label className="mt-2 flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground">
                     <select defaultValue="" onChange={(e) => { const v = e.target.value; if (v) void useOnProduct(row, v); e.target.value = ""; }}
                       className="min-h-[32px] flex-1 border border-border bg-white px-2 py-1 text-[0.68rem] normal-case tracking-normal text-foreground">
-                      <option value="">Auf Produktseite verwenden…</option>
+                      <option value="">{t("studio.mediathek.useOnProduct")}</option>
                       {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </label>
                 )}
 
                 {row.usages.some((u) => u.type === "produkt") && (
-                  <p className="mt-2 flex items-center gap-1 text-[0.58rem] text-muted-foreground"><Check className="h-3 w-3" /> Auf Produktseite verwendet</p>
+                  <p className="mt-2 flex items-center gap-1 text-[0.58rem] text-muted-foreground"><Check className="h-3 w-3" /> {t("studio.mediathek.usedOnProduct")}</p>
                 )}
               </div>
             </div>

@@ -216,8 +216,9 @@
   }
   .palace .uline:hover { background: #000; color: #fff; }
 
+  /* Teil 27: Schwarz-Weiß gilt für die Halle, nie für die Kunst — Werkbilder zeigen ihre
+     echten Farben, kein Graustufen-Filter mehr. */
   .palace .palace-image-inner {
-    filter: grayscale(1) contrast(var(--palace-image-contrast));
     transition: transform .8s var(--ease-pawn);
     will-change: transform;
   }
@@ -230,17 +231,6 @@
                 transform var(--palace-reveal-dur, .6s) var(--ease-pawn);
   }
   .palace-reveal.is-visible { opacity: 1; transform: none; }
-
-  .palace .palace-btn {
-    display: inline-flex; align-items: center; gap: .6rem;
-    border: 1.5px solid #000;
-    background: #fff; color: #000;
-    padding: .8rem 1.4rem;
-    font-size: .65rem; letter-spacing: .36em; text-transform: uppercase;
-    font-weight: 500;
-    transition: background-color .25s var(--ease-pawn), color .25s var(--ease-pawn);
-  }
-  .palace .palace-btn:hover { background: #000; color: #fff; }
 
   /* Grain removed */
   .palace-grain { display: none !important; }

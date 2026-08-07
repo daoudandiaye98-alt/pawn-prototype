@@ -366,11 +366,17 @@ const DesignerPage = () => {
   // gesamte alte Rückblick. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
   if (dbDesigner?.page_published_at && pageBlocks.length > 0) {
     const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
+    // Teil 27c: die Hausseite öffnet mit dem stärksten Werk in voller Höhe, bevor die
+    // Bausteine beginnen — unabhängig davon, ob das Haus selbst einen "Auftakt"-Baustein
+    // gesetzt hat.
+    const heroImage = dbDesigner.hero_image_url ?? dbDesigner.banner_url
+      ?? blockProducts.find((p) => p.image_url)?.image_url ?? null;
     return (
       <PalaceLayout transparentHeader>
         {houseTheme && schwelleActive && (
           <Schwelle houseName={dbDesigner.brand_name} theme={houseTheme} onDone={() => setSchwelleActive(false)} />
         )}
+        <HouseHero brandName={dbDesigner.brand_name} houseNumber={dbDesigner.house_number} image={heroImage} />
         <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
         {/* Teil 15c: dezentes Zeichen der Verwandlungsstufe — nie mehr als ein stiller Hinweis. */}
         {houseMilestones && (() => {
@@ -834,6 +840,33 @@ const DesignerPage = () => {
     </PalaceLayout>
   );
 };
+
+/** Teil 27c: Hausseite öffnet mit dem stärksten Werk in voller Höhe — schwarzer
+    Balken-Unterleger für Hausname statt Verlauf, wie auf Landing und Produktseite. */
+function HouseHero({ brandName, houseNumber, image }: { brandName: string; houseNumber: number | null; image: string | null }) {
+  return (
+    <section className="relative h-[100svh] min-h-[520px] w-full overflow-hidden bg-black">
+      {image ? (
+        <img src={image} alt={brandName} className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-black">
+          <span className="palace-eyebrow text-white/50">Ohne Bild</span>
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 bg-black px-6 py-6 md:px-14 md:py-10">
+        {houseNumber != null && (
+          <p className="palace-eyebrow text-white/70">Haus № {houseNumber}</p>
+        )}
+        <h1
+          className="palace-serif mt-3 font-light text-white"
+          style={{ fontSize: "clamp(2.4rem, 6.5vw, 6rem)", lineHeight: 1.02, letterSpacing: "-0.02em" }}
+        >
+          {brandName}
+        </h1>
+      </div>
+    </section>
+  );
+}
 
 function scrollBySection(dir: -1 | 1) {
   window.scrollBy({ top: dir * window.innerHeight * 0.9, behavior: "smooth" });

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { Reveal } from "@/components/palace/Reveal";
+import { Button } from "@/components/ui/button";
 import { usePublicDesigners } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
 
@@ -98,8 +99,7 @@ export default function Designers() {
           <div className="pointer-events-none absolute z-30 hidden overflow-hidden border border-[rgba(0,0,0,.28)] bg-[#FFFFFF] shadow-hard transition-opacity duration-300 md:block"
             style={{ left: pos.x + 20, top: pos.y - 90, width: 200, height: 260, opacity: hover.src ? 1 : 0.5 }}>
             {hover.src ? (
-              <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover"
-                style={{ filter: "grayscale(1) contrast(var(--palace-image-contrast, 1.06))" }} />
+              <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-white palace-serif italic text-black/50">{hover.brand}</div>
             )}
@@ -138,7 +138,7 @@ export default function Designers() {
       <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-20 md:px-14">
         <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-6 md:flex-row">
           <p className="palace-serif italic text-[1.3rem] text-[#000000]">Ist dein Atelier hier noch nicht?</p>
-          <Link to="/apply" className="palace-btn">Als Designer bewerben →</Link>
+          <Button asChild variant="editorial" size="chip"><Link to="/apply">Als Designer bewerben →</Link></Button>
         </div>
       </section>
     </PalaceLayout>

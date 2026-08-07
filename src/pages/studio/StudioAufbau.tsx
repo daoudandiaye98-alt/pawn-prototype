@@ -12,52 +12,38 @@ import { useStepRewards, RewardToast } from "@/features/rewards";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronDown, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 interface PlanItem { tag: string; format: string; idee: string; }
 interface AufbauAnswer { plan?: PlanItem[]; impuls?: string; zuspruch?: string; }
 
-const PRAXIS: { frage: string; antwort: string }[] = [
-  {
-    frage: "Brauche ich ein Gewerbe?",
-    antwort: "Sobald du regelmäßig verkaufst, um Geld zu verdienen, meldest du in Deutschland ein Gewerbe beim Gewerbeamt deiner Stadt an — das kostet meist zwischen 20 und 60 Euro und dauert etwa eine halbe Stunde. Künstlerische Arbeit kann als freiberuflich gelten; das entscheidet das Finanzamt im Einzelfall.",
-  },
-  {
-    frage: "Was ist die Kleinunternehmerregelung?",
-    antwort: "Bleibt dein Umsatz im laufenden Jahr unter der gesetzlichen Grenze, kannst du dich als Kleinunternehmer führen lassen. Dann weist du auf deinen Rechnungen keine Umsatzsteuer aus und setzt in PAWN deinen Steuersatz auf 0 Prozent. Auf der Rechnung steht dann ein Hinweis auf diese Regelung.",
-  },
-  {
-    frage: "Was muss auf meine Rechnung?",
-    antwort: "Dein Name und deine Anschrift, Name und Anschrift der Kundin, Rechnungsnummer, Datum, Beschreibung des Stücks, Preis, Steuersatz und Steuerbetrag — oder der Hinweis auf die Kleinunternehmerregelung. PAWN erzeugt die Rechnung aus deinen Angaben unter Einstellungen.",
-  },
-  {
-    frage: "Wie halte ich es mit der Umsatzsteuer?",
-    antwort: "Trag deinen Steuersatz einmal im Studio ein — PAWN zeigt Preise dann brutto an, wie es für Privatkund·innen vorgeschrieben ist. Verkäufe ins Ausland haben eigene Regeln; frag dazu deine Steuerberatung.",
-  },
-  {
-    frage: "Was gilt beim Widerruf?",
-    antwort: "Privatkund·innen dürfen online gekaufte Stücke in der Regel 14 Tage lang zurückgeben. Maßanfertigungen sind davon oft ausgenommen. Deine Widerrufsfrist stellst du im Studio ein, PAWN zeigt sie auf jeder Produktseite.",
-  },
-  {
-    frage: "Was muss ich beim Versand beachten?",
-    antwort: "Nenne Versandkosten und Lieferzeit vor dem Kauf, verschicke möglichst mit Sendungsnummer und trag sie im Studio ein — deine Kundin wird automatisch informiert. Das senkt Rückfragen deutlich.",
-  },
-];
-
-const HINWEIS = "Das ist eine allgemeine Orientierung nach bestem Wissen und ersetzt keine Rechts- oder Steuerberatung.";
+function usePraxis(t: (key: string, vars?: Record<string, string | number>) => string): { frage: string; antwort: string }[] {
+  return [
+    { frage: t("studio.aufbau.praxis.gewerbe.frage"), antwort: t("studio.aufbau.praxis.gewerbe.antwort") },
+    { frage: t("studio.aufbau.praxis.kleinunternehmer.frage"), antwort: t("studio.aufbau.praxis.kleinunternehmer.antwort") },
+    { frage: t("studio.aufbau.praxis.rechnung.frage"), antwort: t("studio.aufbau.praxis.rechnung.antwort") },
+    { frage: t("studio.aufbau.praxis.umsatzsteuer.frage"), antwort: t("studio.aufbau.praxis.umsatzsteuer.antwort") },
+    { frage: t("studio.aufbau.praxis.widerruf.frage"), antwort: t("studio.aufbau.praxis.widerruf.antwort") },
+    { frage: t("studio.aufbau.praxis.versand.frage"), antwort: t("studio.aufbau.praxis.versand.antwort") },
+  ];
+}
 
 export default function StudioAufbau() {
   const { designer, loading } = useMyDesigner();
   const { level } = useDesignerLevel(designer?.id);
   const journey = useBrandJourney(designer);
+  const { t, locale } = useI18n();
   const [open, setOpen] = useState<string | null>(null);
   const [answer, setAnswer] = useState<AufbauAnswer | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const PRAXIS = usePraxis(t);
+  const FALLBACK_PLAN = useFallbackPlan(t);
 
   const doneForRewards = useMemo(
     () => journey.allSteps.filter((s) => s.done).map((s) => ({
       key: s.key,
-      title: `${s.label} — geschafft.`,
+      title: t("studio.aufbau.stepDone", { label: s.label }),
       line: s.why,
     })),
     [journey.allSteps],
@@ -73,6 +59,7 @@ export default function StudioAufbau() {
         mode: "aufbau",
         stage: journey.currentStage?.key ?? "ankommen",
         open_steps: journey.allSteps.filter((s) => !s.done).slice(0, 4).map((s) => s.label),
+        locale: locale,
       },
     }).then(({ data }) => {
       if (!alive) return;
@@ -86,18 +73,18 @@ export default function StudioAufbau() {
   const copy = (text: string, key: string) => {
     void navigator.clipboard.writeText(text);
     setCopied(key);
-    toast.success("Kopiert.");
+    toast.success(t("studio.aufbau.copied"));
     window.setTimeout(() => setCopied(null), 1500);
   };
 
-  if (loading) return <StudioShell title="Deine Marke aufbauen"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Deine Marke aufbauen"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.aufbau.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.aufbau.title")}><p className="text-muted-foreground">{t("studio.aufbau.noAccess")}</p></StudioShell>;
 
   const pct = journey.totalCount > 0 ? journey.doneCount / journey.totalCount : 0;
-  const zuspruch = answer?.zuspruch ?? encouragement(pct);
+  const zuspruch = answer?.zuspruch ?? encouragement(t, pct);
 
   return (
-    <StudioShell title="Deine Marke aufbauen" eyebrow="Schritt für Schritt">
+    <StudioShell title={t("studio.aufbau.title")} eyebrow={t("studio.aufbau.eyebrow")}>
       <RewardToast reward={reward} onDone={dismiss} />
 
       {/* Kopf */}
@@ -108,7 +95,7 @@ export default function StudioAufbau() {
             <div>
               <p className="font-serif text-2xl leading-tight">{level.label}</p>
               <p className="mt-1 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">
-                {journey.doneCount} von {journey.totalCount} Schritten
+                {t("studio.aufbau.stepsProgress", { done: journey.doneCount, total: journey.totalCount })}
               </p>
             </div>
           </div>
@@ -121,7 +108,7 @@ export default function StudioAufbau() {
 
       {/* Heute */}
       <section className="mt-6 border-[1.5px] border-foreground bg-foreground p-6 text-background md:p-8">
-        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-background/50">Heute</p>
+        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-background/50">{t("studio.aufbau.today")}</p>
         {journey.nextStep ? (
           <>
             <h2 className="mt-3 font-serif text-2xl leading-tight">{journey.nextStep.label}</h2>
@@ -130,15 +117,15 @@ export default function StudioAufbau() {
               to={journey.nextStep.to}
               className="mt-5 inline-block border-[1.5px] border-background bg-background px-5 py-2 text-[0.62rem] uppercase tracking-[0.28em] text-foreground hover:bg-foreground hover:text-background"
             >
-              {journey.nextStep.tool} öffnen
+              {t("studio.aufbau.openTool", { tool: journey.nextStep.tool })}
             </Link>
           </>
         ) : (
-          <h2 className="mt-3 font-serif text-2xl leading-tight">Alle Schritte stehen. Jetzt zählt Wiederholung.</h2>
+          <h2 className="mt-3 font-serif text-2xl leading-tight">{t("studio.aufbau.allStepsDone")}</h2>
         )}
         {answer?.impuls && (
           <p className="mt-6 border-t border-background/20 pt-4 text-sm leading-relaxed text-background/80">
-            <span className="mr-2 text-[0.6rem] uppercase tracking-[0.24em] text-background/50">Impuls</span>
+            <span className="mr-2 text-[0.6rem] uppercase tracking-[0.24em] text-background/50">{t("studio.aufbau.impulse")}</span>
             {answer.impuls}
           </p>
         )}
@@ -146,7 +133,7 @@ export default function StudioAufbau() {
 
       {/* Der Weg */}
       <section className="mt-10">
-        <h2 className="font-serif text-xl">Der Weg</h2>
+        <h2 className="font-serif text-xl">{t("studio.aufbau.theWay")}</h2>
         <div className="mt-4 space-y-4">
           {journey.stages.map((stage, i) => (
             <StageCard key={stage.key} stage={stage} index={i + 1} />
@@ -156,9 +143,9 @@ export default function StudioAufbau() {
 
       {/* Content-Fahrplan */}
       <section className="mt-10">
-        <h2 className="font-serif text-xl">Dein Wochenplan</h2>
+        <h2 className="font-serif text-xl">{t("studio.aufbau.weekPlan")}</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Was du diese Woche zeigen kannst — abgeleitet aus deiner Arbeit. Kopieren, abwandeln, posten.
+          {t("studio.aufbau.weekPlanHint")}
         </p>
         {busy && !answer ? (
           <div className="mt-4 h-40 animate-pulse bg-muted" />
@@ -176,7 +163,7 @@ export default function StudioAufbau() {
                   onClick={() => copy(p.idee, p.tag)}
                   className="mt-4 inline-flex items-center gap-1.5 text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground hover:text-foreground"
                 >
-                  {copied === p.tag ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Kopieren
+                  {copied === p.tag ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {t("studio.aufbau.copy")}
                 </button>
               </div>
             ))}
@@ -186,7 +173,7 @@ export default function StudioAufbau() {
 
       {/* Praxisfragen */}
       <section className="mt-10">
-        <h2 className="font-serif text-xl">Praxisfragen</h2>
+        <h2 className="font-serif text-xl">{t("studio.aufbau.praxisTitle")}</h2>
         <div className="mt-4 border-[1.5px] border-foreground bg-white">
           {PRAXIS.map((q) => {
             const isOpen = open === q.frage;
@@ -205,7 +192,7 @@ export default function StudioAufbau() {
             );
           })}
         </div>
-        <p className="mt-3 text-[0.68rem] leading-relaxed text-muted-foreground">{HINWEIS}</p>
+        <p className="mt-3 text-[0.68rem] leading-relaxed text-muted-foreground">{t("studio.aufbau.legalHint")}</p>
       </section>
     </StudioShell>
   );
@@ -214,6 +201,7 @@ export default function StudioAufbau() {
 function StageCard({ stage, index }: { stage: BrandStage; index: number }) {
   const doneCount = stage.steps.filter((s) => s.done).length;
   const [open, setOpen] = useState(!stage.done);
+  const { t } = useI18n();
 
   return (
     <div className="border-[1.5px] border-foreground bg-white">
@@ -248,7 +236,7 @@ function StageCard({ stage, index }: { stage: BrandStage; index: number }) {
                     <>
                       <p className="mt-1 text-xs leading-relaxed text-foreground/70">{s.how}</p>
                       <Link to={s.to} className="mt-2 inline-block text-[0.6rem] uppercase tracking-[0.24em] underline decoration-1 underline-offset-4 hover:no-underline">
-                        {s.tool} öffnen →
+                        {t("studio.aufbau.openToolArrow", { tool: s.tool })}
                       </Link>
                     </>
                   )}
@@ -262,17 +250,19 @@ function StageCard({ stage, index }: { stage: BrandStage; index: number }) {
   );
 }
 
-const FALLBACK_PLAN: PlanItem[] = [
-  { tag: "Montag", format: "Story", idee: "Zeig deinen Arbeitsplatz, so wie er heute Morgen aussieht. Ein Bild, ein Satz dazu." },
-  { tag: "Mittwoch", format: "Video, 15 Sekunden", idee: "Filme eine einzige Handbewegung aus deiner Arbeit — nähen, schleifen, malen. Sprich dabei, warum du es so machst." },
-  { tag: "Freitag", format: "Beitrag", idee: "Ein Stück im Detail: eine Naht, eine Kante, ein Material. Dazu ein Satz, was daran besonders ist, und der Link zu deiner PAWN-Seite." },
-  { tag: "Sonntag", format: "Story", idee: "Eine Frage an deine Leute: welches der beiden Stücke sie eher tragen würden. Antworten sammeln, nächste Woche darauf antworten." },
-];
+function useFallbackPlan(t: (key: string, vars?: Record<string, string | number>) => string): PlanItem[] {
+  return [
+    { tag: t("studio.aufbau.fallbackPlan.mon.tag"), format: t("studio.aufbau.fallbackPlan.mon.format"), idee: t("studio.aufbau.fallbackPlan.mon.idee") },
+    { tag: t("studio.aufbau.fallbackPlan.wed.tag"), format: t("studio.aufbau.fallbackPlan.wed.format"), idee: t("studio.aufbau.fallbackPlan.wed.idee") },
+    { tag: t("studio.aufbau.fallbackPlan.fri.tag"), format: t("studio.aufbau.fallbackPlan.fri.format"), idee: t("studio.aufbau.fallbackPlan.fri.idee") },
+    { tag: t("studio.aufbau.fallbackPlan.sun.tag"), format: t("studio.aufbau.fallbackPlan.sun.format"), idee: t("studio.aufbau.fallbackPlan.sun.idee") },
+  ];
+}
 
-function encouragement(pct: number): string {
-  if (pct === 0) return "Der Anfang besteht aus einem einzigen Schritt. Der Rest folgt.";
-  if (pct < 0.35) return "Du hast angefangen — das ist mehr, als die meisten tun.";
-  if (pct < 0.7) return "Es wird sichtbar. Bleib dran, der Rest geht schneller.";
-  if (pct < 1) return "Fast alles steht. Die letzten Schritte sind die, die verkaufen.";
-  return "Dein Haus steht. Jetzt zählt, dass du regelmäßig zeigst, was du machst.";
+function encouragement(t: (key: string, vars?: Record<string, string | number>) => string, pct: number): string {
+  if (pct === 0) return t("studio.aufbau.encouragement.zero");
+  if (pct < 0.35) return t("studio.aufbau.encouragement.low");
+  if (pct < 0.7) return t("studio.aufbau.encouragement.mid");
+  if (pct < 1) return t("studio.aufbau.encouragement.high");
+  return t("studio.aufbau.encouragement.done");
 }

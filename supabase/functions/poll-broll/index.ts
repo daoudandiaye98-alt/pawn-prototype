@@ -5,6 +5,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { pickByLang } from "../_shared/locale.ts";
 
 function jwtSub(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     const admin = createClient(url, svc, { auth: { persistSession: false } });
 
     const { data: rows } = await admin.from("generation_requests")
-      .select("id, status, error, provider_handles, tier, campaign_id, created_at, campaigns!inner(designer_id, designers!inner(user_id, media_rights_granted_at))")
+      .select("id, status, error, provider_handles, tier, campaign_id, created_at, campaigns!inner(designer_id, designers!inner(user_id, media_rights_granted_at, preferred_language))")
       .in("id", request_ids);
     if (!rows) return json({ ok: true, results: [] });
 
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
     for (const r of rows as unknown as Array<{
       id: string; status: string; error: string | null; provider_handles: Record<string, unknown> | null;
       tier: string; campaign_id: string; created_at: string;
-      campaigns: { designer_id: string; designers: { user_id: string; media_rights_granted_at: string | null } };
+      campaigns: { designer_id: string; designers: { user_id: string; media_rights_granted_at: string | null; preferred_language: string | null } };
     }>) {
       if (r.status === "done" || r.status === "failed") {
         results.push({ id: r.id, status: r.status });
@@ -128,8 +129,8 @@ Deno.serve(async (req) => {
           await admin.from("notifications").insert({
             user_id: r.campaigns.designers.user_id,
             type: "campaign.broll_ready",
-            title: "Deine Aufnahmen sind fertig",
-            body: "PAWN hat einen kinematischen Clip erzeugt.",
+            title: pickByLang(r.campaigns.designers.preferred_language, "Deine Aufnahmen sind fertig", "Your footage is ready"),
+            body: pickByLang(r.campaigns.designers.preferred_language, "PAWN hat einen kinematischen Clip erzeugt.", "PAWN has generated a cinematic clip."),
             link: "/studio/kampagnen",
           } as never);
           results.push({ id: r.id, status: "done", result_url: finalUrl });

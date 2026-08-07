@@ -3,7 +3,6 @@ import { BrowserRouter, Route, Routes, useSearchParams } from "react-router-dom"
 import { useEffect } from "react";
 import { captureReferralCode } from "@/features/referral";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
 import { CoreProvider } from "@/core";
@@ -113,7 +112,6 @@ function ReferralCapture() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
       <Sonner />
       <BrowserRouter>
         <I18nProvider>

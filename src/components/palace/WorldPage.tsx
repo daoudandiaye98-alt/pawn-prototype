@@ -6,6 +6,7 @@ import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { WorldHero } from "@/components/palace/WorldHero";
 import { Editable, useContentValue } from "@/components/palace/Editable";
+import { Button } from "@/components/ui/button";
 import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
@@ -208,9 +209,11 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
           <Editable as="p" contentKey="world.cta_body" className="palace-serif italic text-[1.3rem] text-[#000000]">
             Du arbeitest in dieser Welt? Zeig uns dein Atelier.
           </Editable>
-          <Link to="/apply" className="palace-btn">
-            <Editable as="span" contentKey="world.cta_button">Als Designer bewerben →</Editable>
-          </Link>
+          <Button asChild variant="editorial" size="chip">
+            <Link to="/apply">
+              <Editable as="span" contentKey="world.cta_button">Als Designer bewerben →</Editable>
+            </Link>
+          </Button>
         </div>
       </section>
     </PalaceLayout>

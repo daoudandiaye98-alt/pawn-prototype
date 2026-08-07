@@ -6,10 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Upload, X, Sparkles, Megaphone, HelpCircle, Check, ImageIcon, Share2, Package, Link2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { TagInput } from "@/features/ontology/TagInput";
 import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology";
 import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } from "@/features/share/shareKit";
 import { buildCreatorPackage } from "@/features/share/creatorPackage";
+import { CoverMoment } from "@/features/studio/CoverMoment";
 import {
   effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
   materialSum, splitVat, vatNote, worldProfile,
@@ -73,11 +75,13 @@ function slugify(s: string) {
 
 const PAGE = 20;
 
-const WORLD_COPY: Record<World, { title: string; sub: string }> = {
-  Mode: { title: "Mode", sub: "Kleidung, Accessoires, Schmuck" },
-  Interior: { title: "Interior", sub: "Möbel, Objekte, Textilien" },
-  Kunst: { title: "Kunst", sub: "Editionen, Skulptur, Malerei" },
-};
+function buildWorldCopy(t: (k: string) => string): Record<World, { title: string; sub: string }> {
+  return {
+    Mode: { title: t("nav.mode"), sub: t("studio.products.world.modeSub") },
+    Interior: { title: t("nav.interior"), sub: t("studio.products.world.interiorSub") },
+    Kunst: { title: t("nav.kunst"), sub: t("studio.products.world.kunstSub") },
+  };
+}
 
 export default function StudioProducts() {
   const { designer, loading } = useMyDesigner();
@@ -86,7 +90,22 @@ export default function StudioProducts() {
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<Partial<ProductRow> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [coverMoment, setCoverMoment] = useState<{ imageUrl: string; productId: string } | null>(null);
   const { user } = useAuth();
+  const { t, locale } = useI18n();
+
+  // Teil 27b: Der Cover-Moment — einmalig pro Stück, wenn es zum ersten Mal live geht.
+  const maybeShowCover = async (product: { id: string; image_url: string | null }) => {
+    if (!product.image_url) return;
+    const { data } = await supabase.from("products").select("cover_shown_at").eq("id", product.id).maybeSingle();
+    if (data && !(data as { cover_shown_at: string | null }).cover_shown_at) {
+      setCoverMoment({ imageUrl: product.image_url, productId: product.id });
+    }
+  };
+  const dismissCoverMoment = async () => {
+    if (coverMoment) await supabase.from("products").update({ cover_shown_at: new Date().toISOString() }).eq("id", coverMoment.productId);
+    setCoverMoment(null);
+  };
 
   const refresh = async () => {
     if (!designer) return;
@@ -161,21 +180,25 @@ export default function StudioProducts() {
 
   const save = async () => {
     if (!designer || !editing) return;
-    if (!editing.name || editing.name.trim().length < 2) return toast.error("Bitte gib deinem Stück einen Namen.");
+    if (!editing.name || editing.name.trim().length < 2) return toast.error(t("studio.products.nameRequired"));
     setBusy(true);
     const payload = buildPayload(editing);
     const q = editing.id
       ? supabase.from("products").update(payload).eq("id", editing.id)
       : supabase.from("products").insert(payload).select("id").single();
-    const { error } = await q;
+    const { data, error } = await q;
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Gespeichert.");
+    toast.success(t("studio.products.saved"));
     // Fire-and-forget: let PAWN classify any unknown tags into the ontology.
     const world = String((editing as { world?: string }).world ?? "Mode");
     const tags = ((editing as { tags?: string[] }).tags ?? []).filter((t) => typeof t === "string" && t.length >= 2);
     for (const term of tags.slice(0, 12)) {
       supabase.functions.invoke("classify-term", { body: { term, world } }).catch(() => { /* soft */ });
+    }
+    if (payload.status === "published") {
+      const productId = editing.id ?? (data as { id: string } | null)?.id;
+      if (productId) await maybeShowCover({ id: productId, image_url: payload.image_url });
     }
     setEditing(null);
     void refresh();
@@ -185,37 +208,38 @@ export default function StudioProducts() {
     const next: Status = p.status === "published" ? "draft" : "published";
     const { error } = await supabase.from("products").update({ status: next }).eq("id", p.id);
     if (error) return toast.error(error.message);
+    if (next === "published") await maybeShowCover(p);
     void refresh();
   };
 
   const remove = async (p: ProductRow) => {
-    if (!confirm(`"${p.name}" löschen?`)) return;
+    if (!confirm(t("studio.products.confirmDelete", { name: p.name }))) return;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
     if (error) return toast.error(error.message);
     void refresh();
   };
 
-  if (loading) return <StudioShell title="Kollektion"><div className="animate-pulse h-64 bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Kollektion"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.produkte")}><div className="animate-pulse h-64 bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.produkte")}><p className="text-muted-foreground">{t("studio.products.noStudioAccess")}</p></StudioShell>;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE));
 
   return (
-    <StudioShell title="Kollektion" eyebrow="Deine Kollektion">
+    <StudioShell title={t("studioShell.nav.produkte")} eyebrow={t("studio.products.eyebrow")}>
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{total} {total === 1 ? "Stück" : "Stücke"} · Seite {page + 1} / {totalPages}</p>
+        <p className="text-sm text-muted-foreground">{total} {total === 1 ? t("studio.products.pieceSingular") : t("studio.products.piecePlural")} · {t("studio.products.pageInfo", { page: page + 1, total: totalPages })}</p>
         <Link to="/studio/produkte/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
-          <Plus className="h-3 w-3" /> Neues Stück
+          <Plus className="h-3 w-3" /> {t("studio.products.newPiece")}
         </Link>
       </div>
 
       {items.length === 0 ? (
         <div className="mt-8 border border-dashed border-border bg-white p-12 text-center">
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Leer</p>
-          <p className="mt-3 font-serif text-2xl font-medium">Noch keine Stücke.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Leg das erste Stück deiner Kollektion an — es dauert nur ein paar Minuten.</p>
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.products.emptyEyebrow")}</p>
+          <p className="mt-3 font-serif text-2xl font-medium">{t("studio.products.emptyTitle")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("studio.products.emptyBody")}</p>
           <Link to="/studio/produkte/neu" className="mt-6 inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
-            <Plus className="h-3 w-3" /> Erstes Stück anlegen
+            <Plus className="h-3 w-3" /> {t("studio.products.firstPieceCta")}
           </Link>
         </div>
       ) : (
@@ -232,36 +256,36 @@ export default function StudioProducts() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-serif text-lg font-medium">{p.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {p.world} · €{p.price} · <span className={p.status === "published" ? "text-foreground" : ""}>{p.status === "published" ? "Live" : p.status === "draft" ? "Entwurf" : "Archiviert"}</span>
+                      {p.world} · €{p.price} · <span className={p.status === "published" ? "text-foreground" : ""}>{p.status === "published" ? t("studio.products.status.live") : p.status === "draft" ? t("studio.products.status.draft") : t("studio.products.status.archived")}</span>
                       {p.inventory_mode === "made_to_order"
-                        ? <> · <span className="text-foreground">Auf Anfertigung{p.lead_time_days ? ` · ${p.lead_time_days} Tage` : ""}</span></>
-                        : soldOut ? <> · <span className="text-destructive">Ausverkauft</span></>
-                        : lowStock ? <> · <span className="text-foreground">Nur noch {p.stock_quantity}</span></>
-                        : <> · Lager {p.stock_quantity}</>}
+                        ? <> · <span className="text-foreground">{t("studio.products.madeToOrder")}{p.lead_time_days ? ` · ${t("studio.products.leadTimeDays", { n: p.lead_time_days })}` : ""}</span></>
+                        : soldOut ? <> · <span className="text-destructive">{t("studio.products.soldOut")}</span></>
+                        : lowStock ? <> · <span className="text-foreground">{t("studio.products.lowStock", { n: p.stock_quantity })}</span></>
+                        : <> · {t("studio.products.stockLabel", { n: p.stock_quantity })}</>}
                     </p>
                   </div>
                   <button onClick={() => togglePublish(p)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">
-                    {p.status === "published" ? "Depublizieren" : "Veröffentlichen"}
+                    {p.status === "published" ? t("studio.products.unpublish") : t("studio.products.publish")}
                   </button>
-                  <button onClick={() => setEditing(p)} className="text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">Bearbeiten</button>
+                  <button onClick={() => setEditing(p)} className="text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">{t("studio.products.edit")}</button>
                   <button onClick={async () => {
-                    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", product_id: p.id } });
+                    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", product_id: p.id, locale } });
                     if (error) return toast.error(error.message);
                     const d = data as { error?: string; message?: string; campaign_id?: string };
-                    if (d?.error === "consent_missing") return toast.error(d.message ?? "Bildnutzungs-Einwilligung fehlt.");
-                    if (d?.campaign_id) toast.success("Kampagnen-Entwurf angelegt.");
+                    if (d?.error === "consent_missing") return toast.error(d.message ?? t("studio.products.consentMissing"));
+                    if (d?.campaign_id) toast.success(t("studio.products.campaignDraftCreated"));
                   }} className="flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">
-                    <Megaphone className="h-3 w-3" /> Kampagne
+                    <Megaphone className="h-3 w-3" /> {t("studio.products.campaign")}
                   </button>
-                  <button onClick={() => remove(p)} className="text-[0.62rem] uppercase tracking-[0.28em] text-destructive hover:text-destructive/70">Löschen</button>
+                  <button onClick={() => remove(p)} className="text-[0.62rem] uppercase tracking-[0.28em] text-destructive hover:text-destructive/70">{t("common.delete")}</button>
                 </li>
               );
             })}
           </ul>
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between">
-              <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="border border-border px-4 py-2 text-[0.62rem] uppercase tracking-[0.28em] disabled:opacity-40">Zurück</button>
-              <button disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} className="border border-border px-4 py-2 text-[0.62rem] uppercase tracking-[0.28em] disabled:opacity-40">Weiter</button>
+              <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="border border-border px-4 py-2 text-[0.62rem] uppercase tracking-[0.28em] disabled:opacity-40">{t("common.back")}</button>
+              <button disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} className="border border-border px-4 py-2 text-[0.62rem] uppercase tracking-[0.28em] disabled:opacity-40">{t("studio.products.next")}</button>
             </div>
           )}
         </>
@@ -279,6 +303,16 @@ export default function StudioProducts() {
           save={save}
           busy={busy}
           setEditing={setEditing}
+        />
+      )}
+
+      {coverMoment && designer && (
+        <CoverMoment
+          imageUrl={coverMoment.imageUrl}
+          brandName={designer.brand_name}
+          houseNumber={designer.house_number}
+          variant="product"
+          onDone={() => void dismissCoverMoment()}
         />
       )}
     </StudioShell>
@@ -300,6 +334,8 @@ interface EditorProps {
 }
 
 function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEditing, buildPayload }: EditorProps) {
+  const { t, locale } = useI18n();
+  const worldCopy = buildWorldCopy(t);
   const [local, setLocal] = useState<Partial<ProductRow>>(initial);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [autosaving, setAutosaving] = useState(false);
@@ -309,7 +345,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const [shotBusy, setShotBusy] = useState(false);
   const [shotResult, setShotResult] = useState<{ source: string; result: string; isTryon?: boolean; style?: string } | null>(null);
   const [tryonPickerOpen, setTryonPickerOpen] = useState(false);
-  const [shotDisclosure, setShotDisclosure] = useState<string>("Visualisierung mit KI-Model");
+  const [shotDisclosure, setShotDisclosure] = useState<string>(t("studio.products.shotDisclosureDefault"));
   const [media, setMedia] = useState<Array<{ id: string; url: string; kind: "bild" | "video"; title: string | null }>>([]);
   const draftIdRef = useRef<string | undefined>(initial.id);
   const firstRender = useRef(true);
@@ -336,8 +372,8 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   const patch = useCallback((p: Partial<ProductRow>) => setLocal((prev) => ({ ...prev, ...p })), []);
 
   const requestStudioShot = async () => {
-    if (!local.image_url) { toast.error("Zuerst ein Bild hochladen."); return; }
-    if (!draftIdRef.current) { toast.error("Bitte kurz warten, bis der Entwurf gespeichert ist."); return; }
+    if (!local.image_url) { toast.error(t("studio.products.uploadImageFirst")); return; }
+    if (!draftIdRef.current) { toast.error(t("studio.products.waitForDraftSave")); return; }
     setShotBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-product-shot", {
@@ -345,21 +381,21 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
       });
       if (error) throw error;
       const r = data as { result_url?: string; error?: string; message?: string } | null;
-      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "PAWN konnte kein Studio-Foto erzeugen.");
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? t("studio.products.studioShotFailed"));
       setShotResult({ source: local.image_url!, result: r.result_url });
     } catch (e) {
       const msg = (e as Error).message ?? "";
       toast.error(/guthaben|402|credit/i.test(msg)
-        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
-        : msg || "Fehler");
+        ? t("studio.products.falCreditsMissing")
+        : msg || t("studio.products.genericError"));
     } finally {
       setShotBusy(false);
     }
   };
 
   const requestTryonShot = async (style: "weiblich" | "männlich" | "divers") => {
-    if (!local.image_url) { toast.error("Zuerst ein Bild hochladen."); return; }
-    if (!draftIdRef.current) { toast.error("Bitte kurz warten, bis der Entwurf gespeichert ist."); return; }
+    if (!local.image_url) { toast.error(t("studio.products.uploadImageFirst")); return; }
+    if (!draftIdRef.current) { toast.error(t("studio.products.waitForDraftSave")); return; }
     setTryonPickerOpen(false);
     setShotBusy(true);
     try {
@@ -368,13 +404,13 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
       });
       if (error) throw error;
       const r = data as { result_url?: string; error?: string; message?: string } | null;
-      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? "KI-Model-Shot fehlgeschlagen.");
+      if (!r?.result_url) throw new Error(r?.message ?? r?.error ?? t("studio.products.tryonShotFailed"));
       setShotResult({ source: local.image_url!, result: r.result_url, isTryon: true, style });
     } catch (e) {
       const msg = (e as Error).message ?? "";
       toast.error(/guthaben|402|credit/i.test(msg)
-        ? "fal.ai-Guthaben fehlt. Bitte im fal.ai-Konto Credits aufladen."
-        : msg || "Fehler");
+        ? t("studio.products.falCreditsMissing")
+        : msg || t("studio.products.genericError"));
     } finally {
       setShotBusy(false);
     }
@@ -400,7 +436,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
       downloadBlob(blob, `${slugify(local.name)}-${format}.png`);
       logShareEvent("share.kit_downloaded", local.id);
     } catch (e) {
-      toast.error((e as Error).message || "Konnte die Grafik nicht erzeugen.");
+      toast.error((e as Error).message || t("studio.products.graphicGenerationFailed"));
     } finally {
       setShareBusy(null);
     }
@@ -418,7 +454,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
       downloadBlob(zip, `${slugify(local.name)}-creator-package.zip`);
       logShareEvent("share.package_downloaded", local.id);
     } catch (e) {
-      toast.error((e as Error).message || "Konnte das Paket nicht bauen.");
+      toast.error((e as Error).message || t("studio.products.packageBuildFailed"));
     } finally {
       setShareBusy(null);
     }
@@ -428,9 +464,9 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
     if (!local.slug) return;
     const url = `${window.location.origin}/presse/${local.slug}`;
     navigator.clipboard.writeText(url).then(() => {
-      toast.success("Link kopiert.");
+      toast.success(t("studio.products.linkCopied"));
       logShareEvent("share.link_copied", local.id);
-    }).catch(() => toast.error("Kopieren fehlgeschlagen."));
+    }).catch(() => toast.error(t("studio.products.copyFailed")));
   };
 
   // ---- Autosave (debounced) ----
@@ -460,7 +496,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   // ---- Image upload ----
   const uploadImage = async (file: File) => {
     if (!userId) return;
-    if (!file.type.startsWith("image/")) { toast.error("Bitte ein Bild wählen."); return; }
+    if (!file.type.startsWith("image/")) { toast.error(t("studio.products.pleaseChooseImage")); return; }
     setUploadPct(5);
     const path = `${userId}/products/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     // Fake progress ramp (Supabase JS doesn't stream progress reliably).
@@ -484,22 +520,22 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
   // ---- Text von PAWN ----
   const [autoNote, setAutoNote] = useState(false);
   const generateText = async () => {
-    if (!draftIdRef.current) { toast.error("Bitte zuerst einen Namen eingeben — dann speichere ich einen Entwurf."); return; }
+    if (!draftIdRef.current) { toast.error(t("studio.products.nameFirstForDraft")); return; }
     setAutoText(true);
-    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_text", product_id: draftIdRef.current } });
+    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_text", product_id: draftIdRef.current, locale } });
     setAutoText(false);
     if (error) return toast.error(error.message);
-    const t = (data as { text?: string })?.text;
-    if (t) { patch({ description: t }); toast.success("Vorschlag eingefügt."); }
+    const generated = (data as { text?: string })?.text;
+    if (generated) { patch({ description: generated }); toast.success(t("studio.products.suggestionInserted")); }
   };
   const generateNote = async () => {
-    if (!draftIdRef.current) { toast.error("Bitte zuerst einen Namen eingeben."); return; }
+    if (!draftIdRef.current) { toast.error(t("studio.products.nameFirst")); return; }
     setAutoNote(true);
-    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_note", product_id: draftIdRef.current } });
+    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "product_note", product_id: draftIdRef.current, locale } });
     setAutoNote(false);
     if (error) return toast.error(error.message);
-    const t = (data as { text?: string })?.text;
-    if (t) { patch({ designer_note: t }); toast.success("Gedanke eingefügt."); }
+    const generated = (data as { text?: string })?.text;
+    if (generated) { patch({ designer_note: generated }); toast.success(t("studio.products.thoughtInserted")); }
   };
 
   const setVariant = (i: number, p: Partial<Variant>) => {
@@ -507,7 +543,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
     vs[i] = { ...vs[i], ...p } as Variant;
     patch({ variants: vs });
   };
-  const addVariant = () => patch({ variants: [...(local.variants ?? []), { name: "Größe", options: [] }] });
+  const addVariant = () => patch({ variants: [...(local.variants ?? []), { name: t("cart.size"), options: [] }] });
   const removeVariant = (i: number) => patch({ variants: (local.variants ?? []).filter((_, k) => k !== i) });
 
   const editorProfile = worldProfile(local.world);
@@ -528,27 +564,27 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-8 py-5">
           <div className="min-w-0">
-            <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">{local.id ? "Bearbeiten" : "Neues Stück"}</p>
-            <h2 className="mt-0.5 truncate font-serif text-2xl font-medium">{local.name?.trim() || "Ohne Namen"}</h2>
+            <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">{local.id ? t("studio.products.editingBadge") : t("studio.products.newPiece")}</p>
+            <h2 className="mt-0.5 truncate font-serif text-2xl font-medium">{local.name?.trim() || t("studio.products.unnamed")}</h2>
           </div>
           <div className="flex items-center gap-4">
             <AutosaveBadge saving={autosaving} savedAt={savedAt} />
-            <button onClick={onCancel} aria-label="Schließen" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
+            <button onClick={onCancel} aria-label={t("studio.products.close")} className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
           </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 space-y-8 overflow-y-auto px-8 py-6">
           {/* World cards */}
-          <Section title="In welcher Welt lebt dein Stück?" help="Wähle die Welt, in der dein Stück gezeigt wird. Ein Möbelstück gehört in Interior, ein Kleid in Mode, eine Edition in Kunst.">
+          <Section title={t("studio.products.sectionWorld.title")} help={t("studio.products.sectionWorld.help")}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {(["Mode", "Interior", "Kunst"] as World[]).map((w) => {
                 const active = (local.world ?? "Mode") === w;
                 return (
                   <button key={w} type="button" onClick={() => patch({ world: w })}
                     className={`group relative flex flex-col items-start gap-2 border p-5 text-left transition-all ${active ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                    <span className="font-serif text-xl font-medium">{WORLD_COPY[w].title}</span>
-                    <span className={`text-xs ${active ? "text-background/70" : "text-muted-foreground"}`}>{WORLD_COPY[w].sub}</span>
+                    <span className="font-serif text-xl font-medium">{worldCopy[w].title}</span>
+                    <span className={`text-xs ${active ? "text-background/70" : "text-muted-foreground"}`}>{worldCopy[w].sub}</span>
                     {active && <span className="absolute right-3 top-3"><Check className="h-4 w-4" /></span>}
                   </button>
                 );
@@ -557,14 +593,14 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Name + price */}
-          <Section title="Das Wichtigste" help="Ein klarer Name und ein ehrlicher Preis. Der Streichpreis ist optional — nur nutzen, wenn du echten Vergleich zeigen willst.">
-            <Field label="Name deines Stücks" required missing={nameMissing}>
+          <Section title={t("studio.products.sectionEssentials.title")} help={t("studio.products.sectionEssentials.help")}>
+            <Field label={t("studio.products.nameLabel")} required missing={nameMissing}>
               <input value={local.name ?? ""} onChange={(e) => patch({ name: e.target.value })}
-                placeholder="z. B. Kaschmirmantel Nº 3"
+                placeholder={t("studio.products.namePlaceholder")}
                 className={`inp ${nameMissing ? "border-destructive/60" : ""}`} />
             </Field>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field label="Endpreis in Euro (inkl. MwSt.)" required missing={priceMissing}>
+              <Field label={t("studio.products.priceLabel")} required missing={priceMissing}>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
                   <input type="number" min={0} value={local.price ?? 0}
@@ -572,7 +608,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                     className={`inp pl-8 ${priceMissing ? "border-destructive/60" : ""}`} />
                 </div>
               </Field>
-              <Field label="Ursprünglicher Preis (optional)" hint="Nur wenn dein Stück reduziert ist.">
+              <Field label={t("studio.products.comparePriceLabel")} hint={t("studio.products.comparePriceHint")}>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
                   <input type="number" min={0} value={local.compare_at_price ?? ""}
@@ -580,7 +616,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                     className="inp pl-8" />
                 </div>
               </Field>
-              <Field label="Mehrwertsteuer (%)" hint={`Leer = Haus-Standard (${formatRate(houseVatRate)} %).`}>
+              <Field label={t("studio.products.vatLabel")} hint={t("studio.products.vatHint", { rate: formatRate(houseVatRate) })}>
                 <input type="number" min={0} max={30} step={0.1} value={local.vat_rate ?? ""}
                   onChange={(e) => patch({ vat_rate: e.target.value === "" ? null : Number(e.target.value) })}
                   placeholder={formatRate(houseVatRate)} className="inp" />
@@ -588,15 +624,17 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             </div>
             <div className="mt-3 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs">
               <p>
-                Endpreis € {formatEuro(vat.gross)} · davon netto € {formatEuro(vat.net)} und € {formatEuro(vat.vat)} Mehrwertsteuer
-                {vat.rate > 0 ? ` (${formatRate(vat.rate)} %)` : ""}.
+                {t("studio.products.vatBreakdown", {
+                  gross: formatEuro(vat.gross), net: formatEuro(vat.net), vat: formatEuro(vat.vat),
+                  rateSuffix: vat.rate > 0 ? ` (${formatRate(vat.rate)} %)` : "",
+                })}
               </p>
-              <p className="mt-1 text-muted-foreground">Auf der Produktseite steht: „{vatNote(vat.rate)}“.</p>
+              <p className="mt-1 text-muted-foreground">{t("studio.products.vatNoteLine", { note: vatNote(vat.rate) })}</p>
             </div>
           </Section>
 
           {/* Image */}
-          <Section title="Zeig dein Stück." help="Das erste Bild trägt alles. Ziehe eine Datei in das Feld oder wähle eine aus. Ideal: quadratisch oder hochkant, mindestens 1200 Pixel.">
+          <Section title={t("studio.products.sectionImage.title")} help={t("studio.products.sectionImage.help")}>
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
@@ -607,22 +645,22 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                   <img src={local.image_url} alt="" className="max-h-64 w-auto object-contain" />
                   <div className="flex flex-wrap justify-center gap-2">
                     <label className="cursor-pointer border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">
-                      Bild ersetzen
+                      {t("studio.products.replaceImage")}
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
                     </label>
-                    <button type="button" onClick={() => patch({ image_url: null })} className="border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">Entfernen</button>
+                    <button type="button" onClick={() => patch({ image_url: null })} className="border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">{t("cart.remove")}</button>
                     <button type="button" onClick={requestStudioShot} disabled={shotBusy}
                       className="inline-flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
-                      <Sparkles className="h-3 w-3" /> {shotBusy ? "PAWN denkt…" : "Weiße Wand"}
+                      <Sparkles className="h-3 w-3" /> {shotBusy ? t("studio.products.pawnThinking") : t("studio.products.whiteWall")}
                     </button>
                     <button type="button" onClick={() => setTryonPickerOpen((v) => !v)} disabled={shotBusy}
                       className="inline-flex items-center gap-1.5 border border-foreground bg-white px-3 py-1.5 text-[0.68rem] tracking-wide text-foreground hover:bg-muted disabled:opacity-60">
-                      ✦ Mit KI-Model <span className="text-[0.55rem] uppercase tracking-widest text-muted-foreground">Beta</span>
+                      ✦ {t("studio.products.withAiModel")} <span className="text-[0.55rem] uppercase tracking-widest text-muted-foreground">{t("studio.products.beta")}</span>
                     </button>
                   </div>
                   {tryonPickerOpen && (
                     <div className="mt-2 flex flex-wrap justify-center gap-2 border border-border bg-white px-3 py-2">
-                      <span className="self-center text-[0.62rem] uppercase tracking-widest text-muted-foreground">Model-Stil:</span>
+                      <span className="self-center text-[0.62rem] uppercase tracking-widest text-muted-foreground">{t("studio.products.modelStyleLabel")}</span>
                       {(["weiblich", "männlich", "divers"] as const).map((s) => (
                         <button key={s} type="button" onClick={() => requestTryonShot(s)}
                           className="border border-border bg-white px-3 py-1 text-[0.68rem] hover:border-foreground">
@@ -631,21 +669,21 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                       ))}
                     </div>
                   )}
-                  <p className="text-[0.6rem] text-muted-foreground">Studio-Foto: weiße Wand · KI-Model: dein Stück auf einem virtuellen Model. Beides via fal.ai.</p>
+                  <p className="text-[0.6rem] text-muted-foreground">{t("studio.products.shotExplainer")}</p>
                 </>
               )}
               {!local.image_url && (
                 <>
                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm">Zieh dein Bild hier hinein — oder</p>
+                  <p className="text-sm">{t("studio.products.dragImageHere")}</p>
                   <label className="cursor-pointer border border-foreground bg-white px-4 py-2 text-[0.68rem] hover:bg-foreground hover:text-background">
-                    <Upload className="mr-1 inline h-3 w-3" /> Datei wählen
+                    <Upload className="mr-1 inline h-3 w-3" /> {t("studio.products.chooseFile")}
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
                   </label>
-                  <p className="text-[0.62rem] text-muted-foreground">JPG oder PNG, mind. 1200 px</p>
+                  <p className="text-[0.62rem] text-muted-foreground">{t("studio.products.imageRequirements")}</p>
                   {local.id && (
                     <Link to={`/studio/produkte/neu?product=${local.id}`} className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground underline hover:text-foreground">
-                      Oder: PAWN inszeniert dein Stück
+                      {t("studio.products.orPawnStages")}
                     </Link>
                   )}
                 </>
@@ -660,7 +698,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
 
           {/* Weitergeben (Teil 17b): fertige Formate ohne KI, ohne Credits, ohne Wartezeit */}
           {local.id && local.image_url && local.slug && (
-            <Section title="Weitergeben" help="Vier fertige Bildformate für Story, Post, Pin und Banner — sofort erzeugt, direkt aus deinem Produktbild. Kein Warten, keine Credits. Das Kreativpaket bündelt alles in einer Datei, der Link zeigt dieselben Inhalte ohne Download.">
+            <Section title={t("studio.products.sectionShare.title")} help={t("studio.products.sectionShare.help")}>
               <div className="flex flex-wrap gap-2">
                 {(["story_9x16", "post_1x1", "pin_2x3", "banner"] as ShareFormat[]).map((f) => (
                   <button key={f} type="button" onClick={() => downloadShareFormat(f)} disabled={shareBusy !== null}
@@ -672,25 +710,25 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={downloadCreatorPackage} disabled={shareBusy !== null}
                   className="inline-flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-50">
-                  <Package className="h-3 w-3" /> {shareBusy === "zip" ? "Paket wird gebaut…" : "Kreativpaket (ZIP)"}
+                  <Package className="h-3 w-3" /> {shareBusy === "zip" ? t("studio.products.packageBuilding") : t("studio.products.creatorPackageZip")}
                 </button>
                 <button type="button" onClick={copyPresseLink}
                   className="inline-flex items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:border-foreground">
-                  <Link2 className="h-3 w-3" /> Teilbaren Link kopieren
+                  <Link2 className="h-3 w-3" /> {t("studio.products.copyShareableLink")}
                 </button>
               </div>
             </Section>
           )}
 
           {/* Seitlicher Banner (Teil 12c) */}
-          <Section title="Seitlicher Banner" help="Zeig auf der Produktseite ein Bild oder Video neben dem Stück — aus deiner Mediathek gewählt. Optional.">
+          <Section title={t("studio.products.sectionBanner.title")} help={t("studio.products.sectionBanner.help")}>
             {media.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Noch nichts in deiner Mediathek. Lade Material unter „Mediathek" hoch oder erzeuge es in einer Kampagne.</p>
+              <p className="text-sm text-muted-foreground">{t("studio.products.mediaLibraryEmpty")}</p>
             ) : (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 <button type="button" onClick={() => patch({ banner_media_asset_id: null })}
                   className={`flex aspect-[3/4] items-center justify-center border text-[0.6rem] uppercase tracking-widest ${!local.banner_media_asset_id ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:border-foreground"}`}>
-                  Kein Banner
+                  {t("studio.products.noBanner")}
                 </button>
                 {media.map((m) => {
                   const active = local.banner_media_asset_id === m.id;
@@ -709,27 +747,27 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Description */}
-          <Section title="Erzähl von deinem Stück." help="Kurz und ehrlich — Material, Herkunft, was besonders ist. Wenn du festhängst, lass PAWN einen Vorschlag machen; du kannst ihn frei anpassen.">
+          <Section title={t("studio.products.sectionDescription.title")} help={t("studio.products.sectionDescription.help")}>
             <button type="button" onClick={generateText} disabled={autoText}
               className="mb-2 inline-flex items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
-              <Sparkles className="h-3 w-3" /> {autoText ? "Copilot schreibt…" : "Text von PAWN"}
+              <Sparkles className="h-3 w-3" /> {autoText ? t("studio.products.copilotWriting") : t("studio.products.textFromPawn")}
             </button>
             <textarea value={local.description ?? ""} onChange={(e) => patch({ description: e.target.value })}
-              placeholder="Ein Satz reicht zum Anfangen…"
+              placeholder={t("studio.products.descriptionPlaceholder")}
               className="inp min-h-32" />
           </Section>
 
           {/* Der Gedanke dahinter */}
-          <Section title="Der Gedanke dahinter" help="Warum existiert dieses Stück? Ein persönlicher Satz macht den Unterschied — Menschen kaufen Geschichten.">
+          <Section title={t("studio.products.sectionThought.title")} help={t("studio.products.sectionThought.help")}>
             <button type="button" onClick={generateNote} disabled={autoNote}
               className="mb-2 inline-flex items-center gap-2 border border-foreground bg-foreground px-3 py-1.5 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-60">
-              <Sparkles className="h-3 w-3" /> {autoNote ? "PAWN denkt…" : "Text von PAWN"}
+              <Sparkles className="h-3 w-3" /> {autoNote ? t("studio.products.pawnThinking") : t("studio.products.textFromPawn")}
             </button>
             <textarea value={local.designer_note ?? ""} onChange={(e) => patch({ designer_note: e.target.value })}
-              placeholder="Erzähl die Geschichte oder Idee dieses Stücks — persönlich, erste Person."
+              placeholder={t("studio.products.notePlaceholder")}
               rows={3}
               className="inp min-h-24" />
-            <p className="mt-1 text-[0.62rem] text-muted-foreground">Erscheint auf deiner Produktseite als eigener Abschnitt.</p>
+            <p className="mt-1 text-[0.62rem] text-muted-foreground">{t("studio.products.noteHint")}</p>
           </Section>
 
           {/* Details & Maße */}
@@ -739,42 +777,42 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           />
 
           {/* Inventory */}
-          <Section title="Verfügbarkeit" help="Lagerbestand ist gezählt — kann ausverkauft sein. Auf Anfertigung bedeutet: du fertigst nach Bestellung. Beides zusammen ist möglich, wenn du Anfragen erlaubst.">
+          <Section title={t("studio.products.sectionAvailability.title")} help={t("studio.products.sectionAvailability.help")}>
             <div className="flex flex-col gap-3 sm:flex-row">
               {(["stock","made_to_order"] as InventoryMode[]).map((m) => {
                 const active = local.inventory_mode === m;
                 return (
                   <button key={m} type="button" onClick={() => patch({ inventory_mode: m })}
                     className={`flex-1 border p-4 text-left ${active ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                    <p className="font-serif text-base font-medium">{m === "stock" ? "Ich habe es auf Lager" : "Ich fertige auf Bestellung"}</p>
-                    <p className={`mt-1 text-xs ${active ? "text-background/70" : "text-muted-foreground"}`}>{m === "stock" ? "Feste Stückzahl, wird bei Verkauf gezählt." : "Wird nach Bestellung angefertigt — mit Lieferzeit."}</p>
+                    <p className="font-serif text-base font-medium">{m === "stock" ? t("studio.products.stockOption") : t("studio.products.madeToOrderOption")}</p>
+                    <p className={`mt-1 text-xs ${active ? "text-background/70" : "text-muted-foreground"}`}>{m === "stock" ? t("studio.products.stockOptionHint") : t("studio.products.madeToOrderHint")}</p>
                   </button>
                 );
               })}
             </div>
             {local.inventory_mode === "stock" ? (
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Wie viele hast du auf Lager?" required>
+                <Field label={t("studio.products.stockQtyLabel")} required>
                   <input type="number" min={0} value={local.stock_quantity ?? 0}
                     onChange={(e) => patch({ stock_quantity: Math.max(0, Number(e.target.value)) })}
                     className="inp" />
                 </Field>
-                <Field label="Gewicht in Gramm (optional)" hint="Hilft uns beim Versand.">
+                <Field label={t("studio.products.weightLabel")} hint={t("studio.products.weightHint")}>
                   <input type="number" min={0} value={local.weight_grams ?? ""}
                     onChange={(e) => patch({ weight_grams: e.target.value ? Number(e.target.value) : null })}
                     className="inp" />
                 </Field>
               </div>
             ) : (
-              <Field label="Wie viele Tage brauchst du ungefähr?" hint="Ehrliche Angabe — Kunden schätzen Verlässlichkeit mehr als Geschwindigkeit." >
+              <Field label={t("studio.products.leadTimeLabel")} hint={t("studio.products.leadTimeHint")} >
                 <input type="number" min={1} value={local.lead_time_days ?? ""}
                   onChange={(e) => patch({ lead_time_days: e.target.value ? Number(e.target.value) : null })}
-                  className="inp max-w-[200px]" placeholder="z. B. 14" />
+                  className="inp max-w-[200px]" placeholder={t("studio.products.leadTimePlaceholder")} />
               </Field>
             )}
             <label className="mt-4 flex items-start gap-3 text-sm">
               <input type="checkbox" checked={!!local.allow_custom_requests} onChange={(e) => patch({ allow_custom_requests: e.target.checked })} className="mt-1" />
-              <span>Kunden dürfen mich zu diesem Stück direkt anfragen (Sonderwunsch, Maß, Farbe).</span>
+              <span>{t("studio.products.allowCustomRequests")}</span>
             </label>
           </Section>
 
@@ -788,22 +826,22 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
 
 
           {/* Weitere Varianten (Farbe, Format …) */}
-          <Section title="Weitere Varianten (optional)" help="Für alles außer Größe — etwa Farbe oder Format. Größen pflegst du oben in der Größentabelle.">
-            {(local.variants ?? []).length === 0 && <p className="text-xs text-muted-foreground">Keine weiteren Varianten — passt für Unikate und Editionen.</p>}
+          <Section title={t("studio.products.sectionVariants.title")} help={t("studio.products.sectionVariants.help")}>
+            {(local.variants ?? []).length === 0 && <p className="text-xs text-muted-foreground">{t("studio.products.noVariants")}</p>}
             <div className="space-y-3">
               {(local.variants ?? []).map((v, i) => (
                 <div key={i} className="grid grid-cols-[1fr_2fr_auto] items-end gap-2">
-                  <Field label="Bezeichnung"><input value={v.name} onChange={(e) => setVariant(i, { name: e.target.value })} className="inp" /></Field>
-                  <Field label="Optionen (mit Komma trennen)"><input value={v.options.join(", ")} onChange={(e) => setVariant(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} className="inp" /></Field>
-                  <button type="button" onClick={() => removeVariant(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">Entf.</button>
+                  <Field label={t("studio.products.variantNameLabel")}><input value={v.name} onChange={(e) => setVariant(i, { name: e.target.value })} className="inp" /></Field>
+                  <Field label={t("studio.products.variantOptionsLabel")}><input value={v.options.join(", ")} onChange={(e) => setVariant(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} className="inp" /></Field>
+                  <button type="button" onClick={() => removeVariant(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">{t("studio.products.removeShort")}</button>
                 </div>
               ))}
             </div>
-            <button type="button" onClick={addVariant} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ Variante hinzufügen</button>
+            <button type="button" onClick={addVariant} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ {t("studio.products.addVariant")}</button>
           </Section>
 
           {/* Product DNA — Moleküle */}
-          <Section title="DNA deines Stücks" help="Vier kurze Antworten helfen PAWN, dein Stück den richtigen Menschen zu zeigen. Wähle aus der Palette — was fehlt, kannst du in den Tags frei ergänzen." anchorId="dna">
+          <Section title={t("studio.products.sectionDna.title")} help={t("studio.products.sectionDna.help")} anchorId="dna">
             <ProductDNAEditor
               dna={local.product_dna ?? emptyDNA()}
               world={local.world ?? "Mode"}
@@ -812,11 +850,11 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
           </Section>
 
           {/* Tags + SKU */}
-          <Section title="Details" help={'Tags helfen PAWN, dein Stück zu den richtigen Kunden zu bringen. Tippe los — Vorschläge kommen aus unserer Modewelt-Ontologie und werden normalisiert.'}>
-            <Field label="Tags" hint="Enter oder Komma zum Bestätigen">
+          <Section title={t("studio.products.sectionDetails.title")} help={t("studio.products.sectionDetails.help")}>
+            <Field label={t("studio.products.tagsLabel")} hint={t("studio.products.tagsHint")}>
               <TagInput value={local.tags ?? []} onChange={(v) => patch({ tags: v })} world={local.world} />
             </Field>
-            <Field label="SKU (optional)" hint="Deine interne Artikelnummer.">
+            <Field label={t("studio.products.skuLabel")} hint={t("studio.products.skuHint")}>
               <input value={local.sku ?? ""} onChange={(e) => patch({ sku: e.target.value })} className="inp max-w-xs" />
             </Field>
           </Section>
@@ -825,15 +863,15 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-border bg-white px-8 py-4">
           <div className="text-xs text-muted-foreground">
-            {!complete && <span>Noch fehlt: {[nameMissing && "Name", priceMissing && "Preis", imageMissing && "Bild", materialMissing && editorProfile.materialLabel, weightMissing && "Versandgewicht"].filter(Boolean).join(", ")}.</span>}
+            {!complete && <span>{t("studio.products.missingPrefix", { list: [nameMissing && t("studio.products.missingName"), priceMissing && t("studio.products.missingPrice"), imageMissing && t("studio.products.missingImage"), materialMissing && editorProfile.materialLabel, weightMissing && t("studio.products.missingWeight")].filter(Boolean).join(", ") })}</span>}
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onCancel} className="border border-border bg-white px-5 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Abbrechen</button>
+            <button onClick={onCancel} className="border border-border bg-white px-5 py-2 text-[0.68rem] tracking-wide hover:bg-muted">{t("common.cancel")}</button>
             <button onClick={() => { patch({ status: "draft" }); void save(); }} disabled={busy || nameMissing}
-              className="border border-border bg-white px-5 py-2 text-[0.68rem] tracking-wide hover:bg-muted disabled:opacity-40">Als Entwurf</button>
+              className="border border-border bg-white px-5 py-2 text-[0.68rem] tracking-wide hover:bg-muted disabled:opacity-40">{t("studio.products.saveAsDraft")}</button>
             <button onClick={() => { patch({ status: "published" }); void save(); }} disabled={busy || !complete}
               className="border border-foreground bg-foreground px-5 py-2 text-[0.68rem] tracking-wide text-background hover:bg-black disabled:opacity-40">
-              {busy ? "…" : "Veröffentlichen"}
+              {busy ? "…" : t("studio.products.publish")}
             </button>
           </div>
         </div>
@@ -843,21 +881,21 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setShotResult(null)}>
           <div className="w-full max-w-4xl border border-border bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-serif text-xl">Vorher · Nachher</h3>
-              <button onClick={() => setShotResult(null)} aria-label="Schließen" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
+              <h3 className="font-serif text-xl">{t("studio.products.beforeAfter")}</h3>
+              <button onClick={() => setShotResult(null)} aria-label={t("studio.products.close")} className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <figure>
-                <img src={shotResult.source} alt="Original" className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
-                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-muted-foreground">Original</figcaption>
+                <img src={shotResult.source} alt={t("studio.products.original")} className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-muted-foreground">{t("studio.products.original")}</figcaption>
               </figure>
               <figure className="relative">
-                <img src={shotResult.result} alt={shotResult.isTryon ? "KI-Model-Shot" : "Studio-Foto"} className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <img src={shotResult.result} alt={shotResult.isTryon ? t("studio.products.aiModelShotAlt") : t("studio.products.studioPhotoAlt")} className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
                 {shotResult.isTryon && (
-                  <span className="absolute right-2 top-2 border border-foreground bg-white px-2 py-0.5 text-[0.55rem] uppercase tracking-widest">KI-Model</span>
+                  <span className="absolute right-2 top-2 border border-foreground bg-white px-2 py-0.5 text-[0.55rem] uppercase tracking-widest">{t("studio.products.aiModelBadge")}</span>
                 )}
                 <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-foreground">
-                  {shotResult.isTryon ? `KI-Model-Shot (${shotResult.style})` : "PAWN Studio-Foto"}
+                  {shotResult.isTryon ? t("studio.products.aiModelShotCaption", { style: shotResult.style ?? "" }) : t("studio.products.studioPhotoCaption")}
                 </figcaption>
                 {shotResult.isTryon && (
                   <p className="mt-1 text-[0.62rem] italic text-muted-foreground">{shotDisclosure}</p>
@@ -866,19 +904,19 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             </div>
             {shotResult.isTryon && (
               <p className="mt-4 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                Prüfe: Sitzt dein Stück exakt? Bei Abweichung bitte neu erzeugen.
+                {t("studio.products.tryonCheckHint")}
               </p>
             )}
             <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button onClick={() => setShotResult(null)} className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Verwerfen</button>
+              <button onClick={() => setShotResult(null)} className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">{t("studio.products.discard")}</button>
               {shotResult.isTryon && shotResult.style && (
                 <button onClick={() => { const s = shotResult.style as "weiblich"|"männlich"|"divers"; setShotResult(null); void requestTryonShot(s); }}
-                  className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">Neu erzeugen</button>
+                  className="border border-border bg-white px-4 py-2 text-[0.68rem] tracking-wide hover:bg-muted">{t("studio.products.regenerate")}</button>
               )}
               <button
-                onClick={() => { patch({ image_url: shotResult.result }); setShotResult(null); toast.success(shotResult.isTryon ? "KI-Model-Shot übernommen." : "Studio-Foto übernommen."); }}
+                onClick={() => { patch({ image_url: shotResult.result }); setShotResult(null); toast.success(shotResult.isTryon ? t("studio.products.aiModelShotApplied") : t("studio.products.studioPhotoApplied")); }}
                 className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] tracking-wide text-background hover:bg-black">
-                Übernehmen
+                {t("studio.products.apply")}
               </button>
             </div>
           </div>
@@ -894,19 +932,21 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
 }
 
 function AutosaveBadge({ saving, savedAt }: { saving: boolean; savedAt: Date | null }) {
-  if (saving) return <span className="text-[0.68rem] text-muted-foreground">Wird gesichert…</span>;
-  if (savedAt) return <span className="flex items-center gap-1 text-[0.68rem] text-muted-foreground"><Check className="h-3 w-3" /> Gespeichert</span>;
+  const { t } = useI18n();
+  if (saving) return <span className="text-[0.68rem] text-muted-foreground">{t("studio.products.savingBadge")}</span>;
+  if (savedAt) return <span className="flex items-center gap-1 text-[0.68rem] text-muted-foreground"><Check className="h-3 w-3" /> {t("studio.products.savedBadge")}</span>;
   return null;
 }
 
 function Section({ title, help, children, anchorId }: { title: string; help?: string; children: React.ReactNode; anchorId?: string }) {
+  const { t } = useI18n();
   const [showHelp, setShowHelp] = useState(false);
   return (
     <section id={anchorId}>
       <div className="mb-3 flex items-center gap-2">
         <h3 className="font-serif text-lg font-medium">{title}</h3>
         {help && (
-          <button type="button" onClick={() => setShowHelp((v) => !v)} className="text-muted-foreground hover:text-foreground" aria-label="Hilfe anzeigen">
+          <button type="button" onClick={() => setShowHelp((v) => !v)} className="text-muted-foreground hover:text-foreground" aria-label={t("studio.products.helpAriaLabel")}>
             <HelpCircle className="h-3.5 w-3.5" />
           </button>
         )}
@@ -935,6 +975,7 @@ function Field({ label, hint, required, missing, children }: { label: string; hi
 interface DNAEditorProps { dna: ProductDNA; world: World; onChange: (d: ProductDNA) => void }
 
 function ProductDNAEditor({ dna, world, onChange }: DNAEditorProps) {
+  const { t } = useI18n();
   const { terms } = useOntology(world);
   const materials = terms.filter((t) => t.kind === "material");
   const silhouettes = terms.filter((t) => t.kind === "silhouette");
@@ -962,21 +1003,21 @@ function ProductDNAEditor({ dna, world, onChange }: DNAEditorProps) {
     <div className="space-y-6">
       {!complete && (
         <p className="border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs">
-          Kurze DNA — ein bis zwei Klicks pro Zeile reichen. Kann später ergänzt werden.
+          {t("studio.products.dnaShortHint")}
         </p>
       )}
-      <DNAChipRow label={`Material · mehrfach (${dna.materials.length})`}
-        options={materials.length ? materials.map((t) => t.term) : ["baumwolle","leinen","seide","wolle","kaschmir","leder","recycelt"]}
-        selected={dna.materials} onToggle={(t) => toggle("materials", t, 6)} />
-      <DNAChipRow label={`Silhouette · 1-2 (${dna.silhouette.length}/2)`}
-        options={silhouettes.length ? silhouettes.map((t) => t.term) : ["oversized","tailliert","fließend","strukturiert","cropped","column"]}
-        selected={dna.silhouette} onToggle={(t) => toggle("silhouette", t, 2)} />
-      <DNAChipRow label={`Farbregister · 1-3 (${dna.colors.length}/3)`}
-        options={colors.map((t) => t.term)}
-        selected={dna.colors} onToggle={(t) => toggle("colors", t, 3)} />
-      <DNAChipRow label={`Stimmung · 1-2 (${dna.mood.length}/2)`}
+      <DNAChipRow label={t("studio.products.dnaMaterialLabel", { n: dna.materials.length })}
+        options={materials.length ? materials.map((term) => term.term) : ["baumwolle","leinen","seide","wolle","kaschmir","leder","recycelt"]}
+        selected={dna.materials} onToggle={(term) => toggle("materials", term, 6)} />
+      <DNAChipRow label={t("studio.products.dnaSilhouetteLabel", { n: dna.silhouette.length })}
+        options={silhouettes.length ? silhouettes.map((term) => term.term) : ["oversized","tailliert","fließend","strukturiert","cropped","column"]}
+        selected={dna.silhouette} onToggle={(term) => toggle("silhouette", term, 2)} />
+      <DNAChipRow label={t("studio.products.dnaColorLabel", { n: dna.colors.length })}
+        options={colors.map((term) => term.term)}
+        selected={dna.colors} onToggle={(term) => toggle("colors", term, 3)} />
+      <DNAChipRow label={t("studio.products.dnaMoodLabel", { n: dna.mood.length })}
         options={moodOptions}
-        selected={dna.mood} onToggle={(t) => toggle("mood", t, 2)} />
+        selected={dna.mood} onToggle={(term) => toggle("mood", term, 2)} />
     </div>
   );
 }
@@ -1001,6 +1042,7 @@ function DNAChipRow({ label, options, selected, onToggle }: { label: string; opt
 }
 
 function DetailsSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const profile = worldProfile(local.world);
   const filled = [local.length_cm, local.width_cm, local.height_cm, local.made_in, local.edition_info]
@@ -1009,27 +1051,27 @@ function DetailsSection({ local, patch }: { local: Partial<ProductRow>; patch: (
     <section>
       <button type="button" onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between border border-border bg-white px-4 py-3 text-left hover:border-foreground">
-        <span className="font-serif text-lg font-medium">Herkunft & Maße {filled > 0 && <span className="ml-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{filled} ausgefüllt</span>}</span>
-        <span className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{open ? "Schließen" : "Öffnen"}</span>
+        <span className="font-serif text-lg font-medium">{t("studio.products.originMeasures")} {filled > 0 && <span className="ml-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.products.filledCount", { n: filled })}</span>}</span>
+        <span className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{open ? t("studio.products.close") : t("studio.products.open")}</span>
       </button>
       {open && (
         <div className="mt-4 space-y-4 border border-border bg-white p-5">
-          <p className="text-xs text-muted-foreground">Alles optional — je genauer, desto weniger Rückfragen.</p>
+          <p className="text-xs text-muted-foreground">{t("studio.products.allOptionalHint")}</p>
           <Field label={profile.dimensionsLabel} hint={profile.dimensionsHint}>
             <div className="grid grid-cols-3 gap-2">
-              <input type="number" min={0} step="0.1" placeholder="Länge" value={local.length_cm ?? ""}
+              <input type="number" min={0} step="0.1" placeholder={t("studio.products.lengthPlaceholder")} value={local.length_cm ?? ""}
                 onChange={(e) => patch({ length_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
-              <input type="number" min={0} step="0.1" placeholder="Breite" value={local.width_cm ?? ""}
+              <input type="number" min={0} step="0.1" placeholder={t("studio.products.widthPlaceholder")} value={local.width_cm ?? ""}
                 onChange={(e) => patch({ width_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
-              <input type="number" min={0} step="0.1" placeholder="Höhe" value={local.height_cm ?? ""}
+              <input type="number" min={0} step="0.1" placeholder={t("studio.products.heightPlaceholder")} value={local.height_cm ?? ""}
                 onChange={(e) => patch({ height_cm: e.target.value ? Number(e.target.value) : null })} className="inp" />
             </div>
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={profile.originLabel} hint="Ort oder Land.">
-              <input value={local.made_in ?? ""} onChange={(e) => patch({ made_in: e.target.value })} placeholder="z. B. Berlin, Deutschland" className="inp" />
+            <Field label={profile.originLabel} hint={t("studio.products.originHint")}>
+              <input value={local.made_in ?? ""} onChange={(e) => patch({ made_in: e.target.value })} placeholder={t("studio.products.originPlaceholder")} className="inp" />
             </Field>
-            <Field label={profile.editionLabel} hint='z. B. "Unikat" oder "Edition von 8".'>
+            <Field label={profile.editionLabel} hint={t("studio.products.editionHint")}>
               <input value={local.edition_info ?? ""} onChange={(e) => patch({ edition_info: e.target.value })} placeholder={profile.editionPlaceholder} className="inp" />
             </Field>
           </div>
@@ -1043,6 +1085,7 @@ function DetailsSection({ local, patch }: { local: Partial<ProductRow>; patch: (
 /* ---------- Größen mit eigenem Bestand + Maßtabelle ---------- */
 
 function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
+  const { t } = useI18n();
   const sizes: SizeVariant[] = local.size_variants ?? [];
   const measurements: Measurements = local.measurements ?? emptyMeasurements();
   const profile = worldProfile(local.world);
@@ -1088,20 +1131,20 @@ function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p:
     <Section title={profile.variantTitle} help={profile.variantHelp}>
       {sizes.length === 0
         ? <p className="text-xs text-muted-foreground">{profile.variantEmpty}</p>
-        : <p className="text-xs text-muted-foreground">Gesamtbestand aus allen {profile.variantSingular === "Größe" ? "Größen" : `${profile.variantSingular}en`}: <span className="text-foreground">{total}</span></p>}
+        : <p className="text-xs text-muted-foreground">{t("studio.products.totalStockFrom", { unit: profile.variantSingular === "Größe" ? "Größen" : `${profile.variantSingular}en` })} <span className="text-foreground">{total}</span></p>}
 
       <div className="mt-3 space-y-2">
         {sizes.map((s, i) => (
           <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-end gap-2">
             <Field label={profile.variantSingular}><input value={s.size} onChange={(e) => setSize(i, { size: e.target.value })} placeholder={profile.variantPlaceholder} className="inp" /></Field>
-            <Field label="Bestand"><input type="number" min={0} value={s.stock} onChange={(e) => setSize(i, { stock: Math.max(0, Number(e.target.value)) })} className="inp" /></Field>
-            <Field label="Aufpreis (€)"><input type="number" min={0} step="0.5" value={s.surcharge} onChange={(e) => setSize(i, { surcharge: Number(e.target.value) })} className="inp" /></Field>
-            <Field label="SKU"><input value={s.sku ?? ""} onChange={(e) => setSize(i, { sku: e.target.value || null })} className="inp" /></Field>
-            <button type="button" onClick={() => removeSize(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">Entf.</button>
+            <Field label={t("studio.products.stockFieldLabel")}><input type="number" min={0} value={s.stock} onChange={(e) => setSize(i, { stock: Math.max(0, Number(e.target.value)) })} className="inp" /></Field>
+            <Field label={t("studio.products.surchargeLabel")}><input type="number" min={0} step="0.5" value={s.surcharge} onChange={(e) => setSize(i, { surcharge: Number(e.target.value) })} className="inp" /></Field>
+            <Field label={t("studio.products.skuFieldLabel")}><input value={s.sku ?? ""} onChange={(e) => setSize(i, { sku: e.target.value || null })} className="inp" /></Field>
+            <button type="button" onClick={() => removeSize(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">{t("studio.products.removeShort")}</button>
           </div>
         ))}
       </div>
-      <button type="button" onClick={addSize} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ {profile.variantSingular} hinzufügen</button>
+      <button type="button" onClick={addSize} className="mt-3 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">{t("studio.products.addUnit", { unit: profile.variantSingular })}</button>
 
       <div className="mt-6 border-t border-border pt-4">
         <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{profile.measurementTitle}</p>
@@ -1120,7 +1163,7 @@ function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p:
                 <table className="w-full min-w-[420px] text-sm">
                   <thead>
                     <tr className="border-b border-foreground text-left">
-                      <th className="py-2 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">Maß</th>
+                      <th className="py-2 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.products.measureColumnHeader")}</th>
                       {columns.map((c) => <th key={c} className="py-2 text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{c}</th>)}
                       <th />
                     </tr>
@@ -1136,7 +1179,7 @@ function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p:
                           </td>
                         ))}
                         <td className="py-1">
-                          <button type="button" onClick={() => removeRow(row)} className="px-2 text-[0.6rem] uppercase tracking-[0.24em] text-destructive">Entf.</button>
+                          <button type="button" onClick={() => removeRow(row)} className="px-2 text-[0.6rem] uppercase tracking-[0.24em] text-destructive">{t("studio.products.removeShort")}</button>
                         </td>
                       </tr>
                     ))}
@@ -1153,12 +1196,13 @@ function SizesSection({ local, patch }: { local: Partial<ProductRow>; patch: (p:
 }
 
 function AddCustomRow({ onAdd }: { onAdd: (row: string) => void }) {
+  const { t } = useI18n();
   const [v, setV] = useState("");
   return (
     <div className="mt-3 flex gap-2">
-      <input value={v} onChange={(e) => setV(e.target.value)} placeholder="Eigene Maßzeile" className="inp max-w-xs" />
+      <input value={v} onChange={(e) => setV(e.target.value)} placeholder={t("studio.products.customMeasureRowPlaceholder")} className="inp max-w-xs" />
       <button type="button" onClick={() => { onAdd(v); setV(""); }}
-        className="border border-border px-3 py-2 text-[0.62rem] uppercase tracking-[0.24em] hover:border-foreground">Hinzufügen</button>
+        className="border border-border px-3 py-2 text-[0.62rem] uppercase tracking-[0.24em] hover:border-foreground">{t("studio.products.addButton")}</button>
     </div>
   );
 }
@@ -1166,6 +1210,7 @@ function AddCustomRow({ onAdd }: { onAdd: (row: string) => void }) {
 /* ---------- Material & Pflege ---------- */
 
 function MaterialSection({ local, patch }: { local: Partial<ProductRow>; patch: (p: Partial<ProductRow>) => void }) {
+  const { t } = useI18n();
   const parts: MaterialPart[] = local.material_composition ?? [];
   const care = local.care_symbols ?? [];
   const sum = materialSum(parts);
@@ -1183,16 +1228,16 @@ function MaterialSection({ local, patch }: { local: Partial<ProductRow>; patch: 
         {parts.map((p, i) => (
           <div key={i} className="grid grid-cols-[2fr_1fr_auto] items-end gap-2">
             <Field label={profile.materialLabel}><input value={p.material} onChange={(e) => setPart(i, { material: e.target.value })} placeholder={profile.materialPlaceholder} className="inp" /></Field>
-            <Field label="Anteil (%)"><input type="number" min={0} max={100} value={p.percent} onChange={(e) => setPart(i, { percent: Number(e.target.value) })} className="inp" /></Field>
-            <button type="button" onClick={() => removePart(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">Entf.</button>
+            <Field label={t("studio.products.percentLabel")}><input type="number" min={0} max={100} value={p.percent} onChange={(e) => setPart(i, { percent: Number(e.target.value) })} className="inp" /></Field>
+            <button type="button" onClick={() => removePart(i)} className="border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.28em] text-destructive">{t("studio.products.removeShort")}</button>
           </div>
         ))}
       </div>
       <div className="mt-2 flex items-center gap-4">
-        <button type="button" onClick={addPart} className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">+ {profile.materialLabel} hinzufügen</button>
+        <button type="button" onClick={addPart} className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">{t("studio.products.addUnit", { unit: profile.materialLabel })}</button>
         {parts.length > 0 && (
           <span className={`text-xs ${sum === 100 ? "text-muted-foreground" : "text-destructive"}`}>
-            Summe: {formatRate(sum)} %{sum === 100 ? "" : " — sollte 100 % ergeben."}
+            {t("studio.products.materialSum", { percent: formatRate(sum) })}{sum === 100 ? "" : t("studio.products.materialSumWarning")}
           </span>
         )}
       </div>
@@ -1218,11 +1263,11 @@ function MaterialSection({ local, patch }: { local: Partial<ProductRow>; patch: 
         </div>
       </div>
 
-      <Field label="Ergänzung zur Pflege (optional)">
+      <Field label={t("studio.products.careNotesLabel")}>
         <textarea rows={2} value={local.care_instructions ?? ""} onChange={(e) => patch({ care_instructions: e.target.value })} className="inp" />
       </Field>
 
-      <Field label="Nachhaltigkeit / Herkunft (optional)" hint="Ein Satz zu Material-Herkunft, Resten, Reparatur.">
+      <Field label={t("studio.products.sustainabilityLabel")} hint={t("studio.products.sustainabilityHint")}>
         <textarea rows={2} value={local.sustainability_note ?? ""} onChange={(e) => patch({ sustainability_note: e.target.value })} className="inp" />
       </Field>
     </Section>

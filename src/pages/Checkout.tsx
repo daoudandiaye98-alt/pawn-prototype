@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { Button } from "@/components/ui/button";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -95,8 +96,8 @@ const Checkout = () => {
             Das Haus wurde benachrichtigt und bereitet deine Bestellung vor.
           </p>
           <div className="mt-14 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/account" className="palace-btn">Deine Sammlung</Link>
-            <Link to="/" className="palace-btn">Weiter entdecken</Link>
+            <Button asChild variant="editorial" size="chip"><Link to="/account">Deine Sammlung</Link></Button>
+            <Button asChild variant="editorial" size="chip"><Link to="/">Weiter entdecken</Link></Button>
           </div>
         </section>
       </PalaceLayout>
