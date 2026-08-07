@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAWN — Der kuratierte Marktplatz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--fg:#000;--bg:#fff;--sec:#404040;--hair:1.5px solid #000;--e:cubic-bezier(.76,0,.18,1)}
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  body{background:#fff;color:#000;font-family:Inter,system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .w{max-width:1440px;margin:0 auto;padding:0 1.5rem}
+  @media(min-width:768px){.w{padding:0 2.5rem}}
+  .eb{font-size:.62rem;font-weight:500;text-transform:uppercase;letter-spacing:.34em;color:var(--sec)}
+  .pf{font-family:'Playfair Display',Georgia,serif;font-weight:600;letter-spacing:-.02em}
+  .it{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:500;letter-spacing:-.02em}
+
+  header{position:absolute;top:0;left:0;right:0;z-index:40;color:#fff;
+    border-bottom:1.5px solid rgba(255,255,255,.9)}
+  header.solid{position:sticky;background:#fff;color:#000;border-bottom:var(--hair)}
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;gap:1.5rem}
+  .brand{display:flex;align-items:center;gap:.6rem;font-family:'Playfair Display',serif;
+    font-weight:600;font-size:1.35rem;letter-spacing:.14em}
+  .brand svg{width:15px;height:20px;fill:currentColor}
+  nav{display:none;gap:2rem}@media(min-width:900px){nav{display:flex}}
+  nav a,.util a{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;text-decoration:none;color:inherit}
+  .util{display:flex;gap:1.4rem}
+
+  .cover{position:relative;min-height:100svh;display:flex;align-items:flex-end;
+    background:#2B1D16;color:#fff;overflow:hidden}
+  .art{position:absolute;inset:0;
+    background:
+      radial-gradient(120% 90% at 70% 20%, #C2571B 0%, transparent 55%),
+      radial-gradient(90% 70% at 20% 80%, #7A2E1D 0%, transparent 60%),
+      #2B1D16}
+  .art .tag{position:absolute;top:5.5rem;right:1.5rem;background:#fff;color:#000;
+    padding:.35rem .6rem;font-size:.55rem;letter-spacing:.26em;text-transform:uppercase}
+  .cover-in{position:relative;z-index:2;width:100%;padding:8rem 0 3rem}
+  .cover .kicker{font-size:.62rem;letter-spacing:.36em;text-transform:uppercase;
+    display:inline-block;background:#000;padding:.45rem .8rem}
+  .cover h1{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.028em;
+    font-size:clamp(2.7rem,9vw,7.6rem);line-height:.92;margin-top:1.3rem;max-width:14ch}
+  .cover h1 .it{font-weight:500}
+  .cover .sub{margin-top:1.6rem;max-width:44ch;font-size:1rem;color:rgba(255,255,255,.92)}
+  .cta{display:flex;gap:.9rem;margin-top:2.2rem;flex-wrap:wrap}
+  .btn{display:inline-block;font-family:inherit;font-size:.63rem;letter-spacing:.36em;
+    text-transform:uppercase;padding:.95rem 1.6rem;text-decoration:none;cursor:pointer;
+    transition:background .25s var(--e),color .25s var(--e)}
+  .btn.solid{background:#fff;color:#000;border:1.5px solid #fff}
+  .btn.solid:hover{background:transparent;color:#fff}
+  .btn.ghost{background:transparent;color:#fff;border:1.5px solid #fff}
+  .btn.ghost:hover{background:#fff;color:#000}
+  .credit{position:absolute;left:1.5rem;bottom:1.2rem;z-index:3;font-size:.58rem;
+    letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.85)}
+  @media(min-width:768px){.credit{left:2.5rem}}
+
+  .facts{border-bottom:var(--hair)}
+  .facts .row{display:grid;gap:0;grid-template-columns:1fr}
+  @media(min-width:820px){.facts .row{grid-template-columns:repeat(3,1fr)}}
+  .fact{padding:1.4rem 1.5rem;border-bottom:1px solid #e6e6e6;font-size:.8rem;color:var(--sec)}
+  .fact b{display:block;color:#000;font-weight:500;font-size:.62rem;letter-spacing:.3em;
+    text-transform:uppercase;margin-bottom:.35rem}
+  @media(min-width:820px){.fact{border-bottom:0;border-right:1px solid #e6e6e6;padding:1.6rem 2rem}
+    .fact:last-child{border-right:0}}
+
+  section{padding:5.5rem 0}
+  @media(min-width:768px){section{padding:8rem 0}}
+  .sechead{display:flex;justify-content:space-between;align-items:flex-end;gap:2rem;margin-bottom:2.8rem;flex-wrap:wrap}
+  .sechead h2{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.024em;
+    font-size:clamp(2rem,4.8vw,3.6rem);line-height:1;margin-top:.6rem}
+  .sechead a{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:#000;text-decoration:none;
+    border-bottom:1.5px solid #000;padding-bottom:.25rem;white-space:nowrap}
+
+  .worlds{display:grid;gap:1.5rem}
+  @media(min-width:820px){.worlds{grid-template-columns:repeat(12,1fr)}
+    .wo1{grid-column:1/6;min-height:76vh}
+    .wo2{grid-column:6/10;min-height:58vh;margin-top:5rem}
+    .wo3{grid-column:10/13;min-height:66vh;margin-top:1.5rem}}
+  .world{position:relative;display:flex;align-items:flex-end;min-height:52vh;
+    color:#fff;text-decoration:none;overflow:hidden}
+  .world .bg{position:absolute;inset:0;transition:transform 1s var(--e)}
+  .world:hover .bg{transform:scale(1.03)}
+  .wo1 .bg{background:radial-gradient(110% 80% at 30% 30%, #16324F 0%, #0B1B2B 70%)}
+  .wo2 .bg{background:radial-gradient(100% 90% at 70% 60%, #C9A227 0%, #6B520F 75%)}
+  .wo3 .bg{background:radial-gradient(110% 90% at 40% 70%, #4A5D3A 0%, #22301B 75%)}
+  .world .in{position:relative;z-index:2;padding:1.6rem}
+  .world .t{font-family:'Playfair Display',serif;font-style:italic;font-weight:500;
+    font-size:clamp(1.8rem,3.4vw,2.7rem);letter-spacing:-.02em}
+  .world .x{margin-top:.4rem;font-size:.85rem;color:rgba(255,255,255,.9);max-width:30ch}
+  .world .tag{position:absolute;top:1.1rem;left:1.1rem;background:#fff;color:#000;
+    padding:.3rem .55rem;font-size:.53rem;letter-spacing:.26em;text-transform:uppercase;z-index:2}
+
+  .issue{border-top:var(--hair)}
+  .pieces{display:grid;gap:2.2rem}
+  @media(min-width:700px){.pieces{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:1050px){.pieces{grid-template-columns:repeat(3,1fr)}
+    .pc2{margin-top:4rem}.pc4{margin-top:-2.2rem}}
+  .piece{text-decoration:none;color:#000;display:block}
+  .piece .img{position:relative;aspect-ratio:4/5;overflow:hidden}
+  .piece .img div{position:absolute;inset:0;transition:transform .9s var(--e)}
+  .piece:hover .img div{transform:scale(1.035)}
+  .p1{background:radial-gradient(100% 80% at 60% 30%, #8C4A5E 0%, #3C1E29 75%)}
+  .p2{background:radial-gradient(100% 80% at 30% 60%, #D9D2C5 0%, #8F8574 80%)}
+  .p3{background:radial-gradient(100% 90% at 60% 60%, #2E5E4E 0%, #12291F 80%)}
+  .p4{background:radial-gradient(110% 90% at 40% 30%, #B8B0A4 0%, #5E574C 80%)}
+  .p5{background:radial-gradient(100% 80% at 60% 40%, #7A5C9E 0%, #2C1F3E 80%)}
+  .piece .nm{font-family:'Playfair Display',serif;font-weight:600;font-size:1.3rem;
+    letter-spacing:-.02em;margin-top:.9rem}
+  .piece .cr{display:flex;justify-content:space-between;gap:1rem;margin-top:.3rem;
+    font-size:.58rem;letter-spacing:.26em;text-transform:uppercase;color:var(--sec)}
+
+  .concierge{background:#000;color:#fff}
+  .cg{display:grid;gap:2.5rem;align-items:center}
+  @media(min-width:900px){.cg{grid-template-columns:1.1fr 1fr;gap:5rem}}
+  .concierge h2{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.024em;
+    font-size:clamp(2rem,4.6vw,3.4rem);line-height:1.02;margin-top:.7rem}
+  .concierge p{margin-top:1.2rem;color:rgba(255,255,255,.85);font-size:.95rem;max-width:44ch}
+  .ask{border:1.5px solid #fff;padding:1.3rem 1.3rem 1.1rem}
+  .ask .lbl{font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+  .ask input{width:100%;background:transparent;border:0;border-bottom:1.5px solid #fff;
+    color:#fff;font-family:'Playfair Display',serif;font-style:italic;font-weight:500;
+    font-size:1.25rem;padding:.7rem 0;margin-top:.7rem;outline:none}
+  .ask input::placeholder{color:rgba(255,255,255,.55)}
+  .ask .send{margin-top:1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+  .ask .hintline{font-size:.68rem;color:rgba(255,255,255,.6)}
+  .ask button{background:#fff;color:#000;border:1.5px solid #fff;font-family:inherit;
+    font-size:.6rem;letter-spacing:.32em;text-transform:uppercase;padding:.7rem 1.2rem;cursor:pointer}
+
+  .final{min-height:62vh;display:flex;align-items:center;border-top:var(--hair)}
+  .final h2{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.026em;
+    font-size:clamp(2.4rem,7.4vw,6rem);line-height:.92;max-width:15ch}
+  .pieces-mini{display:flex;gap:1.1rem;align-items:flex-end;margin-top:2rem}
+  .pieces-mini svg{width:34px;height:auto}
+  .final .btn{margin-top:2.2rem;background:#000;color:#fff;border:1.5px solid #000}
+  .final .btn:hover{background:#fff;color:#000}
+
+  footer{border-top:var(--hair);padding:3rem 0}
+  .fbot{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+    font-size:.58rem;letter-spacing:.26em;text-transform:uppercase;color:var(--sec)}
+
+  .rev{opacity:0;transform:translateY(26px);transition:opacity .8s var(--e),transform .8s var(--e)}
+  .rev.on{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.rev{opacity:1;transform:none}}
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="w hd">
+    <div class="brand">
+      <svg viewBox="0 0 40 52"><circle cx="20" cy="10" r="7.5"/><path d="M13 18h14l-2.5 6h-9z"/><path d="M15.5 24h9l2.5 15H13z"/><rect x="8" y="39" width="24" height="6"/></svg>
+      PAWN
+    </div>
+    <nav><a href="#">Ausstellung</a><a href="#">Häuser</a><a href="#">Ausgabe 07</a><a href="#">Über</a></nav>
+    <div class="util"><a href="#">Suche</a><a href="#">Tasche</a><a href="#">Anmelden</a></div>
+  </div>
+</header>
+
+<div class="cover">
+  <div class="art"><span class="tag">Werk · Bild folgt</span></div>
+  <div class="w cover-in">
+    <span class="kicker">Der kuratierte Marktplatz</span>
+    <h1>Kunst von Händen,<br><span class="it">nicht von Fabriken.</span></h1>
+    <p class="sub">Unabhängige Designer und Künstler aus Mode, Interior und Kunst — geprüft, kuratiert, direkt von der Werkstatt zu dir.</p>
+    <div class="cta">
+      <a class="btn solid" href="#">Ausstellung betreten</a>
+      <a class="btn ghost" href="#">Als Designer bewerben</a>
+    </div>
+  </div>
+  <div class="credit">№ 014 · Haus Obara · Hamburg</div>
+</div>
+
+<div class="facts">
+  <div class="w"><div class="row">
+    <div class="fact"><b>Kuratiert</b>Jede Bewerbung wird geprüft. Was hier hängt, hat jemand gemacht.</div>
+    <div class="fact"><b>93 % an die Hände</b>Vom Verkaufspreis geht fast alles an das Haus — PAWN nimmt 7 %.</div>
+    <div class="fact"><b>Drei Welten</b>Mode, Interior und Kunst — eine Halle, viele Räume.</div>
+  </div></div>
+</div>
+
+<section>
+  <div class="w">
+    <div class="sechead rev">
+      <div><div class="eb">Die Halle</div><h2>Drei <span class="it">Welten.</span></h2></div>
+      <a href="#">Alle Häuser</a>
+    </div>
+    <div class="worlds">
+      <a class="world wo1 rev" href="#"><div class="bg"></div><span class="tag">Werk · Bild folgt</span>
+        <div class="in"><div class="t">Mode</div><div class="x">Stücke, die eine Handschrift tragen.</div></div></a>
+      <a class="world wo2 rev" href="#"><div class="bg"></div><span class="tag">Werk · Bild folgt</span>
+        <div class="in"><div class="t">Interior</div><div class="x">Objekte, an denen man die Verbindung sieht.</div></div></a>
+      <a class="world wo3 rev" href="#"><div class="bg"></div><span class="tag">Werk · Bild folgt</span>
+        <div class="in"><div class="t">Kunst</div><div class="x">Arbeiten, die einen Raum verändern.</div></div></a>
+    </div>
+  </div>
+</section>
+
+<section class="issue">
+  <div class="w">
+    <div class="sechead rev">
+      <div><div class="eb">Ausgabe 07</div><h2>Diese Woche <span class="it">hängt hier.</span></h2></div>
+      <a href="#">Zur Ausgabe</a>
+    </div>
+    <div class="pieces">
+      <a class="piece rev" href="#"><div class="img"><div class="p1"></div></div>
+        <div class="nm">Mantel №4</div><div class="cr"><span>Obara · Mode</span><span>420 €</span></div></a>
+      <a class="piece pc2 rev" href="#"><div class="img"><div class="p2"></div></div>
+        <div class="nm">Schale, Steinzeug</div><div class="cr"><span>Marlow · Interior</span><span>85 €</span></div></a>
+      <a class="piece rev" href="#"><div class="img"><div class="p3"></div></div>
+        <div class="nm">Ohne Titel, Öl</div><div class="cr"><span>Vela · Kunst</span><span>1.150 €</span></div></a>
+      <a class="piece pc4 rev" href="#"><div class="img"><div class="p4"></div></div>
+        <div class="nm">Leuchte Halden 02</div><div class="cr"><span>Halden · Interior</span><span>310 €</span></div></a>
+      <a class="piece rev" href="#"><div class="img"><div class="p5"></div></div>
+        <div class="nm">Kleid, Seide</div><div class="cr"><span>Atelier Nord · Mode</span><span>560 €</span></div></a>
+    </div>
+  </div>
+</section>
+
+<section class="concierge">
+  <div class="w cg">
+    <div class="rev">
+      <div class="eb" style="color:rgba(255,255,255,.6)">Dein Concierge</div>
+      <h2>Sag PAWN, <span class="it">wonach du suchst.</span></h2>
+      <p>Beschreib es in deinen Worten — ein Gefühl, ein Anlass, ein Raum. PAWN kennt jedes Stück der Halle und merkt sich, was dir gefällt. Alles Gespeicherte kannst du lesen und löschen.</p>
+    </div>
+    <div class="ask rev">
+      <div class="lbl">Frag die Halle</div>
+      <input type="text" placeholder="„Etwas Ruhiges für meinen Esstisch…&quot;">
+      <div class="send">
+        <span class="hintline">Oder lade ein Bild hoch — PAWN liest es.</span>
+        <button type="button">Fragen</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="w rev">
+    <div class="eb">Für Designer</div>
+    <h2 style="margin-top:1rem">Jeder beginnt als Bauer.<br><span class="it">Keiner bleibt einer.</span></h2>
+    <div class="pieces-mini" aria-hidden="true">
+      <svg viewBox="0 0 40 52"><g fill="#000"><circle cx="20" cy="10" r="7.5"/><path d="M13 18h14l-2.5 6h-9z"/><path d="M15.5 24h9l2.5 15H13z"/><rect x="8" y="39" width="24" height="6"/></g></svg>
+      <svg viewBox="0 0 40 52" style="opacity:.35"><g fill="#000"><path d="M20 2c4 4 6 7 6 10a6 6 0 0 1-12 0c0-3 2-6 6-10z"/><path d="M13 18h14l-2.5 6h-9z"/><path d="M15 24h10l2.5 15H12.5z"/><rect x="8" y="39" width="24" height="6"/></g></svg>
+      <svg viewBox="0 0 40 52" style="opacity:.35"><g fill="#000"><path d="M9 3h5v4h4V3h4v4h4V3h5v10H9z"/><path d="M12.5 13h15l2 26H10.5z"/><rect x="7" y="39" width="26" height="6"/></g></svg>
+      <svg viewBox="0 0 40 52" style="opacity:.35"><g fill="#000"><circle cx="20" cy="3.6" r="2.6"/><circle cx="9.5" cy="7.5" r="2.4"/><circle cx="30.5" cy="7.5" r="2.4"/><path d="M9 10l3 9h16l3-9-6.5 5L20 8l-5.5 7z"/><path d="M13 21h14l2.5 18H10.5z"/><rect x="7" y="39" width="26" height="6"/></g></svg>
+    </div>
+    <a class="btn" href="#">Haus eröffnen</a>
+  </div>
+</section>
+
+<footer>
+  <div class="w fbot">
+    <span>© 2026 PAWN</span><span>Ausgabe 07</span><span>Datenschutz · AGB · Kontakt</span><span>Deutsch · English</span>
+  </div>
+</footer>
+
+<script>
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target);}}),{threshold:.12});
+  document.querySelectorAll('.rev').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
