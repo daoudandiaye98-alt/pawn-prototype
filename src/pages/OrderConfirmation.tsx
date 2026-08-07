@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { Button } from "@/components/ui/button";
 import { useCart } from "@/store/cart";
 import { supabase } from "@/integrations/supabase/client";
 import { readReferralCode, clearReferralCode } from "@/features/referral";
@@ -75,8 +76,8 @@ export default function OrderConfirmation() {
           </p>
         )}
         <div className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link to="/account" className="palace-btn">Bestellungen ansehen</Link>
-          <Link to="/" className="palace-btn">Weiter entdecken</Link>
+          <Button asChild variant="editorial" size="chip"><Link to="/account">Bestellungen ansehen</Link></Button>
+          <Button asChild variant="editorial" size="chip"><Link to="/">Weiter entdecken</Link></Button>
         </div>
       </section>
     </PalaceLayout>

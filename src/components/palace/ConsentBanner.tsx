@@ -1,5 +1,6 @@
 import { useConsent } from "@/lib/consent";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 /**
  * PAWN Consent Banner — dezent, unten, Palace-Stil.
@@ -14,7 +15,7 @@ export function ConsentBanner() {
     <div
       role="dialog"
       aria-label="Cookie-Einstellungen"
-      className="fixed inset-x-0 bottom-0 z-[70] px-4 pb-4 md:px-8 md:pb-8"
+      className="fixed inset-x-0 bottom-0 z-flyout px-4 pb-4 md:px-8 md:pb-8"
     >
       <div className="mx-auto max-w-4xl border border-[rgba(0,0,0,.18)] bg-white shadow-[0_16px_48px_-24px_rgba(0,0,0,0.35)]">
         <div className="grid gap-6 p-6 md:grid-cols-[1.4fr_auto] md:items-center md:p-8">
@@ -31,20 +32,24 @@ export function ConsentBanner() {
             </p>
           </div>
           <div className="flex flex-col gap-2 md:min-w-[220px]">
-            <button
+            <Button
               type="button"
+              variant="editorial"
+              size="chip"
               onClick={() => setConsent("accepted")}
-              className="palace-btn justify-center bg-[#000000] text-[#FFFFFF]"
+              className="justify-center bg-black text-white"
             >
               {value === "accepted" ? "Weiter merken" : "Einverstanden"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="editorial"
+              size="chip"
               onClick={() => setConsent("essential")}
-              className="palace-btn justify-center"
+              className="justify-center"
             >
               {value === "essential" ? "Bleibt bei notwendig" : "Nur notwendige"}
-            </button>
+            </Button>
             {decided && (
               <button
                 type="button"

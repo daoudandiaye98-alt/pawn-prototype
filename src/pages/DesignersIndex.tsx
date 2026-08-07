@@ -4,6 +4,7 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable, useContentValue } from "@/components/palace/Editable";
+import { Button } from "@/components/ui/button";
 import { useStore, marketplaceSelectors } from "@/core";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -65,12 +66,11 @@ const DesignersIndex = () => {
             </Editable>
           </Reveal>
           <Reveal delay={120} className="flex md:justify-end">
-            <Link
-              to="/apply"
-              className="palace-btn whitespace-nowrap"
-            >
-              <Editable as="span" contentKey="dindex_cta">Als Designer bewerben →</Editable>
-            </Link>
+            <Button asChild variant="editorial" size="chip" className="whitespace-nowrap">
+              <Link to="/apply">
+                <Editable as="span" contentKey="dindex_cta">Als Designer bewerben →</Editable>
+              </Link>
+            </Button>
           </Reveal>
         </div>
       </section>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PortalShell } from "@/components/pawn/PortalShell";
 import { ChartPlaceholder } from "@/components/pawn/ChartPlaceholder";
 import { useStore, portalSelectors } from "@/core";
@@ -6,23 +6,38 @@ import { RoleGate, PrototypeAccessBanner } from "@/features/access/RoleGate";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowUpRight, Sparkles, Package, MessageSquare, Truck, Wallet, Dna } from "lucide-react";
-import { Panel, Metric, Command, Status, Recommendation } from "@/components/pawn/primitives";
 import { useI18n } from "@/lib/i18n";
+import { Card as ShadcnCard, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 /**
  * Designer Studio — the tenant surface.
- * Uses the shared primitive language. No tenant-local card variants.
+ * Teil 26b: eine Bibliothek (shadcn) statt der stillgelegten pawn/primitives.
  */
 
-const Card = Panel;
-function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "accent" }) {
+function Card({ title, eyebrow, action, children, className }: {
+  title: ReactNode; eyebrow?: string; action?: ReactNode; children: ReactNode; className?: string;
+}) {
   return (
-    <Metric
-      label={label}
-      value={value}
-      delta={sub}
-      trend={tone === "accent" ? "up" : "neutral"}
-    />
+    <ShadcnCard className={cn("border-[hsl(var(--border-strong))]", className)}>
+      <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 border-b border-border px-6 py-4">
+        <div>
+          {eyebrow && <p className="t-eyebrow">{eyebrow}</p>}
+          <CardTitle className="mt-1 t-display-sm font-normal">{title}</CardTitle>
+        </div>
+        {action}
+      </CardHeader>
+      <CardContent className="p-0">{children}</CardContent>
+    </ShadcnCard>
+  );
+}
+
+function Kpi({ label, value, sub }: { label: string; value: string; sub?: string; tone?: "accent" }) {
+  return (
+    <div className="border border-[hsl(var(--border))] bg-card p-5 md:p-6">
+      <p className="t-eyebrow">{label}</p>
+      <p className="mt-4 t-display-md leading-none tabular-nums">{value}</p>
+      {sub && <p className="mt-2 text-[0.65rem] tabular-nums text-muted-foreground">{sub}</p>}
+    </div>
   );
 }
 

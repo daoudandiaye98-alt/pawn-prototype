@@ -9,6 +9,7 @@ import { Reveal } from "@/components/palace/Reveal";
 import { DynamicBanner } from "@/components/palace/DynamicBanner";
 import { PremiereSection } from "@/components/palace/PremiereSection";
 import { Editable, EditableImage, useContentValue } from "@/components/palace/Editable";
+import { Button } from "@/components/ui/button";
 import { useSiteContent } from "@/lib/siteContent";
 import { usePublicDesigners, useActiveCollection } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
@@ -422,12 +423,14 @@ const Index = () => {
             <Editable as="p" contentKey="landing.helix_body" className="mt-8 block max-w-md text-[0.95rem] leading-relaxed text-[#000000]/80" multiline>
               Beim Sehen, beim Verweilen, beim Zurückkommen wird die Ausstellung von selbst ein bisschen mehr deine.
             </Editable>
-            <button
+            <Button
+              variant="editorial"
+              size="chip"
               onClick={() => window.dispatchEvent(new CustomEvent("palace:open-chat"))}
-              className="palace-btn mt-10"
+              className="mt-10"
             >
               <Editable as="span" contentKey="landing.helix_cta">Frag PAWN →</Editable>
-            </button>
+            </Button>
           </Reveal>
           <Reveal delay={140} className="relative h-[520px]">
             <HelixScene />

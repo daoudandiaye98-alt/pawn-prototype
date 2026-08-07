@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export default function Kontakt() {
   const { user, profile } = useAuth();
@@ -23,9 +24,9 @@ export default function Kontakt() {
       });
       if (error) throw error;
       setSent(true);
-      toast({ title: "Nachricht gesendet", description: "Wir melden uns per E-Mail." });
+      toast.success("Nachricht gesendet", { description: "Wir melden uns per E-Mail." });
     } catch (err) {
-      toast({ title: "Konnte nicht senden", description: String((err as Error).message ?? err), variant: "destructive" });
+      toast.error("Konnte nicht senden", { description: String((err as Error).message ?? err) });
     } finally {
       setSending(false);
     }
@@ -47,8 +48,8 @@ export default function Kontakt() {
             <p className="font-serif text-2xl" style={{ fontWeight: 600 }}>Danke — deine Nachricht ist bei uns.</p>
             <p className="mt-3 text-[0.9rem]">Wir melden uns per E-Mail an <b>{email}</b>.</p>
             <div className="mt-6 flex gap-3">
-              <a href="/" className="palace-btn">Zur Ausstellung</a>
-              <a href="/neu" className="palace-btn">Neuheiten sehen</a>
+              <Button asChild variant="editorial" size="chip"><a href="/">Zur Ausstellung</a></Button>
+              <Button asChild variant="editorial" size="chip"><a href="/neu">Neuheiten sehen</a></Button>
             </div>
           </div>
         ) : (

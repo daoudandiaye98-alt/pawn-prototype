@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { MeasurementsPanel } from "@/components/palace/MeasurementsPanel";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { cn } from "@/lib/utils";
@@ -348,7 +349,7 @@ function Requests() {
                 <textarea rows={2} value={reply} onChange={(e) => setReply(e.target.value)}
                   placeholder="Antworten …"
                   className="flex-1 border border-border bg-transparent p-2 text-[0.95rem] focus:outline-none focus:border-foreground" />
-                <button onClick={send} disabled={!reply.trim()} className="palace-btn bg-foreground text-background disabled:opacity-40">Senden</button>
+                <Button variant="editorial" size="chip" onClick={send} disabled={!reply.trim()} className="bg-foreground text-background disabled:opacity-40">Senden</Button>
               </div>
             </div>
           </>
@@ -430,7 +431,7 @@ function Empty({ title, to, cta }: { title: string; to: string; cta: string }) {
   return (
     <div className="flex flex-col items-start gap-6 pt-4">
       <p className="palace-serif text-[1.5rem] italic text-foreground">{title}</p>
-      <Link to={to} className="palace-btn">{cta} →</Link>
+      <Button asChild variant="editorial" size="chip"><Link to={to}>{cta} →</Link></Button>
     </div>
   );
 }
