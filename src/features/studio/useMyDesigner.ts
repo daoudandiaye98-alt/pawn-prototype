@@ -29,6 +29,7 @@ export interface StudioDesigner {
   shipping_rates: Record<string, unknown> | null;
   vat_rate: number;
   return_window_days: number;
+  preferred_language: string;
 }
 
 
@@ -44,7 +45,7 @@ export function useMyDesigner() {
     setLoading(true);
     const { data, error } = await supabase
       .from("designers")
-      .select("id, slug, brand_name, location, country, story, manifesto, quote, quote_role, hero_image_url, banner_url, avatar_url, status, house_number, created_at, brand_dna, aussenauge, plan, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, page_published_at, dismissed_suggestions, shipping_rates, vat_rate, return_window_days")
+      .select("id, slug, brand_name, location, country, story, manifesto, quote, quote_role, hero_image_url, banner_url, avatar_url, status, house_number, created_at, brand_dna, aussenauge, plan, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, page_published_at, dismissed_suggestions, shipping_rates, vat_rate, return_window_days, preferred_language")
       .eq("user_id", user.id)
       .maybeSingle();
 

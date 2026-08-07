@@ -14,6 +14,7 @@ import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota"
 import { Begleiter } from "./Begleiter";
 
 import { useDisplayName } from "@/lib/displayName";
+import { useI18n } from "@/lib/i18n";
 
 /* Hairline inline icons (stroke 1.25) — quiet, monogram-like */
 const IStage = (p: React.SVGProps<SVGSVGElement>) => (
@@ -94,6 +95,7 @@ export { firstNameOf };
 
 function LevelPlaque({ designerId }: { designerId?: string }) {
   const { level } = useDesignerLevel(designerId);
+  const { t } = useI18n();
   if (!designerId) return null;
   const pct = Math.max(0, Math.min(1, level.progress));
   return (
@@ -103,7 +105,7 @@ function LevelPlaque({ designerId }: { designerId?: string }) {
         <div className="min-w-0">
           <p className="font-serif text-sm leading-none">{level.label}</p>
           <p className="mt-1 text-[0.58rem] uppercase tracking-[0.22em] text-white/45">
-            {level.level === "dame" ? "Höchster Rang" : `Nächster Rang · ${level.next}`}
+            {level.level === "dame" ? t("studioShell.highestRank") : t("studioShell.nextRank", { rank: level.next })}
           </p>
         </div>
       </div>
@@ -120,46 +122,47 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { designer } = useMyDesigner();
   const badges = useStudioBadges(designer?.id);
   const { pathname } = useLocation();
+  const { t } = useI18n();
 
-  const brand = designer?.brand_name ?? "Studio";
+  const brand = designer?.brand_name ?? t("studioShell.studioFallback");
   const initials = initialsOf(brand);
 
   const groups: { title: string; items: NavItem[] }[] = [
     {
-      title: "Verkaufen",
+      title: t("studioShell.group.sell"),
       items: [
-        { to: "/studio", label: "Start", hint: "Dein nächster Schritt", icon: IStage, end: true },
-        { to: "/studio/aufbau", label: "Deine Marke aufbauen", hint: "Schritt für Schritt zum ersten Verkauf", icon: IWerkbuch },
-        { to: "/studio/produkte", label: "Kollektion", hint: "Deine Stücke anlegen und pflegen", icon: ICollection },
-        { to: "/studio/bestellungen", label: "Bestellungen", hint: "Was verkauft wurde", icon: IOrders, badge: badges.orders },
-        { to: "/studio/versand", label: "Versand", hint: "Pakete vorbereiten und verschicken", icon: IOrders },
+        { to: "/studio", label: t("studioShell.nav.start"), hint: t("studioShell.nav.start.hint"), icon: IStage, end: true },
+        { to: "/studio/aufbau", label: t("studioShell.nav.aufbau"), hint: t("studioShell.nav.aufbau.hint"), icon: IWerkbuch },
+        { to: "/studio/produkte", label: t("studioShell.nav.produkte"), hint: t("studioShell.nav.produkte.hint"), icon: ICollection },
+        { to: "/studio/bestellungen", label: t("studioShell.nav.bestellungen"), hint: t("studioShell.nav.bestellungen.hint"), icon: IOrders, badge: badges.orders },
+        { to: "/studio/versand", label: t("studioShell.nav.versand"), hint: t("studioShell.nav.versand.hint"), icon: IOrders },
       ],
     },
     {
-      title: "Zeigen",
+      title: t("studioShell.group.show"),
       items: [
-        { to: "/studio/hausseite", label: "Deine Markenseite", hint: "Deine eigene Seite auf PAWN", icon: IHausseite },
-        { to: "/studio/mediathek", label: "Bilder", hint: "Fotos hochladen und freistellen", icon: IMediathek },
-        { to: "/studio/kampagnen", label: "Videos erstellen", hint: "Aus Fotos wird ein Clip", icon: ICampaigns, badge: badges.campaigns },
-        { to: "/studio/videothek", label: "Fertige Videos", hint: "Herunterladen und posten", icon: IVideothek },
+        { to: "/studio/hausseite", label: t("studioShell.nav.hausseite"), hint: t("studioShell.nav.hausseite.hint"), icon: IHausseite },
+        { to: "/studio/mediathek", label: t("studioShell.nav.mediathek"), hint: t("studioShell.nav.mediathek.hint"), icon: IMediathek },
+        { to: "/studio/kampagnen", label: t("studioShell.nav.kampagnen"), hint: t("studioShell.nav.kampagnen.hint"), icon: ICampaigns, badge: badges.campaigns },
+        { to: "/studio/videothek", label: t("studioShell.nav.videothek"), hint: t("studioShell.nav.videothek.hint"), icon: IVideothek },
       ],
     },
     {
-      title: "Marke",
+      title: t("studioShell.group.brand"),
       items: [
-        { to: "/studio/dna", label: "Markenprofil", hint: "Wie PAWN deine Handschrift sieht", icon: IWerkbuch },
-        { to: "/studio/brand", label: "Rückblick", hint: "Was in letzter Zeit passiert ist", icon: IRetro },
-        { to: "/studio/content-begleiter", label: "Ideen-Begleiter", hint: "Vorschläge, was du zeigen kannst", icon: IContentBegleiter },
+        { to: "/studio/dna", label: t("studioShell.nav.dna"), hint: t("studioShell.nav.dna.hint"), icon: IWerkbuch },
+        { to: "/studio/brand", label: t("studioShell.nav.brand"), hint: t("studioShell.nav.brand.hint"), icon: IRetro },
+        { to: "/studio/content-begleiter", label: t("studioShell.nav.contentBegleiter"), hint: t("studioShell.nav.contentBegleiter.hint"), icon: IContentBegleiter },
       ],
     },
     {
-      title: "Konto",
+      title: t("studioShell.group.account"),
       items: [
-        { to: "/studio/plan", label: "Plan", hint: "Was diesen Monat noch frei ist", icon: IPayout },
-        { to: "/studio/auszahlung", label: "Auszahlung", hint: "Wohin dein Geld fließt", icon: IPayout },
-        { to: "/studio/nachrichten", label: "Nachrichten", hint: "Anfragen von Kundinnen und PAWN", icon: IMessages, badge: badges.messages },
-        { to: "/studio/empfehlungen", label: "Empfehlungen", hint: "Andere Häuser einladen", icon: IReferral },
-        { to: "/studio/einstellungen", label: "Einstellungen", hint: "Konto und Angaben", icon: ISettings },
+        { to: "/studio/plan", label: t("studioShell.nav.plan"), hint: t("studioShell.nav.plan.hint"), icon: IPayout },
+        { to: "/studio/auszahlung", label: t("studioShell.nav.auszahlung"), hint: t("studioShell.nav.auszahlung.hint"), icon: IPayout },
+        { to: "/studio/nachrichten", label: t("studioShell.nav.nachrichten"), hint: t("studioShell.nav.nachrichten.hint"), icon: IMessages, badge: badges.messages },
+        { to: "/studio/empfehlungen", label: t("studioShell.nav.empfehlungen"), hint: t("studioShell.nav.empfehlungen.hint"), icon: IReferral },
+        { to: "/studio/einstellungen", label: t("studioShell.nav.einstellungen"), hint: t("studioShell.nav.einstellungen.hint"), icon: ISettings },
       ],
     },
   ];
@@ -171,7 +174,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <span className="flex h-9 w-9 items-center justify-center border border-white/25 font-serif text-xs tracking-wider">{initials}</span>
           <div className="min-w-0">
             <p className="truncate font-serif text-[1.05rem] font-medium leading-none">{brand}</p>
-            <p className="mt-1 text-[0.6rem] uppercase tracking-[0.24em] text-white/45">Dein Studio</p>
+            <p className="mt-1 text-[0.6rem] uppercase tracking-[0.24em] text-white/45">{t("studioShell.yourStudio")}</p>
           </div>
         </div>
       </div>
@@ -210,7 +213,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         className="mx-6 mb-4 border border-white/25 px-3 py-2 text-center text-[0.62rem] uppercase tracking-[0.3em] text-white/80 transition-colors hover:bg-white hover:text-black"
       >
-        Zur Ausstellung →
+        {t("studioShell.toExhibition")}
       </Link>
 
       {designer && <LevelPlaque designerId={designer.id} />}
@@ -221,11 +224,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 /** Limit dauerhaft sichtbar, egal auf welcher Studio-Seite — Details liegen auf /studio/plan. */
 function CreditsPill({ designerId, plan }: { designerId: string; plan: Plan }) {
   const quota = usePlanQuota(designerId, plan);
+  const { t } = useI18n();
   if (quota.loading) return null;
   return (
-    <Link to="/studio/plan" title="Dein Monat"
+    <Link to="/studio/plan" title={t("studioShell.yourMonth")}
       className="hidden items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tabular-nums tracking-wide hover:border-foreground sm:inline-flex">
-      {formatQuota(quota.used.videos, quota.unlimited ? -1 : quota.limits.videos, "Videos")}
+      {formatQuota(quota.used.videos, quota.unlimited ? -1 : quota.limits.videos, t("studioShell.videos"))}
     </Link>
   );
 }
@@ -236,6 +240,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
   const { firstName } = useDisplayName();
   const nav = useNavigate();
   const copilot = useCopilot();
+  const { t } = useI18n();
   const [unread, setUnread] = useState(0);
   const plusActive = designer?.plan === "atelier" || designer?.plan === "maison";
 
@@ -251,7 +256,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white/85 px-6 backdrop-blur-md">
       <div className="min-w-0">
-        <p className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">Studio · {section ?? title}</p>
+        <p className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studioShell.studio")} · {section ?? title}</p>
         <p className="mt-0.5 truncate font-serif text-lg leading-none">{title}</p>
       </div>
 
@@ -260,11 +265,11 @@ function Topbar({ title, section }: { title: string; section?: string }) {
         {designer && (
           <Link to={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="hidden md:inline-flex items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-muted">
-            Meine Rückblick ansehen <ExternalLink className="h-3 w-3" />
+            {t("studioShell.viewMyRetro")} <ExternalLink className="h-3 w-3" />
           </Link>
         )}
         <LanguageToggle className="h-9" />
-        <button aria-label="Benachrichtigungen" onClick={() => nav("/account")} className="relative flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
+        <button aria-label={t("studioShell.notifications")} onClick={() => nav("/account")} className="relative flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
           <Bell className="h-4 w-4" />
           {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-foreground" />}
         </button>
@@ -277,7 +282,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
           Copilot
           {plusActive && (
             <span
-              title="Stärkeres Denkmodell aktiv"
+              title={t("studioShell.strongerModelActive")}
               className="ml-1 rounded-full border border-white/50 px-1.5 py-0.5 text-[0.55rem] font-medium uppercase tracking-[0.16em] text-white/90"
             >
               PAWN+
@@ -287,7 +292,7 @@ function Topbar({ title, section }: { title: string; section?: string }) {
         <span className="hidden md:inline-flex h-9 w-9 items-center justify-center border border-border bg-white text-xs">
           {(firstName[0] ?? "?").toUpperCase()}
         </span>
-        <button onClick={() => { void signOut(); nav("/"); }} aria-label="Abmelden" className="flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
+        <button onClick={() => { void signOut(); nav("/"); }} aria-label={t("studioShell.signOut")} className="flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
           <LogOut className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -303,6 +308,24 @@ function Inner({ children, title, eyebrow, begleiterStep }: Props) {
   const { pathname } = useLocation();
   const plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = usePlanQuota(designer?.id, plan);
+  const { locale, setLocale, t } = useI18n();
+
+  // Teil 25: die im Haus-Profil gespeicherte Sprache gilt im Studio, unabhängig vom Browser
+  // dessen, der zufällig zuerst dieses Gerät benutzt hat — beim Laden übernehmen …
+  useEffect(() => {
+    if (designer && (designer.preferred_language === "de" || designer.preferred_language === "en") && designer.preferred_language !== locale) {
+      setLocale(designer.preferred_language);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designer?.id]);
+  // … und ändert der Designer die Sprache im Studio, schreiben wir sie ins Profil zurück.
+  useEffect(() => {
+    if (designer && designer.preferred_language !== locale) {
+      void supabase.from("designers").update({ preferred_language: locale }).eq("id", designer.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
+
   return (
     <div className="flex min-h-screen bg-background">
       <LevelUpOverlay designerId={designer?.id} />
@@ -324,8 +347,8 @@ function Inner({ children, title, eyebrow, begleiterStep }: Props) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="lg:hidden flex h-12 items-center border-b border-border bg-white px-4">
-          <button onClick={() => setMobileOpen(true)} aria-label="Menü"><Menu className="h-4 w-4" /></button>
-          <p className="ml-3 font-serif">Studio</p>
+          <button onClick={() => setMobileOpen(true)} aria-label={t("studioShell.menu")}><Menu className="h-4 w-4" /></button>
+          <p className="ml-3 font-serif">{t("studioShell.studio")}</p>
         </div>
         <Topbar title={title} section={eyebrow ?? title} />
         {designer && <ContractV2Banner />}

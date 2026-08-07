@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { ProductImage } from "@/components/pawn/ProductImage";
+import { useI18n } from "@/lib/i18n";
 
 const PortalEditor = () => {
+  const { t } = useI18n();
   const [name, setName] = useState("Y/PROJECT");
   const [slogan, setSlogan] = useState("Architecture of the asymmetric.");
   const [bio, setBio] = useState("A Paris-based studio building garments around the tension between tailoring and deconstruction.");
@@ -16,7 +18,7 @@ const PortalEditor = () => {
   const [instagram, setInstagram] = useState("@yproject");
 
   return (
-    <PortalShell eyebrow="Editor" title="Profil bearbeiten">
+    <PortalShell eyebrow="Editor" title={t("portal.editor.title")}>
       <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr_300px]">
         {/* Form */}
         <section className="border border-border bg-card p-6">
@@ -33,8 +35,8 @@ const PortalEditor = () => {
           </div>
           <p className="editorial-eyebrow mt-8">Attribute</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {["Avant-Tailoring", "Brutalist", "Romantic", "Unisex", "Paris"].map((t) => (
-              <span key={t} className="border border-border bg-background px-3 py-1 text-xs uppercase tracking-[0.18em]">{t}</span>
+            {["Avant-Tailoring", "Brutalist", "Romantic", "Unisex", "Paris"].map((attr) => (
+              <span key={attr} className="border border-border bg-background px-3 py-1 text-xs uppercase tracking-[0.18em]">{attr}</span>
             ))}
           </div>
         </section>
@@ -78,13 +80,13 @@ const PortalEditor = () => {
           </div>
           <div className="border border-border bg-card p-6">
             <p className="editorial-eyebrow">Publishing</p>
-            <p className="mt-2 text-xs text-muted-foreground">Letzter Stand: vor 4 Minuten</p>
+            <p className="mt-2 text-xs text-muted-foreground">{t("portal.editor.lastSaved", { n: 4 })}</p>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button variant="outline" className="rounded-none" onClick={() => toast("Vorschau geöffnet")}>
-                <Eye className="mr-2 h-4 w-4" /> Vorschau
+              <Button variant="outline" className="rounded-none" onClick={() => toast(t("portal.editor.toast.previewOpened"))}>
+                <Eye className="mr-2 h-4 w-4" /> {t("portal.editor.preview")}
               </Button>
-              <Button className="rounded-none" onClick={() => toast.success("Veröffentlicht")}>
-                <Send className="mr-2 h-4 w-4" /> Veröffentlichen
+              <Button className="rounded-none" onClick={() => toast.success(t("portal.editor.toast.published"))}>
+                <Send className="mr-2 h-4 w-4" /> {t("portal.editor.publish")}
               </Button>
             </div>
           </div>

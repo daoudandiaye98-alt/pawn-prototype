@@ -10,6 +10,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { normalizeLocale, localeInstruction } from "../_shared/locale.ts";
 
 const MODEL = "claude-sonnet-4-5";
 const KUNDE_SCHWELLE = { blicke: 20, kaeufe: 3 };
@@ -65,7 +66,10 @@ Deno.serve(async (req) => {
     const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin: SupabaseClient = createClient(url, svc, { auth: { persistSession: false } });
 
-    const body = await req.json().catch(() => ({})) as { mode?: string; designer_id?: string };
+    const body = await req.json().catch(() => ({})) as { mode?: string; designer_id?: string; locale?: string };
+    // Teil 25: nur das Außenauge (mode "designer") ist Studio-seitig — der Stilberater
+    // (mode "kunde") folgt weiterhin der Kundenseite, nicht dieser Änderung.
+    const locale = normalizeLocale(body.locale);
     const houseStyleLaw = await loadConfigText(admin, "house_style_law", DEFAULT_HOUSE_STYLE_LAW);
     const voiceLaw = await loadConfigText(admin, "voice_law", DEFAULT_VOICE_LAW);
     const OUTPUT_SHAPE_KUNDE = `Antworte NUR mit JSON, kein weiterer Text:
@@ -164,7 +168,7 @@ Deno.serve(async (req) => {
         `Wie die Stücke tatsächlich ankommen:\n${engagementText || "noch keine Aufrufe"}`,
       ].filter(Boolean).join("\n");
 
-      const system = `Du bist PAWNs Außenauge für Designer:innen — du sagst, wie ihre Arbeit von außen ankommt, im Vergleich zu ihrer eigenen Beschreibung. Direkt, aber nie über den Geschmack der Person urteilend, nur über Stücke, Reihenfolgen, Gewohnheiten.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${OUTPUT_SHAPE_DESIGNER}`;
+      const system = `Du bist PAWNs Außenauge für Designer:innen — du sagst, wie ihre Arbeit von außen ankommt, im Vergleich zu ihrer eigenen Beschreibung. Direkt, aber nie über den Geschmack der Person urteilend, nur über Stücke, Reihenfolgen, Gewohnheiten.\n\n${houseStyleLaw}\n\n${voiceLaw}\n\n${localeInstruction(locale)}\n\n${OUTPUT_SHAPE_DESIGNER}`;
       const out = await callClaude(apiKey, system, `Material über dieses Haus:\n${material}`, 900);
       if (!out) return json({ ok: false, error: "generation_failed", message: "Aus dem vorhandenen Material ließ sich noch keine Einschätzung schreiben." }, 200);
 

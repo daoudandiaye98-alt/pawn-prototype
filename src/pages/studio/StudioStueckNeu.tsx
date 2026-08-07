@@ -17,20 +17,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePlanQuota, type Plan } from "@/features/campaign/quota";
 import { Upload, ArrowRight } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 type World = "Mode" | "Interior" | "Kunst";
-const WORLD_LABEL: Record<World, string> = { Mode: "Mode", Interior: "Interior", Kunst: "Kunst" };
+const WORLD_LABEL_KEY: Record<World, string> = { Mode: "studio.stueckNeu.world.mode", Interior: "studio.stueckNeu.world.interior", Kunst: "studio.stueckNeu.world.kunst" };
 
 interface StagingTemplate {
   id: string; label: string; description?: string; prompt: string;
   preview_url?: string; credits: number; active?: boolean; groessenbezug?: boolean;
 }
 interface StagingResult { template_id: string; label: string; result_url: string | null; error: string | null; media_asset_id: string | null }
-const ART_LABEL: Record<string, string> = {
-  kleidung: "Kleidung", keramik: "Keramik", malerei: "Malerei/Grafik", skulptur: "Skulptur",
-  moebel: "Möbel", schmuck: "Schmuck", textil: "Textil", objekt: "Objekt", sonstiges: "Sonstiges",
+const ART_LABEL_KEY: Record<string, string> = {
+  kleidung: "studio.stueckNeu.art.kleidung", keramik: "studio.stueckNeu.art.keramik", malerei: "studio.stueckNeu.art.malerei", skulptur: "studio.stueckNeu.art.skulptur",
+  moebel: "studio.stueckNeu.art.moebel", schmuck: "studio.stueckNeu.art.schmuck", textil: "studio.stueckNeu.art.textil", objekt: "studio.stueckNeu.art.objekt", sonstiges: "studio.stueckNeu.art.sonstiges",
 };
-const ART_ORDER = Object.keys(ART_LABEL);
+const ART_ORDER = Object.keys(ART_LABEL_KEY);
 
 interface LiveProduct { id: string; name: string; slug: string; price: number; image_url: string | null }
 
@@ -51,6 +52,7 @@ async function uploadPhoto(userId: string, file: File): Promise<string> {
 }
 
 export default function StudioStueckNeu() {
+  const { t } = useI18n();
   const { user, hasRole } = useAuth();
   const { designer, loading } = useMyDesigner();
   const [searchParams] = useSearchParams();
@@ -101,7 +103,7 @@ export default function StudioStueckNeu() {
   }, [existingProductId, designer]);
 
   const templatesForArt = useMemo(
-    () => (art ? (stagingTemplatesAll[art] ?? []).filter((t) => t.active !== false) : []),
+    () => (art ? (stagingTemplatesAll[art] ?? []).filter((tpl) => tpl.active !== false) : []),
     [art, stagingTemplatesAll],
   );
 
@@ -120,7 +122,7 @@ export default function StudioStueckNeu() {
       .finally(() => setDetectBusy(false));
   }, [sourceUrl, detectTried, detectBusy, designer]);
 
-  useEffect(() => { if (art) setSelectedIds(templatesForArt.map((t) => t.id)); }, [art, templatesForArt]);
+  useEffect(() => { if (art) setSelectedIds(templatesForArt.map((tpl) => tpl.id)); }, [art, templatesForArt]);
 
   const toggleTemplate = (id: string) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -134,7 +136,7 @@ export default function StudioStueckNeu() {
       });
       if (error) throw error;
       const r = data as { ok?: boolean; results?: StagingResult[]; message?: string; error?: string } | null;
-      if (!r?.ok && !r?.results?.length) throw new Error(r?.message ?? r?.error ?? "Inszenierung fehlgeschlagen.");
+      if (!r?.ok && !r?.results?.length) throw new Error(r?.message ?? r?.error ?? t("studio.stueckNeu.toast.stagingFailed"));
       setResults(r.results ?? []);
       void quota.refresh();
     } catch (e) {
@@ -146,7 +148,7 @@ export default function StudioStueckNeu() {
 
   const onPickPhoto = async (file: File) => {
     if (!user) return;
-    if (!file.type.startsWith("image/")) { toast.error("Bitte ein Bild wählen."); return; }
+    if (!file.type.startsWith("image/")) { toast.error(t("studio.stueckNeu.toast.pickImage")); return; }
     setUploading(true);
     try {
       const url = await uploadPhoto(user.id, file);
@@ -163,12 +165,12 @@ export default function StudioStueckNeu() {
 
   const createProduct = async () => {
     if (!designer) return;
-    if (!name.trim() || name.trim().length < 2) { toast.error("Bitte gib deinem Stück einen Namen."); return; }
+    if (!name.trim() || name.trim().length < 2) { toast.error(t("studio.stueckNeu.toast.nameRequired")); return; }
     const priceNum = Number(price);
-    if (!price || isNaN(priceNum) || priceNum <= 0) { toast.error("Bitte einen Preis eintragen."); return; }
-    if (!sourceUrl) { toast.error("Bitte zuerst ein Foto hochladen."); return; }
+    if (!price || isNaN(priceNum) || priceNum <= 0) { toast.error(t("studio.stueckNeu.toast.priceRequired")); return; }
+    if (!sourceUrl) { toast.error(t("studio.stueckNeu.toast.photoRequired")); return; }
     const stockNum = Math.max(0, Math.floor(Number(stock) || 0));
-    if (!madeToOrder && stockNum < 1) { toast.error("Trag ein, wie viele Stücke du vorrätig hast — sonst steht dein Stück sofort auf ausverkauft."); return; }
+    if (!madeToOrder && stockNum < 1) { toast.error(t("studio.stueckNeu.toast.stockRequired")); return; }
     setBusy(true);
     try {
       const description = [story.trim(), size.trim() ? `Größe: ${size.trim()}` : null].filter(Boolean).join("\n\n") || null;
@@ -181,7 +183,7 @@ export default function StudioStueckNeu() {
       }).select("id, name, slug, price, image_url").single();
       if (error) throw error;
       setProduct(data as LiveProduct);
-      toast.success("Stück ist live.");
+      toast.success(t("studio.stueckNeu.toast.productLive"));
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -200,91 +202,91 @@ export default function StudioStueckNeu() {
         } as never).eq("id", result.media_asset_id);
       }
       setProduct((p) => (p ? { ...p, image_url: result.result_url } : p));
-      toast.success("Als Produktbild übernommen.");
+      toast.success(t("studio.stueckNeu.toast.adopted"));
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
 
-  if (loading || loadingExisting) return <StudioShell title="Neues Stück"><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
-  if (!designer) return <StudioShell title="Neues Stück"><p className="text-muted-foreground">Kein Studio-Zugang.</p></StudioShell>;
-  if (existingProductId && !product) return <StudioShell title="Neues Stück"><p className="text-muted-foreground">Stück nicht gefunden.</p></StudioShell>;
+  if (loading || loadingExisting) return <StudioShell title={t("studio.stueckNeu.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studio.stueckNeu.title")}><p className="text-muted-foreground">{t("studio.stueckNeu.noAccess")}</p></StudioShell>;
+  if (existingProductId && !product) return <StudioShell title={t("studio.stueckNeu.title")}><p className="text-muted-foreground">{t("studio.stueckNeu.productNotFound")}</p></StudioShell>;
 
   const photoUploader = (
     <div onDragOver={(e) => e.preventDefault()} onDrop={onDrop} className="border border-dashed border-border p-8 text-center">
       {sourceUrl ? <img src={sourceUrl} alt="" className="mx-auto max-h-64 w-auto object-contain" /> : <Upload className="mx-auto h-6 w-6 text-muted-foreground" />}
-      <p className="mt-3 text-sm">{sourceUrl ? "Anderes Foto wählen" : "Zieh dein Foto hierher, oder wähle es aus."}</p>
+      <p className="mt-3 text-sm">{sourceUrl ? t("studio.stueckNeu.photo.changePhoto") : t("studio.stueckNeu.photo.dropHint")}</p>
       <label className="mt-3 inline-flex min-h-[40px] cursor-pointer items-center border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
-        {uploading ? "Lädt…" : "Datei wählen"}
+        {uploading ? t("studio.stueckNeu.photo.uploading") : t("studio.stueckNeu.photo.chooseFile")}
         <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => e.target.files?.[0] && onPickPhoto(e.target.files[0])} />
       </label>
     </div>
   );
 
   return (
-    <StudioShell title="Neues Stück" eyebrow="Vom Foto zum kaufbaren Stück">
+    <StudioShell title={t("studio.stueckNeu.title")} eyebrow={t("studio.stueckNeu.eyebrow")}>
       <div className="mx-auto max-w-2xl">
         {!product ? (
           <>
-            <p className="editorial-eyebrow">Foto</p>
+            <p className="editorial-eyebrow">{t("studio.stueckNeu.section.photo")}</p>
             <div className="mt-2">{photoUploader}</div>
 
-            <p className="editorial-eyebrow mt-8">Das Stück</p>
+            <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.piece")}</p>
             <div className="mt-2 space-y-4">
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name deines Stücks"
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("studio.stueckNeu.form.namePlaceholder")}
                 className="w-full border border-border bg-white p-3 text-sm" />
               <div className="grid grid-cols-2 gap-3">
-                <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preis in €"
+                <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder={t("studio.stueckNeu.form.pricePlaceholder")}
                   className="border border-border bg-white p-3 text-sm" />
-                <input value={size} onChange={(e) => setSize(e.target.value)} placeholder="Maße oder Größe"
+                <input value={size} onChange={(e) => setSize(e.target.value)} placeholder={t("studio.stueckNeu.form.sizePlaceholder")}
                   className="border border-border bg-white p-3 text-sm" />
               </div>
               <div className="flex gap-2">
                 {(["Mode", "Interior", "Kunst"] as World[]).map((w) => (
                   <button key={w} type="button" onClick={() => setWorld(w)}
                     className={`flex-1 border p-2 text-sm ${world === w ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-                    {WORLD_LABEL[w]}
+                    {t(WORLD_LABEL_KEY[w])}
                   </button>
                 ))}
               </div>
-              <textarea value={story} onChange={(e) => setStory(e.target.value)} placeholder="Ein Satz Geschichte" rows={2}
+              <textarea value={story} onChange={(e) => setStory(e.target.value)} placeholder={t("studio.stueckNeu.form.storyPlaceholder")} rows={2}
                 className="w-full border border-border bg-white p-3 text-sm" />
             </div>
 
-            <p className="editorial-eyebrow mt-8">Verfügbarkeit</p>
+            <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.availability")}</p>
             <div className="mt-2 space-y-3">
               <div className="flex gap-2">
                 <button type="button" onClick={() => setMadeToOrder(false)}
                   className={`flex-1 border p-2 text-sm ${!madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-                  Vorrätig
+                  {t("studio.stueckNeu.availability.inStock")}
                 </button>
                 <button type="button" onClick={() => setMadeToOrder(true)}
                   className={`flex-1 border p-2 text-sm ${madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-                  Auf Anfertigung
+                  {t("studio.stueckNeu.availability.madeToOrder")}
                 </button>
               </div>
               {!madeToOrder ? (
                 <label className="block">
-                  <span className="text-xs text-muted-foreground">Wie viele Stücke hast du davon?</span>
+                  <span className="text-xs text-muted-foreground">{t("studio.stueckNeu.availability.stockLabel")}</span>
                   <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" min="1" step="1"
                     className="mt-1 w-full border border-border bg-white p-3 text-sm" />
                 </label>
               ) : (
-                <p className="text-xs text-muted-foreground">Wird auf Bestellung gefertigt — kein Bestand nötig, das Stück bleibt kaufbar.</p>
+                <p className="text-xs text-muted-foreground">{t("studio.stueckNeu.availability.madeToOrderHint")}</p>
               )}
             </div>
 
 
             <button onClick={createProduct} disabled={busy}
               className="mt-6 flex min-h-[44px] w-full items-center justify-center gap-2 border border-foreground bg-foreground px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background disabled:opacity-50">
-              {busy ? "Legt an…" : "Stück ist live"} <ArrowRight className="h-3.5 w-3.5" />
+              {busy ? t("studio.stueckNeu.form.creating") : t("studio.stueckNeu.form.submit")} <ArrowRight className="h-3.5 w-3.5" />
             </button>
-            <p className="mt-3 text-xs text-muted-foreground">Alles Weitere — Beschreibung, Maße im Detail, Varianten — kannst du jederzeit in deiner Kollektion ergänzen.</p>
+            <p className="mt-3 text-xs text-muted-foreground">{t("studio.stueckNeu.form.moreLaterHint")}</p>
           </>
         ) : (
           <>
             <div className="border-[1.5px] border-foreground bg-white p-6">
-              <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">Stück ist live</p>
+              <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.stueckNeu.live.badge")}</p>
               <div className="mt-3 flex items-center gap-4">
                 {product.image_url && <img src={product.image_url} alt="" className="h-20 w-20 object-cover" />}
                 <div>
@@ -293,30 +295,29 @@ export default function StudioStueckNeu() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
-                <Link to={`/studio/produkte?edit=${product.id}`} className="border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] text-background hover:bg-black">Details ergänzen</Link>
-                <Link to={`/product/${product.slug}`} className="border border-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">Zum Stück ansehen</Link>
-                <Link to="/studio/produkte" className="border border-border px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-muted">Zur Kollektion</Link>
+                <Link to={`/studio/produkte?edit=${product.id}`} className="border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] text-background hover:bg-black">{t("studio.stueckNeu.live.addDetails")}</Link>
+                <Link to={`/product/${product.slug}`} className="border border-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">{t("studio.stueckNeu.live.viewPiece")}</Link>
+                <Link to="/studio/produkte" className="border border-border px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-muted">{t("studio.stueckNeu.live.toCollection")}</Link>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                Maßtabelle, Material, Pflege und die Geschichte des Stücks trägst du unter „Details ergänzen" ein —
-                sie erscheinen auf der Artikelseite als ausklappbare Abschnitte und speisen den Passform-Hinweis für Kundinnen.
+                {t("studio.stueckNeu.live.detailsHint")}
               </p>
 
             </div>
 
             <div className="mt-8 border-t border-border pt-8">
-              <p className="editorial-eyebrow">Bild verbessern (optional)</p>
+              <p className="editorial-eyebrow">{t("studio.stueckNeu.improveImage.heading")}</p>
               {!sourceUrl && <div className="mt-3">{photoUploader}</div>}
-              {detectBusy && <p className="mt-3 text-sm text-muted-foreground">PAWN sieht sich das Foto an…</p>}
+              {detectBusy && <p className="mt-3 text-sm text-muted-foreground">{t("studio.stueckNeu.improveImage.detecting")}</p>}
               {fotoHinweis && <p className="mt-3 border-l-2 border-foreground pl-3 text-sm text-muted-foreground">{fotoHinweis}</p>}
               {sourceUrl && !detectBusy && (
                 <div className="mt-3">
-                  <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">Art{ambiguous ? " — bitte bestätigen" : ""}</p>
+                  <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{t("studio.stueckNeu.improveImage.artLabel")}{ambiguous ? ` — ${t("studio.stueckNeu.improveImage.pleaseConfirm")}` : ""}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {ART_ORDER.map((a) => (
                       <button key={a} type="button" onClick={() => setArt(a)}
                         className={`min-h-[32px] border px-3 py-1 text-[0.62rem] tracking-wide ${art === a ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
-                        {ART_LABEL[a]}
+                        {t(ART_LABEL_KEY[a])}
                       </button>
                     ))}
                   </div>
@@ -325,44 +326,44 @@ export default function StudioStueckNeu() {
               {art && templatesForArt.length > 0 && (
                 <>
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    {templatesForArt.map((t) => (
-                      <label key={t.id} className={`flex cursor-pointer gap-3 border p-3 ${selectedIds.includes(t.id) ? "border-foreground" : "border-border"}`}>
-                        <input type="checkbox" className="mt-1" checked={selectedIds.includes(t.id)} onChange={() => toggleTemplate(t.id)} />
+                    {templatesForArt.map((tpl) => (
+                      <label key={tpl.id} className={`flex cursor-pointer gap-3 border p-3 ${selectedIds.includes(tpl.id) ? "border-foreground" : "border-border"}`}>
+                        <input type="checkbox" className="mt-1" checked={selectedIds.includes(tpl.id)} onChange={() => toggleTemplate(tpl.id)} />
                         <div className="flex-1">
                           <div className="flex items-start gap-2">
-                            {t.preview_url ? (
-                              <img src={t.preview_url} alt="" className="h-12 w-12 shrink-0 border border-border object-cover" />
+                            {tpl.preview_url ? (
+                              <img src={tpl.preview_url} alt="" className="h-12 w-12 shrink-0 border border-border object-cover" />
                             ) : (
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-dashed border-border text-[0.5rem] text-muted-foreground">Beispiel folgt</div>
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-dashed border-border text-[0.5rem] text-muted-foreground">{t("studio.stueckNeu.improveImage.exampleComing")}</div>
                             )}
                             <div>
-                              <p className="text-sm font-medium">{t.label}</p>
-                              {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+                              <p className="text-sm font-medium">{tpl.label}</p>
+                              {tpl.description && <p className="text-xs text-muted-foreground">{tpl.description}</p>}
                             </div>
                           </div>
-                          
+
                         </div>
                       </label>
                     ))}
                   </div>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm text-muted-foreground">
-                      {selectedIds.length === 0 ? "Wähle mindestens eine Variante." : `Dauert etwa 20–40 Sekunden für ${selectedIds.length} Varianten — zählt auf dein Monats-Limit.`}
+                      {selectedIds.length === 0 ? t("studio.stueckNeu.improveImage.selectAtLeastOne") : t("studio.stueckNeu.improveImage.durationHint", { n: selectedIds.length })}
                     </p>
                     <button type="button" onClick={() => void runStaging()}
                       disabled={stagingBusy || selectedIds.length === 0 || !quota.canDo("shots")}
                       className="min-h-[40px] border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
-                      {stagingBusy ? "PAWN inszeniert…" : "Inszenierung starten"}
+                      {stagingBusy ? t("studio.stueckNeu.improveImage.staging") : t("studio.stueckNeu.improveImage.startStaging")}
                     </button>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Die Inszenierung ändert nur Umgebung, Licht und Blickwinkel — Form, Farbe, Material und Zustand des Stücks bleiben, wie sie sind.
+                    {t("studio.stueckNeu.improveImage.stagingHint")}
                   </p>
                 </>
               )}
               {results && (
                 <div className="mt-6 border-t border-border pt-6">
-                  <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">Ergebnis</p>
+                  <p className="text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">{t("studio.stueckNeu.improveImage.resultHeading")}</p>
                   <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {results.map((r) => (
                       <div key={r.template_id} className="border border-border">
@@ -373,12 +374,12 @@ export default function StudioStueckNeu() {
                               <p className="truncate text-xs">{r.label}</p>
                               <button type="button" onClick={() => void adopt(r)}
                                 className="mt-1 w-full border border-foreground bg-foreground px-1 py-1 text-[0.6rem] uppercase tracking-wide text-background hover:bg-black">
-                                Als Produktbild übernehmen
+                                {t("studio.stueckNeu.improveImage.adoptButton")}
                               </button>
                             </div>
                           </>
                         ) : (
-                          <div className="flex aspect-square items-center justify-center p-2 text-center text-[0.62rem] text-muted-foreground">{r.error ?? "Fehlgeschlagen"}</div>
+                          <div className="flex aspect-square items-center justify-center p-2 text-center text-[0.62rem] text-muted-foreground">{r.error ?? t("studio.stueckNeu.improveImage.failed")}</div>
                         )}
                       </div>
                     ))}
