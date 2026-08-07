@@ -1214,6 +1214,7 @@ export type Database = {
           country: string | null
           created_at: string
           dismissed_suggestions: Json
+          hausseite_cover_shown_at: string | null
           hero_image_url: string | null
           house_number: number | null
           id: string
@@ -1264,6 +1265,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           dismissed_suggestions?: Json
+          hausseite_cover_shown_at?: string | null
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
@@ -1314,6 +1316,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           dismissed_suggestions?: Json
+          hausseite_cover_shown_at?: string | null
           hero_image_url?: string | null
           house_number?: number | null
           id?: string
@@ -2618,6 +2621,7 @@ export type Database = {
           care_instructions: string | null
           care_symbols: string[]
           compare_at_price: number | null
+          cover_shown_at: string | null
           created_at: string
           description: string | null
           designer_id: string
@@ -2657,6 +2661,7 @@ export type Database = {
           care_instructions?: string | null
           care_symbols?: string[]
           compare_at_price?: number | null
+          cover_shown_at?: string | null
           created_at?: string
           description?: string | null
           designer_id: string
@@ -2696,6 +2701,7 @@ export type Database = {
           care_instructions?: string | null
           care_symbols?: string[]
           compare_at_price?: number | null
+          cover_shown_at?: string | null
           created_at?: string
           description?: string | null
           designer_id?: string
