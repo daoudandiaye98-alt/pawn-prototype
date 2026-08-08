@@ -102,7 +102,11 @@ const ProductDetail = () => {
   useEffect(() => {
     const el = kaufleisteRef.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => setKaufleisteHeight(entries[0].contentRect.height));
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height;
+      setKaufleisteHeight(height);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
