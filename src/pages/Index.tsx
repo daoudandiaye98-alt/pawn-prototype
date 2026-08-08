@@ -38,7 +38,6 @@ const Index = () => {
   const { products } = usePublishedProducts();
   const collection = useActiveCollection();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
-  const { locale } = useI18n();
 
   const designerById = useMemo(() => new Map(designers.map((d) => [d.id, d])), [designers]);
 
