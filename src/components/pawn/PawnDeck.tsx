@@ -30,6 +30,7 @@ const ROUTE_GUIDE: Array<{ prefix: string; key: string }> = [
 
 const ROUTE_CHIPS: Record<string, string[]> = {
   "/studio": ["studio.deck.chip.hub.takeOver", "studio.deck.chip.hub.explain", "studio.deck.chip.hub.week"],
+  "/studio/tueren": ["studio.deck.chip.tueren.explain"],
 };
 const GENERIC_CHIPS = ["studio.deck.chip.generic.explain", "studio.deck.chip.generic.next"];
 

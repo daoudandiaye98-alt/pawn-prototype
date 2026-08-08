@@ -208,6 +208,17 @@ export default function StudioOverview() {
   }, [paid, messages, visitorsYesterday, visitorsDayBefore, pendingCampaign, lastSeenSnapshotReady]);
   const { mood, variant } = usePawnMood(moodSignals);
 
+  // Teil 34a — Offene Türen: kündigt neu gefundene, noch unentschiedene Türen in der Begrüßung an.
+  const [newDoorsCount, setNewDoorsCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!designer) return;
+    (async () => {
+      const { count } = await supabase.from("designer_opportunities" as never)
+        .select("id", { count: "exact", head: true }).eq("designer_id", designer.id).eq("status", "gefunden");
+      setNewDoorsCount(count ?? 0);
+    })();
+  }, [designer]);
+
   const oldestWaitingItem = useMemo(() => {
     const candidates: { label: string; days: number }[] = [];
     for (const m of messages) if (m.unread) candidates.push({ label: m.subject, days: (Date.now() - new Date(m.last_message_at).getTime()) / 86400000 });
@@ -227,6 +238,12 @@ export default function StudioOverview() {
     };
     return t(`studio.mood.${mood}.greeting.${variant + 1}`, vars);
   }, [mood, variant, visitorsYesterday, products, nextMove.headline, oldestWaitingItem, t]);
+
+  // Teil 34a — kündigt neue, noch unentschiedene Türen in der Begrüßung an; sticht die
+  // Stimmungs-Zeile aus, da es konkrete, handlungsrelevante Information ist.
+  const heroLine = newDoorsCount && newDoorsCount > 0
+    ? t("studio.overview.tueren.announce", { n: newDoorsCount })
+    : moodLine;
 
   const onFigureTap = (fallbackLine: string) => {
     if (mood === "sehnsucht") { setTapLine(t("studio.mood.sehnsucht.tapWarm")); return; }
@@ -351,7 +368,7 @@ export default function StudioOverview() {
           Wortwahl, nie beschriftet. */}
       <section id="studio-hero" className="mb-6 flex items-center gap-4 border-[1.5px] border-foreground bg-white p-5">
         <PawnFigur ref={pawnRef} rank={RANK_BY_LEVEL[level.level] ?? "bauer"} size={72} mood={mood} moodVariant={variant} onTap={onFigureTap} showShadow={false} ariaLabel="PAWN" />
-        <p className="font-serif text-lg italic leading-snug sm:text-xl">{tapLine ?? moodLine}</p>
+        <p className="font-serif text-lg italic leading-snug sm:text-xl">{tapLine ?? heroLine}</p>
       </section>
 
       {/* Schnellzeile */}

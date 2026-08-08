@@ -49,6 +49,7 @@ const ROOM_KEYS: Array<{ prefix: string; key: string }> = [
   { prefix: "/studio/empfehlungen", key: "empfehlungen" },
   { prefix: "/studio/plan", key: "plan" },
   { prefix: "/studio/bestellungen", key: "bestellungen" },
+  { prefix: "/studio/tueren", key: "tueren" },
 ];
 
 export function roomKeyForPath(pathname: string): string | null {

@@ -59,20 +59,24 @@ const IReferral = (p: React.SVGProps<SVGSVGElement>) => (
 const IWerkbuch = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 3c3 1.5 3 12 0 14M16 3c-3 1.5-3 12 0 14M4 6c4 2 8 2 12 0M4 14c4-2 8-2 12 0" /></svg>
 );
+const IDoor = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M6 17V3.6L14 3v14" /><path d="M4 17h12" /><circle cx="11.3" cy="10" r="0.8" fill="currentColor" stroke="none" /></svg>
+);
 
 type NavItem = { to: string; label: string; hint?: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; end?: boolean; badge?: number };
 
 function useStudioBadges(designerId?: string) {
-  const [badges, setBadges] = useState({ orders: 0, campaigns: 0, messages: 0 });
+  const [badges, setBadges] = useState({ orders: 0, campaigns: 0, messages: 0, tueren: 0 });
   useEffect(() => {
     if (!designerId) return;
     (async () => {
-      const [ords, camps, msgs] = await Promise.all([
+      const [ords, camps, msgs, tueren] = await Promise.all([
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "paid"),
         supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("designer_id", designerId).eq("status", "proposed"),
         supabase.from("message_threads").select("id", { count: "exact", head: true }).eq("designer_id", designerId).eq("status", "open"),
+        supabase.from("designer_opportunities" as never).select("id", { count: "exact", head: true }).eq("designer_id", designerId).eq("status", "gefunden"),
       ]);
-      setBadges({ orders: ords.count ?? 0, campaigns: camps.count ?? 0, messages: msgs.count ?? 0 });
+      setBadges({ orders: ords.count ?? 0, campaigns: camps.count ?? 0, messages: msgs.count ?? 0, tueren: tueren.count ?? 0 });
     })();
   }, [designerId]);
   return badges;
@@ -145,6 +149,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         { to: "/studio/mediathek", label: t("studioShell.nav.mediathek"), hint: t("studioShell.nav.mediathek.hint"), icon: IMediathek },
         { to: "/studio/kampagnen", label: t("studioShell.nav.kampagnen"), hint: t("studioShell.nav.kampagnen.hint"), icon: ICampaigns, badge: badges.campaigns },
         { to: "/studio/videothek", label: t("studioShell.nav.videothek"), hint: t("studioShell.nav.videothek.hint"), icon: IVideothek },
+        { to: "/studio/tueren", label: t("studioShell.nav.tueren"), hint: t("studioShell.nav.tueren.hint"), icon: IDoor, badge: badges.tueren },
       ],
     },
     {

@@ -1241,6 +1241,56 @@ export type Database = {
           },
         ]
       }
+      designer_opportunities: {
+        Row: {
+          created_at: string
+          designer_id: string
+          id: string
+          message_draft: string | null
+          ort: string | null
+          quelle_url: string | null
+          status: string
+          title: string
+          typ: string
+          updated_at: string
+          warum: string | null
+        }
+        Insert: {
+          created_at?: string
+          designer_id: string
+          id?: string
+          message_draft?: string | null
+          ort?: string | null
+          quelle_url?: string | null
+          status?: string
+          title: string
+          typ?: string
+          updated_at?: string
+          warum?: string | null
+        }
+        Update: {
+          created_at?: string
+          designer_id?: string
+          id?: string
+          message_draft?: string | null
+          ort?: string | null
+          quelle_url?: string | null
+          status?: string
+          title?: string
+          typ?: string
+          updated_at?: string
+          warum?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_opportunities_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designers: {
         Row: {
           application_id: string | null
