@@ -1,25 +1,35 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
-import { HelixScene } from "@/components/palace/HelixScene";
 import { Reveal } from "@/components/palace/Reveal";
-import { Editable } from "@/components/palace/Editable";
 import { useAuth } from "@/lib/auth";
 import { usePersonalization, type Signal } from "@/features/personalization";
+import { useStilberater } from "@/features/personalization/useStilberater";
 import { supabase } from "@/integrations/supabase/client";
-import { Stilberater } from "@/components/palace/Stilberater";
 import { MeasurementsPanel } from "@/components/palace/MeasurementsPanel";
 import { DnaChat } from "@/components/palace/DnaChat";
 import { DnaKompass } from "@/components/palace/DnaKompass";
 import { PasstDas } from "@/components/palace/PasstDas";
+import { DnaCover } from "@/components/palace/DnaCover";
+import { DnaBelege } from "@/components/palace/DnaBelege";
+import { PawnDeck, type DeckChip } from "@/components/pawn/PawnDeck";
 import { useStore, marketplaceSelectors } from "@/core";
+import { useI18n } from "@/lib/i18n";
 import { X } from "lucide-react";
+import { toast } from "sonner";
+
+const KUNDEN_DECK_CHIPS: DeckChip[] = [
+  { i18nKey: "dna.deck.chip.woran", action: "scroll", target: "belege" },
+  { i18nKey: "dna.deck.chip.stehtmir", action: "scroll", target: "steht-mir-das" },
+  { i18nKey: "dna.deck.chip.bilder", action: "scroll", target: "gespraech" },
+];
 
 /**
- * /dna — das große "Über dich" (Teil 21c). Von oben nach unten: das Urteil
- * (Teil 20, Stilberater) · der Kompass mit dem Ziel und dem Weg (21b) · das
- * Gespräch mit Bildern (21a) · "Steht mir das?" · die Stil-Sequenz (umgezogen
- * was PAWN sich gemerkt hat, einzeln löschbar · Vertrauen.
+ * /dna — die DNA-Seite als Cover mit Kunden-PAWN (Teil 29). Von oben nach unten:
+ * das Cover (Urteil als Schlagzeile, Kunden-PAWN materialisiert sich) · Belege mit
+ * Bildbeweis · Maßband · Kompass · das Gespräch (mit PAWN-Avatar) · "Steht mir das?" ·
+ * was der Raum sonst liest · was PAWN sich gemerkt hat (einzeln löschbar, plus "Alles
+ * löschen") · Vertrauen. Unten das Kunden-Deck (PawnDeck) statt eines Chat-Knopfs.
  */
 
 function labelForSignal(s: Signal): { title: string; because: string } {
@@ -74,6 +84,48 @@ function SignalCard({ signal, onCorrect }: { signal: Signal; onCorrect: () => vo
   );
 }
 
+function DnaEinsichten() {
+  const { result, dismissed, dismiss } = useStilberater();
+  const showBlind = !!result?.blinder_fleck && !dismissed.includes("blinder_fleck");
+  const showNext = !!result?.naechster_schritt && !dismissed.includes("naechster_schritt");
+  if (!showBlind && !showNext) return null;
+  return (
+    <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+      <div className="mx-auto grid max-w-[1200px] gap-8 md:grid-cols-2">
+        {showBlind && (
+          <div className="group relative border-[1.5px] border-black bg-white p-6 md:p-8" style={{ boxShadow: "8px 8px 0 0 #000" }}>
+            <p className="palace-eyebrow">Was du noch nicht siehst</p>
+            <p className="mt-3 pr-8 font-serif text-[1.05rem] leading-relaxed text-black">{result!.blinder_fleck!.text}</p>
+            <p className="mt-3 text-[0.8rem] text-black/50">{result!.blinder_fleck!.beleg}</p>
+            <button
+              type="button"
+              onClick={() => void dismiss("blinder_fleck")}
+              aria-label="Entfernen"
+              className="absolute right-4 top-4 text-[0.6rem] uppercase tracking-[0.18em] text-black/30 opacity-0 hover:text-black group-hover:opacity-100"
+            >
+              Entfernen
+            </button>
+          </div>
+        )}
+        {showNext && (
+          <div className="group relative border-[1.5px] border-black bg-white p-6 md:p-8" style={{ boxShadow: "8px 8px 0 0 #000" }}>
+            <p className="palace-eyebrow">Was ich dir zutraue</p>
+            <p className="mt-3 pr-8 font-serif text-[1.05rem] leading-relaxed text-black">{result!.naechster_schritt!.text}</p>
+            <button
+              type="button"
+              onClick={() => void dismiss("naechster_schritt")}
+              aria-label="Entfernen"
+              className="absolute right-4 top-4 text-[0.6rem] uppercase tracking-[0.18em] text-black/30 opacity-0 hover:text-black group-hover:opacity-100"
+            >
+              Entfernen
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function EmptyInvitation() {
   const [prompt, setPrompt] = useState("");
   const openChat = (msg?: string) => {
@@ -107,10 +159,11 @@ function EmptyInvitation() {
 
 export default function DNA() {
   const { user } = useAuth();
-  const { hasSignals, world, mood, signals, correct, loading, refresh } = usePersonalization();
-  const heroRef = useRef<HTMLElement | null>(null);
-  const urteilRef = useRef<HTMLElement | null>(null);
+  const { t } = useI18n();
+  const { hasSignals, signals, correct, loading, refresh } = usePersonalization();
+  const { resetAll: resetStilberater } = useStilberater();
   const [facts, setFacts] = useState<string[]>([]);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => { document.title = "Deine DNA — PAWN"; }, []);
 
@@ -134,65 +187,53 @@ export default function DNA() {
     } as never);
   };
 
+  const deleteAllMemory = async () => {
+    if (!user || clearing) return;
+    if (!window.confirm(t("dna.memory.deleteAll.confirm"))) return;
+    setClearing(true);
+    try {
+      setFacts([]);
+      await supabase.from("user_memory" as never).update({ facts: [], updated_at: new Date().toISOString() } as never).eq("user_id", user.id);
+      await supabase.from("style_references" as never).delete().eq("user_id", user.id);
+      await Promise.all(signals.map((s) => correct(s.id)));
+      await resetStilberater();
+      await supabase.from("domain_events").insert({
+        type: "ai.memory_deleted",
+        actor: user.id,
+        payload: { scope: "all", user_id: user.id },
+      } as never);
+      await refresh();
+      toast.success(t("dna.memory.deleteAll.done"));
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <PalaceLayout>
-      {/* 01 · Hero */}
-      <section ref={heroRef} className="relative min-h-[86vh] overflow-hidden bg-[#FFFFFF]">
-        <div className="absolute inset-0 flex items-center justify-center opacity-60">
-          <HelixScene />
-        </div>
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#FFFFFF]/45 via-transparent to-[#FFFFFF]/85" />
-
-        <div className="relative z-10 mx-auto flex min-h-[86vh] max-w-[1200px] flex-col items-center justify-center px-6 pt-32 text-center md:px-14">
+      {/* 01 · Cover — Urteil als Schlagzeile, Kunden-PAWN materialisiert sich (Teil 29) */}
+      {user ? (
+        <DnaCover />
+      ) : (
+        <section id="dna-cover" className="flex min-h-[70vh] flex-col items-center justify-center gap-6 border-b border-[rgba(0,0,0,.18)] bg-white px-6 py-24 text-center md:px-14">
           <Reveal>
-            <Editable as="p" contentKey="dna_hero_eyebrow" className="palace-eyebrow">Deine DNA</Editable>
-            <h1
-              className="palace-serif mt-10 font-light text-[#000000]"
-              style={{ fontSize: "clamp(2.6rem, 8vw, 7rem)", lineHeight: 0.94, letterSpacing: "-0.03em" }}
-            >
-              <Editable as="span" contentKey="dna_hero_headline_a">Was der Raum </Editable>
-              <Editable as="span" contentKey="dna_hero_headline_b" className="italic">über dich weiß.</Editable>
+            <p className="palace-eyebrow">Deine DNA</p>
+            <h1 className="palace-serif mt-8 font-light text-[#000000]" style={{ fontSize: "clamp(2.2rem, 6vw, 5rem)", lineHeight: 0.98, letterSpacing: "-0.02em" }}>
+              Was der Raum <span className="italic">über dich weiß.</span>
             </h1>
-            <Editable
-              as="p"
-              contentKey="dna_hero_subline"
-              className="mx-auto mt-10 block max-w-xl font-serif italic text-[1.1rem] leading-relaxed text-[#000000]/75"
-              multiline
-            >
+            <p className="mx-auto mt-8 max-w-xl font-serif italic text-[1.05rem] leading-relaxed text-[#000000]/75">
               Kein Profil. Kein Score. Eine lebendige Skizze deiner Handschrift — jederzeit korrigierbar.
-            </Editable>
-            {hasSignals && (
-              <div className="mt-14 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-                {world && (
-                  <div>
-                    <p className="palace-eyebrow">Welt</p>
-                    <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">{world}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="palace-eyebrow">Stimmung</p>
-                  <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">
-                    {mood === "ruhig" ? "ruhig · skulptural" : mood === "spannung" ? "spannung · kontrast" : "im Werden"}
-                  </p>
-                </div>
-                <div>
-                  <p className="palace-eyebrow">Signale</p>
-                  <p className="palace-serif mt-2 text-[1.4rem] italic text-[#000000]">{signals.length}</p>
-                </div>
-              </div>
-            )}
+            </p>
+            <Link to="/auth" className="palace-eyebrow uline mt-8 inline-block text-[#000000]">Anmelden →</Link>
           </Reveal>
-        </div>
-      </section>
-
-      {/* 01b · Das Urteil (Teil 20) */}
-      {user && (
-        <section ref={urteilRef} className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
-          <div className="mx-auto max-w-[900px]">
-            <Stilberater />
-          </div>
         </section>
       )}
+
+      {/* 01a · Belege mit Bildbeweis (Teil 29) */}
+      {user && <DnaBelege />}
+
+      {/* 01a-2 · Blinder Fleck + nächster Schritt aus dem Stilberater-Urteil */}
+      {user && <DnaEinsichten />}
 
       {/* 01b-2 · Dein Maßband — Grundlage des Passform-Assistenten */}
       {user && (
@@ -215,7 +256,7 @@ export default function DNA() {
 
       {/* 01d · Das Gespräch findet auf der Seite statt (Teil 21a) */}
       {user && (
-        <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+        <section id="gespraech" className="scroll-mt-24 border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
           <div className="mx-auto max-w-[900px]">
             <DnaChat />
           </div>
@@ -224,7 +265,7 @@ export default function DNA() {
 
       {/* 01e · Steht mir das? (Teil 21c) */}
       {user && (
-        <section className="border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
+        <section id="steht-mir-das" className="scroll-mt-24 border-t border-[rgba(0,0,0,.18)] px-6 py-24 md:px-14 md:py-32">
           <div className="mx-auto max-w-[900px]">
             <StehtMirDas />
           </div>
@@ -284,7 +325,7 @@ export default function DNA() {
       </section>
 
       {/* 02b · PAWN erinnert sich */}
-      {user && facts.length > 0 && (
+      {user && (facts.length > 0 || hasSignals) && (
         <section className="border-t-[1.5px] border-black bg-white px-6 py-20 md:px-14 md:py-28">
           <div className="mx-auto max-w-[1200px]">
             <p className="palace-eyebrow">PAWN erinnert sich</p>
@@ -294,20 +335,35 @@ export default function DNA() {
             <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-black/70">
               Kleine Notizen, die PAWN aus deinen Gesprächen mitgenommen hat. Alles einzeln löschbar.
             </p>
-            <div className="mt-10 grid gap-4 md:grid-cols-2">
-              {facts.map((f) => (
-                <div key={f} className="relative border-[1.5px] border-black bg-white p-6" style={{ boxShadow: "6px 6px 0 #000" }}>
-                  <p className="palace-serif italic text-[1.05rem] leading-[1.5] text-black pr-8">„{f}"</p>
-                  <button
-                    type="button"
-                    onClick={() => void deleteFact(f)}
-                    aria-label="Merksatz löschen"
-                    className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center border-[1.5px] border-black bg-white text-black hover:bg-black hover:text-white"
-                  >
-                    <X className="h-3.5 w-3.5" strokeWidth={1.6} />
-                  </button>
-                </div>
-              ))}
+            {facts.length > 0 && (
+              <div className="mt-10 grid gap-4 md:grid-cols-2">
+                {facts.map((f) => (
+                  <div key={f} className="relative border-[1.5px] border-black bg-white p-6" style={{ boxShadow: "6px 6px 0 #000" }}>
+                    <p className="palace-serif italic text-[1.05rem] leading-[1.5] text-black pr-8">„{f}"</p>
+                    <button
+                      type="button"
+                      onClick={() => void deleteFact(f)}
+                      aria-label="Merksatz löschen"
+                      className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center border-[1.5px] border-black bg-white text-black hover:bg-black hover:text-white"
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={1.6} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-black/10 pt-6">
+              <button
+                type="button"
+                onClick={() => void deleteAllMemory()}
+                disabled={clearing}
+                className="palace-eyebrow uline text-black/60 hover:text-black disabled:opacity-40"
+              >
+                {t("dna.memory.deleteAll")} →
+              </button>
+              <Link to="/account?tab=Einstellungen" className="palace-eyebrow uline text-black/60 hover:text-black">
+                {t("dna.memory.personalizationOff")} →
+              </Link>
             </div>
           </div>
         </section>
@@ -343,6 +399,9 @@ export default function DNA() {
           <Link to="/datenschutz" className="palace-eyebrow uline" style={{ color: "#FFFFFF" }}>Datenschutz im Detail →</Link>
         </div>
       </section>
+
+      {/* Kunden-Deck (Teil 31) — ersetzt den alten Chat-Knopf auf dieser Seite */}
+      {user && <PawnDeck pathname="/dna" enabled heroId="dna-cover" chips={KUNDEN_DECK_CHIPS} fallbackSentenceKey="dna.deck.fallback" />}
     </PalaceLayout>
   );
 }

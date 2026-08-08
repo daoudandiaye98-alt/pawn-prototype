@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ImagePlus, X } from "lucide-react";
+import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Teil 21a — Das Gespräch findet auf der Seite statt.
@@ -39,6 +41,7 @@ function humanUploadError(message: string): string {
 
 export function DnaChat() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [refs, setRefs] = useState<StyleRef[]>([]);
   const [input, setInput] = useState("");
@@ -166,8 +169,14 @@ export function DnaChat() {
   return (
     <div className="border-[1.5px] border-black bg-white">
       <div className="border-b border-[rgba(0,0,0,.18)] px-6 py-5 md:px-8">
-        <p className="palace-eyebrow">Das Gespräch</p>
-        <h3 className="palace-serif mt-2 text-[1.4rem] italic text-black">Erzähl mir, oder zeig mir etwas.</h3>
+        <div className="flex items-center gap-3">
+          <PawnFigurSvg className="h-8 w-6 shrink-0" />
+          <div>
+            <p className="palace-eyebrow">Das Gespräch</p>
+            <h3 className="palace-serif mt-1 text-[1.4rem] italic text-black">Erzähl mir, oder zeig mir etwas.</h3>
+          </div>
+        </div>
+        <p className="mt-3 text-[0.72rem] text-black/50">{t("dna.chat.herkunft")}</p>
       </div>
 
       <div ref={listRef} className="max-h-[60vh] min-h-[180px] space-y-6 overflow-y-auto px-6 py-6 md:px-8">
@@ -177,21 +186,29 @@ export function DnaChat() {
           </p>
         )}
         {messages.map((m) => (
-          <div key={m.id} className={m.role === "assistant" ? "" : "text-right"}>
-            <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{m.role === "assistant" ? "Pawn" : "Du"}</p>
-            {m.imageUrls && m.imageUrls.length > 0 && (
-              <div className={`mt-2 flex flex-wrap gap-2 ${m.role === "assistant" ? "" : "justify-end"}`}>
-                {m.imageUrls.map((u, i) => (
-                  <img key={i} src={u} alt="Hochgeladenes Bild" className="h-20 w-20 border border-[rgba(0,0,0,.18)] object-cover" />
-                ))}
-              </div>
-            )}
-            <p className={`mt-2 whitespace-pre-line text-[0.95rem] leading-relaxed text-black ${m.role === "assistant" ? "font-serif italic" : "font-light"}`}>
-              {m.text}
-            </p>
+          <div key={m.id} className={m.role === "assistant" ? "flex items-start gap-2" : "text-right"}>
+            {m.role === "assistant" && <PawnFigurSvg className="mt-1 h-4 w-3 shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{m.role === "assistant" ? "Pawn" : "Du"}</p>
+              {m.imageUrls && m.imageUrls.length > 0 && (
+                <div className={`mt-2 flex flex-wrap gap-2 ${m.role === "assistant" ? "" : "justify-end"}`}>
+                  {m.imageUrls.map((u, i) => (
+                    <img key={i} src={u} alt="Hochgeladenes Bild" className="h-20 w-20 border border-[rgba(0,0,0,.18)] object-cover" />
+                  ))}
+                </div>
+              )}
+              <p className={`mt-2 whitespace-pre-line text-[0.95rem] leading-relaxed text-black ${m.role === "assistant" ? "font-serif italic" : "font-light"}`}>
+                {m.text}
+              </p>
+            </div>
           </div>
         ))}
-        {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">Pawn denkt nach…</p>}
+        {busy && (
+          <div className="flex items-center gap-2">
+            <PawnFigurSvg className="h-4 w-3 shrink-0" />
+            <span className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">Pawn denkt nach…</span>
+          </div>
+        )}
       </div>
 
       {uploadPct !== null && (
