@@ -1243,12 +1243,18 @@ export type Database = {
       }
       designer_opportunities: {
         Row: {
+          contact_email: string | null
           created_at: string
+          delivery_error: string | null
+          delivery_status: string | null
           designer_id: string
+          followup_sent_at: string | null
           id: string
           message_draft: string | null
           ort: string | null
           quelle_url: string | null
+          resend_message_id: string | null
+          sent_at: string | null
           status: string
           title: string
           typ: string
@@ -1256,12 +1262,18 @@ export type Database = {
           warum: string | null
         }
         Insert: {
+          contact_email?: string | null
           created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string | null
           designer_id: string
+          followup_sent_at?: string | null
           id?: string
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
           status?: string
           title: string
           typ?: string
@@ -1269,12 +1281,18 @@ export type Database = {
           warum?: string | null
         }
         Update: {
+          contact_email?: string | null
           created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string | null
           designer_id?: string
+          followup_sent_at?: string | null
           id?: string
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
           status?: string
           title?: string
           typ?: string
