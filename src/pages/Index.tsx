@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { usePublicDesigners, usePublishedProducts, useActiveCollection, type PublicProduct } from "@/lib/publicData";
 import { useSiteContent } from "@/lib/siteContent";
 import { useI18n } from "@/lib/i18n";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatCreditLine } from "@/lib/format";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 
 /**
@@ -103,9 +103,7 @@ const Index = () => {
         </div>
         {coverDesigner && (
           <div className="absolute bottom-[1.2rem] left-6 z-[3] text-[0.58rem] uppercase tracking-[0.28em] text-white/85 md:left-10">
-            {coverDesigner.house_number != null && <>№ {String(coverDesigner.house_number).padStart(3, "0")} · </>}
-            {coverDesigner.brand_name}
-            {coverDesigner.location && <> · {coverDesigner.location}</>}
+            {formatCreditLine({ houseNumber: coverDesigner.house_number, brandName: coverDesigner.brand_name, third: coverDesigner.location })}
           </div>
         )}
       </div>

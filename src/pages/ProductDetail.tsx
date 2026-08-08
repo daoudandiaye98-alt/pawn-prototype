@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,9 +7,9 @@ import { Reveal } from "@/components/palace/Reveal";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { ProductView } from "@/core";
-import { useDnaMatch } from "@/features/dna/hooks";
-import { usePersonalization, explainMatch } from "@/features/personalization";
+import { usePersonalization, explainMatchWithBeleg } from "@/features/personalization";
 import { usePageVisit } from "@/features/personalization/usePageVisit";
+import { useSiteContent } from "@/lib/siteContent";
 
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useCart } from "@/store/cart";
@@ -19,13 +19,15 @@ import { useWishlist } from "@/features/wishlist/useWishlist";
 import { createCustomRequestThread } from "@/features/messages/customRequest";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatCreditLine } from "@/lib/format";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrevNext } from "@/components/palace/PrevNext";
 import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
-import { PasstDas } from "@/components/palace/PasstDas";
+import { PawnBlinkButton } from "@/components/pawn/PawnBlinkButton";
+import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
+import { ProductServiceSheet } from "@/components/palace/ProductServiceSheet";
 import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
 import { ProductDetailsAccordion } from "@/components/palace/ProductDetailsAccordion";
 
@@ -39,7 +41,7 @@ const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
   const slug = params.slug ?? params.id ?? "asymmetric-coat";
   const { user } = useAuth();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
 
   const { product: dbProduct, loading: productLoading } = useDbProductBySlug(slug);
   const cart = useCart();
@@ -86,13 +88,24 @@ const ProductDetail = () => {
   const [reqBudget, setReqBudget] = useState("");
   const [reqBusy, setReqBusy] = useState(false);
 
-  const match = useDnaMatch(product.id);
   const personalization = usePersonalization();
-  const dnaReason = useMemo(
-    () => explainMatch(product, personalization, personalization.designerDna),
+  const matchExplanation = useMemo(
+    () => explainMatchWithBeleg(product, personalization, personalization.designerDna),
     [product, personalization],
   );
   const { viewProduct, saveProduct } = useCustomerEvents();
+  const ausgabeNummer = useSiteContent("ausgabe_nummer");
+
+  const [serviceSheetOpen, setServiceSheetOpen] = useState(false);
+  const [kaufleisteHeight, setKaufleisteHeight] = useState(72);
+  const kaufleisteRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = kaufleisteRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => setKaufleisteHeight(entries[0].contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const [banner, setBanner] = useState<{ url: string; kind: "bild" | "video" } | null>(null);
   useEffect(() => {
@@ -220,6 +233,16 @@ const ProductDetail = () => {
   // Echtes Produktfoto statt Platzhalter. Zusatzbilder kommen — falls hinterlegt —
   // aus dem Bildfeld der Produkt-DNA; ohne Bild bleibt die Fläche ehrlich leer.
   const heroImage = dbProduct?.image_url ?? null;
+  const creditLine = useMemo(() => {
+    if (!dbProduct?.designers) return null;
+    const dna = (dbProduct.product_dna ?? {}) as { materials?: string[] };
+    const material = Array.isArray(dna.materials) ? dna.materials[0] : null;
+    return formatCreditLine({
+      houseNumber: dbProduct.designers.house_number,
+      brandName: dbProduct.designers.brand_name,
+      third: material || dbProduct.designers.location,
+    });
+  }, [dbProduct]);
   const gallery = useMemo(() => {
     const dna = (dbProduct?.product_dna ?? {}) as { images?: unknown };
     const list = Array.isArray(dna.images) ? (dna.images as unknown[]) : [];
@@ -288,6 +311,9 @@ const ProductDetail = () => {
               >
                 {product.name}
               </h1>
+              {creditLine && (
+                <p className="mt-3 text-[0.56rem] uppercase tracking-[0.24em] text-white/60">{creditLine}</p>
+              )}
             </div>
           </div>
         </Reveal>
@@ -298,8 +324,13 @@ const ProductDetail = () => {
         </div>
       </section>
 
-      {/* KAUFLEISTE: eine schmale, ruhige Zeile statt gestapelter Blöcke */}
-      <section className="house-hair border-b">
+      {/* KAUFLEISTE: sticky am unteren Rand — auf Kaufseiten das einzige PAWN-Element unten,
+          der Kauf hat Vorrang (Teil 35). */}
+      <section
+        ref={kaufleisteRef}
+        className="house-hair sticky bottom-0 z-30 border-t"
+        style={{ background: "var(--house-bg)", paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         <div className="mx-auto max-w-[1600px] px-6 py-5 md:px-14">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-baseline gap-3">
@@ -307,9 +338,16 @@ const ProductDetail = () => {
                 {product.designer}
               </Link>
               <span className="house-ink opacity-30">·</span>
-              <p className="house-serif house-ink text-[1.2rem] tabular-nums">
-                {formatPrice(dbProduct?.price ?? product.price, locale)}
-              </p>
+              <div className="flex flex-col">
+                <p className="house-serif house-ink text-[1.2rem] tabular-nums">
+                  {formatPrice(dbProduct?.price ?? product.price, locale)}
+                </p>
+                {product.designer && (
+                  <p className="house-ink text-[0.58rem] uppercase tracking-[0.14em] opacity-50">
+                    {t("product.split", { name: product.designer })}
+                  </p>
+                )}
+              </div>
               {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
                 <span className="house-ink palace-eyebrow opacity-60 line-through">{formatPrice(Number(dbProduct.compare_at_price), locale)}</span>
               )}
@@ -360,6 +398,7 @@ const ProductDetail = () => {
               >
                 <Heart className={cn("h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
               </Button>
+              <PawnBlinkButton onClick={() => setServiceSheetOpen((v) => !v)} ariaLabel={t("product.pawnButtonAria")} />
             </div>
           </div>
 
@@ -418,6 +457,14 @@ const ProductDetail = () => {
         </div>
       </section>
 
+      <ProductServiceSheet
+        open={serviceSheetOpen}
+        onClose={() => setServiceSheetOpen(false)}
+        bottomOffset={kaufleisteHeight}
+        productSlug={product.slug}
+        productName={product.name}
+      />
+
       {/* GALERIE: große ungleiche Flächen statt Thumbnails */}
       {gallery.length > 0 && (
         <section className="px-6 py-16 md:px-14 md:py-24">
@@ -471,18 +518,39 @@ const ProductDetail = () => {
             </Reveal>
           )}
 
+          {/* Personalisierung nur mit Beleg (Teil 35): erscheint nur eingeloggt + mit echtem
+              Engagement-Beleg — sonst nichts, kein Platzhalter, keine generische Zeile. */}
+          {user && matchExplanation && (
+            <Reveal className="mt-10 flex gap-4 border-[1.5px] border-black p-6" style={{ boxShadow: "8px 8px 0 0 #000" }}>
+              <PawnFigurSvg className="h-[45px] w-[34px] shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-serif italic text-[1.05rem] leading-snug text-black">{matchExplanation.these}</p>
+                <p className="mt-3 border-t border-black/10 pt-3 text-[0.8rem] text-black/70">
+                  <b className="font-medium text-black">{t("product.persona.beleg")}</b> {matchExplanation.beleg}
+                </p>
+              </div>
+            </Reveal>
+          )}
+
           <Reveal className="mt-4">
             <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
               <ProductDetailsAccordion dbProduct={dbProduct} onPickSize={(s) => setSize(s)} />
             </ErrorBoundary>
           </Reveal>
 
-          {(dnaReason || match.percent > 0) && (
-            <Reveal className="house-hair mt-10 border-t pt-6">
-              <p className="house-ink palace-eyebrow">Ausgewählt für dich, weil</p>
-              <p className="house-ink mt-3 font-serif italic text-[1.05rem] leading-snug opacity-80">
-                {dnaReason ?? match.rationale}
-              </p>
+          {/* Werkstatt-Zeile (Teil 35): echte Haus-Daten, "Zum Haus" führt zur Hausseite. */}
+          {dbProduct?.designers && (
+            <Reveal className="house-hair mt-10 flex flex-wrap items-baseline justify-between gap-4 border-t pt-6">
+              <div>
+                <h3 className="house-serif house-ink text-[1.3rem] font-light">{dbProduct.designers.brand_name}</h3>
+                <p className="house-ink mt-1 text-[0.62rem] uppercase tracking-[0.18em] opacity-60">
+                  {[dbProduct.designers.location, product.world, ausgabeNummer != null ? t("product.werkstatt.since", { n: ausgabeNummer }) : null]
+                    .filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              <Link to={`/designer/${dbProduct.designers.slug}`} className="house-ink text-[0.6rem] uppercase tracking-[0.24em] underline underline-offset-4 hover:opacity-70">
+                {t("product.werkstatt.link")}
+              </Link>
             </Reveal>
           )}
 
@@ -509,11 +577,6 @@ const ProductDetail = () => {
                 Individuelle Anfrage stellen →
               </button>
             )}
-          </Reveal>
-
-          {/* "Steht mir das?" bleibt erreichbar, tritt hinter das Bild zurück */}
-          <Reveal className="mt-10">
-            <PasstDas productSlug={product.slug} productName={product.name} />
           </Reveal>
         </div>
       </section>

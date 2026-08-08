@@ -418,3 +418,43 @@ export function explainMatch<T extends ScoreItem>(
   return null;
 }
 
+export interface MatchExplanation {
+  /** Kursive These, z.B. "Passt zu deiner Liebe zur Struktur — ruhige Fläche, sichtbare Naht." */
+  these: string;
+  /** "Woran ich das sehe: …" — konkreter, zählbarer Engagement-Beleg. Nie erfunden. */
+  beleg: string;
+}
+
+/**
+ * Wie explainMatch, aber nur wenn sich die These mit einem zählbaren Beleg aus den
+ * eigenen Signalen stützen lässt (Klarheitsgesetz Teil 35: Personalisierung nur mit Beleg,
+ * sonst lieber nichts anzeigen als eine unbelegte These).
+ */
+export function explainMatchWithBeleg<T extends ScoreItem>(
+  item: T,
+  profile: Pick<PersonalizationProfile, "world" | "preferredTags" | "hasSignals" | "signals">,
+  designerDna: Map<string, DesignerDna>,
+): MatchExplanation | null {
+  if (!profile.hasSignals) return null;
+  const these = explainMatch(item, profile, designerDna);
+  if (!these) return null;
+
+  const dna = item.designerSlug ? designerDna.get(item.designerSlug) : undefined;
+  const signals = profile.signals ?? [];
+  const sharedTag = profile.preferredTags?.find((t) => item.tags?.includes(t) || dna?.signals.includes(t) || item.category === t);
+
+  if (sharedTag) {
+    const count = signals.filter((s) => s.kind === "tag" && s.value === sharedTag).length;
+    if (count > 0) {
+      return { these, beleg: `Du hast ${count} Stück${count === 1 ? "" : "e"} mit „${sharedTag}" gemerkt oder angesehen.` };
+    }
+  }
+  if (profile.world && item.world === profile.world) {
+    const count = signals.filter((s) => s.kind === "world" && s.value === profile.world).length;
+    if (count > 0) {
+      return { these, beleg: `Du hast dich ${count}× für ${profile.world} entschieden.` };
+    }
+  }
+  return null;
+}
+

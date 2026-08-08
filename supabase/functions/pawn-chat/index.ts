@@ -737,7 +737,7 @@ Deno.serve(async (req) => {
       try {
         const { data: pr } = await admin
           .from("products")
-          .select("name, world, description, designer_note, product_dna, tags, price, made_in, care_instructions, edition_info, lead_time_days, length_cm, width_cm, height_cm, designers ( brand_name, brand_dna, aussenauge, onboarding_state )")
+          .select("name, world, description, designer_note, product_dna, tags, price, made_in, care_instructions, edition_info, lead_time_days, inventory_mode, length_cm, width_cm, height_cm, designers ( brand_name, brand_dna, aussenauge, onboarding_state )")
           .eq("slug", pc.product_slug)
           .maybeSingle();
         if (pr) {
@@ -745,6 +745,7 @@ Deno.serve(async (req) => {
             name: string; world: string | null; description: string | null; designer_note: string | null;
             product_dna: Record<string, string[]> | null; tags: string[] | null; price: number | null;
             made_in: string | null; care_instructions: string | null; edition_info: string | null; lead_time_days: number | null;
+            inventory_mode: string | null;
             length_cm: number | null; width_cm: number | null; height_cm: number | null;
             designers: { brand_name: string; brand_dna: { signals?: string[] } | null; aussenauge: { urteil?: string } | null; onboarding_state: { reife_einschaetzung?: string } | null } | null;
           };
@@ -767,6 +768,7 @@ Deno.serve(async (req) => {
             p.care_instructions && `Pflege: ${p.care_instructions}`,
             p.edition_info && `Edition: ${p.edition_info}.`,
             p.lead_time_days && `Lieferzeit Anfertigung: ~${p.lead_time_days} Tage.`,
+            `Versand: ${p.inventory_mode === "made_to_order" ? `wird für dich gefertigt${p.lead_time_days ? `, ca. ${p.lead_time_days} Tage` : ""}` : "versandfertig aus dem Atelier"}, versichert, weltweit, direkt aus der Werkstatt. 14 Tage Widerrufsrecht (Anfertigungen nach Maß ausgenommen).`,
             `Antworte konkret auf Fragen zu genau diesem Stück — nutze diese Fakten, spekuliere nicht.`,
           ].filter(Boolean).join(" ");
         }
