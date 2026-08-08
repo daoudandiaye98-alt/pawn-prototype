@@ -9,7 +9,6 @@ import { usePublicDesigners, usePublishedProducts, useActiveCollection, type Pub
 import { useSiteContent } from "@/lib/siteContent";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
-import { useI18n } from "@/lib/i18n";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 
 /**
