@@ -6,13 +6,14 @@ import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy } from "lucide-react";
 
 /**
- * Teil 34a — Offene Türen: reale, ortsnahe Chancen (Galerien, Ausstellungen, Märkte, offene
+ * Teil 34a/34b — Offene Türen: reale, ortsnahe Chancen (Galerien, Ausstellungen, Märkte, offene
  * Ateliers, Schulen/Hochschulen), die pawn-jarvis (Modus tueren_finden) wöchentlich findet.
- * Karten wie der Sende-Stapel im Admin — Fund, Warum, Entwurf, Entscheidung. Gesendet wird
- * hier nie automatisch: Text kopieren/anpassen und selbst verschicken bleibt Sache des Hauses.
+ * Karten wie der Sende-Stapel im Admin — Fund, Warum, Entwurf, Entscheidung. Absenden ist
+ * immer ein bewusster Klick, nie automatisch. Ohne gefundene Kontakt-Adresse bleibt nur
+ * "Text kopieren" — der Mensch verschickt dann selbst.
  */
 
 interface Tuer {
@@ -24,11 +25,16 @@ interface Tuer {
   warum: string | null;
   status: string;
   message_draft: string | null;
+  contact_email: string | null;
+  sent_at: string | null;
+  followup_sent_at: string | null;
+  delivery_status: string | null;
   created_at: string;
 }
 
 const TYP_KEYS = ["galerie", "ausstellung", "markt", "offenes_atelier", "schule_hochschule", "sonstiges"];
 const OFFENE_STATUS = ["gefunden", "interessiert", "kontaktiert", "geantwortet"];
+const MIN_FOLLOWUP_DAYS = 7;
 
 export default function StudioOffeneTueren() {
   const { designer, loading } = useMyDesigner();
@@ -43,7 +49,7 @@ export default function StudioOffeneTueren() {
     if (!designer) return;
     (async () => {
       const { data } = await supabase.from("designer_opportunities" as never)
-        .select("id, title, ort, typ, quelle_url, warum, status, message_draft, created_at")
+        .select("id, title, ort, typ, quelle_url, warum, status, message_draft, contact_email, sent_at, followup_sent_at, delivery_status, created_at")
         .eq("designer_id", designer.id).order("created_at", { ascending: false });
       setRows((data as unknown as Tuer[]) ?? []);
       setRowsLoading(false);
@@ -83,6 +89,43 @@ export default function StudioOffeneTueren() {
     }
   }
 
+  async function send(door: Tuer, isFollowup: boolean) {
+    const message = (isFollowup ? draftFor(door) : door.message_draft) ?? "";
+    if (!message.trim()) { toast.error(t("studio.tueren.toast.error")); return; }
+    setBusy(door.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("designer-opportunity-send", {
+        body: { opportunity_id: door.id, message, is_followup: isFollowup },
+      });
+      const result = data as { ok?: boolean; delivery_status?: string; error?: string } | null;
+      if (error || !result?.ok) { toast.error(result?.error ?? t("studio.tueren.toast.error")); return; }
+      setRows((prev) => prev.map((r) => r.id === door.id
+        ? {
+          ...r,
+          status: "kontaktiert",
+          delivery_status: result.delivery_status ?? "versendet",
+          sent_at: isFollowup ? r.sent_at : new Date().toISOString(),
+          followup_sent_at: isFollowup ? new Date().toISOString() : r.followup_sent_at,
+        }
+        : r));
+      toast.success(isFollowup ? t("studio.tueren.toast.followupSent") : t("studio.tueren.toast.sent"));
+    } catch {
+      toast.error(t("studio.tueren.toast.error"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function draftFor(door: Tuer): string {
+    return door.message_draft ?? "";
+  }
+
+  async function copyDraft(door: Tuer) {
+    if (!door.message_draft) { toast.error(t("studio.tueren.toast.error")); return; }
+    await navigator.clipboard.writeText(door.message_draft);
+    toast.success(t("studio.tueren.toast.copied"));
+  }
+
   if (loading || rowsLoading) return <StudioShell title={t("studioShell.nav.tueren")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studioShell.nav.tueren")}><p className="text-sm text-muted-foreground">{t("studio.settings.noAccess")}</p></StudioShell>;
 
@@ -99,6 +142,8 @@ export default function StudioOffeneTueren() {
         <ul className="space-y-4">
           {offene.map((door) => {
             const isEditing = editing === door.id;
+            const canFollowUp = door.status === "kontaktiert" && door.sent_at && !door.followup_sent_at
+              && (Date.now() - new Date(door.sent_at).getTime()) / 86_400_000 >= MIN_FOLLOWUP_DAYS;
             return (
               <li key={door.id} className="border-[1.5px] border-foreground bg-white p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -113,8 +158,9 @@ export default function StudioOffeneTueren() {
                       ) : door.title}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">
-                    {t(`studio.tueren.status.${door.status}`)}
+                  <span className="shrink-0 text-right text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">
+                    <span className="block">{t(`studio.tueren.status.${door.status}`)}</span>
+                    {door.delivery_status && <span className="mt-0.5 block">{t(`studio.tueren.delivery.${door.delivery_status}`)}</span>}
                   </span>
                 </div>
 
@@ -123,6 +169,10 @@ export default function StudioOffeneTueren() {
                     <span className="text-[0.6rem] uppercase tracking-[0.2em]">{t("studio.tueren.warum.label")}</span>{" "}
                     {door.warum}
                   </p>
+                )}
+
+                {!door.contact_email && (
+                  <p className="mt-3 text-sm text-muted-foreground">{t("studio.tueren.noContact")}</p>
                 )}
 
                 {door.message_draft && !isEditing && (
@@ -170,19 +220,45 @@ export default function StudioOffeneTueren() {
                         {busy === door.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}{t("studio.tueren.action.interested")}
                       </button>
                     )}
-                    <button
-                      type="button" disabled={busy === door.id}
-                      onClick={() => void decide(door, "verworfen")}
-                      className="border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
-                    >
-                      {t("studio.tueren.action.dismiss")}
-                    </button>
+                    {door.status === "interessiert" && door.contact_email && !door.sent_at && (
+                      <button
+                        type="button" disabled={busy === door.id}
+                        onClick={() => void send(door, false)}
+                        className="flex items-center gap-2 border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-background hover:text-foreground disabled:opacity-50"
+                      >
+                        {busy === door.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}{t("studio.tueren.action.send")}
+                      </button>
+                    )}
+                    {canFollowUp && (
+                      <button
+                        type="button" disabled={busy === door.id}
+                        onClick={() => void send(door, true)}
+                        className="flex items-center gap-2 border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
+                      >
+                        {busy === door.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}{t("studio.tueren.action.followup")}
+                      </button>
+                    )}
+                    {door.status !== "verworfen" && (
+                      <button
+                        type="button" disabled={busy === door.id}
+                        onClick={() => void decide(door, "verworfen")}
+                        className="border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
+                      >
+                        {t("studio.tueren.action.dismiss")}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => { setEditing(door.id); setDraftText(door.message_draft ?? ""); }}
                       className="border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background"
                     >
                       {t("studio.tueren.entwurf.edit")}
+                    </button>
+                    <button
+                      type="button" onClick={() => void copyDraft(door)}
+                      className="flex items-center gap-2 border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background"
+                    >
+                      <Copy className="h-3.5 w-3.5" />{t("studio.tueren.action.copy")}
                     </button>
                   </div>
                 )}

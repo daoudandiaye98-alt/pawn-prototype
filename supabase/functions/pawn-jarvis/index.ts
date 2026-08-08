@@ -2537,7 +2537,7 @@ Link: https://pawn.vision/designer/${haus.slug}`;
   return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
 }
 
-interface TuerFund { title?: string; ort?: string; typ?: string; quelle_url?: string; warum?: string; entwurf?: string }
+interface TuerFund { title?: string; ort?: string; typ?: string; quelle_url?: string; warum?: string; entwurf?: string; kontakt_email?: string }
 
 const TUER_TYPEN = ["galerie", "ausstellung", "markt", "offenes_atelier", "schule_hochschule", "sonstiges"];
 
@@ -2588,14 +2588,14 @@ async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<R
 
     const system = `Du suchst für ein unabhängiges Designhaus auf PAWN (pawn.vision) reale, ortsnahe Sichtbarkeits-Chancen im echten Leben: Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit passenden Veranstaltungen. Erfinde nichts — nur Orte/Veranstaltungen, die du in der Websuche wirklich gesehen hast, mit einer echten Quelle (URL). Wenn du nichts Verlässliches findest, liefere weniger als 3 Treffer statt zu erfinden.
 
-Für jeden Fund schreibst du außerdem einen kurzen, fertigen Anschreiben-Entwurf (max. 90 Wörter, Deutsch, im Ton des Hauses) — eine kurze Vorstellung, Bezug auf genau diese Chance, ein leichtes Angebot (Werke zeigen, Gespräch). Kein Anhang, keine Anführungszeichen.
+Für jeden Fund schreibst du außerdem einen kurzen, fertigen Anschreiben-Entwurf (max. 90 Wörter, Deutsch, im Ton des Hauses) — eine kurze Vorstellung, Bezug auf genau diese Chance, ein leichtes Angebot (Werke zeigen, Gespräch). Kein Anhang, keine Anführungszeichen. Falls auf der Seite eine Kontakt-E-Mail öffentlich steht (Impressum, Kontaktseite), gib sie mit — sonst lass das Feld leer, erfinde nie eine Adresse.
 
 SPRACHGESETZE (bindend):
 ${gesetze}
 
 Stilgesetz: ${styleLaw}
 
-Antworte NUR mit JSON: {"funde": [{"title": "...", "ort": "...", "typ": "galerie|ausstellung|markt|offenes_atelier|schule_hochschule|sonstiges", "quelle_url": "https://...", "warum": "ein Satz, warum das zu Standort/Welt/DNA des Hauses passt", "entwurf": "..."}]}`;
+Antworte NUR mit JSON: {"funde": [{"title": "...", "ort": "...", "typ": "galerie|ausstellung|markt|offenes_atelier|schule_hochschule|sonstiges", "quelle_url": "https://...", "warum": "ein Satz, warum das zu Standort/Welt/DNA des Hauses passt", "entwurf": "...", "kontakt_email": ""}]}`;
     const user = `Haus: ${h.brand_name}. Standort: ${h.location}${h.country ? `, ${h.country}` : ""}. Welt(en): ${weltText}. Marken-Signale: ${signale}.${ton}
 Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dieses Standorts.`;
 
@@ -2614,6 +2614,7 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
         entwurf = fixed.text;
       }
       const typ = TUER_TYPEN.includes(f.typ ?? "") ? (f.typ as string) : "sonstiges";
+      const kontaktEmail = typeof f.kontakt_email === "string" && f.kontakt_email.includes("@") ? f.kontakt_email.trim() : null;
       const { error } = await admin.from("designer_opportunities" as never).insert({
         designer_id: h.id,
         title: title.slice(0, 200),
@@ -2623,6 +2624,7 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
         warum: (f.warum ?? "").trim() || null,
         status: "gefunden",
         message_draft: entwurf,
+        contact_email: kontaktEmail,
       } as never);
       if (!error) {
         angelegt++;
