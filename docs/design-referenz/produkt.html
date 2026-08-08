@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAWN — Produktseite (Teil 35)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--fg:#000;--bg:#fff;--sec:#404040;--hair:1.5px solid #000;--e:cubic-bezier(.76,0,.18,1)}
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  body{background:#fff;color:#000;font-family:Inter,system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:5rem}
+  .w{max-width:1440px;margin:0 auto;padding:0 1.5rem}
+  @media(min-width:768px){.w{padding:0 2.5rem}}
+  .eb{font-size:.6rem;font-weight:500;text-transform:uppercase;letter-spacing:.3em;color:var(--sec)}
+  .it{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:500;letter-spacing:-.02em}
+  .note{background:#000;color:#fff;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;padding:.6rem 1rem;text-align:center}
+
+  /* 1) COVER (27b unverändert) + Credit-Zeile im Landing-Format — Nachrüstung (5) */
+  .cover{position:relative;height:78svh;min-height:440px;background:#101418;color:#fff;overflow:hidden}
+  .cover .art{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(120% 90% at 55% 35%,#3C3226 0%,#14110D 75%);color:rgba(255,255,255,.35);font-size:.6rem;letter-spacing:.3em;text-transform:uppercase}
+  .cover .bar{position:absolute;inset-x:0;bottom:0;background:#000;padding:1.4rem 1.5rem}
+  @media(min-width:768px){.cover .bar{padding:2.2rem 2.5rem}}
+  .cover .bar .eb{color:rgba(255,255,255,.7)}
+  .cover .bar h1{font-family:'Playfair Display',serif;font-weight:500;letter-spacing:-.01em;color:#fff;
+    font-size:clamp(2rem,5vw,4.4rem);line-height:1.02;margin-top:.6rem}
+  .credit{position:absolute;left:1.5rem;bottom:1rem;z-index:3;font-size:.56rem;letter-spacing:.24em;
+    text-transform:uppercase;color:rgba(255,255,255,.85)}
+  @media(min-width:768px){.credit{left:2.5rem}}
+  /* eine gemeinsame Funktion formatCreditLine() liefert "№ 003 · Atelier Nord · Berlin" —
+     identisch auf Landing und Produkt, kein zweites Format. */
+
+  /* 2) STICKY KAUFLEISTE — Nachrüstung (1): Provisions-Zeile + 46px PAWN-Taste */
+  .kaufleiste{position:sticky;bottom:0;z-index:30;background:#fff;border-top:var(--hair);
+    padding:1rem 1.5rem;box-shadow:0 -1px 0 #000}
+  @media(min-width:768px){.kaufleiste{padding:1.1rem 2.5rem}}
+  .kl-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  .kl-price{display:flex;flex-direction:column;gap:.15rem}
+  .kl-price .amount{font-family:'Playfair Display',serif;font-size:1.3rem}
+  .kl-price .split{font-size:.6rem;letter-spacing:.14em;color:var(--sec)}
+  /* "93 % gehen an Haus {Name}" — fester Satz, echter Hausname eingesetzt */
+  .kl-actions{display:flex;align-items:center;gap:.6rem}
+  .kl-btn{background:#000;color:#fff;border:1.5px solid #000;font-size:.62rem;letter-spacing:.24em;
+    text-transform:uppercase;padding:.85rem 1.4rem;cursor:pointer}
+  .kl-btn:hover{background:#fff;color:#000}
+  .pawn-btn{width:46px;height:46px;background:#000;display:flex;align-items:center;justify-content:center;
+    border:1.5px solid #000;cursor:pointer;flex-shrink:0}
+  .pawn-btn svg{width:16px;height:21px;fill:#fff}
+  /* Auf Kauf-/Kassenseiten gibt es GENAU dieses eine PAWN-Element unten — kein Deck, kein Wippen,
+     keine Sprüche, keine Stimmungs-Bewegung. Nur ein gelegentliches Blinzeln der Augen. */
+
+  /* 3) SERVICE-SHEET — Nachrüstung (2), öffnet sich über der Kaufleiste, Leiste bleibt bedienbar */
+  .sheet{position:fixed;left:0;right:0;bottom:78px;z-index:29;background:#fff;border-top:var(--hair);
+    max-height:60vh;overflow-y:auto;box-shadow:0 -8px 0 0 rgba(0,0,0,.04)}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid #e6e6e6}
+  .sheet-chips{display:flex;flex-wrap:wrap;gap:.5rem;padding:1rem 1.5rem}
+  .chip{border:1.5px solid #000;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;padding:.55rem .9rem;cursor:pointer;background:#fff}
+  .chip:hover{background:#000;color:#fff}
+  .sheet-body{padding:0 1.5rem 1.2rem;font-size:.9rem;color:var(--sec)}
+  .sheet-input{display:flex;gap:.5rem;padding:1rem 1.5rem;border-top:1px solid #e6e6e6}
+  .sheet-input input{flex:1;border:1.5px solid #000;padding:.6rem .8rem;font:inherit}
+  .sheet-input button{border:1.5px solid #000;background:#000;color:#fff;padding:.6rem 1rem;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase}
+  /* "Steht mir das?" nutzt die bestehende Einschätzungs-Logik (Teil 19/21) — Antwort immer mit
+     Beleg aus der Kunden-DNA; im Frühzustand die ehrliche Absage, nie erfunden. */
+
+  section{padding:3.5rem 0}
+  @media(min-width:768px){section{padding:5rem 0}}
+
+  /* 4) PERSONALISIERUNGS-KARTE — Nachrüstung (3): nur mit Beleg, harter Schatten, Figur links */
+  .persona{display:flex;gap:1.2rem;border:var(--hair);box-shadow:8px 8px 0 0 #000;padding:1.5rem;max-width:640px}
+  .persona .fig{width:34px;height:45px;flex-shrink:0;background:#000}
+  .persona .these{font-family:'Playfair Display',serif;font-style:italic;font-size:1.15rem;line-height:1.4}
+  .persona .beleg{margin-top:.8rem;padding-top:.7rem;border-top:1px solid #e6e6e6;font-size:.8rem;color:var(--sec)}
+  .persona .beleg b{color:#000;font-weight:500}
+  /* Erscheint NUR wenn eingeloggt + DNA-Reifeschwelle (Teil 21) erreicht — sonst nichts,
+     kein Platzhalter, keine generische Zeile. */
+
+  /* 5) WERKSTATT-ZEILE — Nachrüstung (4) */
+  .werkstatt{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+    border-top:1px solid #e6e6e6;padding-top:1.4rem;margin-top:1.4rem}
+  .werkstatt h3{font-family:'Playfair Display',serif;font-weight:500;font-size:1.3rem}
+  .werkstatt .meta{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--sec);margin-top:.3rem}
+  .werkstatt a{font-size:.6rem;letter-spacing:.24em;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1.5px solid #000}
+  /* Versand-Fakt in der Faktenliste: "… · direkt aus der Werkstatt" */
+</style>
+</head>
+<body>
+
+<div class="note">Referenz Teil 35 — Struktur aus 27b bleibt (Cover/Held-Bild/Detail-Strecke/Galerie). Fünf Nachrüstungen markiert, sonst unverändert.</div>
+
+<!-- COVER (unverändert, 27b) -->
+<div class="cover">
+  <div class="art">Werk · Bild folgt</div>
+  <div class="bar">
+    <p class="eb">Mode · Atelier Nord</p>
+    <h1>Asymmetrischer Mantel</h1>
+  </div>
+  <div class="credit">№ 003 · Atelier Nord · Berlin</div>
+</div>
+
+<section class="w">
+  <p class="eb">Detail-Strecke, Galerie (27b unverändert) …</p>
+
+  <!-- 4) PERSONALISIERUNGS-KARTE -->
+  <div style="margin-top:3rem">
+    <div class="persona">
+      <div class="fig" aria-hidden="true"></div>
+      <div>
+        <p class="these">„Passt zu deiner Liebe zur Struktur — ruhige Fläche, sichtbare Naht.“</p>
+        <p class="beleg"><b>Woran ich das sehe:</b> Du hast 6 Stücke mit sichtbarer Naht gemerkt oder angesehen.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5) WERKSTATT-ZEILE -->
+  <div class="werkstatt">
+    <div>
+      <h3>Atelier Nord</h3>
+      <p class="meta">Berlin · Mode · seit Ausgabe 04 in der Halle</p>
+    </div>
+    <a href="#">Zum Haus →</a>
+  </div>
+  <p class="eb" style="margin-top:1rem">Versand: … · direkt aus der Werkstatt</p>
+</section>
+
+<!-- 3) SERVICE-SHEET (Beispiel: geöffnet) -->
+<div class="sheet">
+  <div class="sheet-head">
+    <p class="eb">PAWN · Fragen zum Stück</p>
+    <span style="cursor:pointer">✕</span>
+  </div>
+  <div class="sheet-chips">
+    <button class="chip">Steht mir das?</button>
+    <button class="chip">Maße &amp; Material</button>
+    <button class="chip">Wie wird versendet?</button>
+  </div>
+  <div class="sheet-body">
+    <p><i>Beispiel „Steht mir das?“ (Reife erreicht):</i> Passt — die ruhige Silhouette trifft deinen Stil. <i>Frühzustand:</i> „Ich kenne deinen Stil noch nicht gut genug — sieh dich um oder erzähl mir etwas.“</p>
+  </div>
+  <div class="sheet-input">
+    <input type="text" placeholder="Frag etwas zu diesem Stück …">
+    <button>→</button>
+  </div>
+</div>
+
+<!-- 1) STICKY KAUFLEISTE -->
+<div class="kaufleiste">
+  <div class="kl-row">
+    <div class="kl-price">
+      <span class="amount">€ 640</span>
+      <span class="split">93 % gehen an Haus Atelier Nord</span>
+    </div>
+    <div class="kl-actions">
+      <button class="kl-btn">Direkt kaufen</button>
+      <div class="pawn-btn" aria-label="PAWN — Fragen zum Stück" title="nur Blinzeln, kein Wippen">
+        <svg viewBox="0 0 100 132"><path d="M50 4c-16 0-24 12-24 26 0 9 4 16 10 20-18 6-28 20-28 42v18c0 6 4 10 10 10h64c6 0 10-4 10-10v-18c0-22-10-36-28-42 6-4 10-11 10-20 0-14-8-26-24-26z"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

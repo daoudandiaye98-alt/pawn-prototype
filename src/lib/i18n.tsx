@@ -1743,6 +1743,30 @@ const de = {
   "studio.campaignNew.toast.needsTarget": "Wähl ein Stück, oder trag ein, wofür das Bild wirbt.",
   "studio.campaignNew.toast.savedForApproval": "Zur Freigabe gespeichert.",
   "studio.campaignNew.toast.noImageSelected": "Kein Bild ausgewählt.",
+
+  // Teil 35 — Produktseite: Kaufleiste, Service-Sheet, Personalisierungs-Karte, Werkstatt-Zeile
+  "product.split": "93 % gehen an Haus {name}",
+  "product.pawnButtonAria": "PAWN · Fragen zum Stück",
+  "product.serviceSheet.title": "PAWN · Fragen zum Stück",
+  "product.serviceSheet.closeAria": "Schließen",
+  "product.serviceSheet.chip.passt": "Steht mir das?",
+  "product.serviceSheet.chip.masze": "Maße & Material",
+  "product.serviceSheet.chip.versand": "Wie wird versendet?",
+  "product.serviceSheet.inputPlaceholder": "Frag etwas zu diesem Stück …",
+  "product.serviceSheet.send": "Senden",
+  "product.serviceSheet.thinking": "PAWN denkt nach …",
+  "product.serviceSheet.connectionError": "Verbindung stockt. Versuch's gleich nochmal.",
+  "product.serviceSheet.masze.question": "Welche Maße und Materialien hat dieses Stück?",
+  "product.serviceSheet.versand.question": "Wie wird dieses Stück versendet?",
+  "product.passt.fruehzustand": "Ich kenne deinen Stil noch nicht gut genug — sieh dich um oder erzähl mir etwas.",
+  "product.passt.zurDna": "Zur DNA →",
+  "product.passt.passt": "Passt",
+  "product.passt.passtNicht": "Passt nicht ganz",
+  "product.passt.alternative": "Stattdessen ansehen →",
+  "product.passt.error": "Konnte das noch nicht einschätzen.",
+  "product.persona.beleg": "Woran ich das sehe:",
+  "product.werkstatt.since": "seit Ausgabe {n} in der Halle",
+  "product.werkstatt.link": "Zum Haus →",
 };
 
 const en: Record<keyof typeof de, string> = {
@@ -3452,6 +3476,30 @@ const en: Record<keyof typeof de, string> = {
   "studio.campaignNew.toast.needsTarget": "Choose a piece, or enter what the image is advertising.",
   "studio.campaignNew.toast.savedForApproval": "Saved for approval.",
   "studio.campaignNew.toast.noImageSelected": "No image selected.",
+
+  // Teil 35 — Product page
+  "product.split": "93% goes to House {name}",
+  "product.pawnButtonAria": "PAWN · Questions about this piece",
+  "product.serviceSheet.title": "PAWN · Questions about this piece",
+  "product.serviceSheet.closeAria": "Close",
+  "product.serviceSheet.chip.passt": "Would this suit me?",
+  "product.serviceSheet.chip.masze": "Measurements & material",
+  "product.serviceSheet.chip.versand": "How does shipping work?",
+  "product.serviceSheet.inputPlaceholder": "Ask something about this piece …",
+  "product.serviceSheet.send": "Send",
+  "product.serviceSheet.thinking": "PAWN is thinking …",
+  "product.serviceSheet.connectionError": "Connection is stalling. Try again in a moment.",
+  "product.serviceSheet.masze.question": "What are the measurements and materials of this piece?",
+  "product.serviceSheet.versand.question": "How is this piece shipped?",
+  "product.passt.fruehzustand": "I don't know your style well enough yet — browse a bit, or tell me something about yourself.",
+  "product.passt.zurDna": "To your DNA →",
+  "product.passt.passt": "Suits you",
+  "product.passt.passtNicht": "Not quite a match",
+  "product.passt.alternative": "See this instead →",
+  "product.passt.error": "Couldn't judge that yet.",
+  "product.persona.beleg": "Why I think so:",
+  "product.werkstatt.since": "in the hall since issue {n}",
+  "product.werkstatt.link": "To the house →",
 };
 
 type Dict = typeof de;

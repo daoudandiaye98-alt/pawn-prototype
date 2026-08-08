@@ -96,7 +96,7 @@ export function ProductDetailsAccordion({ dbProduct, onPickSize }: { dbProduct: 
         : "Versandfertig aus dem Atelier",
     ],
     ["Rückgabe", "14 Tage Widerrufsrecht. Anfertigungen nach Maß sind davon ausgenommen."],
-    ["Versand", "Versichert, weltweit — direkt vom Haus, nicht aus einem Lager."],
+    ["Versand", "Versichert, weltweit · direkt aus der Werkstatt."],
   ];
 
   const hasMass = showTable || massRows.some(([, v]) => v);
