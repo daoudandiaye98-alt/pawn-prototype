@@ -49,9 +49,13 @@ interface BegleiterProps {
   step?: string;
   plan?: Plan;
   quota?: { summary: string; loading: boolean };
+  /** Teil 28d: "Ein PAWN unten, nie zwei" — wenn die mobile Scroll-Begleitung
+   * (PawnGuide) aktiv ist, übernimmt sie unten den Chat-Einstieg; dieser
+   * Knopf tritt auf Mobil dann zurück, um nicht doppelt am unteren Rand zu stehen. */
+  hideOnMobile?: boolean;
 }
 
-export function Begleiter({ pathname, step, plan, quota }: BegleiterProps) {
+export function Begleiter({ pathname, step, plan, quota, hideOnMobile }: BegleiterProps) {
   const { t, locale } = useI18n();
   const [minimized, setMinimized] = useState(false);
   const [asking, setAsking] = useState(false);
@@ -59,6 +63,14 @@ export function Begleiter({ pathname, step, plan, quota }: BegleiterProps) {
   const [answer, setAnswer] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const key = useRef<string | null>(null);
+  const mobileHideFlex = hideOnMobile ? "hidden lg:flex" : "flex";
+  const mobileHideBlock = hideOnMobile ? "hidden lg:block" : "block";
+
+  useEffect(() => {
+    const openFromGuide = () => { setMinimized(false); setAsking(true); };
+    window.addEventListener("studio:open-begleiter", openFromGuide);
+    return () => window.removeEventListener("studio:open-begleiter", openFromGuide);
+  }, []);
 
   const stepKey = step ? `${pathname}:${step}` : null;
   const textKey = (stepKey && STEP_TEXT_KEYS[stepKey]) || PAGE_TEXT_KEYS[pathname] || FALLBACK_TEXT_KEY;
@@ -103,7 +115,7 @@ export function Begleiter({ pathname, step, plan, quota }: BegleiterProps) {
         type="button"
         onClick={() => setMinimized(false)}
         aria-label={t("begleiter.openAria")}
-        className="fixed bottom-5 right-5 z-30 flex h-11 w-11 items-center justify-center border border-foreground bg-foreground text-background hover:bg-foreground/90"
+        className={`fixed bottom-5 right-5 z-30 ${mobileHideFlex} h-11 w-11 items-center justify-center border border-foreground bg-foreground text-background hover:bg-foreground/90`}
       >
         <MessageCircle className="h-4 w-4" />
       </button>
@@ -111,7 +123,7 @@ export function Begleiter({ pathname, step, plan, quota }: BegleiterProps) {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-30 w-[calc(100vw-2.5rem)] max-w-xs">
+    <div className={`fixed bottom-5 right-5 z-30 w-[calc(100vw-2.5rem)] max-w-xs ${mobileHideBlock}`}>
       <div className="border border-foreground bg-white p-4 shadow-[6px_6px_0_0_rgba(0,0,0,0.9)]">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2.5">

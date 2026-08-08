@@ -71,7 +71,7 @@ export function ErstePartie({ rank, onClose, onDone }: { rank: PawnRank; onClose
         {t("studio.erstePartie.spaeter")}
       </button>
 
-      <PawnFigur ref={figurRef} rank={rank} size={140} interactive={false} showShadow={false} ariaLabel="PAWN" />
+      <PawnFigur ref={figurRef} rank={rank} size={140} interactive={false} showShadow={false} ariaLabel="PAWN" tone="dark" />
 
       <div className="max-w-lg">
         <p className="text-[0.6rem] uppercase tracking-[0.28em] text-background/60">{t("studio.erstePartie.title")}</p>

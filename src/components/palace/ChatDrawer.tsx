@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ImagePlus, X } from "lucide-react";
+import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 
 interface Card { kind: "product" | "designer"; title: string; subtitle?: string; href: string; reason?: string }
 interface Action { type: "navigate"; path: string; label: string }
@@ -99,9 +100,12 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       <aside className={`fixed right-0 top-0 z-[80] flex h-full w-[min(420px,94vw)] flex-col border-l border-[rgba(0,0,0,.18)] bg-white transition-transform duration-700 ${open ? "translate-x-0" : "translate-x-full"}`}
         style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}>
         <header className="flex items-center justify-between border-b border-[rgba(0,0,0,.18)] px-6 py-5">
-          <div>
-            <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/60">PAWN</p>
-            <p className="mt-1 font-serif text-xl italic text-[#000000]">für dich da.</p>
+          <div className="flex items-center gap-3">
+            <PawnFigurSvg className="h-9 w-[27px] shrink-0" />
+            <div>
+              <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/60">PAWN</p>
+              <p className="mt-1 font-serif text-xl italic text-[#000000]">für dich da.</p>
+            </div>
           </div>
           <button onClick={onClose} className="text-[0.65rem] uppercase tracking-[0.32em] text-black/60 hover:text-[#000000]">Schließen</button>
         </header>
@@ -116,7 +120,10 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </p>
               ) : (
                 <>
-                  <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{m.role === "assistant" ? "Pawn" : "Du"}</p>
+                  <p className="flex items-center gap-1.5 text-[0.57rem] uppercase tracking-[0.42em] text-black/40">
+                    {m.role === "assistant" && <PawnFigurSvg className="h-3.5 w-[10px] shrink-0" />}
+                    {m.role === "assistant" ? "Pawn" : "Du"}
+                  </p>
                   {m.imageUrl && (
                     <div className={`mt-2 ${m.role === "assistant" ? "" : "ml-auto"} inline-block max-w-[220px] border border-[rgba(0,0,0,.18)]`}>
                       <img src={m.imageUrl} alt="Hochgeladenes Bild" className="max-h-52 w-full object-cover" />
@@ -150,7 +157,12 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               )}
             </div>
           ))}
-          {busy && <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{t("chat.thinking")}</p>}
+          {busy && (
+            <div className="flex items-center gap-2" aria-live="polite">
+              <PawnFigurSvg className="h-5 w-[15px] shrink-0" />
+              <span className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{t("chat.thinking")}</span>
+            </div>
+          )}
         </div>
 
 

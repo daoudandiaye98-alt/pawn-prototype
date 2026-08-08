@@ -20,7 +20,21 @@
   display: block;
 }
 .pf-pawn.pf-static { cursor: default; }
-.pf-pawn.pf-in { animation: pf-arrive 1s var(--pf-e, cubic-bezier(.76,0,.18,1)) forwards, pf-bob 3.8s var(--pf-e, cubic-bezier(.76,0,.18,1)) 1.1s infinite; }
+/*
+  opacity/transform stehen hier zusätzlich zur animation-Eigenschaft als reiner
+  (nicht-animierter) Kaskadenwert: pf-squishwrap trägt seine eigene "animation"
+  (Squish/Sprung) auf einem eigenen inneren Element — kollidiert also nie mit
+  dieser "animation"-Eigenschaft hier. Diese plain-Werte sind trotzdem die
+  Absicherung, falls arrive/bob je durch eine andere Regel überschrieben wird:
+  dann bleibt die Figur sichtbar (opacity 1) statt auf den pf-pawn-Basiswert
+  (opacity 0) zurückzufallen — "Endzustand muss nach jeder Interaktion sichtbar
+  bleiben".
+*/
+.pf-pawn.pf-in {
+  animation: pf-arrive 1s var(--pf-e, cubic-bezier(.76,0,.18,1)) forwards, pf-bob 3.8s var(--pf-e, cubic-bezier(.76,0,.18,1)) 1.1s infinite;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
 .pf-pawn.pf-in-static { opacity: 1; transform: translateY(0) scale(1); }
 
 @keyframes pf-arrive {
@@ -32,14 +46,15 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
 }
-.pf-pawn.pf-squish { animation: pf-squish .45s var(--pf-e, cubic-bezier(.76,0,.18,1)); }
+.pf-squishwrap { display: block; transform-origin: 50% 100%; }
+.pf-squishwrap.pf-squish { animation: pf-squish .45s var(--pf-e, cubic-bezier(.76,0,.18,1)); }
 @keyframes pf-squish {
   0% { transform: scale(1,1); }
   35% { transform: scale(1.1,.84); }
   70% { transform: scale(.96,1.05); }
   100% { transform: scale(1,1); }
 }
-.pf-pawn.pf-jump { animation: pf-jump .7s var(--pf-e, cubic-bezier(.76,0,.18,1)); }
+.pf-squishwrap.pf-jump { animation: pf-jump .7s var(--pf-e, cubic-bezier(.76,0,.18,1)); }
 @keyframes pf-jump {
   0% { transform: translateY(0); }
   35% { transform: translateY(-26px); }
@@ -137,7 +152,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pf-pawn, .pf-shadow, .pf-spark, .pf-eye, .pf-guide-fig, .pf-caret {
+  .pf-pawn, .pf-squishwrap, .pf-shadow, .pf-spark, .pf-eye, .pf-guide-fig, .pf-caret {
     animation: none !important;
     transition: none !important;
   }

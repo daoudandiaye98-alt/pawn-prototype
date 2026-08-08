@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { PawnFigurSvg } from "./PawnFigur";
 import { useI18n } from "@/lib/i18n";
 
@@ -22,7 +23,7 @@ const ROUTE_GUIDE: Array<{ prefix: string; key: string }> = [
   { prefix: "/studio/dna", key: "studio.guide.route.dna" },
 ];
 
-export function PawnGuide({ pathname, enabled }: { pathname: string; enabled: boolean }) {
+export function PawnGuide({ pathname, enabled, onOpenChat }: { pathname: string; enabled: boolean; onOpenChat?: () => void }) {
   const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   const [text, setText] = useState("");
@@ -96,10 +97,20 @@ export function PawnGuide({ pathname, enabled }: { pathname: string; enabled: bo
           {text}
         </div>
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 bg-foreground px-4 py-3 text-background lg:hidden">
+      {/* Teil 28d: "Ein PAWN unten, nie zwei" — diese Leiste ist auf Mobil die einzige
+          PAWN-Präsenz am unteren Rand; sie übernimmt hier auch den Chat-Einstieg
+          (der alte Ask-PAWN-Knopf bleibt dort ausgeblendet, siehe Begleiter.tsx). */}
+      <button
+        type="button"
+        onClick={onOpenChat}
+        aria-label={t("studio.guide.openChatAria")}
+        className="fixed inset-x-0 bottom-0 z-40 flex w-full items-center gap-3 bg-foreground px-4 pt-3 text-left text-background lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
         <PawnFigurSvg invert className="h-7 w-5 shrink-0" />
-        <p className="font-serif text-sm italic leading-snug">{text}</p>
-      </div>
+        <p className="flex-1 font-serif text-sm italic leading-snug">{text}</p>
+        <MessageCircle className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
+      </button>
     </>
   );
 }
