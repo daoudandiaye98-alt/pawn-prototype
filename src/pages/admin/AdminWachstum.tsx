@@ -66,7 +66,7 @@ export default function AdminWachstum() {
     <AdminShell title="Wachstum" eyebrow="Wie PAWN in die Welt kommt">
       <section className="mb-8 border-[1.5px] border-black">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b-[1.5px] border-black px-5 py-3">
-          <p className="editorial-eyebrow">Presse · Jarvis sucht Redaktionen</p>
+          <p className="editorial-eyebrow">Presse · PAWN sucht Redaktionen</p>
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm" disabled={busy !== null} onClick={() => void run("presse_jagd", "Presse suchen")}
@@ -100,7 +100,7 @@ export default function AdminWachstum() {
         </dl>
 
         <p className="border-t border-border px-5 py-4 text-sm text-muted-foreground">
-          Jarvis sucht Redaktionen, die wirklich über unabhängiges Design schreiben, und pitcht ihnen
+          PAWN sucht Redaktionen, die wirklich über unabhängiges Design schreiben, und pitcht ihnen
           immer ein einzelnes Haus statt der Plattform. Nichts geht raus, bevor du „Ja" gedrückt hast.
         </p>
       </section>
@@ -120,7 +120,7 @@ export default function AdminWachstum() {
           <p className="px-5 py-6 text-sm text-muted-foreground">Wird geladen …</p>
         ) : rows.length === 0 ? (
           <p className="px-5 py-6 text-sm text-muted-foreground">
-            Noch keine Kontakte. „Presse suchen" schickt Jarvis auf die erste Runde.
+            Noch keine Kontakte. „Presse suchen" schickt PAWN auf die erste Runde.
           </p>
         ) : (
           <ul className="divide-y divide-border">

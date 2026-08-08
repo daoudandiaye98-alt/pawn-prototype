@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
@@ -114,7 +115,7 @@ export default function StudioDNA() {
     return entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 12);
   }, [dna, themes, t]);
 
-  if (loading) return <StudioShell title={t("studio.dna.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.dna.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.dna.title")}><p className="text-muted-foreground">{t("studio.dna.noAccess")}</p></StudioShell>;
 
   const fz = aussenauge?.fruehzustand;

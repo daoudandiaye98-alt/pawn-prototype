@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -1124,7 +1125,7 @@ export default function StudioCampaignNew() {
     }
   };
 
-  if (loading) return <StudioShell title={t("studio.campaignNew.pageTitle")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.campaignNew.pageTitle")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.campaignNew.pageTitle")}><p className="text-muted-foreground">{t("studio.campaignNew.noStudioAccess")}</p></StudioShell>;
 
   const rightsPending = consentOk !== true || mediaRightsGranted !== true;

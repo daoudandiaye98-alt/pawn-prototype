@@ -89,9 +89,9 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
       return {
         key: "jarvis_pending",
         headline: signals.pendingActions === 1
-          ? `Jarvis wartet auf eine Bestätigung: ${signals.oldestPendingAction}.`
-          : `Jarvis wartet auf ${signals.pendingActions} Bestätigungen — am längsten: ${signals.oldestPendingAction}.`,
-        reason: "Zone Rot: Geld, Veröffentlichung oder Löschung — das entscheidest du, nicht Jarvis.",
+          ? `PAWN wartet auf eine Bestätigung: ${signals.oldestPendingAction}.`
+          : `PAWN wartet auf ${signals.pendingActions} Bestätigungen — am längsten: ${signals.oldestPendingAction}.`,
+        reason: "Zone Rot: Geld, Veröffentlichung oder Löschung — das entscheidest du, nicht PAWN.",
         cta: "Zug machen",
         to: "/admin",
         urgency: "hoch",
@@ -101,8 +101,8 @@ export function useAdminNextMove(): { move: AdminNextMove; signals: Signals } {
       return {
         key: "jarvis_suggestion",
         headline: signals.unseenSuggestions === 1
-          ? `Jarvis schlägt vor: ${signals.oldestSuggestion}.`
-          : `Jarvis hat ${signals.unseenSuggestions} Vorschläge gemacht — zuerst: ${signals.oldestSuggestion}.`,
+          ? `PAWN schlägt vor: ${signals.oldestSuggestion}.`
+          : `PAWN hat ${signals.unseenSuggestions} Vorschläge gemacht — zuerst: ${signals.oldestSuggestion}.`,
         reason: "Umsetzen oder verwerfen — ein Klick.",
         cta: "Vorschlag ansehen",
         to: "/admin",

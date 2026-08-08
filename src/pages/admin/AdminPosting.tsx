@@ -123,10 +123,10 @@ export default function AdminPosting() {
                   {r.campaigns?.content?.caption && <p className="mt-3 text-sm">{r.campaigns.content.caption}</p>}
                   {r.story_reason ? (
                     <p className="mt-3 border-l-2 border-foreground pl-3 text-sm italic">
-                      „{r.story_reason}"{r.story_score != null && <span className="not-italic text-muted-foreground"> · Jarvis-Einschätzung {r.story_score}/100</span>}
+                      „{r.story_reason}"{r.story_score != null && <span className="not-italic text-muted-foreground"> · PAWN-Einschätzung {r.story_score}/100</span>}
                     </p>
                   ) : (
-                    <p className="mt-3 text-xs text-muted-foreground">Noch keine Begründung — Jarvis prüft Vorschläge im wöchentlichen Regie-Lauf.</p>
+                    <p className="mt-3 text-xs text-muted-foreground">Noch keine Begründung — PAWN prüft Vorschläge im wöchentlichen Regie-Lauf.</p>
                   )}
                 </div>
                 <div className="flex gap-2 self-start">

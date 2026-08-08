@@ -42,7 +42,7 @@ interface AssetRow {
   campaigns?: { title: string; products?: { world: string } | null } | null;
 }
 
-const SOURCE_LABEL: Record<Source, string> = { designer: "Designer", edition: "Gemeinsame Kampagne", jarvis: "Jarvis" };
+const SOURCE_LABEL: Record<Source, string> = { designer: "Designer", edition: "Gemeinsame Kampagne", jarvis: "PAWN" };
 
 export default function AdminArchiv() {
   const { user, roles, loading } = useAuth();

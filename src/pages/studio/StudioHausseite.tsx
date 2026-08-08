@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -195,7 +196,7 @@ export default function StudioHausseite() {
   ];
   const readyToPublish = checklist.every((c) => c.ok);
 
-  if (loading) return <StudioShell title={t("studio.hausseite.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.hausseite.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.hausseite.title")}><p className="text-muted-foreground">{t("studio.hausseite.noAccess")}</p></StudioShell>;
 
   return (

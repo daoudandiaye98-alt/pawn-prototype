@@ -144,7 +144,7 @@ export function PruefStapel({
   }
 
   async function copyDraft(lead: PruefLead) {
-    if (!lead.message_draft) { toast.error("Noch kein Text verfasst — Jarvis schreibt ihn im nächsten Lauf."); return; }
+    if (!lead.message_draft) { toast.error("Noch kein Text verfasst — PAWN schreibt ihn im nächsten Lauf."); return; }
     await navigator.clipboard.writeText(lead.message_draft);
     toast.success("Text kopiert — jetzt als DM einfügen.");
   }
@@ -160,7 +160,7 @@ export function PruefStapel({
         </p>
         {!isPresse && (
           <p className="mt-1 text-xs text-muted-foreground">
-            Studios mit gefundener Adresse schreibt Jarvis selbst an. Hier stehen die Konten, bei denen ein
+            Studios mit gefundener Adresse schreibt PAWN selbst an. Hier stehen die Konten, bei denen ein
             Formular oder eine DM den Weg öffnet.
           </p>
         )}

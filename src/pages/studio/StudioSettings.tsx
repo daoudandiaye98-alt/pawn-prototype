@@ -4,6 +4,9 @@ import { AccountSettingsPanel } from "@/components/palace/AccountSettings";
 import { Link } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
+import { supabase } from "@/integrations/supabase/client";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 
 const PLAN_LABEL: Record<string, string> = { haus: "Haus", atelier: "Atelier", maison: "Maison" };
 
@@ -16,10 +19,10 @@ interface BrandDna {
 }
 
 export default function StudioSettings() {
-  const { designer, loading } = useMyDesigner();
+  const { designer, loading, refresh } = useMyDesigner();
   const { t, locale } = useI18n();
   const shellTitle = t("studioShell.nav.einstellungen");
-  if (loading) return <StudioShell title={shellTitle}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={shellTitle}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={shellTitle}><p className="text-sm text-muted-foreground">{t("studio.settings.noAccess")}</p></StudioShell>;
 
   const dna = (designer.brand_dna ?? {}) as BrandDna;
@@ -36,10 +39,11 @@ export default function StudioSettings() {
           <p className="mt-2 text-sm text-muted-foreground">{t("studio.settings.dna.subtitle")}</p>
 
           {!hasDna ? (
-            <div className="mt-6 border border-dashed border-border p-6 text-center">
-              <p className="text-sm text-muted-foreground">{t("studio.settings.dna.empty")}</p>
-              <Link to="/studio/produkte" className="mt-3 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.dna.createFirst")}</Link>
-            </div>
+            <PawnEmptyState
+              className="mt-6"
+              title={t("studio.settings.dna.empty")}
+              action={<Link to="/studio/produkte" className="inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.dna.createFirst")}</Link>}
+            />
           ) : (
             <>
               <div className="mt-6 space-y-3">
@@ -97,6 +101,25 @@ export default function StudioSettings() {
           <Link to="/studio/brand" className="mt-6 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.meta.editReview")}</Link>
         </section>
       </div>
+
+      <section className="mt-6 border border-border bg-white p-8">
+        <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.settings.guide.eyebrow")}</p>
+        <label className="mt-4 flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={designer.pawn_guide_enabled !== false}
+            onChange={async (e) => {
+              const { error } = await supabase.from("designers").update({ pawn_guide_enabled: e.target.checked }).eq("id", designer.id);
+              if (!error) void refresh();
+            }}
+            className="mt-1 h-4 w-4 shrink-0"
+          />
+          <span>
+            <span className="block font-serif text-lg">{t("studio.settings.guide.title")}</span>
+            <span className="mt-1 block text-sm text-muted-foreground">{t("studio.settings.guide.body")}</span>
+          </span>
+        </label>
+      </section>
 
       <div className="mt-6">
         <AccountSettingsPanel

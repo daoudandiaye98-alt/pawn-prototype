@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -223,7 +224,7 @@ export default function StudioStueckNeu() {
     }
   };
 
-  if (loading || loadingExisting) return <StudioShell title={t("studio.stueckNeu.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading || loadingExisting) return <StudioShell title={t("studio.stueckNeu.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.stueckNeu.title")}><p className="text-muted-foreground">{t("studio.stueckNeu.noAccess")}</p></StudioShell>;
   if (existingProductId && !product) return <StudioShell title={t("studio.stueckNeu.title")}><p className="text-muted-foreground">{t("studio.stueckNeu.productNotFound")}</p></StudioShell>;
 

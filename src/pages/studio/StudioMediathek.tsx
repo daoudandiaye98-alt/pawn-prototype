@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
 import { usePlanQuota, quotaExhaustedHint } from "@/features/campaign/quota";
@@ -211,7 +212,7 @@ export default function StudioMediathek() {
     await supabase.from("media_assets" as never).update({ title } as never).eq("id", row.id);
   };
 
-  if (loading) return <StudioShell title={t("studio.mediathek.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.mediathek.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.mediathek.title")}><p className="text-muted-foreground">{t("studio.mediathek.noAccess")}</p></StudioShell>;
 
   return (

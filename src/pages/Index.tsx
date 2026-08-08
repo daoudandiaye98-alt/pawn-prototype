@@ -9,6 +9,8 @@ import { usePublicDesigners, usePublishedProducts, useActiveCollection, type Pub
 import { useSiteContent } from "@/lib/siteContent";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
+import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 
 /**
  * Teil 27a — Die Bühne: Landing 1:1 nach docs/design-referenz/landing.html.
@@ -36,6 +38,7 @@ const Index = () => {
   const { products } = usePublishedProducts();
   const collection = useActiveCollection();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
+  const { locale } = useI18n();
 
   const designerById = useMemo(() => new Map(designers.map((d) => [d.id, d])), [designers]);
 
@@ -272,7 +275,10 @@ function ConciergeSection() {
           </Reveal>
           <Reveal>
             <form onSubmit={(e) => { e.preventDefault(); send(); }} className="border-[1.5px] border-white p-[1.3rem] pb-[1.1rem]">
-              <p className="text-[0.58rem] uppercase tracking-[0.3em] text-white/70">Frag die Halle</p>
+              <div className="flex items-center gap-2">
+                <PawnFigurSvg invert className="h-6 w-[18px] shrink-0" />
+                <p className="text-[0.58rem] uppercase tracking-[0.3em] text-white/70">Frag die Halle</p>
+              </div>
               <input
                 value={value}
                 onChange={(e) => setValue(e.target.value)}

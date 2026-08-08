@@ -12,6 +12,7 @@ import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
 import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota";
 import { Begleiter } from "./Begleiter";
+import { PawnGuide } from "./PawnGuide";
 
 import { useDisplayName } from "@/lib/displayName";
 import { useI18n } from "@/lib/i18n";
@@ -330,6 +331,7 @@ function Inner({ children, title, eyebrow, begleiterStep }: Props) {
     <div className="flex min-h-screen bg-background">
       <LevelUpOverlay designerId={designer?.id} />
       {designer && <Begleiter pathname={pathname} step={begleiterStep} plan={plan} quota={quota} />}
+      {designer && <PawnGuide pathname={pathname} enabled={designer.pawn_guide_enabled !== false} />}
       {/* Desktop sidebar */}
       <div className="hidden lg:block sticky top-0 h-screen">
         <Sidebar />

@@ -197,8 +197,8 @@ export default function AdminJarvis() {
       const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode, prompt } });
       if (error) { toast.error(error.message); return; }
       const result = data as { ok: boolean; error?: string };
-      if (!result.ok) { toast.error(result.error ?? "Jarvis konnte nicht antworten."); return; }
-      toast.success("Jarvis hat geantwortet.");
+      if (!result.ok) { toast.error(result.error ?? "PAWN konnte nicht antworten."); return; }
+      toast.success("PAWN hat geantwortet.");
       setCommand("");
       await load();
     } catch (e) {
@@ -343,7 +343,7 @@ export default function AdminJarvis() {
     if (error) { toast.error(error.message); return; }
     setEnabled(next);
     setRawConfig(nextValue);
-    toast.success(next ? "Jarvis ist wieder aktiv." : "Jarvis ist pausiert.");
+    toast.success(next ? "PAWN ist wieder aktiv." : "PAWN ist pausiert.");
   }
 
   const unseenNotices = notices.filter((n) => !n.dismissed_at);
@@ -368,10 +368,10 @@ export default function AdminJarvis() {
   const latestLearning = learningTimeline[0] ?? null;
 
   return (
-    <AdminShell title="Maschinenraum" eyebrow="Jarvis · die interne KI-Instanz von PAWN">
+    <AdminShell title="Maschinenraum" eyebrow="PAWN · die interne KI-Instanz">
       <div className="mb-4 flex items-center justify-between border-[1.5px] border-black px-5 py-3">
         <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">Jarvis-Status</p>
+          <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">PAWN-Status</p>
           <p className="mt-1 font-serif text-lg leading-none">{enabled ? "Aktiv" : "Pausiert"}</p>
         </div>
         <Button
@@ -381,7 +381,7 @@ export default function AdminJarvis() {
           className="rounded-none border-black hover:bg-black hover:text-white"
         >
           {pauseBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {enabled ? "Jarvis pausieren" : "Jarvis fortsetzen"}
+          {enabled ? "PAWN pausieren" : "PAWN fortsetzen"}
         </Button>
       </div>
 
@@ -412,7 +412,7 @@ export default function AdminJarvis() {
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           rows={4}
-          placeholder="Frag Jarvis etwas oder gib einen Auftrag…"
+          placeholder="Frag PAWN etwas oder gib einen Auftrag…"
           className="rounded-none border-black"
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -422,7 +422,7 @@ export default function AdminJarvis() {
             className="rounded-none bg-black text-white hover:bg-white hover:text-black"
           >
             {busy === "befehl" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            {busy === "befehl" ? "Jarvis denkt nach…" : "Senden"}
+            {busy === "befehl" ? "PAWN denkt nach…" : "Senden"}
           </Button>
           {SpeechRecognitionCtor && (
             <Button
@@ -473,7 +473,7 @@ export default function AdminJarvis() {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          "Recherche starten" nutzt den Text oben als Thema. Ohne Text wählt Jarvis ein naheliegendes Thema.
+          "Recherche starten" nutzt den Text oben als Thema. Ohne Text wählt PAWN ein naheliegendes Thema.
           {SpeechRecognitionCtor && " Mikrofon gedrückt halten, sprechen, loslassen — wird wie ein Befehl gesendet."}
         </p>
       </section>
@@ -526,7 +526,7 @@ export default function AdminJarvis() {
             className="rounded-none border-black hover:bg-black hover:text-white"
           >
             {diagnoseBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {diagnoseBusy ? "Jarvis prüft PAWN…" : "Jetzt prüfen"}
+            {diagnoseBusy ? "PAWN prüft sich selbst…" : "Jetzt prüfen"}
           </Button>
         </div>
         {latestDiagnose ? (
@@ -550,7 +550,7 @@ export default function AdminJarvis() {
             className="rounded-none border-black hover:bg-black hover:text-white"
           >
             {zeitgeistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {zeitgeistBusy ? "Jarvis ordnet ein…" : "Zeitgeist jetzt"}
+            {zeitgeistBusy ? "PAWN ordnet ein…" : "Zeitgeist jetzt"}
           </Button>
         </header>
         {culturalCurrents.length === 0 ? (
@@ -589,7 +589,7 @@ export default function AdminJarvis() {
       <section className="mb-8 border-[1.5px] border-black p-5">
         <p className="editorial-eyebrow mb-3">Gedächtnis</p>
         {memories.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Jarvis hat sich noch nichts gemerkt.</p>
+          <p className="text-sm text-muted-foreground">PAWN hat sich noch nichts gemerkt.</p>
         ) : (
           <ul className="divide-y divide-border">
             {memories.map((m) => (
@@ -615,7 +615,7 @@ export default function AdminJarvis() {
             className="rounded-none border-black hover:bg-black hover:text-white"
           >
             {wissenBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {wissenBusy ? "Jarvis lernt…" : "Wissen erweitern"}
+            {wissenBusy ? "PAWN lernt…" : "Wissen erweitern"}
           </Button>
         </header>
         {wissenReports.length === 0 ? (
@@ -635,10 +635,10 @@ export default function AdminJarvis() {
       <div className="mb-8">
         <GenomeCard
           eyebrow="Denklogik"
-          title="Was Jarvis gelernt hat"
+          title="Was PAWN gelernt hat"
           subtitle="Erkenntnisse aus Wissenslauf, Gedächtnis, Regie-Gewichten und Experimenten — als Verlauf über die Wochen."
           strands={learningStrands}
-          strandsLabel="Woraus Jarvis lernt"
+          strandsLabel="Woraus PAWN lernt"
           pulse={latestLearning ? { text: latestLearning.text, when: timeAgo(latestLearning.at) } : null}
           emptyText="Noch keine Lernschleife gelaufen — der erste Wissenslauf oder das erste Experiment füllt diese Karte."
           className="border-black"
@@ -823,7 +823,7 @@ export default function AdminJarvis() {
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Lade Berichte…
           </div>
         ) : reports.length === 0 ? (
-          <div className="p-16 text-center text-muted-foreground">Noch keine Berichte. Jarvis hat noch nichts geschrieben.</div>
+          <div className="p-16 text-center text-muted-foreground">Noch keine Berichte. PAWN hat noch nichts geschrieben.</div>
         ) : (
           <ul className="divide-y divide-border">
             {reports.map((r) => {

@@ -128,7 +128,7 @@ function AdminCopilotPill() {
       {zoneCounts && (
         <span
           className="hidden items-center gap-1.5 border border-border px-2 py-1 text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground md:inline-flex"
-          title="In welcher Zone Jarvis' Organe gerade handeln dürfen"
+          title="In welcher Zone PAWNs Organe gerade handeln dürfen"
         >
           {zoneCounts.gruen} Grün · {zoneCounts.gelb} Gelb · {zoneCounts.rot} Rot
         </span>

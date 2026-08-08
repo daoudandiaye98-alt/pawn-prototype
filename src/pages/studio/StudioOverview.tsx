@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useCopilot } from "@/components/pawn/CopilotDrawer";
+import { PawnFigur, PawnFigurState, type PawnFigurHandle, type PawnRank } from "@/components/pawn/PawnFigur";
+import { WhileYouWereAway } from "@/components/pawn/WhileYouWereAway";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders } from "@/features/studio/useDesignerOrders";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
@@ -14,6 +16,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sparkles, Plus, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, Check, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+
+/** Rang der Figur folgt dem echten Milestone-Level des Hauses (useDesignerLevel). */
+const RANK_BY_LEVEL: Record<string, PawnRank> = {
+  bauer: "bauer", springer: "springer", laeufer: "laeufer", turm: "turm", dame: "dame",
+};
+
+/** Kleiner, lokaler Typewriter — zeigt Text zeichenweise, wie in docs/design-referenz/bauer.html. */
+function useTypewriter(text: string, speedMs = 20) {
+  const [shown, setShown] = useState("");
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    setShown("");
+    setDone(!text);
+    if (!text) return;
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setShown(text.slice(0, i));
+      if (i >= text.length) { clearInterval(id); setDone(true); }
+    }, speedMs);
+    return () => clearInterval(id);
+  }, [text, speedMs]);
+  return { shown, done };
+}
 
 type World = "Mode" | "Interior" | "Kunst";
 
@@ -236,6 +262,19 @@ export default function StudioOverview() {
   // Teil 17d: eigenes Material, das noch nie fürs PAWN-Archiv eingereicht wurde (Teil 12b) —
   // speist die tägliche Liste, macht den bestehenden Weg über die Mediathek sichtbarer.
   const [unsubmittedMediaCount, setUnsubmittedMediaCount] = useState(0);
+  // Teil 28a: PAWN wird Person — Figur im Hero, Partie-Buch-Auszug (Tabelle folgt erst mit PR 28c,
+  // bis dahin bleibt die Sektion ehrlich leer statt einen Fehler zu zeigen).
+  const pawnRef = useRef<PawnFigurHandle>(null);
+  const [partieZuege, setPartieZuege] = useState<{ id: string; nr: number; text: string; akteur: string; created_at: string }[]>([]);
+  const [heroDismissed, setHeroDismissed] = useState(false);
+  const lastSeenSnapshotRef = useRef<string | null>(null);
+  const [lastSeenSnapshotReady, setLastSeenSnapshotReady] = useState(false);
+  useEffect(() => {
+    if (designer && !lastSeenSnapshotReady) {
+      lastSeenSnapshotRef.current = designer.studio_last_seen_at;
+      setLastSeenSnapshotReady(true);
+    }
+  }, [designer, lastSeenSnapshotReady]);
 
   useEffect(() => {
     if (!designer) return;
@@ -263,6 +302,16 @@ export default function StudioOverview() {
       const { count } = await supabase.from("media_assets" as never).select("id", { count: "exact", head: true })
         .eq("designer_id", designer.id).eq("review_status", "privat");
       setUnsubmittedMediaCount(count ?? 0);
+    })();
+  }, [designer]);
+
+  // Teil 28c legt die Tabelle partie_zuege erst an — bis dahin bleibt die Sektion ehrlich leer.
+  useEffect(() => {
+    if (!designer) return;
+    (async () => {
+      const { data } = await supabase.from("partie_zuege" as never).select("id, nr, text, akteur, created_at")
+        .eq("designer_id", designer.id).order("created_at", { ascending: false }).limit(5);
+      setPartieZuege((data as never as typeof partieZuege) ?? []);
     })();
   }, [designer]);
 
@@ -308,6 +357,15 @@ export default function StudioOverview() {
   const hasPortrait = !!designer?.avatar_url || !!designer?.hero_image_url;
   const publishedCount = products.filter((p) => p.status === "published").length;
   const nextMove = useNextMove({ designerId: designer?.id, level, hasStory, hasPortrait, publishedCount });
+
+  // Teil 28a: Begrüßung aus echten Daten — Blicke über Nacht + der vorbereitete Zug (Teil 17c).
+  const greetingLine = useMemo(() => {
+    const viewsPart = visitorsYesterday && visitorsYesterday > 0
+      ? (visitorsYesterday === 1 ? t("studio.overview.hero.greetingViews.one") : t("studio.overview.hero.greetingViews.many", { n: visitorsYesterday }))
+      : t("studio.overview.hero.greetingNoViews");
+    return `${viewsPart} ${nextMove.headline}`;
+  }, [visitorsYesterday, nextMove.headline, t]);
+  const { shown: heroTyped, done: heroTypedDone } = useTypewriter(greetingLine);
 
   const togglePublish = async (p: Product) => {
     const next = p.status === "published" ? "draft" : "published";
@@ -399,6 +457,20 @@ export default function StudioOverview() {
   };
   const showWelcome = !!designer && productsLoaded && products.length === 0 && !welcomeDismissed;
 
+  // Teil 28a: die Dialogkarte legt sich für diese Sitzung ab, sobald "Später" gewählt wird —
+  // ohne Strafe, beim nächsten Besuch ist PAWN wieder da.
+  useEffect(() => {
+    if (!designer) return;
+    setHeroDismissed(sessionStorage.getItem(`pawn_hero_dismissed_${designer.id}`) === "1");
+  }, [designer?.id]);
+  const dismissHero = () => {
+    if (designer) sessionStorage.setItem(`pawn_hero_dismissed_${designer.id}`, "1");
+    setHeroDismissed(true);
+  };
+  const scrollToNextMove = () => {
+    document.getElementById("naechster-zug")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   if (loading) return <StudioShell title={t("studio.overview.title")}><div className="animate-pulse space-y-6"><div className="h-32 bg-muted" /><div className="h-64 bg-muted" /></div></StudioShell>;
 
   if (!designer) return (
@@ -420,20 +492,50 @@ export default function StudioOverview() {
 
   return (
     <StudioShell title={t("studio.overview.title")} eyebrow={t("studio.overview.eyebrow.overview")}>
-      {/* Greeting */}
-      <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-3xl font-medium md:text-4xl">
-            {greetingByHour(t)}, <span className="capitalize">{firstName}</span>.
-          </h1>
-          <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-serif text-lg text-foreground leading-none">{level.glyph}</span>
-            {level.label}
-            {visitorsYesterday !== null && visitorsYesterday > 0 && (
-              <> · {t("studio.overview.visitorsYesterday", { n: visitorsYesterday })}</>
-            )}
-          </p>
+      {lastSeenSnapshotReady && <WhileYouWereAway designerId={designer.id} previousLastSeenAt={lastSeenSnapshotRef.current} />}
+
+      {/* Teil 28a: PAWN als Figur — Hero, Namensschild, Dialogkarte mit echter Begrüßung */}
+      <section className="mb-8 border-b-[1.5px] border-foreground pb-8 text-center">
+        <div className="flex justify-center">
+          <PawnFigur ref={pawnRef} rank={RANK_BY_LEVEL[level.level] ?? "bauer"} size={160} />
         </div>
+        <div className="mt-3">
+          <p className="font-serif text-2xl font-semibold tracking-tight">PAWN</p>
+          <p className="mt-1 text-[0.58rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.hero.nameplateSub")}</p>
+        </div>
+        <p className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span className="font-serif text-lg text-foreground leading-none">{level.glyph}</span>
+          {level.label}
+        </p>
+        <h1 className="sr-only">{greetingByHour(t)}, {firstName}.</h1>
+
+        {!heroDismissed && (
+          <div className="mx-auto mt-6 max-w-xl border-[1.5px] border-foreground bg-white text-left shadow-[8px_8px_0_0_#000]">
+            <div className="min-h-[84px] p-5">
+              <p className="font-serif text-lg italic leading-relaxed sm:text-xl">
+                {heroTyped}
+                {!heroTypedDone && <span className="pf-caret" aria-hidden="true" />}
+              </p>
+            </div>
+            {heroTypedDone && (
+              <div className="flex flex-wrap gap-2 border-t-[1.5px] border-foreground px-5 py-4">
+                <Link
+                  to={nextMove.to}
+                  onClick={() => pawnRef.current?.squish()}
+                  className="border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.55rem] uppercase tracking-[0.26em] text-background hover:bg-background hover:text-foreground"
+                >
+                  {t("studio.overview.hero.chip.takeOver")}
+                </Link>
+                <button type="button" onClick={scrollToNextMove} className="border-[1.5px] border-foreground px-4 py-2 text-[0.55rem] uppercase tracking-[0.26em] hover:bg-foreground hover:text-background">
+                  {t("studio.overview.hero.chip.guide")}
+                </button>
+                <button type="button" onClick={dismissHero} className="border-[1.5px] border-foreground px-4 py-2 text-[0.55rem] uppercase tracking-[0.26em] hover:bg-foreground hover:text-background">
+                  {t("studio.overview.hero.chip.later")}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Begleiter — der Weg zur eigenen Marke, immer einen Klick entfernt */}
@@ -446,7 +548,7 @@ export default function StudioOverview() {
       </Link>
 
       {/* DEIN NÄCHSTER ZUG — die grösste Karte */}
-      <section className="mb-6 border-[1.5px] border-foreground bg-white p-8">
+      <section id="naechster-zug" data-guide={t("studio.guide.nextMove")} className="mb-6 scroll-mt-20 border-[1.5px] border-foreground bg-white p-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0 max-w-2xl">
             <p className="flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
@@ -503,6 +605,101 @@ export default function StudioOverview() {
         <p className="mt-3 text-xs text-muted-foreground">
           {t("studio.overview.verwandlung.hint")}
         </p>
+      </section>
+
+      {/* Teil 28a: Deine Wand — jedes veröffentlichte Stück bekommt einen Platz, echte Bilder statt Platzhalter. */}
+      <section data-guide={t("studio.guide.wand")} className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.wand.title")}</p>
+          <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{Math.min(publishedCount, 8)} / 8</span>
+        </div>
+        <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8">
+          {Array.from({ length: 8 }).map((_, i) => {
+            const p = products.filter((x) => x.status === "published")[i];
+            return (
+              <div key={i} className={`aspect-[4/5] border ${p ? "border-[1.5px] border-foreground shadow-[4px_4px_0_0_#000]" : "border-dashed border-border"}`}>
+                {p?.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />}
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">{t("studio.overview.wand.hint")}</p>
+      </section>
+
+      {/* Teil 28a: "Du triffst mich überall" — dieselbe Figur als Lade-/Leer-/Erfolgs-Zustand. */}
+      <section className="mb-6">
+        <p className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.states.title")}</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {([
+            { pose: "load", label: t("studio.overview.states.load"), caption: t("studio.pawn.loading") },
+            { pose: "shrug", label: t("studio.overview.states.empty"), caption: t("studio.pawn.empty.title") },
+            { pose: "win", label: t("studio.overview.states.win"), caption: t("studio.pawn.win.title") },
+          ] as const).map((s) => (
+            <div key={s.pose} className="border-[1.5px] border-foreground bg-white p-4 text-center">
+              <div className="flex justify-center">
+                <PawnFigurState pose={s.pose} size={42} />
+              </div>
+              <p className="mt-2 text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">{s.label} — „{s.caption}"</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Teil 28a: Deine Räume — Werkbank/Schaufenster/Dein Raum, mit lebenden Zustandszeilen. */}
+      <section data-guide={t("studio.guide.rooms")} className="mb-6">
+        <p className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.rooms.title")}</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link to="/studio/produkte" className="border-[1.5px] border-foreground bg-white p-4 hover:bg-foreground hover:text-background">
+            <p className="font-serif text-lg">{t("studio.overview.rooms.werkbank")}</p>
+            <p className="mt-1 text-sm opacity-70">
+              {(() => {
+                const missing = products.filter((p) => !p.image_url).length;
+                if (missing === 0) return t("studio.overview.rooms.werkbank.ok");
+                return missing === 1 ? t("studio.overview.rooms.werkbank.missing.one") : t("studio.overview.rooms.werkbank.missing.many", { n: missing });
+              })()}
+            </p>
+          </Link>
+          <Link to="/studio/mediathek" className="border-[1.5px] border-foreground bg-white p-4 hover:bg-foreground hover:text-background">
+            <p className="font-serif text-lg">{t("studio.overview.rooms.schaufenster")}</p>
+            <p className="mt-1 text-sm opacity-70">
+              {unsubmittedMediaCount === 0
+                ? t("studio.overview.rooms.schaufenster.none")
+                : unsubmittedMediaCount === 1
+                  ? t("studio.overview.rooms.schaufenster.waiting.one")
+                  : t("studio.overview.rooms.schaufenster.waiting.many", { n: unsubmittedMediaCount })}
+            </p>
+          </Link>
+          <Link to="/studio/hausseite" className="border-[1.5px] border-foreground bg-white p-4 hover:bg-foreground hover:text-background">
+            <p className="font-serif text-lg">{t("studio.overview.rooms.deinRaum")}</p>
+            <p className="mt-1 text-sm opacity-70">
+              {designer.page_published_at
+                ? `${t("studio.overview.rooms.deinRaum.published")}${designer.collection_title ? ` · „${designer.collection_title}"` : ""}`
+                : t("studio.overview.rooms.deinRaum.draft")}
+            </p>
+          </Link>
+        </div>
+      </section>
+
+      {/* Teil 28a: Partie-Buch-Auszug — leuchtet erst richtig auf, sobald partie_zuege (PR 28c) schreibt. */}
+      <section data-guide={t("studio.guide.partiebuch")} className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.partiebuch.title")}</p>
+        </div>
+        {partieZuege.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">{t("studio.overview.partiebuch.empty")}</p>
+        ) : (
+          <ol className="mt-4 divide-y divide-border">
+            {partieZuege.map((z) => (
+              <li key={z.id} className="flex items-baseline gap-3 py-3 text-sm">
+                <span className="font-serif">{z.nr}.</span>
+                <span className="flex-1">{z.akteur === "pawn" && "♟ "}{z.text}</span>
+                <span className="shrink-0 text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground">
+                  {z.akteur === "pawn" ? t("studio.overview.partiebuch.by.pawn") : z.akteur === "halle" ? t("studio.overview.partiebuch.by.halle") : t("studio.overview.partiebuch.by.you")}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
 
       {/* World filter chips */}

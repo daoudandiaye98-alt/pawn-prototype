@@ -1226,6 +1226,7 @@ export type Database = {
           manifesto: string | null
           media_rights_granted_at: string | null
           page_published_at: string | null
+          pawn_guide_enabled: boolean
           plan: Database["public"]["Enums"]["designer_plan"]
           portrait_url: string | null
           preferred_language: string
@@ -1244,6 +1245,7 @@ export type Database = {
           stripe_details_submitted: boolean
           stripe_payouts_enabled: boolean
           stripe_requirements: Json
+          studio_last_seen_at: string | null
           tags: string[] | null
           updated_at: string
           user_id: string
@@ -1277,6 +1279,7 @@ export type Database = {
           manifesto?: string | null
           media_rights_granted_at?: string | null
           page_published_at?: string | null
+          pawn_guide_enabled?: boolean
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           preferred_language?: string
@@ -1295,6 +1298,7 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id: string
@@ -1328,6 +1332,7 @@ export type Database = {
           manifesto?: string | null
           media_rights_granted_at?: string | null
           page_published_at?: string | null
+          pawn_guide_enabled?: boolean
           plan?: Database["public"]["Enums"]["designer_plan"]
           portrait_url?: string | null
           preferred_language?: string
@@ -1346,6 +1351,7 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string

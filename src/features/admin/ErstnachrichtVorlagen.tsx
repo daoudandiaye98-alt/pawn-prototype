@@ -53,8 +53,8 @@ export function ErstnachrichtVorlagen() {
       <div className="space-y-6 px-5 py-5">
         <p className="max-w-3xl text-sm text-muted-foreground">
           Diese Texte werden wortgleich verschickt. Nur die Stelle <code className="border border-border px-1">{PLACEHOLDER}</code>{" "}
-          ersetzt Jarvis durch einen persönlichen Satz über die Arbeit der Person. Deutsche Konten bekommen den
-          deutschen Text, englischsprachige den englischen. Beide Felder leer = Jarvis formuliert frei.
+          ersetzt PAWN durch einen persönlichen Satz über die Arbeit der Person. Deutsche Konten bekommen den
+          deutschen Text, englischsprachige den englischen. Beide Felder leer = PAWN formuliert frei.
         </p>
 
         {loading ? (
