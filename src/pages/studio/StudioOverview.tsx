@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowRight, Plus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { schreibePawnSignal } from "@/lib/pawnSignal";
 
 /** Rang der Figur folgt dem echten Milestone-Level des Hauses (useDesignerLevel). */
 const RANK_BY_LEVEL: Record<string, PawnRank> = {
@@ -238,7 +239,13 @@ export default function StudioOverview() {
     setPendingCampaign(null);
     toast.success(t("studio.overview.toast.campaignApproved"));
     pawnRef.current?.celebrate();
+    void schreibePawnSignal("zug_erledigt", { zug: "kampagne_freigeben" });
   };
+
+  // Teil 32 — Die Nutzungs-Schleife: "Dein Zug" angenommen oder übersprungen, nur als Muster.
+  const [moveSkipped, setMoveSkipped] = useState(false);
+  const takeMove = () => { void schreibePawnSignal("zug_erledigt", { zug: nextMove.key }); pawnRef.current?.squish(); };
+  const skipMove = () => { setMoveSkipped(true); void schreibePawnSignal("zug_uebersprungen", { zug: nextMove.key }); };
 
   // Teil 17c: tägliche Liste, jetzt Teil von Schritt 2 — begründete Vorschläge, aus echtem
   // Zustand abgeleitet. Weggelegtes kommt frühestens nach 7 Tagen zurück.
@@ -287,6 +294,7 @@ export default function StudioOverview() {
     const { error } = await supabase.from("designers").update({ dismissed_suggestions: next }).eq("id", designer.id);
     if (error) { toast.error(error.message); return; }
     void refreshDesigner();
+    void schreibePawnSignal("funktion_ignoriert", { funktion: key });
   };
 
   // Teil 17b: drei ruhige Schritte für ein frisches Haus.
@@ -373,9 +381,16 @@ export default function StudioOverview() {
             <h2 className="font-serif text-2xl leading-tight md:text-3xl">{nextMove.headline}</h2>
             <p className="mt-3 text-sm text-foreground/70">{nextMove.reason}</p>
           </div>
-          <Link to={nextMove.to} onClick={() => pawnRef.current?.squish()} className="inline-flex items-center gap-2 border-[1.5px] border-foreground bg-foreground px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:bg-background hover:text-foreground">
-            {nextMove.cta} <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <Link to={nextMove.to} onClick={takeMove} className="inline-flex items-center gap-2 border-[1.5px] border-foreground bg-foreground px-5 py-3 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:bg-background hover:text-foreground">
+              {nextMove.cta} <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            {!moveSkipped && (
+              <button type="button" onClick={skipMove} className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground underline hover:text-foreground">
+                {t("studio.overview.nextMove.skip")}
+              </button>
+            )}
+          </div>
         </div>
 
         {pendingCampaign && (
@@ -417,7 +432,7 @@ export default function StudioOverview() {
                 <p className="mt-0.5 text-xs text-muted-foreground">{row.reason}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <Link to={row.to} className="text-[0.6rem] uppercase tracking-[0.22em] underline hover:text-foreground">{t("studio.overview.step2.action.open")}</Link>
+                <Link to={row.to} onClick={() => void schreibePawnSignal("funktion_genutzt", { funktion: row.key })} className="text-[0.6rem] uppercase tracking-[0.22em] underline hover:text-foreground">{t("studio.overview.step2.action.open")}</Link>
                 {row.dismissable && (
                   <button type="button" onClick={() => void dismissSuggestion(row.key)} aria-label={t("studio.overview.today.dismiss")} className="text-muted-foreground hover:text-foreground">
                     <X className="h-3.5 w-3.5" />
