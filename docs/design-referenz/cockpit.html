@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAWN — Cockpit · Die Bühne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Teil 30 — das Cockpit bleibt bewusst dunkel (Werkzeug-Ästhetik, nicht Editorial-Weiß wie
+     der Rest der Site) und Deutsch, kein i18n. Grauwerte statt Farbe — dieselbe Grammatik wie
+     das bestehende AdminOverview.tsx ("Organe statt Engines"). Diese Datei dokumentiert nur
+     die neue Bühne (Kopf der Übersicht) — alle bestehenden Panels darunter bleiben unverändert. */
+  :root{--bg:#0a0a0a;--panel:#0f0f0f;--hair:1px solid rgba(255,255,255,.08);--e:cubic-bezier(.76,0,.18,1)}
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  body{background:var(--bg);color:hsl(0 0% 90%);font-family:Inter,system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .w{max-width:980px;margin:0 auto;padding:2.5rem 1.5rem 6rem}
+  .eb{font-size:.6rem;font-weight:500;text-transform:uppercase;letter-spacing:.28em;color:hsl(0 0% 55%)}
+  .serif{font-family:'Playfair Display',Georgia,serif}
+
+  .buhne{border:1.5px solid rgba(255,255,255,.15);background:hsl(0 0% 6%);padding:1.75rem}
+  @media(min-width:768px){.buhne{padding:2rem}}
+  .buhne-head{display:flex;align-items:flex-start;gap:1.25rem}
+  .figur{width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .figur svg{width:40px;height:52px;fill:#fff}
+  .pawn-name{font-family:'Playfair Display',serif;font-size:1.15rem;color:hsl(0 0% 94%)}
+  .lagebericht{margin-top:1rem;max-width:42rem;font-size:15px;line-height:1.6;color:hsl(0 0% 86%)}
+  .chips{margin-top:1.25rem;display:flex;flex-wrap:wrap;gap:.5rem}
+  .chip{border:1px solid rgba(255,255,255,.15);padding:.5rem .75rem;font-size:.6rem;text-transform:uppercase;letter-spacing:.2em;
+    background:transparent;color:hsl(0 0% 82%);cursor:pointer;font-family:inherit}
+  .chip:hover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.04)}
+  .chip.solid{border-color:hsl(0 0% 35%);background:hsl(0 0% 22%);color:hsl(0 0% 94%)}
+  .chip.solid:hover{background:hsl(0 0% 28%)}
+
+  .fehlerliste{margin-top:1rem;border:1px solid rgba(255,255,255,.15);background:hsl(0 0% 5%);padding:1rem;display:none}
+  .fehlerliste.on{display:block}
+  .fehlerliste li{font-size:12px;color:hsl(0 0% 86%);padding:.3rem 0}
+  .fehlerliste li b{color:hsl(0 0% 94%);font-weight:500}
+
+  .block{margin-top:1.5rem;border-top:var(--hair);padding-top:1.25rem}
+  .block .eb{margin-bottom:.75rem}
+  .zeile{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:hsl(0 0% 88%);padding:.4rem 0}
+  .zeile .n{font-variant-numeric:tabular-nums;color:hsl(0 0% 55%)}
+  .empty{font-size:13px;color:hsl(0 0% 66%)}
+
+  .exception{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.04);padding:.5rem .75rem;font-size:12px;
+    color:hsl(0 0% 92%);margin-top:.4rem}
+  .exception b{font-weight:500}
+
+  .haus-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem;
+    padding:.6rem 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .haus-row:last-of-type{border-bottom:0}
+  .haus-name{font-size:12.5px;color:hsl(0 0% 92%)}
+  .haus-meta{display:flex;flex-wrap:wrap;gap:0 1rem;font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:hsl(0 0% 58%)}
+  .einladung{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:hsl(0 0% 74%);
+    border-top:1px solid rgba(255,255,255,.06);padding-top:.75rem;margin-top:.5rem}
+
+  .zahlen{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem}
+  @media(min-width:640px){.zahlen{grid-template-columns:repeat(4,1fr)}}
+  .zahl-label{font-size:.55rem;text-transform:uppercase;letter-spacing:.24em;color:hsl(0 0% 50%)}
+  .zahl-value{margin-top:.25rem;font-family:'Playfair Display',serif;font-size:20px;color:hsl(0 0% 94%);font-variant-numeric:tabular-nums}
+
+  .note{max-width:640px;margin:0 auto 2rem;font-size:12.5px;color:hsl(0 0% 55%);line-height:1.6}
+  .note b{color:hsl(0 0% 78%)}
+</style>
+</head>
+<body>
+<div class="w">
+  <p class="eb" style="margin-bottom:.75rem">PAWN — Cockpit · Referenz</p>
+  <p class="note">
+    Diese Datei zeigt nur die neue <b>Bühne</b> (Teil 30) — den Kopf des bestehenden Cockpits
+    (<code>/admin</code>). Alles darunter (Wartet auf dich, Akquise-Puls, KPI-Kacheln, Organe,
+    Ereignis-Ticker, Umsatzentwicklung, Bestellungen/Top-Designer) bleibt unverändert bestehen —
+    die Bühne ersetzt nur den alten "Guten Tag"-Kopf und das KI-Morgenbericht-Panel.
+    Kein Deck hier — die Figur spricht oben, einmal, im Fließtext.
+  </p>
+
+  <div class="buhne">
+    <div class="buhne-head">
+      <div class="figur">
+        <svg viewBox="0 0 40 52"><circle cx="20" cy="10" r="7.5"/><path d="M13 18h14l-2.5 6h-9z"/><path d="M15.5 24h9l2.5 15H13z"/><rect x="8" y="39" width="24" height="6"/></svg>
+      </div>
+      <div style="min-width:0;flex:1">
+        <p class="pawn-name">PAWN</p>
+        <p class="eb">Sieht alles, was die Halle sieht</p>
+        <p class="lagebericht">
+          Guten Tag, Daouda. 3 neue Leads seit gestern. 3 Muster aus der Nacht verdichtet.
+          6 Nachrichten bereit im Sende-Stapel.
+        </p>
+        <div class="chips">
+          <button class="chip solid">Zeig den Stapel</button>
+          <button class="chip" id="btn-fehler">Was klemmt?</button>
+          <button class="chip">Verdichte die Woche</button>
+        </div>
+        <div class="fehlerliste" id="fehlerliste">
+          <li>—</li>
+          <li><b>Postfach-Auge</b> — kein Lauf seit über 30 Stunden trotz Zeitplan</li>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <p class="eb">Die Nacht in drei Zeilen</p>
+      <div class="zeile"><span>Automatik-Züge liefen in der Nacht</span><span class="n">14</span></div>
+      <div class="zeile"><span>Neue Häuser haben ihre erste Partie abgeschlossen</span><span class="n">3</span></div>
+      <!-- Leerzustand, wenn noch nichts verdichtet wurde: -->
+      <!-- <p class="empty">Die erste Nacht läuft heute.</p> -->
+    </div>
+
+    <div class="block">
+      <p class="eb">Maschinenraum</p>
+      <p style="font-size:13px;color:hsl(0 0% 88%)">8 von 9 laufen sauber.</p>
+      <div class="exception"><b>Postfach-Auge</b> — kein Lauf seit über 30 Stunden trotz Zeitplan</div>
+    </div>
+
+    <div class="block">
+      <p class="eb">Die Häuser</p>
+      <div class="haus-row">
+        <span class="haus-name">Studio Marlow · №3</span>
+        <span class="haus-meta"><span>Mode</span><span>♟ Bauer</span><span>Verkauft aktiv</span><span>Verbunden</span></span>
+      </div>
+      <div class="haus-row">
+        <span class="haus-name">Obara Haus · №7</span>
+        <span class="haus-meta"><span>Interior</span><span>♞ Springer</span><span>Wartet auf ersten Kauf</span><span>Nicht verbunden</span></span>
+      </div>
+      <div class="haus-row">
+        <span class="haus-name">Kante & Kies · №11</span>
+        <span class="haus-meta"><span>Kunst</span><span>♟ Bauer</span><span>Baut auf</span><span>Nicht verbunden</span></span>
+      </div>
+      <div class="einladung">
+        <span>Einladung neuer Häuser · Sende-Stapel</span>
+        <span>6 bereit / Tageslimit 20</span>
+      </div>
+    </div>
+
+    <div class="block">
+      <p class="eb">Zahlenleiste</p>
+      <div class="zahlen">
+        <div><p class="zahl-label">Leads</p><p class="zahl-value">184</p></div>
+        <div><p class="zahl-label">Qualifiziert</p><p class="zahl-value">41</p></div>
+        <div><p class="zahl-label">Kontaktiert</p><p class="zahl-value">27</p></div>
+        <div><p class="zahl-label">Bestellungen</p><p class="zahl-value">9</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const btn = document.getElementById('btn-fehler'), list = document.getElementById('fehlerliste');
+  btn.addEventListener('click', () => {
+    const on = list.classList.toggle('on');
+    btn.textContent = on ? 'Fehlerliste schließen' : 'Was klemmt?';
+  });
+</script>
+</body>
+</html>
