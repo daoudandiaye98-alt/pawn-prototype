@@ -12,6 +12,10 @@ import { useI18n } from "@/lib/i18n";
  *
  * Der Leisten-Satz ist die Scroll-Begleitung: übernimmt PawnGuides bisherige Logik
  * ([data-guide]-Sätze je Sichtbarkeit, sonst ein Satz je Route).
+ *
+ * Teil 29 — wiederverwendet als Kunden-Deck auf /dna: eigener heroId (Cover statt
+ * Studio-Hero), eigene Chips (per Prop statt Route-Tabelle) und ein Chip kann statt
+ * einer Nachricht auch zu einem Seitenabschnitt scrollen ("Bilder hochladen").
  */
 
 const ROUTE_GUIDE: Array<{ prefix: string; key: string }> = [
@@ -28,9 +32,22 @@ const ROUTE_CHIPS: Record<string, string[]> = {
 };
 const GENERIC_CHIPS = ["studio.deck.chip.generic.explain", "studio.deck.chip.generic.next"];
 
+export interface DeckChip { i18nKey: string; action?: "scroll"; target?: string }
+
 interface Msg { role: "user" | "assistant"; content: string }
 
-export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boolean }) {
+interface PawnDeckProps {
+  pathname: string;
+  enabled: boolean;
+  /** ID des Hero-Elements, unterhalb dessen die Leiste erscheint. Default: Studio-Hub-Hero. */
+  heroId?: string;
+  /** Feste Chip-Liste statt der Studio-Routen-Tabelle (für Nicht-Studio-Seiten). */
+  chips?: DeckChip[];
+  /** Fester Satz statt [data-guide]-Rotation/Studio-Routen-Tabelle (für Nicht-Studio-Seiten). */
+  fallbackSentenceKey?: string;
+}
+
+export function PawnDeck({ pathname, enabled, heroId = "studio-hero", chips, fallbackSentenceKey }: PawnDeckProps) {
   const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   const [sentence, setSentence] = useState("");
@@ -44,7 +61,7 @@ export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boo
 
   useEffect(() => {
     if (!enabled) { setVisible(false); return; }
-    const hero = document.getElementById("studio-hero");
+    const hero = document.getElementById(heroId);
     if (!hero) { setVisible(true); return; }
     setVisible(false);
     const obs = new IntersectionObserver(
@@ -56,7 +73,7 @@ export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boo
     );
     obs.observe(hero);
     return () => obs.disconnect();
-  }, [pathname, enabled]);
+  }, [pathname, enabled, heroId]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -68,6 +85,7 @@ export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boo
 
     const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-guide]"));
     if (sections.length === 0) {
+      if (fallbackSentenceKey) { speak(t(fallbackSentenceKey)); return; }
       const route = ROUTE_GUIDE.find((r) => pathname.startsWith(r.prefix));
       speak(route ? t(route.key) : t("studio.guide.route.default"));
       return;
@@ -85,7 +103,7 @@ export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boo
     );
     sections.forEach((s) => obs.observe(s));
     return () => obs.disconnect();
-  }, [pathname, enabled, t]);
+  }, [pathname, enabled, t, fallbackSentenceKey]);
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -111,9 +129,18 @@ export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boo
     }
   };
 
+  const handleChip = (c: DeckChip) => {
+    if (c.action === "scroll" && c.target) {
+      setOpen(false);
+      document.getElementById(c.target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    void sendMessage(t(c.i18nKey));
+  };
+
   if (!enabled || !visible) return null;
 
-  const chipKeys = ROUTE_CHIPS[pathname] ?? GENERIC_CHIPS;
+  const resolvedChips: DeckChip[] = chips ?? (ROUTE_CHIPS[pathname] ?? GENERIC_CHIPS).map((k) => ({ i18nKey: k }));
 
   return (
     <>
@@ -149,14 +176,14 @@ export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boo
           )}
 
           <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3">
-            {chipKeys.map((k) => (
+            {resolvedChips.map((c) => (
               <button
-                key={k}
+                key={c.i18nKey}
                 type="button"
-                onClick={() => void sendMessage(t(k))}
+                onClick={() => handleChip(c)}
                 className="border-[1.5px] border-foreground px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background"
               >
-                {t(k)}
+                {t(c.i18nKey)}
               </button>
             ))}
           </div>
@@ -175,7 +202,7 @@ export function PawnDeck({ pathname, enabled }: { pathname: string; enabled: boo
         </div>
       )}
 
-      {/* Teil 31: "Ein PAWN unten, nie zwei" — die einzige PAWN-Präsenz am unteren Rand im Studio. */}
+      {/* Teil 31: "Ein PAWN unten, nie zwei" — die einzige PAWN-Präsenz am unteren Rand. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

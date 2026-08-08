@@ -1,80 +1,20 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
 import { PawnFigur } from "@/components/pawn/PawnFigur";
+import { useStilberater } from "@/features/personalization/useStilberater";
 
 /**
  * Teil 20a — Der Stilberater: ersetzt "Dein Geschmack" im Konto. Dieselben Daten wie
  * zuvor die Genom-Karte, jetzt als Prosa statt Balken — eine Stimme, kein Diagramm.
  * Jede Aussage einzeln löschbar (dismissed-Liste in user_memory), das Ganze abschaltbar
  * über den Personalisierung-Schalter aus Teil 19b (wirkt bereits).
+ *
+ * Teil 29: die Anfrage/Zustimmung/Ablehnung-Logik lebt jetzt in useStilberater.ts,
+ * geteilt mit dem neuen Cover auf /dna.
  */
-interface Belege { text: string; beleg: string }
-interface StilberaterResult {
-  ok: boolean;
-  fruehzustand: { erreicht: boolean; aktuell: number; ziel: number };
-  urteil?: string;
-  einordnung?: string;
-  stilname?: string;
-  belege?: Belege[];
-  blinder_fleck?: Belege;
-  naechster_schritt?: { text: string };
-  generated_at?: string;
-  error?: string;
-  message?: string;
-}
-
 export function Stilberater({ className }: { className?: string }) {
-  const { user, profile } = useAuth();
-  const [result, setResult] = useState<StilberaterResult | null>(null);
-  const [dismissed, setDismissed] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const { result, dismissed, loading, busy, anfordern, dismiss, personalizationOff } = useStilberater();
 
-  const load = async () => {
-    if (!user) { setLoading(false); return; }
-    setLoading(true);
-    const { data } = await supabase.from("user_memory" as never).select("preferences").eq("user_id", user.id).maybeSingle();
-    const prefs = (data as { preferences?: Record<string, unknown> } | null)?.preferences ?? {};
-    setResult((prefs.stilberater as StilberaterResult | undefined) ?? null);
-    setDismissed((prefs.stilberater_dismissed as string[] | undefined) ?? []);
-    setLoading(false);
-  };
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
-
-  const anfordern = async (isRegen: boolean) => {
-    setBusy(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-dna-voice", { body: { mode: "kunde" } });
-      if (error) throw error;
-      const r = data as StilberaterResult;
-      if (!r.ok) { toast.error(r.message ?? r.error ?? "Konnte noch keine Einschätzung schreiben."); return; }
-      setResult(r);
-      if (r.fruehzustand?.erreicht && (r.urteil || r.einordnung)) {
-        setDismissed([]);
-        toast.success(isRegen ? "Neu eingeschätzt." : "Dein Stilberater ist da.");
-      }
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const dismiss = async (id: string) => {
-    if (!user) return;
-    const next = [...dismissed, id];
-    setDismissed(next);
-    const { data } = await supabase.from("user_memory" as never).select("preferences").eq("user_id", user.id).maybeSingle();
-    const prefs = (data as { preferences?: Record<string, unknown> } | null)?.preferences ?? {};
-    await supabase.from("user_memory" as never).update({ preferences: { ...prefs, stilberater_dismissed: next }, updated_at: new Date().toISOString() } as never).eq("user_id", user.id);
-  };
-
-  if (!user) return null;
-
-  if (profile && profile.consent.personalization === false) {
+  if (personalizationOff) {
     return (
       <div className={className ?? "border-[1.5px] border-black bg-white p-6 md:p-8"}>
         <p className="editorial-eyebrow text-black/50">Stilberater</p>
