@@ -26,13 +26,16 @@ interface PasstResult {
 interface Msg { role: "user" | "assistant"; content: string }
 
 export function ProductServiceSheet({
-  open, onClose, bottomOffset, productSlug, productName,
+  open, onClose, bottomOffset, productSlug, productName, variant = "sheet",
 }: {
   open: boolean;
   onClose: () => void;
-  bottomOffset: number;
+  bottomOffset?: number;
   productSlug: string;
   productName: string;
+  /** "sheet" (Standard, mobil): fest über der Kaufleiste. "panel" (Desktop-Doppelseite,
+   * Teil 36): sitzt im normalen Fluss direkt unter dem Kaufblock, kein Bottom-Sheet. */
+  variant?: "sheet" | "panel";
 }) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -85,11 +88,8 @@ export function ProductServiceSheet({
 
   if (!open) return null;
 
-  return (
-    <div
-      className="fixed inset-x-0 z-[45] mx-auto flex max-h-[60vh] w-full flex-col border-[1.5px] border-black bg-white"
-      style={{ bottom: bottomOffset, boxShadow: "0 -8px 0 0 rgba(0,0,0,0.04)" }}
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between border-b border-black/15 px-4 py-3">
         <p className="text-[0.6rem] uppercase tracking-[0.28em] text-black/60">{t("product.serviceSheet.title")}</p>
         <button type="button" onClick={onClose} aria-label={t("product.serviceSheet.closeAria")} className="text-black/60 hover:text-black">
@@ -163,6 +163,23 @@ export function ProductServiceSheet({
           {t("product.serviceSheet.send")}
         </button>
       </form>
+    </>
+  );
+
+  if (variant === "panel") {
+    return (
+      <div className="mt-4 flex max-h-[70vh] flex-col border-[1.5px] border-black bg-white">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-x-0 z-[45] mx-auto flex max-h-[60vh] w-full flex-col border-[1.5px] border-black bg-white"
+      style={{ bottom: bottomOffset ?? 0, boxShadow: "0 -8px 0 0 rgba(0,0,0,0.04)" }}
+    >
+      {content}
     </div>
   );
 }

@@ -24,11 +24,13 @@ const WORLDS: { key: "Mode" | "Interior" | "Kunst"; labelKey: string; label: str
   { key: "Kunst", labelKey: "landing.world_kunst_label", label: "Kunst", textKey: "landing.world_kunst_text", text: "Arbeiten, die einen Raum verändern." },
 ];
 
-/** Zellen 1/6, 6/10, 10/13 im 12er-Raster, versetzte Höhen — exakt wie die Referenz. */
+/** Zellen 1/6, 6/10, 10/13 im 12er-Raster, versetzte Höhen — wie die Referenz, aber
+ * gedeckelt statt reiner vh-Werte (Teil 36): kein Kachel-Abschnitt über 82vh, auch auf
+ * sehr hochauflösenden/hohen Desktop-Bildschirmen. */
 const WORLD_TILE_STYLE = [
-  { gridColumn: "1 / 6" as const, minHeight: "76vh", marginTop: "0" },
-  { gridColumn: "6 / 10" as const, minHeight: "58vh", marginTop: "5rem" },
-  { gridColumn: "10 / 13" as const, minHeight: "66vh", marginTop: "1.5rem" },
+  { gridColumn: "1 / 6" as const, minHeight: "clamp(420px, 76vh, 760px)", marginTop: "0" },
+  { gridColumn: "6 / 10" as const, minHeight: "clamp(340px, 58vh, 580px)", marginTop: "5rem" },
+  { gridColumn: "10 / 13" as const, minHeight: "clamp(380px, 66vh, 660px)", marginTop: "1.5rem" },
 ];
 
 const Index = () => {
