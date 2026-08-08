@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { PawnFigur } from "@/components/pawn/PawnFigur";
 
 /**
  * Teil 20a — Der Stilberater: ersetzt "Dein Geschmack" im Konto. Dieselben Daten wie
@@ -92,15 +93,19 @@ export function Stilberater({ className }: { className?: string }) {
 
   return (
     <div className={className ?? "border-[1.5px] border-black bg-white p-6 md:p-8"}>
-      <p className="editorial-eyebrow text-black/50">Dein Stilberater</p>
+      <div className="flex items-start gap-4">
+        <PawnFigur size={56} interactive={false} showShadow={false} className="shrink-0" ariaLabel="PAWN" />
+        <p className="mt-2 editorial-eyebrow text-black/50">Dein Stilberater</p>
+      </div>
 
       {!hasContent ? (
         <div className="mt-4">
           {fz && !fz.erreicht ? (
             <>
-              <p className="text-sm text-black/70">
-                Noch zu früh für eine Einschätzung — {fz.aktuell} von {fz.ziel} Blicken bisher. Lieber schweigen als falsch liegen.
+              <p className="font-serif italic text-base leading-relaxed text-black/80">
+                Zwei Blicke ergeben noch keinen Stil. Ich sage dir lieber nichts als etwas Falsches.
               </p>
+              <p className="mt-2 text-sm text-black/60">{fz.aktuell} von {fz.ziel} Blicken bisher.</p>
               <div className="mt-3 h-[3px] w-full max-w-xs bg-black/10">
                 <div className="h-full bg-black" style={{ width: `${Math.min(100, Math.round((fz.aktuell / fz.ziel) * 100))}%` }} />
               </div>
