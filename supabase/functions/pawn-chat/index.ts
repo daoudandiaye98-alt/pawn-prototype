@@ -116,6 +116,40 @@ function buildHouseTone(d: { brand_dna?: unknown; aussenauge?: unknown; onboardi
   return `Ton-Profil dieses Hauses (Orientierung, das Sprachgesetz bleibt die Obergrenze): ${bits.join(" — ")}.`;
 }
 
+/**
+ * Teil 32 — Die Nutzungs-Schleife, Rückfluss an Mini-PAWN: welche Räume dieses Haus
+ * tatsächlich nutzt oder meidet, direkt aus den echten Fachtabellen (keine neue Tabelle,
+ * kein Zugriff auf den anonymen Signalstrom — der bleibt für das Cockpit-Aggregat).
+ * Wer einen Raum nie betreten hat, bekommt ihn einfacher erklärt und öfter angeboten;
+ * wer einen Raum schon nutzt, darf Fortgeschrittenes hören.
+ */
+async function buildNutzungsprofil(admin: SupabaseClient, designerId: string): Promise<string> {
+  try {
+    const [camps, media, automations, signatures, designerRow] = await Promise.all([
+      admin.from("campaigns").select("id", { count: "exact", head: true }).eq("designer_id", designerId),
+      admin.from("media_assets" as never).select("id", { count: "exact", head: true }).eq("designer_id", designerId),
+      admin.from("designer_automations" as never).select("id", { count: "exact", head: true }).eq("designer_id", designerId).eq("enabled", true),
+      admin.from("house_signatures" as never).select("id", { count: "exact", head: true }).eq("designer_id", designerId),
+      admin.from("designers").select("page_published_at").eq("id", designerId).maybeSingle(),
+    ]);
+    const raeume: Array<{ label: string; genutzt: boolean }> = [
+      { label: "Inszenieren (Kampagnen)", genutzt: (camps.count ?? 0) > 0 },
+      { label: "Mediathek", genutzt: (media.count ?? 0) > 0 },
+      { label: "Automatik", genutzt: (automations.count ?? 0) > 0 },
+      { label: "Hausseite", genutzt: !!(designerRow.data as { page_published_at?: string | null } | null)?.page_published_at },
+      { label: "Werkbuch/Signaturen", genutzt: (signatures.count ?? 0) > 0 },
+    ];
+    const genutzt = raeume.filter((r) => r.genutzt).map((r) => r.label);
+    const gemieden = raeume.filter((r) => !r.genutzt).map((r) => r.label);
+    if (gemieden.length === 0) {
+      return `Nutzungsprofil dieses Hauses: nutzt bereits alle Kernbereiche (${genutzt.join(", ")}) — biete ruhig Fortgeschrittenes an, statt Grundlagen zu wiederholen.`;
+    }
+    return `Nutzungsprofil dieses Hauses: nutzt bereits ${genutzt.length ? genutzt.join(", ") : "noch kaum etwas"}; hat ${gemieden.join(", ")} noch nie benutzt. Erkläre gemiedene Bereiche einfacher, in kleineren Schritten, und biete sie öfter an — dräng nicht, lade ein.`;
+  } catch {
+    return "";
+  }
+}
+
 /** Sprachgesetz: gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite). */
 async function loadVoiceLaw(admin: SupabaseClient): Promise<string> {
   try {
@@ -725,7 +759,16 @@ Deno.serve(async (req) => {
     // Sprachgesetz gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite).
     const voiceLaw = admin && pc?.route === "/dna" ? await loadVoiceLaw(admin) : "";
 
-    const system = [persona, houseStyleLaw, voiceLaw, houseTone, directiveBlock].filter(Boolean).join("\n\n");
+    // Teil 32 — Rückfluss der Nutzungs-Schleife an Mini-PAWN: im Studio-Gespräch des Hauses
+    // selbst (nicht beim Kunden auf der Produktseite) fließt ein, welche Räume das Haus
+    // schon nutzt oder noch meidet.
+    let nutzungsprofil = "";
+    if (admin && user_id && role === "designer" && pc?.route?.startsWith("/studio")) {
+      const { data: ownDesigner } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
+      if (ownDesigner?.id) nutzungsprofil = await buildNutzungsprofil(admin, ownDesigner.id);
+    }
+
+    const system = [persona, houseStyleLaw, voiceLaw, houseTone, nutzungsprofil, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [pageContextHint, memoryHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan

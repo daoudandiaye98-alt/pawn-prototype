@@ -11,6 +11,7 @@ import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
 import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota";
 import { PawnDeck } from "./PawnDeck";
+import { markRoomUsedOncePerSession, roomKeyForPath } from "@/lib/pawnSignal";
 
 import { useDisplayName } from "@/lib/displayName";
 import { useI18n } from "@/lib/i18n";
@@ -309,6 +310,15 @@ function Inner({ children, title, eyebrow }: Props) {
   // Teil 31: das PAWN-Deck ist die einzige PAWN-Präsenz unten im Studio — ersetzt Leiste,
   // Begleiter-Knopf und Copilot-Knopf.
   const guideEnabled = designer?.pawn_guide_enabled !== false;
+
+  // Teil 32 — Die Nutzungs-Schleife: welche Räume dieses Haus nutzt, geht als reines Muster
+  // (Raumname, kein Inhalt) nach pawn_signals — Grundlage für das Nutzungsprofil in pawn-chat
+  // und "meistgenutzt/brachliegend" im Cockpit.
+  useEffect(() => {
+    if (!designer) return;
+    const roomKey = roomKeyForPath(pathname);
+    if (roomKey) markRoomUsedOncePerSession(designer.id, roomKey);
+  }, [designer, pathname]);
 
   return (
     <div className="flex min-h-screen bg-background">

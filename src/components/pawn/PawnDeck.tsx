@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnFigurSvg } from "./PawnFigur";
 import { useI18n } from "@/lib/i18n";
+import { schreibePawnSignal, roomKeyForPath } from "@/lib/pawnSignal";
 
 /**
  * Teil 31 — das PAWN-Deck: ersetzt die Scroll-Leiste (PawnGuide), den alten Ask-PAWN-Knopf
@@ -115,6 +116,7 @@ export function PawnDeck({ pathname, enabled, heroId = "studio-hero", chips, fal
     setMessages((m) => [...m, { role: "user", content: q }]);
     setInput("");
     setBusy(true);
+    void schreibePawnSignal("deck_frage", { ort: roomKeyForPath(pathname) ?? (pathname === "/studio" ? "hub" : pathname) });
     try {
       const { data, error } = await supabase.functions.invoke("pawn-chat", {
         body: { messages: [...messages, { role: "user", content: q }], page_context: { route: pathname } },

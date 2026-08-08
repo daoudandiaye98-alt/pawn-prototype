@@ -597,8 +597,23 @@ function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh, zones, onZoneC
 const MUSTER_SENTENCES: Record<string, string> = {
   automatik_lauf: "Automatik-Züge liefen in der Nacht",
   erste_partie_abgeschlossen: "Neue Häuser haben ihre erste Partie abgeschlossen",
+  funktion_genutzt: "Häuser haben Funktionen genutzt",
+  funktion_ignoriert: "Vorschläge wurden übersprungen",
+  zug_erledigt: "Züge wurden angenommen",
+  zug_uebersprungen: "Züge wurden übersprungen",
+  deck_frage: "Fragen kamen übers PAWN-Deck",
+  automatik_an: "Automatik wurde eingeschaltet",
+  automatik_aus: "Automatik wurde ausgeschaltet",
 };
-function musterSentence(muster: string): string {
+const RAUM_LABELS: Record<string, string> = {
+  produkte: "Produkte", inszenieren: "Inszenieren", mediathek: "Mediathek", videothek: "Videothek",
+  hausseite: "Hausseite", werkbuch: "Werkbuch", brand: "Marke", content_begleiter: "Content-Begleiter",
+  automatik: "Automatik", empfehlungen: "Empfehlungen", plan: "Plan", bestellungen: "Bestellungen",
+};
+function musterSentence(muster: string, funktion?: string): string {
+  const raum = funktion ? (RAUM_LABELS[funktion] ?? funktion) : null;
+  if (muster === "meistgenutzt" && raum) return `Meistgenutzt diese Woche: ${raum}`;
+  if (muster === "brachliegend" && raum) return `Liegt brach diese Woche: ${raum}`;
   return MUSTER_SENTENCES[muster] ?? `Muster erkannt: ${muster}`;
 }
 
@@ -688,7 +703,7 @@ function Buhne({
           <ul className="mt-3 space-y-2">
             {buhne.verdichtung.map((v, i) => (
               <li key={i} className="flex items-center justify-between text-[13px] text-[hsl(0_0%_88%)]">
-                <span>{musterSentence(v.muster)}</span>
+                <span>{musterSentence(v.muster, v.funktion)}</span>
                 <span className="tabular-nums text-[hsl(0_0%_55%)]">{v.n}</span>
               </li>
             ))}

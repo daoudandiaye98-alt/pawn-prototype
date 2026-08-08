@@ -2906,6 +2906,28 @@ async function runSignalstromVerdichten(admin: SupabaseClient, apiKey: string): 
     await schreibeSignal(admin, "pawn-jarvis", "verdichtung", { muster, n: Math.round(n) });
   }
 
+  // Teil 32 — Die Nutzungs-Schleife: welche Räume/Funktionen diese Woche am meisten und am
+  // wenigsten benutzt wurden, aus den funktion_genutzt-Mustern derselben sieben Tage.
+  const RAUM_KANDIDATEN = [
+    "produkte", "inszenieren", "mediathek", "videothek", "hausseite", "werkbuch",
+    "brand", "content_begleiter", "automatik", "empfehlungen", "plan", "bestellungen",
+  ];
+  const funktionCounts: Record<string, number> = {};
+  for (const r of rows) {
+    if (r.kind !== "funktion_genutzt") continue;
+    const f = (r.pattern as { funktion?: string }).funktion;
+    if (f) funktionCounts[f] = (funktionCounts[f] ?? 0) + (r.weight ?? 1);
+  }
+  const funktionEntries = Object.entries(funktionCounts).sort((a, b) => b[1] - a[1]);
+  if (funktionEntries.length > 0) {
+    const [topFunktion, topN] = funktionEntries[0];
+    await schreibeSignal(admin, "pawn-jarvis", "verdichtung", { muster: "meistgenutzt", funktion: topFunktion, n: Math.round(topN) });
+    const brachliegend = RAUM_KANDIDATEN.find((k) => !(k in funktionCounts));
+    if (brachliegend) {
+      await schreibeSignal(admin, "pawn-jarvis", "verdichtung", { muster: "brachliegend", funktion: brachliegend, n: 0 });
+    }
+  }
+
   const topKind = Object.entries(byKind).sort((a, b) => b[1] - a[1])[0];
   if (topKind && topKind[1] >= 5) {
     await admin.from("jarvis_notices").insert({

@@ -4,6 +4,7 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useI18n } from "@/lib/i18n";
+import { schreibePawnSignal } from "@/lib/pawnSignal";
 
 /**
  * Teil 28c — Die Automatik-Tafel: drei feste Vertrauens-Zonen, dieselbe Einteilung wie bei
@@ -40,6 +41,7 @@ export default function StudioAutomatik() {
       { designer_id: designer.id, automation_key: key, enabled: next, updated_at: new Date().toISOString() } as never,
       { onConflict: "designer_id,automation_key" },
     );
+    void schreibePawnSignal(next ? "automatik_an" : "automatik_aus", { modus: key });
   };
 
   if (loading) return <StudioShell title={t("studioShell.nav.automatik")}><PawnLoading /></StudioShell>;

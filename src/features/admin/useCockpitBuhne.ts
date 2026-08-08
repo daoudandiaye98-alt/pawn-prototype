@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
  * kostenlos (keine KI-Aufrufe) — nur Aggregate aus bereits vorhandenen Tabellen.
  */
 
-export interface NachtZeile { muster: string; n: number; at: string }
+export interface NachtZeile { muster: string; funktion?: string; n: number; at: string }
 export interface HouseRow {
   id: string;
   name: string;
@@ -57,8 +57,8 @@ export function useCockpitBuhne(refreshKey: number | string = 0): CockpitBuhneDa
       ]);
       if (!alive) return;
 
-      const verdichtung = ((verdichtungRes.data ?? []) as unknown as { pattern: { muster?: string; n?: number }; created_at: string }[])
-        .map((r) => ({ muster: r.pattern?.muster ?? "unbekannt", n: r.pattern?.n ?? 0, at: r.created_at }));
+      const verdichtung = ((verdichtungRes.data ?? []) as unknown as { pattern: { muster?: string; funktion?: string; n?: number }; created_at: string }[])
+        .map((r) => ({ muster: r.pattern?.muster ?? "unbekannt", funktion: r.pattern?.funktion, n: r.pattern?.n ?? 0, at: r.created_at }));
 
       const productToDesigner = new Map<string, string>();
       for (const p of (productsRes.data ?? []) as { id: string; designer_id: string }[]) productToDesigner.set(p.id, p.designer_id);
