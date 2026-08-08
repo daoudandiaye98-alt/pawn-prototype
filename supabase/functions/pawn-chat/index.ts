@@ -325,7 +325,11 @@ Deno.serve(async (req) => {
     let extracted: Extracted = {};
     let turns = 0;
     if (admin && session_id) {
-      const { data } = await admin.from("ai_sessions").select("extracted, turns").eq("session_id", session_id).maybeSingle();
+      // Teil 28a Sicherheits-Check: ein Session-Verlauf gehört seinem Konto. Ist der Nutzer
+      // eingeloggt, darf ein fremder/geratener session_id keine andere Person auslesen.
+      let sessionQuery = admin.from("ai_sessions").select("extracted, turns").eq("session_id", session_id);
+      if (user_id) sessionQuery = sessionQuery.eq("user_id", user_id);
+      const { data } = await sessionQuery.maybeSingle();
       if (data) { extracted = (data.extracted as Extracted) ?? {}; turns = data.turns ?? 0; }
     }
     if (lastUser) {
