@@ -896,6 +896,38 @@ export type Database = {
         }
         Relationships: []
       }
+      designer_automations: {
+        Row: {
+          automation_key: string
+          designer_id: string
+          enabled: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          automation_key: string
+          designer_id: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          automation_key?: string
+          designer_id?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_automations_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designer_billing_profiles: {
         Row: {
           address_line1: string | null
@@ -1073,38 +1105,6 @@ export type Database = {
             columns: ["contract_version_id"]
             isOneToOne: false
             referencedRelation: "contract_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      designer_automations: {
-        Row: {
-          automation_key: string
-          designer_id: string
-          enabled: boolean
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          automation_key: string
-          designer_id: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          automation_key?: string
-          designer_id?: string
-          enabled?: boolean
-          id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "designer_automations_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
             referencedColumns: ["id"]
           },
         ]
