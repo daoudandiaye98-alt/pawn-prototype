@@ -537,7 +537,7 @@ export default function StudioOverview() {
       </Link>
 
       {/* DEIN NÄCHSTER ZUG — die grösste Karte */}
-      <section id="naechster-zug" className="mb-6 scroll-mt-20 border-[1.5px] border-foreground bg-white p-8">
+      <section id="naechster-zug" data-guide={t("studio.guide.nextMove")} className="mb-6 scroll-mt-20 border-[1.5px] border-foreground bg-white p-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0 max-w-2xl">
             <p className="flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">
@@ -597,7 +597,7 @@ export default function StudioOverview() {
       </section>
 
       {/* Teil 28a: Deine Wand — jedes veröffentlichte Stück bekommt einen Platz, echte Bilder statt Platzhalter. */}
-      <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+      <section data-guide={t("studio.guide.wand")} className="mb-6 border-[1.5px] border-foreground bg-white p-6">
         <div className="flex items-baseline justify-between gap-4">
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.wand.title")}</p>
           <span className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{Math.min(publishedCount, 8)} / 8</span>
@@ -616,7 +616,7 @@ export default function StudioOverview() {
       </section>
 
       {/* Teil 28a: Deine Räume — Werkbank/Schaufenster/Dein Raum, mit lebenden Zustandszeilen. */}
-      <section className="mb-6">
+      <section data-guide={t("studio.guide.rooms")} className="mb-6">
         <p className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.rooms.title")}</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Link to="/studio/produkte" className="border-[1.5px] border-foreground bg-white p-4 hover:bg-foreground hover:text-background">
@@ -651,7 +651,7 @@ export default function StudioOverview() {
       </section>
 
       {/* Teil 28a: Partie-Buch-Auszug — leuchtet erst richtig auf, sobald partie_zuege (PR 28c) schreibt. */}
-      <section className="mb-6 border-[1.5px] border-foreground bg-white p-6">
+      <section data-guide={t("studio.guide.partiebuch")} className="mb-6 border-[1.5px] border-foreground bg-white p-6">
         <div className="flex items-baseline justify-between gap-4">
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.partiebuch.title")}</p>
         </div>
