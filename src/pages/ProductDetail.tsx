@@ -328,11 +328,14 @@ const ProductDetail = () => {
         </div>
       </section>
 
-      {/* KAUFLEISTE: sticky am unteren Rand — auf Kaufseiten das einzige PAWN-Element unten,
+      {/* Platzhalter im Fluss, damit der Inhalt nicht hinter der fixierten Kaufleiste verschwindet */}
+      <div aria-hidden style={{ height: kaufleisteHeight }} />
+
+      {/* KAUFLEISTE: fixiert am unteren Viewport-Rand — auf Kaufseiten das einzige PAWN-Element unten,
           der Kauf hat Vorrang (Teil 35). */}
       <section
         ref={kaufleisteRef}
-        className="house-hair sticky bottom-0 z-30 border-t"
+        className="house-hair fixed inset-x-0 bottom-0 z-30 border-t"
         style={{ background: "var(--house-bg)", paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto max-w-[1600px] px-6 py-5 md:px-14">
