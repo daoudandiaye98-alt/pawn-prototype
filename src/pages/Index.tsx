@@ -7,6 +7,7 @@ import { Editable, useContentValue } from "@/components/palace/Editable";
 import { Button } from "@/components/ui/button";
 import { usePublicDesigners, usePublishedProducts, useActiveCollection, type PublicProduct } from "@/lib/publicData";
 import { useSiteContent } from "@/lib/siteContent";
+import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
 
 /**
@@ -30,6 +31,7 @@ const WORLD_TILE_STYLE = [
 ];
 
 const Index = () => {
+  const { locale } = useI18n();
   const { designers } = usePublicDesigners();
   const { products } = usePublishedProducts();
   const collection = useActiveCollection();
@@ -211,7 +213,7 @@ const Index = () => {
                       <p className="mt-[0.9rem] font-serif text-[1.3rem] font-semibold tracking-[-0.02em]">{p.name}</p>
                       <div className="mt-[0.3rem] flex items-center justify-between gap-4 text-[0.58rem] uppercase tracking-[0.26em] text-[#404040]">
                         <span>{d?.brand_name ?? "PAWN"} · {p.world}</span>
-                        <span>{formatPrice(p.price)}</span>
+                        <span>{formatPrice(p.price, locale)}</span>
                       </div>
                     </Link>
                   </Reveal>

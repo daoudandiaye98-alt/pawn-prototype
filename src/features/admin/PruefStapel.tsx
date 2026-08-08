@@ -21,6 +21,7 @@ export interface PruefLead {
   kurator_score: number | null;
   score_reasons: Record<string, unknown> | null;
   admin_decision?: string | null;
+  decided_at?: string | null;
   scrape_images?: unknown;
   message_draft?: string | null;
   language?: string | null;
