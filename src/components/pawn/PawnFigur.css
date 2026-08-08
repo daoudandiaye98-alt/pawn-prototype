@@ -31,7 +31,9 @@
   bleiben".
 */
 .pf-pawn.pf-in {
-  animation: pf-arrive 1s var(--pf-e, cubic-bezier(.76,0,.18,1)) forwards, pf-bob 3.8s var(--pf-e, cubic-bezier(.76,0,.18,1)) 1.1s infinite;
+  /* Teil 31: Dauer/Amplitude des Wippens kommen aus --pf-bob-dur/--pf-bob-amp
+     (von der Stimmungs-Maschine gesetzt) — ohne Stimmung gelten die Vorgaben hier. */
+  animation: pf-arrive 1s var(--pf-e, cubic-bezier(.76,0,.18,1)) forwards, pf-bob var(--pf-bob-dur, 3.8s) var(--pf-e, cubic-bezier(.76,0,.18,1)) 1.1s infinite;
   opacity: 1;
   transform: translateY(0) scale(1);
 }
@@ -44,8 +46,25 @@
 }
 @keyframes pf-bob {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(calc(-1 * var(--pf-bob-amp, 8px))); }
 }
+
+/* Teil 31 — Stimmungs-Maschine: eigene Ebene zwischen pf-pawn (arrive/bob) und
+   pf-squishwrap (squish/jump), damit kontinuierliche Mood-Animationen (Atmen)
+   nie mit den kurzen Interaktions-Animationen um die "animation"-Eigenschaft
+   konkurrieren. Nirgends im Interface beschriftet — reine Bewegungssprache. */
+.pf-moodwrap { display: block; }
+.pf-moodwrap.pf-mood-neugierig { transform: translateY(-3px) scale(1.015); transform-origin: 50% 100%; }
+.pf-moodwrap.pf-mood-sehnsucht {
+  animation: pf-breathe 4.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.pf-mood-sehnsucht .pf-eyewrap { transform: translateX(-2.6px); }
+@keyframes pf-breathe {
+  0%, 100% { transform: scale(.955); }
+  50% { transform: scale(.965); }
+}
+
 .pf-squishwrap { display: block; transform-origin: 50% 100%; }
 .pf-squishwrap.pf-squish { animation: pf-squish .45s var(--pf-e, cubic-bezier(.76,0,.18,1)); }
 @keyframes pf-squish {
@@ -152,11 +171,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pf-pawn, .pf-squishwrap, .pf-shadow, .pf-spark, .pf-eye, .pf-guide-fig, .pf-caret {
+  .pf-pawn, .pf-squishwrap, .pf-moodwrap, .pf-shadow, .pf-spark, .pf-eye, .pf-guide-fig, .pf-caret {
     animation: none !important;
     transition: none !important;
   }
   .pf-pawn { opacity: 1 !important; transform: none !important; }
+  /* Charakter bleibt über die Augenform erhalten (eyeSize je Stimmung), nur Bewegung entfällt. */
+  .pf-moodwrap.pf-mood-sehnsucht { transform: scale(.96) !important; }
+  .pf-moodwrap.pf-mood-neugierig { transform: none !important; }
   .pf-pawn.pf-shrug { transform: rotate(-7deg) !important; }
   .pf-guide-fig { opacity: 1 !important; transform: none !important; }
 }

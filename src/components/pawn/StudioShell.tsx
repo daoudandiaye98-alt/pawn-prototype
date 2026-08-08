@@ -1,18 +1,16 @@
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { ReactNode, useEffect, useState } from "react";
-import { LogOut, Menu, Bell, ExternalLink, Sparkles } from "lucide-react";
+import { LogOut, Menu, Bell, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LanguageToggle } from "./LanguageToggle";
 import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
-import { useCopilot } from "./CopilotDrawer";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
 import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota";
-import { Begleiter } from "./Begleiter";
-import { PawnGuide } from "./PawnGuide";
+import { PawnDeck } from "./PawnDeck";
 
 import { useDisplayName } from "@/lib/displayName";
 import { useI18n } from "@/lib/i18n";
@@ -241,10 +239,8 @@ function Topbar({ title, section }: { title: string; section?: string }) {
   const { designer } = useMyDesigner();
   const { firstName } = useDisplayName();
   const nav = useNavigate();
-  const copilot = useCopilot();
   const { t } = useI18n();
   const [unread, setUnread] = useState(0);
-  const plusActive = designer?.plan === "atelier" || designer?.plan === "maison";
 
   useEffect(() => {
     if (!user) return;
@@ -275,22 +271,6 @@ function Topbar({ title, section }: { title: string; section?: string }) {
           <Bell className="h-4 w-4" />
           {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-foreground" />}
         </button>
-        <button onClick={copilot.toggle} className="relative flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-[0.7rem] tracking-wider text-white hover:bg-foreground/90">
-          <span className="relative flex h-2 w-2 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-          </span>
-          <Sparkles className="h-3.5 w-3.5" />
-          Copilot
-          {plusActive && (
-            <span
-              title={t("studioShell.strongerModelActive")}
-              className="ml-1 rounded-full border border-white/50 px-1.5 py-0.5 text-[0.55rem] font-medium uppercase tracking-[0.16em] text-white/90"
-            >
-              PAWN+
-            </span>
-          )}
-        </button>
         <span className="hidden md:inline-flex h-9 w-9 items-center justify-center border border-border bg-white text-xs">
           {(firstName[0] ?? "?").toUpperCase()}
         </span>
@@ -302,14 +282,12 @@ function Topbar({ title, section }: { title: string; section?: string }) {
   );
 }
 
-interface Props { children: ReactNode; title: string; eyebrow?: string; begleiterStep?: string }
+interface Props { children: ReactNode; title: string; eyebrow?: string }
 
-function Inner({ children, title, eyebrow, begleiterStep }: Props) {
+function Inner({ children, title, eyebrow }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { designer } = useMyDesigner();
   const { pathname } = useLocation();
-  const plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
-  const quota = usePlanQuota(designer?.id, plan);
   const { locale, setLocale, t } = useI18n();
 
   // Teil 25: die im Haus-Profil gespeicherte Sprache gilt im Studio, unabhängig vom Browser
@@ -328,21 +306,14 @@ function Inner({ children, title, eyebrow, begleiterStep }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
-  // Teil 28d: "Ein PAWN unten, nie zwei" — auf Mobil übernimmt die Scroll-Begleitung
-  // (sofern aktiv) den Chat-Einstieg unten; der separate Begleiter-Knopf tritt dort zurück.
+  // Teil 31: das PAWN-Deck ist die einzige PAWN-Präsenz unten im Studio — ersetzt Leiste,
+  // Begleiter-Knopf und Copilot-Knopf.
   const guideEnabled = designer?.pawn_guide_enabled !== false;
 
   return (
     <div className="flex min-h-screen bg-background">
       <LevelUpOverlay designerId={designer?.id} />
-      {designer && <Begleiter pathname={pathname} step={begleiterStep} plan={plan} quota={quota} hideOnMobile={guideEnabled} />}
-      {designer && (
-        <PawnGuide
-          pathname={pathname}
-          enabled={guideEnabled}
-          onOpenChat={() => window.dispatchEvent(new CustomEvent("studio:open-begleiter"))}
-        />
-      )}
+      {designer && <PawnDeck pathname={pathname} enabled={guideEnabled} />}
       {/* Desktop sidebar */}
       <div className="hidden lg:block sticky top-0 h-screen">
         <Sidebar />
