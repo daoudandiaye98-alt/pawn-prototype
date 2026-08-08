@@ -68,7 +68,7 @@ type Mode =
   | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
-  | "automatik_ausfuehren" | "signalstrom_verdichten";
+  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -158,6 +158,8 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   verstaerker: "gruen",
   automatik_ausfuehren: "gruen",
   signalstrom_verdichten: "gruen",
+  wissen_markenaufbau: "gruen",
+  tueren_finden: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -2535,6 +2537,103 @@ Link: https://pawn.vision/designer/${haus.slug}`;
   return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
 }
 
+interface TuerFund { title?: string; ort?: string; typ?: string; quelle_url?: string; warum?: string; entwurf?: string }
+
+const TUER_TYPEN = ["galerie", "ausstellung", "markt", "offenes_atelier", "schule_hochschule", "sonstiges"];
+
+/**
+ * tueren_finden — Teil 34a: findet je Haus höchstens 3 reale, ortsnahe Chancen pro Woche
+ * (Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit Veranstaltungen)
+ * und bereitet einen fertigen Anschreiben-Entwurf im Ton des Hauses vor. Geringe Menge, hohe
+ * Güte — kein Massenversand, kein Auto-Senden (das entscheidet immer ein Mensch im Studio).
+ */
+async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: houses } = await admin.from("designers")
+    .select("id, brand_name, slug, location, country, brand_dna, aussenauge")
+    .eq("status", "active").not("location", "is", null).limit(60);
+  const houseList = (houses ?? []) as {
+    id: string; brand_name: string; slug: string; location: string | null; country: string | null;
+    brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
+    aussenauge: { urteil?: string } | null;
+  }[];
+  if (!houseList.length) return { ok: true, processed: 0, gefunden: 0, angelegt: 0, message: "Kein Haus mit hinterlegtem Standort." };
+
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { data: recentDoors } = await admin.from("designer_opportunities" as never)
+    .select("designer_id, created_at").gte("created_at", since);
+  const recentCount = new Map<string, number>();
+  for (const r of (recentDoors ?? []) as unknown as { designer_id: string }[]) {
+    recentCount.set(r.designer_id, (recentCount.get(r.designer_id) ?? 0) + 1);
+  }
+  const { data: everProcessed } = await admin.from("designer_opportunities" as never).select("designer_id");
+  const everSet = new Set(((everProcessed ?? []) as unknown as { designer_id: string }[]).map((r) => r.designer_id));
+
+  // Häuser ohne bisherige Tür zuerst, dann die am längsten unbearbeiteten — pro Lauf höchstens 15,
+  // damit ein wöchentlicher Cron die Kosten planbar hält.
+  const queue = [...houseList].sort((a, b) => (everSet.has(a.id) ? 1 : 0) - (everSet.has(b.id) ? 1 : 0)).slice(0, 15);
+
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const gesetze = DEFAULT_SPRACHGESETZE;
+  let processed = 0, gefunden = 0, angelegt = 0, tokensUsed = 0;
+
+  for (const h of queue) {
+    if ((recentCount.get(h.id) ?? 0) >= 3) continue;
+    const budget = 3 - (recentCount.get(h.id) ?? 0);
+    processed++;
+
+    const worlds = Object.keys(h.brand_dna?.worlds ?? {});
+    const weltText = worlds.length ? worlds.join(", ") : "Mode, Interior oder Kunst";
+    const signale = (h.brand_dna?.signals ?? []).slice(0, 5).join(", ") || "noch keine erfassten Signale";
+    const ton = h.aussenauge?.urteil ? ` Außenauge-Urteil: ${h.aussenauge.urteil}.` : "";
+
+    const system = `Du suchst für ein unabhängiges Designhaus auf PAWN (pawn.vision) reale, ortsnahe Sichtbarkeits-Chancen im echten Leben: Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit passenden Veranstaltungen. Erfinde nichts — nur Orte/Veranstaltungen, die du in der Websuche wirklich gesehen hast, mit einer echten Quelle (URL). Wenn du nichts Verlässliches findest, liefere weniger als 3 Treffer statt zu erfinden.
+
+Für jeden Fund schreibst du außerdem einen kurzen, fertigen Anschreiben-Entwurf (max. 90 Wörter, Deutsch, im Ton des Hauses) — eine kurze Vorstellung, Bezug auf genau diese Chance, ein leichtes Angebot (Werke zeigen, Gespräch). Kein Anhang, keine Anführungszeichen.
+
+SPRACHGESETZE (bindend):
+${gesetze}
+
+Stilgesetz: ${styleLaw}
+
+Antworte NUR mit JSON: {"funde": [{"title": "...", "ort": "...", "typ": "galerie|ausstellung|markt|offenes_atelier|schule_hochschule|sonstiges", "quelle_url": "https://...", "warum": "ein Satz, warum das zu Standort/Welt/DNA des Hauses passt", "entwurf": "..."}]}`;
+    const user = `Haus: ${h.brand_name}. Standort: ${h.location}${h.country ? `, ${h.country}` : ""}. Welt(en): ${weltText}. Marken-Signale: ${signale}.${ton}
+Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dieses Standorts.`;
+
+    const { json, tokens } = await searchJson(apiKey, system, user);
+    tokensUsed += tokens;
+    const funde = Array.isArray((json as { funde?: unknown } | null)?.funde) ? ((json as { funde: TuerFund[] }).funde) : [];
+    gefunden += funde.length;
+
+    for (const f of funde.slice(0, budget)) {
+      const title = (f.title ?? "").trim();
+      if (!title) continue;
+      let entwurf = (f.entwurf ?? "").trim() || null;
+      if (entwurf && hatVerneinung(entwurf)) {
+        const fixed = await entverneinen(entwurf, gesetze);
+        tokensUsed += fixed.tokens;
+        entwurf = fixed.text;
+      }
+      const typ = TUER_TYPEN.includes(f.typ ?? "") ? (f.typ as string) : "sonstiges";
+      const { error } = await admin.from("designer_opportunities" as never).insert({
+        designer_id: h.id,
+        title: title.slice(0, 200),
+        ort: (f.ort ?? h.location ?? "").trim() || null,
+        typ,
+        quelle_url: (f.quelle_url ?? "").trim() || null,
+        warum: (f.warum ?? "").trim() || null,
+        status: "gefunden",
+        message_draft: entwurf,
+      } as never);
+      if (!error) {
+        angelegt++;
+        await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden");
+      }
+    }
+  }
+
+  return { ok: true, processed, gefunden, angelegt, tokensUsed };
+}
+
 const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sichtbar bleibt. Falls du reinschauen magst: pawn.vision — die Teilnahme ist kostenlos, und Ausgabe 08 hat noch Platz. Melde dich gern, wann immer es für dich passt.`;
 
 const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio sichtbar ist. Eine kurze Antwort genügt, dann lassen wir dich in Ruhe weiterarbeiten.";
@@ -3399,7 +3498,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau",
+      "wissen_markenaufbau", "tueren_finden",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -3416,7 +3515,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau",
+      "wissen_markenaufbau", "tueren_finden",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -3660,11 +3759,12 @@ Deno.serve(async (req) => {
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
         || mode === "akquise_dm_vorbereiten"
         || mode === "presse_jagd" || mode === "presse_verfassen"
-        || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau") {
+        || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau" || mode === "tueren_finden") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = mode === "wissen_markenaufbau" ? await runMarkenaufbauWissen(admin, apiKey)
+        : mode === "tueren_finden" ? await runTuerenFinden(admin, apiKey)
         : mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
         : mode === "akquise_dm_vorbereiten" ? await runAkquiseDmVorbereiten(admin, apiKey)
@@ -3676,6 +3776,8 @@ Deno.serve(async (req) => {
 
       const summary = mode === "wissen_markenaufbau"
         ? `Markenaufbau-Wissen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Bausteine als Entwurf`
+        : mode === "tueren_finden"
+        ? `Offene Türen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Türen bei ${(result as { processed?: number }).processed ?? 0} geprüften Häusern`
         : mode === "akquise_kuratieren"
         ? `Kuratiert: ${(result as { qualified?: number }).qualified ?? 0} qualifiziert, ${(result as { sorted_out?: number }).sorted_out ?? 0} aussortiert`
         : mode === "akquise_verfassen"
