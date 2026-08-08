@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAWN — Deine DNA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--fg:#000;--bg:#fff;--sur:#f5f5f5;--sec:#404040;--hair:1.5px solid #000;--e:cubic-bezier(.76,0,.18,1)}
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  body{background:#fff;color:#000;font-family:Inter,system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .w{max-width:1280px;margin:0 auto;padding:0 1.5rem}
+  @media(min-width:768px){.w{padding:0 2.5rem}}
+  .eb{font-size:.62rem;font-weight:500;text-transform:uppercase;letter-spacing:.34em;color:var(--sec)}
+  .it{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:500;letter-spacing:-.02em}
+
+  header{position:sticky;top:0;background:#fff;border-bottom:var(--hair);z-index:40}
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;gap:1.5rem}
+  .brand{display:flex;align-items:center;gap:.6rem;font-family:'Playfair Display',serif;font-weight:600;font-size:1.3rem;letter-spacing:.14em}
+  .brand svg{width:14px;height:19px;fill:#000}
+  .hd a{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;text-decoration:none;color:#000}
+
+  .cover{position:relative;min-height:92svh;display:flex;align-items:flex-end;color:#fff;overflow:hidden;background:#101418}
+  .cover .art{position:absolute;inset:0;
+    background:
+      radial-gradient(115% 85% at 68% 22%, #37506B 0%, transparent 55%),
+      radial-gradient(95% 75% at 22% 78%, #1E2E24 0%, transparent 60%),
+      #101418}
+  .cover .art .tag{position:absolute;top:5rem;right:1.5rem;background:#fff;color:#000;
+    padding:.35rem .6rem;font-size:.55rem;letter-spacing:.26em;text-transform:uppercase}
+  .cover-in{position:relative;z-index:2;width:100%;padding:7rem 0 3rem}
+  .kicker{display:inline-block;background:#000;color:#fff;padding:.45rem .8rem;
+    font-size:.62rem;letter-spacing:.36em;text-transform:uppercase}
+  .cover h1{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.028em;
+    font-size:clamp(2.3rem,7.6vw,6.2rem);line-height:.95;margin-top:1.3rem;max-width:16ch}
+  .cover .sub{margin-top:1.4rem;max-width:46ch;font-size:.98rem;color:rgba(255,255,255,.9)}
+  .cover .acts{display:flex;gap:.9rem;margin-top:2rem;flex-wrap:wrap}
+  .btn{display:inline-block;font-family:inherit;font-size:.62rem;letter-spacing:.34em;text-transform:uppercase;
+    padding:.9rem 1.5rem;text-decoration:none;cursor:pointer;transition:background .25s var(--e),color .25s var(--e)}
+  .btn.w{background:#fff;color:#000;border:1.5px solid #fff}
+  .btn.w:hover{background:transparent;color:#fff}
+  .btn.g{background:transparent;color:#fff;border:1.5px solid #fff}
+  .btn.g:hover{background:#fff;color:#000}
+  .credit{position:absolute;left:1.5rem;bottom:1.1rem;z-index:3;font-size:.56rem;
+    letter-spacing:.26em;text-transform:uppercase;color:rgba(255,255,255,.85)}
+  @media(min-width:768px){.credit{left:2.5rem}}
+
+  .compass{border-bottom:var(--hair)}
+  .compass .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem 2.5rem;padding:1.3rem 0}
+  .compass .goal{font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:1.15rem}
+  .compass .lbl{font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:var(--sec)}
+  .compass a{font-size:.58rem;letter-spacing:.28em;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1.5px solid #000;padding-bottom:.15rem}
+  .compass .stats{margin-left:auto;font-size:.58rem;letter-spacing:.26em;text-transform:uppercase;color:var(--sec)}
+
+  section{padding:4.5rem 0}
+  @media(min-width:768px){section{padding:6.5rem 0}}
+  .shead{margin-bottom:2.4rem}
+  .shead h2{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.024em;
+    font-size:clamp(1.8rem,4.2vw,3rem);line-height:1.02;margin-top:.6rem}
+
+  .ev{border-top:var(--hair)}
+  .evrow{display:grid;gap:1.1rem;padding:1.6rem 0;border-bottom:1px solid #e6e6e6;align-items:center;
+    grid-template-columns:64px 1fr}
+  @media(min-width:760px){.evrow{grid-template-columns:88px 1fr 180px;gap:2rem}}
+  .thumb{aspect-ratio:4/5;position:relative;overflow:hidden}
+  .t1{background:radial-gradient(120% 90% at 60% 30%, #8C4A5E 0%, #3C1E29 80%)}
+  .t2{background:radial-gradient(120% 90% at 30% 60%, #37506B 0%, #14202C 80%)}
+  .t3{background:radial-gradient(120% 90% at 60% 60%, #C9A227 0%, #6B520F 80%)}
+  .evrow .s{font-family:'Playfair Display',serif;font-weight:600;font-size:1.12rem;letter-spacing:-.02em;line-height:1.32}
+  .evrow .n{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sec);font-variant-numeric:tabular-nums}
+
+  .cards{display:grid;gap:2rem}
+  @media(min-width:900px){.cards{grid-template-columns:1fr 1fr;gap:2.5rem}}
+  .card{border:var(--hair);box-shadow:8px 8px 0 0 #000;padding:1.7rem;background:#fff}
+  @media(min-width:768px){.card{padding:2.1rem 2.3rem}}
+  .card h3{font-family:'Playfair Display',serif;font-weight:600;font-size:1.45rem;letter-spacing:-.02em;line-height:1.18;margin-top:.8rem}
+  .card p{margin-top:.9rem;font-size:.92rem;color:var(--sec);max-width:52ch}
+  .card .why{margin-top:1rem;padding-top:.9rem;border-top:1px solid #e6e6e6;font-size:.76rem;color:var(--sec)}
+  .card .why b{color:#000;font-weight:500}
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:1.2rem}
+  .trio a{display:block;text-decoration:none;color:#000}
+  .trio .im{aspect-ratio:4/5;position:relative;overflow:hidden}
+  .q1{background:radial-gradient(120% 90% at 50% 30%, #4A5D3A 0%, #22301B 80%)}
+  .q2{background:radial-gradient(120% 90% at 40% 60%, #B8B0A4 0%, #5E574C 80%)}
+  .q3{background:radial-gradient(120% 90% at 60% 40%, #7A5C9E 0%, #2C1F3E 80%)}
+  .trio .nm{margin-top:.5rem;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase}
+  .card .btnb{display:inline-block;margin-top:1.3rem;background:#000;color:#fff;border:1.5px solid #000;
+    font-size:.6rem;letter-spacing:.32em;text-transform:uppercase;padding:.75rem 1.2rem;text-decoration:none}
+  .card .btnb:hover{background:#fff;color:#000}
+
+  .conc{background:#000;color:#fff}
+  .cg{display:grid;gap:2.4rem}
+  @media(min-width:900px){.cg{grid-template-columns:1fr 1.1fr;gap:4.5rem;align-items:start}}
+  .conc h2{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.024em;
+    font-size:clamp(1.8rem,4.2vw,3rem);line-height:1.02;margin-top:.6rem}
+  .conc p.lead{margin-top:1.1rem;color:rgba(255,255,255,.85);font-size:.94rem;max-width:44ch}
+  .chat{border:1.5px solid #fff}
+  .msgs{padding:1.2rem;display:flex;flex-direction:column;gap:1rem;max-height:300px;overflow:auto}
+  .m{max-width:85%}
+  .m .who{font-size:.55rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+  .m .tx{margin-top:.35rem;font-size:.92rem}
+  .m.pawn .tx{font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:1.05rem;line-height:1.45}
+  .m.you{align-self:flex-end;text-align:right}
+  .ask{border-top:1.5px solid #fff;padding:1rem 1.2rem 1.1rem}
+  .ask input{width:100%;background:transparent;border:0;border-bottom:1.5px solid #fff;color:#fff;
+    font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:1.15rem;padding:.6rem 0;outline:none}
+  .ask input::placeholder{color:rgba(255,255,255,.55)}
+  .ask .row{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:.9rem;flex-wrap:wrap}
+  .ask .up{font-size:.6rem;letter-spacing:.28em;text-transform:uppercase;color:#fff;text-decoration:none;
+    border:1.5px solid #fff;padding:.6rem 1rem;background:transparent;cursor:pointer;font-family:inherit}
+  .ask .up:hover{background:#fff;color:#000}
+  .ask .send{background:#fff;color:#000;border:1.5px solid #fff;font-family:inherit;
+    font-size:.6rem;letter-spacing:.32em;text-transform:uppercase;padding:.65rem 1.2rem;cursor:pointer}
+  .privacy{margin-top:1rem;font-size:.68rem;color:rgba(255,255,255,.55)}
+
+  .fit .box{border:var(--hair);display:flex;flex-wrap:wrap;gap:1rem;align-items:center;padding:1.2rem 1.3rem}
+  .fit input{flex:1;min-width:220px;border:0;border-bottom:1.5px solid #000;
+    font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:1.1rem;padding:.55rem 0;outline:none}
+  .fit button{background:#000;color:#fff;border:1.5px solid #000;font-family:inherit;
+    font-size:.6rem;letter-spacing:.32em;text-transform:uppercase;padding:.75rem 1.2rem;cursor:pointer}
+  .fit .hint{width:100%;font-size:.72rem;color:var(--sec)}
+
+  .mem{border-top:var(--hair)}
+  .memrow{display:flex;justify-content:space-between;align-items:baseline;gap:1.2rem;
+    padding:1rem 0;border-bottom:1px solid #e6e6e6}
+  .memrow .t{font-size:.9rem;max-width:60ch}
+  .memrow .src{font-size:.56rem;letter-spacing:.26em;text-transform:uppercase;color:var(--sec);white-space:nowrap}
+  .memrow button{background:none;border:0;font-family:inherit;font-size:.56rem;letter-spacing:.26em;
+    text-transform:uppercase;color:#000;cursor:pointer;border-bottom:1.5px solid #000;padding:0 0 .1rem}
+  .mem .foot{display:flex;gap:1.6rem;flex-wrap:wrap;margin-top:1.4rem}
+  .mem .foot a{font-size:.58rem;letter-spacing:.28em;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1.5px solid #000;padding-bottom:.15rem}
+
+  .early{background:#000;color:#fff;padding:1.7rem;margin-top:2.2rem;display:none}
+  .early.on{display:block}
+  .early .q{font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:1.35rem;line-height:1.3}
+  .early p{margin-top:.8rem;font-size:.86rem;color:rgba(255,255,255,.8);max-width:52ch}
+  .tg{margin-top:2rem;font-size:.6rem;letter-spacing:.26em;text-transform:uppercase;background:none;border:0;
+    border-bottom:1.5px solid #000;padding:0 0 .2rem;cursor:pointer;font-family:inherit}
+
+  .rev{opacity:0;transform:translateY(24px);transition:opacity .8s var(--e),transform .8s var(--e)}
+  .rev.on{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.rev{opacity:1;transform:none}}
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="w hd">
+    <div class="brand">
+      <svg viewBox="0 0 40 52"><circle cx="20" cy="10" r="7.5"/><path d="M13 18h14l-2.5 6h-9z"/><path d="M15.5 24h9l2.5 15H13z"/><rect x="8" y="39" width="24" height="6"/></svg>
+      PAWN
+    </div>
+    <a href="#">Zur Ausstellung</a>
+  </div>
+</header>
+
+<div class="cover">
+  <div class="art"><span class="tag">Werk · Bild folgt</span></div>
+  <div class="w cover-in">
+    <span class="kicker">Deine DNA · gelesen aus 34 Blicken und 6 Käufen</span>
+    <h1>Du kaufst nie Muster.<br><span class="it">Aber immer Struktur.</span></h1>
+    <p class="sub">Klare Kanten, ruhige Flächen, Interesse an dem, was ein Stück zusammenhält — Nähte, Kanten, Übergänge. In den bekannten Systemen läge das nahe bei „Dramatic Classic". Dein Blick ist genauer als diese Schublade.</p>
+    <div class="acts">
+      <a class="btn w" href="#belege">Woran ich das sehe</a>
+      <a class="btn g" href="#gespraech">Erzähl mir mehr von dir</a>
+    </div>
+  </div>
+  <div class="credit">Belegt durch · Mantel №4, Obara · Schale, Marlow</div>
+</div>
+
+<div class="compass">
+  <div class="w row">
+    <span class="lbl">Dein Ziel</span>
+    <span class="goal">„Ruhiger wirken, ohne langweilig zu sein."</span>
+    <a href="#gespraech">Ändern</a>
+    <span class="stats">34 Blicke · 6 Käufe · 3 Häuser</span>
+  </div>
+</div>
+
+<section id="belege">
+  <div class="w">
+    <div class="shead rev">
+      <div class="eb">Woran ich das sehe</div>
+      <h2>Drei Belege — <span class="it">mit Bild.</span></h2>
+    </div>
+    <div class="ev rev">
+      <div class="evrow">
+        <div class="thumb t1"></div>
+        <div class="s">Dreimal bist du zu dieser fallenden Silhouette zurückgekehrt — an drei verschiedenen Tagen.</div>
+        <div class="n">3 Rückkehrer · 11 Tage</div>
+      </div>
+      <div class="evrow">
+        <div class="thumb t2"></div>
+        <div class="s">Bei gemusterten Stücken bleibst du vier Sekunden. Bei diesem hier über dreißig.</div>
+        <div class="n">4 s gegen 31 s</div>
+      </div>
+      <div class="evrow">
+        <div class="thumb t3"></div>
+        <div class="s">Deine beiden Käufe kommen aus verschiedenen Häusern — aber aus derselben Palette.</div>
+        <div class="n">2 Käufe · 1 Palette</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="w cards">
+    <div class="card rev">
+      <div class="eb">Was du noch nicht siehst</div>
+      <h3>Du meidest Farbe nicht.<br><span class="it">Du meidest Kontrast.</span></h3>
+      <p>Der warme Sandton, den du zweimal lange angesehen hast, ist kräftiger als alles in deinem Schrank — und du hast ihn nicht weggeklickt. Nicht die Farbe stört dich, sondern der harte Sprung zwischen hell und dunkel. Ein Ton in deiner Helligkeit fügt sich ein, ohne zu schreien.</p>
+      <div class="why"><b>Woran ich das sehe:</b> zwei Ansichten über 40 Sekunden, beide zurückgekehrt, beide ohne Kauf.</div>
+    </div>
+    <div class="card rev">
+      <div class="eb">Was ich dir zutraue</div>
+      <h3>Eine Silhouette, die <span class="it">Raum nimmt.</span></h3>
+      <p>Du wählst Stücke, die sich anlegen. Das ist sicher — aber eine Gewohnheit, keine Entscheidung. Diese drei würden deine Liebe zur Struktur nicht verraten. Sie würden sie zum ersten Mal zeigen.</p>
+      <div class="trio">
+        <a href="#"><div class="im q1"></div><div class="nm">Mantel, Wolle</div></a>
+        <a href="#"><div class="im q2"></div><div class="nm">Kleid, Leinen</div></a>
+        <a href="#"><div class="im q3"></div><div class="nm">Jacke, weit</div></a>
+      </div>
+      <a class="btnb" href="#">Alle drei ansehen</a>
+    </div>
+  </div>
+</section>
+
+<section class="conc" id="gespraech">
+  <div class="w cg">
+    <div class="rev">
+      <div class="eb" style="color:rgba(255,255,255,.6)">Das Gespräch</div>
+      <h2>Erzähl mir, <span class="it">wo du hinwillst.</span></h2>
+      <p class="lead">Beschreib es in deinen Worten — oder zeig mir Bilder: Fotos von dir in Lieblings-Outfits, Screenshots, alles, was deinen Geschmack zeigt. Ich lese sie und sage dir, was ich sehe.</p>
+      <p class="privacy">Jede Erkenntnis trägt ihre Herkunft und ist unten einzeln löschbar.</p>
+    </div>
+    <div class="chat rev">
+      <div class="msgs">
+        <div class="m you"><div class="who">Du</div><div class="tx">Ich hab bald eine Vernissage und will nicht overdressed wirken.</div></div>
+        <div class="m pawn"><div class="who">PAWN</div><div class="tx">Dann arbeiten wir mit dem, was du längst kannst: Struktur statt Schmuck. Ein Stück mit Präsenz, der Rest ruhig — dann wirkst du entschieden, nicht verkleidet.</div></div>
+      </div>
+      <div class="ask">
+        <input type="text" placeholder="„Ich will wirken wie…"">
+        <div class="row">
+          <button class="up" type="button">Bilder hochladen</button>
+          <button class="send" type="button">Senden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="fit">
+  <div class="w">
+    <div class="shead rev">
+      <div class="eb">Vor dem Kauf</div>
+      <h2>Steht mir <span class="it">das?</span></h2>
+    </div>
+    <div class="box rev">
+      <input type="text" placeholder="„Link zu einem Stück einfügen — oder aus deiner Tasche wählen">
+      <button type="button">Prüfen</button>
+      <div class="hint">PAWN antwortet mit einer klaren Einschätzung, der Begründung aus deiner DNA — und einer Alternative, falls es nicht passt.</div>
+    </div>
+  </div>
+</section>
+
+<section class="mem">
+  <div class="w">
+    <div class="shead rev">
+      <div class="eb">Was ich mir gemerkt habe</div>
+      <h2>Alles offen. <span class="it">Alles löschbar.</span></h2>
+    </div>
+    <div class="rev">
+      <div class="memrow"><span class="t">Du kehrst zu fallenden Silhouetten zurück.</span><span class="src">Aus deinen Blicken</span><button type="button">Löschen</button></div>
+      <div class="memrow"><span class="t">Ziel: ruhiger wirken, ohne langweilig zu sein.</span><span class="src">Aus dem Gespräch</span><button type="button">Löschen</button></div>
+      <div class="memrow"><span class="t">Gedeckte Palette, ein warmer Ton kehrt wieder.</span><span class="src">Aus deinen Bildern</span><button type="button">Löschen</button></div>
+      <div class="foot">
+        <a href="#">Alles löschen</a>
+        <a href="#">Personalisierung ausschalten</a>
+      </div>
+      <button class="tg" id="tg" type="button">Frühzustand zeigen — was hier steht, wenn PAWN zu wenig weiß</button>
+      <div class="early" id="early">
+        <div class="q">„Zwei Blicke ergeben noch keinen Stil. Ich sage dir lieber nichts, als etwas Falsches."</div>
+        <p>Sieh dich einfach um, erzähl mir etwas oder lade Bilder hoch — ab ungefähr zwanzig Blicken oder drei Käufen bekommt dein Cover eine Schlagzeile.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target);}}),{threshold:.12});
+  document.querySelectorAll('.rev').forEach(el=>io.observe(el));
+  const tg=document.getElementById('tg'),early=document.getElementById('early');
+  tg.addEventListener('click',()=>{const on=early.classList.toggle('on');
+    tg.textContent=on?'Frühzustand ausblenden':'Frühzustand zeigen — was hier steht, wenn PAWN zu wenig weiß';});
+</script>
+</body>
+</html>
