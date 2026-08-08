@@ -4,6 +4,7 @@ import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useCopilot } from "@/components/pawn/CopilotDrawer";
 import { PawnFigur, PawnFigurState, type PawnFigurHandle, type PawnRank } from "@/components/pawn/PawnFigur";
+import { WhileYouWereAway } from "@/components/pawn/WhileYouWereAway";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders } from "@/features/studio/useDesignerOrders";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
@@ -266,6 +267,14 @@ export default function StudioOverview() {
   const pawnRef = useRef<PawnFigurHandle>(null);
   const [partieZuege, setPartieZuege] = useState<{ id: string; nr: number; text: string; akteur: string; created_at: string }[]>([]);
   const [heroDismissed, setHeroDismissed] = useState(false);
+  const lastSeenSnapshotRef = useRef<string | null>(null);
+  const [lastSeenSnapshotReady, setLastSeenSnapshotReady] = useState(false);
+  useEffect(() => {
+    if (designer && !lastSeenSnapshotReady) {
+      lastSeenSnapshotRef.current = designer.studio_last_seen_at;
+      setLastSeenSnapshotReady(true);
+    }
+  }, [designer, lastSeenSnapshotReady]);
 
   useEffect(() => {
     if (!designer) return;
@@ -483,6 +492,8 @@ export default function StudioOverview() {
 
   return (
     <StudioShell title={t("studio.overview.title")} eyebrow={t("studio.overview.eyebrow.overview")}>
+      {lastSeenSnapshotReady && <WhileYouWereAway designerId={designer.id} previousLastSeenAt={lastSeenSnapshotRef.current} />}
+
       {/* Teil 28a: PAWN als Figur — Hero, Namensschild, Dialogkarte mit echter Begrüßung */}
       <section className="mb-8 border-b-[1.5px] border-foreground pb-8 text-center">
         <div className="flex justify-center">
