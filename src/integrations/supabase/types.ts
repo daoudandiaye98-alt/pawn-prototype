@@ -1162,6 +1162,74 @@ export type Database = {
           },
         ]
       }
+      designer_opportunities: {
+        Row: {
+          contact_email: string | null
+          created_at: string
+          delivery_error: string | null
+          delivery_status: string | null
+          designer_id: string
+          followup_sent_at: string | null
+          id: string
+          message_draft: string | null
+          ort: string | null
+          quelle_url: string | null
+          resend_message_id: string | null
+          sent_at: string | null
+          status: string
+          title: string
+          typ: string
+          updated_at: string
+          warum: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string | null
+          designer_id: string
+          followup_sent_at?: string | null
+          id?: string
+          message_draft?: string | null
+          ort?: string | null
+          quelle_url?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          title: string
+          typ?: string
+          updated_at?: string
+          warum?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string | null
+          designer_id?: string
+          followup_sent_at?: string | null
+          id?: string
+          message_draft?: string | null
+          ort?: string | null
+          quelle_url?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string
+          typ?: string
+          updated_at?: string
+          warum?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_opportunities_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designer_page_blocks: {
         Row: {
           content: Json
@@ -1236,74 +1304,6 @@ export type Database = {
             foreignKeyName: "designer_payout_profiles_designer_id_fkey"
             columns: ["designer_id"]
             isOneToOne: true
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      designer_opportunities: {
-        Row: {
-          contact_email: string | null
-          created_at: string
-          delivery_error: string | null
-          delivery_status: string | null
-          designer_id: string
-          followup_sent_at: string | null
-          id: string
-          message_draft: string | null
-          ort: string | null
-          quelle_url: string | null
-          resend_message_id: string | null
-          sent_at: string | null
-          status: string
-          title: string
-          typ: string
-          updated_at: string
-          warum: string | null
-        }
-        Insert: {
-          contact_email?: string | null
-          created_at?: string
-          delivery_error?: string | null
-          delivery_status?: string | null
-          designer_id: string
-          followup_sent_at?: string | null
-          id?: string
-          message_draft?: string | null
-          ort?: string | null
-          quelle_url?: string | null
-          resend_message_id?: string | null
-          sent_at?: string | null
-          status?: string
-          title: string
-          typ?: string
-          updated_at?: string
-          warum?: string | null
-        }
-        Update: {
-          contact_email?: string | null
-          created_at?: string
-          delivery_error?: string | null
-          delivery_status?: string | null
-          designer_id?: string
-          followup_sent_at?: string | null
-          id?: string
-          message_draft?: string | null
-          ort?: string | null
-          quelle_url?: string | null
-          resend_message_id?: string | null
-          sent_at?: string | null
-          status?: string
-          title?: string
-          typ?: string
-          updated_at?: string
-          warum?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "designer_opportunities_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
