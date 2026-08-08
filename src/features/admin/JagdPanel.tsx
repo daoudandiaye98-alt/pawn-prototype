@@ -154,7 +154,7 @@ export function JagdPanel() {
     <section className="mb-8 border-[1.5px] border-black">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b-[1.5px] border-black px-5 py-3">
         <p className="editorial-eyebrow">
-          Jagd · Jarvis sucht selbst {running > 0 ? `· ${running} läuft` : ""}
+          Jagd · PAWN sucht selbst {running > 0 ? `· ${running} läuft` : ""}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -238,7 +238,7 @@ export function JagdPanel() {
               placeholder={"handmadeleatherbag · Mode\nceramicstudio · Interior"}
             />
             <p className="text-xs text-muted-foreground">
-              Ein Begriff pro Zeile, dahinter mit „·" die Welt (Mode, Interior, Kunst). Leer lassen, damit Jarvis beim
+              Ein Begriff pro Zeile, dahinter mit „·" die Welt (Mode, Interior, Kunst). Leer lassen, damit PAWN beim
               nächsten Lauf selbst Begriffe aus der DNA der bestehenden Häuser destilliert.
             </p>
             <Button
@@ -250,7 +250,7 @@ export function JagdPanel() {
           </div>
         ) : queries.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            Noch keine Begriffe. Beim nächsten Jagd-Lauf destilliert Jarvis sie aus der DNA der bestehenden Häuser.
+            Noch keine Begriffe. Beim nächsten Jagd-Lauf destilliert PAWN sie aus der DNA der bestehenden Häuser.
           </p>
         ) : (
           <ul className="mt-3 flex flex-wrap gap-2">

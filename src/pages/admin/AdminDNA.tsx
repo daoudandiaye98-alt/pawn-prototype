@@ -262,7 +262,7 @@ export default function AdminDNA() {
         <GenomeCard
           eyebrow="Global · Basis-DNA"
           title="Wonach PAWN gerade gewichtet"
-          subtitle="Fließt in jede Empfehlung ein — Jarvis testet diese Werte im Evolutions-Kreislauf."
+          subtitle="Fließt in jede Empfehlung ein — PAWN testet diese Werte im Evolutions-Kreislauf."
           strands={globalStrands}
           strandsLabel="Gewichte"
           pulse={latestPulse}
@@ -295,7 +295,7 @@ export default function AdminDNA() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-black/15 pt-4">
             <p className="text-sm text-black/70">
               {experiments.length === 0
-                ? "Kein laufendes Experiment gerade — Jarvis testet nichts an dieser Basis."
+                ? "Kein laufendes Experiment gerade — PAWN testet nichts an dieser Basis."
                 : `${experiments.length} laufende${experiments.length === 1 ? "s" : ""} Experiment${experiments.length === 1 ? "" : "e"}: ${experiments.slice(0, 2).map((e) => e.changed_key).join(", ")}${experiments.length > 2 ? "…" : ""}`}
             </p>
             <Link to="/admin/jarvis" className="editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">

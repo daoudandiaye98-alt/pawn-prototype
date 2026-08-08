@@ -331,7 +331,7 @@ function JarvisWordPanel({ report, onRequest, busy }: { report: ReturnType<typeo
     return (
       <div className="flex flex-col items-start gap-3 p-6">
         <p className="text-[12.5px] leading-relaxed text-[hsl(0_0%_66%)]">
-          Jarvis hat heute noch nichts geschrieben. Der nächste Morgenbericht kommt automatisch — oder jetzt anfordern.
+          PAWN hat heute noch nichts geschrieben. Der nächste Morgenbericht kommt automatisch — oder jetzt anfordern.
         </p>
         <Btn variant="solid" onClick={onRequest} disabled={busy}>
           {busy ? <Loader2 className="mr-1.5 inline h-3 w-3 animate-spin" /> : null}
@@ -398,7 +398,7 @@ function QueuePanel({ items, onChanged }: { items: JarvisQueueItem[]; onChanged:
   }
 
   if (items.length === 0) {
-    return <EmptyRow text="Nichts wartet gerade — Jarvis handelt still oder hat noch nichts vorzuschlagen." />;
+    return <EmptyRow text="Nichts wartet gerade — PAWN handelt still oder hat noch nichts vorzuschlagen." />;
   }
 
   return (
@@ -486,7 +486,7 @@ function BauplanDraftsPanel({ drafts, onChanged }: { drafts: BauplanDraft[]; onC
 
 const ORGANS: { mode: string; label: string; desc: string; keywords: string[] }[] = [
   { mode: "heartbeat", label: "Herzschlag", desc: "Prüft Fehler und Gesundheit, meldet was auffällt.", keywords: ["heartbeat"] },
-  { mode: "wissen", label: "Wissenslauf", desc: "Erweitert, was Jarvis über PAWN und den Markt weiß.", keywords: ["wissen"] },
+  { mode: "wissen", label: "Wissenslauf", desc: "Erweitert, was PAWN über die Plattform und den Markt weiß.", keywords: ["wissen"] },
   { mode: "akquise_kuratieren", label: "Kurator-Auge", desc: "Bewertet neue Akquise-Kandidaten per Bildanalyse.", keywords: ["kuratieren"] },
   { mode: "akquise_verfassen", label: "Verfassen", desc: "Schreibt persönliche Ansprachen für wartende Leads.", keywords: ["verfassen"] },
   { mode: "akquise_senden", label: "Versand", desc: "Verschickt vorbereitete Nachrichten an Leads.", keywords: ["senden"] },
@@ -603,7 +603,7 @@ function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh, zones, onZoneC
           )} />
           <div className="min-w-0 flex-1">
             <p className="text-[12.5px] text-[hsl(0_0%_92%)]">Trends</p>
-            <p className="mt-0.5 text-[10.5px] leading-snug text-[hsl(0_0%_55%)]">Berechnet, was gerade zieht — täglich, unabhängig von Jarvis.</p>
+            <p className="mt-0.5 text-[10.5px] leading-snug text-[hsl(0_0%_55%)]">Berechnet, was gerade zieht — täglich, unabhängig von PAWN.</p>
             <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-[hsl(0_0%_50%)]">
               {trendAgeDays === null ? "noch kein Snapshot" : `letzter Snapshot vor ${trendAgeDays} T`}
             </p>
@@ -656,7 +656,7 @@ function CommandDeck() {
       const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "morgenbericht" } });
       if (error) { toast.error(error.message); return; }
       const result = data as { ok: boolean; error?: string };
-      if (!result.ok) { toast.error(result.error ?? "Jarvis konnte nicht antworten."); return; }
+      if (!result.ok) { toast.error(result.error ?? "PAWN konnte nicht antworten."); return; }
       toast.success("Morgenbericht fertig.");
       setJarvisTick((v) => v + 1);
     } catch (e) {
@@ -676,14 +676,14 @@ function CommandDeck() {
           </p>
           <h2 className="mt-2 font-serif text-3xl leading-tight text-[hsl(0_0%_94%)]">
             Guten Tag, {firstName}.
-            {jarvis.paused && <span className="ml-3 text-[hsl(0_0%_55%)]">Jarvis ist pausiert.</span>}
+            {jarvis.paused && <span className="ml-3 text-[hsl(0_0%_55%)]">PAWN ist pausiert.</span>}
           </h2>
         </div>
       </div>
       <LivePulseBar lastUpdated={lastUpdated} />
 
       {/* JARVIS' WORT — der jüngste Morgenbericht */}
-      <Panel title="Jarvis' Wort" eyebrow="Morgenbericht" className="mt-6">
+      <Panel title="PAWNs Wort" eyebrow="Morgenbericht" className="mt-6">
         <JarvisWordPanel report={jarvis.latestMorgen} onRequest={() => void requestMorgenbericht()} busy={morgenBusy} />
       </Panel>
 
@@ -712,7 +712,7 @@ function CommandDeck() {
       </section>
 
       {/* WARTET AUF DICH — die echte Entscheidungs-Queue */}
-      <Panel title="Wartet auf dich" eyebrow="Jarvis-Queue" className="mt-4" action={
+      <Panel title="Wartet auf dich" eyebrow="PAWN-Queue" className="mt-4" action={
         jarvis.queue.length > 0
           ? <span className="border border-white bg-white px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.22em] text-black">{jarvis.queue.length}</span>
           : undefined
@@ -771,7 +771,7 @@ function CommandDeck() {
       </div>
 
       {/* ORGANE STATT ENGINES */}
-      <Panel title="Organe" eyebrow="was Jarvis wirklich tut" className="mt-4" live>
+      <Panel title="Organe" eyebrow="was PAWN wirklich tut" className="mt-4" live>
         <OrgansPanel
           runs={jarvis.runs} cronJobs={jarvis.cronJobs}
           trendAgeDays={heartbeat.trendAgeDays} trendsFresh={heartbeat.trendsFresh}

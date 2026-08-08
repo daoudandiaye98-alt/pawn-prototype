@@ -82,7 +82,7 @@ export function MarkenwissenPanel() {
         </div>
         <Button onClick={runNow} disabled={busy} variant="outline" className="rounded-none border-black hover:bg-black hover:text-white">
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {busy ? "Jarvis liest…" : "Jetzt lernen"}
+          {busy ? "PAWN liest…" : "Jetzt lernen"}
         </Button>
       </header>
 
