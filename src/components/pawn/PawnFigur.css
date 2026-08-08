@@ -110,6 +110,20 @@
 }
 .pf-sleepmode .pf-zzz { opacity: 1; }
 
+/* Typewriter-Sprechblase (Dialogkarte) */
+.pf-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #000;
+  vertical-align: -0.12em;
+  animation: pf-pulse 1s infinite;
+}
+@keyframes pf-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .2; }
+}
+
 /* Zustands-Icons (Laden/Leer/Erfolg) — teilen dieselbe Basisfigur */
 .pf-state-icon { width: 42px; height: 55px; }
 
@@ -123,7 +137,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pf-pawn, .pf-shadow, .pf-spark, .pf-eye, .pf-guide-fig {
+  .pf-pawn, .pf-shadow, .pf-spark, .pf-eye, .pf-guide-fig, .pf-caret {
     animation: none !important;
     transition: none !important;
   }
