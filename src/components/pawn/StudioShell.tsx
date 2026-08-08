@@ -163,6 +163,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         { to: "/studio/auszahlung", label: t("studioShell.nav.auszahlung"), hint: t("studioShell.nav.auszahlung.hint"), icon: IPayout },
         { to: "/studio/nachrichten", label: t("studioShell.nav.nachrichten"), hint: t("studioShell.nav.nachrichten.hint"), icon: IMessages, badge: badges.messages },
         { to: "/studio/empfehlungen", label: t("studioShell.nav.empfehlungen"), hint: t("studioShell.nav.empfehlungen.hint"), icon: IReferral },
+        { to: "/studio/automatik", label: t("studioShell.nav.automatik"), hint: t("studioShell.nav.automatik.hint"), icon: ISettings },
         { to: "/studio/einstellungen", label: t("studioShell.nav.einstellungen"), hint: t("studioShell.nav.einstellungen.hint"), icon: ISettings },
       ],
     },

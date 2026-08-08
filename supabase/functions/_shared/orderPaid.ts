@@ -3,6 +3,7 @@
 // Plattformkonto verkaufen) und dem Connect-Webhook (Zahlungen, die auf dem
 // Stripe-Konto des Hauses entstehen).
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { schreibePartieZug } from "./partieZug.ts";
 
 interface Address {
   line1?: string | null;
@@ -101,7 +102,7 @@ export async function handleOrderPaid(
       }
       const designerIds = Array.from(new Set((prods ?? []).map((p) => p.designer_id).filter(Boolean)));
       if (designerIds.length) {
-        const { data: designers } = await admin.from("designers").select("user_id").in("id", designerIds);
+        const { data: designers } = await admin.from("designers").select("id, user_id").in("id", designerIds);
         for (const d of designers ?? []) {
           if (!d.user_id) continue;
           await admin.from("notifications").insert({
@@ -111,6 +112,8 @@ export async function handleOrderPaid(
             body: "Eine Bestellung mit einem deiner Werke ist eingegangen.",
             link: "/studio/bestellungen",
           });
+          // Teil 28c: die Halle trägt den Verkauf ins Partie-Buch ein.
+          await schreibePartieZug(admin, d.id, "Ein Stück wurde verkauft.", "halle", "verkauf");
         }
       }
     }

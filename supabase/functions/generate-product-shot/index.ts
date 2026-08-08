@@ -12,6 +12,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { schreibePartieZug } from "../_shared/partieZug.ts";
 
 function jwtSub(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
@@ -175,6 +176,16 @@ Deno.serve(async (req) => {
     if (!isAdmin) {
       try { await admin.rpc("book_credit_spend", { _designer_id: p.designer_id, _action: "product_shot", _credits: shotCost }); } catch { /* noop */ }
     }
+
+    // Teil 28c: eine Delegation — du hast genickt, indem du sie gestartet hast.
+    try {
+      let produktBezeichnung = "ein eigenständiges Foto";
+      if (p.id) {
+        const { data: prod } = await admin.from("products").select("name").eq("id", p.id).maybeSingle();
+        if (prod?.name) produktBezeichnung = prod.name;
+      }
+      await schreibePartieZug(admin, p.designer_id, `Ein Freisteller für ${produktBezeichnung} erzeugt.`, "pawn", "delegation");
+    } catch { /* Partie-Buch darf nie das eigentliche Ergebnis blockieren */ }
 
     return json({ ok: true, request_id, result_url: finalUrl }, 200);
   } catch (e) {

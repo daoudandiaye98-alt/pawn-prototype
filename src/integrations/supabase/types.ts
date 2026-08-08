@@ -1077,6 +1077,38 @@ export type Database = {
           },
         ]
       }
+      designer_automations: {
+        Row: {
+          automation_key: string
+          designer_id: string
+          enabled: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          automation_key: string
+          designer_id: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          automation_key?: string
+          designer_id?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designer_automations_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designer_onboarding_sessions: {
         Row: {
           completed_at: string | null
@@ -2501,6 +2533,74 @@ export type Database = {
           target_type?: string
           user_id?: string
           visit_count?: number
+        }
+        Relationships: []
+      }
+      partie_zuege: {
+        Row: {
+          akteur: string
+          created_at: string
+          designer_id: string
+          id: string
+          nr: number
+          quelle: string | null
+          text: string
+        }
+        Insert: {
+          akteur: string
+          created_at?: string
+          designer_id: string
+          id?: string
+          nr: number
+          quelle?: string | null
+          text: string
+        }
+        Update: {
+          akteur?: string
+          created_at?: string
+          designer_id?: string
+          id?: string
+          nr?: number
+          quelle?: string | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partie_zuege_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pawn_signals: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          pattern: Json
+          quelle: string
+          weight: number
+          world: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          pattern?: Json
+          quelle: string
+          weight?: number
+          world?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          pattern?: Json
+          quelle?: string
+          weight?: number
+          world?: string | null
         }
         Relationships: []
       }

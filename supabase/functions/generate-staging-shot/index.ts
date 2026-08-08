@@ -11,6 +11,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { schreibePartieZug } from "../_shared/partieZug.ts";
 
 function jwtSub(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
@@ -195,6 +196,21 @@ Deno.serve(async (req) => {
     if (!isAdmin && chargedCredits > 0) {
       try { await admin.rpc("book_credit_spend", { _designer_id: d.id, _action: "staging_shot", _credits: chargedCredits }); } catch { /* noop */ }
     }
+
+    // Teil 28c: eine Inszenierung auf Zuruf ist eine Delegation (du hast genickt, indem du sie
+    // gestartet hast) — nie eine Automatik (die läuft nach stehender Freigabe, ohne Zuruf).
+    try {
+      let produktBezeichnung = "ein eigenständiges Foto";
+      if (body.product_id) {
+        const { data: prod } = await admin.from("products").select("name").eq("id", body.product_id).maybeSingle();
+        if (prod?.name) produktBezeichnung = prod.name;
+      }
+      await schreibePartieZug(
+        admin, d.id,
+        `${succeeded.length} ${body.art}-Variante${succeeded.length === 1 ? "" : "n"} für ${produktBezeichnung} erzeugt.`,
+        "pawn", "delegation",
+      );
+    } catch { /* Partie-Buch darf nie das eigentliche Ergebnis blockieren */ }
 
     return json({ ok: true, run_id, results, credits_charged: chargedCredits }, 200);
   } catch (e) {
