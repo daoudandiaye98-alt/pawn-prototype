@@ -16,6 +16,7 @@ import {
 import { useAdminNextMove } from "@/features/admin/useAdminNextMove";
 import { useJarvisCockpit, type JarvisRunRow, type JarvisQueueItem, type Zone, type BauplanDraft } from "@/features/admin/useJarvisCockpit";
 import { useCockpitBuhne } from "@/features/admin/useCockpitBuhne";
+import { useMarkenKartei } from "@/features/admin/useMarkenKartei";
 import { useDisplayName } from "@/lib/displayName";
 import { useAuth } from "@/lib/auth";
 import { PawnFigur } from "@/components/pawn/PawnFigur";
@@ -631,11 +632,12 @@ function condensedMaschinenraum(runs: JarvisRunRow[], cronJobs: ReturnType<typeo
 }
 
 function Buhne({
-  firstName, buhne, pendingApplications, jarvisRuns, jarvisCronJobs, onVerdichten, verdichtenBusy, navigate,
+  firstName, buhne, pendingApplications, jarvisRuns, jarvisCronJobs, onVerdichten, verdichtenBusy, navigate, markenKartei,
 }: {
   firstName: string; buhne: ReturnType<typeof useCockpitBuhne>; pendingApplications: number;
   jarvisRuns: JarvisRunRow[]; jarvisCronJobs: ReturnType<typeof useJarvisCockpit>["cronJobs"];
   onVerdichten: () => void; verdichtenBusy: boolean; navigate: (to: string) => void;
+  markenKartei: ReturnType<typeof useMarkenKartei>;
 }) {
   const [showFehler, setShowFehler] = useState(false);
   const maschinenraum = condensedMaschinenraum(jarvisRuns, jarvisCronJobs);
@@ -754,6 +756,36 @@ function Buhne({
         </div>
       </div>
 
+      {/* Markenbau-Kartei (Teil 33) */}
+      <div className="mt-6 border-t border-white/[0.08] pt-5">
+        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Markenbau-Kartei</p>
+        {markenKartei.loading ? (
+          <p className="mt-3 text-[12px] text-[hsl(0_0%_55%)]">Lade …</p>
+        ) : markenKartei.theses.length === 0 ? (
+          <p className="mt-3 text-[13px] text-[hsl(0_0%_66%)]">Noch keine freigegebenen Thesen — der wöchentliche Lauf füllt die Kartei.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {markenKartei.theses.map((t) => (
+              <li key={t.id} className="flex items-start justify-between gap-3 border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[13px] text-[hsl(0_0%_92%)]">{t.headline}</p>
+                  <p className="mt-0.5 text-[11.5px] text-[hsl(0_0%_62%)]">
+                    {t.world ?? "Alle Welten"} · {t.ageDays === 0 ? "heute" : `${t.ageDays} Tag${t.ageDays === 1 ? "" : "e"} alt`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void markenKartei.verwerfen(t.id)}
+                  className="shrink-0 text-[11px] uppercase tracking-[0.14em] text-[hsl(0_0%_55%)] underline decoration-white/30 underline-offset-2 hover:text-[hsl(0_0%_92%)]"
+                >
+                  Verwerfen
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Zahlenleiste */}
       <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/[0.08] pt-5 sm:grid-cols-4">
         {[
@@ -799,6 +831,7 @@ function CommandDeck() {
   const [jarvisTick, setJarvisTick] = useState(0);
   const jarvis = useJarvisCockpit(`${tick}-${jarvisTick}`);
   const buhne = useCockpitBuhne(`${tick}-${jarvisTick}`);
+  const markenKartei = useMarkenKartei(tick);
   const [verdichtenBusy, setVerdichtenBusy] = useState(false);
 
   async function saveZone(modeKey: string, zone: Zone) {
@@ -840,6 +873,7 @@ function CommandDeck() {
         onVerdichten={() => void requestVerdichten()}
         verdichtenBusy={verdichtenBusy}
         navigate={navigate}
+        markenKartei={markenKartei}
       />
       <LivePulseBar lastUpdated={lastUpdated} />
 

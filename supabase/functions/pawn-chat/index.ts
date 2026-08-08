@@ -150,6 +150,30 @@ async function buildNutzungsprofil(admin: SupabaseClient, designerId: string): P
   }
 }
 
+/**
+ * Teil 33 — Die zweite Kartei: Markenbauen. Aktive, freigegebene Bausteine aus `brand_knowledge`
+ * (gespeist vom pawn-jarvis-Modus wissen_markenaufbau) fließen als leise Orientierung in Beratung
+ * und Zug-Begründungen im Studio-Gespräch — nie als Zitat, nur als Hintergrundwissen, das PAWN
+ * einweben darf, wenn es zur Frage passt.
+ */
+async function buildMarkenKarteiHint(admin: SupabaseClient, worldKey: string): Promise<string> {
+  try {
+    const { data } = await admin.from("brand_knowledge")
+      .select("headline, body, world")
+      .eq("approved", true).eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    const rows = ((data ?? []) as { headline: string; body: string; world: string | null }[])
+      .filter((r) => !r.world || r.world === worldKey)
+      .slice(0, 5);
+    if (!rows.length) return "";
+    const bausteine = rows.map((r) => `- ${r.headline}: ${r.body}`).join("\n");
+    return `Aktuelle Markenaufbau-Kartei (gerade gültige Lagen, praxisrelevant — nur einweben, wenn es zur Frage passt, nie als Liste vorlesen):\n${bausteine}`;
+  } catch {
+    return "";
+  }
+}
+
 /** Sprachgesetz: gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite). */
 async function loadVoiceLaw(admin: SupabaseClient): Promise<string> {
   try {
@@ -763,12 +787,17 @@ Deno.serve(async (req) => {
     // selbst (nicht beim Kunden auf der Produktseite) fließt ein, welche Räume das Haus
     // schon nutzt oder noch meidet.
     let nutzungsprofil = "";
+    let markenKartei = "";
     if (admin && user_id && role === "designer" && pc?.route?.startsWith("/studio")) {
-      const { data: ownDesigner } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
-      if (ownDesigner?.id) nutzungsprofil = await buildNutzungsprofil(admin, ownDesigner.id);
+      const { data: ownDesigner } = await admin.from("designers").select("id, tags").eq("user_id", user_id).maybeSingle();
+      if (ownDesigner?.id) {
+        nutzungsprofil = await buildNutzungsprofil(admin, ownDesigner.id);
+        const worldKey = ((ownDesigner as { tags?: string[] | null }).tags ?? []).find((t) => ["Mode", "Interior", "Kunst"].includes(t)) ?? "Mode";
+        markenKartei = await buildMarkenKarteiHint(admin, worldKey);
+      }
     }
 
-    const system = [persona, houseStyleLaw, voiceLaw, houseTone, nutzungsprofil, directiveBlock].filter(Boolean).join("\n\n");
+    const system = [persona, houseStyleLaw, voiceLaw, houseTone, nutzungsprofil, markenKartei, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [pageContextHint, memoryHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan
