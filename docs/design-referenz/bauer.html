@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAWN Studio — Dein Bauer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--fg:#000;--bg:#fff;--sur:#f5f5f5;--sec:#404040;--hair:1.5px solid #000;--e:cubic-bezier(.76,0,.18,1)}
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  body{background:#fff;color:#000;font-family:Inter,system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .w{max-width:1080px;margin:0 auto;padding:0 1.25rem}
+  @media(min-width:768px){.w{padding:0 2rem}}
+  .eb{font-size:.6rem;font-weight:500;text-transform:uppercase;letter-spacing:.32em;color:var(--sec)}
+  .it{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:500;letter-spacing:-.02em}
+
+  header{border-bottom:var(--hair);position:sticky;top:0;background:#fff;z-index:50}
+  .hd{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 0}
+  .hd .left{display:flex;align-items:center;gap:.6rem}
+  .hd .mini{width:16px;height:22px}
+  .hd .haus{font-family:'Playfair Display',serif;font-weight:600;font-size:1.1rem}
+  .pill{font-size:.56rem;letter-spacing:.22em;text-transform:uppercase;border:var(--hair);padding:.4rem .65rem}
+
+  .hero{border-bottom:var(--hair);padding:2.5rem 0 2.6rem;text-align:center;overflow:hidden}
+  .stagefloor{position:relative;display:inline-block}
+  .pawn{width:200px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+    transform-origin:50% 100%;opacity:0;transform:translateY(14px) scale(.7)}
+  .pawn.in{animation:arrive 1s var(--e) forwards, bob 3.8s var(--e) 1.1s infinite}
+  @keyframes arrive{0%{opacity:0;transform:translateY(14px) scale(.7)}
+    60%{opacity:1;transform:translateY(-8px) scale(1.04)}100%{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .pawn.squish{animation:squish .45s var(--e)}
+  @keyframes squish{0%{transform:scale(1,1)}35%{transform:scale(1.1,.84)}70%{transform:scale(.96,1.05)}100%{transform:scale(1,1)}}
+  .pawn.jump{animation:jump .7s var(--e)}
+  @keyframes jump{0%{transform:translateY(0)}35%{transform:translateY(-26px)}65%{transform:translateY(2px)}100%{transform:translateY(0)}}
+  .shadow{width:126px;height:11px;background:#000;opacity:.12;margin:.35rem auto 0;animation:sh 3.8s var(--e) 1.1s infinite;transform:scaleX(.6)}
+  @keyframes sh{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.84)}}
+  .spark{position:absolute;width:13px;height:13px;background:#000;opacity:0;
+    clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+  .spark.s1{left:-6px;top:20px}.spark.s2{right:-8px;top:38px}.spark.s3{left:14px;top:-8px}
+  .celebrate .spark{animation:sparkle .7s var(--e)}
+  .celebrate .spark.s2{animation-delay:.08s}.celebrate .spark.s3{animation-delay:.15s}
+  @keyframes sparkle{0%{opacity:0;transform:scale(.3)}40%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:scale(.6) translateY(-10px)}}
+
+  .eyewrap{transition:transform .18s ease-out}
+  .eye{transform-origin:center;animation:blink 4.8s infinite}
+  .eyeR{animation-delay:.05s}
+  @keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.05)}}
+  .happy .eye{display:none}
+  .happy .arc{display:block!important}
+  .sleeping .eye{animation:none;transform:scaleY(.16)}
+  .zzz{position:absolute;right:-24px;top:-4px;font-family:'Playfair Display',serif;font-style:italic;
+    font-weight:600;font-size:1rem;opacity:0;transition:opacity .5s}
+  .sleepmode .zzz{opacity:1}
+
+  .nameplate{margin-top:1.1rem}
+  .nameplate .nm{font-family:'Playfair Display',serif;font-weight:600;font-size:1.7rem;letter-spacing:-.02em}
+  .nameplate .sub{margin-top:.3rem;font-size:.58rem;letter-spacing:.28em;text-transform:uppercase;color:var(--sec)}
+
+  .dlg{max-width:600px;margin:1.5rem auto 0;border:var(--hair);box-shadow:8px 8px 0 0 #000;background:#fff;text-align:left}
+  .dlg .body{padding:1.15rem 1.25rem;min-height:84px}
+  .say{font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:clamp(1.05rem,2.5vw,1.35rem);line-height:1.45}
+  .caret{display:inline-block;width:2px;height:1em;background:#000;vertical-align:-.12em;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+  .chips{display:flex;gap:.6rem;flex-wrap:wrap;padding:0 1.25rem 1.15rem}
+  .chip{font-family:inherit;font-size:.55rem;letter-spacing:.26em;text-transform:uppercase;padding:.72rem 1rem;
+    cursor:pointer;border:var(--hair);background:#fff;transition:background .18s var(--e),color .18s var(--e)}
+  .chip:hover,.chip.solid{background:#000;color:#fff}
+  .chip.solid:hover{background:#fff;color:#000}
+  .working{display:none;border-top:var(--hair);padding:.9rem 1.25rem;background:#000;color:#fff;font-size:.82rem}
+  .working.on{display:block}.working b{font-weight:500}
+
+  section{padding:2.3rem 0}
+  .card{border:var(--hair);box-shadow:8px 8px 0 0 #000;padding:1.25rem 1.35rem}
+  .card h2{font-family:'Playfair Display',serif;font-weight:600;font-size:1.3rem;letter-spacing:-.02em}
+  .card p{margin-top:.4rem;font-size:.82rem;color:var(--sec)}
+  .btn{display:inline-block;background:#000;color:#fff;border:1.5px solid #000;font-family:inherit;
+    font-size:.56rem;letter-spacing:.28em;text-transform:uppercase;padding:.78rem 1.15rem;cursor:pointer;
+    text-decoration:none;transition:background .2s var(--e),color .2s var(--e)}
+  .btn:hover{background:#fff;color:#000}
+  .movegrid{display:grid;gap:1rem;align-items:center}
+  @media(min-width:700px){.movegrid{grid-template-columns:66px 1fr auto;gap:1.3rem}}
+  .movegrid .im{aspect-ratio:4/5;width:66px;background:radial-gradient(120% 90% at 60% 30%, #8C4A5E 0%, #3C1E29 80%)}
+
+  .slots{display:grid;grid-template-columns:repeat(8,1fr);gap:.55rem;margin-top:1rem}
+  @media(max-width:560px){.slots{grid-template-columns:repeat(4,1fr)}}
+  .slot{aspect-ratio:4/5;background:var(--sur);position:relative}
+  .slot.f{box-shadow:4px 4px 0 0 #000}
+  .s1{background:radial-gradient(120% 90% at 60% 30%, #8C4A5E 0%, #3C1E29 80%)}
+  .s2{background:radial-gradient(120% 90% at 30% 60%, #37506B 0%, #14202C 80%)}
+  .s3{background:radial-gradient(120% 90% at 60% 60%, #C9A227 0%, #6B520F 80%)}
+  .s4{background:radial-gradient(120% 90% at 40% 40%, #2E5E4E 0%, #12291F 80%)}
+  .slot .tagnew{position:absolute;left:0;bottom:0;background:#000;color:#fff;font-size:.46rem;
+    letter-spacing:.2em;text-transform:uppercase;padding:.2rem .4rem}
+
+  .staterow{display:grid;gap:1rem}
+  @media(min-width:700px){.staterow{grid-template-columns:repeat(3,1fr)}}
+  .state{border:var(--hair);padding:1rem;text-align:center}
+  .state svg{width:42px;height:55px;margin:0 auto .5rem}
+  .state .cap{font-size:.54rem;letter-spacing:.26em;text-transform:uppercase;color:var(--sec)}
+  .state.load svg{animation:loadb 1.1s var(--e) infinite}
+  @keyframes loadb{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .state.shrug svg{transform:rotate(-7deg)}
+  .state.win svg{animation:jump 1.7s var(--e) infinite}
+
+  .rooms{display:grid;gap:1rem}
+  @media(min-width:700px){.rooms{grid-template-columns:repeat(3,1fr)}}
+  .room{border:var(--hair);padding:1rem 1.1rem;text-decoration:none;color:#000;transition:background .18s var(--e),color .18s var(--e)}
+  .room:hover{background:#000;color:#fff}
+  .room .name{font-family:'Playfair Display',serif;font-weight:600;font-size:1.05rem}
+  .room .st{margin-top:.3rem;font-size:.72rem;color:var(--sec)}
+  .room:hover .st{color:rgba(255,255,255,.85)}
+
+  .mv{display:grid;grid-template-columns:46px 1fr auto;gap:.85rem;align-items:baseline;padding:.75rem 0;border-bottom:1px solid #e6e6e6;font-size:.83rem}
+  .mv .no{font-family:'Playfair Display',serif;font-weight:600}
+  .mv .who{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sec)}
+  .mv.byp .who::before{content:'♟ '}
+
+  .guide{position:fixed;left:1rem;top:50%;transform:translateY(-50%);z-index:45;display:none;width:118px}
+  @media(min-width:1000px){.guide.show{display:block}}
+  .guide .fig{width:56px;margin:0 auto;opacity:0;transform:scale(.4)}
+  .guide.show .fig{animation:pop .45s var(--e) forwards}
+  @keyframes pop{0%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+  .guide.hop .fig{animation:pop .45s var(--e)}
+  .guide .gb{margin-top:.55rem;background:#fff;border:var(--hair);box-shadow:5px 5px 0 0 #000;padding:.65rem .7rem;
+    font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:.8rem;line-height:1.4;
+    opacity:0;transform:translateY(6px);transition:opacity .35s var(--e),transform .35s var(--e);pointer-events:none}
+  .guide .gb.talk{opacity:1;transform:none}
+  .guidebar{position:fixed;left:0;right:0;bottom:0;z-index:45;background:#000;color:#fff;display:none;
+    padding:.65rem 1rem;align-items:center;gap:.7rem;
+    transform:translateY(100%);transition:transform .4s var(--e)}
+  .guidebar.show{display:flex;transform:none}
+  @media(min-width:1000px){.guidebar.show{display:none}}
+  .guidebar svg{width:20px;height:26px;flex:none}
+  .guidebar .t{font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:.88rem;line-height:1.3}
+
+  footer{border-top:var(--hair);padding:1.6rem 0 5rem;font-size:.56rem;letter-spacing:.26em;text-transform:uppercase;color:var(--sec)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}
+    .pawn{opacity:1;transform:none}.guide .fig{opacity:1;transform:none}.guide .gb{opacity:1}}
+  button:focus-visible,a:focus-visible{outline:2px solid #000;outline-offset:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="w hd">
+    <div class="left">
+      <svg class="mini" viewBox="0 0 100 132"><g fill="#000"><circle cx="50" cy="32" r="27"/><path d="M27 61h46l-6.5 13H33.5z"/><path d="M34 74h32l6.5 31H27.5z"/><rect x="19" y="105" width="62" height="13"/></g><g fill="#fff"><ellipse cx="40" cy="30" rx="6" ry="7.6"/><ellipse cx="60" cy="30" rx="6" ry="7.6"/></g></svg>
+      <span class="haus">Haus Obara</span>
+    </div>
+    <div style="display:flex;gap:.6rem"><span class="pill">Bauer</span><span class="pill">Ausgabe 07</span></div>
+  </div>
+</header>
+
+<div class="hero" id="hero">
+  <div class="w">
+    <div class="stagefloor" id="stage">
+      <span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span>
+      <div class="pawn" id="pawn" role="button" tabindex="0" aria-label="PAWN — antippen">
+        <svg viewBox="0 0 100 132">
+          <g fill="#000">
+            <circle cx="50" cy="32" r="27"/>
+            <path d="M27 61h46l-6.5 13H33.5z"/>
+            <path d="M34 74h32l6.5 31H27.5z"/>
+            <rect x="19" y="105" width="62" height="13"/>
+          </g>
+          <g class="eyewrap" id="eyes">
+            <ellipse class="eye eyeL" cx="40" cy="30" rx="6" ry="7.8" fill="#fff"/>
+            <ellipse class="eye eyeR" cx="60" cy="30" rx="6" ry="7.8" fill="#fff"/>
+            <path class="arc" d="M33.5 30 q6.5 -6.5 13 0" stroke="#fff" stroke-width="3" fill="none" style="display:none" stroke-linecap="round"/>
+            <path class="arc" d="M53.5 30 q6.5 -6.5 13 0" stroke="#fff" stroke-width="3" fill="none" style="display:none" stroke-linecap="round"/>
+          </g>
+        </svg>
+        <span class="zzz">z&nbsp;Z</span>
+      </div>
+    </div>
+    <div class="shadow"></div>
+    <div class="nameplate">
+      <div class="nm">PAWN</div>
+      <div class="sub">Immer da. Nie im Weg.</div>
+    </div>
+
+    <div class="dlg">
+      <div class="body"><p class="say" id="say"><span class="caret"></span></p></div>
+      <div class="chips" id="chips" style="visibility:hidden">
+        <button class="chip solid" id="cDo" type="button">Übernimm du</button>
+        <button class="chip" type="button">Führ mich durch</button>
+        <button class="chip" type="button">Später</button>
+      </div>
+      <div class="working" id="working"><b>Bin dran.</b> Du bekommst das letzte Wort.</div>
+    </div>
+  </div>
+</div>
+
+<section data-guide="Dein Zug für heute. Ich bereite ihn immer vor — einer reicht.">
+  <div class="w">
+    <div class="eb" style="margin-bottom:.9rem">Heute nur eins</div>
+    <div class="card movegrid">
+      <div class="im"></div>
+      <div>
+        <h2>Häng den Raumshot an Mantel №4.</h2>
+        <p>Ich hab ihn schon ausgesucht — du musst nur nicken.</p>
+      </div>
+      <button class="btn" id="nick" type="button">Ansehen &amp; nicken</button>
+    </div>
+  </div>
+</section>
+
+<section data-guide="Deine Wand. Ich merke mir jeden Platz." style="padding-top:.3rem">
+  <div class="w">
+    <div class="card">
+      <h2>Deine erste Wand <span class="eb" id="wallcnt" style="margin-left:.6rem">3 von 8</span></h2>
+      <div class="slots">
+        <div class="slot f s1"></div><div class="slot f s2"></div><div class="slot f s3"></div>
+        <div class="slot" id="nextslot"></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      </div>
+      <p style="margin-top:.9rem;font-size:.8rem;color:var(--sec)">Jedes Stück, das live geht, bekommt hier seinen Platz.</p>
+    </div>
+  </div>
+</section>
+
+<section data-guide="Du triffst mich überall — beim Laden, im Leeren, im Gelingen." style="padding-top:.3rem">
+  <div class="w">
+    <div class="eb" style="margin-bottom:.9rem">Du triffst mich überall</div>
+    <div class="staterow">
+      <div class="state load">
+        <svg viewBox="0 0 100 132"><g fill="#000"><circle cx="50" cy="32" r="27"/><path d="M27 61h46l-6.5 13H33.5z"/><path d="M34 74h32l6.5 31H27.5z"/><rect x="19" y="105" width="62" height="13"/></g><g fill="#fff"><ellipse cx="40" cy="30" rx="6" ry="7.8"/><ellipse cx="60" cy="30" rx="6" ry="7.8"/></g></svg>
+        <div class="cap">Beim Laden — „Moment, ich hole das."</div>
+      </div>
+      <div class="state shrug">
+        <svg viewBox="0 0 100 132"><g fill="#000"><circle cx="50" cy="32" r="27"/><path d="M27 61h46l-6.5 13H33.5z"/><path d="M34 74h32l6.5 31H27.5z"/><rect x="19" y="105" width="62" height="13"/></g><g fill="#fff"><ellipse cx="40" cy="30" rx="6" ry="2.6"/><ellipse cx="60" cy="30" rx="6" ry="2.6"/></g></svg>
+        <div class="cap">Wenn's leer ist — „Noch nichts hier. Fangen wir an?"</div>
+      </div>
+      <div class="state win">
+        <svg viewBox="0 0 100 132"><g fill="#000"><circle cx="50" cy="32" r="27"/><path d="M27 61h46l-6.5 13H33.5z"/><path d="M34 74h32l6.5 31H27.5z"/><rect x="19" y="105" width="62" height="13"/></g><g stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"><path d="M33.5 30 q6.5 -6.5 13 0"/><path d="M53.5 30 q6.5 -6.5 13 0"/></g></svg>
+        <div class="cap">Wenn's klappt — „Schöner Zug."</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-guide="Deine Räume. Ich weiß immer, wo etwas los ist." style="padding-top:.3rem">
+  <div class="w">
+    <div class="eb" style="margin-bottom:.9rem">Deine Räume</div>
+    <div class="rooms">
+      <a class="room" href="#"><div class="name">Werkbank</div><div class="st">1 Stück wartet auf ein Bild</div></a>
+      <a class="room" href="#"><div class="name">Schaufenster</div><div class="st">1 Anfrage · Größe M, Wien</div></a>
+      <a class="room" href="#"><div class="name">Dein Raum</div><div class="st">Veröffentlicht · „Späte Werkstatt"</div></a>
+    </div>
+  </div>
+</section>
+
+<section data-guide="Unser Partie-Buch. ♟ heißt: das war ich, für dich." style="padding-top:.3rem">
+  <div class="w">
+    <div class="card">
+      <h2>Das Partie-Buch</h2>
+      <div style="margin-top:.5rem">
+        <div class="mv byp"><span class="no">14.</span><span>3 Raum-Varianten für Mantel №4 erzeugt.</span><span class="who">PAWN · gestern</span></div>
+        <div class="mv"><span class="no">13.</span><span>Bestellung #0021 versendet — Rechnung ging automatisch.</span><span class="who">Du · Di</span></div>
+        <div class="mv byp"><span class="no">12.</span><span>Caption im Ton deines Hauses geschrieben.</span><span class="who">PAWN · Mo</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer><div class="w">PAWN Studio · PAWN wächst mit deinem Haus</div></footer>
+
+<div class="guide" id="guide">
+  <div class="fig">
+    <svg viewBox="0 0 100 132"><g fill="#000"><circle cx="50" cy="32" r="27"/><path d="M27 61h46l-6.5 13H33.5z"/><path d="M34 74h32l6.5 31H27.5z"/><rect x="19" y="105" width="62" height="13"/></g>
+    <g fill="#fff"><ellipse class="eye" cx="40" cy="30" rx="5.4" ry="7"/><ellipse class="eye eyeR" cx="60" cy="30" rx="5.4" ry="7"/></g></svg>
+  </div>
+  <div class="gb" id="gtext">Ich komm mit.</div>
+</div>
+<div class="guidebar" id="guidebar">
+  <svg viewBox="0 0 100 132"><g fill="#fff"><circle cx="50" cy="32" r="27"/><path d="M27 61h46l-6.5 13H33.5z"/><path d="M34 74h32l6.5 31H27.5z"/><rect x="19" y="105" width="62" height="13"/></g><g fill="#000"><ellipse cx="40" cy="30" rx="6" ry="7.8"/><ellipse cx="60" cy="30" rx="6" ry="7.8"/></g></svg>
+  <span class="t" id="gbartext">Ich komm mit.</span>
+</div>
+
+<script>
+  const pawn=document.getElementById('pawn'),stage=document.getElementById('stage'),
+        eyes=document.getElementById('eyes'),say=document.getElementById('say'),
+        chips=document.getElementById('chips');
+  requestAnimationFrame(()=>pawn.classList.add('in'));
+  const text='Ich war schon wach. Über Nacht kamen 40 Blicke auf deinen Mantel — und unser Zug für heute liegt bereit.';
+  let i=0;setTimeout(function type(){if(i<=text.length){say.innerHTML=text.slice(0,i)+'<span class="caret"></span>';i++;setTimeout(type,20);}
+    else{say.textContent=text;chips.style.visibility='visible';}},900);
+  addEventListener('mousemove',e=>{
+    const r=pawn.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height*.28;
+    const dx=Math.max(-1,Math.min(1,(e.clientX-cx)/260)),dy=Math.max(-1,Math.min(1,(e.clientY-cy)/260));
+    eyes.style.transform='translate('+(dx*2.2)+'px,'+(dy*1.8)+'px)';wake();
+  },{passive:true});
+  const lines=['Ich bin da.','Alles im Blick.','Die Halle schläft nie. Ich auch nicht.','Schöner Tag für einen Zug.'];
+  function poke(){pawn.classList.remove('squish');void pawn.offsetWidth;pawn.classList.add('squish');
+    say.textContent=lines[Math.floor(Math.random()*lines.length)];happy(900);wake();}
+  pawn.addEventListener('click',poke);
+  pawn.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();poke();}});
+  function happy(ms){eyes.classList.add('happy');setTimeout(()=>eyes.classList.remove('happy'),ms);}
+  function celebrate(){stage.classList.remove('celebrate');void stage.offsetWidth;stage.classList.add('celebrate');
+    pawn.classList.remove('jump');void pawn.offsetWidth;pawn.classList.add('jump');happy(1400);}
+  let st;function wake(){pawn.classList.remove('sleepmode');eyes.classList.remove('sleeping');
+    clearTimeout(st);st=setTimeout(()=>{pawn.classList.add('sleepmode');eyes.classList.add('sleeping');},11000);}
+  wake();addEventListener('scroll',wake,{passive:true});
+  document.getElementById('cDo').addEventListener('click',()=>{
+    document.getElementById('working').classList.add('on');
+    say.textContent='Gut. Ich melde mich, wenn es so weit ist.';
+    setTimeout(()=>{document.getElementById('working').innerHTML='<b>Fertig.</b> Der Raumshot hängt als Vorschlag in der Werkbank.';celebrate();},2600);
+  });
+  document.getElementById('nick').addEventListener('click',function(){
+    const s=document.getElementById('nextslot');
+    if(!s.classList.contains('f')){
+      s.classList.add('f','s4');s.innerHTML='<span class="tagnew">Neu</span>';
+      document.getElementById('wallcnt').textContent='4 von 8';
+      this.textContent='Hängt!';celebrate();
+      say.textContent='Schöner Zug. Platz vier gehört dir — noch vier bis zum Läufer.';
+    }
+  });
+  const guide=document.getElementById('guide'),gtext=document.getElementById('gtext');
+  const gbar=document.getElementById('guidebar'),gbartext=document.getElementById('gbartext');
+  let fade;
+  function speak(t){
+    gtext.textContent=t;gbartext.textContent=t;
+    gtext.classList.add('talk');
+    guide.classList.remove('hop');void guide.offsetWidth;guide.classList.add('hop');
+    clearTimeout(fade);fade=setTimeout(()=>gtext.classList.remove('talk'),4500);
+  }
+  guide.addEventListener('mouseenter',()=>{gtext.classList.add('talk');clearTimeout(fade);});
+  guide.addEventListener('mouseleave',()=>{fade=setTimeout(()=>gtext.classList.remove('talk'),1500);});
+  new IntersectionObserver(es=>es.forEach(e=>{
+    const past=!e.isIntersecting&&e.boundingClientRect.top<0;
+    guide.classList.toggle('show',past);gbar.classList.toggle('show',past);
+  }),{threshold:0}).observe(document.getElementById('hero'));
+  const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){
+    const t=e.target.dataset.guide;
+    if(gbartext.textContent!==t)speak(t);
+  }});},{rootMargin:'-38% 0px -52% 0px'});
+  document.querySelectorAll('[data-guide]').forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>
