@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import "./PawnFigur.css";
+import type { PawnMood } from "@/features/studio/usePawnMood";
 
 /**
  * PAWN wird Person — die eine gemeinsame Figur, überall im Studio und beim Kunden.
@@ -155,6 +156,35 @@ export interface PawnFigurProps {
   /** Farbgesetz: "light" (Standard) = schwarzer Körper/weiße Augen für hellen Grund,
    * "dark" = weißer Körper/schwarze Augen für dunklen Grund (z.B. Vollbild-Momente). */
   tone?: "light" | "dark";
+  /** Teil 31 — die Stimmungs-Maschine: verändert nur Bewegungscharakter (nie beschriftet). */
+  mood?: PawnMood;
+  /** Eine von fünf Idle-Varianten derselben Stimmung (0-4), s. usePawnMood. */
+  moodVariant?: number;
+}
+
+interface MoodStyle {
+  bobDur: number; bobAmp: number; eyeRx: number; eyeRy: number; className: string;
+}
+
+/**
+ * Bewegungssprache je Stimmung (Basiswerte aus docs/design-referenz/studio.html):
+ * strahlend = schnelleres Wippen + Mini-Sprung/Funken über Timer; tatendrang = normales
+ * Wippen + gelegentliches Umherblicken über Timer; neugierig = Vorlehnen (pf-moodwrap
+ * Offset) + größere Augen; ruhig = langsames Wippen, halbe Lider; sehnsucht = scale .96
+ * am pf-moodwrap (Atmen per CSS), kaum Wippen, Blick zur Seite statt Mausverfolgung.
+ * Variant (0-4) streut Timing/Amplitude leicht, damit es nie mechanisch wirkt.
+ */
+function computeMoodStyle(mood: PawnMood | undefined, variant: number): MoodStyle | null {
+  if (!mood) return null;
+  const durMul = 0.9 + variant * 0.05; // 0.90 .. 1.10
+  const ampMul = 1.1 - variant * 0.05; // 1.10 .. 0.90
+  switch (mood) {
+    case "strahlend": return { bobDur: 2.6 * durMul, bobAmp: 8 * ampMul, eyeRx: 6, eyeRy: 7.8, className: "pf-mood-strahlend" };
+    case "tatendrang": return { bobDur: 3.8 * durMul, bobAmp: 8 * ampMul, eyeRx: 6, eyeRy: 7.8, className: "pf-mood-tatendrang" };
+    case "neugierig": return { bobDur: 3.8 * durMul, bobAmp: 4 * ampMul, eyeRx: 6.8, eyeRy: 8.8, className: "pf-mood-neugierig" };
+    case "ruhig": return { bobDur: 5.2 * durMul, bobAmp: 6 * ampMul, eyeRx: 6, eyeRy: 4.6, className: "pf-mood-ruhig" };
+    case "sehnsucht": return { bobDur: 6.5 * durMul, bobAmp: 2 * ampMul, eyeRx: 6, eyeRy: 7.8, className: "pf-mood-sehnsucht" };
+  }
 }
 
 /**
@@ -163,11 +193,12 @@ export interface PawnFigurProps {
  * Antippen (Squish + Zeile), Feiern (Sprung + Funken) über Ref auslösbar.
  */
 export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function PawnFigur(
-  { size = 200, rank = "bauer", className, arrive = true, interactive = true, showShadow = true, ariaLabel = "PAWN — antippen", onTap, tone = "light" },
+  { size = 200, rank = "bauer", className, arrive = true, interactive = true, showShadow = true, ariaLabel = "PAWN — antippen", onTap, tone = "light", mood, moodVariant = 0 },
   ref,
 ) {
   const bodyFill = tone === "dark" ? BODY_FILL_INVERT : BODY_FILL_DEFAULT;
   const eyeFill = tone === "dark" ? EYE_FILL_INVERT : EYE_FILL_DEFAULT;
+  const moodStyle = computeMoodStyle(mood, moodVariant);
   const stageRef = useRef<HTMLDivElement>(null);
   const pawnRef = useRef<HTMLDivElement>(null);
   const squishRef = useRef<HTMLDivElement>(null);
@@ -232,13 +263,19 @@ export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function Pa
       }, 11000);
     };
 
+    // Sehnsucht folgt dem Zeiger nicht eifrig — der Blick bleibt zur Seite (CSS),
+    // statt bei jeder Mausbewegung zurück zur Mitte gezogen zu werden.
+    const followsCursor = mood !== "sehnsucht";
+
     const onMouseMove = (e: MouseEvent) => {
-      const r = pawn.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height * 0.28;
-      const dx = Math.max(-1, Math.min(1, (e.clientX - cx) / 260));
-      const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / 260));
-      if (eyesRef.current) eyesRef.current.style.transform = `translate(${dx * 2.2}px,${dy * 1.8}px)`;
+      if (followsCursor) {
+        const r = pawn.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height * 0.28;
+        const dx = Math.max(-1, Math.min(1, (e.clientX - cx) / 260));
+        const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / 260));
+        if (eyesRef.current) eyesRef.current.style.transform = `translate(${dx * 2.2}px,${dy * 1.8}px)`;
+      }
       wake();
     };
     const onScroll = () => wake();
@@ -252,7 +289,48 @@ export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function Pa
       clearTimeout(sleepTimer.current);
       clearTimeout(happyTimer.current);
     };
-  }, [interactive]);
+  }, [interactive, mood]);
+
+  // Teil 31 — autonome Idle-Regungen je Stimmung, ohne Zutun: tatendrang blickt gelegentlich
+  // um sich, strahlend hüpft selten kurz auf und funkelt noch seltener. Beide leben auf
+  // squishRef (eigenes Element), kollidieren also nie mit arrive/bob oder dem Atmen.
+  useEffect(() => {
+    if (!mood) return;
+    let stopped = false;
+    const pending: ReturnType<typeof setTimeout>[] = [];
+    const schedule = (fn: () => void, minMs: number, maxMs: number) => {
+      const run = () => {
+        if (stopped) return;
+        fn();
+        pending.push(setTimeout(run, minMs + Math.random() * (maxMs - minMs)));
+      };
+      pending.push(setTimeout(run, minMs + Math.random() * (maxMs - minMs)));
+    };
+    if (mood === "tatendrang") {
+      schedule(() => {
+        if (!eyesRef.current) return;
+        const dx = (Math.random() - 0.5) * 5;
+        eyesRef.current.style.transform = `translate(${dx}px,0px)`;
+        setTimeout(() => { if (eyesRef.current) eyesRef.current.style.transform = ""; }, 650);
+      }, 6000, 9500);
+    } else if (mood === "strahlend") {
+      schedule(() => {
+        const el = squishRef.current;
+        if (!el) return;
+        el.classList.remove("pf-jump");
+        void el.offsetWidth;
+        el.classList.add("pf-jump");
+      }, 9000, 15000);
+      schedule(() => {
+        const stage = stageRef.current;
+        if (!stage) return;
+        stage.classList.remove("pf-celebrate");
+        void stage.offsetWidth;
+        stage.classList.add("pf-celebrate");
+      }, 20000, 32000);
+    }
+    return () => { stopped = true; pending.forEach(clearTimeout); };
+  }, [mood]);
 
   const poke = () => {
     squish();
@@ -261,7 +339,13 @@ export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function Pa
     onTap?.(line);
   };
 
-  const style = { "--pf-size": `${size}px` } as React.CSSProperties;
+  const style = {
+    "--pf-size": `${size}px`,
+    ...(moodStyle ? {
+      "--pf-bob-dur": `${moodStyle.bobDur}s`,
+      "--pf-bob-amp": `${moodStyle.bobAmp}px`,
+    } : {}),
+  } as React.CSSProperties;
 
   return (
     <div className="pf-stage" ref={stageRef} style={style}>
@@ -292,12 +376,20 @@ export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function Pa
             : undefined
         }
       >
-        <div ref={squishRef} className="pf-squishwrap">
-          <svg viewBox="0 0 100 132">
-            <PawnBody rank={rank} fill={bodyFill} />
-            <PawnEyes eyeState={eyeState === "happy" ? "happy" : "normal"} fill={eyeFill} eyewrapRef={eyesRef} />
-          </svg>
-          <span className="pf-zzz">z&nbsp;Z</span>
+        <div className={["pf-moodwrap", moodStyle?.className ?? ""].filter(Boolean).join(" ")}>
+          <div ref={squishRef} className="pf-squishwrap">
+            <svg viewBox="0 0 100 132">
+              <PawnBody rank={rank} fill={bodyFill} />
+              <PawnEyes
+                eyeState={eyeState === "happy" ? "happy" : "normal"}
+                fill={eyeFill}
+                eyewrapRef={eyesRef}
+                rx={moodStyle?.eyeRx}
+                ry={moodStyle?.eyeRy}
+              />
+            </svg>
+            <span className="pf-zzz">z&nbsp;Z</span>
+          </div>
         </div>
       </div>
       {showShadow && <div className={["pf-shadow", arrived ? "pf-in" : ""].join(" ")} ref={shadowRef} />}

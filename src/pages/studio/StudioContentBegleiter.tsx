@@ -186,7 +186,7 @@ export default function StudioContentBegleiter() {
   if (!designer) return <StudioShell title={t("studio.contentBegleiter.title")}><p className="text-muted-foreground">{t("studio.contentBegleiter.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title={t("studio.contentBegleiter.title")} eyebrow={t("studio.contentBegleiter.eyebrow")} begleiterStep="content-begleiter">
+    <StudioShell title={t("studio.contentBegleiter.title")} eyebrow={t("studio.contentBegleiter.eyebrow")}>
       <p className="max-w-2xl text-sm text-muted-foreground">
         {t("studio.contentBegleiter.intro")}
       </p>

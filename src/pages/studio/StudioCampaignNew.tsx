@@ -1141,7 +1141,7 @@ export default function StudioCampaignNew() {
   const canSaveImage = materialReady && !needsModelShot && !savingImage && hasTarget;
 
   return (
-    <StudioShell title={t("studio.campaignNew.pageTitle")} eyebrow={t("studio.campaignNew.eyebrow")} begleiterStep={`${outputType}-${focusedSection}`}>
+    <StudioShell title={t("studio.campaignNew.pageTitle")} eyebrow={t("studio.campaignNew.eyebrow")}>
       {/* Fixierte Kopfzeile: Guthaben, geschätzte Kosten, geschätzte Dauer */}
       <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0">
         <span className="text-sm text-muted-foreground">{t("studio.campaignNew.planSuffix", { plan: planLabel(plan) })}</span>
