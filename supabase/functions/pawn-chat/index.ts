@@ -1,6 +1,8 @@
 // PAWN chat — persona-driven, session-aware, product-recommending, navigation-capable.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { schreibePartieZug } from "../_shared/partieZug.ts";
+import { schreibeSignal } from "../_shared/pawnSignal.ts";
 
 type Msg = { role: "user" | "assistant" | "system"; content: string };
 type World = "Mode" | "Interior" | "Kunst";
@@ -93,6 +95,25 @@ async function loadHouseStyleLaw(admin: SupabaseClient): Promise<string> {
     const text = typeof v === "string" ? v : v?.text;
     return typeof text === "string" && text.trim() ? text.trim() : DEFAULT_HOUSE_STYLE_LAW;
   } catch { return DEFAULT_HOUSE_STYLE_LAW; }
+}
+
+/**
+ * Teil 28c — Ton je Haus: eine leise Orientierung aus Marken-DNA/Außenauge/erster Partie,
+ * niemals eine eigene Regel. Das Sprachgesetz (voiceLaw) steht in der Prompt-Reihenfolge davor
+ * und bleibt die Obergrenze — dieser Absatz kann nur innerhalb ihrer Grenzen färben, nie sie
+ * aufweichen.
+ */
+function buildHouseTone(d: { brand_dna?: unknown; aussenauge?: unknown; onboarding_state?: unknown } | null | undefined): string {
+  if (!d) return "";
+  const bits: string[] = [];
+  const dna = d.brand_dna as { signals?: string[] } | null;
+  if (Array.isArray(dna?.signals) && dna.signals.length) bits.push(dna.signals.slice(0, 4).join(", "));
+  const aa = d.aussenauge as { urteil?: string } | null;
+  if (aa?.urteil) bits.push(aa.urteil);
+  const ob = d.onboarding_state as { reife_einschaetzung?: string } | null;
+  if (!bits.length && ob?.reife_einschaetzung) bits.push(ob.reife_einschaetzung);
+  if (!bits.length) return "";
+  return `Ton-Profil dieses Hauses (Orientierung, das Sprachgesetz bleibt die Obergrenze): ${bits.join(" — ")}.`;
 }
 
 /** Sprachgesetz: gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite). */
@@ -356,6 +377,15 @@ function partieResponse(payload: Record<string, unknown>): Response {
   return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+/** Schreibt die gewählten Schwerpunkte der ersten Partie als Züge ins Partie-Buch (Teil 28c). */
+async function schreibeErstePartieZuege(admin: SupabaseClient, designerId: string, schwerpunkte: string[]): Promise<void> {
+  const byKey = new Map(PARTIE_SCHRITTE.map((s) => [s.key, s.label] as const));
+  for (const key of schwerpunkte) {
+    const label = byKey.get(key as (typeof PARTIE_SCHRITTE)[number]["key"]);
+    if (label) await schreibePartieZug(admin, designerId, `Nächster Schritt vereinbart: ${label}.`, "pawn", "erste_partie");
+  }
+}
+
 /**
  * Führt die erste Partie einen Zug weiter. Steuerung (Zustand, Übergänge, Schreibzugriffe) hängt
  * nie vom Denkmodell ab — nur der Ton einer einzelnen Zeile wird, wenn ein Anbieter verfügbar ist,
@@ -414,6 +444,8 @@ async function handleErstePartie(
         payload: { user_id, designer_id: designer.id, schwerpunkte: gewaehlt }, schema_version: 1,
       });
     }
+    await schreibeErstePartieZuege(admin, designer.id, gewaehlt);
+    await schreibeSignal(admin, "pawn-chat", "erste_partie_abgeschlossen", { schwerpunkte: gewaehlt, anzahl: gewaehlt.length });
     return partieResponse({ ok: true, schritt: "fertig", reply: await warm("Die Eröffnung steht."), celebrate: true, onboarding_state: nextState });
   }
 
@@ -432,6 +464,11 @@ async function handleErstePartie(
       id: crypto.randomUUID(), type: "onboarding.erste_partie_abgeschlossen", actor: "user",
       payload: { user_id, designer_id: designer.id, schwerpunkte: state.schwerpunkte_gewaehlt ?? [], automatik_zugestimmt: zustimmung ? key : null }, schema_version: 1,
     });
+    await schreibeErstePartieZuege(admin, designer.id, state.schwerpunkte_gewaehlt ?? []);
+    await schreibeSignal(admin, "pawn-chat", "erste_partie_abgeschlossen", { schwerpunkte: state.schwerpunkte_gewaehlt ?? [], automatik_zugestimmt: zustimmung ? key : null });
+    if (zustimmung && key) {
+      await schreibePartieZug(admin, designer.id, "Eine Automatik aus der Eröffnung eingeschaltet.", "haus", key);
+    }
     return partieResponse({ ok: true, schritt: "fertig", reply: await warm("Die Eröffnung steht."), celebrate: true, onboarding_state: nextState });
   }
 
@@ -636,12 +673,13 @@ Deno.serve(async (req) => {
     // --- Page context: if user is on a product page, load rich detail so
     // PAWN can answer concrete questions about the piece in front of them.
     let pageContextHint = "";
+    let houseTone = "";
     const pc = body.page_context;
     if (admin && pc?.product_slug) {
       try {
         const { data: pr } = await admin
           .from("products")
-          .select("name, world, description, designer_note, product_dna, tags, price, made_in, care_instructions, edition_info, lead_time_days, length_cm, width_cm, height_cm, designers ( brand_name )")
+          .select("name, world, description, designer_note, product_dna, tags, price, made_in, care_instructions, edition_info, lead_time_days, length_cm, width_cm, height_cm, designers ( brand_name, brand_dna, aussenauge, onboarding_state )")
           .eq("slug", pc.product_slug)
           .maybeSingle();
         if (pr) {
@@ -650,8 +688,9 @@ Deno.serve(async (req) => {
             product_dna: Record<string, string[]> | null; tags: string[] | null; price: number | null;
             made_in: string | null; care_instructions: string | null; edition_info: string | null; lead_time_days: number | null;
             length_cm: number | null; width_cm: number | null; height_cm: number | null;
-            designers: { brand_name: string } | null;
+            designers: { brand_name: string; brand_dna: { signals?: string[] } | null; aussenauge: { urteil?: string } | null; onboarding_state: { reife_einschaetzung?: string } | null } | null;
           };
+          houseTone = buildHouseTone(p.designers);
           const dna = p.product_dna ?? {};
           const dnaBits = ["materials","silhouette","colors","mood"]
             .map((k) => Array.isArray(dna[k]) && dna[k].length ? `${k}: ${dna[k].join(", ")}` : null)
@@ -686,7 +725,7 @@ Deno.serve(async (req) => {
     // Sprachgesetz gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite).
     const voiceLaw = admin && pc?.route === "/dna" ? await loadVoiceLaw(admin) : "";
 
-    const system = [persona, houseStyleLaw, voiceLaw, directiveBlock].filter(Boolean).join("\n\n");
+    const system = [persona, houseStyleLaw, voiceLaw, houseTone, directiveBlock].filter(Boolean).join("\n\n");
     const fullContextHint = [pageContextHint, memoryHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan

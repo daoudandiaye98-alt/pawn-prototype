@@ -2,6 +2,8 @@
 // Fehler landen nie als 500 — immer 200 mit einer klaren Meldung im Body.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { schreibePartieZug } from "../_shared/partieZug.ts";
+import { schreibeSignal } from "../_shared/pawnSignal.ts";
 
 const MODEL = "claude-sonnet-4-5";
 const MAX_TOOL_TURNS = 6;
@@ -65,7 +67,8 @@ type Mode =
   | "akquise_dm_vorbereiten"
   | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
-  | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau";
+  | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
+  | "automatik_ausfuehren" | "signalstrom_verdichten";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -153,6 +156,8 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   presse_jagd: "gelb",
   presse_verfassen: "gelb",
   verstaerker: "gruen",
+  automatik_ausfuehren: "gruen",
+  signalstrom_verdichten: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -2754,6 +2759,163 @@ async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unk
   return { ok: true, angestupst };
 }
 
+// --- Teil 28c: die Automatik-Matrix eines Hauses ausführen (nur Zone Grün) --------------------
+// Jede der vier Automatiken ist bewusst DB-only/Benachrichtigung — keine unbeaufsichtigte
+// KI-Generierung, die Guthaben eines Hauses verbraucht (dafür bräuchte es eine echte,
+// eingeloggte Sitzung — generate-product-shot & Co. prüfen das serverseitig). "Läuft
+// automatisch und still" heißt hier: PAWN erkennt und meldet zuverlässig, ohne dass ein
+// Klick nötig ist, um es zu erfahren — die eigentliche Erzeugung bleibt einen Klick entfernt.
+const SEIT_2_TAGEN = () => new Date(Date.now() - 2 * 86_400_000).toISOString();
+
+async function schonBenachrichtigt(admin: SupabaseClient, userId: string, type: string, link: string, seit: string): Promise<boolean> {
+  const { data } = await admin.from("notifications").select("id").eq("user_id", userId).eq("type", type).eq("link", link).gte("created_at", seit).limit(1);
+  return ((data as unknown[] | null) ?? []).length > 0;
+}
+
+async function runAutomatikAusfuehren(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: rows } = await admin.from("designer_automations").select("designer_id, automation_key").eq("enabled", true);
+  const byKey = new Map<string, string[]>();
+  for (const r of (rows as { designer_id: string; automation_key: string }[] | null) ?? []) {
+    byKey.set(r.automation_key, [...(byKey.get(r.automation_key) ?? []), r.designer_id]);
+  }
+  const ausgefuehrt: Record<string, number> = { inszenieren_bei_upload: 0, caption_nach_inszenierung: 0, aufraeumen_woechentlich: 0, sharekit_bei_live: 0 };
+  const seit = SEIT_2_TAGEN();
+
+  const inszenierenIds = byKey.get("inszenieren_bei_upload") ?? [];
+  if (inszenierenIds.length) {
+    const { data: prods } = await admin.from("products").select("id, designer_id, name").in("designer_id", inszenierenIds).eq("status", "draft").not("image_url", "is", null).gte("created_at", seit);
+    const designerUsers = await designerUserMap(admin, inszenierenIds);
+    for (const p of (prods as { id: string; designer_id: string; name: string }[] | null) ?? []) {
+      const userId = designerUsers.get(p.designer_id);
+      if (!userId) continue;
+      const link = `/studio/produkte/${p.id}`;
+      if (await schonBenachrichtigt(admin, userId, "automatik.inszenieren_bereit", link, seit)) continue;
+      await admin.from("notifications").insert({ user_id: userId, type: "automatik.inszenieren_bereit", title: "Ein Bild wartet auf die Inszenierung", body: `„${p.name}" hat ein neues Foto — einmal klicken, PAWN inszeniert es.`, link });
+      await schreibePartieZug(admin, p.designer_id, `PAWN hat ein neues Foto zur Inszenierung gemeldet: ${p.name}.`, "pawn", "inszenieren_bei_upload");
+      ausgefuehrt.inszenieren_bei_upload++;
+    }
+  }
+
+  const captionIds = byKey.get("caption_nach_inszenierung") ?? [];
+  if (captionIds.length) {
+    const { data: prods } = await admin.from("products").select("id, designer_id, name, world").in("designer_id", captionIds).eq("status", "published").gte("updated_at", seit);
+    const designerUsers = await designerUserMap(admin, captionIds);
+    for (const p of (prods as { id: string; designer_id: string; name: string; world: string }[] | null) ?? []) {
+      const userId = designerUsers.get(p.designer_id);
+      if (!userId) continue;
+      const link = `/studio/produkte/${p.id}`;
+      if (await schonBenachrichtigt(admin, userId, "automatik.caption_bereit", link, seit)) continue;
+      const caption = `${p.name} — jetzt Teil der Kollektion.`;
+      await admin.from("notifications").insert({ user_id: userId, type: "automatik.caption_bereit", title: "Ein Bildunterschrift-Vorschlag ist da", body: caption, link });
+      await schreibePartieZug(admin, p.designer_id, `PAWN hat eine Bildunterschrift vorgeschlagen: ${p.name}.`, "pawn", "caption_nach_inszenierung");
+      ausgefuehrt.caption_nach_inszenierung++;
+    }
+  }
+
+  const sharekitIds = byKey.get("sharekit_bei_live") ?? [];
+  if (sharekitIds.length) {
+    const { data: prods } = await admin.from("products").select("id, designer_id, name").in("designer_id", sharekitIds).eq("status", "published").gte("updated_at", seit);
+    const designerUsers = await designerUserMap(admin, sharekitIds);
+    for (const p of (prods as { id: string; designer_id: string; name: string }[] | null) ?? []) {
+      const userId = designerUsers.get(p.designer_id);
+      if (!userId) continue;
+      const link = `/studio/produkte/${p.id}`;
+      if (await schonBenachrichtigt(admin, userId, "automatik.sharekit_bereit", link, seit)) continue;
+      await admin.from("notifications").insert({ user_id: userId, type: "automatik.sharekit_bereit", title: "Dein Teil-Paket liegt bereit", body: `„${p.name}" ist live — dein Teil-Paket mit Text und Bildern wartet.`, link });
+      await schreibePartieZug(admin, p.designer_id, `PAWN hat ein Teil-Paket bereitgelegt: ${p.name}.`, "pawn", "sharekit_bei_live");
+      ausgefuehrt.sharekit_bei_live++;
+    }
+  }
+
+  const aufraeumenIds = byKey.get("aufraeumen_woechentlich") ?? [];
+  if (aufraeumenIds.length) {
+    const seitWoche = new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const alt = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const designerUsers = await designerUserMap(admin, aufraeumenIds);
+    for (const designerId of aufraeumenIds) {
+      const userId = designerUsers.get(designerId);
+      if (!userId) continue;
+      const { count } = await admin.from("products").select("id", { count: "exact", head: true }).eq("designer_id", designerId).eq("status", "draft").lt("created_at", alt);
+      if (!count) continue;
+      const link = "/studio/produkte";
+      if (await schonBenachrichtigt(admin, userId, "automatik.aufraeumen", link, seitWoche)) continue;
+      await admin.from("notifications").insert({ user_id: userId, type: "automatik.aufraeumen", title: "Ein wöchentlicher Blick zurück", body: `${count} Entwurf/Entwürfe liegen schon länger — ein guter Moment, weiterzumachen oder aufzuräumen.`, link });
+      await schreibePartieZug(admin, designerId, `PAWN hat beim wöchentlichen Aufräumen ${count} liegen gebliebene Entwürfe gemeldet.`, "pawn", "aufraeumen_woechentlich");
+      ausgefuehrt.aufraeumen_woechentlich++;
+    }
+  }
+
+  const gesamt = Object.values(ausgefuehrt).reduce((a, b) => a + b, 0);
+  if (gesamt > 0) await schreibeSignal(admin, "pawn-jarvis", "automatik_lauf", { ...ausgefuehrt, gesamt });
+  return { ok: true, ...ausgefuehrt };
+}
+
+/**
+ * signalstrom_verdichten (Teil 28c, nächtlich) — verdichtet die letzten sieben Tage
+ * pawn_signals (nur Muster, nie Rohtext) zu einem kurzen Bericht fürs Cockpit. Löst nichts
+ * selbst aus — der Rückfluss an Zeitgeist/Gewichte/Signaturen bleibt bewusst ein Vorschlag
+ * (jarvis_notices), den Daouda oder die bestehenden Läufe (zeitgeist, evolution) aufgreifen,
+ * statt dass dieser Modus unbeaufsichtigt am Matching oder an Signaturen dreht.
+ */
+async function runSignalstromVerdichten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const seit = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { data: signals } = await admin.from("pawn_signals").select("quelle, kind, world, pattern, weight").gte("created_at", seit);
+  const rows = (signals as { quelle: string; kind: string; world: string | null; pattern: Record<string, unknown>; weight: number }[] | null) ?? [];
+  if (rows.length === 0) return { ok: true, message: "Noch keine Signale in den letzten sieben Tagen." };
+
+  const byKind: Record<string, number> = {};
+  const byWorld: Record<string, number> = {};
+  for (const r of rows) {
+    byKind[r.kind] = (byKind[r.kind] ?? 0) + (r.weight ?? 1);
+    if (r.world) byWorld[r.world] = (byWorld[r.world] ?? 0) + (r.weight ?? 1);
+  }
+  const kindZeilen = Object.entries(byKind).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}: ${n}`).join(", ");
+  const weltZeilen = Object.entries(byWorld).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}: ${n}`).join(", ");
+  const rohuebersicht = `Muster der letzten 7 Tage — ${kindZeilen}${weltZeilen ? ` · Welten: ${weltZeilen}` : ""}.`;
+
+  let text = rohuebersicht;
+  if (apiKey) {
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: MODEL, max_tokens: 500,
+          system: "Du bist PAWN. Schreibe aus einer Musterübersicht (nie Rohtext, nur Kategorien+Zahlen) für Daouda 2-4 knappe Empfehlungssätze auf Deutsch: was auffällt, was er sich ansehen sollte. Keine Übertreibung, keine erfundenen Schlüsse über einzelne Personen.",
+          messages: [{ role: "user", content: rohuebersicht }],
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const t = data?.content?.[0]?.text;
+        if (typeof t === "string" && t.trim()) text = t.trim();
+      }
+    } catch { /* fällt auf die Rohübersicht zurück */ }
+  }
+
+  const { data: reportRow } = await admin.from("jarvis_reports").insert({
+    kind: "dossier", title: `Signalstrom · ${new Date().toLocaleDateString("de-DE")}`, body: text, data: { byKind, byWorld },
+  }).select("id, kind, title, body, created_at").single();
+
+  const topKind = Object.entries(byKind).sort((a, b) => b[1] - a[1])[0];
+  if (topKind && topKind[1] >= 5) {
+    await admin.from("jarvis_notices").insert({
+      kind: "signalstrom_empfehlung",
+      title: "Signalstrom schlägt einen Blick vor",
+      body: `„${topKind[0]}" häuft sich (${topKind[1]}× in 7 Tagen). Lohnt sich ein Zeitgeist-Lauf oder eine Anpassung der Gewichte?`,
+    });
+  }
+
+  return { ok: true, report: reportRow, muster: Object.keys(byKind).length };
+}
+
+async function designerUserMap(admin: SupabaseClient, designerIds: string[]): Promise<Map<string, string>> {
+  const { data } = await admin.from("designers").select("id, user_id").in("id", designerIds);
+  const map = new Map<string, string>();
+  for (const d of (data as { id: string; user_id: string | null }[] | null) ?? []) if (d.user_id) map.set(d.id, d.user_id);
+  return map;
+}
+
 /** bewerbung_pruefen — bewertet neue Bewerbungen per Vision gegen denselben Kurator-Standard wie Akquise-Leads. */
 async function runBewerbungPruefen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: apps } = await admin.from("designer_applications")
@@ -3191,7 +3353,7 @@ Deno.serve(async (req) => {
       "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
-      "akquise_zyklus", "verstaerker",
+      "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -3207,7 +3369,7 @@ Deno.serve(async (req) => {
       "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
-      "akquise_zyklus", "verstaerker",
+      "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -3279,6 +3441,20 @@ Deno.serve(async (req) => {
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runBrollEinsammeln(admin);
       const summary = `${(result as { collected?: number }).collected ?? 0} eingesammelt, ${(result as { failed?: number }).failed ?? 0} gescheitert, ${(result as { still_running?: number }).still_running ?? 0} noch offen.`;
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
+    }
+
+    // --- Automatik-Matrix ausführen (Teil 28c): mechanisch, ohne LLM, respektiert nur die
+    // Grün-Schalter je Haus (designer_automations) — kein eigenes Pause-Gate nötig, die
+    // Häuser haben ihre Automatiken bereits einzeln ein-/ausgeschaltet. ---
+    if (mode === "automatik_ausfuehren") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = await runAutomatikAusfuehren(admin);
+      const summary = Object.entries(result).filter(([k]) => k !== "ok").map(([k, v]) => `${k}: ${v}`).join(", ");
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
@@ -3415,6 +3591,20 @@ Deno.serve(async (req) => {
 
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: tokensUsed, cost_estimate: costEstimate,
+      }).eq("id", runId);
+
+      return ok({ run_id: runId, ...result });
+    }
+
+    if (mode === "signalstrom_verdichten") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+
+      const result = await runSignalstromVerdichten(admin, apiKey);
+      const summary = (result as { message?: string }).message ?? `Signalstrom verdichtet: ${(result as { muster?: number }).muster ?? 0} Muster-Arten.`;
+
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
 
       return ok({ run_id: runId, ...result });
