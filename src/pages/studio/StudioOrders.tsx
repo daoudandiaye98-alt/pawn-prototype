@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders, type DesignerOrderLine, type FulfillmentStatus } from "@/features/studio/useDesignerOrders";
@@ -146,7 +148,7 @@ export default function StudioOrders() {
     window.open(data.signedUrl, "_blank");
   };
 
-  if (loading) return <StudioShell title={t("studio.orders.title")}><div className="animate-pulse h-40 bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.orders.title")}><PawnLoading className="h-40" /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.orders.title")}><p className="text-muted-foreground">{t("studio.orders.noAccess")}</p></StudioShell>;
 
   return (
@@ -183,13 +185,9 @@ export default function StudioOrders() {
       </div>
 
       {ordersLoading ? (
-        <div className="animate-pulse h-40 bg-muted" />
+        <PawnLoading className="h-40" />
       ) : grouped.length === 0 ? (
-        <div className="border-[1.5px] border-dashed border-foreground p-12 text-center">
-          <p className="editorial-eyebrow">{t("studio.orders.empty.eyebrow")}</p>
-          <p className="mt-3 font-serif text-2xl">{t("studio.orders.empty.title")}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{t("studio.orders.empty.body")}</p>
-        </div>
+        <PawnEmptyState className="p-12" title={t("studio.orders.empty.title")} description={t("studio.orders.empty.body")} />
       ) : (
         <ul className="space-y-3">
           {grouped.map((o) => (

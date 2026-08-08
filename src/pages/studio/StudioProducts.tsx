@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -219,7 +221,7 @@ export default function StudioProducts() {
     void refresh();
   };
 
-  if (loading) return <StudioShell title={t("studioShell.nav.produkte")}><div className="animate-pulse h-64 bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.produkte")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studioShell.nav.produkte")}><p className="text-muted-foreground">{t("studio.products.noStudioAccess")}</p></StudioShell>;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE));
@@ -234,14 +236,16 @@ export default function StudioProducts() {
       </div>
 
       {items.length === 0 ? (
-        <div className="mt-8 border border-dashed border-border bg-white p-12 text-center">
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.products.emptyEyebrow")}</p>
-          <p className="mt-3 font-serif text-2xl font-medium">{t("studio.products.emptyTitle")}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{t("studio.products.emptyBody")}</p>
-          <Link to="/studio/produkte/neu" className="mt-6 inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
-            <Plus className="h-3 w-3" /> {t("studio.products.firstPieceCta")}
-          </Link>
-        </div>
+        <PawnEmptyState
+          className="mt-8 bg-white p-12"
+          title={t("studio.products.emptyTitle")}
+          description={t("studio.products.emptyBody")}
+          action={
+            <Link to="/studio/produkte/neu" className="inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
+              <Plus className="h-3 w-3" /> {t("studio.products.firstPieceCta")}
+            </Link>
+          }
+        />
       ) : (
         <>
           <ul className="mt-6 divide-y divide-border border border-border bg-white">

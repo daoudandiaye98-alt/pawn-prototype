@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { useBrandJourney, type BrandStage } from "@/features/studio/useBrandJourney";
@@ -77,7 +78,7 @@ export default function StudioAufbau() {
     window.setTimeout(() => setCopied(null), 1500);
   };
 
-  if (loading) return <StudioShell title={t("studio.aufbau.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.aufbau.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.aufbau.title")}><p className="text-muted-foreground">{t("studio.aufbau.noAccess")}</p></StudioShell>;
 
   const pct = journey.totalCount > 0 ? journey.doneCount / journey.totalCount : 0;

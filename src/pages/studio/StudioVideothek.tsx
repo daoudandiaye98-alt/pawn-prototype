@@ -3,6 +3,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, Copy } from "lucide-react";
@@ -38,7 +39,7 @@ export default function StudioVideothek() {
     return signals.slice(0, 6).map((s) => `#${s.replace(/\s+/g, "").toLowerCase()}`);
   }, [designer]);
 
-  if (loading) return <StudioShell title={t("studio.videothek.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.videothek.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.videothek.title")}><p className="text-muted-foreground">{t("studio.videothek.noAccess")}</p></StudioShell>;
 
   const captionFor = (r: VideoRow) => r.campaigns?.content?.caption?.trim()

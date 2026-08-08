@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -56,7 +57,7 @@ export default function StudioReferrals() {
     navigator.clipboard.writeText(link).then(() => toast.success(t("studio.referrals.linkCopiedToast"))).catch(() => toast.error(t("studio.referrals.copyFailedToast")));
   };
 
-  if (loading) return <StudioShell title={t("studio.referrals.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.referrals.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.referrals.title")}><p className="text-muted-foreground">{t("studio.referrals.noAccess")}</p></StudioShell>;
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -62,7 +63,7 @@ export default function StudioBrand() {
     setForm((f) => ({ ...f, [kind]: data?.signedUrl ?? "" }));
   };
 
-  if (loading) return <StudioShell title={t("studio.brand.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.brand.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.brand.title")}><p className="text-muted-foreground">{t("studio.brand.noAccess")}</p></StudioShell>;
 
   return (

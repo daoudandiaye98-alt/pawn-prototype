@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 
 const PLAN_LABEL: Record<string, string> = { haus: "Haus", atelier: "Atelier", maison: "Maison" };
 
@@ -20,7 +22,7 @@ export default function StudioSettings() {
   const { designer, loading, refresh } = useMyDesigner();
   const { t, locale } = useI18n();
   const shellTitle = t("studioShell.nav.einstellungen");
-  if (loading) return <StudioShell title={shellTitle}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={shellTitle}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={shellTitle}><p className="text-sm text-muted-foreground">{t("studio.settings.noAccess")}</p></StudioShell>;
 
   const dna = (designer.brand_dna ?? {}) as BrandDna;
@@ -37,10 +39,11 @@ export default function StudioSettings() {
           <p className="mt-2 text-sm text-muted-foreground">{t("studio.settings.dna.subtitle")}</p>
 
           {!hasDna ? (
-            <div className="mt-6 border border-dashed border-border p-6 text-center">
-              <p className="text-sm text-muted-foreground">{t("studio.settings.dna.empty")}</p>
-              <Link to="/studio/produkte" className="mt-3 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.dna.createFirst")}</Link>
-            </div>
+            <PawnEmptyState
+              className="mt-6"
+              title={t("studio.settings.dna.empty")}
+              action={<Link to="/studio/produkte" className="inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.dna.createFirst")}</Link>}
+            />
           ) : (
             <>
               <div className="mt-6 space-y-3">

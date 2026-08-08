@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useCopilot } from "@/components/pawn/CopilotDrawer";
-import { PawnFigur, type PawnFigurHandle, type PawnRank } from "@/components/pawn/PawnFigur";
+import { PawnFigur, PawnFigurState, type PawnFigurHandle, type PawnRank } from "@/components/pawn/PawnFigur";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders } from "@/features/studio/useDesignerOrders";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
@@ -613,6 +613,25 @@ export default function StudioOverview() {
           })}
         </div>
         <p className="mt-4 text-xs text-muted-foreground">{t("studio.overview.wand.hint")}</p>
+      </section>
+
+      {/* Teil 28a: "Du triffst mich überall" — dieselbe Figur als Lade-/Leer-/Erfolgs-Zustand. */}
+      <section className="mb-6">
+        <p className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.states.title")}</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {([
+            { pose: "load", label: t("studio.overview.states.load"), caption: t("studio.pawn.loading") },
+            { pose: "shrug", label: t("studio.overview.states.empty"), caption: t("studio.pawn.empty.title") },
+            { pose: "win", label: t("studio.overview.states.win"), caption: t("studio.pawn.win.title") },
+          ] as const).map((s) => (
+            <div key={s.pose} className="border-[1.5px] border-foreground bg-white p-4 text-center">
+              <div className="flex justify-center">
+                <PawnFigurState pose={s.pose} size={42} />
+              </div>
+              <p className="mt-2 text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">{s.label} — „{s.caption}"</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Teil 28a: Deine Räume — Werkbank/Schaufenster/Dein Raum, mit lebenden Zustandszeilen. */}

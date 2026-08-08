@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -181,7 +182,7 @@ export default function StudioContentBegleiter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designer]);
 
-  if (loading) return <StudioShell title={t("studio.contentBegleiter.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.contentBegleiter.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.contentBegleiter.title")}><p className="text-muted-foreground">{t("studio.contentBegleiter.noAccess")}</p></StudioShell>;
 
   return (

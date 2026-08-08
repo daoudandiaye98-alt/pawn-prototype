@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders, type DesignerOrderLine, type FulfillmentStatus } from "@/features/studio/useDesignerOrders";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,7 +156,7 @@ export default function StudioVersand() {
     refresh();
   };
 
-  if (loading) return <StudioShell title={t("studio.versand.title")}><div className="h-40 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.versand.title")}><PawnLoading className="h-40" /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.versand.title")}><p className="text-muted-foreground">{t("studio.versand.noAccess")}</p></StudioShell>;
 
   return (
@@ -188,13 +190,9 @@ export default function StudioVersand() {
       </div>
 
       {ordersLoading ? (
-        <div className="mt-6 h-40 animate-pulse bg-muted" />
+        <PawnLoading className="mt-6 h-40" />
       ) : shipments.length === 0 ? (
-        <div className="mt-6 border-[1.5px] border-dashed border-foreground p-12 text-center">
-          <p className="editorial-eyebrow">{t("studio.versand.empty.eyebrow")}</p>
-          <p className="mt-3 font-serif text-2xl">{t("studio.versand.empty.title")}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{t("studio.versand.empty.body")}</p>
-        </div>
+        <PawnEmptyState className="mt-6 p-12" title={t("studio.versand.empty.title")} description={t("studio.versand.empty.body")} />
       ) : (
         <ul className="mt-6 space-y-4">
           {shipments.map((s) => {

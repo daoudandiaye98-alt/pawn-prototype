@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnLoading } from "@/components/pawn/PawnLoading";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,7 +135,7 @@ export default function StudioCampaigns() {
     void refresh();
   };
 
-  if (loading) return <StudioShell title={t("studio.campaigns.title")}><div className="h-64 animate-pulse bg-muted" /></StudioShell>;
+  if (loading) return <StudioShell title={t("studio.campaigns.title")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studio.campaigns.title")}><p className="text-muted-foreground">{t("studio.campaigns.noAccess")}</p></StudioShell>;
 
   return (
@@ -192,11 +194,7 @@ export default function StudioCampaigns() {
       )}
 
       {items.length === 0 ? (
-        <div className="mt-8 border border-dashed border-border p-12 text-center">
-          <p className="editorial-eyebrow">{t("studio.campaigns.empty.eyebrow")}</p>
-          <p className="mt-3 font-serif text-2xl">{t("studio.campaigns.empty.title")}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{t("studio.campaigns.empty.body")}</p>
-        </div>
+        <PawnEmptyState className="mt-8 p-12" title={t("studio.campaigns.empty.title")} description={t("studio.campaigns.empty.body")} />
       ) : (
         <ul className="mt-8 divide-y divide-border border border-border bg-card">
           {items.map((c) => (
