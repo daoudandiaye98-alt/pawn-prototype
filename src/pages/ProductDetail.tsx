@@ -102,7 +102,11 @@ const ProductDetail = () => {
   useEffect(() => {
     const el = kaufleisteRef.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => setKaufleisteHeight(entries[0].contentRect.height));
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height;
+      setKaufleisteHeight(height);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -294,7 +298,7 @@ const ProductDetail = () => {
         <Reveal>
           <div className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
             {heroImage ? (
-              <img src={heroImage} alt={product.name} className="absolute inset-0 h-full w-full object-cover" />
+              <img src={heroImage} alt={product.name} className="absolute inset-0 h-full w-full object-cover object-top md:object-contain md:object-center" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black">
                 <span className="palace-eyebrow text-white/50">Ohne Bild</span>
@@ -324,11 +328,14 @@ const ProductDetail = () => {
         </div>
       </section>
 
-      {/* KAUFLEISTE: sticky am unteren Rand — auf Kaufseiten das einzige PAWN-Element unten,
+      {/* Platzhalter im Fluss, damit der Inhalt nicht hinter der fixierten Kaufleiste verschwindet */}
+      <div aria-hidden style={{ height: kaufleisteHeight }} />
+
+      {/* KAUFLEISTE: fixiert am unteren Viewport-Rand — auf Kaufseiten das einzige PAWN-Element unten,
           der Kauf hat Vorrang (Teil 35). */}
       <section
         ref={kaufleisteRef}
-        className="house-hair sticky bottom-0 z-30 border-t"
+        className="house-hair fixed inset-x-0 bottom-0 z-30 border-t"
         style={{ background: "var(--house-bg)", paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto max-w-[1600px] px-6 py-5 md:px-14">
