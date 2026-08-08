@@ -1225,6 +1225,7 @@ export type Database = {
           location: string | null
           manifesto: string | null
           media_rights_granted_at: string | null
+          onboarding_state: Json
           page_published_at: string | null
           pawn_guide_enabled: boolean
           plan: Database["public"]["Enums"]["designer_plan"]
@@ -1278,6 +1279,7 @@ export type Database = {
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
+          onboarding_state?: Json
           page_published_at?: string | null
           pawn_guide_enabled?: boolean
           plan?: Database["public"]["Enums"]["designer_plan"]
@@ -1331,6 +1333,7 @@ export type Database = {
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
+          onboarding_state?: Json
           page_published_at?: string | null
           pawn_guide_enabled?: boolean
           plan?: Database["public"]["Enums"]["designer_plan"]

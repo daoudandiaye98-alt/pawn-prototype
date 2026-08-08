@@ -5,6 +5,7 @@ import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useCopilot } from "@/components/pawn/CopilotDrawer";
 import { PawnFigur, PawnFigurState, type PawnFigurHandle, type PawnRank } from "@/components/pawn/PawnFigur";
 import { WhileYouWereAway } from "@/components/pawn/WhileYouWereAway";
+import { ErstePartie } from "@/components/pawn/ErstePartie";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useDesignerOrders } from "@/features/studio/useDesignerOrders";
 import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
@@ -276,6 +277,28 @@ export default function StudioOverview() {
     }
   }, [designer, lastSeenSnapshotReady]);
 
+  // Teil 28b: "Die erste Partie" — beim allerersten Studio-Besuch öffnet sich das Gespräch von
+  // selbst; danach nur noch über die Fortsetzen-Karte. "Später" legt es für diese Sitzung ab,
+  // ohne den Server-Zustand zu verändern — beim nächsten Mal steht die Partie wieder da, wo sie war.
+  const [showErstePartie, setShowErstePartie] = useState(false);
+  const onboardingStatus = (designer?.onboarding_state as { status?: string } | undefined)?.status;
+  useEffect(() => {
+    if (!designer) return;
+    if (onboardingStatus === "abgeschlossen") return;
+    const dismissedKey = `pawn_partie_dismissed_${designer.id}`;
+    if (sessionStorage.getItem(dismissedKey) === "1") return;
+    if (!onboardingStatus || onboardingStatus === "nicht_begonnen") setShowErstePartie(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designer?.id, onboardingStatus]);
+  const closeErstePartie = () => {
+    if (designer) sessionStorage.setItem(`pawn_partie_dismissed_${designer.id}`, "1");
+    setShowErstePartie(false);
+  };
+  const finishErstePartie = () => {
+    setShowErstePartie(false);
+    void refreshDesigner();
+  };
+
   useEffect(() => {
     if (!designer) return;
     (async () => {
@@ -493,6 +516,21 @@ export default function StudioOverview() {
   return (
     <StudioShell title={t("studio.overview.title")} eyebrow={t("studio.overview.eyebrow.overview")}>
       {lastSeenSnapshotReady && <WhileYouWereAway designerId={designer.id} previousLastSeenAt={lastSeenSnapshotRef.current} />}
+      {showErstePartie && <ErstePartie rank={RANK_BY_LEVEL[level.level] ?? "bauer"} onClose={closeErstePartie} onDone={finishErstePartie} />}
+
+      {!showErstePartie && onboardingStatus === "laeuft" && (
+        <button
+          type="button"
+          onClick={() => setShowErstePartie(true)}
+          className="mb-6 flex w-full flex-wrap items-center justify-between gap-4 border-[1.5px] border-foreground bg-white px-6 py-4 text-left hover:bg-foreground hover:text-background"
+        >
+          <div>
+            <p className="text-[0.6rem] uppercase tracking-[0.28em] opacity-60">{t("studio.erstePartie.resume.eyebrow")}</p>
+            <p className="mt-1 font-serif text-lg">{t("studio.erstePartie.resume.body")}</p>
+          </div>
+          <span className="text-[0.62rem] uppercase tracking-[0.28em]">{t("studio.erstePartie.resume.cta")}</span>
+        </button>
+      )}
 
       {/* Teil 28a: PAWN als Figur — Hero, Namensschild, Dialogkarte mit echter Begrüßung */}
       <section className="mb-8 border-b-[1.5px] border-foreground pb-8 text-center">
