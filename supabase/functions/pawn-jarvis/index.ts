@@ -2897,6 +2897,15 @@ async function runSignalstromVerdichten(admin: SupabaseClient, apiKey: string): 
     kind: "dossier", title: `Signalstrom · ${new Date().toLocaleDateString("de-DE")}`, body: text, data: { byKind, byWorld },
   }).select("id, kind, title, body, created_at").single();
 
+  // Teil 30 — fester Ablageort für "Die Nacht in drei Zeilen" im Cockpit: die drei
+  // stärksten Muster als eigene pawn_signals-Zeilen (kind='verdichtung'), nur
+  // Kategorie+Zählwert — nie Freitext, damit die Regel aus der Tabellenbeschreibung
+  // gilt. Die Klartext-Sätze übersetzt das Cockpit selbst aus dem Musternamen.
+  const topDreiMuster = Object.entries(byKind).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  for (const [muster, n] of topDreiMuster) {
+    await schreibeSignal(admin, "pawn-jarvis", "verdichtung", { muster, n: Math.round(n) });
+  }
+
   const topKind = Object.entries(byKind).sort((a, b) => b[1] - a[1])[0];
   if (topKind && topKind[1] >= 5) {
     await admin.from("jarvis_notices").insert({

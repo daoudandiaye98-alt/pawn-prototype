@@ -15,8 +15,10 @@ import {
 } from "@/features/admin/useAdminData";
 import { useAdminNextMove } from "@/features/admin/useAdminNextMove";
 import { useJarvisCockpit, type JarvisRunRow, type JarvisQueueItem, type Zone, type BauplanDraft } from "@/features/admin/useJarvisCockpit";
+import { useCockpitBuhne } from "@/features/admin/useCockpitBuhne";
 import { useDisplayName } from "@/lib/displayName";
 import { useAuth } from "@/lib/auth";
+import { PawnFigur } from "@/components/pawn/PawnFigur";
 
 /* ─────────────────────── Cockpit primitives ─────────────────────── */
 
@@ -324,30 +326,6 @@ function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof u
   );
 }
 
-/* ─────────────────────── Jarvis' Wort — der jüngste Morgenbericht ─────────────────────── */
-
-function JarvisWordPanel({ report, onRequest, busy }: { report: ReturnType<typeof useJarvisCockpit>["latestMorgen"]; onRequest: () => void; busy: boolean }) {
-  if (!report) {
-    return (
-      <div className="flex flex-col items-start gap-3 p-6">
-        <p className="text-[12.5px] leading-relaxed text-[hsl(0_0%_66%)]">
-          PAWN hat heute noch nichts geschrieben. Der nächste Morgenbericht kommt automatisch — oder jetzt anfordern.
-        </p>
-        <Btn variant="solid" onClick={onRequest} disabled={busy}>
-          {busy ? <Loader2 className="mr-1.5 inline h-3 w-3 animate-spin" /> : null}
-          Morgenbericht jetzt
-        </Btn>
-      </div>
-    );
-  }
-  return (
-    <div className="p-6">
-      <p className="text-[0.6rem] uppercase tracking-[0.24em] text-[hsl(0_0%_55%)]">{timeAgo(new Date(report.created_at).getTime())}</p>
-      <p className="mt-3 whitespace-pre-line text-[13.5px] leading-relaxed text-[hsl(0_0%_88%)]">{report.body}</p>
-    </div>
-  );
-}
-
 /* ─────────────────────── Wartet auf dich — echte Entscheidungs-Queue ─────────────────────── */
 
 function QueuePanel({ items, onChanged }: { items: JarvisQueueItem[]; onChanged: () => void }) {
@@ -614,6 +592,171 @@ function OrgansPanel({ runs, cronJobs, trendAgeDays, trendsFresh, zones, onZoneC
   );
 }
 
+/* ─────────────────────── Die Bühne (Teil 30) ─────────────────────── */
+
+const MUSTER_SENTENCES: Record<string, string> = {
+  automatik_lauf: "Automatik-Züge liefen in der Nacht",
+  erste_partie_abgeschlossen: "Neue Häuser haben ihre erste Partie abgeschlossen",
+};
+function musterSentence(muster: string): string {
+  return MUSTER_SENTENCES[muster] ?? `Muster erkannt: ${muster}`;
+}
+
+function condensedMaschinenraum(runs: JarvisRunRow[], cronJobs: ReturnType<typeof useJarvisCockpit>["cronJobs"]) {
+  const rows = ORGANS.map((o) => {
+    const job = cronJobs.find((j) => o.keywords.some((k) => j.jobname.toLowerCase().includes(k))) ?? null;
+    const last = runs.find((r) => r.mode === o.mode) ?? null;
+    const failed = last?.status === "failed";
+    const silent = !!job?.active && (!last || Date.now() - new Date(last.finished_at ?? last.started_at).getTime() > 30 * 3600_000);
+    const reason = failed ? (last?.error ?? "Fehler im letzten Lauf") : silent ? "Kein Lauf seit über 30 Stunden trotz Zeitplan" : null;
+    return { label: o.label, failed, silent, reason };
+  });
+  const exceptions = rows.filter((r) => r.failed || r.silent);
+  return { total: rows.length, clean: rows.length - exceptions.length, exceptions };
+}
+
+function Buhne({
+  firstName, buhne, pendingApplications, jarvisRuns, jarvisCronJobs, onVerdichten, verdichtenBusy, navigate,
+}: {
+  firstName: string; buhne: ReturnType<typeof useCockpitBuhne>; pendingApplications: number;
+  jarvisRuns: JarvisRunRow[]; jarvisCronJobs: ReturnType<typeof useJarvisCockpit>["cronJobs"];
+  onVerdichten: () => void; verdichtenBusy: boolean; navigate: (to: string) => void;
+}) {
+  const [showFehler, setShowFehler] = useState(false);
+  const maschinenraum = condensedMaschinenraum(jarvisRuns, jarvisCronJobs);
+
+  // Regelbasierter wichtigster Zug des Tages: voller Sende-Stapel > offene Prüfungen > stille Crons.
+  const move: { text: string; to: string } | null =
+    buhne.sendeStapelCount > 0
+      ? { text: `${buhne.sendeStapelCount} Nachricht${buhne.sendeStapelCount === 1 ? "" : "en"} bereit im Sende-Stapel.`, to: "/admin/akquise" }
+      : pendingApplications > 0
+      ? { text: `${pendingApplications} Bewerbung${pendingApplications === 1 ? "" : "en"} warten auf Prüfung.`, to: "/admin/designers" }
+      : maschinenraum.exceptions.length > 0
+      ? { text: `${maschinenraum.exceptions.length} Lauf${maschinenraum.exceptions.length === 1 ? "" : "e"} meldet sich gerade nicht.`, to: "/admin/jarvis" }
+      : null;
+
+  const lagebericht = [
+    buhne.newLeads24h > 0 ? `${buhne.newLeads24h} neue${buhne.newLeads24h === 1 ? "r Lead" : " Leads"} seit gestern.` : "Keine neuen Leads seit gestern.",
+    buhne.verdichtung.length > 0 ? `${buhne.verdichtung.length} Muster aus der Nacht verdichtet.` : null,
+    move ? move.text : "Kein dringender Zug — alles läuft ruhig.",
+  ].filter(Boolean).join(" ");
+
+  return (
+    <section className="border-[1.5px] border-white/15 bg-[hsl(0_0%_6%)] p-6 md:p-8">
+      <div className="flex items-start gap-5">
+        <PawnFigur size={72} tone="dark" interactive={false} showShadow={false} ariaLabel="PAWN" className="shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="font-serif text-lg text-[hsl(0_0%_94%)]">PAWN</p>
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Sieht alles, was die Halle sieht</p>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-[hsl(0_0%_86%)]">
+            Guten Tag, {firstName}. {buhne.loading ? "Lade die Lage …" : lagebericht}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Btn variant="solid" onClick={() => navigate(move?.to ?? "/admin/akquise")}>Zeig den Stapel</Btn>
+            <Btn onClick={() => setShowFehler((v) => !v)}>{showFehler ? "Fehlerliste schließen" : "Was klemmt?"}</Btn>
+            <Btn onClick={onVerdichten} disabled={verdichtenBusy}>
+              {verdichtenBusy ? <Loader2 className="mr-1.5 inline h-3 w-3 animate-spin" /> : null}
+              Verdichte die Woche
+            </Btn>
+          </div>
+          {showFehler && (
+            <div className="mt-4 border border-white/15 bg-[hsl(0_0%_5%)] p-4">
+              {maschinenraum.exceptions.length === 0 ? (
+                <p className="text-[12px] text-[hsl(0_0%_66%)]">Nichts klemmt — alle Läufe melden sich sauber.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {maschinenraum.exceptions.map((e) => (
+                    <li key={e.label} className="text-[12px] text-[hsl(0_0%_86%)]">
+                      <span className="text-[hsl(0_0%_94%)]">{e.label}</span> — {e.reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Die Nacht in drei Zeilen */}
+      <div className="mt-6 border-t border-white/[0.08] pt-5">
+        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Die Nacht in drei Zeilen</p>
+        {buhne.loading ? (
+          <p className="mt-3 text-[12px] text-[hsl(0_0%_55%)]">Lade …</p>
+        ) : buhne.verdichtung.length === 0 ? (
+          <p className="mt-3 text-[13px] text-[hsl(0_0%_66%)]">Die erste Nacht läuft heute.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {buhne.verdichtung.map((v, i) => (
+              <li key={i} className="flex items-center justify-between text-[13px] text-[hsl(0_0%_88%)]">
+                <span>{musterSentence(v.muster)}</span>
+                <span className="tabular-nums text-[hsl(0_0%_55%)]">{v.n}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Maschinenraum — Sammelzeile, nur Ausnahmen darunter */}
+      <div className="mt-6 border-t border-white/[0.08] pt-5">
+        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Maschinenraum</p>
+        <p className="mt-3 text-[13px] text-[hsl(0_0%_88%)]">{maschinenraum.clean} von {maschinenraum.total} laufen sauber.</p>
+        {maschinenraum.exceptions.length > 0 && (
+          <ul className="mt-2 space-y-1.5">
+            {maschinenraum.exceptions.map((e) => (
+              <li key={e.label} className="border border-white/25 bg-white/[0.04] px-3 py-2 text-[12px] text-[hsl(0_0%_92%)]">
+                <span className="font-medium">{e.label}</span> — {e.reason}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Die Häuser */}
+      <div className="mt-6 border-t border-white/[0.08] pt-5">
+        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Die Häuser</p>
+        {buhne.loading ? (
+          <p className="mt-3 text-[12px] text-[hsl(0_0%_55%)]">Lade …</p>
+        ) : buhne.houses.length === 0 ? (
+          <p className="mt-3 text-[13px] text-[hsl(0_0%_66%)]">Noch keine Häuser.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-white/[0.06]">
+            {buhne.houses.map((h) => (
+              <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[12.5px]">
+                <span className="text-[hsl(0_0%_92%)]">{h.name}</span>
+                <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] uppercase tracking-[0.16em] text-[hsl(0_0%_58%)]">
+                  <span>{h.welt}</span>
+                  <span>{h.rangGlyph} {h.rangLabel}</span>
+                  <span>{h.kernzustand}</span>
+                  <span>{h.stripeStatus}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-3 text-[12px] text-[hsl(0_0%_74%)]">
+          <span>Einladung neuer Häuser · Sende-Stapel</span>
+          <span className="tabular-nums">{buhne.sendeStapelCount} bereit / Tageslimit {buhne.dailyCap}</span>
+        </div>
+      </div>
+
+      {/* Zahlenleiste */}
+      <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/[0.08] pt-5 sm:grid-cols-4">
+        {[
+          { l: "Leads", v: buhne.zahlen.leads },
+          { l: "Qualifiziert", v: buhne.zahlen.qualifiziert },
+          { l: "Kontaktiert", v: buhne.zahlen.kontaktiert },
+          { l: "Bestellungen", v: buhne.zahlen.bestellungen },
+        ].map((z) => (
+          <div key={z.l}>
+            <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(0_0%_50%)]">{z.l}</p>
+            <p className="mt-1 font-serif text-[20px] tabular-nums text-[hsl(0_0%_94%)]">{buhne.loading ? "…" : z.v}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ─────────────────────── Command Deck (OS body) ─────────────────────── */
 
 function CommandDeck() {
@@ -637,10 +780,11 @@ function CommandDeck() {
   const heartbeat = useSystemHeartbeat(tick);
   const { firstName } = useDisplayName();
   const { user } = useAuth();
-  const { move: adminMove } = useAdminNextMove();
+  const { move: adminMove, signals: adminMoveSignals } = useAdminNextMove();
   const [jarvisTick, setJarvisTick] = useState(0);
   const jarvis = useJarvisCockpit(`${tick}-${jarvisTick}`);
-  const [morgenBusy, setMorgenBusy] = useState(false);
+  const buhne = useCockpitBuhne(`${tick}-${jarvisTick}`);
+  const [verdichtenBusy, setVerdichtenBusy] = useState(false);
 
   async function saveZone(modeKey: string, zone: Zone) {
     if (!user) return;
@@ -650,42 +794,39 @@ function CommandDeck() {
     setJarvisTick((v) => v + 1);
   }
 
-  async function requestMorgenbericht() {
-    setMorgenBusy(true);
+  async function requestVerdichten() {
+    setVerdichtenBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "morgenbericht" } });
+      const { data, error } = await supabase.functions.invoke("pawn-jarvis", { body: { mode: "signalstrom_verdichten" } });
       if (error) { toast.error(error.message); return; }
       const result = data as { ok: boolean; error?: string };
-      if (!result.ok) { toast.error(result.error ?? "PAWN konnte nicht antworten."); return; }
-      toast.success("Morgenbericht fertig.");
+      if (!result.ok) { toast.error(result.error ?? "Konnte nicht verdichten."); return; }
+      toast.success("Verdichtet.");
       setJarvisTick((v) => v + 1);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setMorgenBusy(false);
+      setVerdichtenBusy(false);
     }
   }
 
   return (
     <div className="-mx-6 -my-6 min-h-[calc(100vh-4rem)] bg-[hsl(0_0%_4%)] p-6 text-[hsl(0_0%_90%)] md:-mx-10 md:-my-10 md:p-10">
-      {/* Header strip */}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.08] pb-6">
-        <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.32em] text-[hsl(0_0%_55%)]">
-            Cockpit · Identity · Intelligence · Marketplace
-          </p>
-          <h2 className="mt-2 font-serif text-3xl leading-tight text-[hsl(0_0%_94%)]">
-            Guten Tag, {firstName}.
-            {jarvis.paused && <span className="ml-3 text-[hsl(0_0%_55%)]">PAWN ist pausiert.</span>}
-          </h2>
-        </div>
-      </div>
+      {/* DIE BÜHNE (Teil 30) — ersetzt Kopf + Morgenbericht-Panel, nicht die Werkzeuge darunter */}
+      {jarvis.paused && (
+        <p className="mb-3 text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">PAWN ist pausiert.</p>
+      )}
+      <Buhne
+        firstName={firstName}
+        buhne={buhne}
+        pendingApplications={adminMoveSignals.pendingApplications}
+        jarvisRuns={jarvis.runs}
+        jarvisCronJobs={jarvis.cronJobs}
+        onVerdichten={() => void requestVerdichten()}
+        verdichtenBusy={verdichtenBusy}
+        navigate={navigate}
+      />
       <LivePulseBar lastUpdated={lastUpdated} />
-
-      {/* JARVIS' WORT — der jüngste Morgenbericht */}
-      <Panel title="PAWNs Wort" eyebrow="Morgenbericht" className="mt-6">
-        <JarvisWordPanel report={jarvis.latestMorgen} onRequest={() => void requestMorgenbericht()} busy={morgenBusy} />
-      </Panel>
 
       {/* DEIN NÄCHSTER ZUG — ganz oben, ein klarer Impuls */}
       <section className="mt-4 border-[1.5px] border-[hsl(0_0%_45%)] bg-[hsl(0_0%_6%)] p-6 md:p-7">
