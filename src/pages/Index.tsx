@@ -9,7 +9,6 @@ import { usePublicDesigners, usePublishedProducts, useActiveCollection, type Pub
 import { useSiteContent } from "@/lib/siteContent";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
-import { useI18n } from "@/lib/i18n";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 
 /**
@@ -38,7 +37,6 @@ const Index = () => {
   const { products } = usePublishedProducts();
   const collection = useActiveCollection();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
-  const { locale } = useI18n();
 
   const designerById = useMemo(() => new Map(designers.map((d) => [d.id, d])), [designers]);
 
