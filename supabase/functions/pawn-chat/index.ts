@@ -289,6 +289,179 @@ function extractUserIdFromJWT(auth: string | null): string | null {
   } catch { return null; }
 }
 
+// --- Teil 28b: "Die erste Partie" — Onboarding als Gespräch, kein Formular, kein Score im Frontend. ---
+
+interface OnboardingState {
+  status?: "nicht_begonnen" | "laeuft" | "abgeschlossen";
+  schritt?: "schwerpunkte" | "automatik" | "fertig";
+  reife_einschaetzung?: string;
+  schwerpunkte_angeboten?: string[];
+  schwerpunkte_gewaehlt?: string[];
+  automatik_angebot?: string | null;
+  /** Zustimmungen aus dem Gespräch — werden erst mit Teil 28c in designer_automations wirksam. */
+  automatik_zustimmungen?: string[];
+  abgeschlossen_am?: string | null;
+  zuletzt_aktiv_am?: string;
+}
+
+// Dieselben sechs vorbereitenden Schritte wie in useDesignerJourney (Teil 17c) — ohne "Konto"
+// (immer wahr) und "Erster Verkauf" (ein Ergebnis, kein Zug, den man vorschlagen kann).
+const PARTIE_SCHRITTE = [
+  { key: "haus_benannt", label: "Dein Haus benennen" },
+  { key: "erstes_stueck", label: "Ein erstes Stück anlegen" },
+  { key: "bild_inszeniert", label: "Ein Bild inszenieren" },
+  { key: "auszahlungskonto", label: "Auszahlungskonto einrichten" },
+  { key: "seite_veroeffentlicht", label: "Deine Seite veröffentlichen" },
+  { key: "erstmals_geteilt", label: "Zum ersten Mal teilen" },
+] as const;
+
+// Zone Grün aus Teil 28c — hier nur als Angebot im Gespräch, die Zustimmung wird erst mit der
+// Automatik-Matrix (28c) tatsächlich wirksam. Nur zwei der vier Grün-Automatiken passen thematisch
+// zu einem der Schwerpunkte oben; die anderen beiden gehören nicht in ein Eröffnungsgespräch.
+const PARTIE_AUTOMATIK: Record<string, { key: string; frage: string }> = {
+  bild_inszeniert: { key: "inszenieren_bei_upload", frage: "Soll ich neue Fotos künftig automatisch für dich in Szene setzen, sobald du sie hochlädst?" },
+  erstmals_geteilt: { key: "sharekit_bei_live", frage: "Soll ich dir automatisch ein fertiges Teil-Paket bereitlegen, sobald ein Stück live geht?" },
+};
+
+const SHARE_EVENT_TYPES_PARTIE = ["share.kit_downloaded", "share.package_downloaded", "share.link_copied"];
+
+async function computePartieSignale(
+  admin: SupabaseClient, designerId: string, brandName: string | null,
+  stripeChargesEnabled: boolean | null, pagePublishedAt: string | null,
+): Promise<Record<string, boolean>> {
+  const [{ count: productsCount }, { data: staging }, { data: shareEvents }] = await Promise.all([
+    admin.from("products").select("id", { count: "exact", head: true }).eq("designer_id", designerId),
+    admin.from("staging_requests" as never).select("id").eq("designer_id", designerId).eq("status", "done").limit(1),
+    admin.from("domain_events").select("id").in("type", SHARE_EVENT_TYPES_PARTIE).eq("payload->>designer_id", designerId).limit(1),
+  ]);
+  return {
+    haus_benannt: !!brandName,
+    erstes_stueck: (productsCount ?? 0) > 0,
+    bild_inszeniert: (((staging as unknown[]) ?? []).length) > 0,
+    auszahlungskonto: stripeChargesEnabled === true,
+    seite_veroeffentlicht: !!pagePublishedAt,
+    erstmals_geteilt: (((shareEvents as unknown[]) ?? []).length) > 0,
+  };
+}
+
+/** Reife in Worten, nie als Zahl — die Bänder sind intern, im Text steht nur die Einschätzung. */
+function reifeEinschaetzung(doneCount: number, total: number): string {
+  if (doneCount <= 1) return "Du stehst ganz am Anfang der Partie — der Zugang steht, der Rest entsteht jetzt, Zug für Zug.";
+  if (doneCount <= 3) return "Die Grundlagen stehen. Jetzt geht es darum, sichtbar zu werden.";
+  if (doneCount < total) return "Du bist schon mitten in der Partie — nur noch wenige Züge trennen dich vom ersten Verkauf.";
+  return "Alles Vorbereitende ist getan. Ab hier zählt, was du zeigst.";
+}
+
+function partieResponse(payload: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+/**
+ * Führt die erste Partie einen Zug weiter. Steuerung (Zustand, Übergänge, Schreibzugriffe) hängt
+ * nie vom Denkmodell ab — nur der Ton einer einzelnen Zeile wird, wenn ein Anbieter verfügbar ist,
+ * warm umformuliert (callProvider → warm()). Ist kein KI-Guthaben/kein Schlüssel verfügbar, liefert
+ * callProvider text:null und die feste, immer korrekte Zeile bleibt stehen — der Ablauf funktioniert
+ * unverändert, nur ohne die persönliche Formulierung.
+ */
+async function handleErstePartie(
+  admin: SupabaseClient | null, user_id: string | null,
+  body: { partie_aktion?: string; schwerpunkte_gewaehlt?: string[]; automatik_zustimmung?: boolean },
+): Promise<Response> {
+  if (!admin || !user_id) return partieResponse({ ok: false, error: "Dafür musst du als Haus angemeldet sein." });
+
+  const { data: d } = await admin.from("designers")
+    .select("id, brand_name, stripe_charges_enabled, page_published_at, onboarding_state")
+    .eq("user_id", user_id).maybeSingle();
+  if (!d) return partieResponse({ ok: false, error: "Kein Haus zu diesem Konto gefunden." });
+  const designer = d as {
+    id: string; brand_name: string | null; stripe_charges_enabled: boolean | null;
+    page_published_at: string | null; onboarding_state: OnboardingState | null;
+  };
+  const state: OnboardingState = designer.onboarding_state ?? {};
+  const aktion = String(body.partie_aktion ?? "start");
+  const now = new Date().toISOString();
+
+  if (state.status === "abgeschlossen") {
+    return partieResponse({ ok: true, schritt: "fertig", reply: "Die Eröffnung steht.", celebrate: false, onboarding_state: state });
+  }
+
+  const houseStyleLaw = await loadHouseStyleLaw(admin);
+  async function warm(fixedLine: string): Promise<string> {
+    const sys = `Du bist PAWN, mitten in einem kurzen, warmen Eröffnungsgespräch mit einer Designerin/einem Designer ("Die erste Partie"). ${houseStyleLaw}\nFormuliere den folgenden Satz in genau einem warmen, kurzen Satz auf Deutsch neu — erfinde nichts hinzu, ändere keine Fakten und keine Zahlen: "${fixedLine}"`;
+    const r = await callProvider(sys, [], "", undefined, undefined);
+    return r.text?.trim() || fixedLine;
+  }
+
+  if (aktion === "schwerpunkte_bestaetigen") {
+    const angeboten = state.schwerpunkte_angeboten ?? [];
+    const gewaehlt = Array.isArray(body.schwerpunkte_gewaehlt) && body.schwerpunkte_gewaehlt.length
+      ? body.schwerpunkte_gewaehlt.filter((k) => angeboten.includes(k))
+      : angeboten;
+    const automatikKandidat = gewaehlt.map((k) => PARTIE_AUTOMATIK[k]).find(Boolean) ?? null;
+    const nextState: OnboardingState = {
+      ...state, status: "laeuft", schritt: automatikKandidat ? "automatik" : "fertig",
+      schwerpunkte_gewaehlt: gewaehlt, automatik_angebot: automatikKandidat?.key ?? null,
+      ...(automatikKandidat ? {} : { abgeschlossen_am: now }),
+      zuletzt_aktiv_am: now,
+    };
+    await admin.from("designers").update({ onboarding_state: nextState as never }).eq("id", designer.id);
+    if (automatikKandidat) {
+      return partieResponse({ ok: true, schritt: "automatik", reply: await warm(automatikKandidat.frage), automatik_angebot: automatikKandidat, onboarding_state: nextState });
+    }
+    if (admin) {
+      await admin.from("domain_events").insert({
+        id: crypto.randomUUID(), type: "onboarding.erste_partie_abgeschlossen", actor: "user",
+        payload: { user_id, designer_id: designer.id, schwerpunkte: gewaehlt }, schema_version: 1,
+      });
+    }
+    return partieResponse({ ok: true, schritt: "fertig", reply: await warm("Die Eröffnung steht."), celebrate: true, onboarding_state: nextState });
+  }
+
+  if (aktion === "automatik_antworten") {
+    const zustimmung = body.automatik_zustimmung === true;
+    const key = state.automatik_angebot;
+    const zustimmungen = zustimmung && key
+      ? Array.from(new Set([...(state.automatik_zustimmungen ?? []), key]))
+      : (state.automatik_zustimmungen ?? []);
+    const nextState: OnboardingState = {
+      ...state, status: "abgeschlossen", schritt: "fertig",
+      automatik_zustimmungen: zustimmungen, abgeschlossen_am: now, zuletzt_aktiv_am: now,
+    };
+    await admin.from("designers").update({ onboarding_state: nextState as never }).eq("id", designer.id);
+    await admin.from("domain_events").insert({
+      id: crypto.randomUUID(), type: "onboarding.erste_partie_abgeschlossen", actor: "user",
+      payload: { user_id, designer_id: designer.id, schwerpunkte: state.schwerpunkte_gewaehlt ?? [], automatik_zugestimmt: zustimmung ? key : null }, schema_version: 1,
+    });
+    return partieResponse({ ok: true, schritt: "fertig", reply: await warm("Die Eröffnung steht."), celebrate: true, onboarding_state: nextState });
+  }
+
+  // aktion === "start" (Default): Bestandsaufnahme aus echten Signalen, Reife-Einschätzung in
+  // Worten, bis zu drei Schwerpunkte zur Auswahl anbieten.
+  const done = await computePartieSignale(admin, designer.id, designer.brand_name, designer.stripe_charges_enabled, designer.page_published_at);
+  const offene = PARTIE_SCHRITTE.filter((s) => !done[s.key]).slice(0, 3);
+  const doneCount = PARTIE_SCHRITTE.filter((s) => done[s.key]).length;
+  const einschaetzung = reifeEinschaetzung(doneCount, PARTIE_SCHRITTE.length);
+
+  if (offene.length === 0) {
+    const nextState: OnboardingState = { ...state, status: "abgeschlossen", schritt: "fertig", reife_einschaetzung: einschaetzung, abgeschlossen_am: now, zuletzt_aktiv_am: now };
+    await admin.from("designers").update({ onboarding_state: nextState as never }).eq("id", designer.id);
+    return partieResponse({ ok: true, schritt: "fertig", reply: await warm(`${einschaetzung} Die Eröffnung steht.`), celebrate: true, onboarding_state: nextState });
+  }
+
+  const nextState: OnboardingState = {
+    ...state, status: "laeuft", schritt: "schwerpunkte",
+    reife_einschaetzung: einschaetzung, schwerpunkte_angeboten: offene.map((s) => s.key),
+    zuletzt_aktiv_am: now,
+  };
+  await admin.from("designers").update({ onboarding_state: nextState as never }).eq("id", designer.id);
+  const opener = `${designer.brand_name ? `${designer.brand_name}, schön dich zu sehen.` : "Schön, dich zu sehen."} ${einschaetzung}`;
+  return partieResponse({
+    ok: true, schritt: "schwerpunkte", reply: await warm(opener),
+    optionen: offene.map((s) => ({ key: s.key, label: s.label })),
+    onboarding_state: nextState,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -297,6 +470,8 @@ Deno.serve(async (req) => {
       image_url?: string; image_urls?: string[]; image_paths?: string[];
       persist_thread?: boolean;
       page_context?: { route?: string; product_slug?: string };
+      mode?: "erste_partie";
+      partie_aktion?: string; schwerpunkte_gewaehlt?: string[]; automatik_zustimmung?: boolean;
     };
 
     // Provider probe (used by /admin/ki status badge) — no side effects.
@@ -321,6 +496,12 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL");
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const admin = url && key ? createClient(url, key, { auth: { persistSession: false } }) : null;
+
+    // Teil 28b: "Die erste Partie" ist ein eigener, in sich geschlossener Ablauf (eigene Fragen,
+    // eigener Zustand in designers.onboarding_state) — läuft komplett getrennt vom freien Gespräch.
+    if (body.mode === "erste_partie") {
+      return await handleErstePartie(admin, user_id, body);
+    }
 
     let extracted: Extracted = {};
     let turns = 0;
