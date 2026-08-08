@@ -298,7 +298,7 @@ const ProductDetail = () => {
         <Reveal>
           <div className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
             {heroImage ? (
-              <img src={heroImage} alt={product.name} className="absolute inset-0 h-full w-full object-cover" />
+              <img src={heroImage} alt={product.name} className="absolute inset-0 h-full w-full object-cover object-top md:object-contain md:object-center" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black">
                 <span className="palace-eyebrow text-white/50">Ohne Bild</span>
