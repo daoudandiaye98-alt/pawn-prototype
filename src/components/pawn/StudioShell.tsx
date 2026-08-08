@@ -328,11 +328,21 @@ function Inner({ children, title, eyebrow, begleiterStep }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
+  // Teil 28d: "Ein PAWN unten, nie zwei" — auf Mobil übernimmt die Scroll-Begleitung
+  // (sofern aktiv) den Chat-Einstieg unten; der separate Begleiter-Knopf tritt dort zurück.
+  const guideEnabled = designer?.pawn_guide_enabled !== false;
+
   return (
     <div className="flex min-h-screen bg-background">
       <LevelUpOverlay designerId={designer?.id} />
-      {designer && <Begleiter pathname={pathname} step={begleiterStep} plan={plan} quota={quota} />}
-      {designer && <PawnGuide pathname={pathname} enabled={designer.pawn_guide_enabled !== false} />}
+      {designer && <Begleiter pathname={pathname} step={begleiterStep} plan={plan} quota={quota} hideOnMobile={guideEnabled} />}
+      {designer && (
+        <PawnGuide
+          pathname={pathname}
+          enabled={guideEnabled}
+          onOpenChat={() => window.dispatchEvent(new CustomEvent("studio:open-begleiter"))}
+        />
+      )}
       {/* Desktop sidebar */}
       <div className="hidden lg:block sticky top-0 h-screen">
         <Sidebar />

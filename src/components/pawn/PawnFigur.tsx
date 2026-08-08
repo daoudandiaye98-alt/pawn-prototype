@@ -152,6 +152,9 @@ export interface PawnFigurProps {
   showShadow?: boolean;
   ariaLabel?: string;
   onTap?: (line: string) => void;
+  /** Farbgesetz: "light" (Standard) = schwarzer Körper/weiße Augen für hellen Grund,
+   * "dark" = weißer Körper/schwarze Augen für dunklen Grund (z.B. Vollbild-Momente). */
+  tone?: "light" | "dark";
 }
 
 /**
@@ -160,11 +163,14 @@ export interface PawnFigurProps {
  * Antippen (Squish + Zeile), Feiern (Sprung + Funken) über Ref auslösbar.
  */
 export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function PawnFigur(
-  { size = 200, rank = "bauer", className, arrive = true, interactive = true, showShadow = true, ariaLabel = "PAWN — antippen", onTap },
+  { size = 200, rank = "bauer", className, arrive = true, interactive = true, showShadow = true, ariaLabel = "PAWN — antippen", onTap, tone = "light" },
   ref,
 ) {
+  const bodyFill = tone === "dark" ? BODY_FILL_INVERT : BODY_FILL_DEFAULT;
+  const eyeFill = tone === "dark" ? EYE_FILL_INVERT : EYE_FILL_DEFAULT;
   const stageRef = useRef<HTMLDivElement>(null);
   const pawnRef = useRef<HTMLDivElement>(null);
+  const squishRef = useRef<HTMLDivElement>(null);
   const eyesRef = useRef<SVGGElement>(null);
   const shadowRef = useRef<HTMLDivElement>(null);
   const sleepTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -184,8 +190,12 @@ export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function Pa
     happyTimer.current = setTimeout(() => setEyeState((s) => (s === "happy" ? "normal" : s)), ms);
   };
 
+  // Squish lebt auf einem eigenen inneren Element (pf-squishwrap), nie auf dem
+  // äußeren pf-pawn (das trägt pf-in/arrive+bob) — sonst überschreibt die kurze
+  // Squish-Animation die "animation"-Eigenschaft des Pawns komplett und der
+  // Endzustand von arrive (opacity:1, forwards) geht verloren (Figur verschwindet).
   const squish = () => {
-    const el = pawnRef.current;
+    const el = squishRef.current;
     if (!el) return;
     el.classList.remove("pf-squish");
     void el.offsetWidth;
@@ -194,14 +204,14 @@ export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function Pa
 
   const celebrate = () => {
     const stage = stageRef.current;
-    const pawn = pawnRef.current;
-    if (!stage || !pawn) return;
+    const target = squishRef.current;
+    if (!stage || !target) return;
     stage.classList.remove("pf-celebrate");
     void stage.offsetWidth;
     stage.classList.add("pf-celebrate");
-    pawn.classList.remove("pf-jump");
-    void pawn.offsetWidth;
-    pawn.classList.add("pf-jump");
+    target.classList.remove("pf-jump");
+    void target.offsetWidth;
+    target.classList.add("pf-jump");
     happy(1400);
   };
 
@@ -282,11 +292,13 @@ export const PawnFigur = forwardRef<PawnFigurHandle, PawnFigurProps>(function Pa
             : undefined
         }
       >
-        <svg viewBox="0 0 100 132">
-          <PawnBody rank={rank} fill={BODY_FILL_DEFAULT} />
-          <PawnEyes eyeState={eyeState === "happy" ? "happy" : "normal"} fill={EYE_FILL_DEFAULT} eyewrapRef={eyesRef} />
-        </svg>
-        <span className="pf-zzz">z&nbsp;Z</span>
+        <div ref={squishRef} className="pf-squishwrap">
+          <svg viewBox="0 0 100 132">
+            <PawnBody rank={rank} fill={bodyFill} />
+            <PawnEyes eyeState={eyeState === "happy" ? "happy" : "normal"} fill={eyeFill} eyewrapRef={eyesRef} />
+          </svg>
+          <span className="pf-zzz">z&nbsp;Z</span>
+        </div>
       </div>
       {showShadow && <div className={["pf-shadow", arrived ? "pf-in" : ""].join(" ")} ref={shadowRef} />}
     </div>
