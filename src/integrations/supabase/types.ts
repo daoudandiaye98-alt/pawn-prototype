@@ -444,12 +444,15 @@ export type Database = {
       }
       brand_knowledge: {
         Row: {
+          active: boolean
           approved: boolean
           body: string
           created_at: string
           example: string | null
+          gueltigkeitsvermutung: string | null
           headline: string
           id: string
+          quelle_typ: string
           source_title: string | null
           source_url: string | null
           topic: string
@@ -457,12 +460,15 @@ export type Database = {
           world: string | null
         }
         Insert: {
+          active?: boolean
           approved?: boolean
           body: string
           created_at?: string
           example?: string | null
+          gueltigkeitsvermutung?: string | null
           headline: string
           id?: string
+          quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
           topic: string
@@ -470,12 +476,15 @@ export type Database = {
           world?: string | null
         }
         Update: {
+          active?: boolean
           approved?: boolean
           body?: string
           created_at?: string
           example?: string | null
+          gueltigkeitsvermutung?: string | null
           headline?: string
           id?: string
+          quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
           topic?: string

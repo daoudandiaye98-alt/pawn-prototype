@@ -2403,34 +2403,45 @@ const MARKENAUFBAU_THEMEN = [
   "Community und Wiederkäufer für kleine Marken",
 ];
 
-interface WissensBaustein { thema?: string; kernsatz?: string; erklaerung?: string; beispiel?: string; welt?: string; quelle_titel?: string; quelle_url?: string }
+interface WissensBaustein {
+  thema?: string; kernsatz?: string; erklaerung?: string; beispiel?: string; welt?: string;
+  quelle_titel?: string; quelle_url?: string; quelle_typ?: string; gueltigkeitsvermutung?: string;
+}
 
+const QUELLE_TYPEN = ["plattform_aenderung", "format_trend", "fallbeispiel", "marktlage", "ratgeber"];
+
+/** Teil 33: die Kartei lernt weiter — pro Thema-Durchlauf werden ältere Bausteine desselben
+ * Themas als abgelöst markiert (active=false), damit "meistens gültig" statt "für immer gültig" gilt. */
 async function runMarkenaufbauWissen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { count } = await admin.from("brand_knowledge").select("id", { count: "exact", head: true });
   const thema = MARKENAUFBAU_THEMEN[(count ?? 0) % MARKENAUFBAU_THEMEN.length];
 
-  const { data: vorhanden } = await admin.from("brand_knowledge").select("headline").limit(200);
+  const { data: vorhanden } = await admin.from("brand_knowledge").select("headline").eq("active", true).limit(200);
   const bekannt = ((vorhanden ?? []) as { headline: string }[]).map((r) => r.headline).slice(0, 60).join(" | ") || "noch nichts";
 
-  const system = `Du sammelst für PAWN (pawn.vision) praktisches Wissen zum Markenaufbau, das unabhängige Designer aus Mode, Interior und Kunst sofort anwenden können.
+  const system = `Du sammelst für PAWN (pawn.vision) praktisches, aktuelles Wissen zum Markenaufbau, das unabhängige Designer aus Mode, Interior und Kunst sofort anwenden können — Plattform-Änderungen, Formate die gerade tragen, relevante Lagen. Keine Politik-Meinungen, nur praxisrelevante Lagen ("Plattform X drosselt Links" ja, Parteinahme nein).
 
 Recherchiere mit web_search in öffentlich zugänglichen Ratgebern, Interviews, Fallbeispielen und Leitfäden. Fasse in eigenen Worten zusammen und nenne für jeden Baustein die Quelle. Übernimm keine Textpassagen wörtlich und keine kostenpflichtigen Kursinhalte.
 
-Jeder Baustein sagt, was zu tun ist — konkret, in einem Satz umsetzbar, auf Deutsch, ohne Marketing-Floskeln und ohne Verneinungen als Stilmittel.
+Jeder Baustein sagt, was zu tun ist — konkret, in einem Satz umsetzbar, auf Deutsch, ohne Marketing-Floskeln und ohne Verneinungen als Stilmittel. quelle_typ ist einer von: ${QUELLE_TYPEN.join(", ")}. gueltigkeitsvermutung schätzt in wenigen Worten, wie lange die These vermutlich trägt (z. B. "ein paar Wochen, solange der Trend läuft" oder "dauerhaft gültig").
 
-Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkregel", "erklaerung": "zwei Sätze, warum das wirkt", "beispiel": "ein konkretes Beispiel für ein kleines Label", "welt": "Mode|Interior|Kunst|", "quelle_titel": "...", "quelle_url": "https://..."}]}`;
-  const user = `Thema dieser Woche: "${thema}". Sammle 5 bis 8 neue Bausteine. Diese Kernsätze gibt es schon, finde andere: ${bekannt}`;
+Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkregel", "erklaerung": "zwei Sätze, warum das wirkt", "beispiel": "ein konkretes Beispiel für ein kleines Label", "welt": "Mode|Interior|Kunst|", "quelle_titel": "...", "quelle_url": "https://...", "quelle_typ": "...", "gueltigkeitsvermutung": "..."}]}`;
+  const user = `Thema dieser Woche: "${thema}". Sammle 5 bis 8 neue Bausteine. Diese Kernsätze gelten aktuell schon, finde andere oder aktualisiere überholte Lagen dazu: ${bekannt}`;
 
   const { json, tokens } = await searchJson(apiKey, system, user);
   const bausteine = Array.isArray((json as { bausteine?: unknown } | null)?.bausteine)
     ? ((json as { bausteine: WissensBaustein[] }).bausteine) : [];
 
   let angelegt = 0;
+  if (bausteine.length > 0) {
+    await admin.from("brand_knowledge").update({ active: false } as never).eq("topic", thema).eq("active", true);
+  }
   for (const b of bausteine) {
     const headline = (b.kernsatz ?? "").trim();
     const body = (b.erklaerung ?? "").trim();
     if (!headline || !body) continue;
     const welt = ["Mode", "Interior", "Kunst"].includes(b.welt ?? "") ? b.welt : null;
+    const quelleTyp = QUELLE_TYPEN.includes(b.quelle_typ ?? "") ? (b.quelle_typ as string) : "recherchiert";
     const { error } = await admin.from("brand_knowledge").insert({
       topic: (b.thema ?? thema).slice(0, 120),
       world: welt,
@@ -2439,6 +2450,9 @@ Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkre
       example: (b.beispiel ?? "").trim() || null,
       source_url: (b.quelle_url ?? "").trim() || null,
       source_title: (b.quelle_titel ?? "").trim() || null,
+      quelle_typ: quelleTyp,
+      gueltigkeitsvermutung: (b.gueltigkeitsvermutung ?? "").trim() || null,
+      active: true,
       approved: false,
     } as never);
     if (!error) angelegt++;
@@ -3385,6 +3399,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
+      "wissen_markenaufbau",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -3401,6 +3416,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
+      "wissen_markenaufbau",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
