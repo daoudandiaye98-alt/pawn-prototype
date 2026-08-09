@@ -348,7 +348,7 @@ export default function StudioOverview() {
   return (
     <StudioShell title={t("studio.overview.title")} eyebrow={t("studio.overview.eyebrow.overview")}>
       {lastSeenSnapshotReady && <WhileYouWereAway designerId={designer.id} previousLastSeenAt={lastSeenSnapshotRef.current} />}
-      {showErstePartie && <ErstePartie rank={RANK_BY_LEVEL[level.level] ?? "bauer"} onClose={closeErstePartie} onDone={finishErstePartie} />}
+      {showErstePartie && <ErstePartie rank={RANK_BY_LEVEL[level.level] ?? "bauer"} designerId={designer?.id} onClose={closeErstePartie} onDone={finishErstePartie} />}
 
       {!showErstePartie && onboardingStatus === "laeuft" && (
         <button

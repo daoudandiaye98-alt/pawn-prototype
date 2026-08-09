@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnFigur, type PawnFigurHandle, type PawnRank } from "./PawnFigur";
 import { useI18n } from "@/lib/i18n";
@@ -24,7 +25,9 @@ interface ErstePartieResponse {
   error?: string;
 }
 
-export function ErstePartie({ rank, onClose, onDone }: { rank: PawnRank; onClose: () => void; onDone: () => void }) {
+interface TopTuer { id: string; title: string; art: string }
+
+export function ErstePartie({ rank, designerId, onClose, onDone }: { rank: PawnRank; designerId?: string; onClose: () => void; onDone: () => void }) {
   const { t } = useI18n();
   const figurRef = useRef<PawnFigurHandle>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,20 @@ export function ErstePartie({ rank, onClose, onDone }: { rank: PawnRank; onClose
   const [gewaehlt, setGewaehlt] = useState<Set<string>>(new Set());
   const [automatik, setAutomatik] = useState<AutomatikAngebot | null>(null);
   const [failed, setFailed] = useState(false);
+  const [topTueren, setTopTueren] = useState<TopTuer[] | null>(null);
+
+  // Teil 38 AP3: Sofort-Mehrwert — sobald das Gespräch fertig ist, zeigt PAWN die drei am
+  // besten passenden offenen Türen, statt das Haus einfach zurück in die Übersicht zu schicken.
+  useEffect(() => {
+    if (schritt !== "fertig" || !designerId || topTueren !== null) return;
+    void supabase.from("designer_opportunities" as never)
+      .select("id, title, art")
+      .eq("designer_id", designerId).eq("status", "gefunden")
+      .order("match_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
+      .limit(3)
+      .then(({ data }) => setTopTueren((data as unknown as TopTuer[] | null) ?? []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schritt, designerId]);
 
   const call = async (body: Record<string, unknown>) => {
     setLoading(true);
@@ -120,6 +137,26 @@ export function ErstePartie({ rank, onClose, onDone }: { rank: PawnRank; onClose
               className="border-[1.5px] border-background/40 px-6 py-2.5 text-[0.62rem] uppercase tracking-[0.28em] text-background/70 hover:border-background hover:text-background">
               {t("studio.erstePartie.nein")}
             </button>
+          </div>
+        )}
+
+        {!failed && !loading && schritt === "fertig" && (
+          <div className="mt-8 border-[1.5px] border-background/40 p-5 text-left">
+            <p className="text-[0.6rem] uppercase tracking-[0.28em] text-background/60">{t("studio.erstePartie.tueren.eyebrow")}</p>
+            {topTueren === null ? (
+              <p className="mt-2 text-sm text-background/70">{t("studio.erstePartie.tueren.laedt")}</p>
+            ) : topTueren.length === 0 ? (
+              <p className="mt-2 text-sm text-background/70">{t("studio.erstePartie.tueren.leer")}</p>
+            ) : (
+              <ul className="mt-2 space-y-1.5">
+                {topTueren.map((tuer) => (
+                  <li key={tuer.id} className="text-sm">{tuer.title}</li>
+                ))}
+              </ul>
+            )}
+            <Link to="/studio/tueren" onClick={onDone} className="mt-3 inline-block text-[0.65rem] uppercase tracking-[0.24em] underline">
+              {t("studio.erstePartie.tueren.cta")}
+            </Link>
           </div>
         )}
 
