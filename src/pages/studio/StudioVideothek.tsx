@@ -2,8 +2,10 @@
  * Studio-Videothek: eigene Videos, Download + fertige Caption/Hashtags aus der Brand-DNA.
  */
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, Copy } from "lucide-react";
@@ -62,7 +64,15 @@ export default function StudioVideothek() {
         {t("studio.videothek.description")}
       </p>
       {rows.length === 0 ? (
-        <p className="mt-10 text-sm text-muted-foreground">{t("studio.videothek.empty")}</p>
+        <PawnEmptyState
+          className="mt-10"
+          title={t("studio.videothek.empty")}
+          action={
+            <Link to="/studio/kampagnen/neu" className="inline-flex items-center border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
+              {t("studio.videothek.emptyCta")}
+            </Link>
+          }
+        />
       ) : (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => (

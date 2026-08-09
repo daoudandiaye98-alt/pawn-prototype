@@ -8,6 +8,7 @@
  * über Regler einstellen. Jede Fassung bleibt als Version erhalten (vergleichbar, zurücknehmbar).
  */
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -416,7 +417,11 @@ function BlockEditor({
                 {p.name}
               </label>
             ))}
-            {products.length === 0 && <p className="col-span-2 text-muted-foreground">{t("studio.hausseite.noProducts")}</p>}
+            {products.length === 0 && (
+              <p className="col-span-2 text-muted-foreground">
+                {t("studio.hausseite.noProducts")} <Link to="/studio/produkte/neu" className="underline">{t("studio.hausseite.noProducts.cta")}</Link>
+              </p>
+            )}
           </div>
         );
       }
@@ -434,7 +439,11 @@ function BlockEditor({
                 {m.kind === "video" ? "🎬" : "🖼"} {m.id.slice(0, 8)}
               </label>
             ))}
-            {media.length === 0 && <p className="col-span-2 text-muted-foreground">{t("studio.hausseite.mediaEmpty")}</p>}
+            {media.length === 0 && (
+              <p className="col-span-2 text-muted-foreground">
+                {t("studio.hausseite.mediaEmpty")} <Link to="/studio/mediathek" className="underline">{t("studio.hausseite.mediaEmpty.cta")}</Link>
+              </p>
+            )}
           </div>
         );
       }

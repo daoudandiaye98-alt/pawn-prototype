@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useThreads, useThreadMessages, sendMessage, createThread, type MessageCategory } from "@/features/messages/useMessages";
 import { useAuth } from "@/lib/auth";
@@ -123,8 +124,15 @@ export default function StudioMessages() {
               </div>
             </div>
           ) : (
-            <div className="flex h-[60vh] items-center justify-center p-8 text-center text-muted-foreground">
-              {t("studio.messages.selectOrStart")}
+            <div className="flex h-[60vh] items-center justify-center p-8">
+              <PawnEmptyState
+                title={t("studio.messages.selectOrStart")}
+                action={
+                  <button onClick={() => setComposeOpen(true)} className="inline-flex items-center border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
+                    {t("studio.messages.new")}
+                  </button>
+                }
+              />
             </div>
           )}
         </section>

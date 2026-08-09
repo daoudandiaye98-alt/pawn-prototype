@@ -4,6 +4,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { schreibePartieZug } from "../_shared/partieZug.ts";
 import { schreibeSignal } from "../_shared/pawnSignal.ts";
+import { guardAiBudget, bookAiSpend } from "../_shared/budgetGuard.ts";
 
 const MODEL = "claude-sonnet-4-5";
 const MAX_TOOL_TURNS = 6;
@@ -2575,11 +2576,16 @@ async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<R
 
   const styleLaw = await loadHouseStyleLaw(admin);
   const gesetze = DEFAULT_SPRACHGESETZE;
-  let processed = 0, gefunden = 0, angelegt = 0, tokensUsed = 0;
+  let processed = 0, gefunden = 0, angelegt = 0, tokensUsed = 0, uebersprungen = 0;
 
   for (const h of queue) {
     if ((recentCount.get(h.id) ?? 0) >= 3) continue;
     const budget = 3 - (recentCount.get(h.id) ?? 0);
+    const darfWeiter = await guardAiBudget(
+      admin, h.id, h.brand_name, "tueren_finden_uebersprungen",
+      "die wöchentliche Türen-Suche entfällt diese Woche.",
+    );
+    if (!darfWeiter) { uebersprungen++; continue; }
     processed++;
 
     const worlds = Object.keys(h.brand_dna?.worlds ?? {});
@@ -2600,6 +2606,7 @@ Antworte NUR mit JSON: {"funde": [{"title": "...", "ort": "...", "typ": "galerie
     const user = `Haus: ${h.brand_name}. Standort: ${h.location}${h.country ? `, ${h.country}` : ""}. Welt(en): ${weltText}. Marken-Signale: ${signale}.${ton}
 Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dieses Standorts.`;
 
+    const tokensVorHaus = tokensUsed;
     const { json, tokens } = await searchJson(apiKey, system, user);
     tokensUsed += tokens;
     const funde = Array.isArray((json as { funde?: unknown } | null)?.funde) ? ((json as { funde: TuerFund[] }).funde) : [];
@@ -2632,9 +2639,12 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
         await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden");
       }
     }
+    const hausTokens = tokensUsed - tokensVorHaus;
+    const hausCents = Math.round((hausTokens / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2) * 100);
+    await bookAiSpend(admin, h.id, hausCents);
   }
 
-  return { ok: true, processed, gefunden, angelegt, tokensUsed };
+  return { ok: true, processed, gefunden, angelegt, tokensUsed, uebersprungen };
 }
 
 const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sichtbar bleibt. Falls du reinschauen magst: pawn.vision — die Teilnahme ist kostenlos, und Ausgabe 08 hat noch Platz. Melde dich gern, wann immer es für dich passt.`;
