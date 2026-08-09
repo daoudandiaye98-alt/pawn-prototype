@@ -2641,7 +2641,7 @@ const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sicht
 const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio sichtbar ist. Eine kurze Antwort genügt, dann lassen wir dich in Ruhe weiterarbeiten.";
 
 async function sendResendEmail(
-  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string,
+  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string, startLink?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -2649,7 +2649,7 @@ async function sendResendEmail(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
       body: JSON.stringify({
         from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
-        text: `${text}\n\n—\n${footer ?? DEFAULT_MAIL_FOOTER}`,
+        text: `${text}\n\n—\n${footer ?? DEFAULT_MAIL_FOOTER}${startLink ? `\n\n${startLink}` : ""}`,
       }),
     });
     if (!res.ok) {
@@ -2695,7 +2695,9 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
     const footer = isPresse
       ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Eine kurze Antwort genügt, dann lassen wir es dabei."
       : undefined;
-    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer);
+    // Teil 37/AP2 — Wizard-Einstieg mit Lead-Attribution, nur für Designer-Leads (Presse bewirbt sich nicht).
+    const startLink = isPresse ? undefined : `Dein Einstieg: https://pawn.vision/start?lead=${lead.id}`;
+    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer, startLink);
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
     await admin.from("ai_actions_log").insert({
       source: "jarvis", action: isFollowup ? "akquise_followup_email" : "akquise_erstkontakt_email",

@@ -19,6 +19,7 @@ interface Body {
   productionStatus?: string;
   portfolioPaths?: string[];
   acceptedContractIds?: string[];
+  acquisitionLeadId?: string;
 }
 
 function json(status: number, body: unknown) {
@@ -122,6 +123,7 @@ Deno.serve(async (req) => {
           tags: body.tags ?? [],
           production_status: body.productionStatus ?? null,
           portfolio_paths: body.portfolioPaths ?? [],
+          acquisition_lead_id: body.acquisitionLeadId ?? null,
           status: "submitted",
           submitted_at: new Date().toISOString(),
         },

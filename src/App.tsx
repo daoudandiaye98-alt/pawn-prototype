@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { captureReferralCode } from "@/features/referral";
+import { captureLeadRef } from "@/features/acquisition/leadAttribution";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
@@ -27,6 +28,7 @@ import Ausgabe from "./pages/Ausgabe.tsx";
 import Vision from "./pages/Vision.tsx";
 import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
+import Start from "./pages/Start.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import Impressum from "./pages/Impressum.tsx";
 import Versand from "./pages/Versand.tsx";
@@ -111,6 +113,13 @@ function ReferralCapture() {
   return null;
 }
 
+/** Teil 37/AP2: merkt sich ?lead=<akquise-lead-id> für 30 Tage — Attribution für "Erster Zug". */
+function LeadCapture() {
+  const [params] = useSearchParams();
+  useEffect(() => { captureLeadRef(params.get("lead")); }, [params]);
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -127,6 +136,7 @@ const App = () => (
               <CopilotProvider>
 
               <ReferralCapture />
+              <LeadCapture />
               <Routes>
 
                 <Route path="/" element={<Index />} />
@@ -144,6 +154,7 @@ const App = () => (
                 <Route path="/designer/:slug" element={<DesignerPage />} />
                 <Route path="/apply" element={<ApplyLanding />} />
                 <Route path="/apply/form" element={<Apply />} />
+                <Route path="/start" element={<Start />} />
                 <Route path="/datenschutz" element={<Datenschutz />} />
                 <Route path="/impressum" element={<Impressum />} />
                 <Route path="/versand" element={<Versand />} />
