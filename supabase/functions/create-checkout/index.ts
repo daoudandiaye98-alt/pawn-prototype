@@ -2,6 +2,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
+import { PAID_PLAN_KEY } from "../_shared/planGate.ts";
 
 interface Line { name: string; unit_amount: number; qty: number; product_id?: string; size?: string; slug?: string }
 interface Body {
@@ -71,6 +72,15 @@ Deno.serve(async (req) => {
     // === Subscription mode === (Abos: immer direkt an PAWN, unverändert)
     if (body.mode === "subscription") {
       if (!body.price_id) throw new Error("price_id required");
+      // Teil 38 AP7: nach dem Preisumbau ist Atelier nicht mehr neu abschließbar — nur Paid
+      // (Konfigurationsschlüssel 'maison') lässt sich neu anlegen. Bestehende Atelier-Abos laufen
+      // unangetastet zu ihrem alten Preis weiter, das prüft hier nicht diese neue Anmeldung.
+      if (body.plan && body.plan !== PAID_PLAN_KEY) {
+        return new Response(JSON.stringify({
+          error: "plan_not_available",
+          message: "Dieser Plan ist nicht mehr neu erhältlich. Bitte wähle den Plan Paid.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+      }
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         line_items: [{ price: body.price_id, quantity: 1 }],
