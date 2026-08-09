@@ -95,6 +95,12 @@ const DEFAULT_JARVIS_CONFIG: JarvisConfig = {
 // Läuft die Provider-Komponente usePersonalization ohne eigenen ai_config-Wert, gelten diese Startwerte.
 const DEFAULT_MATCHING_WEIGHTS = { mood: 2, silhouette: 1.5, material: 1, colors: 1 };
 
+function timingSafeStringEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 function ok(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
@@ -4229,8 +4235,10 @@ Deno.serve(async (req) => {
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
     ];
+    // Teil 39 AP5 — Zeitkonstanter Vergleich statt "===": verhindert, dass jemand den Secret-Wert
+    // Zeichen für Zeichen über minimale Antwortzeit-Unterschiede erraten könnte (Timing-Angriff).
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
-    const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
+    const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && timingSafeStringEqual(body.secret, cronSecret);
     const authorized = CRON_TRIGGERABLE_MODES.includes(mode) ? (isAdmin || isCronSecretCaller) : isAdmin;
     if (!authorized) return ok({ ok: false, error: "forbidden" });
 
