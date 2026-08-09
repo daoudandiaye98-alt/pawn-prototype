@@ -59,6 +59,10 @@ const ZONE_GUARD = `
 
 Zonen-Regel für pawn_action: Zone Grün (Ontologie anlegen/zusammenführen, Trends berechnen, Benachrichtigungen an Admins) und Zone Gelb (site_content-Texte korrigieren, Direktiven anpassen) führst du sofort aus — sie werden protokolliert bzw. Daouda gemeldet. Zone Rot (alles mit Geld, Plänen, Veröffentlichung, Löschung oder Außenwirkung) wartet immer auf Daoudas Bestätigung unter "Wartet auf dich" — das entscheidest nicht du, das entscheidet die Zonen-Einteilung im Code.`;
 
+const REGISTER_GUARD = `
+
+Zwei-Register-Gesetz (Teil 39 AP6, siehe ai_config.voice_law.zwei_register / VOICE_LAW.md): Berichte über Geld (Umsatz, Provision, KI-Budget), Fehler oder Verträge schreibst du in klarem Bedienungs-Ton — ein Satz Fakt, ein Satz Konsequenz oder nächster Schritt, keine Andeutung. Sonst darfst du in Berichten auch erzählend/einordnend schreiben.`;
+
 type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
@@ -114,7 +118,7 @@ async function loadSystemPrompt(admin: SupabaseClient): Promise<string> {
     const v = data?.value as { system_prompt?: string } | undefined;
     if (v?.system_prompt?.trim()) base = v.system_prompt.trim();
   } catch { /* ignore, use default */ }
-  return base + INJECTION_GUARD + MEMORY_GUARD + CAUTION_GUARD + ZONE_GUARD;
+  return base + INJECTION_GUARD + MEMORY_GUARD + CAUTION_GUARD + ZONE_GUARD + REGISTER_GUARD;
 }
 
 async function loadJarvisConfig(admin: SupabaseClient): Promise<JarvisConfig> {

@@ -194,8 +194,8 @@ export default function StudioPlan() {
       if (error) throw error;
       const url = (data as { url?: string })?.url;
       if (url) window.location.href = url;
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      toast.error("Der Wechsel zu Paid hat gerade nicht geklappt. Versuch es in ein paar Minuten noch einmal.");
     } finally {
       setBusy(null);
     }
@@ -206,8 +206,8 @@ export default function StudioPlan() {
     setBusy(PAID_PLAN_KEY);
     try {
       await requestPlanChange("Ich bin aktuell im Plan Atelier und möchte auf den neuen Plan Paid wechseln. Bitte meldet euch, um den Wechsel zu begleiten.");
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      toast.error("Deine Anfrage konnte nicht verschickt werden. Versuch es gleich noch einmal oder schreib uns direkt.");
     } finally {
       setBusy(null);
     }
