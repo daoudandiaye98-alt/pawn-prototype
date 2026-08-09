@@ -190,6 +190,37 @@ async function buildMarkenKarteiHint(admin: SupabaseClient, worldKey: string): P
   }
 }
 
+const ORGAN_FRIENDLY_NAMES: Record<string, string> = {
+  sichtbarkeitszug: "Sichtbarkeits-Zug (wöchentlicher Presse-Entwurf + Warteschlangen-Nachtrag)",
+  presse: "Presse-Entwurf allein",
+  verstaerker_haus: "Verstärker für dein Haus (zusätzliche Beitrags-Vorschläge)",
+};
+
+/**
+ * Teil 38 AP6 — damit PAWN im Studio-Gespräch die eigenen, gerade aktiven Organe eines Hauses
+ * korrekt beim Namen nennen kann (statt zu raten oder allgemein zu antworten), fließt hier ein,
+ * welche der Teil-38-AP6-Automatiken für dieses Haus an sind. Nur relevant für Maison-Häuser —
+ * andere Pläne haben keine Zeilen in designer_automations für diese Schlüssel.
+ */
+async function buildOrganeHint(admin: SupabaseClient, designerId: string): Promise<string> {
+  try {
+    const { data } = await admin.from("designer_automations" as never)
+      .select("automation_key, enabled")
+      .eq("designer_id", designerId)
+      .in("automation_key", Object.keys(ORGAN_FRIENDLY_NAMES));
+    const rows = (data as { automation_key: string; enabled: boolean }[] | null) ?? [];
+    // sichtbarkeitszug fehlt row = an (Rückwärtskompatibilität, siehe pawn-jarvis runMaisonSichtbarkeitszug).
+    const aktiv = ["sichtbarkeitszug", "presse", "verstaerker_haus"].filter((key) => {
+      const row = rows.find((r) => r.automation_key === key);
+      return row ? row.enabled : key === "sichtbarkeitszug";
+    });
+    if (!aktiv.length) return "Aktive PAWN-Organe dieses Hauses: derzeit keine der zusätzlichen Sichtbarkeits-Organe (Sichtbarkeits-Zug, Presse-Entwurf, Verstärker) eingeschaltet — nenne sie nur, wenn danach gefragt wird, und verweise dann auf \"Automatik\" im Studio.";
+    return `Aktive PAWN-Organe dieses Hauses: ${aktiv.map((k) => ORGAN_FRIENDLY_NAMES[k]).join("; ")}. Nenne sie korrekt beim Namen, wenn danach gefragt wird.`;
+  } catch {
+    return "";
+  }
+}
+
 /** Teil 37/AP1 (36a) — Bildgedächtnis: der Deskriptor eines früher hochgeladenen Bildes wird in
  * jedem Folgeturn als Text-Hinweis eingewoben, das Rohbild selbst nie erneut gesendet. */
 function buildBildDeskriptorHint(d?: ImageDescriptor): string {
@@ -855,16 +886,20 @@ Deno.serve(async (req) => {
     // schon nutzt oder noch meidet.
     let nutzungsprofil = "";
     let markenKartei = "";
+    let organeHint = "";
     if (admin && user_id && role === "designer" && pc?.route?.startsWith("/studio")) {
-      const { data: ownDesigner } = await admin.from("designers").select("id, tags").eq("user_id", user_id).maybeSingle();
+      const { data: ownDesigner } = await admin.from("designers").select("id, tags, plan").eq("user_id", user_id).maybeSingle();
       if (ownDesigner?.id) {
         nutzungsprofil = await buildNutzungsprofil(admin, ownDesigner.id);
         const worldKey = ((ownDesigner as { tags?: string[] | null }).tags ?? []).find((t) => ["Mode", "Interior", "Kunst"].includes(t)) ?? "Mode";
         markenKartei = await buildMarkenKarteiHint(admin, worldKey);
+        if ((ownDesigner as { plan?: string }).plan === "maison") {
+          organeHint = await buildOrganeHint(admin, ownDesigner.id);
+        }
       }
     }
 
-    const system = [persona, houseStyleLaw, CATALOG_HONESTY_LAW, voiceLaw, houseTone, nutzungsprofil, markenKartei, directiveBlock].filter(Boolean).join("\n\n");
+    const system = [persona, houseStyleLaw, CATALOG_HONESTY_LAW, voiceLaw, houseTone, nutzungsprofil, markenKartei, organeHint, directiveBlock].filter(Boolean).join("\n\n");
     const bildDeskriptorHint = buildBildDeskriptorHint(extracted.bild_deskriptor);
     const fullContextHint = [pageContextHint, memoryHint, bildDeskriptorHint, contextHint].filter(Boolean).join("\n\n");
 

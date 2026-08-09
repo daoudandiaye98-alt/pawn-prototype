@@ -95,6 +95,14 @@ Deno.serve(async (req) => {
             id: crypto.randomUUID(), type: cancelled ? "plan.downgraded" : "plan.upgraded",
             actor: user_id, payload: { plan: targetPlan, subscription_id: sub.id }, schema_version: 1,
           });
+          // Teil 38 AP6: ein neues Maison-Haus bekommt das Sichtbarkeits-Zug-Organ von Anfang an
+          // sichtbar an (nicht nur implizit über den Rückwärtskompatibilitäts-Default) — sinnvoller
+          // Onboarding-Startwert, kein Zwang (das Haus kann es in "Deine Organe" jederzeit abschalten).
+          if (!cancelled && targetPlan === "maison") {
+            await admin.from("designer_automations").upsert({
+              designer_id: designer.id, automation_key: "sichtbarkeitszug", enabled: true,
+            } as never, { onConflict: "designer_id,automation_key", ignoreDuplicates: true });
+          }
         }
       }
     }
