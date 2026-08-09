@@ -1178,6 +1178,7 @@ export type Database = {
       }
       designer_opportunities: {
         Row: {
+          art: string
           contact_email: string | null
           created_at: string
           delivery_error: string | null
@@ -1185,6 +1186,7 @@ export type Database = {
           designer_id: string
           followup_sent_at: string | null
           id: string
+          match_score: number | null
           message_draft: string | null
           ort: string | null
           quelle_url: string | null
@@ -1197,6 +1199,7 @@ export type Database = {
           warum: string | null
         }
         Insert: {
+          art?: string
           contact_email?: string | null
           created_at?: string
           delivery_error?: string | null
@@ -1204,6 +1207,7 @@ export type Database = {
           designer_id: string
           followup_sent_at?: string | null
           id?: string
+          match_score?: number | null
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
@@ -1216,6 +1220,7 @@ export type Database = {
           warum?: string | null
         }
         Update: {
+          art?: string
           contact_email?: string | null
           created_at?: string
           delivery_error?: string | null
@@ -1223,6 +1228,7 @@ export type Database = {
           designer_id?: string
           followup_sent_at?: string | null
           id?: string
+          match_score?: number | null
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
@@ -1707,12 +1713,15 @@ export type Database = {
           campaign_id: string
           cost_estimate: number | null
           created_at: string
+          duration_s: number | null
           error: string | null
           id: string
           provider: string
           provider_handles: Json | null
           requested_by: string | null
           result_url: string | null
+          retry_count: number
+          signature_id: string | null
           status: Database["public"]["Enums"]["generation_status"]
           tier: Database["public"]["Enums"]["generation_tier"]
           updated_at: string
@@ -1721,12 +1730,15 @@ export type Database = {
           campaign_id: string
           cost_estimate?: number | null
           created_at?: string
+          duration_s?: number | null
           error?: string | null
           id?: string
           provider?: string
           provider_handles?: Json | null
           requested_by?: string | null
           result_url?: string | null
+          retry_count?: number
+          signature_id?: string | null
           status?: Database["public"]["Enums"]["generation_status"]
           tier?: Database["public"]["Enums"]["generation_tier"]
           updated_at?: string
@@ -1735,12 +1747,15 @@ export type Database = {
           campaign_id?: string
           cost_estimate?: number | null
           created_at?: string
+          duration_s?: number | null
           error?: string | null
           id?: string
           provider?: string
           provider_handles?: Json | null
           requested_by?: string | null
           result_url?: string | null
+          retry_count?: number
+          signature_id?: string | null
           status?: Database["public"]["Enums"]["generation_status"]
           tier?: Database["public"]["Enums"]["generation_tier"]
           updated_at?: string
@@ -1751,6 +1766,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_requests_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "house_signatures"
             referencedColumns: ["id"]
           },
         ]
@@ -3272,6 +3294,7 @@ export type Database = {
           id: string
           performance: Json
           premiere: boolean
+          regisseur_verdict: Json | null
           rights_granted: boolean
           source: Database["public"]["Enums"]["video_source"]
           thumb: string | null
@@ -3285,6 +3308,7 @@ export type Database = {
           id?: string
           performance?: Json
           premiere?: boolean
+          regisseur_verdict?: Json | null
           rights_granted?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null
@@ -3298,6 +3322,7 @@ export type Database = {
           id?: string
           performance?: Json
           premiere?: boolean
+          regisseur_verdict?: Json | null
           rights_granted?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null

@@ -20,7 +20,7 @@ import { Link } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
 
 interface Kennzahlen { besuche: { gesamt: number; zeitraum: number }; wunschlisten: { gesamt: number; zeitraum: number } }
-interface TuerZaehlung { offen: number; gesendet: number; zugestellt: number; fehlgeschlagen: number }
+interface TuerZaehlung { offen: number; gesendet: number; zugestellt: number; fehlgeschlagen: number; angenommen: number }
 interface MedienZaehlung { privat: number; eingereicht: number; angenommen: number; abgelehnt: number }
 
 function Kachel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
@@ -66,6 +66,7 @@ export default function StudioBeweis() {
           gesendet: rows.filter((r) => r.status === "kontaktiert" && r.delivery_status !== "zugestellt").length,
           zugestellt: rows.filter((r) => r.delivery_status === "zugestellt").length,
           fehlgeschlagen: rows.filter((r) => r.delivery_status === "fehler").length,
+          angenommen: rows.filter((r) => r.status === "angenommen").length,
         });
       });
     void supabase.from("media_assets").select("review_status").eq("designer_id", designer.id)
@@ -89,7 +90,7 @@ export default function StudioBeweis() {
   const revenueTotal = orderLines.reduce((s, l) => s + l.unit_price * l.qty, 0);
   const designerShare = (eur: number) => eur * 0.93;
 
-  const tuerenGesamt = tueren ? tueren.offen + tueren.gesendet + tueren.zugestellt + tueren.fehlgeschlagen : 0;
+  const tuerenGesamt = tueren ? tueren.offen + tueren.gesendet + tueren.zugestellt + tueren.fehlgeschlagen + tueren.angenommen : 0;
   const medienGesamt = medien ? medien.privat + medien.eingereicht + medien.angenommen + medien.abgelehnt : 0;
 
   return (
@@ -178,9 +179,9 @@ export default function StudioBeweis() {
               />
             ) : (
               <>
-                <p className="font-serif text-4xl">{tueren.zugestellt}</p>
+                <p className="font-serif text-4xl">{tueren.angenommen}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t("studio.beweis.tuerenZugestellt")} — {t("studio.beweis.tuerenOffen", { n: tueren.offen })}
+                  {t("studio.beweis.tuerenAngenommen")} — {t("studio.beweis.tuerenZugestellt")}: {tueren.zugestellt} · {t("studio.beweis.tuerenOffen", { n: tueren.offen })}
                 </p>
                 <Link to="/studio/tueren" className="mt-3 inline-block text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.zuDenTueren")}</Link>
               </>

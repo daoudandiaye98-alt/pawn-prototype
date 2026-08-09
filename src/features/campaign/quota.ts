@@ -118,10 +118,11 @@ export function planLabel(plan: Plan): string {
   return plan === "haus" ? "Haus" : plan === "atelier" ? "Atelier" : "Maison";
 }
 
-/** Sanfter Hinweis, wenn ein Limit endet — kein Dauerbanner. */
+/** Sanfter Hinweis, wenn ein Limit endet — kein Dauerbanner. Seit Teil 38 AP7 (Preisumbau
+ * Frei/Paid) nennt der Upgrade-Hinweis nur noch den Plan Paid, unabhängig davon, ob das Haus
+ * gerade Frei oder ein Atelier-Bestandsabo ist — Maison ist die einzige Obergrenze. */
 export function quotaExhaustedHint(plan: Plan, noun: string): string {
-  const next = plan === "haus" ? "Atelier" : "Maison";
   return plan === "maison"
     ? `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da.`
-    : `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle ins ${next}.`;
+    : `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle in den Plan Paid.`;
 }

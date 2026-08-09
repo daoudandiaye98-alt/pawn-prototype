@@ -20,6 +20,13 @@ function jwtSub(auth: string | null): string | null {
     return JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/")))?.sub ?? null;
   } catch { return null; }
 }
+function jwtRole(auth: string | null): string | null {
+  if (!auth?.startsWith("Bearer ")) return null;
+  try {
+    const [, p] = auth.slice(7).split(".");
+    return JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/")))?.role ?? null;
+  } catch { return null; }
+}
 
 async function requireAdmin(admin: SupabaseClient, user_id: string | null): Promise<boolean> {
   if (!user_id) return false;
@@ -240,11 +247,18 @@ Deno.serve(async (req) => {
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
     const supaKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supaUrl, supaKey, { auth: { persistSession: false } });
-    const user_id = jwtSub(req.headers.get("Authorization"));
-    if (!(await requireAdmin(admin, user_id))) return ok({ error: "forbidden" }, 403);
-
     const body = await req.json().catch(() => ({}));
     const mode = url.searchParams.get("mode") ?? body.mode ?? "execute";
+
+    // Cron-ausgelöste Jarvis-Läufe (wissen, zeitgeist, …) haben keinen echten Admin-Nutzer im
+    // Gepäck — sie rufen hier mit dem Service-Role-Schlüssel selbst auf (der einzige Ausweis, den
+    // ein Hintergrundlauf ohne Mensch dahinter überhaupt haben kann). Das gilt nur für
+    // source:"system" und niemals für "undo" — Zone Rot (set_image, set_plan, …) landet ohnehin
+    // immer in jarvis_pending_actions und braucht Daoudas echte Bestätigung, das ändert sich nicht.
+    const authHeader = req.headers.get("Authorization");
+    const isSystemCall = jwtRole(authHeader) === "service_role" && body.source === "system" && mode === "execute";
+    const user_id = jwtSub(authHeader);
+    if (!isSystemCall && !(await requireAdmin(admin, user_id))) return ok({ error: "forbidden" }, 403);
 
     if (mode === "undo") {
       const action_id = String(body.action_id ?? "");
