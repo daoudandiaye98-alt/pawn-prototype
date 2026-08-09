@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnFigurSvg } from "./PawnFigur";
+import { AiDisclosureNote } from "./AiDisclosureNote";
 import { useI18n } from "@/lib/i18n";
 import { schreibePawnSignal, roomKeyForPath } from "@/lib/pawnSignal";
 
@@ -177,6 +178,10 @@ export function PawnDeck({ pathname, enabled, heroId = "studio-hero", chips, fal
               )}
             </div>
           )}
+
+          <div className="border-t border-border px-4 pt-3">
+            <AiDisclosureNote />
+          </div>
 
           <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3">
             {resolvedChips.map((c) => (

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
+import { AiDisclosureNote } from "@/components/pawn/AiDisclosureNote";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -151,7 +152,10 @@ export function ProductServiceSheet({
         </button>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-center gap-2 border-t border-black/15 p-3">
+      <div className="border-t border-black/15 px-4 pt-3">
+        <AiDisclosureNote />
+      </div>
+      <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-center gap-2 p-3 pt-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

@@ -2309,6 +2309,7 @@ export type Database = {
           review_note: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
           rights_granted: boolean
+          shows_synthetic_person: boolean
           thumb_url: string | null
           title: string | null
           updated_at: string
@@ -2330,6 +2331,7 @@ export type Database = {
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           thumb_url?: string | null
           title?: string | null
           updated_at?: string
@@ -2351,6 +2353,7 @@ export type Database = {
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           thumb_url?: string | null
           title?: string | null
           updated_at?: string
@@ -2732,6 +2735,8 @@ export type Database = {
           channel: Database["public"]["Enums"]["posting_channel"]
           created_at: string
           error: string | null
+          geprueft_am: string | null
+          geprueft_von: string | null
           id: string
           posted_at: string | null
           posted_url: string | null
@@ -2746,6 +2751,8 @@ export type Database = {
           channel?: Database["public"]["Enums"]["posting_channel"]
           created_at?: string
           error?: string | null
+          geprueft_am?: string | null
+          geprueft_von?: string | null
           id?: string
           posted_at?: string | null
           posted_url?: string | null
@@ -2760,6 +2767,8 @@ export type Database = {
           channel?: Database["public"]["Enums"]["posting_channel"]
           created_at?: string
           error?: string | null
+          geprueft_am?: string | null
+          geprueft_von?: string | null
           id?: string
           posted_at?: string | null
           posted_url?: string | null
@@ -3314,6 +3323,7 @@ export type Database = {
           premiere: boolean
           regisseur_verdict: Json | null
           rights_granted: boolean
+          shows_synthetic_person: boolean
           source: Database["public"]["Enums"]["video_source"]
           thumb: string | null
           url: string
@@ -3328,6 +3338,7 @@ export type Database = {
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null
           url: string
@@ -3342,6 +3353,7 @@ export type Database = {
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null
           url?: string
