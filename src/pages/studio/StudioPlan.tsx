@@ -13,9 +13,15 @@ import {
   usePlanQuota, planLabel, formatQuota, DEFAULT_PLAN_QUOTAS,
   type Plan, type PlanQuota,
 } from "@/features/campaign/quota";
+import { isPaidPlan, isLegacyPlan, PAID_PLAN_KEY } from "@/lib/planGate";
 import { useContentValue } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
 import { Check, Sparkles } from "lucide-react";
+
+// Teil 38 AP7 — Preisumbau: nach außen gibt es nur noch zwei Karten, Frei und Paid. 'atelier'
+// bleibt in der Datenbank für Bestandsabos (eigener Preis läuft unverändert weiter), wird aber
+// nicht mehr als eigene Karte angeboten — siehe PAID_PLAN_KEY in @/lib/planGate.
+const VISIBLE_PLANS: Plan[] = ["haus", PAID_PLAN_KEY];
 
 function useStaticBenefits(t: (key: string, vars?: Record<string, string | number>) => string): Record<Plan, string[]> {
   return {
@@ -149,32 +155,38 @@ export default function StudioPlan() {
     maison: benefitsMaison.split("\n").filter(Boolean),
   };
 
-  const upgrade = async (target: Plan) => {
+  // Ein bestehendes Atelier-Abo ist ein zahlendes Bestandsabo mit eigenem, unverändert
+  // weiterlaufendem Preis (siehe CLAUDE.md) — für diesen Fall NIE direkt einen neuen
+  // Stripe-Checkout auslösen (Gefahr: zwei parallel laufende Abos). Stattdessen geht die
+  // Anfrage als Nachricht ans Team, das den Wechsel manuell/mit Proration begleitet.
+  const requestPlanChange = async (note: string) => {
+    if (!user || !designer) return;
+    const { data: thread, error } = await supabase.from("message_threads").insert({
+      designer_id: designer.id, created_by: user.id,
+      subject: "Plan-Wechsel auf Paid",
+      category: "allgemein", status: "open",
+    } as never).select("id").single();
+    if (error) throw error;
+    await supabase.from("messages").insert({
+      thread_id: (thread as { id: string }).id, sender_id: user.id, body: note,
+    } as never);
+    toast.success(t("studio.plan.toast.requestSent"));
+  };
+
+  const upgrade = async () => {
     if (!user || !designer) { toast.error(t("studio.plan.toast.pleaseSignIn")); return; }
-    if (target === "haus" || target === plan) return;
-    setBusy(target);
+    if (isPaidPlan(plan)) return;
+    setBusy(PAID_PLAN_KEY);
     try {
-      const priceId = target === "atelier" ? prices.atelier?.stripe_price_id : prices.maison?.stripe_price_id;
+      const priceId = prices.maison?.stripe_price_id;
       if (!priceId) {
-        // Hinweis: Betreff/Text dieser internen Nachricht an das PAWN-Team bleiben bewusst
-        // Deutsch, unabhängig von der Studio-Sprache — der Admin liest Deutsch.
-        const { data: thread, error } = await supabase.from("message_threads").insert({
-          designer_id: designer.id, created_by: user.id,
-          subject: `Plan-Upgrade auf ${planLabel(target)}`,
-          category: "allgemein", status: "open",
-        } as never).select("id").single();
-        if (error) throw error;
-        await supabase.from("messages").insert({
-          thread_id: (thread as { id: string }).id, sender_id: user.id,
-          body: `Ich möchte auf den Plan ${planLabel(target)} wechseln. Bitte meldet euch zur Freischaltung.`,
-        } as never);
-        toast.success(t("studio.plan.toast.requestSent"));
+        await requestPlanChange(`Ich möchte auf den Plan ${planLabel(PAID_PLAN_KEY)} (Paid) wechseln. Bitte meldet euch zur Freischaltung.`);
         return;
       }
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
-          mode: "subscription", plan: target, price_id: priceId,
-          success_url: `${window.location.origin}/studio/plan?upgraded=${target}`,
+          mode: "subscription", plan: PAID_PLAN_KEY, price_id: priceId,
+          success_url: `${window.location.origin}/studio/plan?upgraded=${PAID_PLAN_KEY}`,
           cancel_url: `${window.location.origin}/studio/plan`,
           customer_email: user.email,
         },
@@ -189,10 +201,22 @@ export default function StudioPlan() {
     }
   };
 
+  const requestLegacySwitch = async () => {
+    if (!user || !designer) { toast.error(t("studio.plan.toast.pleaseSignIn")); return; }
+    setBusy(PAID_PLAN_KEY);
+    try {
+      await requestPlanChange("Ich bin aktuell im Plan Atelier und möchte auf den neuen Plan Paid wechseln. Bitte meldet euch, um den Wechsel zu begleiten.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const priceFor = (p: Plan): string => {
     if (p === "haus") return "0 €";
-    const eur = p === "atelier" ? prices.atelier?.eur_month : prices.maison?.eur_month;
-    return eur != null ? `${eur} €` : (p === "atelier" ? "24 €" : "99 €");
+    const eur = prices.maison?.eur_month;
+    return eur != null ? `${eur} €` : "99 €";
   };
 
   const benefitsFor = (p: Plan): string[] => {
@@ -227,7 +251,8 @@ export default function StudioPlan() {
       </div>
 
       <p className="mt-8 text-sm">
-        {t("studio.plan.currently")} <span className="font-medium">{planLabel(plan)}</span>.
+        {t("studio.plan.currently")} <span className="font-medium">{planLabel(plan)}</span>
+        {isLegacyPlan(plan) && <span className="text-muted-foreground"> — {t("studio.plan.legacyNote")}</span>}.
       </p>
 
       {!quota.loading && (
@@ -236,12 +261,16 @@ export default function StudioPlan() {
         </div>
       )}
 
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
-        {(["haus", "atelier", "maison"] as Plan[]).map((key) => {
-          const current = key === plan;
+      <div className="mt-8 grid gap-4 md:grid-cols-2">
+        {VISIBLE_PLANS.map((key) => {
+          const isPaidCard = key !== "haus";
+          // Ein Atelier-Bestandsabo zählt schon als Paid — die Paid-Karte markiert es als
+          // aktuell, damit niemand fälschlich als "noch Frei" erscheint.
+          const current = isPaidCard ? isPaidPlan(plan) : plan === "haus";
           const badge = BADGES[key];
           const imageExample = imageExamples[key];
           const example = examples[key];
+          const tierLabel = key === "haus" ? t("studio.plan.tierLabel.frei") : t("studio.plan.tierLabel.paid");
           return (
             <div key={key} id={`plan-${key}`}
               className={`relative border ${current ? "border-foreground shadow-[6px_6px_0_0_rgba(0,0,0,0.9)]" : "border-border"} bg-white p-6`}>
@@ -251,7 +280,7 @@ export default function StudioPlan() {
                 </span>
               )}
               <p className="editorial-eyebrow">{t("studio.plan.planLabel")}</p>
-              <h3 className="mt-2 font-serif text-3xl">{planLabel(key)}</h3>
+              <h3 className="mt-2 font-serif text-3xl">{tierLabel}</h3>
               <p className="mt-2 tabular-nums text-xl">{priceFor(key)}<span className="text-sm text-muted-foreground"> {t("studio.plan.perMonth")}</span></p>
               <p className="mt-4 font-serif text-sm italic text-muted-foreground">{resolvedHeadlines[key]}</p>
 
@@ -278,14 +307,19 @@ export default function StudioPlan() {
                 ))}
               </ul>
               <div className="mt-6">
-                {current ? (
+                {current && !(isPaidCard && isLegacyPlan(plan)) ? (
                   <span className="inline-block border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em]">{t("studio.plan.yourPlan")}</span>
                 ) : key === "haus" ? (
                   <span className="text-xs text-muted-foreground">{t("studio.plan.baseAccess")}</span>
-                ) : (
-                  <button onClick={() => upgrade(key)} disabled={busy === key}
+                ) : isLegacyPlan(plan) ? (
+                  <button onClick={() => void requestLegacySwitch()} disabled={busy === PAID_PLAN_KEY}
                     className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
-                    {busy === key ? "…" : t("studio.plan.switchTo")}
+                    {busy === PAID_PLAN_KEY ? "…" : t("studio.plan.discussSwitch")}
+                  </button>
+                ) : (
+                  <button onClick={() => void upgrade()} disabled={busy === PAID_PLAN_KEY}
+                    className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
+                    {busy === PAID_PLAN_KEY ? "…" : t("studio.plan.switchTo")}
                   </button>
                 )}
               </div>
@@ -297,7 +331,7 @@ export default function StudioPlan() {
       <p className="mt-8 text-xs text-muted-foreground">
         {t("studio.plan.cancelHint.pre")} <a href="/agb" className="underline">{t("studio.plan.cancelHint.linkLabel")}</a>{t("studio.plan.cancelHint.post")}
       </p>
-      {(!prices.atelier?.stripe_price_id || !prices.maison?.stripe_price_id) && (
+      {!prices.maison?.stripe_price_id && (
         <p className="mt-3 text-xs text-muted-foreground">
           {t("studio.plan.paymentNotSetUp")}
         </p>

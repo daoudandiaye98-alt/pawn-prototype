@@ -76,6 +76,10 @@ Deno.serve(async (req) => {
       const plan = (sub.metadata?.plan ?? "").toLowerCase();
       const user_id = sub.metadata?.user_id;
       const cancelled = event.type === "customer.subscription.deleted" || sub.status === "canceled" || sub.status === "incomplete_expired";
+      // Teil 38 AP7 (Preisumbau) geprüft: create-checkout nimmt seit diesem Umbau für neue
+      // Anmeldungen nur noch 'maison' (Paid) an — 'atelier' bleibt hier trotzdem ein gültiger
+      // Zielwert, weil bestehende Atelier-Abos (und ein von Daouda manuell in Stripe begleiteter
+      // Wechsel) weiterhin genau diese Metadaten tragen können.
       const targetPlan = cancelled ? "haus" : (plan === "atelier" || plan === "maison" ? plan : null);
       if (user_id && targetPlan) {
         const { data: designer } = await admin.from("designers").update({ plan: targetPlan }).eq("user_id", user_id).select("id, user_id, preferred_language").maybeSingle();
