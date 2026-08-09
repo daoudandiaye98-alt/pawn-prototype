@@ -452,6 +452,7 @@ export type Database = {
           gueltigkeitsvermutung: string | null
           headline: string
           id: string
+          kategorie: string
           quelle_typ: string
           source_title: string | null
           source_url: string | null
@@ -468,6 +469,7 @@ export type Database = {
           gueltigkeitsvermutung?: string | null
           headline: string
           id?: string
+          kategorie?: string
           quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           gueltigkeitsvermutung?: string | null
           headline?: string
           id?: string
+          kategorie?: string
           quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
@@ -1373,7 +1376,8 @@ export type Database = {
           vat_rate: number
           video_taste_weights: Json
           website: string | null
-          weekly_impulse: boolean
+          weekly_impulse: string | null
+          weekly_impulse_at: string | null
         }
         Insert: {
           application_id?: string | null
@@ -1427,7 +1431,8 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
-          weekly_impulse?: boolean
+          weekly_impulse?: string | null
+          weekly_impulse_at?: string | null
         }
         Update: {
           application_id?: string | null
@@ -1481,7 +1486,8 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
-          weekly_impulse?: boolean
+          weekly_impulse?: string | null
+          weekly_impulse_at?: string | null
         }
         Relationships: [
           {

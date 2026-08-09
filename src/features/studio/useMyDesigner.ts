@@ -35,6 +35,7 @@ export interface StudioDesigner {
   pawn_guide_enabled: boolean;
   studio_last_seen_at: string | null;
   onboarding_state: Record<string, unknown>;
+  weekly_impulse: string | null;
 }
 
 
@@ -50,7 +51,7 @@ export function useMyDesigner() {
     setLoading(true);
     const { data, error } = await supabase
       .from("designers")
-      .select("id, slug, brand_name, location, country, story, manifesto, quote, quote_role, collection_title, hero_image_url, banner_url, avatar_url, status, house_number, hausseite_cover_shown_at, created_at, brand_dna, aussenauge, plan, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, page_published_at, dismissed_suggestions, shipping_rates, vat_rate, return_window_days, preferred_language, pawn_guide_enabled, studio_last_seen_at, onboarding_state")
+      .select("id, slug, brand_name, location, country, story, manifesto, quote, quote_role, collection_title, hero_image_url, banner_url, avatar_url, status, house_number, hausseite_cover_shown_at, created_at, brand_dna, aussenauge, plan, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, page_published_at, dismissed_suggestions, shipping_rates, vat_rate, return_window_days, preferred_language, pawn_guide_enabled, studio_last_seen_at, onboarding_state, weekly_impulse")
       .eq("user_id", user.id)
       .maybeSingle();
 

@@ -265,6 +265,42 @@ function detectCatalogIntent(t: string): boolean {
   const s = t.toLowerCase();
   return /\b(passt (das|es|die|der)?( zu (mir|meinem stil))?|katalog|empfiehl|empfehlung|vorschlag|welche(s)? stück|welches produkt|was gibt(’|'|)s? es|was habt ihr|zu meinem stil)\b/.test(s);
 }
+/**
+ * Part 38 AP2 — Wissen erreicht die Designer: brand_knowledge (Markenaufbau + neu Wirtschaft)
+ * wird intent-getriggert durchsucht, gleiches Scoring-/Schwellwert-/Ehrlichkeitsprinzip wie beim
+ * Katalog-Retrieval (36b/36c) oben. Wirtschafts-Fragen (Preis, Kalkulation, Produktion, Vertrieb)
+ * routen gezielt auf kategorie="wirtschaft", alles andere Markenaufbau-Artige auf "markenaufbau".
+ */
+function detectWissenKategorie(t: string): "wirtschaft" | "markenaufbau" | null {
+  const s = t.toLowerCase();
+  if (/\b(preis|kalkulation|kalkulieren|marge|einkaufspreis|verkaufspreis|moq|mindestbestellmenge|großhandel|grosshandel|d2c|umsatzsteuer|mehrwertsteuer|versandkosten|steuer|produktionskosten|lieferant|sampling|stückkosten)\b/.test(s)) return "wirtschaft";
+  if (/\b(markenaufbau|content.?rhythmus|posting.?frequenz|community aufbauen|wiederkäufer|storytelling|markenstimme|produktfotografie|erste käufer|wie poste ich|wie oft posten)\b/.test(s)) return "markenaufbau";
+  return null;
+}
+const WISSEN_MATCH_THRESHOLD = 2;
+async function queryBrandKnowledge(
+  admin: SupabaseClient, kategorie: "wirtschaft" | "markenaufbau", terms: string[],
+): Promise<{ headline: string; body: string; source_title: string | null }[]> {
+  const { data } = await admin.from("brand_knowledge")
+    .select("headline, body, topic, source_title")
+    .eq("kategorie", kategorie).eq("active", true).eq("approved", true)
+    .order("created_at", { ascending: false }).limit(80);
+  const rows = (data ?? []) as { headline: string; body: string; topic: string; source_title: string | null }[];
+  if (!rows.length) return [];
+  const lowerTerms = terms.map((t) => t.toLowerCase()).filter((t) => t.length >= 3);
+  const scored = rows.map((r) => {
+    const head = `${r.headline} ${r.topic}`.toLowerCase();
+    const body = r.body.toLowerCase();
+    let score = 0;
+    for (const t of lowerTerms) {
+      if (head.includes(t)) score += 2;
+      else if (body.includes(t)) score += 1;
+    }
+    return { r, score };
+  }).filter((x) => x.score >= WISSEN_MATCH_THRESHOLD || lowerTerms.length === 0)
+    .sort((a, b) => b.score - a.score).slice(0, 2);
+  return scored.map(({ r }) => ({ headline: r.headline, body: r.body, source_title: r.source_title }));
+}
 function detectNavAction(text: string, all: { designers: DBDesigner[]; products: DBProduct[] }): Action | null {
   const t = text.toLowerCase();
   // Explicit intents
@@ -718,12 +754,16 @@ Deno.serve(async (req) => {
     let contextHint = "";
     let trendCards: Card[] = [];
     let trendReplyPrefix = "";
+    let zeitgeistHint = "";
+    let wissenHint = "";
     if (admin) {
       const cand = await loadCandidates(admin, extracted.world);
       action = detectNavAction(lastUser, { designers: cand.allDesigners, products: cand.allProducts });
 
-      // Trend intent: "was ist im trend / trends / momentum"
-      const trendIntent = /\b(trend|trends|im trend|momentum|angesagt|gerade beliebt)\b/i.test(lastUser);
+      // Trend intent: "was ist im trend / trends / momentum" — Part 38 AP2: um Zeitgeist erweitert,
+      // damit cultural_currents (nicht nur trend_momentum/trend_snapshots) angezapft wird, mit
+      // ehrlichem Fallback statt schweigendem Nichtstun, wenn (noch) keine Daten da sind.
+      const trendIntent = /\b(trend|trends|im trend|momentum|angesagt|gerade beliebt|zeitgeist|strömung|welle|kulturell)\b/i.test(lastUser);
       if (trendIntent) {
         const worldForTrends = extracted.world ?? "Mode";
         const { data: mo } = await admin.rpc("trend_momentum" as never, { _world: worldForTrends } as never);
@@ -738,6 +778,19 @@ Deno.serve(async (req) => {
             trendCards.push({ kind: "product", title: p.name, subtitle: p.world ?? undefined, href: `/product/${p.slug}`, reason: "Gerade im Aufwärtstrend." });
           }
           trendReplyPrefix = `Aktuell im Aufwärtstrend in ${worldForTrends}: ${top3.map((r) => r.term).join(", ")}.`;
+        }
+        const { data: currents } = await admin.from("cultural_currents")
+          .select("name, zeitraum, visuelle_merkmale, ontologie_begriffe")
+          .order("created_at", { ascending: false }).limit(30);
+        const currentRows = (currents ?? []) as { name: string; zeitraum: string | null; visuelle_merkmale: Record<string, unknown> | null; ontologie_begriffe: string[] | null }[];
+        const term3 = new Set(top3.map((r) => r.term.toLowerCase()));
+        const matchedCurrent = currentRows.find((c) => (c.ontologie_begriffe ?? []).some((b) => term3.has(b.toLowerCase())));
+        if (matchedCurrent) {
+          // Nur an contextHint (System-Ebene) anhängen, nie an trendReplyPrefix — das wird weiter
+          // unten auch als wörtlicher Text-Fallback vor die Antwort gesetzt (Zeile ~1013).
+          zeitgeistHint = `Zeitgeist-Strömung dazu: "${matchedCurrent.name}"${matchedCurrent.zeitraum ? ` (${matchedCurrent.zeitraum})` : ""}.`;
+        } else if (!top3.length && !currentRows.length) {
+          zeitgeistHint = "KEIN ZEITGEIST-SIGNAL: Sag ehrlich, dass PAWN noch zu wenig Daten für eine begründete Zeitgeist-Einschätzung hat, statt zu spekulieren.";
         }
       }
 
@@ -775,8 +828,23 @@ Deno.serve(async (req) => {
           contextHint = "KEIN AUSREICHENDER KATALOG-TREFFER: Sag in einem Satz ehrlich, dass es dafür aktuell nichts ausreichend Passendes gibt, und biete konkret einen nächsten Schritt an (Wunschliste, /designers entdecken). Erfinde kein Produkt und keine Marke.";
         }
       }
+
+      // Part 38 AP2: Wirtschafts-/Markenaufbau-Fragen gegen brand_knowledge matchen — gleiche
+      // Ehrlichkeitsregel: leerer/zu schwacher Treffer wird als solcher benannt, nie umschrieben.
+      const wissenKategorie = detectWissenKategorie(lastUser);
+      if (wissenKategorie) {
+        const wissenTerms = [...ontologyTerms.map((t) => t.term), ...lastUser.split(/\s+/)];
+        const hits = await queryBrandKnowledge(admin, wissenKategorie, wissenTerms);
+        if (hits.length) {
+          wissenHint = `${wissenKategorie === "wirtschaft" ? "Kalkulations-Wissen" : "Markenaufbau-Wissen"} (nutze NUR das hier, keine erfundenen Zahlen/Regeln — als Orientierung formulieren, keine Rechts-/Steuerberatung): ${hits.map((h) => `"${h.headline}" — ${h.body}${h.source_title ? ` (Quelle: ${h.source_title})` : ""}`).join(" | ")}`;
+        } else {
+          wissenHint = `KEIN ${wissenKategorie.toUpperCase()}-WISSEN VORHANDEN: Sag ehrlich, dass PAWN dazu noch keine gesammelten Bausteine hat, statt generisch zu antworten. Konkreter nächster Schritt: Frage kann trotzdem allgemein beantwortet werden, aber ohne PAWN-Wissen als Quelle auszugeben.`;
+        }
+      }
     }
     if (action) contextHint = `Der Nutzer hat gerade nach Navigation gefragt: ${action.label}. Antworte in EINEM kurzen warmen Satz, bestätige dass du ihn hinbringst. Keine Fragen.`;
+    if (zeitgeistHint) contextHint = [contextHint, zeitgeistHint].filter(Boolean).join(" ");
+    if (wissenHint) contextHint = [contextHint, wissenHint].filter(Boolean).join(" ");
 
     // Weave memory into the system prompt
     let memoryHint = "";
