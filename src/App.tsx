@@ -54,6 +54,7 @@ import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
 import StudioContentBegleiter from "./pages/studio/StudioContentBegleiter.tsx";
 import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
 import StudioReferrals from "./pages/studio/StudioReferrals.tsx";
+import StudioBeweis from "./pages/studio/StudioBeweis.tsx";
 import StudioDNA from "./pages/studio/StudioDNA.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
@@ -192,6 +193,7 @@ const App = () => (
                 <Route path="/studio/content-begleiter" element={<RoleGate role="designer"><StudioContentBegleiter /></RoleGate>} />
                 <Route path="/studio/hausseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
                 <Route path="/studio/empfehlungen" element={<RoleGate role="designer"><StudioReferrals /></RoleGate>} />
+                <Route path="/studio/beweis" element={<RoleGate role="designer"><StudioBeweis /></RoleGate>} />
                 <Route path="/studio/plan" element={<RoleGate role="designer"><StudioPlan /></RoleGate>} />
                 <Route path="/studio/dna" element={<RoleGate role="designer"><StudioDNA /></RoleGate>} />
                 <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
