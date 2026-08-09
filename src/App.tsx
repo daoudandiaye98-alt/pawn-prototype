@@ -47,6 +47,7 @@ import StudioPayout from "./pages/studio/StudioPayout.tsx";
 import StudioCopilot from "./pages/studio/StudioCopilot.tsx";
 import StudioSettings from "./pages/studio/StudioSettings.tsx";
 import StudioAutomatik from "./pages/studio/StudioAutomatik.tsx";
+import StudioVertraege from "./pages/studio/StudioVertraege.tsx";
 import StudioOffeneTueren from "./pages/studio/StudioOffeneTueren.tsx";
 import StudioCampaignNew from "./pages/studio/StudioCampaignNew.tsx";
 import StudioPlan from "./pages/studio/StudioPlan.tsx";
@@ -213,6 +214,7 @@ const App = () => (
                 <Route path="/studio/copilot" element={<RoleGate role="designer"><StudioCopilot /></RoleGate>} />
                 <Route path="/studio/einstellungen" element={<RoleGate role="designer"><StudioSettings /></RoleGate>} />
                 <Route path="/studio/automatik" element={<RoleGate role="designer"><StudioAutomatik /></RoleGate>} />
+                <Route path="/studio/vertraege" element={<RoleGate role="designer"><StudioVertraege /></RoleGate>} />
                 <Route path="/studio/tueren" element={<RoleGate role="designer"><StudioOffeneTueren /></RoleGate>} />
 
                 <Route path="/studio/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
