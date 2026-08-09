@@ -290,6 +290,10 @@ const de = {
   "studioShell.strongerModelActive": "Stärkeres Denkmodell aktiv",
   "studioShell.signOut": "Abmelden",
   "studioShell.menu": "Menü",
+  "studioShell.legal.impressum": "Impressum",
+  "studioShell.legal.datenschutz": "Datenschutz",
+  "studioShell.legal.agb": "AGB",
+  "studioShell.legal.kuendigen": "Verträge hier kündigen",
   "studioShell.highestRank": "Höchster Rang",
   "studioShell.nextRank": "Nächster Rang · {rank}",
 
@@ -2109,6 +2113,10 @@ const en: Record<keyof typeof de, string> = {
   "studioShell.strongerModelActive": "Stronger reasoning model active",
   "studioShell.signOut": "Sign out",
   "studioShell.menu": "Menu",
+  "studioShell.legal.impressum": "Legal notice",
+  "studioShell.legal.datenschutz": "Privacy",
+  "studioShell.legal.agb": "Terms",
+  "studioShell.legal.kuendigen": "Cancel contracts here",
   "studioShell.highestRank": "Highest rank",
   "studioShell.nextRank": "Next rank · {rank}",
 
