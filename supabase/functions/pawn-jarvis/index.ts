@@ -3359,32 +3359,49 @@ async function runMaisonSichtbarkeitszug(admin: SupabaseClient, apiKey: string):
     .eq("plan", "maison").eq("status", "active").eq("published", true);
   const houseList = (houses ?? []) as {
     id: string; user_id: string | null; brand_name: string; slug: string;
-    story: string | null; brand_dna: { worlds?: Record<string, number> } | null;
+    story: string | null; brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
   }[];
-  if (!houseList.length) return { ok: true, processed: 0, presse: 0, eingereiht: 0, uebersprungen: 0, message: "Kein aktives Maison-Haus." };
+  if (!houseList.length) return { ok: true, processed: 0, presse: 0, eingereiht: 0, verstaerkt: 0, uebersprungen: 0, message: "Kein aktives Maison-Haus." };
+
+  const { data: automationRows } = await admin.from("designer_automations")
+    .select("designer_id, automation_key, enabled")
+    .in("designer_id", houseList.map((h) => h.id))
+    .in("automation_key", ["sichtbarkeitszug", "presse", "verstaerker_haus"]);
+  const automations = new Map<string, Map<string, boolean>>();
+  for (const r of (automationRows as { designer_id: string; automation_key: string; enabled: boolean }[] | null) ?? []) {
+    const m = automations.get(r.designer_id) ?? new Map<string, boolean>();
+    m.set(r.automation_key, r.enabled);
+    automations.set(r.designer_id, m);
+  }
+  // Fehlt eine Zeile, gilt sichtbarkeitszug als an (Rückwärtskompatibilität — vor Teil 38 AP6
+  // liefen alle Maison-Häuser dieses Bündel ohne Schalter); presse/verstaerker_haus fehlen
+  // eine Zeile → aus, weil sie neue, bewusst zusätzliche Organe sind.
+  const organAn = (designerId: string, key: string, defaultAn: boolean) => automations.get(designerId)?.get(key) ?? defaultAn;
 
   const styleLaw = await loadHouseStyleLaw(admin);
   const gesetze = DEFAULT_SPRACHGESETZE;
   const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
   const presseCents = ((costsCfg?.value as { sichtbarkeitszug_presse?: number } | null)?.sichtbarkeitszug_presse) ?? 4;
 
-  let processed = 0, presse = 0, eingereiht = 0, uebersprungen = 0, tokensUsed = 0;
+  let processed = 0, presse = 0, eingereiht = 0, verstaerkt = 0, uebersprungen = 0, tokensUsed = 0;
 
   for (const h of houseList) {
     processed++;
-    const { data: budgetCheck } = await admin.rpc("book_ai_spend", { _designer_id: h.id, _cents: 0 });
-    if ((budgetCheck as { over_budget?: boolean } | null)?.over_budget) {
-      uebersprungen++;
-      await admin.from("jarvis_notices").insert({
-        kind: "sichtbarkeitszug_uebersprungen",
-        title: `Sichtbarkeits-Zug übersprungen: ${h.brand_name}`,
-        body: `${h.brand_name} hat das monatliche KI-Budget bereits ausgeschöpft — der wöchentliche Presse-Entwurf entfällt diese Woche.`,
-      });
-      continue;
-    }
+    const sichtbarkeitszugAn = organAn(h.id, "sichtbarkeitszug", true);
+    const presseAn = organAn(h.id, "presse", false);
+    const verstaerkerHausAn = organAn(h.id, "verstaerker_haus", false);
+    if (!sichtbarkeitszugAn && !presseAn && !verstaerkerHausAn) continue;
 
-    // 1) ein Presse-Entwurf, direkt für dieses Haus statt für einen einzelnen Lead-Kontakt
-    if (h.user_id) {
+    const darfWeiter = await guardAiBudget(
+      admin, h.id, h.brand_name, "sichtbarkeitszug_uebersprungen",
+      "der wöchentliche Presse-Entwurf entfällt diese Woche.",
+    );
+    if (!darfWeiter) { uebersprungen++; continue; }
+
+    // 1) ein Presse-Entwurf, direkt für dieses Haus statt für einen einzelnen Lead-Kontakt —
+    //    entweder als Teil des Sichtbarkeits-Zug-Bündels oder als eigenständiges Organ, nie beide
+    //    (sonst bekäme ein Haus mit beiden Schaltern denselben Pitch doppelt).
+    if (h.user_id && (sichtbarkeitszugAn || presseAn)) {
       const worlds = Object.keys(h.brand_dna?.worlds ?? {});
       const system = `Du schreibst für ein unabhängiges Designhaus auf PAWN (pawn.vision) einen kurzen Presse-Anschreiben-Entwurf, den das Haus selbst an eine Redaktion oder einen Blog seiner Wahl verschicken kann. Höchstens 120 Wörter, Deutsch, im Ton des Hauses. Beginne mit einem konkreten Satz über das Haus, nicht mit einer Anrede (die Anrede fügt das Haus selbst ein). Ende mit einem leichten Angebot (Bilder, Gespräch) und dem Link.
 
@@ -3412,35 +3429,113 @@ Link: https://pawn.vision/designer/${h.slug}`;
           body: entwurf,
           link: "/studio/beweis",
         });
-        await admin.rpc("book_ai_spend", { _designer_id: h.id, _cents: presseCents });
+        await bookAiSpend(admin, h.id, presseCents);
         await schreibePartieZug(admin, h.id, "PAWN hat einen Presse-Entwurf für dich vorbereitet.", "pawn", "maison_sichtbarkeitszug");
         presse++;
       }
     }
 
-    // 2) bis zu 3 freigegebene Video-Kampagnen ohne posting_queue-Eintrag nachtragen — exakt die
-    //    gleiche Zeilenform, die der Trigger enqueue_campaign_post() automatisch anlegt.
-    const { data: campaigns } = await admin.from("campaigns")
-      .select("id, content")
-      .eq("designer_id", h.id).eq("status", "approved").eq("kind", "video")
-      .order("updated_at", { ascending: false }).limit(20);
-    const withAsset = ((campaigns ?? []) as { id: string; content: { asset_url?: string } | null }[])
-      .filter((c) => !!c.content?.asset_url);
-    if (withAsset.length) {
-      const { data: queued } = await admin.from("posting_queue")
-        .select("campaign_id").in("campaign_id", withAsset.map((c) => c.id));
-      const queuedIds = new Set(((queued ?? []) as { campaign_id: string }[]).map((r) => r.campaign_id));
-      const missing = withAsset.filter((c) => !queuedIds.has(c.id)).slice(0, 3);
-      for (const c of missing) {
-        const { error } = await admin.from("posting_queue").insert({
-          campaign_id: c.id, channel: "pawn_instagram", scheduled_at: new Date().toISOString(), status: "vorschlag",
-        });
-        if (!error) eingereiht++;
+    // 2) bis zu 3 freigegebene Video-Kampagnen ohne posting_queue-Eintrag nachtragen (nur als Teil
+    //    des Sichtbarkeits-Zug-Bündels — der plattformweite Nachtrag aus Teil 38 AP5 deckt
+    //    inzwischen alle Pläne ab, das hier bleibt zur Rückwärtskompatibilität bestehen).
+    if (sichtbarkeitszugAn) {
+      const { data: campaigns } = await admin.from("campaigns")
+        .select("id, content")
+        .eq("designer_id", h.id).eq("status", "approved").eq("kind", "video")
+        .order("updated_at", { ascending: false }).limit(20);
+      const withAsset = ((campaigns ?? []) as { id: string; content: { asset_url?: string } | null }[])
+        .filter((c) => !!c.content?.asset_url);
+      if (withAsset.length) {
+        const { data: queued } = await admin.from("posting_queue")
+          .select("campaign_id").in("campaign_id", withAsset.map((c) => c.id));
+        const queuedIds = new Set(((queued ?? []) as { campaign_id: string }[]).map((r) => r.campaign_id));
+        const missing = withAsset.filter((c) => !queuedIds.has(c.id)).slice(0, 3);
+        for (const c of missing) {
+          const { error } = await admin.from("posting_queue").insert({
+            campaign_id: c.id, channel: "pawn_instagram", scheduled_at: new Date().toISOString(), status: "vorschlag",
+          });
+          if (!error) eingereiht++;
+        }
+      }
+    }
+
+    // 3) verstaerker_haus: ein zusätzliches, hausgebundenes Kontingent frischer Beitrags-Entwürfe
+    //    aus kampagnenlosen, rechte-geklärten Video-Assets — ergänzt den plattformweiten
+    //    Basis-Lauf aus Teil 38 AP5, statt ihn zu ersetzen (eigener Funktionsname, damit beide
+    //    unabhängig voneinander gemergt werden können, ohne sich zu überschreiben).
+    if (verstaerkerHausAn) {
+      const seitZweiWochen = new Date(Date.now() - 14 * 86_400_000).toISOString();
+      const { data: freieAssets } = await admin.from("video_assets")
+        .select("id, url").eq("designer_id", h.id).is("campaign_id", null).eq("rights_granted", true)
+        .gte("created_at", seitZweiWochen).order("created_at", { ascending: false }).limit(10);
+      let verstaerktDiesesHaus = 0;
+      for (const asset of (freieAssets as { id: string; url: string }[] | null) ?? []) {
+        if (verstaerktDiesesHaus >= 2) break;
+        const { data: bereitsVerpackt } = await admin.from("campaigns")
+          .select("id").eq("content->>video_asset_id", asset.id).limit(1);
+        if ((bereitsVerpackt ?? []).length) continue;
+        const entwurf = await erzeugeHausBeitragsEntwurf(admin, apiKey, h, "ein neues Video ist fertig");
+        tokensUsed += entwurf.tokens;
+        const { data: campRow } = await admin.from("campaigns").insert({
+          designer_id: h.id, title: `${h.brand_name} · Beitrags-Vorschlag von PAWN (Haus-Organ)`, kind: "video", status: "approved",
+          content: { asset_url: asset.url, caption: entwurf.caption, hashtags: entwurf.hashtags, video_asset_id: asset.id, source: "verstaerker_haus" },
+        } as never).select("id").single();
+        if (campRow) {
+          await admin.from("posting_queue").insert({
+            campaign_id: (campRow as { id: string }).id, channel: "pawn_instagram",
+            scheduled_at: new Date().toISOString(), status: "vorschlag",
+          } as never);
+          const cents = Math.round((entwurf.tokens / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2) * 100);
+          if (cents > 0) await bookAiSpend(admin, h.id, cents);
+          verstaerkt++;
+        }
       }
     }
   }
 
-  return { ok: true, processed, presse, eingereiht, uebersprungen, tokensUsed };
+  return { ok: true, processed, presse, eingereiht, verstaerkt, uebersprungen, tokensUsed };
+}
+
+interface HausBeitragsEntwurf { caption: string; hashtags: string[]; tokens: number }
+
+/**
+ * Teil 38 AP6: ein kurzer Beitragstext für das verstaerker_haus-Organ — bewusst eigenständig
+ * benannt (nicht erzeugePostEntwurf aus AP5), damit beide Arbeitspakete unabhängig voneinander
+ * in main gemergt werden können, ohne eine doppelte Funktionsdeklaration zu erzeugen. Ohne
+ * KI-Zugriff ein einfacher, ehrlicher Text statt eines Fehlers.
+ */
+async function erzeugeHausBeitragsEntwurf(
+  admin: SupabaseClient, apiKey: string,
+  haus: { brand_name: string; slug: string; brand_dna?: { worlds?: Record<string, number>; signals?: string[] } | null },
+  kontext: string,
+): Promise<HausBeitragsEntwurf> {
+  const worlds = Object.keys(haus.brand_dna?.worlds ?? {});
+  const signale = (haus.brand_dna?.signals ?? []).slice(0, 4);
+  const fallback: HausBeitragsEntwurf = {
+    caption: `${haus.brand_name} — ${kontext}. Mehr auf pawn.vision.`,
+    hashtags: ["#pawnvision", `#${haus.brand_name.replace(/\s+/g, "").toLowerCase()}`, ...(worlds[0] ? [`#${worlds[0].toLowerCase()}`] : [])],
+    tokens: 0,
+  };
+  if (!apiKey) return fallback;
+  const gesetze = DEFAULT_SPRACHGESETZE;
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const system = `Du schreibst für PAWN (pawn.vision) einen kurzen Instagram-Beitragstext für ein unabhängiges Designhaus. Höchstens 3 Sätze, Deutsch, im Ton des Hauses, ohne Übertreibung. Danach 3-5 passende Hashtags.
+
+SPRACHGESETZE (bindend):
+${gesetze}
+
+Stilgesetz: ${styleLaw}
+
+Antworte NUR mit JSON: {"caption": "...", "hashtags": ["#...", "#..."]}`;
+  const user = `Haus: ${haus.brand_name}. Welt(en): ${worlds.join(", ") || "unbekannt"}. Marken-Signale: ${signale.join(", ") || "keine erfasst"}. Anlass: ${kontext}. Link: https://pawn.vision/designer/${haus.slug}`;
+  const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 400);
+  let caption = typeof json?.caption === "string" ? json.caption.trim() : "";
+  if (caption && hatVerneinung(caption)) {
+    const fixed = await entverneinen(caption, gesetze);
+    caption = fixed.text;
+  }
+  const hashtags = Array.isArray(json?.hashtags) ? (json.hashtags as unknown[]).map(String).slice(0, 6) : fallback.hashtags;
+  return caption ? { caption, hashtags, tokens } : { ...fallback, tokens };
 }
 
 // --- Teil 28c: die Automatik-Matrix eines Hauses ausführen (nur Zone Grün) --------------------
