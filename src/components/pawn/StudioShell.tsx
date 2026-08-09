@@ -172,6 +172,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         { to: "/studio/nachrichten", label: t("studioShell.nav.nachrichten"), hint: t("studioShell.nav.nachrichten.hint"), icon: IMessages, badge: badges.messages },
         { to: "/studio/empfehlungen", label: t("studioShell.nav.empfehlungen"), hint: t("studioShell.nav.empfehlungen.hint"), icon: IReferral },
         { to: "/studio/automatik", label: t("studioShell.nav.automatik"), hint: t("studioShell.nav.automatik.hint"), icon: ISettings },
+        { to: "/studio/vertraege", label: t("studioShell.nav.vertraege"), hint: t("studioShell.nav.vertraege.hint"), icon: ISettings },
         { to: "/studio/einstellungen", label: t("studioShell.nav.einstellungen"), hint: t("studioShell.nav.einstellungen.hint"), icon: ISettings },
       ],
     },
@@ -356,6 +357,12 @@ function Inner({ children, title, eyebrow }: Props) {
         <Topbar title={title} section={eyebrow ?? title} />
         {designer && <ContractV2Banner />}
         <main className="flex-1 p-6 md:p-10">{children}</main>
+        <div className="flex flex-wrap items-center gap-4 border-t border-border px-6 py-4 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground md:px-10">
+          <Link to="/impressum" className="hover:text-foreground">{t("studioShell.legal.impressum")}</Link>
+          <Link to="/datenschutz" className="hover:text-foreground">{t("studioShell.legal.datenschutz")}</Link>
+          <Link to="/agb" className="hover:text-foreground">{t("studioShell.legal.agb")}</Link>
+          <Link to="/vertrag-kuendigen" className="hover:text-foreground">{t("studioShell.legal.kuendigen")}</Link>
+        </div>
       </div>
     </div>
   );

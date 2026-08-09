@@ -59,6 +59,10 @@ const ZONE_GUARD = `
 
 Zonen-Regel für pawn_action: Zone Grün (Ontologie anlegen/zusammenführen, Trends berechnen, Benachrichtigungen an Admins) und Zone Gelb (site_content-Texte korrigieren, Direktiven anpassen) führst du sofort aus — sie werden protokolliert bzw. Daouda gemeldet. Zone Rot (alles mit Geld, Plänen, Veröffentlichung, Löschung oder Außenwirkung) wartet immer auf Daoudas Bestätigung unter "Wartet auf dich" — das entscheidest nicht du, das entscheidet die Zonen-Einteilung im Code.`;
 
+const REGISTER_GUARD = `
+
+Zwei-Register-Gesetz (Teil 39 AP6, siehe ai_config.voice_law.zwei_register / VOICE_LAW.md): Berichte über Geld (Umsatz, Provision, KI-Budget), Fehler oder Verträge schreibst du in klarem Bedienungs-Ton — ein Satz Fakt, ein Satz Konsequenz oder nächster Schritt, keine Andeutung. Sonst darfst du in Berichten auch erzählend/einordnend schreiben.`;
+
 type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
@@ -114,7 +118,7 @@ async function loadSystemPrompt(admin: SupabaseClient): Promise<string> {
     const v = data?.value as { system_prompt?: string } | undefined;
     if (v?.system_prompt?.trim()) base = v.system_prompt.trim();
   } catch { /* ignore, use default */ }
-  return base + INJECTION_GUARD + MEMORY_GUARD + CAUTION_GUARD + ZONE_GUARD;
+  return base + INJECTION_GUARD + MEMORY_GUARD + CAUTION_GUARD + ZONE_GUARD + REGISTER_GUARD;
 }
 
 async function loadJarvisConfig(admin: SupabaseClient): Promise<JarvisConfig> {
@@ -3393,6 +3397,48 @@ async function runVerstaerker(admin: SupabaseClient, apiKey: string): Promise<Re
   return { ok: true, angestupst, verfallen: verfallenN, nachgetragen, frische_entwuerfe: frischeEntwuerfe, ...tuerErgebnis };
 }
 
+/**
+ * wochenimpuls — Part 38 AP2: befüllt designers.weekly_impulse pro aktivem Haus mit EINEM
+ * kurzen, DNA-passenden Wissens-Impuls aus frischen brand_knowledge/cultural_currents-Einträgen.
+ * Bewusst ohne KI-Aufruf (deterministische Auswahl, kein Budget-Verbrauch) — reine Anzeige im
+ * Studio, kein Versand (Entwurfs-Prinzip gilt automatisch, weil nichts verschickt wird).
+ */
+async function runWochenimpuls(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: houses } = await admin.from("designers")
+    .select("id, brand_dna").eq("status", "active").eq("published", true);
+  const houseList = (houses ?? []) as { id: string; brand_dna: { worlds?: Record<string, number> } | null }[];
+  if (!houseList.length) return { ok: true, processed: 0, befuellt: 0, message: "Kein aktives Haus." };
+
+  const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
+  const [{ data: wissen }, { data: currents }] = await Promise.all([
+    admin.from("brand_knowledge").select("headline, body, world, created_at").eq("active", true).eq("approved", true).gte("created_at", since).order("created_at", { ascending: false }).limit(40),
+    admin.from("cultural_currents").select("name, zeitraum, worlds, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(20),
+  ]);
+  const wissenRows = (wissen ?? []) as { headline: string; body: string; world: string | null; created_at: string }[];
+  const currentRows = (currents ?? []) as { name: string; zeitraum: string | null; worlds: string[] | null; created_at: string }[];
+  if (!wissenRows.length && !currentRows.length) return { ok: true, processed: houseList.length, befuellt: 0, message: "Keine frischen Bausteine der letzten 14 Tage." };
+
+  let befuellt = 0;
+  for (const h of houseList) {
+    const worlds = Object.keys(h.brand_dna?.worlds ?? {});
+    const passendesWissen = wissenRows.find((w) => !w.world || worlds.includes(w.world)) ?? wissenRows[0];
+    const passendeStroemung = currentRows.find((c) => !c.worlds?.length || c.worlds.some((w) => worlds.includes(w))) ?? currentRows[0];
+    // Wissen vor Zeitgeist, weil direkt umsetzbar; sonst nichts setzen statt zu erzwingen.
+    const impuls = passendesWissen
+      ? `${passendesWissen.headline} ${passendesWissen.body}`.trim()
+      : passendeStroemung
+        ? `Zeitgeist gerade: "${passendeStroemung.name}"${passendeStroemung.zeitraum ? ` (${passendeStroemung.zeitraum})` : ""}.`
+        : null;
+    if (!impuls) continue;
+    const { error } = await admin.from("designers").update({
+      weekly_impulse: impuls.slice(0, 280), weekly_impulse_at: new Date().toISOString(),
+    } as never).eq("id", h.id);
+    if (!error) befuellt++;
+  }
+
+  return { ok: true, processed: houseList.length, befuellt };
+}
+
 // --- AP4: der wöchentliche Sichtbarkeits-Zug für Maison-Häuser --------------------------------
 // Nutzt zwei bestehende Bausteine, statt neue zu erfinden: den Presse-Pitch-Stil aus
 // runPresseVerfassen (hier auf ein Haus statt auf einen einzelnen Lead-Kontakt zugeschnitten) und
@@ -4320,6 +4366,19 @@ Deno.serve(async (req) => {
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runAutomatikAusfuehren(admin);
       const summary = Object.entries(result).filter(([k]) => k !== "ok").map(([k, v]) => `${k}: ${v}`).join(", ");
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
+    }
+
+    // --- Wochenimpuls (Part 38 AP2): mechanisch, ohne LLM, läuft auch bei pausiertem Jarvis
+    // weiter — es ist reine Anzeige, kein Versand, kein Kosten-Risiko. ---
+    if (mode === "wochenimpuls") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = await runWochenimpuls(admin);
+      const summary = `Wochenimpuls: ${(result as { befuellt?: number }).befuellt ?? 0} von ${(result as { processed?: number }).processed ?? 0} Häusern befüllt.`;
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);

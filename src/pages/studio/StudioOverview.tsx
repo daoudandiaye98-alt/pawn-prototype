@@ -371,6 +371,14 @@ export default function StudioOverview() {
         <p className="font-serif text-lg italic leading-snug sm:text-xl">{tapLine ?? heroLine}</p>
       </section>
 
+      {/* Part 38 AP2 — Wochenimpuls: ein kurzer, DNA-passender Wissens-Impuls, still im Hintergrund
+          befüllt, kein eigenes PAWN-Element (Design-Gesetz: genau eins pro Seite). */}
+      {designer.weekly_impulse && (
+        <p className="mb-8 text-xs text-muted-foreground">
+          <span className="uppercase tracking-[0.2em]">{t("studio.overview.wochenimpuls.eyebrow")}</span> — {designer.weekly_impulse}
+        </p>
+      )}
+
       {/* Schnellzeile */}
       <div className="mb-8 flex flex-wrap gap-2">
         <Link to="/studio/produkte/neu" className="border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.24em] text-background hover:bg-background hover:text-foreground">
