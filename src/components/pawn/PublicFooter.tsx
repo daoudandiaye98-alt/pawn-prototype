@@ -49,6 +49,7 @@ export function PublicFooter() {
             { label: "AGB", to: "/agb" },
             { label: "Datenschutz", to: "/datenschutz" },
             { label: "Impressum", to: "/impressum" },
+            { label: "Wie PAWN KI nutzt", to: "/wie-pawn-ki-nutzt" },
           ]}
         />
       </div>

@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ImagePlus, X } from "lucide-react";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
+import { AiDisclosureNote } from "@/components/pawn/AiDisclosureNote";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -235,6 +236,7 @@ export function DnaChat() {
       )}
 
       <form onSubmit={(e) => { e.preventDefault(); void send(); }} className="border-t border-[rgba(0,0,0,.18)] px-6 py-5 md:px-8">
+        <AiDisclosureNote className="mb-2" />
         <div className="mb-2 flex items-center gap-3 text-[0.6rem] uppercase tracking-[0.28em] text-black/60">
           <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 hover:text-black">
             <ImagePlus className="h-3.5 w-3.5" /> Bilder hochladen

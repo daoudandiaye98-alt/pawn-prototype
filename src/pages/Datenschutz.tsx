@@ -95,6 +95,15 @@ export default function Datenschutz() {
           <Section title="10. Kontakt">
             <p>Fragen zum Datenschutz: <a href="mailto:pawnstudio.co@gmail.com" className="underline">pawnstudio.co@gmail.com</a>.</p>
           </Section>
+
+          <Section title="11. Einsatz von Künstlicher Intelligenz">
+            <p>
+              PAWN nutzt KI-Sprachmodelle (für den Chat „Frag PAWN" und die Studio-Begleitung) sowie KI-Bild-/Video-Modelle
+              (für Anprobe-Darstellungen, Produktfotos und Kampagnen-Videos der Häuser). Wo ein KI-System mit dir spricht,
+              steht das sichtbar dabei; wo eine Darstellung eine synthetische Person zeigt, trägt sie ein „KI-generiert"-Zeichen.
+              Details, Zwecke und Widerspruchsmöglichkeiten: <a href="/wie-pawn-ki-nutzt" className="underline">Wie PAWN KI nutzt</a>.
+            </p>
+          </Section>
         </div>
       </section>
     </PalaceLayout>

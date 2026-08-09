@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnFigur, type PawnFigurHandle, type PawnRank } from "./PawnFigur";
+import { AiDisclosureNote } from "./AiDisclosureNote";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -166,6 +167,8 @@ export function ErstePartie({ rank, designerId, onClose, onDone }: { rank: PawnR
           </button>
         )}
       </div>
+
+      <AiDisclosureNote className="absolute bottom-5 left-1/2 max-w-xs -translate-x-1/2 text-center text-background/60 [&_a]:hover:text-background" />
     </div>
   );
 }
