@@ -829,6 +829,7 @@ export type Database = {
       }
       designer_applications: {
         Row: {
+          acquisition_lead_id: string | null
           admin_notes: string | null
           ai_review_summary: Json | null
           avatar_path: string | null
@@ -854,6 +855,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          acquisition_lead_id?: string | null
           admin_notes?: string | null
           ai_review_summary?: Json | null
           avatar_path?: string | null
@@ -879,6 +881,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          acquisition_lead_id?: string | null
           admin_notes?: string | null
           ai_review_summary?: Json | null
           avatar_path?: string | null

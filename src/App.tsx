@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { captureReferralCode } from "@/features/referral";
+import { captureLeadRef } from "@/features/acquisition/leadAttribution";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
@@ -27,6 +28,7 @@ import Ausgabe from "./pages/Ausgabe.tsx";
 import Vision from "./pages/Vision.tsx";
 import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
+import Start from "./pages/Start.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import Impressum from "./pages/Impressum.tsx";
 import Versand from "./pages/Versand.tsx";
@@ -54,6 +56,7 @@ import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
 import StudioContentBegleiter from "./pages/studio/StudioContentBegleiter.tsx";
 import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
 import StudioReferrals from "./pages/studio/StudioReferrals.tsx";
+import StudioBeweis from "./pages/studio/StudioBeweis.tsx";
 import StudioDNA from "./pages/studio/StudioDNA.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
@@ -111,6 +114,13 @@ function ReferralCapture() {
   return null;
 }
 
+/** Teil 37/AP2: merkt sich ?lead=<akquise-lead-id> für 30 Tage — Attribution für "Erster Zug". */
+function LeadCapture() {
+  const [params] = useSearchParams();
+  useEffect(() => { captureLeadRef(params.get("lead")); }, [params]);
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -127,6 +137,7 @@ const App = () => (
               <CopilotProvider>
 
               <ReferralCapture />
+              <LeadCapture />
               <Routes>
 
                 <Route path="/" element={<Index />} />
@@ -144,6 +155,7 @@ const App = () => (
                 <Route path="/designer/:slug" element={<DesignerPage />} />
                 <Route path="/apply" element={<ApplyLanding />} />
                 <Route path="/apply/form" element={<Apply />} />
+                <Route path="/start" element={<Start />} />
                 <Route path="/datenschutz" element={<Datenschutz />} />
                 <Route path="/impressum" element={<Impressum />} />
                 <Route path="/versand" element={<Versand />} />
@@ -192,6 +204,7 @@ const App = () => (
                 <Route path="/studio/content-begleiter" element={<RoleGate role="designer"><StudioContentBegleiter /></RoleGate>} />
                 <Route path="/studio/hausseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
                 <Route path="/studio/empfehlungen" element={<RoleGate role="designer"><StudioReferrals /></RoleGate>} />
+                <Route path="/studio/beweis" element={<RoleGate role="designer"><StudioBeweis /></RoleGate>} />
                 <Route path="/studio/plan" element={<RoleGate role="designer"><StudioPlan /></RoleGate>} />
                 <Route path="/studio/dna" element={<RoleGate role="designer"><StudioDNA /></RoleGate>} />
                 <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />

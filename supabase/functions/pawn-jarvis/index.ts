@@ -69,7 +69,7 @@ type Mode =
   | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
-  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden";
+  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -161,6 +161,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   signalstrom_verdichten: "gruen",
   wissen_markenaufbau: "gruen",
   tueren_finden: "gruen",
+  maison_sichtbarkeitszug: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -2651,7 +2652,7 @@ const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sicht
 const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio sichtbar ist. Eine kurze Antwort genügt, dann lassen wir dich in Ruhe weiterarbeiten.";
 
 async function sendResendEmail(
-  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string,
+  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string, startLink?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -2659,7 +2660,7 @@ async function sendResendEmail(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
       body: JSON.stringify({
         from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
-        text: `${text}\n\n—\n${footer ?? DEFAULT_MAIL_FOOTER}`,
+        text: `${text}\n\n—\n${footer ?? DEFAULT_MAIL_FOOTER}${startLink ? `\n\n${startLink}` : ""}`,
       }),
     });
     if (!res.ok) {
@@ -2705,7 +2706,9 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
     const footer = isPresse
       ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Eine kurze Antwort genügt, dann lassen wir es dabei."
       : undefined;
-    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer);
+    // Teil 37/AP2 — Wizard-Einstieg mit Lead-Attribution, nur für Designer-Leads (Presse bewirbt sich nicht).
+    const startLink = isPresse ? undefined : `Dein Einstieg: https://pawn.vision/start?lead=${lead.id}`;
+    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer, startLink);
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
     await admin.from("ai_actions_log").insert({
       source: "jarvis", action: isFollowup ? "akquise_followup_email" : "akquise_erstkontakt_email",
@@ -2882,6 +2885,109 @@ async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unk
     angestupst++;
   }
   return { ok: true, angestupst };
+}
+
+// --- AP4: der wöchentliche Sichtbarkeits-Zug für Maison-Häuser --------------------------------
+// Nutzt zwei bestehende Bausteine, statt neue zu erfinden: den Presse-Pitch-Stil aus
+// runPresseVerfassen (hier auf ein Haus statt auf einen einzelnen Lead-Kontakt zugeschnitten) und
+// die echte posting_queue-Schreiblogik — die liegt nicht in runVerstaerker (der schickt nur eine
+// Benachrichtigung), sondern im DB-Trigger enqueue_campaign_post(), der bei jeder freigegebenen
+// Video-Kampagne automatisch einen "vorschlag"-Eintrag anlegt. Dieser Lauf holt Häuser mit
+// älteren, freigegebenen Video-Kampagnen ohne Warteschlangen-Eintrag nach (gleiche Zeilenform wie
+// der Trigger), statt diese Logik zu duplizieren. Der Presse-Entwurf landet als Benachrichtigung
+// im Studio des Hauses — sein eigenes Dashboard —, die posting_queue-Vorschläge landen wie gehabt
+// in der bestehenden admin-kuratierten Prüfung (kampagnen_regie/AdminPosting.tsx). Nichts wird
+// automatisch veröffentlicht. Budget wird je Haus vor der KI-Erzeugung per book_ai_spend
+// vorgeprüft (0-Cent-Anfrage); ist ein Haus bereits über dem Monatslimit, wird es übersprungen und
+// eine jarvis_notices-Zeile hinterlässt die Spur.
+async function runMaisonSichtbarkeitszug(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: houses } = await admin.from("designers")
+    .select("id, user_id, brand_name, slug, story, brand_dna")
+    .eq("plan", "maison").eq("status", "active").eq("published", true);
+  const houseList = (houses ?? []) as {
+    id: string; user_id: string | null; brand_name: string; slug: string;
+    story: string | null; brand_dna: { worlds?: Record<string, number> } | null;
+  }[];
+  if (!houseList.length) return { ok: true, processed: 0, presse: 0, eingereiht: 0, uebersprungen: 0, message: "Kein aktives Maison-Haus." };
+
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const gesetze = DEFAULT_SPRACHGESETZE;
+  const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
+  const presseCents = ((costsCfg?.value as { sichtbarkeitszug_presse?: number } | null)?.sichtbarkeitszug_presse) ?? 4;
+
+  let processed = 0, presse = 0, eingereiht = 0, uebersprungen = 0, tokensUsed = 0;
+
+  for (const h of houseList) {
+    processed++;
+    const { data: budgetCheck } = await admin.rpc("book_ai_spend", { _designer_id: h.id, _cents: 0 });
+    if ((budgetCheck as { over_budget?: boolean } | null)?.over_budget) {
+      uebersprungen++;
+      await admin.from("jarvis_notices").insert({
+        kind: "sichtbarkeitszug_uebersprungen",
+        title: `Sichtbarkeits-Zug übersprungen: ${h.brand_name}`,
+        body: `${h.brand_name} hat das monatliche KI-Budget bereits ausgeschöpft — der wöchentliche Presse-Entwurf entfällt diese Woche.`,
+      });
+      continue;
+    }
+
+    // 1) ein Presse-Entwurf, direkt für dieses Haus statt für einen einzelnen Lead-Kontakt
+    if (h.user_id) {
+      const worlds = Object.keys(h.brand_dna?.worlds ?? {});
+      const system = `Du schreibst für ein unabhängiges Designhaus auf PAWN (pawn.vision) einen kurzen Presse-Anschreiben-Entwurf, den das Haus selbst an eine Redaktion oder einen Blog seiner Wahl verschicken kann. Höchstens 120 Wörter, Deutsch, im Ton des Hauses. Beginne mit einem konkreten Satz über das Haus, nicht mit einer Anrede (die Anrede fügt das Haus selbst ein). Ende mit einem leichten Angebot (Bilder, Gespräch) und dem Link.
+
+SPRACHGESETZE (bindend):
+${gesetze}
+
+Stilgesetz: ${styleLaw}
+
+Antworte NUR mit JSON: {"entwurf": "..."}`;
+      const user = `Haus: ${h.brand_name}. Welt(en): ${worlds.join(", ") || "unbekannt"}. Geschichte: ${(h.story ?? "keine Angabe").slice(0, 600)}.
+Link: https://pawn.vision/designer/${h.slug}`;
+
+      const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 700);
+      tokensUsed += tokens;
+      let entwurf = typeof json?.entwurf === "string" ? json.entwurf.trim() : "";
+      if (entwurf && hatVerneinung(entwurf)) {
+        const fixed = await entverneinen(entwurf, gesetze);
+        tokensUsed += fixed.tokens;
+        entwurf = fixed.text;
+      }
+      if (entwurf) {
+        await admin.from("notifications").insert({
+          user_id: h.user_id, type: "sichtbarkeitszug.presse_entwurf",
+          title: "Dein Presse-Entwurf für diese Woche liegt bereit",
+          body: entwurf,
+          link: "/studio/beweis",
+        });
+        await admin.rpc("book_ai_spend", { _designer_id: h.id, _cents: presseCents });
+        await schreibePartieZug(admin, h.id, "PAWN hat einen Presse-Entwurf für dich vorbereitet.", "pawn", "maison_sichtbarkeitszug");
+        presse++;
+      }
+    }
+
+    // 2) bis zu 3 freigegebene Video-Kampagnen ohne posting_queue-Eintrag nachtragen — exakt die
+    //    gleiche Zeilenform, die der Trigger enqueue_campaign_post() automatisch anlegt.
+    const { data: campaigns } = await admin.from("campaigns")
+      .select("id, content")
+      .eq("designer_id", h.id).eq("status", "approved").eq("kind", "video")
+      .order("updated_at", { ascending: false }).limit(20);
+    const withAsset = ((campaigns ?? []) as { id: string; content: { asset_url?: string } | null }[])
+      .filter((c) => !!c.content?.asset_url);
+    if (withAsset.length) {
+      const { data: queued } = await admin.from("posting_queue")
+        .select("campaign_id").in("campaign_id", withAsset.map((c) => c.id));
+      const queuedIds = new Set(((queued ?? []) as { campaign_id: string }[]).map((r) => r.campaign_id));
+      const missing = withAsset.filter((c) => !queuedIds.has(c.id)).slice(0, 3);
+      for (const c of missing) {
+        const { error } = await admin.from("posting_queue").insert({
+          campaign_id: c.id, channel: "pawn_instagram", scheduled_at: new Date().toISOString(), status: "vorschlag",
+        });
+        if (!error) eingereiht++;
+      }
+    }
+  }
+
+  return { ok: true, processed, presse, eingereiht, uebersprungen, tokensUsed };
 }
 
 // --- Teil 28c: die Automatik-Matrix eines Hauses ausführen (nur Zone Grün) --------------------
@@ -3510,7 +3616,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau", "tueren_finden",
+      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -3527,7 +3633,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau", "tueren_finden",
+      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -3771,12 +3877,14 @@ Deno.serve(async (req) => {
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
         || mode === "akquise_dm_vorbereiten"
         || mode === "presse_jagd" || mode === "presse_verfassen"
-        || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau" || mode === "tueren_finden") {
+        || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau" || mode === "tueren_finden"
+        || mode === "maison_sichtbarkeitszug") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = mode === "wissen_markenaufbau" ? await runMarkenaufbauWissen(admin, apiKey)
         : mode === "tueren_finden" ? await runTuerenFinden(admin, apiKey)
+        : mode === "maison_sichtbarkeitszug" ? await runMaisonSichtbarkeitszug(admin, apiKey)
         : mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
         : mode === "akquise_dm_vorbereiten" ? await runAkquiseDmVorbereiten(admin, apiKey)
@@ -3789,7 +3897,9 @@ Deno.serve(async (req) => {
       const summary = mode === "wissen_markenaufbau"
         ? `Markenaufbau-Wissen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Bausteine als Entwurf`
         : mode === "tueren_finden"
-        ? `Offene Türen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Türen bei ${(result as { processed?: number }).processed ?? 0} geprüften Häusern, ${(result as { uebersprungen?: number }).uebersprungen ?? 0} übersprungen (Budget)`
+        ? `Offene Türen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Türen bei ${(result as { processed?: number }).processed ?? 0} geprüften Häusern`
+        : mode === "maison_sichtbarkeitszug"
+        ? `Sichtbarkeits-Zug: ${(result as { presse?: number }).presse ?? 0} Presse-Entwürfe, ${(result as { eingereiht?: number }).eingereiht ?? 0} Posting-Vorschläge, ${(result as { uebersprungen?: number }).uebersprungen ?? 0} übersprungen (Budget) bei ${(result as { processed?: number }).processed ?? 0} Maison-Häusern`
         : mode === "akquise_kuratieren"
         ? `Kuratiert: ${(result as { qualified?: number }).qualified ?? 0} qualifiziert, ${(result as { sorted_out?: number }).sorted_out ?? 0} aussortiert`
         : mode === "akquise_verfassen"

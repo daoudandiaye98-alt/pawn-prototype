@@ -8,7 +8,17 @@ type Msg = { role: "user" | "assistant" | "system"; content: string };
 type World = "Mode" | "Interior" | "Kunst";
 type Mood = "ruhig" | "kante";
 
-interface Extracted { world?: World; mood?: Mood; occasion?: string; browsing?: boolean }
+/** Teil 37/AP1 (36a): strukturierter Deskriptor eines hochgeladenen Bildes — überlebt über
+ * Turns hinweg in ai_sessions.extracted, das Rohbild wird nie erneut mitgeschickt. */
+interface ImageDescriptor {
+  kleidungstyp?: string[];
+  farben?: string[];
+  materialien?: string[];
+  silhouette?: string[];
+  stil_tags?: string[];
+  aktualisiert_am?: string;
+}
+interface Extracted { world?: World; mood?: Mood; occasion?: string; browsing?: boolean; bild_deskriptor?: ImageDescriptor }
 interface Card { kind: "product" | "designer"; title: string; subtitle?: string; href: string; reason?: string }
 interface Action { type: "navigate"; path: string; label: string }
 
@@ -20,6 +30,9 @@ Wenn du empfehlen kannst, nenne 2-3 konkrete Namen aus dem Kontext, den du bekom
 
 // Haus-Stilgesetz (Standard, überschreibbar via ai_config.house_style_law): gilt für jeden textschreibenden KI-Schritt.
 const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
+
+// Ehrlichkeitsgesetz (Teil 37/AP1, 36c): nie erfundene Empfehlungen. Gilt unabhängig vom Kontext für jede Antwort.
+const CATALOG_HONESTY_LAW = "Empfiehl niemals ein Produkt, eine Marke oder ein Stück, das nicht wörtlich in deinem Kontext oben genannt wurde — auch nicht als vages Beispiel. Ohne echte Katalog-Grundlage: keine generische Umschreibung, sondern in einem Satz ehrlich sagen, dass es dafür aktuell nichts Passendes gibt, und einen konkreten nächsten Schritt anbieten (Wunschliste, /designers entdecken, oder — im Studio-Kontext eines Hauses — Offene Türen).";
 // Sprachgesetz (Teil 20/21, überschreibbar via ai_config.voice_law): gilt zusätzlich, wenn PAWN über die Person selbst spricht (DNA-Gespräch).
 const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton. Über den Körper spricht PAWN nur über Kleidung: Proportion, Passform, Schwerpunkt, Wirkung von Schnitten — nie über den Körper selbst als Mangel. Ungefragt fällt kein Wort zu Figur, Größe oder Gewicht. Fragt jemand ausdrücklich nach Passform, antwortet PAWN sachlich über Schnitte und ihre Wirkung — nie mit dem Wort „kaschieren“ als Prämisse. Keine Aussagen zu Abnehmen, Diät oder Idealmaßen, auch nicht auf Nachfrage.";
 
@@ -53,7 +66,10 @@ function fuzzyIncludes(hay: string, needle: string) {
 }
 
 interface DBDesigner { brand_name: string; slug: string; story?: string | null; tags?: string[] | null }
-interface DBProduct { name: string; slug: string; description?: string | null; world?: string | null; designer_id?: string | null }
+interface DBProduct {
+  name: string; slug: string; description?: string | null; world?: string | null; designer_id?: string | null;
+  tags?: string[] | null; product_dna?: Record<string, string[]> | null;
+}
 
 type PersonaRole = "customer" | "designer" | "admin";
 
@@ -174,6 +190,20 @@ async function buildMarkenKarteiHint(admin: SupabaseClient, worldKey: string): P
   }
 }
 
+/** Teil 37/AP1 (36a) — Bildgedächtnis: der Deskriptor eines früher hochgeladenen Bildes wird in
+ * jedem Folgeturn als Text-Hinweis eingewoben, das Rohbild selbst nie erneut gesendet. */
+function buildBildDeskriptorHint(d?: ImageDescriptor): string {
+  if (!d) return "";
+  const bits = [
+    d.kleidungstyp?.length && `Kleidungstyp: ${d.kleidungstyp.join(", ")}`,
+    d.farben?.length && `Farben: ${d.farben.join(", ")}`,
+    d.materialien?.length && `Materialien: ${d.materialien.join(", ")}`,
+    d.silhouette?.length && `Silhouette: ${d.silhouette.join(", ")}`,
+    d.stil_tags?.length && `Stil: ${d.stil_tags.join(", ")}`,
+  ].filter(Boolean).join(" · ");
+  return bits ? `Bild-Gedächtnis (aus einem zuvor hochgeladenen Bild — das Rohbild liegt dir nicht mehr vor, referenziere nur diese Beobachtungen, wenn es zur Frage passt): ${bits}.` : "";
+}
+
 /** Sprachgesetz: gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite). */
 async function loadVoiceLaw(admin: SupabaseClient): Promise<string> {
   try {
@@ -197,7 +227,7 @@ async function resolveRole(admin: SupabaseClient, user_id: string | null): Promi
 
 async function loadCandidates(admin: SupabaseClient, world: World | undefined) {
   const [prod, des] = await Promise.all([
-    admin.from("products").select("name, slug, description, world, designer_id").eq("status", "published").limit(40),
+    admin.from("products").select("name, slug, description, world, designer_id, tags, product_dna").eq("status", "published").limit(40),
     admin.from("designers").select("brand_name, slug, story, tags").eq("status", "active").limit(40),
   ]);
   const products = (prod.data ?? []) as DBProduct[];
@@ -209,19 +239,31 @@ async function loadCandidates(admin: SupabaseClient, world: World | undefined) {
   });
   return { products: fp, designers: fd, allProducts: products, allDesigners: designers };
 }
-function buildCards(cand: { products: DBProduct[]; designers: DBDesigner[] }, mood: Mood | undefined): Card[] {
-  const cards: Card[] = [];
-  for (const p of cand.products.slice(0, 2)) {
-    cards.push({
-      kind: "product", title: p.name, subtitle: p.world ?? undefined,
-      href: `/product/${p.slug}`,
-      reason: mood === "kante" ? "Kompromisslose Linie." : mood === "ruhig" ? "Stille Präzision." : "Aus dem Archiv gewählt.",
-    });
+/**
+ * Teil 37/AP1 (36b) — Katalogblindheit beheben: statt der ersten N Einträge blind zu zeigen,
+ * wird jedes Produkt gegen die Begriffe aus Nutzerfrage/Bild-Deskriptor gescored. Nachvollziehbar:
+ * ein Punkt je überlappendem Begriff (tags + product_dna-Werte) + ein Punkt für Kategorie-Match
+ * (Welt). Unter CATALOG_MATCH_THRESHOLD gilt der Treffer nicht als Grundlage (36c greift dann).
+ */
+const CATALOG_MATCH_THRESHOLD = 2;
+function scoreProduct(p: DBProduct, terms: string[], world: World | undefined): { score: number; matched: string[] } {
+  const hay = new Set<string>();
+  for (const t of p.tags ?? []) hay.add(t.toLowerCase());
+  for (const arr of Object.values(p.product_dna ?? {})) {
+    if (Array.isArray(arr)) for (const v of arr) hay.add(String(v).toLowerCase());
   }
-  for (const d of cand.designers.slice(0, 1)) {
-    cards.push({ kind: "designer", title: d.brand_name, href: `/designer/${d.slug}`, reason: "Passt zu deiner Richtung." });
+  const matched: string[] = [];
+  for (const term of terms) {
+    const t = term.toLowerCase().trim();
+    if (t.length >= 3 && hay.has(t)) matched.push(term);
   }
-  return cards.slice(0, 3);
+  let score = matched.length;
+  if (world && p.world === world) score += 1;
+  return { score, matched };
+}
+function detectCatalogIntent(t: string): boolean {
+  const s = t.toLowerCase();
+  return /\b(passt (das|es|die|der)?( zu (mir|meinem stil))?|katalog|empfiehl|empfehlung|vorschlag|welche(s)? stück|welches produkt|was gibt(’|'|)s? es|was habt ihr|zu meinem stil)\b/.test(s);
 }
 function detectNavAction(text: string, all: { designers: DBDesigner[]; products: DBProduct[] }): Action | null {
   const t = text.toLowerCase();
@@ -703,11 +745,34 @@ Deno.serve(async (req) => {
         const { data: d } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
         if (d) action = { type: "navigate", path: "/studio/copilot", label: "Zum Copilot im Studio" };
       }
-      if (!action && extracted.world && extracted.mood && !extracted.browsing) {
-        cards.push(...buildCards(cand, extracted.mood));
-        if (cand.products.length || cand.designers.length) {
-          const names = [...cand.products.slice(0, 4).map((p) => p.name), ...cand.designers.slice(0, 2).map((d) => d.brand_name)].join(", ");
-          contextHint = `Empfehlungs-Kontext (nutze nur diese Namen, ${extracted.world}, Stimmung ${extracted.mood}): ${names}`;
+      // Teil 37/AP1 (36b/36c): Katalog-Retrieval nur bei erkennbarem Produkt-/Stil-Intent — entweder
+      // explizit gefragt, oder Welt+Stimmung stehen schon fest und der Kunde stöbert nicht nur.
+      const catalogIntent = detectCatalogIntent(lastUser);
+      if (!action && (catalogIntent || (extracted.world && extracted.mood && !extracted.browsing))) {
+        const queryTerms = [
+          ...ontologyTerms.map((t) => t.term),
+          ...(extracted.bild_deskriptor?.stil_tags ?? []),
+          ...(extracted.bild_deskriptor?.materialien ?? []),
+          ...(extracted.bild_deskriptor?.farben ?? []),
+          ...(extracted.bild_deskriptor?.silhouette ?? []),
+        ];
+        const scored = cand.allProducts
+          .map((p) => ({ p, ...scoreProduct(p, queryTerms, extracted.world) }))
+          .filter((x) => x.score >= CATALOG_MATCH_THRESHOLD)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3);
+        if (scored.length) {
+          for (const { p, matched } of scored) {
+            cards.push({
+              kind: "product", title: p.name, subtitle: p.world ?? undefined,
+              href: `/product/${p.slug}`,
+              reason: matched.length ? `Trifft auf ${matched.slice(0, 3).join(", ")}.` : "Passt zur Welt.",
+            });
+          }
+          const names = scored.map(({ p }) => p.name).join(", ");
+          contextHint = `Echte Katalog-Treffer mit Begründung (nutze NUR diese Namen, erfinde keine weiteren): ${names}.`;
+        } else if (catalogIntent || queryTerms.length) {
+          contextHint = "KEIN AUSREICHENDER KATALOG-TREFFER: Sag in einem Satz ehrlich, dass es dafür aktuell nichts ausreichend Passendes gibt, und biete konkret einen nächsten Schritt an (Wunschliste, /designers entdecken). Erfinde kein Produkt und keine Marke.";
         }
       }
     }
@@ -799,8 +864,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    const system = [persona, houseStyleLaw, voiceLaw, houseTone, nutzungsprofil, markenKartei, directiveBlock].filter(Boolean).join("\n\n");
-    const fullContextHint = [pageContextHint, memoryHint, contextHint].filter(Boolean).join("\n\n");
+    const system = [persona, houseStyleLaw, CATALOG_HONESTY_LAW, voiceLaw, houseTone, nutzungsprofil, markenKartei, directiveBlock].filter(Boolean).join("\n\n");
+    const bildDeskriptorHint = buildBildDeskriptorHint(extracted.bild_deskriptor);
+    const fullContextHint = [pageContextHint, memoryHint, bildDeskriptorHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan
     let tier: Tier = "standard";
@@ -814,14 +880,55 @@ Deno.serve(async (req) => {
     const model = admin ? await loadModelForTier(admin, tier) : "gpt-4o-mini";
 
 
-    // Vision-Aufruf bei Bild(ern) — nie Bewertung, nur Beobachtung.
+    // Teil 37/AP1 (36a/36d) — Bild-Turns nutzen immer gpt-4o, unabhängig vom Tier; Folgeturns ohne
+    // Bild bleiben beim Tier-Modell. Statt einer Ad-hoc-Kommaliste wird ein strukturierter
+    // Deskriptor erfragt und in extracted.bild_deskriptor über Turns hinweg zusammengeführt
+    // (nie überschrieben) — das Bildgedächtnis, das vorher nach dem ersten Turn verschwand.
+    const imageTurn = imageUrls.length > 0;
+    const effectiveModel = imageTurn ? "gpt-4o" : model;
     let imageTerms: string[] = [];
-    if (imageUrls.length && Deno.env.get("OPENAI_API_KEY")) {
+    if (imageTurn && Deno.env.get("OPENAI_API_KEY")) {
       const visionRaw = await callOpenAI(
-        "Du bist PAWN. Analysiere Modebilder/Moodboards: extrahiere 4-8 kurze Terme zu Silhouette, Material, Farbpalette, Stimmung (kommagetrennt), dann EIN warmer Satz auf Deutsch. Immer als Beobachtung, nie als Bewertung.",
-        [], "", imageUrls, "gpt-4o-mini"
+        "Du bist PAWN. Analysiere Modebilder/Moodboards und antworte AUSSCHLIESSLICH mit einem JSON-Objekt ohne Markdown und ohne Erklärtext, mit genau diesen Feldern: kleidungstyp, farben, materialien, silhouette, stil_tags — je ein Array aus 2-5 kurzen deutschen Begriffen (Kleinschreibung). Immer als Beobachtung, nie als Bewertung.",
+        [], "", imageUrls, "gpt-4o"
       );
+      let descriptor: ImageDescriptor | null = null;
       if (visionRaw) {
+        try {
+          const jsonMatch = visionRaw.match(/\{[\s\S]*\}/);
+          const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+          const pickList = (k: string): string[] =>
+            Array.isArray(parsed?.[k])
+              ? (parsed[k] as unknown[]).map((s) => String(s).trim().toLowerCase()).filter((s) => s.length >= 2 && s.length <= 40).slice(0, 6)
+              : [];
+          if (parsed && typeof parsed === "object") {
+            descriptor = {
+              kleidungstyp: pickList("kleidungstyp"), farben: pickList("farben"),
+              materialien: pickList("materialien"), silhouette: pickList("silhouette"),
+              stil_tags: pickList("stil_tags"), aktualisiert_am: new Date().toISOString(),
+            };
+          }
+        } catch { /* fällt unten auf Roh-Terme zurück */ }
+      }
+      if (descriptor) {
+        imageTerms = [
+          ...(descriptor.kleidungstyp ?? []), ...(descriptor.farben ?? []), ...(descriptor.materialien ?? []),
+          ...(descriptor.silhouette ?? []), ...(descriptor.stil_tags ?? []),
+        ].slice(0, 8);
+        const prev = extracted.bild_deskriptor;
+        const merge = (a?: string[], b?: string[]) => Array.from(new Set([...(a ?? []), ...(b ?? [])])).slice(0, 8);
+        extracted.bild_deskriptor = {
+          kleidungstyp: merge(prev?.kleidungstyp, descriptor.kleidungstyp),
+          farben: merge(prev?.farben, descriptor.farben),
+          materialien: merge(prev?.materialien, descriptor.materialien),
+          silhouette: merge(prev?.silhouette, descriptor.silhouette),
+          stil_tags: merge(prev?.stil_tags, descriptor.stil_tags),
+          aktualisiert_am: descriptor.aktualisiert_am,
+        };
+        if (admin) {
+          await admin.from("ai_sessions").upsert({ session_id, user_id, extracted: extracted as unknown as Record<string, unknown>, turns });
+        }
+      } else if (visionRaw) {
         const line = visionRaw.split(/[\n.]/)[0] ?? "";
         imageTerms = line.split(",").map((s) => s.trim().toLowerCase()).filter((s) => s.length >= 3 && s.length <= 40).slice(0, 8);
       }
@@ -852,7 +959,7 @@ Deno.serve(async (req) => {
         if (Array.isArray(c) && c.length) chain = c;
       } catch { /* soft */ }
     }
-    const providerResult = await callProvider(system, messages, fullContextHint, imageUrls, model, chain);
+    const providerResult = await callProvider(system, messages, fullContextHint, imageUrls, effectiveModel, chain);
     const rawReply = providerResult.text ?? fallbackReply(extracted, cards, turns, action);
     const reply = trendReplyPrefix && !rawReply.toLowerCase().includes("trend") ? `${trendReplyPrefix} ${rawReply}` : rawReply;
 

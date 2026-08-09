@@ -62,6 +62,9 @@ const IWerkbuch = (p: React.SVGProps<SVGSVGElement>) => (
 const IDoor = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M6 17V3.6L14 3v14" /><path d="M4 17h12" /><circle cx="11.3" cy="10" r="0.8" fill="currentColor" stroke="none" /></svg>
 );
+const IBeweis = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 16V9M10 16V4M16 16v-6" /><path d="M3 16h14" /></svg>
+);
 
 type NavItem = { to: string; label: string; hint?: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; end?: boolean; badge?: number };
 
@@ -139,6 +142,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         { to: "/studio/aufbau", label: t("studioShell.nav.aufbau"), hint: t("studioShell.nav.aufbau.hint"), icon: IWerkbuch },
         { to: "/studio/produkte", label: t("studioShell.nav.produkte"), hint: t("studioShell.nav.produkte.hint"), icon: ICollection },
         { to: "/studio/bestellungen", label: t("studioShell.nav.bestellungen"), hint: t("studioShell.nav.bestellungen.hint"), icon: IOrders, badge: badges.orders },
+        { to: "/studio/beweis", label: t("studioShell.nav.beweis"), hint: t("studioShell.nav.beweis.hint"), icon: IBeweis },
         { to: "/studio/versand", label: t("studioShell.nav.versand"), hint: t("studioShell.nav.versand.hint"), icon: IOrders },
       ],
     },
