@@ -49,13 +49,14 @@ export function PublicFooter() {
             { label: "AGB", to: "/agb" },
             { label: "Datenschutz", to: "/datenschutz" },
             { label: "Impressum", to: "/impressum" },
-            { label: "Wie PAWN KI nutzt", to: "/wie-pawn-ki-nutzt" },
+            { label: "Widerruf", to: "/widerruf" },
+            { label: "Verträge hier kündigen", to: "/vertrag-kuendigen" },
           ]}
         />
       </div>
       <div className="border-t border-border">
         <div className="editorial-container flex flex-col items-start justify-between gap-3 py-6 text-xs text-muted-foreground md:flex-row md:items-center">
-          <span>© {new Date().getFullYear()} PAWN. Prototype build for review.</span>
+          <span>© {new Date().getFullYear()} PAWN.</span>
           <div className="flex flex-wrap items-center gap-5 text-[0.62rem] uppercase tracking-[0.32em]">
             <Link to="/auth" className="hover:text-foreground">Login</Link>
             <span className="opacity-30">·</span>

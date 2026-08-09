@@ -34,7 +34,7 @@ export default function AGB() {
             <p>PAWN (Anbieter: {name}, Kontakt: <a href={`mailto:${email}`} className="underline">{email}</a>) betreibt einen kuratierten Online-Marktplatz für unabhängige Designer:innen (Mode, Interior, Kunst). PAWN vermittelt zwischen Kunden und Designern und stellt die Zahlungsabwicklung bereit — PAWN ist nicht selbst Verkäufer der auf der Plattform angebotenen Stücke.</p>
           </S>
           <S title="2. Vertragsschluss">
-            <p>Kaufverträge kommen ausschließlich <strong>direkt zwischen Kunde und der jeweiligen Designer:in</strong> zustande. Die Produktseite nennt die verkaufende Marke; deren Angaben (Impressum, Lieferzeiten, Rückgabe) sind maßgeblich. Der Vertrag entsteht mit Bestätigung der Bestellung im Checkout.</p>
+            <p>Kaufverträge kommen ausschließlich <strong>direkt zwischen Kunde und der jeweiligen Designer:in</strong> zustande. Die Produktseite nennt die verkaufende Marke; deren Angaben (Impressum, Lieferzeiten, Rückgabe) sind maßgeblich. Der Vertrag entsteht erst mit Klick auf die ausdrücklich mit dem Zahlungshinweis versehene Schaltfläche im letzten Bestellschritt — davor lässt sich die Bestellung jederzeit ändern oder abbrechen.</p>
           </S>
           <S title="3. Zahlungsabwicklung via Stripe">
             <p>Zahlungen werden über Stripe abgewickelt. PAWN erhält die Zahlung im Namen der Designer:in als Zahlungsvermittler und leitet den Nettobetrag (abzüglich der Plattform-Provision) monatlich an die Designer:in weiter. Verfügbar sind Karte, Apple Pay, Google Pay, PayPal, Klarna (je nach Land).</p>
@@ -44,7 +44,7 @@ export default function AGB() {
             <p><strong>PAWN behält 7% des Bruttoverkaufspreises</strong> je Bestellung als Vermittlungsprovision. Der Provisions-Satz ist auf jeder Produktseite implizit — <em>7% bleiben immer 7%</em>, unabhängig vom gewählten Designer-Plan.</p>
           </S>
           <S title="5. Optionale Pläne für Designer:innen">
-            <p>Designer:innen können Zusatzpakete buchen: Haus (0 €/Monat, Basis), Atelier (19 €/Monat), Maison (79 €/Monat). Die Pakete enthalten unterschiedliche Limits an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. <strong>Monatliche Kündigung</strong> jederzeit im Studio möglich; keine Mindestlaufzeit. Kein Einfluss auf die 7%-Provision.</p>
+            <p>Designer:innen können zwischen zwei Plänen wählen: <strong>Frei</strong> (0 €/Monat, Basiszugang) und <strong>Paid</strong> (Preis und Kontingente einsehbar unter <a href="/studio/plan" className="underline">/studio/plan</a>). Ein älterer, nicht mehr neu abschließbarer Zwischenplan „Atelier" bleibt für bestehende Abos zu dessen ursprünglichem Preis bestehen. Die Pläne enthalten unterschiedliche Limits an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. <strong>Monatliche Kündigung jederzeit</strong> über die eigene Kündigungsseite unter <a href="/vertrag-kuendigen" className="underline">/vertrag-kuendigen</a> möglich; keine Mindestlaufzeit, keine Kündigungsfrist außer dem Ende der laufenden Abrechnungsperiode. Kein Einfluss auf die 7%-Provision.</p>
           </S>
           <S title="6. Lieferzeiten, Anfertigungen">
             <p>Lagerware wird nach Bestellung versendet; die Lieferzeit steht auf der Produktseite. <strong>Anfertigungs-Artikel</strong> (made-to-order, Unikate nach Kundenspezifikation) werden erst nach Bestellung produziert. Die auf der Produktseite genannte Lieferzeit ist verbindlich; Verzögerungen kommuniziert die Designer:in direkt.</p>

@@ -34,7 +34,7 @@ import Impressum from "./pages/Impressum.tsx";
 import Versand from "./pages/Versand.tsx";
 import AGB from "./pages/AGB.tsx";
 import Widerruf from "./pages/Widerruf.tsx";
-import WiePawnKiNutzt from "./pages/WiePawnKiNutzt.tsx";
+import VertragKuendigen from "./pages/VertragKuendigen.tsx";
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import StudioOverview from "./pages/studio/StudioOverview.tsx";
 import StudioProducts from "./pages/studio/StudioProducts.tsx";
@@ -48,6 +48,7 @@ import StudioPayout from "./pages/studio/StudioPayout.tsx";
 import StudioCopilot from "./pages/studio/StudioCopilot.tsx";
 import StudioSettings from "./pages/studio/StudioSettings.tsx";
 import StudioAutomatik from "./pages/studio/StudioAutomatik.tsx";
+import StudioVertraege from "./pages/studio/StudioVertraege.tsx";
 import StudioOffeneTueren from "./pages/studio/StudioOffeneTueren.tsx";
 import StudioCampaignNew from "./pages/studio/StudioCampaignNew.tsx";
 import StudioPlan from "./pages/studio/StudioPlan.tsx";
@@ -162,7 +163,7 @@ const App = () => (
                 <Route path="/versand" element={<Versand />} />
                 <Route path="/agb" element={<AGB />} />
                 <Route path="/widerruf" element={<Widerruf />} />
-                <Route path="/wie-pawn-ki-nutzt" element={<WiePawnKiNutzt />} />
+                <Route path="/vertrag-kuendigen" element={<VertragKuendigen />} />
                 <Route path="/kontakt" element={<Kontakt />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
@@ -215,6 +216,7 @@ const App = () => (
                 <Route path="/studio/copilot" element={<RoleGate role="designer"><StudioCopilot /></RoleGate>} />
                 <Route path="/studio/einstellungen" element={<RoleGate role="designer"><StudioSettings /></RoleGate>} />
                 <Route path="/studio/automatik" element={<RoleGate role="designer"><StudioAutomatik /></RoleGate>} />
+                <Route path="/studio/vertraege" element={<RoleGate role="designer"><StudioVertraege /></RoleGate>} />
                 <Route path="/studio/tueren" element={<RoleGate role="designer"><StudioOffeneTueren /></RoleGate>} />
 
                 <Route path="/studio/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
