@@ -72,8 +72,13 @@ Deno.serve(async (req) => {
     const cfgScale = typeof body.cfg_scale === "number" && body.cfg_scale >= 0 && body.cfg_scale <= 1
       ? body.cfg_scale : defaultCfgScale;
 
-    // Signatur → Rezept ins Bewegungs-Prompt falten (unabhängig von der Modellwahl).
+    // Teil 38 AP4: Marken-DNA fließt in JEDE Aufnahme ein, nicht nur mit gewählter Signatur —
+    // vorher wurde brand_dna nur für die Rechte-Prüfung geladen, aber nie ins Prompt gefaltet.
     let designerPrompt = body.motion_prompt ?? "";
+    const brandSignals = ((designer.brand_dna as { signals?: string[] } | null)?.signals ?? []).slice(0, 4);
+    if (brandSignals.length) designerPrompt = [designerPrompt, brandSignals.join(", ")].filter(Boolean).join(", ");
+
+    // Signatur → Rezept ins Bewegungs-Prompt falten (unabhängig von der Modellwahl).
     let hasSignatureRecipe = false;
     if (body.signature_id) {
       const { data: sig } = await admin.from("house_signatures")
@@ -174,7 +179,13 @@ Deno.serve(async (req) => {
           requested_by: user_id,
           error: null,
           result_url: null,
-          provider_handles: { request_id, status_url, response_url, image_url },
+          signature_id: body.signature_id ?? null,
+          duration_s: durationS,
+          // Teil 38 AP4: model/prompt/negative_prompt/cfg_scale liegen mit in den Handles, damit
+          // poll-broll bei einem vermutlich vorübergehenden Fehler einmal automatisch neu
+          // anstoßen kann, ohne diesen Edge-Function-Aufruf erneut zu durchlaufen (Budget/Credits
+          // wurden schon gebucht — ein zweiter Aufruf würde sie doppelt abbuchen).
+          provider_handles: { request_id, status_url, response_url, image_url, model, prompt, negative_prompt: negativePrompt, cfg_scale: cfgScale, duration_s: durationS },
         } as never).select("id").single();
         // Bucht die Ist-Kosten gegen das Monatsbudget des Hauses (informativ, blockiert nicht).
         try { await admin.rpc("book_ai_spend", { _designer_id: camp.designer_id, _cents: brollClipCents }); } catch { /* noop */ }
