@@ -906,7 +906,15 @@ export type Database = {
           user_id?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "designer_applications_acquisition_lead_id_fkey"
+            columns: ["acquisition_lead_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       designer_automations: {
         Row: {
