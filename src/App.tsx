@@ -34,6 +34,7 @@ import Impressum from "./pages/Impressum.tsx";
 import Versand from "./pages/Versand.tsx";
 import AGB from "./pages/AGB.tsx";
 import Widerruf from "./pages/Widerruf.tsx";
+import VertragKuendigen from "./pages/VertragKuendigen.tsx";
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import StudioOverview from "./pages/studio/StudioOverview.tsx";
 import StudioProducts from "./pages/studio/StudioProducts.tsx";
@@ -161,6 +162,7 @@ const App = () => (
                 <Route path="/versand" element={<Versand />} />
                 <Route path="/agb" element={<AGB />} />
                 <Route path="/widerruf" element={<Widerruf />} />
+                <Route path="/vertrag-kuendigen" element={<VertragKuendigen />} />
                 <Route path="/kontakt" element={<Kontakt />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />

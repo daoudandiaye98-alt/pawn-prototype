@@ -82,7 +82,14 @@ Deno.serve(async (req) => {
       // Wechsel) weiterhin genau diese Metadaten tragen können.
       const targetPlan = cancelled ? "haus" : (plan === "atelier" || plan === "maison" ? plan : null);
       if (user_id && targetPlan) {
-        const { data: designer } = await admin.from("designers").update({ plan: targetPlan }).eq("user_id", user_id).select("id, user_id, preferred_language").maybeSingle();
+        // Teil 39 AP1: subscription_id/customer_id mitschreiben — sonst gibt es keine Stelle,
+        // an der das Kündigungsbutton-Feature (§312k BGB) das laufende Abo eines Hauses
+        // wiederfindet. Bei Kündigung/Ablauf wird die subscription_id wieder geleert.
+        const { data: designer } = await admin.from("designers").update({
+          plan: targetPlan,
+          stripe_subscription_id: cancelled ? null : sub.id,
+          ...(sub.customer ? { stripe_customer_id: String(sub.customer) } : {}),
+        }).eq("user_id", user_id).select("id, user_id, preferred_language").maybeSingle();
         if (designer) {
           await admin.from("notifications").insert({
             user_id: designer.user_id,

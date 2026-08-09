@@ -1372,6 +1372,8 @@ export type Database = {
           stripe_details_submitted: boolean
           stripe_payouts_enabled: boolean
           stripe_requirements: Json
+          stripe_subscription_id: string | null
+          stripe_customer_id: string | null
           studio_last_seen_at: string | null
           tags: string[] | null
           updated_at: string
@@ -1426,6 +1428,8 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -1480,6 +1484,8 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -2846,6 +2852,10 @@ export type Database = {
           designer_id: string
           designer_note: string | null
           edition_info: string | null
+          gpsr_eu_responsible: string | null
+          gpsr_manufacturer_address: string | null
+          gpsr_manufacturer_name: string | null
+          gpsr_safety_warning: string | null
           height_cm: number | null
           id: string
           image_url: string | null
@@ -2886,6 +2896,10 @@ export type Database = {
           designer_id: string
           designer_note?: string | null
           edition_info?: string | null
+          gpsr_eu_responsible?: string | null
+          gpsr_manufacturer_address?: string | null
+          gpsr_manufacturer_name?: string | null
+          gpsr_safety_warning?: string | null
           height_cm?: number | null
           id?: string
           image_url?: string | null
@@ -2926,6 +2940,10 @@ export type Database = {
           designer_id?: string
           designer_note?: string | null
           edition_info?: string | null
+          gpsr_eu_responsible?: string | null
+          gpsr_manufacturer_address?: string | null
+          gpsr_manufacturer_name?: string | null
+          gpsr_safety_warning?: string | null
           height_cm?: number | null
           id?: string
           image_url?: string | null
