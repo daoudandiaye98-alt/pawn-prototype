@@ -89,7 +89,7 @@ export default function StudioPayout() {
     setBillingSaving(true);
     const { error } = await supabase.from("designer_billing_profiles").upsert({ designer_id: designer.id, ...billing }, { onConflict: "designer_id" });
     setBillingSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error("Deine Rechnungsdaten konnten nicht gespeichert werden. Prüfe die Felder und versuch es noch einmal."); return; }
     toast.success(t("studio.payout.billing.saved"));
   }
 
@@ -100,7 +100,7 @@ export default function StudioPayout() {
       .update({ vat_rate: vatRate, return_window_days: returnDays })
       .eq("id", designer.id);
     setTaxSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error("Die Steuer-Angaben konnten nicht gespeichert werden. Versuch es gleich noch einmal."); return; }
     toast.success(t("studio.payout.tax.saved"));
     void refresh();
   }
@@ -110,7 +110,7 @@ export default function StudioPayout() {
     setShippingSaving(true);
     const { error } = await supabase.from("designers").update({ shipping_rates: JSON.parse(JSON.stringify(shipping)) }).eq("id", designer.id);
     setShippingSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error("Die Versandkosten konnten nicht gespeichert werden. Versuch es gleich noch einmal."); return; }
     toast.success(t("studio.payout.shipping.saved"));
   }
 
