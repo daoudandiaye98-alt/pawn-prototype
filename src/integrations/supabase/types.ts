@@ -829,6 +829,7 @@ export type Database = {
       }
       designer_applications: {
         Row: {
+          acquisition_lead_id: string | null
           admin_notes: string | null
           ai_review_summary: Json | null
           avatar_path: string | null
@@ -854,6 +855,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          acquisition_lead_id?: string | null
           admin_notes?: string | null
           ai_review_summary?: Json | null
           avatar_path?: string | null
@@ -879,6 +881,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          acquisition_lead_id?: string | null
           admin_notes?: string | null
           ai_review_summary?: Json | null
           avatar_path?: string | null
@@ -903,7 +906,15 @@ export type Database = {
           user_id?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "designer_applications_acquisition_lead_id_fkey"
+            columns: ["acquisition_lead_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       designer_automations: {
         Row: {
