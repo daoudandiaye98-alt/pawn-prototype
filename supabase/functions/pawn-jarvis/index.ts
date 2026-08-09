@@ -2543,22 +2543,36 @@ interface TuerFund { title?: string; ort?: string; typ?: string; quelle_url?: st
 
 const TUER_TYPEN = ["galerie", "ausstellung", "markt", "offenes_atelier", "schule_hochschule", "sonstiges"];
 
+/** Teil 38 AP3: wie gut eine Tür zur Welt/DNA eines Hauses passt (0-100) — bestimmt die
+ * Sortierung im Studio und welche 3 Türen der Onboarding-Wizard sofort zeigt. */
+function tuerMatchScore(houseWorlds: string[], doorWorld: string | null, gezielteSuche: boolean): number {
+  if (doorWorld && houseWorlds.includes(doorWorld)) return 90;
+  if (gezielteSuche) return houseWorlds.length ? 80 : 65;
+  return 55;
+}
+
 /**
  * tueren_finden — Teil 34a: findet je Haus höchstens 3 reale, ortsnahe Chancen pro Woche
  * (Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit Veranstaltungen)
  * und bereitet einen fertigen Anschreiben-Entwurf im Ton des Hauses vor. Geringe Menge, hohe
  * Güte — kein Massenversand, kein Auto-Senden (das entscheidet immer ein Mensch im Studio).
+ *
+ * Teil 38 AP3: der Standort-Zwang (nur Häuser mit hinterlegtem "location") ließ das Regal fast
+ * immer leer — die meisten Häuser tragen dieses Feld nie ein. Jetzt läuft die ortsnahe Suche für
+ * alle aktiven Häuser, mit dem Wohnort wenn vorhanden, sonst dem Land oder "online" als Rahmen.
+ * Zusätzlich füllt runDigitalDoorsBackfill danach ortsunabhängige Türen auf (Presse, gemeinsame
+ * Kampagnen, freie Kollektions-Plätze), damit das Regal nie ganz leer ist.
  */
 async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: houses } = await admin.from("designers")
     .select("id, brand_name, slug, location, country, brand_dna, aussenauge")
-    .eq("status", "active").not("location", "is", null).limit(60);
+    .eq("status", "active").limit(60);
   const houseList = (houses ?? []) as {
     id: string; brand_name: string; slug: string; location: string | null; country: string | null;
     brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
     aussenauge: { urteil?: string } | null;
   }[];
-  if (!houseList.length) return { ok: true, processed: 0, gefunden: 0, angelegt: 0, message: "Kein Haus mit hinterlegtem Standort." };
+  if (!houseList.length) return { ok: true, processed: 0, gefunden: 0, angelegt: 0, message: "Kein aktives Haus gefunden." };
 
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const { data: recentDoors } = await admin.from("designer_opportunities" as never)
@@ -2569,6 +2583,17 @@ async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<R
   }
   const { data: everProcessed } = await admin.from("designer_opportunities" as never).select("designer_id");
   const everSet = new Set(((everProcessed ?? []) as unknown as { designer_id: string }[]).map((r) => r.designer_id));
+
+  // Idempotenz: Titel, die für ein Haus schon existieren, werden nie zweimal angelegt — auch
+  // wenn der Modus (durch einen Doppelklick im Admin oder einen doppelten Cron-Tick) zweimal
+  // im selben Fenster feuert. Die Unique-Sperre in der DB ist das zweite Sicherheitsnetz.
+  const { data: existingTitles } = await admin.from("designer_opportunities" as never).select("designer_id, title");
+  const titlesByDesigner = new Map<string, Set<string>>();
+  for (const r of (existingTitles ?? []) as unknown as { designer_id: string; title: string }[]) {
+    const set = titlesByDesigner.get(r.designer_id) ?? new Set<string>();
+    set.add(r.title.trim().toLowerCase());
+    titlesByDesigner.set(r.designer_id, set);
+  }
 
   // Häuser ohne bisherige Tür zuerst, dann die am längsten unbearbeiteten — pro Lauf höchstens 15,
   // damit ein wöchentlicher Cron die Kosten planbar hält.
@@ -2592,8 +2617,9 @@ async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<R
     const weltText = worlds.length ? worlds.join(", ") : "Mode, Interior oder Kunst";
     const signale = (h.brand_dna?.signals ?? []).slice(0, 5).join(", ") || "noch keine erfassten Signale";
     const ton = h.aussenauge?.urteil ? ` Außenauge-Urteil: ${h.aussenauge.urteil}.` : "";
+    const rahmen = h.location ? `in der Nähe von ${h.location}` : h.country ? `im ganzen Land (${h.country})` : "im deutschsprachigen und europäischen Raum, bevorzugt online zugänglich (virtuelle Ausstellungen, offene Aufrufe/Open Calls ohne Ortsbindung)";
 
-    const system = `Du suchst für ein unabhängiges Designhaus auf PAWN (pawn.vision) reale, ortsnahe Sichtbarkeits-Chancen im echten Leben: Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit passenden Veranstaltungen. Erfinde nichts — nur Orte/Veranstaltungen, die du in der Websuche wirklich gesehen hast, mit einer echten Quelle (URL). Wenn du nichts Verlässliches findest, liefere weniger als 3 Treffer statt zu erfinden.
+    const system = `Du suchst für ein unabhängiges Designhaus auf PAWN (pawn.vision) reale Sichtbarkeits-Chancen im echten Leben: Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit passenden Veranstaltungen, oder — wenn kein genauer Standort bekannt ist — ortsunabhängige Open Calls und virtuelle Ausstellungen. Erfinde nichts — nur Orte/Veranstaltungen, die du in der Websuche wirklich gesehen hast, mit einer echten Quelle (URL). Wenn du nichts Verlässliches findest, liefere weniger als 3 Treffer statt zu erfinden.
 
 Für jeden Fund schreibst du außerdem einen kurzen, fertigen Anschreiben-Entwurf (max. 90 Wörter, Deutsch, im Ton des Hauses) — eine kurze Vorstellung, Bezug auf genau diese Chance, ein leichtes Angebot (Werke zeigen, Gespräch). Kein Anhang, keine Anführungszeichen. Falls auf der Seite eine Kontakt-E-Mail öffentlich steht (Impressum, Kontaktseite), gib sie mit — sonst lass das Feld leer, erfinde nie eine Adresse.
 
@@ -2603,8 +2629,8 @@ ${gesetze}
 Stilgesetz: ${styleLaw}
 
 Antworte NUR mit JSON: {"funde": [{"title": "...", "ort": "...", "typ": "galerie|ausstellung|markt|offenes_atelier|schule_hochschule|sonstiges", "quelle_url": "https://...", "warum": "ein Satz, warum das zu Standort/Welt/DNA des Hauses passt", "entwurf": "...", "kontakt_email": ""}]}`;
-    const user = `Haus: ${h.brand_name}. Standort: ${h.location}${h.country ? `, ${h.country}` : ""}. Welt(en): ${weltText}. Marken-Signale: ${signale}.${ton}
-Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dieses Standorts.`;
+    const user = `Haus: ${h.brand_name}. Welt(en): ${weltText}. Marken-Signale: ${signale}.${ton}
+Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen ${rahmen}.`;
 
     const tokensVorHaus = tokensUsed;
     const { json, tokens } = await searchJson(apiKey, system, user);
@@ -2612,9 +2638,13 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
     const funde = Array.isArray((json as { funde?: unknown } | null)?.funde) ? ((json as { funde: TuerFund[] }).funde) : [];
     gefunden += funde.length;
 
+    const bekannteTitel = titlesByDesigner.get(h.id) ?? new Set<string>();
+    const matchScore = tuerMatchScore(worlds, null, true);
+
     for (const f of funde.slice(0, budget)) {
       const title = (f.title ?? "").trim();
       if (!title) continue;
+      if (bekannteTitel.has(title.toLowerCase())) continue; // Idempotenz: diese Tür gibt es für dieses Haus schon.
       let entwurf = (f.entwurf ?? "").trim() || null;
       if (entwurf && hatVerneinung(entwurf)) {
         const fixed = await entverneinen(entwurf, gesetze);
@@ -2628,6 +2658,8 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
         title: title.slice(0, 200),
         ort: (f.ort ?? h.location ?? "").trim() || null,
         typ,
+        art: "physisch",
+        match_score: matchScore,
         quelle_url: (f.quelle_url ?? "").trim() || null,
         warum: (f.warum ?? "").trim() || null,
         status: "gefunden",
@@ -2636,6 +2668,7 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
       } as never);
       if (!error) {
         angelegt++;
+        bekannteTitel.add(title.toLowerCase());
         await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden");
       }
     }
@@ -2644,7 +2677,149 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
     await bookAiSpend(admin, h.id, hausCents);
   }
 
-  return { ok: true, processed, gefunden, angelegt, tokensUsed, uebersprungen };
+  const digital = await runDigitalDoorsBackfill(admin);
+  return { ok: true, processed, gefunden, angelegt, tokensUsed, uebersprungen, digital };
+}
+
+/**
+ * Teil 38 AP3: das Regal darf nie ganz leer sein, auch wenn die ortsnahe Suche gerade nichts
+ * findet. Füllt drei ortsunabhängige Tür-Arten auf, ohne eigene KI-Aufrufe (kostenlos, kein
+ * Budget-Verbrauch) — reine Auswertung bereits vorhandener Daten:
+ *  - presse: ein qualifizierter Presse-Kontakt aus der passenden Welt (presse_jagd)
+ *  - edition: eine gemeinsame Kampagne, für die das Haus schon ausgewählt wurde (edition_participants)
+ *  - kollektions_slot: ein Haus mit veröffentlichten Werken, das noch in keiner Ausgabe steckt
+ * Alles landet als normale designer_opportunities-Zeile im selben Regal — Entscheiden bleibt
+ * beim Haus (bei Editionen läuft die eigentliche Freigabe weiter über /studio/kampagnen).
+ */
+async function runDigitalDoorsBackfill(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: houses } = await admin.from("designers")
+    .select("id, brand_name, brand_dna").eq("status", "active").eq("published", true).limit(200);
+  const houseList = (houses ?? []) as { id: string; brand_name: string; brand_dna: { worlds?: Record<string, number> } | null }[];
+  if (!houseList.length) return { presse: 0, edition: 0, kollektions_slot: 0 };
+
+  const { data: existingRows } = await admin.from("designer_opportunities" as never).select("designer_id, title, art, status");
+  const existing = (existingRows ?? []) as unknown as { designer_id: string; title: string; art: string; status: string }[];
+  const titlesByDesigner = new Map<string, Set<string>>();
+  const offenePresseByDesigner = new Set<string>();
+  for (const r of existing) {
+    const set = titlesByDesigner.get(r.designer_id) ?? new Set<string>();
+    set.add(r.title.trim().toLowerCase());
+    titlesByDesigner.set(r.designer_id, set);
+    if (r.art === "presse" && !["angenommen", "abgelehnt", "verworfen"].includes(r.status)) offenePresseByDesigner.add(r.designer_id);
+  }
+  const hatTitel = (designerId: string, title: string) => (titlesByDesigner.get(designerId) ?? new Set()).has(title.trim().toLowerCase());
+  const merkeTitel = (designerId: string, title: string) => {
+    const set = titlesByDesigner.get(designerId) ?? new Set<string>();
+    set.add(title.trim().toLowerCase());
+    titlesByDesigner.set(designerId, set);
+  };
+
+  let presseAngelegt = 0, editionAngelegt = 0, editionSynced = 0, kollektionAngelegt = 0;
+
+  // Presse: je Welt ein noch nicht verwendeter, qualifizierter Presse-Kontakt für ein Haus dieser
+  // Welt, das noch keine offene Presse-Tür hat.
+  const { data: presseLeads } = await admin.from("acquisition_leads")
+    .select("id, outlet, contact_name, world, website, bio").eq("lead_type", "presse").eq("status", "qualifiziert").limit(300);
+  const leadsByWorld = new Map<string, { outlet: string | null; contact_name: string | null; website: string | null; bio: string | null }[]>();
+  for (const l of (presseLeads ?? []) as { id: string; outlet: string | null; contact_name: string | null; world: string; website: string | null; bio: string | null }[]) {
+    const arr = leadsByWorld.get(l.world) ?? [];
+    arr.push(l);
+    leadsByWorld.set(l.world, arr);
+  }
+  for (const h of houseList) {
+    if (offenePresseByDesigner.has(h.id)) continue;
+    const worlds = Object.keys(h.brand_dna?.worlds ?? {});
+    const kandidat = worlds.map((w) => leadsByWorld.get(w)?.[0]).find(Boolean);
+    if (!kandidat) continue;
+    const label = kandidat.outlet ?? kandidat.contact_name ?? "Redaktion";
+    const title = `Presse: ${label}`.slice(0, 200);
+    if (hatTitel(h.id, title)) continue;
+    const { error } = await admin.from("designer_opportunities" as never).insert({
+      designer_id: h.id, title, typ: "sonstiges", art: "presse",
+      match_score: 85, quelle_url: kandidat.website ?? null,
+      warum: kandidat.bio ? `PAWN spricht gerade mit dieser Redaktion — Schwerpunkt: ${kandidat.bio}.` : "PAWN spricht gerade mit dieser Redaktion über Häuser aus deiner Welt.",
+      status: "gefunden",
+    } as never);
+    if (!error) { presseAngelegt++; merkeTitel(h.id, title); offenePresseByDesigner.add(h.id); await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden"); }
+  }
+
+  // Edition: jede Haus-Einladung zu einer gemeinsamen Kampagne bekommt eine sichtbare Tür im
+  // selben Regal — und die Tür folgt dem Freigabe-Status, sobald das Haus im Studio entscheidet.
+  const { data: participants } = await admin.from("edition_participants" as never)
+    .select("id, designer_id, status, editions(theme)").limit(500);
+  for (const p of (participants ?? []) as unknown as { id: string; designer_id: string; status: string; editions: { theme: string } | { theme: string }[] | null }[]) {
+    const themeRaw = Array.isArray(p.editions) ? p.editions[0]?.theme : p.editions?.theme;
+    if (!themeRaw) continue;
+    const title = `Gemeinsame Kampagne: ${themeRaw}`.slice(0, 200);
+    const zielStatus = p.status === "approved" ? "angenommen" : p.status === "declined" ? "abgelehnt" : "gefunden";
+    const existingRow = existing.find((r) => r.designer_id === p.designer_id && r.title.trim().toLowerCase() === title.toLowerCase());
+    if (!existingRow) {
+      if (zielStatus !== "gefunden" && p.status !== "approved" && p.status !== "declined") continue;
+      const { error } = await admin.from("designer_opportunities" as never).insert({
+        designer_id: p.designer_id, title, typ: "sonstiges", art: "edition", match_score: 90,
+        warum: `Dein Haus wurde für die gemeinsame Kampagne "${themeRaw}" ausgewählt.`,
+        status: zielStatus,
+      } as never);
+      if (!error) {
+        editionAngelegt++;
+        merkeTitel(p.designer_id, title);
+        await schreibePartieZug(admin, p.designer_id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden");
+        if (zielStatus === "angenommen") await tuerAngenommenEreignis(admin, p.designer_id, title, "edition");
+      }
+    } else if (existingRow.status !== zielStatus && zielStatus !== "gefunden") {
+      const { error } = await admin.from("designer_opportunities" as never).update({ status: zielStatus } as never)
+        .eq("designer_id", p.designer_id).eq("title", existingRow.title);
+      if (!error) {
+        editionSynced++;
+        if (zielStatus === "angenommen") await tuerAngenommenEreignis(admin, p.designer_id, title, "edition");
+      }
+    }
+  }
+
+  // Kollektions-Platz: ein Haus mit veröffentlichten Werken, das noch in keiner aktiven Ausgabe
+  // vertreten ist, bekommt einen Hinweis auf die aktuell laufende Ausgabe mit freiem Platz.
+  const { data: aktiveCollections } = await admin.from("curated_collections" as never)
+    .select("id, title, number").eq("is_active", true).order("number", { ascending: true }).limit(1);
+  const collection = ((aktiveCollections ?? []) as unknown as { id: string; title: string; number: number }[])[0];
+  if (collection) {
+    const { data: items } = await admin.from("collection_items" as never).select("product_slug");
+    const featuredSlugs = new Set(((items ?? []) as unknown as { product_slug: string }[]).map((i) => i.product_slug));
+    const { data: products } = await admin.from("products").select("slug, designer_id").eq("status", "published");
+    const publishedByDesigner = new Map<string, string[]>();
+    for (const p of (products ?? []) as { slug: string; designer_id: string }[]) {
+      const arr = publishedByDesigner.get(p.designer_id) ?? [];
+      arr.push(p.slug);
+      publishedByDesigner.set(p.designer_id, arr);
+    }
+    for (const h of houseList) {
+      const slugs = publishedByDesigner.get(h.id) ?? [];
+      if (!slugs.length) continue;
+      if (slugs.some((s) => featuredSlugs.has(s))) continue; // schon in einer Ausgabe vertreten
+      const title = `Kollektions-Platz: ${collection.title}`.slice(0, 200);
+      if (hatTitel(h.id, title)) continue;
+      const { error } = await admin.from("designer_opportunities" as never).insert({
+        designer_id: h.id, title, typ: "sonstiges", art: "kollektions_slot", match_score: 65,
+        warum: "Deine Werke sind noch in keiner Ausgabe vertreten — ein Platz ist frei.",
+        status: "gefunden",
+      } as never);
+      if (!error) { kollektionAngelegt++; merkeTitel(h.id, title); await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden"); }
+    }
+  }
+
+  return { presse: presseAngelegt, edition: editionAngelegt, edition_synced: editionSynced, kollektions_slot: kollektionAngelegt };
+}
+
+/** Schreibt das Ereignis, das AP5 (Ausspielkette) als Auslöser für ein Content-Paket liest. */
+async function tuerAngenommenEreignis(admin: SupabaseClient, designerId: string, title: string, art: string): Promise<void> {
+  try {
+    await admin.from("domain_events").insert({
+      id: crypto.randomUUID(),
+      type: "door.accepted",
+      actor: designerId,
+      payload: { designer_id: designerId, title, art },
+      schema_version: 1,
+    });
+  } catch { /* nie den Türen-Lauf daran scheitern lassen */ }
 }
 
 const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sichtbar bleibt. Falls du reinschauen magst: pawn.vision — die Teilnahme ist kostenlos, und Ausgabe 08 hat noch Platz. Melde dich gern, wann immer es für dich passt.`;

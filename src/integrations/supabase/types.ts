@@ -1175,6 +1175,7 @@ export type Database = {
       }
       designer_opportunities: {
         Row: {
+          art: string
           contact_email: string | null
           created_at: string
           delivery_error: string | null
@@ -1182,6 +1183,7 @@ export type Database = {
           designer_id: string
           followup_sent_at: string | null
           id: string
+          match_score: number | null
           message_draft: string | null
           ort: string | null
           quelle_url: string | null
@@ -1194,6 +1196,7 @@ export type Database = {
           warum: string | null
         }
         Insert: {
+          art?: string
           contact_email?: string | null
           created_at?: string
           delivery_error?: string | null
@@ -1201,6 +1204,7 @@ export type Database = {
           designer_id: string
           followup_sent_at?: string | null
           id?: string
+          match_score?: number | null
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
@@ -1213,6 +1217,7 @@ export type Database = {
           warum?: string | null
         }
         Update: {
+          art?: string
           contact_email?: string | null
           created_at?: string
           delivery_error?: string | null
@@ -1220,6 +1225,7 @@ export type Database = {
           designer_id?: string
           followup_sent_at?: string | null
           id?: string
+          match_score?: number | null
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
