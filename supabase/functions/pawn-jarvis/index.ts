@@ -69,7 +69,7 @@ type Mode =
   | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
-  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug";
+  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -162,6 +162,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   wissen_markenaufbau: "gruen",
   tueren_finden: "gruen",
   maison_sichtbarkeitszug: "gruen",
+  wissen_wirtschaft: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -2458,6 +2459,7 @@ Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkre
       gueltigkeitsvermutung: (b.gueltigkeitsvermutung ?? "").trim() || null,
       active: true,
       approved: false,
+      kategorie: "markenaufbau",
     } as never);
     if (!error) angelegt++;
   }
@@ -2465,6 +2467,77 @@ Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkre
   await admin.from("jarvis_reports").insert({
     kind: "markenaufbau",
     title: `Markenaufbau-Wissen · ${thema.slice(0, 60)}`,
+    body: `Thema: ${thema}\nNeue Bausteine als Entwurf: ${angelegt} von ${bausteine.length} gefundenen.\nFreigabe im Cockpit unter Jarvis.`,
+  } as never);
+
+  return { ok: true, thema, gefunden: bausteine.length, angelegt, tokensUsed: tokens };
+}
+
+/**
+ * wissen_wirtschaft — Part 38 AP1: ein eigener Kanal für Wirtschaftswissen, den es vorher gar
+ * nicht gab (Preisbildung/Kalkulation, Produktion/MOQ, Vertriebswege, USt/Versand im EU-Kontext).
+ * Wiederverwendungs-Prinzip: gleiche Tabelle wie wissen_markenaufbau (brand_knowledge), getrennt
+ * über die neue kategorie-Spalte statt einer eigenen Tabelle. Bewusst als Orientierung formuliert,
+ * nie als Rechts-/Steuerberatung.
+ */
+const WIRTSCHAFT_THEMEN = [
+  "Preisbildung und Kalkulation vom Einkaufspreis zum Verkaufspreis",
+  "Margenlogik bei Unikaten und Kleinserien",
+  "Produktion: Mindestbestellmengen, Sampling, Lieferantenarten",
+  "D2C, Großhandel und Marktplatz im Vergleich für kleine Labels",
+  "Umsatzsteuer und Versand im EU-Kontext für unabhängige Designer",
+];
+
+async function runWissenWirtschaft(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { count } = await admin.from("brand_knowledge").select("id", { count: "exact", head: true }).eq("kategorie", "wirtschaft");
+  const thema = WIRTSCHAFT_THEMEN[(count ?? 0) % WIRTSCHAFT_THEMEN.length];
+
+  const { data: vorhanden } = await admin.from("brand_knowledge").select("headline").eq("kategorie", "wirtschaft").eq("active", true).limit(200);
+  const bekannt = ((vorhanden ?? []) as { headline: string }[]).map((r) => r.headline).slice(0, 60).join(" | ") || "noch nichts";
+
+  const system = `Du sammelst für PAWN (pawn.vision) praktisches Wirtschaftswissen für unabhängige Designer aus Mode, Interior und Kunst — Preisbildung, Produktion, Vertriebswege, Steuer-/Versand-Basics im EU-Kontext. Orientierung, keine Rechts- oder Steuerberatung — das sagst du bei Bedarf auch dazu.
+
+Recherchiere mit web_search in öffentlich zugänglichen Ratgebern, Gründer-Leitfäden und Fallbeispielen. Fasse in eigenen Worten zusammen, nenne für jeden Baustein die Quelle. Übernimm keine Textpassagen wörtlich.
+
+Jeder Baustein sagt, was zu bedenken oder zu tun ist — konkret, in einem Satz umsetzbar, auf Deutsch, ohne Marketing-Floskeln und ohne Verneinungen als Stilmittel. quelle_typ ist einer von: ${QUELLE_TYPEN.join(", ")}. gueltigkeitsvermutung schätzt, wie lange die These vermutlich trägt.
+
+Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkregel", "erklaerung": "zwei Sätze, warum das wichtig ist", "beispiel": "ein konkretes Beispiel für ein kleines Label", "welt": "Mode|Interior|Kunst|", "quelle_titel": "...", "quelle_url": "https://...", "quelle_typ": "...", "gueltigkeitsvermutung": "..."}]}`;
+  const user = `Thema dieser Woche: "${thema}". Sammle 5 bis 8 neue Bausteine. Diese Kernsätze gelten aktuell schon, finde andere oder aktualisiere überholte Lagen dazu: ${bekannt}`;
+
+  const { json, tokens } = await searchJson(apiKey, system, user);
+  const bausteine = Array.isArray((json as { bausteine?: unknown } | null)?.bausteine)
+    ? ((json as { bausteine: WissensBaustein[] }).bausteine) : [];
+
+  let angelegt = 0;
+  if (bausteine.length > 0) {
+    await admin.from("brand_knowledge").update({ active: false } as never).eq("topic", thema).eq("kategorie", "wirtschaft").eq("active", true);
+  }
+  for (const b of bausteine) {
+    const headline = (b.kernsatz ?? "").trim();
+    const body = (b.erklaerung ?? "").trim();
+    if (!headline || !body) continue;
+    const welt = ["Mode", "Interior", "Kunst"].includes(b.welt ?? "") ? b.welt : null;
+    const quelleTyp = QUELLE_TYPEN.includes(b.quelle_typ ?? "") ? (b.quelle_typ as string) : "recherchiert";
+    const { error } = await admin.from("brand_knowledge").insert({
+      topic: (b.thema ?? thema).slice(0, 120),
+      world: welt,
+      headline: headline.slice(0, 200),
+      body,
+      example: (b.beispiel ?? "").trim() || null,
+      source_url: (b.quelle_url ?? "").trim() || null,
+      source_title: (b.quelle_titel ?? "").trim() || null,
+      quelle_typ: quelleTyp,
+      gueltigkeitsvermutung: (b.gueltigkeitsvermutung ?? "").trim() || null,
+      active: true,
+      approved: false,
+      kategorie: "wirtschaft",
+    } as never);
+    if (!error) angelegt++;
+  }
+
+  await admin.from("jarvis_reports").insert({
+    kind: "wirtschaft",
+    title: `Wirtschafts-Wissen · ${thema.slice(0, 60)}`,
     body: `Thema: ${thema}\nNeue Bausteine als Entwurf: ${angelegt} von ${bausteine.length} gefundenen.\nFreigabe im Cockpit unter Jarvis.`,
   } as never);
 
@@ -3616,7 +3689,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug",
+      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -3633,7 +3706,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug",
+      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -3805,7 +3878,15 @@ Deno.serve(async (req) => {
 
     const trigger = body.trigger === "cron" ? "cron" : "manual";
     const prompt = typeof body.prompt === "string" ? body.prompt : undefined;
-    const asCaller = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader! } } });
+    // Cron-ausgelöste Läufe (wissen, zeitgeist, morgenbericht, …) haben keinen echten Nutzer-JWT
+    // im Authorization-Header — asCaller mit einem leeren Header hätte jeden pawn_action-Aufruf
+    // (Zone Grün/Gelb, z.B. upsert_ontology_term) stumm mit 403 scheitern lassen, weil pawn-actions
+    // requireAdmin() über einen echten Nutzer verlangt. Ohne echten Nutzer läuft der Aufruf mit dem
+    // Service-Role-Schlüssel selbst — pawn-actions erkennt das (Rolle "service_role" im JWT) und
+    // erlaubt es nur für source:"system", nie für admin_chat.
+    const asCaller = authHeader
+      ? createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } })
+      : createClient(url, serviceKey, { auth: { persistSession: false } });
 
     if (mode === "diagnose") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
@@ -3878,11 +3959,12 @@ Deno.serve(async (req) => {
         || mode === "akquise_dm_vorbereiten"
         || mode === "presse_jagd" || mode === "presse_verfassen"
         || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau" || mode === "tueren_finden"
-        || mode === "maison_sichtbarkeitszug") {
+        || mode === "maison_sichtbarkeitszug" || mode === "wissen_wirtschaft") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = mode === "wissen_markenaufbau" ? await runMarkenaufbauWissen(admin, apiKey)
+        : mode === "wissen_wirtschaft" ? await runWissenWirtschaft(admin, apiKey)
         : mode === "tueren_finden" ? await runTuerenFinden(admin, apiKey)
         : mode === "maison_sichtbarkeitszug" ? await runMaisonSichtbarkeitszug(admin, apiKey)
         : mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
@@ -3896,6 +3978,8 @@ Deno.serve(async (req) => {
 
       const summary = mode === "wissen_markenaufbau"
         ? `Markenaufbau-Wissen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Bausteine als Entwurf`
+        : mode === "wissen_wirtschaft"
+        ? `Wirtschafts-Wissen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Bausteine als Entwurf`
         : mode === "tueren_finden"
         ? `Offene Türen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Türen bei ${(result as { processed?: number }).processed ?? 0} geprüften Häusern`
         : mode === "maison_sichtbarkeitszug"
