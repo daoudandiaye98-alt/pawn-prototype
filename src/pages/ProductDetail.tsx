@@ -253,6 +253,11 @@ const ProductDetail = () => {
     return list.filter((u): u is string => typeof u === "string" && u.trim() !== "" && u !== heroImage).slice(0, 3);
   }, [dbProduct, heroImage]);
 
+  // Teil 36 — Desktop-Doppelseite: das große Bild links wechselt per Klick auf eine
+  // weitere Ansicht aus der Galerie; startet immer mit dem Hauptfoto.
+  const [activeImage, setActiveImage] = useState<string | null>(null);
+  useEffect(() => { setActiveImage(heroImage); }, [heroImage]);
+
   if (productLoading) {
     return (
       <PalaceLayout transparentHeader={false}>
@@ -289,12 +294,271 @@ const ProductDetail = () => {
     );
   }
 
+  // Teil 36 — geteilte Bausteine: identischer Inhalt/identische Logik in der mobilen
+  // Kaufleiste und im Desktop-Kaufblock (bzw. in der Gesetzten Strecke und der
+  // Desktop-Textspalte) — nur die umgebende Anordnung unterscheidet sich je Breite.
+  const priceAndSplit = (
+    <div className="flex flex-col">
+      <p className="house-serif house-ink text-[1.2rem] tabular-nums">
+        {formatPrice(dbProduct?.price ?? product.price, locale)}
+      </p>
+      {product.designer && (
+        <p className="house-ink text-[0.58rem] uppercase tracking-[0.14em] opacity-50">
+          {t("product.split", { name: product.designer })}
+        </p>
+      )}
+    </div>
+  );
+
+  const badges = (
+    <>
+      {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
+        <span className="house-ink palace-eyebrow opacity-60 line-through">{formatPrice(Number(dbProduct.compare_at_price), locale)}</span>
+      )}
+      {isMto && (
+        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
+          Auf Anfertigung{dbProduct?.lead_time_days ? ` · ca. ${dbProduct.lead_time_days} Tage` : ""}
+        </span>
+      )}
+      {!isMto && soldOut && (
+        <span className="border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]" style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}>Ausverkauft</span>
+      )}
+      {!isMto && lowStock && (
+        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">Noch {stock} verfügbar</span>
+      )}
+    </>
+  );
+
+  const actionButtons = (
+    <>
+      <Button
+        type="button"
+        variant="editorial"
+        size="chip"
+        onClick={buyNow}
+        loading={buyBusy}
+        disabled={soldOut && !isMto}
+        style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
+      >
+        {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
+      </Button>
+      <Button
+        type="button"
+        variant="editorial"
+        size="chip"
+        onClick={addToBag}
+        disabled={soldOut && !isMto}
+        className="house-ink house-hair"
+        style={{ background: "var(--house-bg)" }}
+      >
+        {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
+      </Button>
+      <Button
+        type="button"
+        variant="editorial"
+        size="chip"
+        onClick={onSave}
+        aria-label="Merken"
+        className="house-hair"
+        style={(saved || wished) ? { background: "var(--house-fg)", color: "var(--house-bg)" } : { background: "var(--house-bg)", color: "var(--house-fg)" }}
+      >
+        <Heart className={cn("h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
+      </Button>
+      <PawnBlinkButton onClick={() => setServiceSheetOpen((v) => !v)} ariaLabel={t("product.pawnButtonAria")} />
+    </>
+  );
+
+  const variantPickers = (product.colors.length > 1 || product.sizes.length > 1) && (
+    <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+      {product.colors.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="house-ink palace-eyebrow opacity-60">Farbe</span>
+          {product.colors.map((c) => (
+            <button
+              key={c}
+              onClick={() => setColor(c)}
+              className="house-ink border px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.28em] transition-colors duration-300"
+              style={c === color
+                ? { borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }
+                : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+      {product.sizes.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="house-ink palace-eyebrow opacity-60">{worldProfile(product.world).variantPublicLabel}</span>
+          {product.sizes.map((s) => {
+            const variant = sizeVariants.find((v) => v.size === s);
+            const outOfStock = !!variant && !isMto && Number(variant.stock) <= 0;
+            return (
+              <button
+                key={s}
+                onClick={() => !outOfStock && setSize(s)}
+                disabled={outOfStock}
+                title={outOfStock ? worldProfile(product.world).variantSoldOut : undefined}
+                className={cn(
+                  "house-ink border px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.28em] transition-colors duration-300",
+                  outOfStock && "cursor-not-allowed line-through opacity-40",
+                )}
+                style={s === size && !outOfStock
+                  ? { borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }
+                  : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
+              >
+                {s}
+                {variant && variant.surcharge > 0 && !outOfStock ? ` +€${formatEuro(variant.surcharge)}` : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const vatNoteLine = (
+    <p className="house-ink text-[0.6rem] uppercase tracking-[0.22em] opacity-50">
+      {vatNote(effectiveVatRate(dbProduct?.vat_rate as number | null, (dbProduct?.designers as { vat_rate?: number } | null)?.vat_rate ?? 19))} · zzgl. Versand · Apple Pay · Google Pay · PayPal · Klarna · Karte
+    </p>
+  );
+
+  const storyAndFacts = (
+    <>
+      {(dbProduct?.description || product.description) && (
+        <Reveal>
+          <p className="house-ink text-[1.02rem] leading-relaxed opacity-80">
+            {dbProduct?.description || product.description}
+          </p>
+        </Reveal>
+      )}
+
+      {dbProduct?.designer_note?.trim() && (
+        <Reveal className="house-hair mt-12 border-t pt-10">
+          <p className="house-ink palace-eyebrow">Die Geschichte dahinter</p>
+          <p className="house-serif house-ink mt-4 italic" style={{ fontSize: "1.2rem", lineHeight: 1.6 }}>
+            {dbProduct.designer_note}
+          </p>
+          <p className="house-ink mt-3 text-[0.62rem] uppercase tracking-[0.32em] opacity-60">
+            — {product.designer}
+            {dbProduct?.designers && "house_number" in (dbProduct.designers as Record<string, unknown>)
+              ? `, Haus № ${(dbProduct.designers as { house_number?: number }).house_number ?? ""}` : ""}
+          </p>
+        </Reveal>
+      )}
+
+      {/* Personalisierung nur mit Beleg (Teil 35): erscheint nur eingeloggt + mit echtem
+          Engagement-Beleg — sonst nichts, kein Platzhalter, keine generische Zeile. */}
+      {user && matchExplanation && (
+        <Reveal className="mt-10 flex gap-4 border-[1.5px] border-black p-6" style={{ boxShadow: "8px 8px 0 0 #000" }}>
+          <PawnFigurSvg className="h-[45px] w-[34px] shrink-0" aria-hidden="true" />
+          <div>
+            <p className="font-serif italic text-[1.05rem] leading-snug text-black">{matchExplanation.these}</p>
+            <p className="mt-3 border-t border-black/10 pt-3 text-[0.8rem] text-black/70">
+              <b className="font-medium text-black">{t("product.persona.beleg")}</b> {matchExplanation.beleg}
+            </p>
+          </div>
+        </Reveal>
+      )}
+
+      <Reveal className="mt-4">
+        <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
+          <ProductDetailsAccordion dbProduct={dbProduct} onPickSize={(s) => setSize(s)} />
+        </ErrorBoundary>
+      </Reveal>
+
+      {/* Werkstatt-Zeile (Teil 35): echte Haus-Daten, "Zum Haus" führt zur Hausseite. */}
+      {dbProduct?.designers && (
+        <Reveal className="house-hair mt-10 flex flex-wrap items-baseline justify-between gap-4 border-t pt-6">
+          <div>
+            <h3 className="house-serif house-ink text-[1.3rem] font-light">{dbProduct.designers.brand_name}</h3>
+            <p className="house-ink mt-1 text-[0.62rem] uppercase tracking-[0.18em] opacity-60">
+              {[dbProduct.designers.location, product.world, ausgabeNummer != null ? t("product.werkstatt.since", { n: ausgabeNummer }) : null]
+                .filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <Link to={`/designer/${dbProduct.designers.slug}`} className="house-ink text-[0.6rem] uppercase tracking-[0.24em] underline underline-offset-4 hover:opacity-70">
+            {t("product.werkstatt.link")}
+          </Link>
+        </Reveal>
+      )}
+    </>
+  );
+
+  const askLinks = (
+    <Reveal className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3">
+      <button
+        type="button"
+        onClick={() => {
+          const msg = `Ich schaue mir gerade ${product.name} von ${product.designer} an.`;
+          window.dispatchEvent(new CustomEvent("palace:open-chat"));
+          setTimeout(() => window.dispatchEvent(new CustomEvent("palace:chat-send", {
+            detail: { message: msg, page_context: { route: "/product/" + product.slug, product_slug: product.slug } }
+          })), 220);
+        }}
+        className="house-ink inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
+      >
+        Frag PAWN zu diesem Stück →
+      </button>
+      {canRequest && (
+        <button
+          type="button"
+          onClick={() => setReqOpen(true)}
+          className="house-ink inline-flex text-[0.62rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
+        >
+          Individuelle Anfrage stellen →
+        </button>
+      )}
+    </Reveal>
+  );
+
+  const galleryBlock = gallery.length > 0 && (
+    <section className="px-6 py-16 md:px-14 md:py-24">
+      <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-6 md:grid-cols-12">
+        {gallery.map((url, i) => (
+          <Reveal
+            key={url}
+            delay={i * 80}
+            className={i === 0 ? "md:col-span-7" : i === 1 ? "md:col-span-5" : "md:col-span-12"}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveImage(url)}
+              aria-label={`${product.name} — weitere Ansicht`}
+              className="block w-full text-left"
+            >
+              <EditorialImage
+                src={url}
+                seed={`prd-${product.slug}-gal-${i}`}
+                ratio={i === 2 ? "16/9" : "4/5"}
+                className="w-full [&_.palace-image-inner]:transition-transform [&_.palace-image-inner]:duration-[900ms] [&_.palace-image-inner]:ease-[cubic-bezier(.76,0,.18,1)] [&:hover_.palace-image-inner]:scale-[1.03]"
+                alt={product.name}
+                color
+              />
+            </button>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+
+  const bannerBlock = banner && (
+    <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24">
+      <Reveal className="mx-auto max-w-[1600px]">
+        <p className="house-accent palace-eyebrow">Aus dem Haus</p>
+        {banner.kind === "video"
+          ? <video src={banner.url} className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" muted autoPlay loop playsInline />
+          : <img src={banner.url} alt="" className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" loading="lazy" />}
+      </Reveal>
+    </section>
+  );
 
   return (
     <PalaceLayout transparentHeader={false}>
       <div className="palace house-theme" data-typografie={themeForPage.typografie} data-textur={themeForPage.hintergrundtextur.typ} style={themeCssVars(themeForPage)}>
-      {/* COVER: das Bild ist der Held — bildschirmfüllend, Titel und Haus auf dem Bild (Teil 27b) */}
-      <section className="relative pt-20 md:pt-24">
+
+      {/* ===== MOBIL/TABLET (<1024px): Cover als bildschirmfüllender Held (Teil 27b) ===== */}
+      <section className="relative pt-20 md:pt-24 lg:hidden">
         <Reveal>
           <div className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
             {heroImage ? (
@@ -328,14 +592,84 @@ const ProductDetail = () => {
         </div>
       </section>
 
-      {/* Platzhalter im Fluss, damit der Inhalt nicht hinter der fixierten Kaufleiste verschwindet */}
-      <div aria-hidden style={{ height: kaufleisteHeight }} />
+      {/* ===== DESKTOP (≥1024px): Doppelseite — sticky Bildspalte + Textspalte (Teil 36) ===== */}
+      <section className="hidden lg:flex lg:items-start">
+        <div className="sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden bg-black">
+          {activeImage ? (
+            <img
+              src={activeImage}
+              alt={product.name}
+              className="h-full w-auto max-w-full object-contain"
+              style={{ aspectRatio: "4 / 5" }}
+            />
+          ) : (
+            <span className="palace-eyebrow text-white/50">Ohne Bild</span>
+          )}
+          {creditLine && (
+            <p className="absolute bottom-6 left-8 z-[2] text-[0.56rem] uppercase tracking-[0.24em] text-white/60">{creditLine}</p>
+          )}
+          <div className="pointer-events-none absolute right-8 top-8 z-30">
+            <div className="pointer-events-auto">
+              <PrevNextForProduct slug={product.slug} />
+            </div>
+          </div>
+        </div>
 
-      {/* KAUFLEISTE: fixiert am unteren Viewport-Rand — auf Kaufseiten das einzige PAWN-Element unten,
-          der Kauf hat Vorrang (Teil 35). */}
+        <div className="min-w-0 flex-1 px-10 py-16 xl:px-16">
+          <div className="max-w-[65ch]">
+            <p className="palace-eyebrow house-ink opacity-60">{product.world}</p>
+            <h1
+              className="palace-serif house-ink mt-3 font-light"
+              style={{ fontSize: "clamp(2.2rem, 3vw, 3.4rem)", lineHeight: 1.04, letterSpacing: "-0.01em" }}
+            >
+              {product.name}
+            </h1>
+            {product.designer && (
+              <Link to={`/designer/${product.designerSlug}`} className="house-ink palace-eyebrow uline mt-4 inline-block">
+                {product.designer}
+              </Link>
+            )}
+          </div>
+
+          {/* Kaufblock: sitzt oben in der Textspalte und bleibt sticky, während Geschichte/
+              Fakten darunter durchscrollen — der Kauf hat Vorrang (Teil 35/36). */}
+          <div
+            className="sticky top-24 z-20 mt-8 max-w-[65ch] border-[1.5px] border-black p-6"
+            style={{ background: "var(--house-bg)", boxShadow: "6px 6px 0 0 #000" }}
+          >
+            <div className="flex flex-wrap items-baseline gap-3">
+              {priceAndSplit}
+              {badges}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {actionButtons}
+            </div>
+            {variantPickers && <div className="mt-4">{variantPickers}</div>}
+            <div className="mt-3">{vatNoteLine}</div>
+            <ProductServiceSheet
+              variant="panel"
+              open={serviceSheetOpen}
+              onClose={() => setServiceSheetOpen(false)}
+              productSlug={product.slug}
+              productName={product.name}
+            />
+          </div>
+
+          <div className="mt-16 max-w-[65ch]">
+            {storyAndFacts}
+            {askLinks}
+          </div>
+        </div>
+      </section>
+
+      {/* Platzhalter im Fluss, damit der Inhalt nicht hinter der fixierten Kaufleiste verschwindet */}
+      <div aria-hidden className="lg:hidden" style={{ height: kaufleisteHeight }} />
+
+      {/* ===== MOBIL/TABLET (<1024px): Kaufleiste — fixiert am unteren Viewport-Rand, einziges
+          PAWN-Element unten auf Kaufseiten (Teil 35) ===== */}
       <section
         ref={kaufleisteRef}
-        className="house-hair fixed inset-x-0 bottom-0 z-30 border-t"
+        className="house-hair fixed inset-x-0 bottom-0 z-30 border-t lg:hidden"
         style={{ background: "var(--house-bg)", paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto max-w-[1600px] px-6 py-5 md:px-14">
@@ -345,246 +679,42 @@ const ProductDetail = () => {
                 {product.designer}
               </Link>
               <span className="house-ink opacity-30">·</span>
-              <div className="flex flex-col">
-                <p className="house-serif house-ink text-[1.2rem] tabular-nums">
-                  {formatPrice(dbProduct?.price ?? product.price, locale)}
-                </p>
-                {product.designer && (
-                  <p className="house-ink text-[0.58rem] uppercase tracking-[0.14em] opacity-50">
-                    {t("product.split", { name: product.designer })}
-                  </p>
-                )}
-              </div>
-              {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
-                <span className="house-ink palace-eyebrow opacity-60 line-through">{formatPrice(Number(dbProduct.compare_at_price), locale)}</span>
-              )}
-              {isMto && (
-                <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
-                  Auf Anfertigung{dbProduct?.lead_time_days ? ` · ca. ${dbProduct.lead_time_days} Tage` : ""}
-                </span>
-              )}
-              {!isMto && soldOut && (
-                <span className="border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]" style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}>Ausverkauft</span>
-              )}
-              {!isMto && lowStock && (
-                <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">Noch {stock} verfügbar</span>
-              )}
+              {priceAndSplit}
+              {badges}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="editorial"
-                size="chip"
-                onClick={buyNow}
-                loading={buyBusy}
-                disabled={soldOut && !isMto}
-                style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
-              >
-                {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
-              </Button>
-              <Button
-                type="button"
-                variant="editorial"
-                size="chip"
-                onClick={addToBag}
-                disabled={soldOut && !isMto}
-                className="house-ink house-hair"
-                style={{ background: "var(--house-bg)" }}
-              >
-                {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
-              </Button>
-              <Button
-                type="button"
-                variant="editorial"
-                size="chip"
-                onClick={onSave}
-                aria-label="Merken"
-                className="house-hair"
-                style={(saved || wished) ? { background: "var(--house-fg)", color: "var(--house-bg)" } : { background: "var(--house-bg)", color: "var(--house-fg)" }}
-              >
-                <Heart className={cn("h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
-              </Button>
-              <PawnBlinkButton onClick={() => setServiceSheetOpen((v) => !v)} ariaLabel={t("product.pawnButtonAria")} />
+              {actionButtons}
             </div>
           </div>
 
-          {(product.colors.length > 1 || product.sizes.length > 1) && (
-            <div className="house-hair mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 border-t pt-4">
-              {product.colors.length > 1 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="house-ink palace-eyebrow opacity-60">Farbe</span>
-                  {product.colors.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setColor(c)}
-                      className="house-ink border px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.28em] transition-colors duration-300"
-                      style={c === color
-                        ? { borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }
-                        : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {product.sizes.length > 1 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="house-ink palace-eyebrow opacity-60">{worldProfile(product.world).variantPublicLabel}</span>
-                  {product.sizes.map((s) => {
-                    const variant = sizeVariants.find((v) => v.size === s);
-                    const outOfStock = !!variant && !isMto && Number(variant.stock) <= 0;
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => !outOfStock && setSize(s)}
-                        disabled={outOfStock}
-                        title={outOfStock ? worldProfile(product.world).variantSoldOut : undefined}
-                        className={cn(
-                          "house-ink border px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.28em] transition-colors duration-300",
-                          outOfStock && "cursor-not-allowed line-through opacity-40",
-                        )}
-                        style={s === size && !outOfStock
-                          ? { borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }
-                          : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
-                      >
-                        {s}
-                        {variant && variant.surcharge > 0 && !outOfStock ? ` +€${formatEuro(variant.surcharge)}` : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {variantPickers && <div className="house-hair mt-4 border-t pt-4">{variantPickers}</div>}
 
-          <p className="house-ink mt-3 text-[0.6rem] uppercase tracking-[0.22em] opacity-50">
-            {vatNote(effectiveVatRate(dbProduct?.vat_rate as number | null, (dbProduct?.designers as { vat_rate?: number } | null)?.vat_rate ?? 19))} · zzgl. Versand · Apple Pay · Google Pay · PayPal · Klarna · Karte
-          </p>
+          <div className="mt-3">{vatNoteLine}</div>
         </div>
       </section>
 
-      <ProductServiceSheet
-        open={serviceSheetOpen}
-        onClose={() => setServiceSheetOpen(false)}
-        bottomOffset={kaufleisteHeight}
-        productSlug={product.slug}
-        productName={product.name}
-      />
+      <div className="lg:hidden">
+        <ProductServiceSheet
+          variant="sheet"
+          open={serviceSheetOpen}
+          onClose={() => setServiceSheetOpen(false)}
+          bottomOffset={kaufleisteHeight}
+          productSlug={product.slug}
+          productName={product.name}
+        />
+      </div>
 
-      {/* GALERIE: große ungleiche Flächen statt Thumbnails */}
-      {gallery.length > 0 && (
-        <section className="px-6 py-16 md:px-14 md:py-24">
-          <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-6 md:grid-cols-12">
-            {gallery.map((url, i) => (
-              <Reveal
-                key={url}
-                delay={i * 80}
-                className={i === 0 ? "md:col-span-7" : i === 1 ? "md:col-span-5" : "md:col-span-12"}
-              >
-                <EditorialImage src={url} seed={`prd-${product.slug}-gal-${i}`} ratio={i === 2 ? "16/9" : "4/5"} className="w-full" alt={product.name} color />
-              </Reveal>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* GALERIE: unter der Doppelseite in voller Breite, große ungleiche Flächen (Teil 36) */}
+      {galleryBlock}
 
-      {banner && (
-        <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24">
-          <Reveal className="mx-auto max-w-[1600px]">
-            <p className="house-accent palace-eyebrow">Aus dem Haus</p>
-            {banner.kind === "video"
-              ? <video src={banner.url} className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" muted autoPlay loop playsInline />
-              : <img src={banner.url} alt="" className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" loading="lazy" />}
-          </Reveal>
-        </section>
-      )}
+      {bannerBlock}
 
-      {/* GESETZTE STRECKE: Beschreibung, Geschichte, Maße/Material/Versand, Fragen — als ruhige Textfolge */}
-      <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24">
+      {/* GESETZTE STRECKE (mobil/tablet): auf Desktop lebt derselbe Inhalt in der Textspalte oben */}
+      <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24 lg:hidden">
         <div className="mx-auto max-w-[760px]">
-          {(dbProduct?.description || product.description) && (
-            <Reveal>
-              <p className="house-ink text-[1.02rem] leading-relaxed opacity-80">
-                {dbProduct?.description || product.description}
-              </p>
-            </Reveal>
-          )}
-
-          {dbProduct?.designer_note?.trim() && (
-            <Reveal className="house-hair mt-12 border-t pt-10">
-              <p className="house-ink palace-eyebrow">Die Geschichte dahinter</p>
-              <p className="house-serif house-ink mt-4 italic" style={{ fontSize: "1.2rem", lineHeight: 1.6 }}>
-                {dbProduct.designer_note}
-              </p>
-              <p className="house-ink mt-3 text-[0.62rem] uppercase tracking-[0.32em] opacity-60">
-                — {product.designer}
-                {dbProduct?.designers && "house_number" in (dbProduct.designers as Record<string, unknown>)
-                  ? `, Haus № ${(dbProduct.designers as { house_number?: number }).house_number ?? ""}` : ""}
-              </p>
-            </Reveal>
-          )}
-
-          {/* Personalisierung nur mit Beleg (Teil 35): erscheint nur eingeloggt + mit echtem
-              Engagement-Beleg — sonst nichts, kein Platzhalter, keine generische Zeile. */}
-          {user && matchExplanation && (
-            <Reveal className="mt-10 flex gap-4 border-[1.5px] border-black p-6" style={{ boxShadow: "8px 8px 0 0 #000" }}>
-              <PawnFigurSvg className="h-[45px] w-[34px] shrink-0" aria-hidden="true" />
-              <div>
-                <p className="font-serif italic text-[1.05rem] leading-snug text-black">{matchExplanation.these}</p>
-                <p className="mt-3 border-t border-black/10 pt-3 text-[0.8rem] text-black/70">
-                  <b className="font-medium text-black">{t("product.persona.beleg")}</b> {matchExplanation.beleg}
-                </p>
-              </div>
-            </Reveal>
-          )}
-
-          <Reveal className="mt-4">
-            <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
-              <ProductDetailsAccordion dbProduct={dbProduct} onPickSize={(s) => setSize(s)} />
-            </ErrorBoundary>
-          </Reveal>
-
-          {/* Werkstatt-Zeile (Teil 35): echte Haus-Daten, "Zum Haus" führt zur Hausseite. */}
-          {dbProduct?.designers && (
-            <Reveal className="house-hair mt-10 flex flex-wrap items-baseline justify-between gap-4 border-t pt-6">
-              <div>
-                <h3 className="house-serif house-ink text-[1.3rem] font-light">{dbProduct.designers.brand_name}</h3>
-                <p className="house-ink mt-1 text-[0.62rem] uppercase tracking-[0.18em] opacity-60">
-                  {[dbProduct.designers.location, product.world, ausgabeNummer != null ? t("product.werkstatt.since", { n: ausgabeNummer }) : null]
-                    .filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              <Link to={`/designer/${dbProduct.designers.slug}`} className="house-ink text-[0.6rem] uppercase tracking-[0.24em] underline underline-offset-4 hover:opacity-70">
-                {t("product.werkstatt.link")}
-              </Link>
-            </Reveal>
-          )}
-
-          <Reveal className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3">
-            <button
-              type="button"
-              onClick={() => {
-                const msg = `Ich schaue mir gerade ${product.name} von ${product.designer} an.`;
-                window.dispatchEvent(new CustomEvent("palace:open-chat"));
-                setTimeout(() => window.dispatchEvent(new CustomEvent("palace:chat-send", {
-                  detail: { message: msg, page_context: { route: "/product/" + product.slug, product_slug: product.slug } }
-                })), 220);
-              }}
-              className="house-ink inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
-            >
-              Frag PAWN zu diesem Stück →
-            </button>
-            {canRequest && (
-              <button
-                type="button"
-                onClick={() => setReqOpen(true)}
-                className="house-ink inline-flex text-[0.62rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
-              >
-                Individuelle Anfrage stellen →
-              </button>
-            )}
-          </Reveal>
+          {storyAndFacts}
+          {askLinks}
         </div>
       </section>
 
