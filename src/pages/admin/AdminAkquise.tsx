@@ -24,7 +24,7 @@ import {
 type World = "Mode" | "Kunst" | "Interior";
 type Status =
   | "neu" | "qualifiziert" | "aussortiert" | "angewaermt" | "kontaktiert" | "antwort"
-  | "registriert" | "aktiviert" | "spaeter" | "nein" | "ghost" | "ruhe";
+  | "registriert" | "aktiviert" | "spaeter" | "nein" | "ghost" | "ruhe" | "abgemeldet";
 
 interface Lead {
   id: string;
@@ -65,7 +65,7 @@ const GOALS: Record<World, number> = { Mode: 500, Kunst: 250, Interior: 250 };
 
 const STATUSES: Status[] = [
   "neu", "qualifiziert", "aussortiert", "angewaermt", "kontaktiert", "antwort",
-  "registriert", "aktiviert", "spaeter", "nein", "ghost", "ruhe",
+  "registriert", "aktiviert", "spaeter", "nein", "ghost", "ruhe", "abgemeldet",
 ];
 
 const STATUS_LABELS: Record<Status, string> = {
@@ -81,6 +81,7 @@ const STATUS_LABELS: Record<Status, string> = {
   nein: "Nein",
   ghost: "Ghost",
   ruhe: "Ruhe",
+  abgemeldet: "Abgemeldet",
 };
 
 // Aktions-Knöpfe im Detail-Panel — "Neu" ist der Startzustand, kein Klick-Ziel.

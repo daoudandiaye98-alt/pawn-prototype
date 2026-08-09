@@ -72,6 +72,7 @@ export type Database = {
         Row: {
           admin_decision: string | null
           bio: string | null
+          bounce_type: string | null
           channel: string | null
           clips: Json | null
           contact_attempts: number
@@ -99,10 +100,12 @@ export type Database = {
           outlet: string | null
           personal_line: string | null
           qc_passed: boolean | null
+          retention_purged_at: string | null
           score_reasons: Json | null
           scrape_images: Json | null
           source: string | null
           status: string
+          unsubscribed_at: string | null
           updated_at: string | null
           warmed_at: string | null
           website: string | null
@@ -111,6 +114,7 @@ export type Database = {
         Insert: {
           admin_decision?: string | null
           bio?: string | null
+          bounce_type?: string | null
           channel?: string | null
           clips?: Json | null
           contact_attempts?: number
@@ -138,10 +142,12 @@ export type Database = {
           outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
+          retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
           source?: string | null
           status?: string
+          unsubscribed_at?: string | null
           updated_at?: string | null
           warmed_at?: string | null
           website?: string | null
@@ -150,6 +156,7 @@ export type Database = {
         Update: {
           admin_decision?: string | null
           bio?: string | null
+          bounce_type?: string | null
           channel?: string | null
           clips?: Json | null
           contact_attempts?: number
@@ -177,10 +184,12 @@ export type Database = {
           outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
+          retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
           source?: string | null
           status?: string
+          unsubscribed_at?: string | null
           updated_at?: string | null
           warmed_at?: string | null
           website?: string | null
