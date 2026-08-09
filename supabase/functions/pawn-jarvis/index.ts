@@ -2841,16 +2841,155 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
   };
 }
 
+interface PostEntwurf { caption: string; hashtags: string[]; tokens: number }
+
 /**
- * verstaerker — Häuser tragen PAWN weiter. Jedes Haus mit einem fertigen Video, das noch
- * nicht geteilt wurde, bekommt einen Hinweis auf sein fertiges Teil-Paket in der Videothek.
- * Zone Grün: läuft still, kein Versand nach außen.
+ * Teil 38 AP5: ein kurzer, fertiger Beitragstext im Ton des Hauses — für frische Vorschläge
+ * in PAWNs Posting-Queue. Ohne KI-Zugriff ein einfacher, ehrlicher Text statt eines Fehlers
+ * (der Vorschlag landet trotzdem, nur schlichter formuliert).
  */
-async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unknown>> {
+async function erzeugePostEntwurf(
+  admin: SupabaseClient, apiKey: string,
+  haus: { brand_name: string; slug: string; brand_dna?: { worlds?: Record<string, number>; signals?: string[] } | null },
+  kontext: string,
+): Promise<PostEntwurf> {
+  const worlds = Object.keys(haus.brand_dna?.worlds ?? {});
+  const signale = (haus.brand_dna?.signals ?? []).slice(0, 4);
+  const fallback: PostEntwurf = {
+    caption: `${haus.brand_name} — ${kontext}. Mehr auf pawn.vision.`,
+    hashtags: ["#pawnvision", `#${haus.brand_name.replace(/\s+/g, "").toLowerCase()}`, ...(worlds[0] ? [`#${worlds[0].toLowerCase()}`] : [])],
+    tokens: 0,
+  };
+  if (!apiKey) return fallback;
+  const gesetze = DEFAULT_SPRACHGESETZE;
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const system = `Du schreibst für PAWN (pawn.vision) einen kurzen Instagram-Beitragstext für ein unabhängiges Designhaus. Höchstens 3 Sätze, Deutsch, im Ton des Hauses, ohne Übertreibung. Danach 3-5 passende Hashtags.
+
+SPRACHGESETZE (bindend):
+${gesetze}
+
+Stilgesetz: ${styleLaw}
+
+Antworte NUR mit JSON: {"caption": "...", "hashtags": ["#...", "#..."]}`;
+  const user = `Haus: ${haus.brand_name}. Welt(en): ${worlds.join(", ") || "unbekannt"}. Marken-Signale: ${signale.join(", ") || "keine erfasst"}. Anlass: ${kontext}. Link: https://pawn.vision/designer/${haus.slug}`;
+  const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 400);
+  let caption = typeof json?.caption === "string" ? json.caption.trim() : "";
+  if (caption && hatVerneinung(caption)) {
+    const fixed = await entverneinen(caption, gesetze);
+    caption = fixed.text;
+  }
+  const hashtags = Array.isArray(json?.hashtags) ? (json.hashtags as unknown[]).map(String).slice(0, 6) : fallback.hashtags;
+  return caption ? { caption, hashtags, tokens } : { ...fallback, tokens };
+}
+
+/**
+ * Teil 38 AP5 — Türen lösen ein Content-Paket aus: sobald ein Haus eine Tür als "angenommen"
+ * markiert (domain_events type='door.accepted', geschrieben von designer-opportunity-decide
+ * bzw. der Editions-Synchronisierung in tueren_finden), bereitet PAWN dazu 1 Video-Brief
+ * (Einladung, kein automatisches Rendern — Entwurfsprinzip) und 3 Beitrags-Entwürfe vor, die
+ * die Tür im Text nennen. Idempotenz über pawn_signals (kind='tuer_paket_erstellt', pattern
+ * trägt die event_id) statt einer neuen Tabelle — ein Ereignis wird nie zweimal verarbeitet.
+ */
+async function runTuerenEreignisVerarbeiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: events } = await admin.from("domain_events")
+    .select("id, actor, payload").eq("type", "door.accepted")
+    .order("created_at", { ascending: false }).limit(20);
+  let pakete = 0, uebersprungen = 0;
+
+  for (const ev of (events ?? []) as { id: string; actor: string; payload: { designer_id?: string; title?: string } }[]) {
+    const { data: schonVerarbeitet } = await admin.from("pawn_signals")
+      .select("id").eq("kind", "tuer_paket_erstellt").eq("pattern->>event_id", ev.id).limit(1);
+    if ((schonVerarbeitet ?? []).length) continue;
+
+    const designerId = ev.payload?.designer_id ?? ev.actor;
+    const tuerTitel = (ev.payload?.title ?? "eine angenommene Tür").slice(0, 120);
+    const { data: hausRow } = await admin.from("designers")
+      .select("id, user_id, brand_name, slug, brand_dna, hero_image_url, avatar_url").eq("id", designerId).maybeSingle();
+    const haus = hausRow as {
+      id: string; user_id: string | null; brand_name: string; slug: string;
+      brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
+      hero_image_url: string | null; avatar_url: string | null;
+    } | null;
+    if (!haus) { await schreibeSignal(admin, "pawn-jarvis", "tuer_paket_erstellt", { event_id: ev.id, status: "haus_fehlt" }); continue; }
+
+    const darfWeiter = await guardAiBudget(
+      admin, haus.id, haus.brand_name, "tuer_paket_uebersprungen",
+      "das Content-Paket zur angenommenen Tür entfällt diese Woche.",
+    );
+    if (!darfWeiter) {
+      uebersprungen++;
+      await schreibeSignal(admin, "pawn-jarvis", "tuer_paket_erstellt", { event_id: ev.id, status: "budget" });
+      continue;
+    }
+
+    if (haus.user_id) {
+      await admin.from("notifications").insert({
+        user_id: haus.user_id, type: "tuer.content_paket",
+        title: "Eine angenommene Tür wird zur Geschichte",
+        body: `„${tuerTitel}" ist angenommen — dreh dazu ein kurzes Video. PAWN hat schon drei Beitrags-Entwürfe dafür vorbereitet.`,
+        link: "/studio/kampagnen/neu",
+      });
+      await schreibePartieZug(admin, haus.id, `PAWN hat ein Content-Paket zu „${tuerTitel}" vorbereitet.`, "pawn", "tueren_finden");
+    }
+
+    const asset = haus.hero_image_url ?? haus.avatar_url;
+    let entwuerfeErstellt = 0;
+    if (asset) {
+      for (let i = 0; i < 3; i++) {
+        const entwurf = await erzeugePostEntwurf(admin, apiKey, haus, `„${tuerTitel}" wurde angenommen`);
+        const { data: campRow } = await admin.from("campaigns").insert({
+          designer_id: haus.id,
+          title: `${haus.brand_name} · Tür angenommen: ${tuerTitel}`.slice(0, 200),
+          kind: "post", status: "approved",
+          content: { asset_url: asset, caption: entwurf.caption, hashtags: entwurf.hashtags, door_event_id: ev.id, source: "tueren_finden" },
+        } as never).select("id").single();
+        if (campRow) {
+          await admin.from("posting_queue").insert({
+            campaign_id: (campRow as { id: string }).id, channel: "pawn_instagram",
+            scheduled_at: new Date().toISOString(), status: "vorschlag",
+          } as never);
+          entwuerfeErstellt++;
+        }
+        const cents = Math.round((entwurf.tokens / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2) * 100);
+        if (cents > 0) await bookAiSpend(admin, haus.id, cents);
+      }
+    }
+
+    await schreibeSignal(admin, "pawn-jarvis", "tuer_paket_erstellt", { event_id: ev.id, status: "erstellt", entwuerfe: entwuerfeErstellt });
+    pakete++;
+  }
+  return { tueren_pakete: pakete, tueren_uebersprungen: uebersprungen };
+}
+
+/**
+ * verstaerker — Häuser tragen PAWN weiter, UND PAWNs eigener Kanal bekommt echten Nachschub.
+ * Zone Grün: läuft still, kein Versand nach außen — jeder Beitrag landet als "vorschlag" in
+ * der Posting-Queue und wartet auf die bestehende Admin-Freigabe (AdminPosting.tsx).
+ *
+ * Teil 38 AP5 — Root-Cause der leeren posting_queue: es gab schlicht keinen Organ, der aus
+ * gesammeltem Material (video_assets) tatsächlich Warteschlangen-Einträge macht. Der einzige
+ * bestehende Schreibpfad war entweder der DB-Trigger enqueue_campaign_post() (nur wenn ein Haus
+ * seine SELBST erstellte Kampagne manuell in StudioCampaigns.tsx freigibt) oder die Maison-only
+ * Nachtrag-Logik in runMaisonSichtbarkeitszug. signalstrom_verdichten schreibt nur einen Bericht
+ * und Signale — es hat NIE in posting_queue geschrieben, trotz des Namens "Verdichten→Queue" im
+ * Auftrag. Diese Funktion schließt die Lücke: (1) Nachtrag für ALLE Pläne statt nur Maison,
+ * (2) frische Beitrags-Entwürfe direkt aus kampagnenlosen, freigegebenen Video-Assets, (3) das
+ * Tür-Ereignis-Paket aus AP3, (4) Warteschlangen-Hygiene (alte Vorschläge verfallen).
+ */
+async function runVerstaerker(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  // (4) Hygiene zuerst: Vorschläge, über die 30 Tage lang nicht entschieden wurde, verfallen
+  // still (status 'cancelled') statt sich endlos in der Vorschlagsliste zu stapeln.
+  const verfallsgrenze = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { data: verfallen } = await admin.from("posting_queue")
+    .update({ status: "cancelled" } as never)
+    .eq("status", "vorschlag").lt("created_at", verfallsgrenze)
+    .select("id");
+  const verfallenN = (verfallen ?? []).length;
+
   const { data: kanal } = await admin.from("growth_channels")
     .select("enabled, daily_cap").eq("key", "verstaerker").maybeSingle();
   const channel = kanal as { enabled: boolean; daily_cap: number } | null;
-  if (channel && channel.enabled === false) return { ok: true, angestupst: 0, message: "Verstärker ist ausgeschaltet." };
+  if (channel && channel.enabled === false) return { ok: true, angestupst: 0, verfallen: verfallenN, message: "Verstärker ist ausgeschaltet." };
   const cap = channel?.daily_cap ?? 20;
 
   const seit = new Date(Date.now() - 14 * 86_400_000).toISOString();
@@ -2884,17 +3023,83 @@ async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unk
     });
     angestupst++;
   }
-  return { ok: true, angestupst };
+
+  // (1) Nachtrag für ALLE Pläne (vorher: nur runMaisonSichtbarkeitszug, nur Maison) — freigegebene
+  // Video-Kampagnen mit Asset, die noch keinen Warteschlangen-Eintrag haben.
+  let nachgetragen = 0;
+  const { data: approvedCampaigns } = await admin.from("campaigns")
+    .select("id, content").eq("status", "approved").eq("kind", "video")
+    .order("updated_at", { ascending: false }).limit(300);
+  const withAsset = ((approvedCampaigns ?? []) as { id: string; content: { asset_url?: string } | null }[])
+    .filter((c) => !!c.content?.asset_url);
+  if (withAsset.length) {
+    const { data: queued } = await admin.from("posting_queue").select("campaign_id").in("campaign_id", withAsset.map((c) => c.id));
+    const queuedIds = new Set(((queued ?? []) as { campaign_id: string }[]).map((r) => r.campaign_id));
+    const missing = withAsset.filter((c) => !queuedIds.has(c.id)).slice(0, 15);
+    for (const c of missing) {
+      const { error } = await admin.from("posting_queue").insert({
+        campaign_id: c.id, channel: "pawn_instagram", scheduled_at: new Date().toISOString(), status: "vorschlag",
+      } as never);
+      if (!error) nachgetragen++;
+    }
+  }
+
+  // (2) Frische Beitrags-Entwürfe direkt aus kampagnenlosen, freigegebenen Video-Assets — die
+  // eigentliche "Sammeln→Verdichten→Queue"-Lücke aus dem Auftrag. Bewusst wenige (max. 3 je
+  // Lauf): "wenige, starke Beiträge statt Massenposting" (Teil 16c), nicht jedes Video wird sofort verpackt.
+  let frischeEntwuerfe = 0;
+  const FRISCHE_ENTWUERFE_MAX = 3;
+  const { data: freieAssets } = await admin.from("video_assets")
+    .select("id, designer_id, url, campaign_id").is("campaign_id", null).eq("rights_granted", true)
+    .gte("created_at", seit).order("created_at", { ascending: false }).limit(20);
+  for (const asset of (freieAssets ?? []) as { id: string; designer_id: string | null; url: string }[]) {
+    if (frischeEntwuerfe >= FRISCHE_ENTWUERFE_MAX) break;
+    if (!asset.designer_id) continue;
+    // Idempotenz: dieses Video schon einmal als Kampagne verpackt?
+    const { data: bereitsVerpackt } = await admin.from("campaigns")
+      .select("id").eq("content->>video_asset_id", asset.id).limit(1);
+    if ((bereitsVerpackt ?? []).length) continue;
+
+    const { data: hausRow } = await admin.from("designers")
+      .select("id, brand_name, slug, brand_dna").eq("id", asset.designer_id).maybeSingle();
+    const haus = hausRow as { id: string; brand_name: string; slug: string; brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null } | null;
+    if (!haus) continue;
+    const darfWeiter = await guardAiBudget(
+      admin, haus.id, haus.brand_name, "verstaerker_entwurf_uebersprungen",
+      "der Beitrags-Entwurf für ein neues Video entfällt diese Woche.",
+    );
+    if (!darfWeiter) continue;
+
+    const entwurf = await erzeugePostEntwurf(admin, apiKey, haus, "ein neues Video ist fertig");
+    const { data: campRow } = await admin.from("campaigns").insert({
+      designer_id: haus.id, title: `${haus.brand_name} · Beitrags-Vorschlag von PAWN`, kind: "video", status: "approved",
+      content: { asset_url: asset.url, caption: entwurf.caption, hashtags: entwurf.hashtags, video_asset_id: asset.id, source: "verstaerker" },
+    } as never).select("id").single();
+    if (campRow) {
+      await admin.from("posting_queue").insert({
+        campaign_id: (campRow as { id: string }).id, channel: "pawn_instagram",
+        scheduled_at: new Date().toISOString(), status: "vorschlag",
+      } as never);
+      frischeEntwuerfe++;
+    }
+    const cents = Math.round((entwurf.tokens / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2) * 100);
+    if (cents > 0) await bookAiSpend(admin, haus.id, cents);
+  }
+
+  // (3) Türen aus AP3, die als "angenommen" markiert wurden, lösen ihr eigenes Content-Paket aus.
+  const tuerErgebnis = await runTuerenEreignisVerarbeiten(admin, apiKey);
+
+  return { ok: true, angestupst, verfallen: verfallenN, nachgetragen, frische_entwuerfe: frischeEntwuerfe, ...tuerErgebnis };
 }
 
 // --- AP4: der wöchentliche Sichtbarkeits-Zug für Maison-Häuser --------------------------------
 // Nutzt zwei bestehende Bausteine, statt neue zu erfinden: den Presse-Pitch-Stil aus
 // runPresseVerfassen (hier auf ein Haus statt auf einen einzelnen Lead-Kontakt zugeschnitten) und
-// die echte posting_queue-Schreiblogik — die liegt nicht in runVerstaerker (der schickt nur eine
-// Benachrichtigung), sondern im DB-Trigger enqueue_campaign_post(), der bei jeder freigegebenen
-// Video-Kampagne automatisch einen "vorschlag"-Eintrag anlegt. Dieser Lauf holt Häuser mit
-// älteren, freigegebenen Video-Kampagnen ohne Warteschlangen-Eintrag nach (gleiche Zeilenform wie
-// der Trigger), statt diese Logik zu duplizieren. Der Presse-Entwurf landet als Benachrichtigung
+// die echte posting_queue-Schreiblogik — die liegt im DB-Trigger enqueue_campaign_post(), der bei
+// jeder freigegebenen Video-Kampagne automatisch einen "vorschlag"-Eintrag anlegt (seit Teil 38
+// AP5 tut runVerstaerker das für ALLE Pläne ebenfalls, siehe dort). Dieser Lauf holt zusätzlich
+// Maison-Häuser mit älteren, freigegebenen Video-Kampagnen ohne Warteschlangen-Eintrag nach
+// (gleiche Zeilenform wie der Trigger), statt diese Logik zu duplizieren. Der Presse-Entwurf landet als Benachrichtigung
 // im Studio des Hauses — sein eigenes Dashboard —, die posting_queue-Vorschläge landen wie gehabt
 // in der bestehenden admin-kuratierten Prüfung (kampagnen_regie/AdminPosting.tsx). Nichts wird
 // automatisch veröffentlicht. Budget wird je Haus vor der KI-Erzeugung per book_ai_spend
@@ -3891,7 +4096,7 @@ Deno.serve(async (req) => {
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
         : mode === "akquise_zyklus" ? await runAkquiseZyklus(admin, apiKey)
-        : mode === "verstaerker" ? await runVerstaerker(admin)
+        : mode === "verstaerker" ? await runVerstaerker(admin, apiKey)
         : await runBewerbungPruefen(admin, apiKey);
 
       const summary = mode === "wissen_markenaufbau"
