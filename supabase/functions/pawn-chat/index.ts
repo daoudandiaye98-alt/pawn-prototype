@@ -166,6 +166,57 @@ async function buildNutzungsprofil(admin: SupabaseClient, designerId: string): P
   }
 }
 
+/** Teil 38 AP4: erkennt, ob ein Haus im Studio-Gespräch über seine eigenen Aufnahmen/Medien spricht. */
+function detectMediaIntent(t: string): boolean {
+  return /\b(video|clip|aufnahme|aufnahmen|footage|medien|mediathek|regisseur|geworden|gelaufen|fertig)\b/i.test(t);
+}
+
+/**
+ * Teil 38 AP4: PAWN kannte den Stand der eigenen Medien-Erzeugung eines Hauses bisher gar
+ * nicht — Fragen wie "wie ist mein letztes Video geworden?" liefen ins Leere. Liest die
+ * jüngste Aufnahme (inkl. Regisseur-Einschätzung, falls vorhanden) sowie laufende/zuletzt
+ * gescheiterte Aufträge, damit PAWN ehrlich und konkret antworten kann.
+ */
+async function buildMediaHint(admin: SupabaseClient, designerId: string): Promise<string> {
+  try {
+    const { data: videos } = await admin.from("video_assets")
+      .select("video_dna, regisseur_verdict, created_at")
+      .eq("designer_id", designerId).order("created_at", { ascending: false }).limit(1);
+    const latest = (videos ?? [])[0] as { video_dna: Record<string, unknown> | null; regisseur_verdict: { passt?: boolean; punkte?: string[]; iterationsvorschlag?: string } | null; created_at: string } | undefined;
+
+    const { data: campaignRows } = await admin.from("campaigns").select("id").eq("designer_id", designerId);
+    const campaignIds = ((campaignRows ?? []) as { id: string }[]).map((c) => c.id);
+    let offen: { status: string; error: string | null }[] = [];
+    if (campaignIds.length) {
+      const { data: reqs } = await admin.from("generation_requests")
+        .select("status, error").in("campaign_id", campaignIds).in("status", ["running", "failed"])
+        .order("created_at", { ascending: false }).limit(5);
+      offen = (reqs ?? []) as { status: string; error: string | null }[];
+    }
+
+    if (!latest && !offen.length) {
+      return "MEDIEN-STAND (ehrlich nutzen): Dieses Haus hat noch keine Aufnahme erzeugt. Sag das direkt, wenn danach gefragt wird, und verweise auf /studio/kampagnen als nächsten Schritt.";
+    }
+    const parts: string[] = [];
+    if (latest) {
+      const dna = latest.video_dna as { signatur?: string | null; laenge_s?: number } | null;
+      const wann = new Date(latest.created_at).toLocaleDateString("de-DE");
+      parts.push(`Letzte Aufnahme vom ${wann}${dna?.signatur ? ` in der Signatur "${dna.signatur}"` : ""}${dna?.laenge_s ? `, ${dna.laenge_s}s` : ""}.`);
+      if (latest.regisseur_verdict) {
+        const v = latest.regisseur_verdict;
+        parts.push(`PAWNs eigene Einschätzung dazu: ${v.passt ? "passt zur Marke" : "passt noch nicht ganz"}${v.punkte?.length ? ` — ${v.punkte.join("; ")}` : ""}${v.iterationsvorschlag ? `. Vorschlag fürs nächste Mal: ${v.iterationsvorschlag}` : ""}`);
+      }
+    }
+    const laufend = offen.filter((o) => o.status === "running").length;
+    const fehlgeschlagen = offen.filter((o) => o.status === "failed");
+    if (laufend) parts.push(`${laufend} Aufnahme(n) laufen gerade noch.`);
+    if (fehlgeschlagen.length) parts.push(`${fehlgeschlagen.length} Aufnahme(n) sind zuletzt nicht gelungen — Grund: ${fehlgeschlagen[0].error ?? "unbekannt"}.`);
+    return `MEDIEN-STAND (echte Daten, nutze sie ehrlich, erfinde nichts darüber hinaus): ${parts.join(" ")}`;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Teil 33 — Die zweite Kartei: Markenbauen. Aktive, freigegebene Bausteine aus `brand_knowledge`
  * (gespeist vom pawn-jarvis-Modus wissen_markenaufbau) fließen als leise Orientierung in Beratung
@@ -886,20 +937,19 @@ Deno.serve(async (req) => {
     // schon nutzt oder noch meidet.
     let nutzungsprofil = "";
     let markenKartei = "";
-    let organeHint = "";
+    let medienHint = "";
     if (admin && user_id && role === "designer" && pc?.route?.startsWith("/studio")) {
       const { data: ownDesigner } = await admin.from("designers").select("id, tags, plan").eq("user_id", user_id).maybeSingle();
       if (ownDesigner?.id) {
         nutzungsprofil = await buildNutzungsprofil(admin, ownDesigner.id);
         const worldKey = ((ownDesigner as { tags?: string[] | null }).tags ?? []).find((t) => ["Mode", "Interior", "Kunst"].includes(t)) ?? "Mode";
         markenKartei = await buildMarkenKarteiHint(admin, worldKey);
-        if ((ownDesigner as { plan?: string }).plan === "maison") {
-          organeHint = await buildOrganeHint(admin, ownDesigner.id);
-        }
+        // Teil 38 AP4: nur bei erkennbarer Medien-Frage laden, nicht bei jedem Studio-Turn.
+        if (detectMediaIntent(lastUser)) medienHint = await buildMediaHint(admin, ownDesigner.id);
       }
     }
 
-    const system = [persona, houseStyleLaw, CATALOG_HONESTY_LAW, voiceLaw, houseTone, nutzungsprofil, markenKartei, organeHint, directiveBlock].filter(Boolean).join("\n\n");
+    const system = [persona, houseStyleLaw, CATALOG_HONESTY_LAW, voiceLaw, houseTone, nutzungsprofil, markenKartei, medienHint, directiveBlock].filter(Boolean).join("\n\n");
     const bildDeskriptorHint = buildBildDeskriptorHint(extracted.bild_deskriptor);
     const fullContextHint = [pageContextHint, memoryHint, bildDeskriptorHint, contextHint].filter(Boolean).join("\n\n");
 

@@ -898,6 +898,10 @@ export default function StudioCampaignNew() {
       const idToImage = new Map<string, string>();
       for (const s of submissions) if (s.image_url) idToImage.set(s.id, s.image_url);
       const requestIds = submissions.map((s) => s.id);
+      // Teil 38 AP4: poll-broll versucht einen fehlgeschlagenen Auftrag einmal automatisch neu
+      // (Status bleibt dabei "running") — deshalb hält lastFriendlyError den letzten verständlichen
+      // Grund fest, auch wenn der endgültige Status erst nach einem Neuversuch feststeht.
+      let lastFriendlyError: string | null = null;
       // Meisterklasse braucht laut Katalog bis zu 10 Minuten — das Fenster hier muss
       // mindestens so lang sein, sonst wird eine laufende Aufnahme fälschlich als
       // gescheitert gemeldet, während sie am Provider noch fertig wird.
@@ -913,7 +917,10 @@ export default function StudioCampaignNew() {
           const img = idToImage.get(r.id);
           if (!img) continue;
           if (r.status === "done" && r.result_url) perImageStatus.set(img, { status: "done", url: r.result_url });
-          else if (r.status === "failed") perImageStatus.set(img, { status: "failed" });
+          else if (r.status === "failed") {
+            perImageStatus.set(img, { status: "failed" });
+            if (r.error) lastFriendlyError = r.error;
+          }
         }
         if (results.length > 0 && results.every((r) => r.status === "done" || r.status === "failed")) break;
       }
@@ -932,7 +939,9 @@ export default function StudioCampaignNew() {
       }
       if (successful === 0) {
         setCinematicStage("failed");
-        throw new Error(t("studio.campaignNew.error.noShotsSucceeded"));
+        // Teil 38 AP4: PAWNs eigener, verständlicher Grund (poll-broll formuliert ihn schon
+        // menschlich) schlägt die generische Meldung, sobald einer vorliegt.
+        throw new Error(lastFriendlyError ?? t("studio.campaignNew.error.noShotsSucceeded"));
       }
       setRawClips(aligned);
       setCinematicStage("ready");

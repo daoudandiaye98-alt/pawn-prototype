@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,8 @@ interface Tuer {
   title: string;
   ort: string | null;
   typ: string;
+  art: string;
+  match_score: number | null;
   quelle_url: string | null;
   warum: string | null;
   status: string;
@@ -33,8 +36,11 @@ interface Tuer {
 }
 
 const TYP_KEYS = ["galerie", "ausstellung", "markt", "offenes_atelier", "schule_hochschule", "sonstiges"];
+const ART_KEYS = ["physisch", "presse", "edition", "kollektions_slot"];
 const OFFENE_STATUS = ["gefunden", "interessiert", "kontaktiert", "geantwortet"];
 const MIN_FOLLOWUP_DAYS = 7;
+/** Editionen entscheidet das Haus auf /studio/kampagnen — hier nur Anzeige, keine Aktionen. */
+const FREMDGESTEUERTE_ART = new Set(["edition"]);
 
 export default function StudioOffeneTueren() {
   const { designer, loading } = useMyDesigner();
@@ -49,22 +55,27 @@ export default function StudioOffeneTueren() {
     if (!designer) return;
     (async () => {
       const { data } = await supabase.from("designer_opportunities" as never)
-        .select("id, title, ort, typ, quelle_url, warum, status, message_draft, contact_email, sent_at, followup_sent_at, delivery_status, created_at")
-        .eq("designer_id", designer.id).order("created_at", { ascending: false });
+        .select("id, title, ort, typ, art, match_score, quelle_url, warum, status, message_draft, contact_email, sent_at, followup_sent_at, delivery_status, created_at")
+        .eq("designer_id", designer.id).order("match_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
       setRows((data as unknown as Tuer[]) ?? []);
       setRowsLoading(false);
     })();
   }, [designer]);
 
-  async function decide(door: Tuer, decision: "interessiert" | "verworfen") {
+  async function decide(door: Tuer, decision: "interessiert" | "verworfen" | "angenommen" | "abgelehnt") {
     setBusy(door.id);
     try {
       const { data, error } = await supabase.functions.invoke("designer-opportunity-decide", {
         body: { opportunity_id: door.id, decision },
       });
-      if (error || !(data as { ok?: boolean })?.ok) throw new Error("failed");
+      const result = data as { ok?: boolean; error?: string } | null;
+      if (error || !result?.ok) { toast.error(result?.error ?? t("studio.tueren.toast.error")); return; }
       setRows((prev) => prev.map((r) => (r.id === door.id ? { ...r, status: decision } : r)));
-      toast.success(decision === "interessiert" ? t("studio.tueren.toast.interested") : t("studio.tueren.toast.dismissed"));
+      const toastKey = decision === "interessiert" ? "studio.tueren.toast.interested"
+        : decision === "angenommen" ? "studio.tueren.toast.accepted"
+        : decision === "abgelehnt" ? "studio.tueren.toast.declined"
+        : "studio.tueren.toast.dismissed";
+      toast.success(t(toastKey));
     } catch {
       toast.error(t("studio.tueren.toast.error"));
     } finally {
@@ -130,6 +141,7 @@ export default function StudioOffeneTueren() {
   if (!designer) return <StudioShell title={t("studioShell.nav.tueren")}><p className="text-sm text-muted-foreground">{t("studio.settings.noAccess")}</p></StudioShell>;
 
   const offene = rows.filter((r) => OFFENE_STATUS.includes(r.status));
+  const entschieden = rows.filter((r) => r.status === "angenommen" || r.status === "abgelehnt");
   const verworfen = rows.filter((r) => r.status === "verworfen");
 
   return (
@@ -149,7 +161,8 @@ export default function StudioOffeneTueren() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">
-                      {t(`studio.tueren.typ.${TYP_KEYS.includes(door.typ) ? door.typ : "sonstiges"}`)}
+                      {t(`studio.tueren.art.${ART_KEYS.includes(door.art) ? door.art : "physisch"}`)}
+                      {door.art === "physisch" && ` · ${t(`studio.tueren.typ.${TYP_KEYS.includes(door.typ) ? door.typ : "sonstiges"}`)}`}
                       {door.ort ? ` · ${door.ort}` : ""}
                     </p>
                     <p className="mt-1 font-serif text-lg">
@@ -171,7 +184,7 @@ export default function StudioOffeneTueren() {
                   </p>
                 )}
 
-                {!door.contact_email && (
+                {door.art === "physisch" && !door.contact_email && (
                   <p className="mt-3 text-sm text-muted-foreground">{t("studio.tueren.noContact")}</p>
                 )}
 
@@ -209,7 +222,15 @@ export default function StudioOffeneTueren() {
                   </div>
                 )}
 
-                {!isEditing && (
+                {!isEditing && FREMDGESTEUERTE_ART.has(door.art) && (
+                  <div className="mt-4">
+                    <Link to="/studio/kampagnen" className="text-[0.65rem] uppercase tracking-[0.24em] underline">
+                      {t("studio.tueren.action.zurEntscheidung")}
+                    </Link>
+                  </div>
+                )}
+
+                {!isEditing && !FREMDGESTEUERTE_ART.has(door.art) && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {door.status === "gefunden" && (
                       <button
@@ -238,6 +259,24 @@ export default function StudioOffeneTueren() {
                         {busy === door.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}{t("studio.tueren.action.followup")}
                       </button>
                     )}
+                    {(door.status === "interessiert" || door.status === "kontaktiert" || door.status === "geantwortet") && (
+                      <>
+                        <button
+                          type="button" disabled={busy === door.id}
+                          onClick={() => void decide(door, "angenommen")}
+                          className="flex items-center gap-2 border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-background hover:text-foreground disabled:opacity-50"
+                        >
+                          {busy === door.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}{t("studio.tueren.action.accept")}
+                        </button>
+                        <button
+                          type="button" disabled={busy === door.id}
+                          onClick={() => void decide(door, "abgelehnt")}
+                          className="border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50"
+                        >
+                          {t("studio.tueren.action.decline")}
+                        </button>
+                      </>
+                    )}
                     {door.status !== "verworfen" && (
                       <button
                         type="button" disabled={busy === door.id}
@@ -247,25 +286,43 @@ export default function StudioOffeneTueren() {
                         {t("studio.tueren.action.dismiss")}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => { setEditing(door.id); setDraftText(door.message_draft ?? ""); }}
-                      className="border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background"
-                    >
-                      {t("studio.tueren.entwurf.edit")}
-                    </button>
-                    <button
-                      type="button" onClick={() => void copyDraft(door)}
-                      className="flex items-center gap-2 border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background"
-                    >
-                      <Copy className="h-3.5 w-3.5" />{t("studio.tueren.action.copy")}
-                    </button>
+                    {door.art === "physisch" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setEditing(door.id); setDraftText(door.message_draft ?? ""); }}
+                          className="border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background"
+                        >
+                          {t("studio.tueren.entwurf.edit")}
+                        </button>
+                        <button
+                          type="button" onClick={() => void copyDraft(door)}
+                          className="flex items-center gap-2 border-[1.5px] border-foreground px-4 py-2 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background"
+                        >
+                          <Copy className="h-3.5 w-3.5" />{t("studio.tueren.action.copy")}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </li>
             );
           })}
         </ul>
+      )}
+
+      {entschieden.length > 0 && (
+        <div className="mt-8 border-[1.5px] border-foreground bg-white p-6">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.tueren.erfolgskette")}</p>
+          <ul className="mt-3 divide-y divide-border">
+            {entschieden.map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span>{d.title}</span>
+                <span className="shrink-0 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">{t(`studio.tueren.status.${d.status}`)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {verworfen.length > 0 && (

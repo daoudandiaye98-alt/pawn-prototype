@@ -69,7 +69,7 @@ type Mode =
   | "presse_jagd" | "presse_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
-  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug";
+  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -162,6 +162,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   wissen_markenaufbau: "gruen",
   tueren_finden: "gruen",
   maison_sichtbarkeitszug: "gruen",
+  wissen_wirtschaft: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -2458,6 +2459,7 @@ Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkre
       gueltigkeitsvermutung: (b.gueltigkeitsvermutung ?? "").trim() || null,
       active: true,
       approved: false,
+      kategorie: "markenaufbau",
     } as never);
     if (!error) angelegt++;
   }
@@ -2465,6 +2467,77 @@ Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkre
   await admin.from("jarvis_reports").insert({
     kind: "markenaufbau",
     title: `Markenaufbau-Wissen · ${thema.slice(0, 60)}`,
+    body: `Thema: ${thema}\nNeue Bausteine als Entwurf: ${angelegt} von ${bausteine.length} gefundenen.\nFreigabe im Cockpit unter Jarvis.`,
+  } as never);
+
+  return { ok: true, thema, gefunden: bausteine.length, angelegt, tokensUsed: tokens };
+}
+
+/**
+ * wissen_wirtschaft — Part 38 AP1: ein eigener Kanal für Wirtschaftswissen, den es vorher gar
+ * nicht gab (Preisbildung/Kalkulation, Produktion/MOQ, Vertriebswege, USt/Versand im EU-Kontext).
+ * Wiederverwendungs-Prinzip: gleiche Tabelle wie wissen_markenaufbau (brand_knowledge), getrennt
+ * über die neue kategorie-Spalte statt einer eigenen Tabelle. Bewusst als Orientierung formuliert,
+ * nie als Rechts-/Steuerberatung.
+ */
+const WIRTSCHAFT_THEMEN = [
+  "Preisbildung und Kalkulation vom Einkaufspreis zum Verkaufspreis",
+  "Margenlogik bei Unikaten und Kleinserien",
+  "Produktion: Mindestbestellmengen, Sampling, Lieferantenarten",
+  "D2C, Großhandel und Marktplatz im Vergleich für kleine Labels",
+  "Umsatzsteuer und Versand im EU-Kontext für unabhängige Designer",
+];
+
+async function runWissenWirtschaft(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { count } = await admin.from("brand_knowledge").select("id", { count: "exact", head: true }).eq("kategorie", "wirtschaft");
+  const thema = WIRTSCHAFT_THEMEN[(count ?? 0) % WIRTSCHAFT_THEMEN.length];
+
+  const { data: vorhanden } = await admin.from("brand_knowledge").select("headline").eq("kategorie", "wirtschaft").eq("active", true).limit(200);
+  const bekannt = ((vorhanden ?? []) as { headline: string }[]).map((r) => r.headline).slice(0, 60).join(" | ") || "noch nichts";
+
+  const system = `Du sammelst für PAWN (pawn.vision) praktisches Wirtschaftswissen für unabhängige Designer aus Mode, Interior und Kunst — Preisbildung, Produktion, Vertriebswege, Steuer-/Versand-Basics im EU-Kontext. Orientierung, keine Rechts- oder Steuerberatung — das sagst du bei Bedarf auch dazu.
+
+Recherchiere mit web_search in öffentlich zugänglichen Ratgebern, Gründer-Leitfäden und Fallbeispielen. Fasse in eigenen Worten zusammen, nenne für jeden Baustein die Quelle. Übernimm keine Textpassagen wörtlich.
+
+Jeder Baustein sagt, was zu bedenken oder zu tun ist — konkret, in einem Satz umsetzbar, auf Deutsch, ohne Marketing-Floskeln und ohne Verneinungen als Stilmittel. quelle_typ ist einer von: ${QUELLE_TYPEN.join(", ")}. gueltigkeitsvermutung schätzt, wie lange die These vermutlich trägt.
+
+Antworte NUR mit JSON: {"bausteine": [{"thema": "...", "kernsatz": "kurze Merkregel", "erklaerung": "zwei Sätze, warum das wichtig ist", "beispiel": "ein konkretes Beispiel für ein kleines Label", "welt": "Mode|Interior|Kunst|", "quelle_titel": "...", "quelle_url": "https://...", "quelle_typ": "...", "gueltigkeitsvermutung": "..."}]}`;
+  const user = `Thema dieser Woche: "${thema}". Sammle 5 bis 8 neue Bausteine. Diese Kernsätze gelten aktuell schon, finde andere oder aktualisiere überholte Lagen dazu: ${bekannt}`;
+
+  const { json, tokens } = await searchJson(apiKey, system, user);
+  const bausteine = Array.isArray((json as { bausteine?: unknown } | null)?.bausteine)
+    ? ((json as { bausteine: WissensBaustein[] }).bausteine) : [];
+
+  let angelegt = 0;
+  if (bausteine.length > 0) {
+    await admin.from("brand_knowledge").update({ active: false } as never).eq("topic", thema).eq("kategorie", "wirtschaft").eq("active", true);
+  }
+  for (const b of bausteine) {
+    const headline = (b.kernsatz ?? "").trim();
+    const body = (b.erklaerung ?? "").trim();
+    if (!headline || !body) continue;
+    const welt = ["Mode", "Interior", "Kunst"].includes(b.welt ?? "") ? b.welt : null;
+    const quelleTyp = QUELLE_TYPEN.includes(b.quelle_typ ?? "") ? (b.quelle_typ as string) : "recherchiert";
+    const { error } = await admin.from("brand_knowledge").insert({
+      topic: (b.thema ?? thema).slice(0, 120),
+      world: welt,
+      headline: headline.slice(0, 200),
+      body,
+      example: (b.beispiel ?? "").trim() || null,
+      source_url: (b.quelle_url ?? "").trim() || null,
+      source_title: (b.quelle_titel ?? "").trim() || null,
+      quelle_typ: quelleTyp,
+      gueltigkeitsvermutung: (b.gueltigkeitsvermutung ?? "").trim() || null,
+      active: true,
+      approved: false,
+      kategorie: "wirtschaft",
+    } as never);
+    if (!error) angelegt++;
+  }
+
+  await admin.from("jarvis_reports").insert({
+    kind: "wirtschaft",
+    title: `Wirtschafts-Wissen · ${thema.slice(0, 60)}`,
     body: `Thema: ${thema}\nNeue Bausteine als Entwurf: ${angelegt} von ${bausteine.length} gefundenen.\nFreigabe im Cockpit unter Jarvis.`,
   } as never);
 
@@ -2543,22 +2616,36 @@ interface TuerFund { title?: string; ort?: string; typ?: string; quelle_url?: st
 
 const TUER_TYPEN = ["galerie", "ausstellung", "markt", "offenes_atelier", "schule_hochschule", "sonstiges"];
 
+/** Teil 38 AP3: wie gut eine Tür zur Welt/DNA eines Hauses passt (0-100) — bestimmt die
+ * Sortierung im Studio und welche 3 Türen der Onboarding-Wizard sofort zeigt. */
+function tuerMatchScore(houseWorlds: string[], doorWorld: string | null, gezielteSuche: boolean): number {
+  if (doorWorld && houseWorlds.includes(doorWorld)) return 90;
+  if (gezielteSuche) return houseWorlds.length ? 80 : 65;
+  return 55;
+}
+
 /**
  * tueren_finden — Teil 34a: findet je Haus höchstens 3 reale, ortsnahe Chancen pro Woche
  * (Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit Veranstaltungen)
  * und bereitet einen fertigen Anschreiben-Entwurf im Ton des Hauses vor. Geringe Menge, hohe
  * Güte — kein Massenversand, kein Auto-Senden (das entscheidet immer ein Mensch im Studio).
+ *
+ * Teil 38 AP3: der Standort-Zwang (nur Häuser mit hinterlegtem "location") ließ das Regal fast
+ * immer leer — die meisten Häuser tragen dieses Feld nie ein. Jetzt läuft die ortsnahe Suche für
+ * alle aktiven Häuser, mit dem Wohnort wenn vorhanden, sonst dem Land oder "online" als Rahmen.
+ * Zusätzlich füllt runDigitalDoorsBackfill danach ortsunabhängige Türen auf (Presse, gemeinsame
+ * Kampagnen, freie Kollektions-Plätze), damit das Regal nie ganz leer ist.
  */
 async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: houses } = await admin.from("designers")
     .select("id, brand_name, slug, location, country, brand_dna, aussenauge")
-    .eq("status", "active").not("location", "is", null).limit(60);
+    .eq("status", "active").limit(60);
   const houseList = (houses ?? []) as {
     id: string; brand_name: string; slug: string; location: string | null; country: string | null;
     brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
     aussenauge: { urteil?: string } | null;
   }[];
-  if (!houseList.length) return { ok: true, processed: 0, gefunden: 0, angelegt: 0, message: "Kein Haus mit hinterlegtem Standort." };
+  if (!houseList.length) return { ok: true, processed: 0, gefunden: 0, angelegt: 0, message: "Kein aktives Haus gefunden." };
 
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const { data: recentDoors } = await admin.from("designer_opportunities" as never)
@@ -2569,6 +2656,17 @@ async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<R
   }
   const { data: everProcessed } = await admin.from("designer_opportunities" as never).select("designer_id");
   const everSet = new Set(((everProcessed ?? []) as unknown as { designer_id: string }[]).map((r) => r.designer_id));
+
+  // Idempotenz: Titel, die für ein Haus schon existieren, werden nie zweimal angelegt — auch
+  // wenn der Modus (durch einen Doppelklick im Admin oder einen doppelten Cron-Tick) zweimal
+  // im selben Fenster feuert. Die Unique-Sperre in der DB ist das zweite Sicherheitsnetz.
+  const { data: existingTitles } = await admin.from("designer_opportunities" as never).select("designer_id, title");
+  const titlesByDesigner = new Map<string, Set<string>>();
+  for (const r of (existingTitles ?? []) as unknown as { designer_id: string; title: string }[]) {
+    const set = titlesByDesigner.get(r.designer_id) ?? new Set<string>();
+    set.add(r.title.trim().toLowerCase());
+    titlesByDesigner.set(r.designer_id, set);
+  }
 
   // Häuser ohne bisherige Tür zuerst, dann die am längsten unbearbeiteten — pro Lauf höchstens 15,
   // damit ein wöchentlicher Cron die Kosten planbar hält.
@@ -2592,8 +2690,9 @@ async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<R
     const weltText = worlds.length ? worlds.join(", ") : "Mode, Interior oder Kunst";
     const signale = (h.brand_dna?.signals ?? []).slice(0, 5).join(", ") || "noch keine erfassten Signale";
     const ton = h.aussenauge?.urteil ? ` Außenauge-Urteil: ${h.aussenauge.urteil}.` : "";
+    const rahmen = h.location ? `in der Nähe von ${h.location}` : h.country ? `im ganzen Land (${h.country})` : "im deutschsprachigen und europäischen Raum, bevorzugt online zugänglich (virtuelle Ausstellungen, offene Aufrufe/Open Calls ohne Ortsbindung)";
 
-    const system = `Du suchst für ein unabhängiges Designhaus auf PAWN (pawn.vision) reale, ortsnahe Sichtbarkeits-Chancen im echten Leben: Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit passenden Veranstaltungen. Erfinde nichts — nur Orte/Veranstaltungen, die du in der Websuche wirklich gesehen hast, mit einer echten Quelle (URL). Wenn du nichts Verlässliches findest, liefere weniger als 3 Treffer statt zu erfinden.
+    const system = `Du suchst für ein unabhängiges Designhaus auf PAWN (pawn.vision) reale Sichtbarkeits-Chancen im echten Leben: Galerien, Ausstellungen, Märkte, offene Ateliers, Schulen/Hochschulen mit passenden Veranstaltungen, oder — wenn kein genauer Standort bekannt ist — ortsunabhängige Open Calls und virtuelle Ausstellungen. Erfinde nichts — nur Orte/Veranstaltungen, die du in der Websuche wirklich gesehen hast, mit einer echten Quelle (URL). Wenn du nichts Verlässliches findest, liefere weniger als 3 Treffer statt zu erfinden.
 
 Für jeden Fund schreibst du außerdem einen kurzen, fertigen Anschreiben-Entwurf (max. 90 Wörter, Deutsch, im Ton des Hauses) — eine kurze Vorstellung, Bezug auf genau diese Chance, ein leichtes Angebot (Werke zeigen, Gespräch). Kein Anhang, keine Anführungszeichen. Falls auf der Seite eine Kontakt-E-Mail öffentlich steht (Impressum, Kontaktseite), gib sie mit — sonst lass das Feld leer, erfinde nie eine Adresse.
 
@@ -2603,8 +2702,8 @@ ${gesetze}
 Stilgesetz: ${styleLaw}
 
 Antworte NUR mit JSON: {"funde": [{"title": "...", "ort": "...", "typ": "galerie|ausstellung|markt|offenes_atelier|schule_hochschule|sonstiges", "quelle_url": "https://...", "warum": "ein Satz, warum das zu Standort/Welt/DNA des Hauses passt", "entwurf": "...", "kontakt_email": ""}]}`;
-    const user = `Haus: ${h.brand_name}. Standort: ${h.location}${h.country ? `, ${h.country}` : ""}. Welt(en): ${weltText}. Marken-Signale: ${signale}.${ton}
-Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dieses Standorts.`;
+    const user = `Haus: ${h.brand_name}. Welt(en): ${weltText}. Marken-Signale: ${signale}.${ton}
+Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen ${rahmen}.`;
 
     const tokensVorHaus = tokensUsed;
     const { json, tokens } = await searchJson(apiKey, system, user);
@@ -2612,9 +2711,13 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
     const funde = Array.isArray((json as { funde?: unknown } | null)?.funde) ? ((json as { funde: TuerFund[] }).funde) : [];
     gefunden += funde.length;
 
+    const bekannteTitel = titlesByDesigner.get(h.id) ?? new Set<string>();
+    const matchScore = tuerMatchScore(worlds, null, true);
+
     for (const f of funde.slice(0, budget)) {
       const title = (f.title ?? "").trim();
       if (!title) continue;
+      if (bekannteTitel.has(title.toLowerCase())) continue; // Idempotenz: diese Tür gibt es für dieses Haus schon.
       let entwurf = (f.entwurf ?? "").trim() || null;
       if (entwurf && hatVerneinung(entwurf)) {
         const fixed = await entverneinen(entwurf, gesetze);
@@ -2628,6 +2731,8 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
         title: title.slice(0, 200),
         ort: (f.ort ?? h.location ?? "").trim() || null,
         typ,
+        art: "physisch",
+        match_score: matchScore,
         quelle_url: (f.quelle_url ?? "").trim() || null,
         warum: (f.warum ?? "").trim() || null,
         status: "gefunden",
@@ -2636,6 +2741,7 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
       } as never);
       if (!error) {
         angelegt++;
+        bekannteTitel.add(title.toLowerCase());
         await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden");
       }
     }
@@ -2644,7 +2750,149 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen in der Nähe dies
     await bookAiSpend(admin, h.id, hausCents);
   }
 
-  return { ok: true, processed, gefunden, angelegt, tokensUsed, uebersprungen };
+  const digital = await runDigitalDoorsBackfill(admin);
+  return { ok: true, processed, gefunden, angelegt, tokensUsed, uebersprungen, digital };
+}
+
+/**
+ * Teil 38 AP3: das Regal darf nie ganz leer sein, auch wenn die ortsnahe Suche gerade nichts
+ * findet. Füllt drei ortsunabhängige Tür-Arten auf, ohne eigene KI-Aufrufe (kostenlos, kein
+ * Budget-Verbrauch) — reine Auswertung bereits vorhandener Daten:
+ *  - presse: ein qualifizierter Presse-Kontakt aus der passenden Welt (presse_jagd)
+ *  - edition: eine gemeinsame Kampagne, für die das Haus schon ausgewählt wurde (edition_participants)
+ *  - kollektions_slot: ein Haus mit veröffentlichten Werken, das noch in keiner Ausgabe steckt
+ * Alles landet als normale designer_opportunities-Zeile im selben Regal — Entscheiden bleibt
+ * beim Haus (bei Editionen läuft die eigentliche Freigabe weiter über /studio/kampagnen).
+ */
+async function runDigitalDoorsBackfill(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: houses } = await admin.from("designers")
+    .select("id, brand_name, brand_dna").eq("status", "active").eq("published", true).limit(200);
+  const houseList = (houses ?? []) as { id: string; brand_name: string; brand_dna: { worlds?: Record<string, number> } | null }[];
+  if (!houseList.length) return { presse: 0, edition: 0, kollektions_slot: 0 };
+
+  const { data: existingRows } = await admin.from("designer_opportunities" as never).select("designer_id, title, art, status");
+  const existing = (existingRows ?? []) as unknown as { designer_id: string; title: string; art: string; status: string }[];
+  const titlesByDesigner = new Map<string, Set<string>>();
+  const offenePresseByDesigner = new Set<string>();
+  for (const r of existing) {
+    const set = titlesByDesigner.get(r.designer_id) ?? new Set<string>();
+    set.add(r.title.trim().toLowerCase());
+    titlesByDesigner.set(r.designer_id, set);
+    if (r.art === "presse" && !["angenommen", "abgelehnt", "verworfen"].includes(r.status)) offenePresseByDesigner.add(r.designer_id);
+  }
+  const hatTitel = (designerId: string, title: string) => (titlesByDesigner.get(designerId) ?? new Set()).has(title.trim().toLowerCase());
+  const merkeTitel = (designerId: string, title: string) => {
+    const set = titlesByDesigner.get(designerId) ?? new Set<string>();
+    set.add(title.trim().toLowerCase());
+    titlesByDesigner.set(designerId, set);
+  };
+
+  let presseAngelegt = 0, editionAngelegt = 0, editionSynced = 0, kollektionAngelegt = 0;
+
+  // Presse: je Welt ein noch nicht verwendeter, qualifizierter Presse-Kontakt für ein Haus dieser
+  // Welt, das noch keine offene Presse-Tür hat.
+  const { data: presseLeads } = await admin.from("acquisition_leads")
+    .select("id, outlet, contact_name, world, website, bio").eq("lead_type", "presse").eq("status", "qualifiziert").limit(300);
+  const leadsByWorld = new Map<string, { outlet: string | null; contact_name: string | null; website: string | null; bio: string | null }[]>();
+  for (const l of (presseLeads ?? []) as { id: string; outlet: string | null; contact_name: string | null; world: string; website: string | null; bio: string | null }[]) {
+    const arr = leadsByWorld.get(l.world) ?? [];
+    arr.push(l);
+    leadsByWorld.set(l.world, arr);
+  }
+  for (const h of houseList) {
+    if (offenePresseByDesigner.has(h.id)) continue;
+    const worlds = Object.keys(h.brand_dna?.worlds ?? {});
+    const kandidat = worlds.map((w) => leadsByWorld.get(w)?.[0]).find(Boolean);
+    if (!kandidat) continue;
+    const label = kandidat.outlet ?? kandidat.contact_name ?? "Redaktion";
+    const title = `Presse: ${label}`.slice(0, 200);
+    if (hatTitel(h.id, title)) continue;
+    const { error } = await admin.from("designer_opportunities" as never).insert({
+      designer_id: h.id, title, typ: "sonstiges", art: "presse",
+      match_score: 85, quelle_url: kandidat.website ?? null,
+      warum: kandidat.bio ? `PAWN spricht gerade mit dieser Redaktion — Schwerpunkt: ${kandidat.bio}.` : "PAWN spricht gerade mit dieser Redaktion über Häuser aus deiner Welt.",
+      status: "gefunden",
+    } as never);
+    if (!error) { presseAngelegt++; merkeTitel(h.id, title); offenePresseByDesigner.add(h.id); await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden"); }
+  }
+
+  // Edition: jede Haus-Einladung zu einer gemeinsamen Kampagne bekommt eine sichtbare Tür im
+  // selben Regal — und die Tür folgt dem Freigabe-Status, sobald das Haus im Studio entscheidet.
+  const { data: participants } = await admin.from("edition_participants" as never)
+    .select("id, designer_id, status, editions(theme)").limit(500);
+  for (const p of (participants ?? []) as unknown as { id: string; designer_id: string; status: string; editions: { theme: string } | { theme: string }[] | null }[]) {
+    const themeRaw = Array.isArray(p.editions) ? p.editions[0]?.theme : p.editions?.theme;
+    if (!themeRaw) continue;
+    const title = `Gemeinsame Kampagne: ${themeRaw}`.slice(0, 200);
+    const zielStatus = p.status === "approved" ? "angenommen" : p.status === "declined" ? "abgelehnt" : "gefunden";
+    const existingRow = existing.find((r) => r.designer_id === p.designer_id && r.title.trim().toLowerCase() === title.toLowerCase());
+    if (!existingRow) {
+      if (zielStatus !== "gefunden" && p.status !== "approved" && p.status !== "declined") continue;
+      const { error } = await admin.from("designer_opportunities" as never).insert({
+        designer_id: p.designer_id, title, typ: "sonstiges", art: "edition", match_score: 90,
+        warum: `Dein Haus wurde für die gemeinsame Kampagne "${themeRaw}" ausgewählt.`,
+        status: zielStatus,
+      } as never);
+      if (!error) {
+        editionAngelegt++;
+        merkeTitel(p.designer_id, title);
+        await schreibePartieZug(admin, p.designer_id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden");
+        if (zielStatus === "angenommen") await tuerAngenommenEreignis(admin, p.designer_id, title, "edition");
+      }
+    } else if (existingRow.status !== zielStatus && zielStatus !== "gefunden") {
+      const { error } = await admin.from("designer_opportunities" as never).update({ status: zielStatus } as never)
+        .eq("designer_id", p.designer_id).eq("title", existingRow.title);
+      if (!error) {
+        editionSynced++;
+        if (zielStatus === "angenommen") await tuerAngenommenEreignis(admin, p.designer_id, title, "edition");
+      }
+    }
+  }
+
+  // Kollektions-Platz: ein Haus mit veröffentlichten Werken, das noch in keiner aktiven Ausgabe
+  // vertreten ist, bekommt einen Hinweis auf die aktuell laufende Ausgabe mit freiem Platz.
+  const { data: aktiveCollections } = await admin.from("curated_collections" as never)
+    .select("id, title, number").eq("is_active", true).order("number", { ascending: true }).limit(1);
+  const collection = ((aktiveCollections ?? []) as unknown as { id: string; title: string; number: number }[])[0];
+  if (collection) {
+    const { data: items } = await admin.from("collection_items" as never).select("product_slug");
+    const featuredSlugs = new Set(((items ?? []) as unknown as { product_slug: string }[]).map((i) => i.product_slug));
+    const { data: products } = await admin.from("products").select("slug, designer_id").eq("status", "published");
+    const publishedByDesigner = new Map<string, string[]>();
+    for (const p of (products ?? []) as { slug: string; designer_id: string }[]) {
+      const arr = publishedByDesigner.get(p.designer_id) ?? [];
+      arr.push(p.slug);
+      publishedByDesigner.set(p.designer_id, arr);
+    }
+    for (const h of houseList) {
+      const slugs = publishedByDesigner.get(h.id) ?? [];
+      if (!slugs.length) continue;
+      if (slugs.some((s) => featuredSlugs.has(s))) continue; // schon in einer Ausgabe vertreten
+      const title = `Kollektions-Platz: ${collection.title}`.slice(0, 200);
+      if (hatTitel(h.id, title)) continue;
+      const { error } = await admin.from("designer_opportunities" as never).insert({
+        designer_id: h.id, title, typ: "sonstiges", art: "kollektions_slot", match_score: 65,
+        warum: "Deine Werke sind noch in keiner Ausgabe vertreten — ein Platz ist frei.",
+        status: "gefunden",
+      } as never);
+      if (!error) { kollektionAngelegt++; merkeTitel(h.id, title); await schreibePartieZug(admin, h.id, `PAWN hat eine neue Tür gefunden: ${title}.`, "pawn", "tueren_finden"); }
+    }
+  }
+
+  return { presse: presseAngelegt, edition: editionAngelegt, edition_synced: editionSynced, kollektions_slot: kollektionAngelegt };
+}
+
+/** Schreibt das Ereignis, das AP5 (Ausspielkette) als Auslöser für ein Content-Paket liest. */
+async function tuerAngenommenEreignis(admin: SupabaseClient, designerId: string, title: string, art: string): Promise<void> {
+  try {
+    await admin.from("domain_events").insert({
+      id: crypto.randomUUID(),
+      type: "door.accepted",
+      actor: designerId,
+      payload: { designer_id: designerId, title, art },
+      schema_version: 1,
+    });
+  } catch { /* nie den Türen-Lauf daran scheitern lassen */ }
 }
 
 const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sichtbar bleibt. Falls du reinschauen magst: pawn.vision — die Teilnahme ist kostenlos, und Ausgabe 08 hat noch Platz. Melde dich gern, wann immer es für dich passt.`;
@@ -2841,16 +3089,155 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
   };
 }
 
+interface PostEntwurf { caption: string; hashtags: string[]; tokens: number }
+
 /**
- * verstaerker — Häuser tragen PAWN weiter. Jedes Haus mit einem fertigen Video, das noch
- * nicht geteilt wurde, bekommt einen Hinweis auf sein fertiges Teil-Paket in der Videothek.
- * Zone Grün: läuft still, kein Versand nach außen.
+ * Teil 38 AP5: ein kurzer, fertiger Beitragstext im Ton des Hauses — für frische Vorschläge
+ * in PAWNs Posting-Queue. Ohne KI-Zugriff ein einfacher, ehrlicher Text statt eines Fehlers
+ * (der Vorschlag landet trotzdem, nur schlichter formuliert).
  */
-async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unknown>> {
+async function erzeugePostEntwurf(
+  admin: SupabaseClient, apiKey: string,
+  haus: { brand_name: string; slug: string; brand_dna?: { worlds?: Record<string, number>; signals?: string[] } | null },
+  kontext: string,
+): Promise<PostEntwurf> {
+  const worlds = Object.keys(haus.brand_dna?.worlds ?? {});
+  const signale = (haus.brand_dna?.signals ?? []).slice(0, 4);
+  const fallback: PostEntwurf = {
+    caption: `${haus.brand_name} — ${kontext}. Mehr auf pawn.vision.`,
+    hashtags: ["#pawnvision", `#${haus.brand_name.replace(/\s+/g, "").toLowerCase()}`, ...(worlds[0] ? [`#${worlds[0].toLowerCase()}`] : [])],
+    tokens: 0,
+  };
+  if (!apiKey) return fallback;
+  const gesetze = DEFAULT_SPRACHGESETZE;
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const system = `Du schreibst für PAWN (pawn.vision) einen kurzen Instagram-Beitragstext für ein unabhängiges Designhaus. Höchstens 3 Sätze, Deutsch, im Ton des Hauses, ohne Übertreibung. Danach 3-5 passende Hashtags.
+
+SPRACHGESETZE (bindend):
+${gesetze}
+
+Stilgesetz: ${styleLaw}
+
+Antworte NUR mit JSON: {"caption": "...", "hashtags": ["#...", "#..."]}`;
+  const user = `Haus: ${haus.brand_name}. Welt(en): ${worlds.join(", ") || "unbekannt"}. Marken-Signale: ${signale.join(", ") || "keine erfasst"}. Anlass: ${kontext}. Link: https://pawn.vision/designer/${haus.slug}`;
+  const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 400);
+  let caption = typeof json?.caption === "string" ? json.caption.trim() : "";
+  if (caption && hatVerneinung(caption)) {
+    const fixed = await entverneinen(caption, gesetze);
+    caption = fixed.text;
+  }
+  const hashtags = Array.isArray(json?.hashtags) ? (json.hashtags as unknown[]).map(String).slice(0, 6) : fallback.hashtags;
+  return caption ? { caption, hashtags, tokens } : { ...fallback, tokens };
+}
+
+/**
+ * Teil 38 AP5 — Türen lösen ein Content-Paket aus: sobald ein Haus eine Tür als "angenommen"
+ * markiert (domain_events type='door.accepted', geschrieben von designer-opportunity-decide
+ * bzw. der Editions-Synchronisierung in tueren_finden), bereitet PAWN dazu 1 Video-Brief
+ * (Einladung, kein automatisches Rendern — Entwurfsprinzip) und 3 Beitrags-Entwürfe vor, die
+ * die Tür im Text nennen. Idempotenz über pawn_signals (kind='tuer_paket_erstellt', pattern
+ * trägt die event_id) statt einer neuen Tabelle — ein Ereignis wird nie zweimal verarbeitet.
+ */
+async function runTuerenEreignisVerarbeiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: events } = await admin.from("domain_events")
+    .select("id, actor, payload").eq("type", "door.accepted")
+    .order("created_at", { ascending: false }).limit(20);
+  let pakete = 0, uebersprungen = 0;
+
+  for (const ev of (events ?? []) as { id: string; actor: string; payload: { designer_id?: string; title?: string } }[]) {
+    const { data: schonVerarbeitet } = await admin.from("pawn_signals")
+      .select("id").eq("kind", "tuer_paket_erstellt").eq("pattern->>event_id", ev.id).limit(1);
+    if ((schonVerarbeitet ?? []).length) continue;
+
+    const designerId = ev.payload?.designer_id ?? ev.actor;
+    const tuerTitel = (ev.payload?.title ?? "eine angenommene Tür").slice(0, 120);
+    const { data: hausRow } = await admin.from("designers")
+      .select("id, user_id, brand_name, slug, brand_dna, hero_image_url, avatar_url").eq("id", designerId).maybeSingle();
+    const haus = hausRow as {
+      id: string; user_id: string | null; brand_name: string; slug: string;
+      brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
+      hero_image_url: string | null; avatar_url: string | null;
+    } | null;
+    if (!haus) { await schreibeSignal(admin, "pawn-jarvis", "tuer_paket_erstellt", { event_id: ev.id, status: "haus_fehlt" }); continue; }
+
+    const darfWeiter = await guardAiBudget(
+      admin, haus.id, haus.brand_name, "tuer_paket_uebersprungen",
+      "das Content-Paket zur angenommenen Tür entfällt diese Woche.",
+    );
+    if (!darfWeiter) {
+      uebersprungen++;
+      await schreibeSignal(admin, "pawn-jarvis", "tuer_paket_erstellt", { event_id: ev.id, status: "budget" });
+      continue;
+    }
+
+    if (haus.user_id) {
+      await admin.from("notifications").insert({
+        user_id: haus.user_id, type: "tuer.content_paket",
+        title: "Eine angenommene Tür wird zur Geschichte",
+        body: `„${tuerTitel}" ist angenommen — dreh dazu ein kurzes Video. PAWN hat schon drei Beitrags-Entwürfe dafür vorbereitet.`,
+        link: "/studio/kampagnen/neu",
+      });
+      await schreibePartieZug(admin, haus.id, `PAWN hat ein Content-Paket zu „${tuerTitel}" vorbereitet.`, "pawn", "tueren_finden");
+    }
+
+    const asset = haus.hero_image_url ?? haus.avatar_url;
+    let entwuerfeErstellt = 0;
+    if (asset) {
+      for (let i = 0; i < 3; i++) {
+        const entwurf = await erzeugePostEntwurf(admin, apiKey, haus, `„${tuerTitel}" wurde angenommen`);
+        const { data: campRow } = await admin.from("campaigns").insert({
+          designer_id: haus.id,
+          title: `${haus.brand_name} · Tür angenommen: ${tuerTitel}`.slice(0, 200),
+          kind: "post", status: "approved",
+          content: { asset_url: asset, caption: entwurf.caption, hashtags: entwurf.hashtags, door_event_id: ev.id, source: "tueren_finden" },
+        } as never).select("id").single();
+        if (campRow) {
+          await admin.from("posting_queue").insert({
+            campaign_id: (campRow as { id: string }).id, channel: "pawn_instagram",
+            scheduled_at: new Date().toISOString(), status: "vorschlag",
+          } as never);
+          entwuerfeErstellt++;
+        }
+        const cents = Math.round((entwurf.tokens / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2) * 100);
+        if (cents > 0) await bookAiSpend(admin, haus.id, cents);
+      }
+    }
+
+    await schreibeSignal(admin, "pawn-jarvis", "tuer_paket_erstellt", { event_id: ev.id, status: "erstellt", entwuerfe: entwuerfeErstellt });
+    pakete++;
+  }
+  return { tueren_pakete: pakete, tueren_uebersprungen: uebersprungen };
+}
+
+/**
+ * verstaerker — Häuser tragen PAWN weiter, UND PAWNs eigener Kanal bekommt echten Nachschub.
+ * Zone Grün: läuft still, kein Versand nach außen — jeder Beitrag landet als "vorschlag" in
+ * der Posting-Queue und wartet auf die bestehende Admin-Freigabe (AdminPosting.tsx).
+ *
+ * Teil 38 AP5 — Root-Cause der leeren posting_queue: es gab schlicht keinen Organ, der aus
+ * gesammeltem Material (video_assets) tatsächlich Warteschlangen-Einträge macht. Der einzige
+ * bestehende Schreibpfad war entweder der DB-Trigger enqueue_campaign_post() (nur wenn ein Haus
+ * seine SELBST erstellte Kampagne manuell in StudioCampaigns.tsx freigibt) oder die Maison-only
+ * Nachtrag-Logik in runMaisonSichtbarkeitszug. signalstrom_verdichten schreibt nur einen Bericht
+ * und Signale — es hat NIE in posting_queue geschrieben, trotz des Namens "Verdichten→Queue" im
+ * Auftrag. Diese Funktion schließt die Lücke: (1) Nachtrag für ALLE Pläne statt nur Maison,
+ * (2) frische Beitrags-Entwürfe direkt aus kampagnenlosen, freigegebenen Video-Assets, (3) das
+ * Tür-Ereignis-Paket aus AP3, (4) Warteschlangen-Hygiene (alte Vorschläge verfallen).
+ */
+async function runVerstaerker(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  // (4) Hygiene zuerst: Vorschläge, über die 30 Tage lang nicht entschieden wurde, verfallen
+  // still (status 'cancelled') statt sich endlos in der Vorschlagsliste zu stapeln.
+  const verfallsgrenze = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { data: verfallen } = await admin.from("posting_queue")
+    .update({ status: "cancelled" } as never)
+    .eq("status", "vorschlag").lt("created_at", verfallsgrenze)
+    .select("id");
+  const verfallenN = (verfallen ?? []).length;
+
   const { data: kanal } = await admin.from("growth_channels")
     .select("enabled, daily_cap").eq("key", "verstaerker").maybeSingle();
   const channel = kanal as { enabled: boolean; daily_cap: number } | null;
-  if (channel && channel.enabled === false) return { ok: true, angestupst: 0, message: "Verstärker ist ausgeschaltet." };
+  if (channel && channel.enabled === false) return { ok: true, angestupst: 0, verfallen: verfallenN, message: "Verstärker ist ausgeschaltet." };
   const cap = channel?.daily_cap ?? 20;
 
   const seit = new Date(Date.now() - 14 * 86_400_000).toISOString();
@@ -2884,28 +3271,87 @@ async function runVerstaerker(admin: SupabaseClient): Promise<Record<string, unk
     });
     angestupst++;
   }
-  return { ok: true, angestupst };
+
+  // (1) Nachtrag für ALLE Pläne (vorher: nur runMaisonSichtbarkeitszug, nur Maison) — freigegebene
+  // Video-Kampagnen mit Asset, die noch keinen Warteschlangen-Eintrag haben.
+  let nachgetragen = 0;
+  const { data: approvedCampaigns } = await admin.from("campaigns")
+    .select("id, content").eq("status", "approved").eq("kind", "video")
+    .order("updated_at", { ascending: false }).limit(300);
+  const withAsset = ((approvedCampaigns ?? []) as { id: string; content: { asset_url?: string } | null }[])
+    .filter((c) => !!c.content?.asset_url);
+  if (withAsset.length) {
+    const { data: queued } = await admin.from("posting_queue").select("campaign_id").in("campaign_id", withAsset.map((c) => c.id));
+    const queuedIds = new Set(((queued ?? []) as { campaign_id: string }[]).map((r) => r.campaign_id));
+    const missing = withAsset.filter((c) => !queuedIds.has(c.id)).slice(0, 15);
+    for (const c of missing) {
+      const { error } = await admin.from("posting_queue").insert({
+        campaign_id: c.id, channel: "pawn_instagram", scheduled_at: new Date().toISOString(), status: "vorschlag",
+      } as never);
+      if (!error) nachgetragen++;
+    }
+  }
+
+  // (2) Frische Beitrags-Entwürfe direkt aus kampagnenlosen, freigegebenen Video-Assets — die
+  // eigentliche "Sammeln→Verdichten→Queue"-Lücke aus dem Auftrag. Bewusst wenige (max. 3 je
+  // Lauf): "wenige, starke Beiträge statt Massenposting" (Teil 16c), nicht jedes Video wird sofort verpackt.
+  let frischeEntwuerfe = 0;
+  const FRISCHE_ENTWUERFE_MAX = 3;
+  const { data: freieAssets } = await admin.from("video_assets")
+    .select("id, designer_id, url, campaign_id").is("campaign_id", null).eq("rights_granted", true)
+    .gte("created_at", seit).order("created_at", { ascending: false }).limit(20);
+  for (const asset of (freieAssets ?? []) as { id: string; designer_id: string | null; url: string }[]) {
+    if (frischeEntwuerfe >= FRISCHE_ENTWUERFE_MAX) break;
+    if (!asset.designer_id) continue;
+    // Idempotenz: dieses Video schon einmal als Kampagne verpackt?
+    const { data: bereitsVerpackt } = await admin.from("campaigns")
+      .select("id").eq("content->>video_asset_id", asset.id).limit(1);
+    if ((bereitsVerpackt ?? []).length) continue;
+
+    const { data: hausRow } = await admin.from("designers")
+      .select("id, brand_name, slug, brand_dna").eq("id", asset.designer_id).maybeSingle();
+    const haus = hausRow as { id: string; brand_name: string; slug: string; brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null } | null;
+    if (!haus) continue;
+    const darfWeiter = await guardAiBudget(
+      admin, haus.id, haus.brand_name, "verstaerker_entwurf_uebersprungen",
+      "der Beitrags-Entwurf für ein neues Video entfällt diese Woche.",
+    );
+    if (!darfWeiter) continue;
+
+    const entwurf = await erzeugePostEntwurf(admin, apiKey, haus, "ein neues Video ist fertig");
+    const { data: campRow } = await admin.from("campaigns").insert({
+      designer_id: haus.id, title: `${haus.brand_name} · Beitrags-Vorschlag von PAWN`, kind: "video", status: "approved",
+      content: { asset_url: asset.url, caption: entwurf.caption, hashtags: entwurf.hashtags, video_asset_id: asset.id, source: "verstaerker" },
+    } as never).select("id").single();
+    if (campRow) {
+      await admin.from("posting_queue").insert({
+        campaign_id: (campRow as { id: string }).id, channel: "pawn_instagram",
+        scheduled_at: new Date().toISOString(), status: "vorschlag",
+      } as never);
+      frischeEntwuerfe++;
+    }
+    const cents = Math.round((entwurf.tokens / 1_000_000) * ((PRICE_PER_MTOK_INPUT + PRICE_PER_MTOK_OUTPUT) / 2) * 100);
+    if (cents > 0) await bookAiSpend(admin, haus.id, cents);
+  }
+
+  // (3) Türen aus AP3, die als "angenommen" markiert wurden, lösen ihr eigenes Content-Paket aus.
+  const tuerErgebnis = await runTuerenEreignisVerarbeiten(admin, apiKey);
+
+  return { ok: true, angestupst, verfallen: verfallenN, nachgetragen, frische_entwuerfe: frischeEntwuerfe, ...tuerErgebnis };
 }
 
-// --- Teil 38 AP6: das wöchentliche Organ-Framework pro Haus ------------------------------------
-// Diese Funktion war Teil 37/AP4s "Sichtbarkeits-Zug" für Maison-Häuser (immer alle Häuser,
-// immer dasselbe Bündel). Teil 38 AP6 baut sie zum generalisierten Organ-Läufer aus, statt eine
-// parallele Struktur zu erfinden (Reuse-Prinzip: gleicher Modus-Name, gleicher Cron-Slot, keine
-// neue Verdrahtung nötig) — vier Organe, jedes über die bestehende Automatik-Matrix
-// (designer_automations) einzeln schaltbar:
-//  - sichtbarkeitszug: das bisherige Bündel (Presse-Entwurf + Queue-Nachtrag), unverändert,
-//    standardmäßig AN (Zeile fehlt = an, damit sich am bestehenden Maison-Haus nichts ändert).
-//  - presse: derselbe Presse-Entwurf allein, für Häuser die NUR das wollen (kein Doppel-Pitch,
-//    wenn sichtbarkeitszug bereits an ist).
-//  - verstaerker_haus: ein zusätzliches, hausgebundenes Beitrags-Kontingent (ergänzt, ersetzt
-//    nicht, den plattformweiten Basis-Lauf aus Teil 38 AP5).
-//  - impuls: bleibt die kostenlose, plattformweite Automatik aus Teil 38 AP2 (wochenimpuls) —
-//    hier nur informativ gelistet, keine eigene Ausführung an dieser Stelle.
-// Presse-Pitch-Stil aus runPresseVerfassen (hier auf ein Haus statt auf einen einzelnen
-// Lead-Kontakt zugeschnitten). Nichts wird automatisch veröffentlicht — jedes Ergebnis landet als
-// Benachrichtigung/Entwurf, den das Haus selbst nutzt, oder als posting_queue-"vorschlag" in der
-// bestehenden admin-kuratierten Prüfung. Budget wird je Haus vor jeder KI-Erzeugung per
-// guardAiBudget vorgeprüft; ist ein Haus bereits über dem Monatslimit, wird es übersprungen und
+// --- AP4: der wöchentliche Sichtbarkeits-Zug für Maison-Häuser --------------------------------
+// Nutzt zwei bestehende Bausteine, statt neue zu erfinden: den Presse-Pitch-Stil aus
+// runPresseVerfassen (hier auf ein Haus statt auf einen einzelnen Lead-Kontakt zugeschnitten) und
+// die echte posting_queue-Schreiblogik — die liegt im DB-Trigger enqueue_campaign_post(), der bei
+// jeder freigegebenen Video-Kampagne automatisch einen "vorschlag"-Eintrag anlegt (seit Teil 38
+// AP5 tut runVerstaerker das für ALLE Pläne ebenfalls, siehe dort). Dieser Lauf holt zusätzlich
+// Maison-Häuser mit älteren, freigegebenen Video-Kampagnen ohne Warteschlangen-Eintrag nach
+// (gleiche Zeilenform wie der Trigger), statt diese Logik zu duplizieren. Der Presse-Entwurf landet als Benachrichtigung
+// im Studio des Hauses — sein eigenes Dashboard —, die posting_queue-Vorschläge landen wie gehabt
+// in der bestehenden admin-kuratierten Prüfung (kampagnen_regie/AdminPosting.tsx). Nichts wird
+// automatisch veröffentlicht. Budget wird je Haus vor der KI-Erzeugung per book_ai_spend
+// vorgeprüft (0-Cent-Anfrage); ist ein Haus bereits über dem Monatslimit, wird es übersprungen und
 // eine jarvis_notices-Zeile hinterlässt die Spur.
 async function runMaisonSichtbarkeitszug(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: houses } = await admin.from("designers")
@@ -3718,7 +4164,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug",
+      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -3735,7 +4181,7 @@ Deno.serve(async (req) => {
       "presse_jagd", "presse_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
-      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug",
+      "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
     ];
     const cronSecret = Deno.env.get("JARVIS_CRON_SECRET");
     const isCronSecretCaller = !!cronSecret && typeof body.secret === "string" && body.secret === cronSecret;
@@ -3907,7 +4353,15 @@ Deno.serve(async (req) => {
 
     const trigger = body.trigger === "cron" ? "cron" : "manual";
     const prompt = typeof body.prompt === "string" ? body.prompt : undefined;
-    const asCaller = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader! } } });
+    // Cron-ausgelöste Läufe (wissen, zeitgeist, morgenbericht, …) haben keinen echten Nutzer-JWT
+    // im Authorization-Header — asCaller mit einem leeren Header hätte jeden pawn_action-Aufruf
+    // (Zone Grün/Gelb, z.B. upsert_ontology_term) stumm mit 403 scheitern lassen, weil pawn-actions
+    // requireAdmin() über einen echten Nutzer verlangt. Ohne echten Nutzer läuft der Aufruf mit dem
+    // Service-Role-Schlüssel selbst — pawn-actions erkennt das (Rolle "service_role" im JWT) und
+    // erlaubt es nur für source:"system", nie für admin_chat.
+    const asCaller = authHeader
+      ? createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } })
+      : createClient(url, serviceKey, { auth: { persistSession: false } });
 
     if (mode === "diagnose") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
@@ -3980,11 +4434,12 @@ Deno.serve(async (req) => {
         || mode === "akquise_dm_vorbereiten"
         || mode === "presse_jagd" || mode === "presse_verfassen"
         || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau" || mode === "tueren_finden"
-        || mode === "maison_sichtbarkeitszug") {
+        || mode === "maison_sichtbarkeitszug" || mode === "wissen_wirtschaft") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
 
       const result = mode === "wissen_markenaufbau" ? await runMarkenaufbauWissen(admin, apiKey)
+        : mode === "wissen_wirtschaft" ? await runWissenWirtschaft(admin, apiKey)
         : mode === "tueren_finden" ? await runTuerenFinden(admin, apiKey)
         : mode === "maison_sichtbarkeitszug" ? await runMaisonSichtbarkeitszug(admin, apiKey)
         : mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
@@ -3993,11 +4448,13 @@ Deno.serve(async (req) => {
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
         : mode === "akquise_zyklus" ? await runAkquiseZyklus(admin, apiKey)
-        : mode === "verstaerker" ? await runVerstaerker(admin)
+        : mode === "verstaerker" ? await runVerstaerker(admin, apiKey)
         : await runBewerbungPruefen(admin, apiKey);
 
       const summary = mode === "wissen_markenaufbau"
         ? `Markenaufbau-Wissen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Bausteine als Entwurf`
+        : mode === "wissen_wirtschaft"
+        ? `Wirtschafts-Wissen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Bausteine als Entwurf`
         : mode === "tueren_finden"
         ? `Offene Türen: ${(result as { angelegt?: number }).angelegt ?? 0} neue Türen bei ${(result as { processed?: number }).processed ?? 0} geprüften Häusern`
         : mode === "maison_sichtbarkeitszug"

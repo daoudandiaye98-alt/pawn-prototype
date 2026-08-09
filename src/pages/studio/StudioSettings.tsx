@@ -7,8 +7,8 @@ import { formatDate } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
+import { planLabel, type Plan } from "@/features/campaign/quota";
 
-const PLAN_LABEL: Record<string, string> = { haus: "Haus", atelier: "Atelier", maison: "Maison" };
 
 interface BrandDna {
   worlds?: Record<string, number>;
@@ -127,7 +127,7 @@ export default function StudioSettings() {
           paymentSlot={
             <div className="space-y-4">
               <p className="text-sm text-black/70">
-                {t("studio.settings.payment.planPrefix")} <strong>{PLAN_LABEL[designer.plan] ?? designer.plan}</strong> ·{" "}
+                {t("studio.settings.payment.planPrefix")} <strong>{planLabel(designer.plan as Plan)}</strong> ·{" "}
                 {designer.stripe_charges_enabled ? t("studio.settings.payment.connectedActive") : t("studio.settings.payment.connectedInactive")}.
               </p>
               <div className="flex flex-wrap gap-3">
