@@ -2595,10 +2595,24 @@ async function runAkquiseBilderSpiegeln(admin: SupabaseClient, nurLeadIds?: stri
     .not("scrape_images", "is", null)
     .not("ref_code", "is", null);
   if (nurLeadIds?.length) query = query.in("id", nurLeadIds);
-  const { data: leads } = await query.order("created_at", { ascending: false }).limit(PLATTE_BATCH);
+  const { data: leads } = await query.order("created_at", { ascending: false }).limit(200);
 
-  const rows = (leads ?? []) as { id: string; handle: string; ref_code: string; scrape_images: unknown; recherche_log: unknown; created_at: string }[];
-  if (!rows.length) return { ok: true, platten: 0, zu_wenig: 0, fehlgeschlagen: 0, geprueft: 0, details: ["Nichts zu spiegeln."] };
+  const alleRows = (leads ?? []) as { id: string; handle: string; ref_code: string; scrape_images: unknown; recherche_log: unknown; created_at: string }[];
+  const hatBilder = (l: { scrape_images: unknown }) =>
+    Array.isArray(l.scrape_images) && l.scrape_images.some((u) => typeof u === "string" && u.startsWith("http"));
+
+  // Leads ganz ohne Bildadressen kosten keine Ladezeit — sie werden gebündelt abgehakt,
+  // damit die Warteschlange nicht von leeren Einträgen verstopft wird.
+  const leere = alleRows.filter((l) => !hatBilder(l)).slice(0, 100);
+  if (leere.length) {
+    await admin.from("acquisition_leads").update({ plate_status: "zu_wenig_material" } as never)
+      .in("id", leere.map((l) => l.id));
+    details.push(`${leere.length} Leads ohne Bildadressen abgehakt.`);
+  }
+
+  const rows = alleRows.filter(hatBilder).slice(0, PLATTE_BATCH);
+  if (!rows.length) return { ok: true, platten: 0, zu_wenig: leere.length, fehlgeschlagen: 0, geprueft: 0, details: details.length ? details : ["Nichts zu spiegeln."] };
+
 
   // Plattennummer fortlaufend und stabil: einmal vergeben, nie neu berechnet.
   const { data: maxRow } = await admin
