@@ -1796,7 +1796,8 @@ const FREEMAIL_DOMAINS = new Set([
   "yahoo.com", "yahoo.de", "yahoo.fr", "yahoo.co.uk", "ymail.com",
   "outlook.com", "outlook.de", "outlook.fr", "msn.com",
   "icloud.com", "me.com", "mac.com", "aol.com",
-  "proton.me", "protonmail.com", "pm.me", "mail.com", "t-online.de", "freenet.de", "posteo.de",
+  "proton.me", "protonmail.com", "pm.me", "mail.com", "mail.de", "t-online.de", "freenet.de", "posteo.de",
+  "live.co.uk", "live.fr", "laposte.net", "orange.fr", "free.fr", "wanadoo.fr", "seznam.cz",
 ]);
 
 /** Kleinschreibung, Trennzeichen weg — 'Amina.Saada' und 'amina_saada' sind dasselbe. */
