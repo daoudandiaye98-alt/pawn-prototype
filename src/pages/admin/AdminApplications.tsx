@@ -12,6 +12,14 @@ import { Loader2, X, Check, FileText, Archive, Ban } from "lucide-react";
 
 type Status = "all" | "submitted" | "in_review" | "approved" | "rejected" | "archived";
 
+interface AiReviewSummary {
+  score?: number;
+  empfehlung?: "aufnehmen" | "ablehnen" | "rueckfragen" | string;
+  begruendung?: string;
+  antwortentwurf?: string;
+  hinweis?: string;
+}
+
 interface Application {
   id: string;
   user_id: string;
@@ -30,7 +38,28 @@ interface Application {
   reviewed_at: string | null;
   admin_notes: string | null;
   rejection_reason: string | null;
+  ai_review_summary: AiReviewSummary | null;
   created_at: string;
+}
+
+// PART 40 WP6 "Das Annahme-Flywheel" — Antwortfrist 48h ab Einreichung.
+const ANTWORTFRIST_MS = 48 * 60 * 60 * 1000;
+const EMPFEHLUNG_RANK: Record<string, number> = { aufnehmen: 0, rueckfragen: 1, ablehnen: 2 };
+const EMPFEHLUNG_LABEL: Record<string, string> = {
+  aufnehmen: "Aufnehmen",
+  rueckfragen: "Rückfragen",
+  ablehnen: "Ablehnen",
+};
+
+function antwortFaellig(app: Application, now: number): { text: string; overdue: boolean } | null {
+  if (app.status !== "submitted" && app.status !== "in_review") return null;
+  if (!app.submitted_at) return null;
+  const diff = new Date(app.submitted_at).getTime() + ANTWORTFRIST_MS - now;
+  const overdue = diff <= 0;
+  const abs = Math.abs(diff);
+  const hh = String(Math.floor(abs / 3_600_000)).padStart(2, "0");
+  const mm = String(Math.floor((abs % 3_600_000) / 60_000)).padStart(2, "0");
+  return { text: overdue ? `überfällig seit ${hh}:${mm}` : `fällig in ${hh}:${mm}`, overdue };
 }
 
 const TABS: { key: Status; label: string }[] = [
@@ -48,6 +77,12 @@ function AdminApplicationsBody() {
   const [rows, setRows] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Application | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -80,6 +115,19 @@ function AdminApplicationsBody() {
     rows.forEach((r) => { m[r.status] = (m[r.status] ?? 0) + 1; });
     return m;
   }, [rows]);
+
+  // PART 40 WP6: leicht zu entscheidende Fälle (KI empfiehlt "aufnehmen") und die am längsten
+  // wartenden zuerst — damit die 48h-Frist realistisch einzuhalten ist.
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const ra = EMPFEHLUNG_RANK[a.ai_review_summary?.empfehlung ?? ""] ?? 1.5;
+      const rb = EMPFEHLUNG_RANK[b.ai_review_summary?.empfehlung ?? ""] ?? 1.5;
+      if (ra !== rb) return ra - rb;
+      const ta = a.submitted_at ? new Date(a.submitted_at).getTime() : Infinity;
+      const tb = b.submitted_at ? new Date(b.submitted_at).getTime() : Infinity;
+      return ta - tb;
+    });
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
@@ -126,27 +174,36 @@ function AdminApplicationsBody() {
               <tr>
                 <th className="px-4 py-3">Brand</th>
                 <th className="px-4 py-3 hidden md:table-cell">Ort</th>
-                <th className="px-4 py-3 hidden lg:table-cell">Tags</th>
+                <th className="px-4 py-3 hidden lg:table-cell">KI-Einschätzung</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 hidden md:table-cell">Eingereicht</th>
+                <th className="px-4 py-3 hidden md:table-cell">Antwort fällig</th>
                 <th className="px-4 py-3 text-right">Aktion</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
+              {sorted.map((r) => {
+                const frist = antwortFaellig(r, now);
+                const ki = r.ai_review_summary?.empfehlung ? EMPFEHLUNG_LABEL[r.ai_review_summary.empfehlung] ?? r.ai_review_summary.empfehlung : null;
+                return (
                 <tr key={r.id} className="border-b border-border last:border-0 hover:bg-secondary/30">
                   <td className="px-4 py-3 font-medium">{r.brand_name}</td>
                   <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
                     {[r.location, r.country].filter(Boolean).join(", ")}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">
-                    {(r.tags ?? []).slice(0, 3).join(" · ")}
+                    {ki ? `${ki}${typeof r.ai_review_summary?.score === "number" ? ` · ${r.ai_review_summary.score}` : ""}` : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <StatusPill status={r.status} />
                   </td>
-                  <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
-                    {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString("de-DE") : "—"}
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {frist ? (
+                      <span className={frist.overdue ? "font-medium text-destructive" : "text-muted-foreground"}>
+                        {frist.text}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
@@ -157,7 +214,8 @@ function AdminApplicationsBody() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           </div>
@@ -304,6 +362,24 @@ function DetailDrawer({ app, onClose, onChange }: { app: Application; onClose: (
         </header>
 
         <div className="space-y-8 p-6">
+          {app.ai_review_summary?.empfehlung && (
+            <section className="border border-border bg-secondary/20 p-4">
+              <p className="editorial-eyebrow mb-2">
+                KI-Gutachten · {EMPFEHLUNG_LABEL[app.ai_review_summary.empfehlung] ?? app.ai_review_summary.empfehlung}
+                {typeof app.ai_review_summary.score === "number" && ` · ${app.ai_review_summary.score}/100`}
+              </p>
+              {app.ai_review_summary.begruendung && (
+                <p className="text-sm text-foreground/80">{app.ai_review_summary.begruendung}</p>
+              )}
+              {app.ai_review_summary.antwortentwurf && (
+                <div className="mt-3 border-t border-border pt-3">
+                  <p className="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">Entwurf einer Antwort</p>
+                  <p className="mt-1 whitespace-pre-line text-sm text-foreground/70">{app.ai_review_summary.antwortentwurf}</p>
+                </div>
+              )}
+            </section>
+          )}
+
           <section>
             <p className="editorial-eyebrow mb-3">Portfolio</p>
             {portfolioUrls.length === 0 ? (
