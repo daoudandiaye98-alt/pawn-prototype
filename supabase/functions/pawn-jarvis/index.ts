@@ -1822,20 +1822,33 @@ function pruefeEmailPlausibilitaet(
 
   if (siteDomain && mailDomain === siteDomain) return { ok: true, grund: "domain_gleich" };
 
-  const freemail = FREEMAIL_DOMAINS.has(mailDomain);
-  if (freemail) {
-    const l = normalisiereKennung(lokal);
-    const kennungen = [handle, name ?? "", siteDomain.split(".")[0] ?? ""]
-      .map(normalisiereKennung).filter((k) => k.length >= 3);
-    const passt = kennungen.some((k) => l === k || l.includes(k) || k.includes(l));
-    return passt
+  // Kennungen der Marke: Handle, Name, Domain-Stamm — jeweils ganz und in Wortteilen,
+  // damit 'crafted_by_maruf' zu 'marufmahfuz07@' passt.
+  const kennungen: string[] = [];
+  for (const roh of [handle, name ?? "", siteDomain.split(".")[0] ?? ""]) {
+    const ganz = normalisiereKennung(roh);
+    if (ganz.length >= 3) kennungen.push(ganz);
+    for (const teil of (roh || "").split(/[^A-Za-z0-9]+/)) {
+      const t = normalisiereKennung(teil);
+      if (t.length >= 4) kennungen.push(t);
+    }
+  }
+  const passtZu = (wert: string): boolean => {
+    const w = normalisiereKennung(wert);
+    if (w.length < 3) return false;
+    return kennungen.some((k) => w === k || w.includes(k) || k.includes(w));
+  };
+
+  if (FREEMAIL_DOMAINS.has(mailDomain)) {
+    return passtZu(lokal)
       ? { ok: true, grund: "freemail_kennung_passt" }
       : { ok: false, grund: "freemail_fremde_kennung" };
   }
 
-  // Eigene Domain ohne bekannte Website: die Adresse selbst ist die Spur — plausibel,
-  // sofern die Kennung passt oder gar keine Website zum Vergleich vorliegt.
+  // Eigene Domain ohne bekannte Website: die Adresse selbst ist die Spur.
   if (!siteDomain) return { ok: true, grund: "ohne_website_eigene_domain" };
+  // Eigene Marken-Domain neben der Website (annikavogler.de zu annikavoglerkeramik.com).
+  if (passtZu(mailDomain.split(".")[0])) return { ok: true, grund: "marken_domain_passt" };
   return { ok: false, grund: "fremde_domain" };
 }
 
