@@ -20,6 +20,7 @@ import {
   Clapperboard,
   Layers,
   Menu,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -32,6 +33,7 @@ const ITEMS = [
   { to: "/admin/nachrichten", label: "Nachrichten", icon: FileSignature },
   { to: "/admin/designers", label: "Bewerbungen", icon: FileSignature },
   { to: "/admin/akquise", label: "Akquise", icon: UserPlus },
+  { to: "/admin/feldzug", label: "Feldzug", icon: Send },
   { to: "/admin/wachstum", label: "Wachstum", icon: Radar },
   { to: "/admin/texte-bilder", label: "Texte & Bilder", icon: Newspaper },
   { to: "/admin/werbung", label: "Werbung", icon: Megaphone },

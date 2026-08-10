@@ -90,6 +90,7 @@ import AdminApplications from "./pages/admin/AdminApplications.tsx";
 import AdminKI from "./pages/admin/AdminKI.tsx";
 import AdminTrends from "./pages/admin/AdminTrends.tsx";
 import AdminAkquise from "./pages/admin/AdminAkquise.tsx";
+import AdminFeldzug from "./pages/admin/AdminFeldzug.tsx";
 import AdminWachstum from "./pages/admin/AdminWachstum.tsx";
 import AdminJarvis from "./pages/admin/AdminJarvis.tsx";
 import AdminArchiv from "./pages/admin/AdminArchiv.tsx";
@@ -185,6 +186,7 @@ const App = () => (
                 <Route path="/admin/ki" element={<RoleGate role="admin"><AdminKI /></RoleGate>} />
                 <Route path="/admin/trends" element={<RoleGate role="admin"><AdminTrends /></RoleGate>} />
                 <Route path="/admin/akquise" element={<RoleGate role="admin"><AdminAkquise /></RoleGate>} />
+                <Route path="/admin/feldzug" element={<RoleGate role="admin"><AdminFeldzug /></RoleGate>} />
                 <Route path="/admin/wachstum" element={<RoleGate role="admin"><AdminWachstum /></RoleGate>} />
                 <Route path="/admin/jarvis" element={<RoleGate role="admin"><AdminJarvis /></RoleGate>} />
                 <Route path="/admin/nachrichten" element={<RoleGate role="admin"><AdminMessages /></RoleGate>} />
