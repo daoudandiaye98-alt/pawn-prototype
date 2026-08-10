@@ -1745,14 +1745,20 @@ function extractEmailsFromHtml(html: string): string[] {
  */
 async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
+  const MAX_VERSUCHE = 3;
+  // WP4 "Die ersten Fünfzig" — Idempotenz: ein Lead wird nicht bei jedem Zeitplan-Tick erneut
+  // angefasst, nur weil er noch unter dem Versuchslimit liegt. recherche_attempted_at (WP1) hält
+  // den letzten Versuch fest; erst nach 6 Stunden Ruhe kommt derselbe Lead wieder dran.
+  const kuehlzeit = new Date(Date.now() - 6 * 60 * 60_000).toISOString();
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, website, bio, contact_attempts")
     .in("status", ["neu", "qualifiziert", "angewaermt"])
     .is("email", null).eq("opt_out", false)
-    .lt("contact_attempts", 3)
+    .lt("contact_attempts", MAX_VERSUCHE)
+    .or(`recherche_attempted_at.is.null,recherche_attempted_at.lt.${kuehlzeit}`)
     .order("contact_attempts", { ascending: true })
     .order("kurator_score", { ascending: false, nullsFirst: false })
-    .limit(Math.min(config.batch_kontakt, 8));
+    .limit(Math.min(config.batch_kontakt, 10));
 
   // Zeitbudget: ein Lauf bleibt unter der Grenze der Laufzeitumgebung, der Rest kommt beim nächsten.
   const deadline = Date.now() + 55_000;
@@ -1760,7 +1766,7 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
   const formPaths = ["/kontakt", "/contact", "/pages/contact"];
   const linkAggregator = /(linktr\.ee|beacons\.ai|linkin\.bio|bio\.link|milkshake\.app|taplink|komi\.io|solo\.to)/i;
   const fremd = /(instagram|facebook|tiktok|youtube|pinterest|twitter|x\.com|spotify|apple|google|cdn|gstatic|etsy|amazon|paypal|whatsapp)/i;
-  let found = 0, checked = 0, formulare = 0, viaSuche = 0;
+  let found = 0, checked = 0, formulare = 0, viaSuche = 0, blockiert = 0;
 
   async function fetchHtml(url: string): Promise<string | null> {
     try {
@@ -1812,9 +1818,16 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       if (start) viaSuche++;
     }
     if (!start) {
-      await admin.from("acquisition_leads").update({
-        contact_attempts: lead.contact_attempts + 1, contact_channel: "dm", updated_at: new Date().toISOString(),
-      }).eq("id", lead.id);
+      const versuche = lead.contact_attempts + 1;
+      const patch: Record<string, unknown> = {
+        contact_attempts: versuche, contact_channel: "dm",
+        recherche_attempted_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      };
+      // Erschöpft und kein Instagram-Handle als Rückfallebene (heute selten, da fast alle Leads
+      // aus Instagram-Jagden stammen — greift vor allem für künftige nicht-Instagram-Quellen):
+      // ohne E-Mail und ohne DM-Weg ist der Lead wirklich ein Sackgasse-Fall.
+      if (versuche >= MAX_VERSUCHE && !lead.handle) { patch.blocked_reason = "keine_email_gefunden"; blockiert++; }
+      await admin.from("acquisition_leads").update(patch).eq("id", lead.id);
       continue;
     }
 
@@ -1855,9 +1868,11 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       if (email && formular) break;
     }
 
+    const versuche = lead.contact_attempts + 1;
     const patch: Record<string, unknown> = {
       website: base.origin,
-      contact_attempts: lead.contact_attempts + 1,
+      contact_attempts: versuche,
+      recherche_attempted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
     if (email) {
@@ -1868,10 +1883,11 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       formulare++;
     } else {
       patch.contact_channel = "dm";
+      if (versuche >= MAX_VERSUCHE && !lead.handle) { patch.blocked_reason = "keine_email_gefunden"; blockiert++; }
     }
     await admin.from("acquisition_leads").update(patch).eq("id", lead.id);
   }
-  return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche };
+  return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche, blockiert };
 }
 
 
@@ -4459,7 +4475,7 @@ Deno.serve(async (req) => {
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { angereichert?: number }).angereichert ?? 0} angereichert`
         : mode === "akquise_kontakt"
-          ? `Kontaktsuche: ${(result as { gefunden?: number }).gefunden ?? 0} Adressen bei ${(result as { geprueft?: number }).geprueft ?? 0} Häusern`
+          ? `Kontaktsuche: ${(result as { gefunden?: number }).gefunden ?? 0} Adressen bei ${(result as { geprueft?: number }).geprueft ?? 0} Häusern${(result as { blockiert?: number }).blockiert ? `, ${(result as { blockiert?: number }).blockiert} blockiert (keine E-Mail, kein DM-Weg)` : ""}`
           : mode === "akquise_profile"
             ? `Profil-Anreicherung: ${(result as { gestartet?: number }).gestartet ?? 0} Lauf/Läufe gestartet`
             : `Versand: ${(result as { message?: string }).message ?? JSON.stringify(result)}`;
