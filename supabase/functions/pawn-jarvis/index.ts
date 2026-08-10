@@ -1915,7 +1915,7 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
   const MAX_VERSUCHE = 3;
   const kuehlzeit = new Date(Date.now() - 6 * 60 * 60_000).toISOString();
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, website, bio, contact_attempts")
+    .select("id, handle, website, bio, contact_attempts, contact_name, lead_type")
     .in("status", ["neu", "qualifiziert", "angewaermt"])
     .is("email", null).eq("opt_out", false)
     .lt("contact_attempts", MAX_VERSUCHE)
@@ -1984,7 +1984,11 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
     return /type=["']?email/i.test(html) || /name=["'][^"']*email[^"']*["']/i.test(html) || /action=["'][^"']*\/contact/i.test(html);
   }
 
-  for (const lead of (leads ?? []) as { id: string; handle: string; website: string | null; bio: string | null; contact_attempts: number }[]) {
+  let unplausibel = 0;
+  for (const lead of (leads ?? []) as {
+    id: string; handle: string; website: string | null; bio: string | null;
+    contact_attempts: number; contact_name: string | null; lead_type: string | null;
+  }[]) {
     if (Date.now() > deadline) break;
     checked++;
     const quelle = "website";
@@ -2008,9 +2012,16 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
     // Bio zuerst — manche schreiben ihre Adresse direkt hinein.
     const ausBio = lead.bio ? pickBestEmail(extractEmailsFromHtml(lead.bio), "") : null;
     if (ausBio) {
-      log.push({ quelle: "bio", fund: "email" });
-      await abschluss({ email: ausBio, channel: "email", contact_channel: "email", contact_source: "bio" });
-      found++;
+      const p = pruefeEmailPlausibilitaet(ausBio, lead.website, lead.handle, lead.contact_name);
+      if (p.ok) {
+        log.push({ quelle: "bio", fund: "email", plausibel: p.grund });
+        await abschluss({ email: ausBio, channel: "email", contact_channel: "email", contact_source: "bio" });
+        found++;
+        continue;
+      }
+      log.push({ quelle: "bio", verworfen: ausBio, grund: p.grund });
+      unplausibel++;
+      await abschluss({ channel: "dm", contact_channel: "dm" }, "kontakt_unplausibel");
       continue;
     }
 
@@ -2104,12 +2115,29 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
 
     // Pfad erhalten, wenn die Spur erst im Pfad steckt (Sammelseiten mit eigenem Unterweg).
     const websiteWert = base.pathname.replace(/\/+$/, "") ? base.toString() : base.origin;
+
+    // Teil 42: erst prüfen, ob der Fund zur Marke gehört. Eine fremde Redaktionsadresse
+    // kostet Absenderruf — der Lead wird dann ehrlich zum DM-Fall.
+    let verworfen: string | null = null;
+    if (email) {
+      const p = pruefeEmailPlausibilitaet(email, websiteWert, lead.handle, lead.contact_name);
+      log.push({ pruefung: "email", wert: email, plausibel: p.ok, grund: p.grund });
+      if (!p.ok) { verworfen = email; email = null; }
+    }
+    if (formular && registrableDomain(formular) !== registrableDomain(websiteWert)) {
+      log.push({ pruefung: "formular", wert: formular, plausibel: false, grund: "fremde_domain" });
+      formular = null;
+    }
+
     if (email) {
       await abschluss({ website: websiteWert, email, channel: "email", contact_channel: "email", contact_source: quelle });
       found++;
     } else if (formular) {
       await abschluss({ website: websiteWert, contact_url: formular, contact_channel: "formular", contact_source: "formular" });
       formulare++;
+    } else if (verworfen) {
+      unplausibel++;
+      await abschluss({ website: websiteWert, channel: "dm", contact_channel: "dm" }, "kontakt_unplausibel");
     } else {
       const grund = botSchutz ? "blockiert_bot_schutz"
         : (!irgendwas200 && timeouts > 0) ? "timeout"
@@ -2118,7 +2146,7 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       await abschluss({ website: websiteWert, contact_channel: "dm" }, grund);
     }
   }
-  return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche, blockiert };
+  return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche, blockiert, unplausibel };
 }
 
 
