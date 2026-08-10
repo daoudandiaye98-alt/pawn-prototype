@@ -5102,13 +5102,16 @@ Deno.serve(async (req) => {
     }
 
     // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
-    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt" || mode === "akquise_profile") {
+    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt" || mode === "akquise_profile"
+        || mode === "akquise_bilder_spiegeln") {
       const trig = body.trigger === "cron" ? "cron" : "manual";
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = mode === "akquise_import"
         ? await runAkquiseImport(admin)
-        : mode === "akquise_kontakt"
+        : mode === "akquise_bilder_spiegeln"
+          ? await runAkquiseBilderSpiegeln(admin)
+          : mode === "akquise_kontakt"
           ? await runAkquiseKontakt(admin)
           : mode === "akquise_profile"
             ? await runAkquiseProfile(admin)
@@ -5120,6 +5123,8 @@ Deno.serve(async (req) => {
               );
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { angereichert?: number }).angereichert ?? 0} angereichert`
+        : mode === "akquise_bilder_spiegeln"
+          ? `Bildspiegelung: ${(result as { platten?: number }).platten ?? 0} Platten fertig, ${(result as { zu_wenig?: number }).zu_wenig ?? 0} ohne Material, ${(result as { fehlgeschlagen?: number }).fehlgeschlagen ?? 0} fehlgeschlagen`
         : mode === "akquise_kontakt"
           ? `Kontaktsuche: ${(result as { gefunden?: number }).gefunden ?? 0} Adressen bei ${(result as { geprueft?: number }).geprueft ?? 0} Häusern${(result as { blockiert?: number }).blockiert ? `, ${(result as { blockiert?: number }).blockiert} blockiert (keine E-Mail, kein DM-Weg)` : ""}`
           : mode === "akquise_profile"
