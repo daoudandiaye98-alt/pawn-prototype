@@ -103,6 +103,9 @@ export type Database = {
           opt_out: boolean
           outlet: string | null
           personal_line: string | null
+          plate_images: Json | null
+          plate_number: number | null
+          plate_status: string | null
           qc_passed: boolean | null
           recherche_attempted_at: string | null
           recherche_log: Json | null
@@ -156,6 +159,9 @@ export type Database = {
           opt_out?: boolean
           outlet?: string | null
           personal_line?: string | null
+          plate_images?: Json | null
+          plate_number?: number | null
+          plate_status?: string | null
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
           recherche_log?: Json | null
@@ -209,6 +215,9 @@ export type Database = {
           opt_out?: boolean
           outlet?: string | null
           personal_line?: string | null
+          plate_images?: Json | null
+          plate_number?: number | null
+          plate_status?: string | null
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
           recherche_log?: Json | null
@@ -3564,6 +3573,9 @@ export type Database = {
           language: string
           lead_type: string
           personal_line: string
+          plate_images: Json
+          plate_number: number
+          plate_status: string
           world: string
         }[]
       }

@@ -69,7 +69,7 @@ type Mode =
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_jagd" | "akquise_jagd_lernen" | "akquise_wirkungsbericht"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
-  | "akquise_dm_vorbereiten"
+  | "akquise_dm_vorbereiten" | "akquise_bilder_spiegeln"
   | "presse_jagd" | "presse_verfassen"
   | "multiplikator_jagd" | "multiplikator_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
@@ -166,6 +166,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   broll_einsammeln: "gruen",
   akquise_zyklus: "gruen",
   akquise_dm_vorbereiten: "gruen",
+  akquise_bilder_spiegeln: "gruen",
   presse_jagd: "gelb",
   presse_verfassen: "gelb",
   multiplikator_jagd: "gelb",
@@ -2509,6 +2510,122 @@ async function ladeVariantenZuteiler(admin: SupabaseClient): Promise<(world: str
 }
 
 /** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
+
+/* ============================================================================
+ * Teil 43 WP1/WP2 „Bildspiegelung" — Instagram-CDN-Adressen tragen ein Ablaufdatum
+ * und einen Hotlink-Schutz; in einer E-Mail oder auf der Platte wären sie nach
+ * kurzer Zeit tote Rahmen. Deshalb holt PAWN die Bilder einmal ab, verkleinert sie
+ * und legt sie im eigenen Speicher ab. Qualitätsfilter: Profilbilder und zu kleine
+ * Dateien fliegen raus — lieber keine Platte als eine schwache.
+ * ========================================================================== */
+
+const PLATTE_BUCKET = "einladungen";
+const PLATTE_MAX_KANTE = 1400;
+const PLATTE_MIN_KANTE = 600;
+const PLATTE_MIN_BILDER = 3;
+const PLATTE_MAX_BILDER = 3;
+const PLATTE_BATCH = 5;
+const PLATTE_LAUFZEIT_MS = 50_000;
+// Zehn Jahre: die Adresse soll die Einladung überleben, ohne den Speicher öffentlich zu machen.
+const PLATTE_SIGNATUR_SEK = 315_360_000;
+
+/** Profilbilder sind keine Werkbilder — Instagram markiert sie im Pfad, in Parametern oder im
+ * base64-kodierten "efg"-Parameter (dort steht der encode-tag, z. B. "profile_pic.www.200.C3"). */
+function istProfilbild(url: string): boolean {
+  if (/profile[_-]?pic|\/s150x150\/|\/s320x320\/|profile_images/i.test(url)) return true;
+  try {
+    const efg = new URL(url).searchParams.get("efg");
+    if (efg && /profile_pic/i.test(atob(efg))) return true;
+  } catch { /* kein gültiges efg — dann zählt nur die Pfadprüfung oben */ }
+  return false;
+}
+
+interface SpiegelErgebnis { ok: true; platten: number; zu_wenig: number; fehlgeschlagen: number; geprueft: number; details: string[] }
+
+async function runAkquiseBilderSpiegeln(admin: SupabaseClient): Promise<SpiegelErgebnis> {
+  const start = Date.now();
+  const details: string[] = [];
+  let platten = 0, zuWenig = 0, fehlgeschlagen = 0, geprueft = 0;
+
+  const { data: leads } = await admin
+    .from("acquisition_leads")
+    .select("id, handle, ref_code, scrape_images, plate_status, created_at")
+    .eq("lead_type", "designer")
+    .is("plate_images", null)
+    .is("plate_status", null)
+    .not("scrape_images", "is", null)
+    .not("ref_code", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(PLATTE_BATCH);
+
+  const rows = (leads ?? []) as { id: string; handle: string; ref_code: string; scrape_images: unknown; created_at: string }[];
+  if (!rows.length) return { ok: true, platten: 0, zu_wenig: 0, fehlgeschlagen: 0, geprueft: 0, details: ["Nichts zu spiegeln."] };
+
+  // Plattennummer fortlaufend und stabil: einmal vergeben, nie neu berechnet.
+  const { data: maxRow } = await admin
+    .from("acquisition_leads").select("plate_number")
+    .not("plate_number", "is", null).order("plate_number", { ascending: false }).limit(1).maybeSingle();
+  let naechsteNummer = ((maxRow as { plate_number: number } | null)?.plate_number ?? 0) + 1;
+
+  const { Image } = await import("https://deno.land/x/imagescript@1.3.0/mod.ts");
+
+  for (const lead of rows) {
+    if (Date.now() - start > PLATTE_LAUFZEIT_MS) { details.push("Laufzeit erreicht — Rest beim nächsten Lauf."); break; }
+    geprueft++;
+    const kandidaten = (Array.isArray(lead.scrape_images) ? lead.scrape_images : [])
+      .filter((u): u is string => typeof u === "string" && u.startsWith("http"))
+      .filter((u) => !istProfilbild(u));
+
+    const urls: string[] = [];
+    let fehler: string | null = null;
+    let abgelaufen = 0;
+    for (const quelle of kandidaten) {
+      if (urls.length >= PLATTE_MAX_BILDER) break;
+      try {
+        const res = await fetch(quelle, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" } });
+        // Instagram-Adressen tragen ein Ablaufdatum: 403 heißt fast immer "Link abgelaufen",
+        // nicht "kein Material". Der Unterschied muss im Status sichtbar bleiben.
+        if (!res.ok) { if (res.status === 403 || res.status === 410) abgelaufen++; continue; }
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const bild = await Image.decode(bytes);
+        if (Math.min(bild.width, bild.height) < PLATTE_MIN_KANTE) continue;
+        const faktor = Math.min(1, PLATTE_MAX_KANTE / Math.max(bild.width, bild.height));
+        const fertig = faktor < 1 ? bild.resize(Math.round(bild.width * faktor), Math.round(bild.height * faktor)) : bild;
+        const jpeg = await fertig.encodeJPEG(82);
+        const pfad = `${lead.ref_code}/${urls.length}.jpg`;
+        const up = await admin.storage.from(PLATTE_BUCKET).upload(pfad, jpeg, { contentType: "image/jpeg", upsert: true });
+        if (up.error) { fehler = up.error.message; continue; }
+        const signed = await admin.storage.from(PLATTE_BUCKET).createSignedUrl(pfad, PLATTE_SIGNATUR_SEK);
+        if (signed.error || !signed.data?.signedUrl) { fehler = signed.error?.message ?? "keine Adresse"; continue; }
+        urls.push(signed.data.signedUrl);
+      } catch (e) { fehler = (e as Error).message; }
+    }
+
+    if (urls.length >= PLATTE_MIN_BILDER) {
+      await admin.from("acquisition_leads").update({
+        plate_images: urls as never, plate_status: "fertig", plate_number: naechsteNummer,
+      } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Platte ${naechsteNummer} mit ${urls.length} Bildern.`);
+      naechsteNummer++;
+      platten++;
+    } else if (abgelaufen > 0) {
+      await admin.from("acquisition_leads").update({ plate_status: "bilder_abgelaufen" } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Instagram-Adressen abgelaufen (${abgelaufen}) — braucht einen frischen Profil-Scrape.`);
+      fehlgeschlagen++;
+    } else if (fehler && kandidaten.length >= PLATTE_MIN_BILDER) {
+      await admin.from("acquisition_leads").update({ plate_status: "bilder_fehlgeschlagen" } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Bilder nicht abrufbar (${fehler}).`);
+      fehlgeschlagen++;
+    } else {
+      await admin.from("acquisition_leads").update({ plate_status: "zu_wenig_material" } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: zu wenig brauchbares Material (${urls.length} von ${PLATTE_MIN_BILDER}).`);
+      zuWenig++;
+    }
+  }
+
+  return { ok: true, platten, zu_wenig: zuWenig, fehlgeschlagen, geprueft, details };
+}
+
 async function researchAndDraftLead(
   apiKey: string, lead: { handle: string; world: string; bio: string | null; name?: string | null },
   styleLaw: string, languages: string[], sprachgesetze: string, variant: "A" | "B",
@@ -2526,7 +2643,9 @@ ${aufbauFuerVariante(variant)}
 
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht>"}
 
-Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
+Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}
+
+RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein — sie meldet, dass PAWN bereits eine Seite gemacht hat. Ein Satz davon gehört in den Text: wir haben dir eine Seite in Ausgabe 01 freigehalten. Der Link darauf wird automatisch ergänzt.`;
   const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
@@ -2615,7 +2734,7 @@ function vornameVon(name: string | null | undefined): string | null {
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code, lead_type").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
+    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code, lead_type, plate_status").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
@@ -2625,7 +2744,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
   // Reine Instagram-Leads (keine E-Mail, kein Kontaktformular) schreibt akquise_dm_vorbereiten —
   // die kürzere DM-Fassung für den Sende-Stapel, nicht diese lange Mail-Fassung.
-  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null; lead_type: string }[])
+  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
     .filter((l) => l.email || l.contact_url)
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
   const stapel = alle.slice(0, config.batch_verfassen);
@@ -2666,7 +2785,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
       // Zweistufig: kein Link in dieser ersten Nachricht, unabhängig davon, was das Modell
       // geschrieben hat.
       message = entferneEinladungslink(message);
-    } else if (lead.ref_code && !message.includes("/einladung/")) {
+    } else if (lead.ref_code && lead.plate_status === "fertig" && !message.includes("/einladung/")) {
       // WP1 "Die ersten Fünfzig": jede direkte Erstnachricht trägt den persönlichen Rückkanal.
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
@@ -2693,7 +2812,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
  */
 async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, contact_name, ref_code, lead_type")
+    .select("id, handle, world, bio, contact_name, ref_code, lead_type, plate_status")
     .eq("lead_type", "designer").eq("status", "qualifiziert")
     .is("email", null).is("contact_url", null).is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
@@ -2703,7 +2822,7 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
   const allowed = config.languages.length ? config.languages : ["de", "en"];
   const naechsteVariante = await ladeVariantenZuteiler(admin);
 
-  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null; lead_type: string }[])
+  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
     .filter((l) => l.handle)
     .slice(0, config.batch_verfassen);
 
@@ -2732,7 +2851,9 @@ ${aufbauFuerVariante(variant)}
 
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige DM>"}
 
-Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
+Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}
+
+RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein — sie meldet, dass PAWN bereits eine Seite gemacht hat. Ein Satz davon gehört in den Text: wir haben dir eine Seite in Ausgabe 01 freigehalten. Der Link darauf wird automatisch ergänzt.`;
     const user = `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.`;
     const { json, tokens } = await searchJson(apiKey, system, user, 500);
     tokensUsed += tokens;
@@ -2750,9 +2871,9 @@ Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
     if (variant === "B") {
       // Zweistufig: kein Link in dieser ersten Nachricht — harte Prüfung im Code.
       message = entferneEinladungslink(message);
-    } else if (lead.ref_code && !message.includes("/einladung/")) {
-      // WP1 "Die ersten Fünfzig": Rückkanal auch dann sichergestellt, wenn das Modell den
-      // Link nicht wörtlich übernommen hat.
+    } else if (lead.ref_code && lead.plate_status === "fertig" && !message.includes("/einladung/")) {
+      // WP1 "Die ersten Fünfzig" / Teil 43: Rückkanal auch dann sichergestellt, wenn das Modell
+      // den Link nicht wörtlich übernommen hat — aber nur, wenn die Platte wirklich existiert.
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
 
@@ -2780,7 +2901,7 @@ const NACHFASSEN_NACH_TAGEN = 3;
 async function runAkquiseNachfassenVorbereiten(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const grenze = new Date(Date.now() - NACHFASSEN_NACH_TAGEN * 86_400_000).toISOString();
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, personal_line, language, ref_code, lead_type")
+    .select("id, handle, world, personal_line, language, ref_code, lead_type, plate_status")
     .eq("lead_type", "designer").eq("status", "kontaktiert").eq("opt_out", false)
     .neq("channel", "email")
     .is("replied_at", null).is("dm_followup_sent_at", null).is("dm_followup_draft", null)
@@ -2791,7 +2912,7 @@ async function runAkquiseNachfassenVorbereiten(admin: SupabaseClient): Promise<R
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   const deadline = Date.now() + 55_000;
   let ready = 0, tokensUsed = 0, attempted = 0;
-  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; personal_line: string | null; language: string | null; ref_code: string | null; lead_type: string }[]) {
+  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; personal_line: string | null; language: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[]) {
     if (Date.now() > deadline) break;
     attempted++;
     if (lead.lead_type !== "designer") continue; // harte Prüfung im Code, s. WP4
@@ -2813,7 +2934,7 @@ Ton: freundlich, unaufdringlich, keine Erinnerung an eine Absage, kein neues Zah
       text = fixed.text;
     }
     text = entferneEinladungslink(text);
-    if (lead.ref_code) text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
+    if (lead.ref_code && lead.plate_status === "fertig") text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     await admin.from("acquisition_leads").update({ dm_followup_draft: text }).eq("id", lead.id);
     ready++;
   }
@@ -3627,7 +3748,7 @@ function unsubscribeUrl(leadId: string): string {
 
 async function sendResendEmail(
   resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string,
-  opts: { footer?: string; startLink?: string; impressum: string; unsubscribe: string },
+  opts: { footer?: string; startLink?: string; impressum: string; unsubscribe: string; html?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -3635,6 +3756,13 @@ async function sendResendEmail(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
       body: JSON.stringify({
         from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
+        // Teil 43 WP4: der Ein-Klick-Abmeldeweg gehört zusätzlich in den Kopf der Nachricht —
+        // Gmail und Outlook zeigen dann ihren eigenen Abmelden-Knopf, das hilft der Zustellbarkeit.
+        headers: {
+          "List-Unsubscribe": `<${opts.unsubscribe}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+        ...(opts.html ? { html: opts.html } : {}),
         text: `${text}\n\n—\n${opts.footer ?? DEFAULT_MAIL_FOOTER}${opts.startLink ? `\n\n${opts.startLink}` : ""}\n\n${opts.impressum}\nDu willst keine weiteren Nachrichten? Ein Klick, keine Anmeldung nötig: ${opts.unsubscribe}`,
       }),
     });
@@ -3648,6 +3776,74 @@ async function sendResendEmail(
   }
 }
 
+
+/* ============================================================================
+ * Teil 43 WP4 „Die Titelseite" — die E-Mail zur Platte. Zustellbarkeit schlägt
+ * Pracht: Tabellen-Layout, alles inline, keine Webfonts, genau ein Bild, unter
+ * 100 KB. Ohne geladene Bilder steht jede Aussage trotzdem im Text.
+ * ========================================================================== */
+
+function escapeHtml(v: string): string {
+  return v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+interface TitelseiteDaten {
+  handle: string; world: string | null; refCode: string; plateNumber: number | null;
+  personalLine: string | null; bild: string | null; language: string | null;
+}
+
+function titelseiteTexte(d: TitelseiteDaten) {
+  const en = d.language === "en";
+  return {
+    subject: en ? "Your page in Issue 01" : "Deine Seite in Ausgabe 01",
+    masthead: en ? "PAWN — Issue 01" : "PAWN — Ausgabe 01",
+    etikett: [
+      en ? `Plate ${d.plateNumber ?? ""}`.trim() : `Platte ${d.plateNumber ?? ""}`.trim(),
+      d.world ?? "",
+      d.refCode,
+    ].filter(Boolean).join(" · "),
+    satz1: d.personalLine?.trim()
+      || (en ? "We looked at your work and kept a page for it." : "Wir haben uns deine Arbeit angesehen und ihr eine Seite freigehalten."),
+    satz2: en
+      ? "PAWN is a curated house for independent design. Your page already exists — it is private, and it is yours to keep."
+      : "PAWN ist ein kuratiertes Haus für unabhängiges Design. Deine Seite gibt es bereits — sie ist privat, und sie gehört dir.",
+    link: en ? "See your plate →" : "Deine Platte ansehen →",
+    alt: en ? `Work by ${d.handle}` : `Arbeit von ${d.handle}`,
+  };
+}
+
+function titelseiteHtml(d: TitelseiteDaten, opts: { impressum: string; unsubscribe: string; footer: string }): string {
+  const t = titelseiteTexte(d);
+  const url = `https://pawn.vision/einladung/${d.refCode}`;
+  const serif = "Georgia,'Times New Roman',serif";
+  const sans = "Helvetica,Arial,sans-serif";
+  const bild = d.bild
+    ? `<tr><td style="padding:0 0 20px 0;"><img src="${escapeHtml(d.bild)}" width="560" alt="${escapeHtml(t.alt)}" style="display:block;width:100%;max-width:560px;height:auto;border:0;filter:grayscale(100%);" /></td></tr>`
+    : "";
+  return `<!doctype html><html lang="${d.language === "en" ? "en" : "de"}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${escapeHtml(t.subject)}</title></head>
+<body style="margin:0;padding:0;background:#0A0A0B;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0A0A0B;">
+<tr><td align="center" style="padding:28px 16px 40px 16px;">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;">
+<tr><td style="padding:0 0 22px 0;font-family:${sans};font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#89857D;">&#9823; ${escapeHtml(t.masthead)}</td></tr>
+${bild}
+<tr><td style="padding:0 0 10px 0;font-family:${sans};font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#A8BEB2;">${escapeHtml(t.etikett)}</td></tr>
+<tr><td style="padding:0 0 18px 0;font-family:${serif};font-size:34px;line-height:38px;color:#F2F0EA;">${escapeHtml(d.handle)}</td></tr>
+<tr><td style="padding:0 0 10px 0;font-family:${sans};font-size:15px;line-height:24px;color:#F2F0EA;font-weight:300;">${escapeHtml(t.satz1)}</td></tr>
+<tr><td style="padding:0 0 22px 0;font-family:${sans};font-size:15px;line-height:24px;color:#89857D;font-weight:300;">${escapeHtml(t.satz2)}</td></tr>
+<tr><td style="padding:0 0 26px 0;font-family:${sans};font-size:15px;line-height:24px;"><a href="${url}" style="color:#A8BEB2;text-decoration:underline;">${escapeHtml(t.link)}</a><br /><span style="color:#89857D;font-size:12px;">${url}</span></td></tr>
+<tr><td style="border-top:1px solid #26262A;padding:16px 0 0 0;font-family:${sans};font-size:11px;line-height:18px;color:#89857D;">
+${escapeHtml(opts.footer)}<br /><br />${escapeHtml(opts.impressum)}<br />
+<a href="${escapeHtml(opts.unsubscribe)}" style="color:#89857D;text-decoration:underline;">${d.language === "en" ? "Unsubscribe with one click" : "Mit einem Klick abmelden"}</a>
+</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
+function titelseiteText(d: TitelseiteDaten): string {
+  const t = titelseiteTexte(d);
+  return `${t.masthead}\n${t.etikett}\n\n${d.handle}\n\n${t.satz1}\n${t.satz2}\n\n${t.link} https://pawn.vision/einladung/${d.refCode}`;
+}
+
 /** Versendet eine bestätigte Tages-Sendeliste (Erstkontakt + Follow-up, nur Kanal E-Mail). */
 async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promise<Record<string, unknown>> {
   const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -3656,12 +3852,12 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   const config = await loadAkquiseConfig(admin);
   const impressum = await loadBusinessImpressumLine(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score").in("id", leadIds);
+    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score, world, ref_code, language, plate_images, plate_number, plate_status").in("id", leadIds);
 
   let sent = 0;
   const failed: string[] = [];
   const skipped: string[] = [];
-  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null; kurator_score: number | null }[]) {
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null; kurator_score: number | null; world: string | null; ref_code: string | null; language: string | null; plate_images: unknown; plate_number: number | null; plate_status: string | null }[]) {
     const isPresse = lead.lead_type === "presse";
     // Studios mit gefundener E-Mail dürfen automatisch angeschrieben werden, sobald die Automatik
     // läuft und der Kurator-Score hoch genug ist. Presse und DM bleiben bei deinem "Ja".
@@ -3684,13 +3880,30 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
       : undefined;
     // Teil 37/AP2 — Wizard-Einstieg mit Lead-Attribution, nur für Designer-Leads (Presse bewirbt sich nicht).
     const startLink = isPresse ? undefined : `Dein Einstieg: https://pawn.vision/start?lead=${lead.id}`;
-    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, {
-      footer, startLink, impressum, unsubscribe: unsubscribeUrl(lead.id),
+
+    // Teil 43 WP4: hat dieser Designer eine fertige Platte, wird aus der Erstnachricht die
+    // Titelseite von Ausgabe 01. Alle anderen bekommen unverändert die bisherige Textmail.
+    const plateBilder = Array.isArray(lead.plate_images) ? (lead.plate_images as string[]) : [];
+    const hatPlatte = !isPresse && !isFollowup && lead.lead_type === "designer"
+      && lead.plate_status === "fertig" && plateBilder.length >= 3 && !!lead.ref_code;
+    const platte: TitelseiteDaten | null = hatPlatte
+      ? {
+          handle: lead.handle, world: lead.world, refCode: lead.ref_code!, plateNumber: lead.plate_number,
+          personalLine: lead.personal_line, bild: plateBilder[0] ?? null, language: lead.language,
+        }
+      : null;
+    const finalSubject = platte ? titelseiteTexte(platte).subject : subject;
+    const finalText = platte ? titelseiteText(platte) : text;
+    const result = await sendResendEmail(resendKey, config, lead.email, finalSubject, finalText, {
+      footer, startLink: platte ? undefined : startLink, impressum, unsubscribe: unsubscribeUrl(lead.id),
+      html: platte
+        ? titelseiteHtml(platte, { impressum, unsubscribe: unsubscribeUrl(lead.id), footer: footer ?? DEFAULT_MAIL_FOOTER })
+        : undefined,
     });
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
     await admin.from("ai_actions_log").insert({
       source: "jarvis", action: isFollowup ? "akquise_followup_email" : "akquise_erstkontakt_email",
-      params: { lead_id: lead.id, handle: lead.handle, to: lead.email, from: config.email_from, subject } as never,
+      params: { lead_id: lead.id, handle: lead.handle, to: lead.email, from: config.email_from, subject: finalSubject, platte: !!platte } as never,
       status: result.ok ? "ok" : "failed", error: result.ok ? null : result.error ?? null,
     } as never);
     if (!result.ok) { failed.push(`${lead.handle}: ${result.error ?? "unbekannter Fehler"}`); continue; }
@@ -4932,7 +5145,7 @@ Deno.serve(async (req) => {
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen", "akquise_wirkungsbericht",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "akquise_dm_vorbereiten",
+      "akquise_dm_vorbereiten", "akquise_bilder_spiegeln",
       "presse_jagd", "presse_verfassen",
       "multiplikator_jagd", "multiplikator_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
@@ -4950,7 +5163,7 @@ Deno.serve(async (req) => {
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen", "akquise_wirkungsbericht",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "akquise_dm_vorbereiten",
+      "akquise_dm_vorbereiten", "akquise_bilder_spiegeln",
       "presse_jagd", "presse_verfassen",
       "multiplikator_jagd", "multiplikator_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
@@ -5102,13 +5315,16 @@ Deno.serve(async (req) => {
     }
 
     // --- Akquise-Autopilot: Import und Versand brauchen kein LLM, deshalb kostenlos und ohne Cost-Gate ---
-    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt" || mode === "akquise_profile") {
+    if (mode === "akquise_import" || mode === "akquise_senden" || mode === "akquise_kontakt" || mode === "akquise_profile"
+        || mode === "akquise_bilder_spiegeln") {
       const trig = body.trigger === "cron" ? "cron" : "manual";
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = mode === "akquise_import"
         ? await runAkquiseImport(admin)
-        : mode === "akquise_kontakt"
+        : mode === "akquise_bilder_spiegeln"
+          ? await runAkquiseBilderSpiegeln(admin)
+          : mode === "akquise_kontakt"
           ? await runAkquiseKontakt(admin)
           : mode === "akquise_profile"
             ? await runAkquiseProfile(admin)
@@ -5120,6 +5336,8 @@ Deno.serve(async (req) => {
               );
       const summary = mode === "akquise_import"
         ? `Import: ${(result as { imported?: number }).imported ?? 0} neu, ${(result as { angereichert?: number }).angereichert ?? 0} angereichert`
+        : mode === "akquise_bilder_spiegeln"
+          ? `Bildspiegelung: ${(result as { platten?: number }).platten ?? 0} Platten fertig, ${(result as { zu_wenig?: number }).zu_wenig ?? 0} ohne Material, ${(result as { fehlgeschlagen?: number }).fehlgeschlagen ?? 0} fehlgeschlagen`
         : mode === "akquise_kontakt"
           ? `Kontaktsuche: ${(result as { gefunden?: number }).gefunden ?? 0} Adressen bei ${(result as { geprueft?: number }).geprueft ?? 0} Häusern${(result as { blockiert?: number }).blockiert ? `, ${(result as { blockiert?: number }).blockiert} blockiert (keine E-Mail, kein DM-Weg)` : ""}`
           : mode === "akquise_profile"
