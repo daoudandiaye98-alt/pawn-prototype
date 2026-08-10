@@ -14,7 +14,6 @@ interface Business {
 export default function Datenschutz() {
   const L = useLegalText();
   const [b, setB] = useState<Business>({});
-  const L = useLegalText();
   useEffect(() => {
     supabase.from("ai_config").select("value").eq("key", "business_profile").maybeSingle()
       .then(({ data }) => data?.value && setB(data.value as Business));
