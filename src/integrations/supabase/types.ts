@@ -72,7 +72,6 @@ export type Database = {
         Row: {
           admin_decision: string | null
           bio: string | null
-          bounce_type: string | null
           channel: string | null
           clips: Json | null
           contact_attempts: number
@@ -100,12 +99,10 @@ export type Database = {
           outlet: string | null
           personal_line: string | null
           qc_passed: boolean | null
-          retention_purged_at: string | null
           score_reasons: Json | null
           scrape_images: Json | null
           source: string | null
           status: string
-          unsubscribed_at: string | null
           updated_at: string | null
           warmed_at: string | null
           website: string | null
@@ -114,7 +111,6 @@ export type Database = {
         Insert: {
           admin_decision?: string | null
           bio?: string | null
-          bounce_type?: string | null
           channel?: string | null
           clips?: Json | null
           contact_attempts?: number
@@ -142,12 +138,10 @@ export type Database = {
           outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
-          retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
           source?: string | null
           status?: string
-          unsubscribed_at?: string | null
           updated_at?: string | null
           warmed_at?: string | null
           website?: string | null
@@ -156,7 +150,6 @@ export type Database = {
         Update: {
           admin_decision?: string | null
           bio?: string | null
-          bounce_type?: string | null
           channel?: string | null
           clips?: Json | null
           contact_attempts?: number
@@ -184,12 +177,10 @@ export type Database = {
           outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
-          retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
           source?: string | null
           status?: string
-          unsubscribed_at?: string | null
           updated_at?: string | null
           warmed_at?: string | null
           website?: string | null
@@ -461,7 +452,6 @@ export type Database = {
           gueltigkeitsvermutung: string | null
           headline: string
           id: string
-          kategorie: string
           quelle_typ: string
           source_title: string | null
           source_url: string | null
@@ -478,7 +468,6 @@ export type Database = {
           gueltigkeitsvermutung?: string | null
           headline: string
           id?: string
-          kategorie?: string
           quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
@@ -495,7 +484,6 @@ export type Database = {
           gueltigkeitsvermutung?: string | null
           headline?: string
           id?: string
-          kategorie?: string
           quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
@@ -1187,7 +1175,6 @@ export type Database = {
       }
       designer_opportunities: {
         Row: {
-          art: string
           contact_email: string | null
           created_at: string
           delivery_error: string | null
@@ -1195,7 +1182,6 @@ export type Database = {
           designer_id: string
           followup_sent_at: string | null
           id: string
-          match_score: number | null
           message_draft: string | null
           ort: string | null
           quelle_url: string | null
@@ -1208,7 +1194,6 @@ export type Database = {
           warum: string | null
         }
         Insert: {
-          art?: string
           contact_email?: string | null
           created_at?: string
           delivery_error?: string | null
@@ -1216,7 +1201,6 @@ export type Database = {
           designer_id: string
           followup_sent_at?: string | null
           id?: string
-          match_score?: number | null
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
@@ -1229,7 +1213,6 @@ export type Database = {
           warum?: string | null
         }
         Update: {
-          art?: string
           contact_email?: string | null
           created_at?: string
           delivery_error?: string | null
@@ -1237,7 +1220,6 @@ export type Database = {
           designer_id?: string
           followup_sent_at?: string | null
           id?: string
-          match_score?: number | null
           message_draft?: string | null
           ort?: string | null
           quelle_url?: string | null
@@ -1384,8 +1366,6 @@ export type Database = {
           stripe_details_submitted: boolean
           stripe_payouts_enabled: boolean
           stripe_requirements: Json
-          stripe_subscription_id: string | null
-          stripe_customer_id: string | null
           studio_last_seen_at: string | null
           tags: string[] | null
           updated_at: string
@@ -1393,8 +1373,7 @@ export type Database = {
           vat_rate: number
           video_taste_weights: Json
           website: string | null
-          weekly_impulse: string | null
-          weekly_impulse_at: string | null
+          weekly_impulse: boolean
         }
         Insert: {
           application_id?: string | null
@@ -1441,8 +1420,6 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
-          stripe_subscription_id?: string | null
-          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -1450,8 +1427,7 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
-          weekly_impulse?: string | null
-          weekly_impulse_at?: string | null
+          weekly_impulse?: boolean
         }
         Update: {
           application_id?: string | null
@@ -1498,8 +1474,6 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
-          stripe_subscription_id?: string | null
-          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -1507,8 +1481,7 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
-          weekly_impulse?: string | null
-          weekly_impulse_at?: string | null
+          weekly_impulse?: boolean
         }
         Relationships: [
           {
@@ -1728,15 +1701,12 @@ export type Database = {
           campaign_id: string
           cost_estimate: number | null
           created_at: string
-          duration_s: number | null
           error: string | null
           id: string
           provider: string
           provider_handles: Json | null
           requested_by: string | null
           result_url: string | null
-          retry_count: number
-          signature_id: string | null
           status: Database["public"]["Enums"]["generation_status"]
           tier: Database["public"]["Enums"]["generation_tier"]
           updated_at: string
@@ -1745,15 +1715,12 @@ export type Database = {
           campaign_id: string
           cost_estimate?: number | null
           created_at?: string
-          duration_s?: number | null
           error?: string | null
           id?: string
           provider?: string
           provider_handles?: Json | null
           requested_by?: string | null
           result_url?: string | null
-          retry_count?: number
-          signature_id?: string | null
           status?: Database["public"]["Enums"]["generation_status"]
           tier?: Database["public"]["Enums"]["generation_tier"]
           updated_at?: string
@@ -1762,15 +1729,12 @@ export type Database = {
           campaign_id?: string
           cost_estimate?: number | null
           created_at?: string
-          duration_s?: number | null
           error?: string | null
           id?: string
           provider?: string
           provider_handles?: Json | null
           requested_by?: string | null
           result_url?: string | null
-          retry_count?: number
-          signature_id?: string | null
           status?: Database["public"]["Enums"]["generation_status"]
           tier?: Database["public"]["Enums"]["generation_tier"]
           updated_at?: string
@@ -1781,13 +1745,6 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "generation_requests_signature_id_fkey"
-            columns: ["signature_id"]
-            isOneToOne: false
-            referencedRelation: "house_signatures"
             referencedColumns: ["id"]
           },
         ]
@@ -2318,7 +2275,6 @@ export type Database = {
           review_note: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
           rights_granted: boolean
-          shows_synthetic_person: boolean
           thumb_url: string | null
           title: string | null
           updated_at: string
@@ -2340,7 +2296,6 @@ export type Database = {
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
-          shows_synthetic_person?: boolean
           thumb_url?: string | null
           title?: string | null
           updated_at?: string
@@ -2362,7 +2317,6 @@ export type Database = {
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
-          shows_synthetic_person?: boolean
           thumb_url?: string | null
           title?: string | null
           updated_at?: string
@@ -2744,8 +2698,6 @@ export type Database = {
           channel: Database["public"]["Enums"]["posting_channel"]
           created_at: string
           error: string | null
-          geprueft_am: string | null
-          geprueft_von: string | null
           id: string
           posted_at: string | null
           posted_url: string | null
@@ -2760,8 +2712,6 @@ export type Database = {
           channel?: Database["public"]["Enums"]["posting_channel"]
           created_at?: string
           error?: string | null
-          geprueft_am?: string | null
-          geprueft_von?: string | null
           id?: string
           posted_at?: string | null
           posted_url?: string | null
@@ -2776,8 +2726,6 @@ export type Database = {
           channel?: Database["public"]["Enums"]["posting_channel"]
           created_at?: string
           error?: string | null
-          geprueft_am?: string | null
-          geprueft_von?: string | null
           id?: string
           posted_at?: string | null
           posted_url?: string | null
@@ -2876,10 +2824,6 @@ export type Database = {
           designer_id: string
           designer_note: string | null
           edition_info: string | null
-          gpsr_eu_responsible: string | null
-          gpsr_manufacturer_address: string | null
-          gpsr_manufacturer_name: string | null
-          gpsr_safety_warning: string | null
           height_cm: number | null
           id: string
           image_url: string | null
@@ -2920,10 +2864,6 @@ export type Database = {
           designer_id: string
           designer_note?: string | null
           edition_info?: string | null
-          gpsr_eu_responsible?: string | null
-          gpsr_manufacturer_address?: string | null
-          gpsr_manufacturer_name?: string | null
-          gpsr_safety_warning?: string | null
           height_cm?: number | null
           id?: string
           image_url?: string | null
@@ -2964,10 +2904,6 @@ export type Database = {
           designer_id?: string
           designer_note?: string | null
           edition_info?: string | null
-          gpsr_eu_responsible?: string | null
-          gpsr_manufacturer_address?: string | null
-          gpsr_manufacturer_name?: string | null
-          gpsr_safety_warning?: string | null
           height_cm?: number | null
           id?: string
           image_url?: string | null
@@ -3330,9 +3266,7 @@ export type Database = {
           id: string
           performance: Json
           premiere: boolean
-          regisseur_verdict: Json | null
           rights_granted: boolean
-          shows_synthetic_person: boolean
           source: Database["public"]["Enums"]["video_source"]
           thumb: string | null
           url: string
@@ -3345,9 +3279,7 @@ export type Database = {
           id?: string
           performance?: Json
           premiere?: boolean
-          regisseur_verdict?: Json | null
           rights_granted?: boolean
-          shows_synthetic_person?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null
           url: string
@@ -3360,9 +3292,7 @@ export type Database = {
           id?: string
           performance?: Json
           premiere?: boolean
-          regisseur_verdict?: Json | null
           rights_granted?: boolean
-          shows_synthetic_person?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null
           url?: string
