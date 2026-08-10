@@ -34,9 +34,12 @@ interface FeldzugLead {
   scrape_images: unknown;
   bounce_type: string | null;
   lead_type: string;
+  followup_at: string | null;
+  dm_followup_draft: string | null;
+  dm_followup_sent_at: string | null;
 }
 
-type ChannelTab = "dm" | "email" | "blockiert";
+type ChannelTab = "dm" | "nachfassen" | "email" | "blockiert";
 type MainTab = "heute" | "gespraech";
 
 function isMobileDevice(): boolean {
@@ -60,22 +63,27 @@ function scrapeImages(lead: FeldzugLead): string[] {
 /* ─────────────────────── DM-Karte: eine pro Lead, Vollbild mobil ─────────────────────── */
 
 function DmCard({
-  lead, onSent, onSkip, busy,
+  lead, onSent, onSkip, busy, textOverride, skipHidden,
 }: {
   lead: FeldzugLead;
   onSent: () => void;
   onSkip: (reason: string) => void;
   busy: boolean;
+  /** WP5 "Die Rampe auf Hochtouren": für Nachfass-Karten zeigt/kopiert die Karte
+   * dm_followup_draft statt der ursprünglichen Erstnachricht. */
+  textOverride?: string | null;
+  skipHidden?: boolean;
 }) {
   const [step, setStep] = useState<0 | 1 | 2>(0); // 0 = frisch, 1 = kopiert, 2 = Instagram geöffnet
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
   const images = scrapeImages(lead);
+  const text = textOverride ?? lead.message_draft;
 
   useEffect(() => { setStep(0); setSkipOpen(false); setSkipReason(""); }, [lead.id]);
 
   async function copyText() {
-    await navigator.clipboard.writeText(lead.message_draft ?? "");
+    await navigator.clipboard.writeText(text ?? "");
     toast.success("Nachricht kopiert.");
     setStep((s) => (s < 1 ? 1 : s));
   }
@@ -113,7 +121,7 @@ function DmCard({
 
       <div className="px-5 py-5">
         <p className="editorial-eyebrow mb-2">Nachricht</p>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{lead.message_draft || "Kein Entwurf vorhanden."}</p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{text || "Kein Entwurf vorhanden."}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
@@ -141,35 +149,37 @@ function DmCard({
         </Button>
       </div>
 
-      <div className="border-t border-border px-5 py-3">
-        {!skipOpen ? (
-          <button
-            type="button"
-            onClick={() => setSkipOpen(true)}
-            className="inline-flex items-center gap-1.5 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"
-          >
-            <SkipForward className="h-3.5 w-3.5" /> Überspringen
-          </button>
-        ) : (
-          <div className="space-y-2">
-            <Textarea
-              value={skipReason}
-              onChange={(e) => setSkipReason(e.target.value)}
-              rows={2}
-              placeholder="Warum überspringen? (Pflichtfeld)"
-              className="rounded-none border-black text-sm"
-            />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={confirmSkip} disabled={busy} className="rounded-none bg-black text-white hover:bg-white hover:text-black">
-                Überspringen bestätigen
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => { setSkipOpen(false); setSkipReason(""); }} className="rounded-none border-black">
-                Abbrechen
-              </Button>
+      {!skipHidden && (
+        <div className="border-t border-border px-5 py-3">
+          {!skipOpen ? (
+            <button
+              type="button"
+              onClick={() => setSkipOpen(true)}
+              className="inline-flex items-center gap-1.5 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"
+            >
+              <SkipForward className="h-3.5 w-3.5" /> Überspringen
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <Textarea
+                value={skipReason}
+                onChange={(e) => setSkipReason(e.target.value)}
+                rows={2}
+                placeholder="Warum überspringen? (Pflichtfeld)"
+                className="rounded-none border-black text-sm"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={confirmSkip} disabled={busy} className="rounded-none bg-black text-white hover:bg-white hover:text-black">
+                  Überspringen bestätigen
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setSkipOpen(false); setSkipReason(""); }} className="rounded-none border-black">
+                  Abbrechen
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -182,6 +192,12 @@ function emailQueueStatus(lead: FeldzugLead): string {
   return "wartet";
 }
 
+function kurzDatum(iso: string): string {
+  return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+}
+
+/** WP5 "Die Rampe auf Hochtouren": statt nur eines Status-Worts die ganze E-Mail-Spur eines Leads
+ * im selben Tab — Erstkontakt, Nachfassen, Antwort — jeweils mit Datum, wenn vorhanden. */
 function EmailStatusList({ leads }: { leads: FeldzugLead[] }) {
   if (leads.length === 0) return <p className="p-6 text-sm text-muted-foreground">Keine E-Mail-Leads in der Warteschlange.</p>;
   return (
@@ -191,8 +207,13 @@ function EmailStatusList({ leads }: { leads: FeldzugLead[] }) {
           <div>
             <p className="font-serif text-base">@{l.handle}</p>
             <p className="text-xs text-muted-foreground">{l.world ?? "—"}</p>
+            <p className="mt-1 text-[0.65rem] text-muted-foreground">
+              {l.contacted_at ? `Erstkontakt ${kurzDatum(l.contacted_at)}` : "Noch kein Erstkontakt"}
+              {l.followup_at && ` · Nachgefasst ${kurzDatum(l.followup_at)}`}
+              {l.replied_at && ` · Antwort ${kurzDatum(l.replied_at)}`}
+            </p>
           </div>
-          <span className="border border-black px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em]">
+          <span className="shrink-0 border border-black px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.22em]">
             {emailQueueStatus(l)}
           </span>
         </li>
@@ -242,6 +263,11 @@ function GespraechCard({
         <p className="font-serif text-base">@{lead.handle}</p>
         <span className="text-xs text-muted-foreground">{lead.world ?? "—"}</span>
       </div>
+      {lead.dm_followup_sent_at && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Nachfassen bereits gesendet am {new Date(lead.dm_followup_sent_at).toLocaleDateString("de-DE")} — ein zweites Nachfassen ist nicht vorgesehen, eher Richtung Ruhe.
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <p className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">Hat geantwortet:</p>
         {SENTIMENTS.map((s) => (
@@ -307,15 +333,17 @@ export default function AdminFeldzug() {
   const [channelTab, setChannelTab] = useState<ChannelTab>("dm");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [todayFunnel, setTodayFunnel] = useState<TodayFunnel | null>(null);
+  // WP5 "Die Rampe auf Hochtouren": Tagesziel aus ai_config.akquise_config.daily_goal, Standard 50.
+  const [dailyGoal, setDailyGoal] = useState(50);
 
   const load = async () => {
     setFetching(true);
     const heuteStart = new Date(); heuteStart.setHours(0, 0, 0, 0);
     const heuteIso = heuteStart.toISOString();
-    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes] = await Promise.all([
+    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at")
         .eq("lead_type", "designer")
         .in("status", ["qualifiziert", "kontaktiert"])
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -323,6 +351,7 @@ export default function AdminFeldzug() {
       supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("contacted_at", heuteIso),
       supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("replied_at", heuteIso),
       supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("applied_at", heuteIso),
+      supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle(),
     ]);
     if (leadsRes.error) toast.error(leadsRes.error.message);
     setRows((leadsRes.data as FeldzugLead[] | null) ?? []);
@@ -332,6 +361,8 @@ export default function AdminFeldzug() {
       geantwortet: geantwortetRes.count ?? 0,
       beworben: beworbenRes.count ?? 0,
     });
+    const goal = (configRes.data?.value as { daily_goal?: number } | null)?.daily_goal;
+    if (typeof goal === "number" && goal > 0) setDailyGoal(goal);
     setFetching(false);
   };
 
@@ -347,13 +378,18 @@ export default function AdminFeldzug() {
   // "Heutige Züge": freigegeben, geprüft, noch nicht kontaktiert.
   const readyToday = rows.filter((r) => r.admin_decision === "ja" && r.qc_passed === true && !r.contacted_at);
   const dmQueue = readyToday.filter((r) => r.channel !== "email" && !r.blocked_reason);
-  const emailQueue = readyToday.filter((r) => r.channel === "email");
+  // WP5: die E-Mail-Ansicht zeigt jetzt die ganze Spur (auch schon Kontaktierte), nicht nur die
+  // Warteschlange — sonst ist von "Erstkontakt/Nachgefasst/Antwort" nie etwas zu sehen.
+  const emailQueue = rows.filter((r) => r.channel === "email");
   const blockedQueue = readyToday.filter((r) => !!r.blocked_reason);
+  // WP5: vorbereitete Nachfass-Entwürfe, noch nicht gesendet — eigener Zug neben der Erstnachricht.
+  const nachfassenQueue = rows.filter((r) => r.dm_followup_draft && !r.dm_followup_sent_at);
 
   // "Im Gespräch": kontaktiert (manueller Kanal), noch keine Antwort erfasst.
   const gespraech = rows.filter((r) => r.status === "kontaktiert" && r.channel !== "email" && !r.replied_at);
 
   const currentDm = dmQueue[0] ?? null;
+  const currentNachfassen = nachfassenQueue[0] ?? null;
 
   async function markSent(lead: FeldzugLead) {
     setBusyId(lead.id);
@@ -364,6 +400,17 @@ export default function AdminFeldzug() {
     if (error) { toast.error(error.message); return; }
     patch(lead.id, { status: "kontaktiert", contacted_at: now });
     toast.success(`@${lead.handle} als gesendet markiert.`);
+  }
+
+  async function markNachfassenSent(lead: FeldzugLead) {
+    setBusyId(lead.id);
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("acquisition_leads")
+      .update({ dm_followup_sent_at: now, updated_at: now }).eq("id", lead.id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    patch(lead.id, { dm_followup_sent_at: now });
+    toast.success(`@${lead.handle}: Nachfassen als gesendet markiert.`);
   }
 
   async function skipLead(lead: FeldzugLead, reason: string) {
@@ -404,19 +451,28 @@ export default function AdminFeldzug() {
       {/* WP7 "Wirkungs-Cockpit": ehrliches Heute-Band statt reiner Warteschlangen-Zahlen —
           nur Felder mit echtem Zeitstempel (created_at/contacted_at/replied_at/applied_at). */}
       {todayFunnel && (
-        <div className="mb-6 grid grid-cols-2 gap-px border-[1.5px] border-black bg-black sm:grid-cols-4">
-          {[
-            { label: "Neu heute", value: todayFunnel.neu },
-            { label: "Kontaktiert heute", value: todayFunnel.kontaktiert },
-            { label: "Geantwortet heute", value: todayFunnel.geantwortet },
-            { label: "Beworben heute", value: todayFunnel.beworben },
-          ].map((s) => (
-            <div key={s.label} className="bg-white px-4 py-3">
-              <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">{s.label}</p>
-              <p className="mt-1 font-serif text-2xl tabular-nums">{s.value}</p>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="mb-6 grid grid-cols-2 gap-px border-[1.5px] border-black bg-black sm:grid-cols-4">
+            {[
+              { label: "Neu heute", value: todayFunnel.neu },
+              { label: "Heute gesendet", value: `${todayFunnel.kontaktiert} / ${dailyGoal}` },
+              { label: "Geantwortet heute", value: todayFunnel.geantwortet },
+              { label: "Beworben heute", value: todayFunnel.beworben },
+            ].map((s) => (
+              <div key={s.label} className="bg-white px-4 py-3">
+                <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">{s.label}</p>
+                <p className="mt-1 font-serif text-2xl tabular-nums">{s.value}</p>
+              </div>
+            ))}
+          </div>
+          {/* WP5 "Die Rampe auf Hochtouren": freundlicher Hinweis am Tagesziel, kein Stopp — der
+              Feldzug bleibt bedienbar, egal wie hoch der Zähler steht. */}
+          {todayFunnel.kontaktiert >= dailyGoal && (
+            <p className="mb-6 border-[1.5px] border-black bg-white px-4 py-3 text-sm">
+              Tagesziel von {dailyGoal} erreicht — großartig. Du kannst gerne weitermachen, musst aber nicht.
+            </p>
+          )}
+        </>
       )}
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -443,6 +499,7 @@ export default function AdminFeldzug() {
           <div className="mb-4 flex flex-wrap gap-2">
             {([
               { key: "dm" as ChannelTab, label: `DM (${dmQueue.length})` },
+              { key: "nachfassen" as ChannelTab, label: `Nachfassen (${nachfassenQueue.length})` },
               { key: "email" as ChannelTab, label: `E-Mail (${emailQueue.length})` },
               { key: "blockiert" as ChannelTab, label: `Blockiert (${blockedQueue.length})` },
             ]).map((c) => (
@@ -470,6 +527,22 @@ export default function AdminFeldzug() {
             ) : (
               <div className="border-[1.5px] border-black p-16 text-center text-muted-foreground">
                 Für heute erledigt — alle freigegebenen DMs sind raus.
+              </div>
+            )
+          )}
+          {channelTab === "nachfassen" && (
+            currentNachfassen ? (
+              <DmCard
+                lead={currentNachfassen}
+                busy={busyId === currentNachfassen.id}
+                textOverride={currentNachfassen.dm_followup_draft}
+                onSent={() => void markNachfassenSent(currentNachfassen)}
+                onSkip={(reason) => void skipLead(currentNachfassen, reason)}
+              />
+            ) : (
+              <div className="border-[1.5px] border-black p-16 text-center text-muted-foreground">
+                Kein Nachfassen fällig — PAWN bereitet Nachfass-Entwürfe automatisch vor, sobald
+                kontaktierte Leads seit mindestens drei Tagen ohne Antwort sind.
               </div>
             )
           )}
