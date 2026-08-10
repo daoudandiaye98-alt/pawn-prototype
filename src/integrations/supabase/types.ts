@@ -639,6 +639,7 @@ export type Database = {
       contract_versions: {
         Row: {
           body_markdown: string
+          body_markdown_en: string | null
           checksum: string
           created_at: string
           effective_from: string
@@ -650,6 +651,7 @@ export type Database = {
         }
         Insert: {
           body_markdown: string
+          body_markdown_en?: string | null
           checksum: string
           created_at?: string
           effective_from?: string
@@ -661,6 +663,7 @@ export type Database = {
         }
         Update: {
           body_markdown?: string
+          body_markdown_en?: string | null
           checksum?: string
           created_at?: string
           effective_from?: string
@@ -1381,11 +1384,11 @@ export type Database = {
           stripe_account_id: string | null
           stripe_charges_enabled: boolean
           stripe_country: string
+          stripe_customer_id: string | null
           stripe_details_submitted: boolean
           stripe_payouts_enabled: boolean
           stripe_requirements: Json
           stripe_subscription_id: string | null
-          stripe_customer_id: string | null
           studio_last_seen_at: string | null
           tags: string[] | null
           updated_at: string
@@ -1438,11 +1441,11 @@ export type Database = {
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_country?: string
+          stripe_customer_id?: string | null
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
           stripe_subscription_id?: string | null
-          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -1495,11 +1498,11 @@ export type Database = {
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean
           stripe_country?: string
+          stripe_customer_id?: string | null
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
           stripe_subscription_id?: string | null
-          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -3046,6 +3049,24 @@ export type Database = {
           locale?: string
           member_number?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rate_limit_hits: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: never
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: never
         }
         Relationships: []
       }
