@@ -3628,7 +3628,7 @@ function unsubscribeUrl(leadId: string): string {
 
 async function sendResendEmail(
   resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string,
-  opts: { footer?: string; startLink?: string; impressum: string; unsubscribe: string },
+  opts: { footer?: string; startLink?: string; impressum: string; unsubscribe: string; html?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -3636,6 +3636,13 @@ async function sendResendEmail(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
       body: JSON.stringify({
         from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
+        // Teil 43 WP4: der Ein-Klick-Abmeldeweg gehört zusätzlich in den Kopf der Nachricht —
+        // Gmail und Outlook zeigen dann ihren eigenen Abmelden-Knopf, das hilft der Zustellbarkeit.
+        headers: {
+          "List-Unsubscribe": `<${opts.unsubscribe}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+        ...(opts.html ? { html: opts.html } : {}),
         text: `${text}\n\n—\n${opts.footer ?? DEFAULT_MAIL_FOOTER}${opts.startLink ? `\n\n${opts.startLink}` : ""}\n\n${opts.impressum}\nDu willst keine weiteren Nachrichten? Ein Klick, keine Anmeldung nötig: ${opts.unsubscribe}`,
       }),
     });
