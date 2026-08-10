@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { formatDate } from "@/lib/format";
@@ -18,6 +19,7 @@ interface ConsentRow { contract_version_id: string; accepted_at: string; revoked
 
 export default function StudioVertraege() {
   const { designer, loading: designerLoading } = useMyDesigner();
+  const { user } = useAuth();
   const { t, locale } = useI18n();
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [consents, setConsents] = useState<ConsentRow[]>([]);
@@ -25,17 +27,17 @@ export default function StudioVertraege() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!designer) return;
+    if (!designer || !user) return;
     (async () => {
       const [{ data: c }, { data: cs }] = await Promise.all([
         supabase.from("contract_versions").select("id, kind, version, title, body_markdown, effective_from, effective_to").order("kind").order("version", { ascending: false }),
-        supabase.from("designer_consents").select("contract_version_id, accepted_at, revoked_at").eq("user_id", designer.user_id),
+        supabase.from("designer_consents").select("contract_version_id, accepted_at, revoked_at").eq("user_id", user.id),
       ]);
       setContracts((c as ContractRow[] | null) ?? []);
       setConsents((cs as ConsentRow[] | null) ?? []);
       setLoading(false);
     })();
-  }, [designer]);
+  }, [designer, user]);
 
   if (designerLoading || loading) return <StudioShell title={t("studioShell.nav.vertraege")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studioShell.nav.vertraege")}><p className="text-sm text-muted-foreground">{t("studio.settings.noAccess")}</p></StudioShell>;
