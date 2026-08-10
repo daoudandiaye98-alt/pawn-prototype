@@ -54,9 +54,50 @@ function makeWorkSchema(t: (k: string) => string) {
   });
 }
 
-const STEP_KEYS = ["apply.step.konto", "apply.step.welt", "apply.step.haus", "apply.step.arbeit", "apply.step.vertraege", "apply.step.absenden"] as const;
-const STEP_MINUTES = [3, 1, 2, 4, 2, 1];
-const STEP_WHY_KEYS = ["apply.stepWhy.0", "apply.stepWhy.1", "apply.stepWhy.2", "apply.stepWhy.3", "apply.stepWhy.4", "apply.stepWhy.5"];
+type StepKey = "konto" | "welt" | "haus" | "arbeit" | "vertraege" | "absenden";
+const ALL_STEP_KEYS: StepKey[] = ["konto", "welt", "haus", "arbeit", "vertraege", "absenden"];
+const STEP_LABEL_KEY: Record<StepKey, string> = {
+  konto: "apply.step.konto", welt: "apply.step.welt", haus: "apply.step.haus",
+  arbeit: "apply.step.arbeit", vertraege: "apply.step.vertraege", absenden: "apply.step.absenden",
+};
+const STEP_WHY_KEY: Record<StepKey, string> = {
+  konto: "apply.stepWhy.0", welt: "apply.stepWhy.1", haus: "apply.stepWhy.2",
+  arbeit: "apply.stepWhy.3", vertraege: "apply.stepWhy.4", absenden: "apply.stepWhy.5",
+};
+const STEP_MINUTES_KEY: Record<StepKey, number> = {
+  konto: 3, welt: 1, haus: 2, arbeit: 4, vertraege: 2, absenden: 1,
+};
+
+type UploadState = "idle" | "compressing" | "uploading" | "done" | "error";
+
+/** PART 40 WP3 "Formular beschleunigen": Bilder client-seitig auf ~1600px längste Kante /
+ * ~85% Qualität verkleinern, bevor sie hochgeladen werden — WebP wenn der Browser es
+ * unterstützt, sonst JPEG. Schlägt die Verkleinerung fehl, geht das Original hoch statt
+ * die Bewerbung abzubrechen. */
+async function compressImage(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const maxEdge = 1600;
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  const toBlob = (type: string, quality: number) =>
+    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+  let blob = await toBlob("image/webp", 0.85);
+  let ext = "webp";
+  if (!blob) {
+    blob = await toBlob("image/jpeg", 0.85);
+    ext = "jpg";
+  }
+  if (!blob) return file;
+  const baseName = file.name.replace(/\.[^.]+$/, "");
+  return new File([blob], `${baseName}.${ext}`, { type: blob.type });
+}
 
 /** Übersetzte Sicht auf eine Disziplin — disciplines.ts selbst bleibt deutsch (dort stehen
  * nur die technischen Schlüssel), die sichtbaren Texte kommen für Apply.tsx aus dem Wörterbuch. */
@@ -136,16 +177,29 @@ const Apply = () => {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
   const [portfolio, setPortfolio] = useState<File[]>([]);
+  const [uploadStates, setUploadStates] = useState<UploadState[]>([]);
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [existingStatus, setExistingStatus] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+  // PART 40 WP3 "Formular beschleunigen": true, sobald die Welt aus einem Ref-Code-Lead
+  // vorbefüllt wurde — dann fällt der Welt-Schritt aus der Strecke (weiterhin in der
+  // Übersicht änderbar), und refPrefillDone entkoppelt den Vorbefüll-Versuch (async) vom
+  // Login-Sprung-Effekt weiter unten, damit beide nicht um den Startschritt konkurrieren.
+  const [worldPrefilled, setWorldPrefilled] = useState(false);
+  const [refPrefillDone, setRefPrefillDone] = useState(false);
 
   const accountSchema = useMemo(() => makeAccountSchema(t), [t]);
   const houseSchema = useMemo(() => makeHouseSchema(t), [t]);
   const workSchema = useMemo(() => makeWorkSchema(t), [t]);
-  const STEPS = useMemo(() => STEP_KEYS.map((k) => t(k)), [t]);
-  const STEP_WHY = useMemo(() => STEP_WHY_KEYS.map((k) => t(k)), [t]);
+  const stepKeys = useMemo(
+    () => (worldPrefilled ? ALL_STEP_KEYS.filter((k) => k !== "welt") : ALL_STEP_KEYS),
+    [worldPrefilled],
+  );
+  const STEPS = useMemo(() => stepKeys.map((k) => t(STEP_LABEL_KEY[k])), [stepKeys, t]);
+  const STEP_WHY = useMemo(() => stepKeys.map((k) => t(STEP_WHY_KEY[k])), [stepKeys, t]);
+  const STEP_MINUTES = useMemo(() => stepKeys.map((k) => STEP_MINUTES_KEY[k]), [stepKeys]);
+  const minStep = useMemo(() => (user ? stepKeys.indexOf(worldPrefilled ? "haus" : "welt") : 0), [user, stepKeys, worldPrefilled]);
 
   const rawWorld: Discipline | null = discipline ? DISCIPLINES[discipline] : null;
   const world: TranslatedDiscipline | null = useMemo(
@@ -169,15 +223,30 @@ const Apply = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // PART 40 WP2 "Sprachheilung": Initialsprache aus dem gespeicherten Ref-Code-Lead (falls
-  // vorhanden) — sonst bleibt es bei Browser-Erkennung/manuellem Toggle aus dem I18nProvider.
+  // PART 40 WP2 "Sprachheilung" + WP3 "Formular beschleunigen": aus dem gespeicherten
+  // Ref-Code-Lead kommen Sprache, Welt und Instagram-Handle vorausgefüllt. Ein vorhandener
+  // Entwurf (loadDraft(), synchron statt über React-State gelesen, um kein Race mit dem
+  // Draft-Lade-Effekt oben zu riskieren) hat Vorrang — wer schon mittendrin war, wird nicht
+  // überschrieben.
   useEffect(() => {
     const code = readRefCode();
-    if (!code) return;
+    if (!code) { setRefPrefillDone(true); return; }
+    const existingDraft = loadDraft();
     (async () => {
       const { data: rows } = await supabase.rpc("get_lead_invitation", { _ref_code: code });
-      const row = (rows as { language: string | null }[] | null)?.[0];
-      if (row?.language === "en" || row?.language === "de") setLocale(row.language as Locale);
+      const row = (rows as { world: string | null; handle: string | null; language: string | null }[] | null)?.[0] ?? null;
+      if (row) {
+        if (row.language === "en" || row.language === "de") setLocale(row.language as Locale);
+        if (!existingDraft?.discipline) {
+          const disc = parseDiscipline(row.world);
+          if (disc) { setDiscipline(disc); setWorldPrefilled(true); }
+        }
+        if (row.handle && !existingDraft?.data?.instagram) {
+          const handle = `@${row.handle.replace(/^@/, "")}`;
+          setData((prev) => (prev.instagram ? prev : { ...prev, instagram: handle }));
+        }
+      }
+      setRefPrefillDone(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -211,8 +280,8 @@ const Apply = () => {
   }, []);
 
   useEffect(() => {
-    if (loading || !user) return;
-    setStep((s) => (s === 0 ? 1 : s));
+    if (loading || !user || !refPrefillDone) return;
+    setStep((s) => (s === 0 ? minStep : s));
     (async () => {
       const { data: app } = await supabase
         .from("designer_applications")
@@ -221,31 +290,32 @@ const Apply = () => {
         .maybeSingle();
       if (app) setExistingStatus(app.status);
     })();
-  }, [user, loading]);
+  }, [user, loading, refPrefillDone, minStep]);
 
   const allContractsAccepted = contracts.length > 0 && contracts.every((c) => accepted[c.id]);
 
   const minutesLeft = useMemo(
     () => STEP_MINUTES.slice(step).reduce((a, b) => a + b, 0),
-    [step],
+    [step, STEP_MINUTES],
   );
 
   function validateStep(current: number): boolean {
     setFieldError(null);
     let message: string | null = null;
-    if (current === 0 && !user) {
+    const key = stepKeys[current];
+    if (key === "konto" && !user) {
       const r = accountSchema.safeParse(data);
       if (!r.success) message = r.error.issues[0]?.message ?? null;
-    } else if (current === 1) {
+    } else if (key === "welt") {
       if (!discipline) message = t("apply.zod.disciplineRequired");
-    } else if (current === 2) {
+    } else if (key === "haus") {
       const r = houseSchema.safeParse(data);
       if (!r.success) message = r.error.issues[0]?.message ?? null;
-    } else if (current === 3) {
+    } else if (key === "arbeit") {
       const r = workSchema.safeParse({ story: data.story, tags: data.tags });
       if (!r.success) message = r.error.issues[0]?.message ?? null;
       else if (portfolio.length < 3) message = t("apply.zod.portfolioMin");
-    } else if (current === 4 && !allContractsAccepted) {
+    } else if (key === "vertraege" && !allContractsAccepted) {
       message = t("apply.zod.contractsRequired");
     }
     if (message) {
@@ -264,21 +334,35 @@ const Apply = () => {
   }
   function back() {
     setFieldError(null);
-    setStep((s) => Math.max(s - 1, user ? 1 : 0));
+    setStep((s) => Math.max(s - 1, minStep));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function uploadPortfolio(userId: string): Promise<string[]> {
-    const paths: string[] = [];
-    for (const file of portfolio) {
-      const path = `${userId}/portfolio/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-      const { error } = await supabase.storage
-        .from("designer-applications")
-        .upload(path, file, { upsert: false });
-      if (error) throw error;
-      paths.push(path);
+  /** PART 40 WP3 "Formular beschleunigen": Bilder parallel hochladen (statt nacheinander),
+   * pro Bild verkleinern und einen Status führen — ein einzelnes fehlgeschlagenes Bild
+   * blockiert nicht mehr die ganze Bewerbung. */
+  async function uploadOneImage(userId: string, file: File, index: number): Promise<string | null> {
+    setUploadStates((s) => { const next = [...s]; next[index] = "compressing"; return next; });
+    let toUpload: File;
+    try {
+      toUpload = await compressImage(file);
+    } catch {
+      toUpload = file;
     }
-    return paths;
+    setUploadStates((s) => { const next = [...s]; next[index] = "uploading"; return next; });
+    const ext = toUpload.name.split(".").pop() || "jpg";
+    const path = `${userId}/portfolio/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage
+      .from("designer-applications")
+      .upload(path, toUpload, { upsert: false });
+    setUploadStates((s) => { const next = [...s]; next[index] = error ? "error" : "done"; return next; });
+    return error ? null : path;
+  }
+
+  async function uploadPortfolio(userId: string): Promise<string[]> {
+    setUploadStates(new Array(portfolio.length).fill("idle"));
+    const results = await Promise.all(portfolio.map((file, i) => uploadOneImage(userId, file, i)));
+    return results.filter((p): p is string => !!p);
   }
 
   /** Disziplin-Antworten hängen wir lesbar an die Story — kein Schema-Eingriff nötig. */
@@ -299,10 +383,16 @@ const Apply = () => {
     try {
       let portfolioPaths: string[] = [];
       if (user && portfolio.length > 0) {
-        portfolioPaths = await uploadPortfolio(user.id).catch((e) => {
-          toast.error(t("apply.toast.uploadFailed", { error: e.message }));
-          return [];
-        });
+        try {
+          portfolioPaths = await uploadPortfolio(user.id);
+        } catch (e) {
+          toast.error(t("apply.toast.uploadFailed", { error: e instanceof Error ? e.message : String(e) }));
+          portfolioPaths = [];
+        }
+        const failed = portfolio.length - portfolioPaths.length;
+        if (failed > 0 && portfolioPaths.length > 0) {
+          toast.error(t("apply.toast.uploadPartialFailed", { failed, total: portfolio.length }));
+        }
       }
 
       const styleTags = data.tags.split(",").map((tag) => tag.trim()).filter(Boolean);
@@ -355,7 +445,9 @@ const Apply = () => {
     }
   }
 
-  if (loading) return null;
+  // refPrefillDone verhindert für eingeloggte Nutzer einen kurzen Aufblitzer des Konto-Schritts,
+  // bevor der Ref-Code-Vorbefüll-Versuch (Welt/Sprache/Instagram) abgeschlossen ist.
+  if (loading || (user && !refPrefillDone)) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -403,7 +495,7 @@ const Apply = () => {
                   <p className="mt-2 text-sm text-muted-foreground">{STEP_WHY[step]}</p>
 
                   <div className="mt-8 space-y-5">
-                    {step === 0 && (
+                    {stepKeys[step] === "konto" && (
                       <>
                         <Field id="displayName" label={t("apply.field.displayName.label")} value={data.displayName} onChange={(v) => update("displayName", v)} hint={t("apply.field.displayName.hint")} />
                         <Field id="email" type="email" label={t("apply.field.email.label")} value={data.email} onChange={(v) => update("email", v)} hint={t("apply.field.email.hint")} />
@@ -411,35 +503,11 @@ const Apply = () => {
                       </>
                     )}
 
-                    {step === 1 && (
-                      <div className="grid grid-cols-1 gap-3">
-                        {DISCIPLINE_LIST.map((rawD) => {
-                          const d = translateDiscipline(t, rawD);
-                          return (
-                            <button
-                              key={d.id}
-                              type="button"
-                              aria-pressed={discipline === d.id}
-                              onClick={() => setDiscipline(d.id)}
-                              className={cn(
-                                "border p-5 text-left transition-colors",
-                                discipline === d.id
-                                  ? "border-foreground bg-foreground text-background"
-                                  : "border-border hover:border-foreground",
-                              )}
-                            >
-                              <span className="font-serif text-2xl font-light">{d.label}</span>
-                              <span className="mt-1 block text-sm opacity-75">{d.tagline}</span>
-                            </button>
-                          );
-                        })}
-                        <p className="text-xs text-muted-foreground">
-                          {t("apply.discipline.multiHint")}
-                        </p>
-                      </div>
+                    {stepKeys[step] === "welt" && (
+                      <DisciplinePicker discipline={discipline} onChange={setDiscipline} />
                     )}
 
-                    {step === 2 && (
+                    {stepKeys[step] === "haus" && (
                       <>
                         <Field id="brandName" label={t("apply.field.brandName.label")} value={data.brandName} onChange={(v) => update("brandName", v)} hint={t("apply.field.brandName.hint")} />
                         <Field id="legalName" label={t("apply.field.legalName.label")} value={data.legalName} onChange={(v) => update("legalName", v)} hint={t("apply.field.legalName.hint")} />
@@ -448,7 +516,7 @@ const Apply = () => {
                       </>
                     )}
 
-                    {step === 3 && (
+                    {stepKeys[step] === "arbeit" && (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="story" className="text-[0.65rem] uppercase tracking-[0.28em]">
@@ -494,7 +562,7 @@ const Apply = () => {
                       </>
                     )}
 
-                    {step === 4 && (
+                    {stepKeys[step] === "vertraege" && (
                       <>
                         {contracts.length === 0 && <p className="text-sm text-muted-foreground">{t("apply.contracts.loading")}</p>}
                         {contracts.map((c) => (
@@ -530,7 +598,7 @@ const Apply = () => {
                       </>
                     )}
 
-                    {step === 5 && (
+                    {stepKeys[step] === "absenden" && (
                       <ReviewList
                         data={data}
                         world={world}
@@ -538,6 +606,9 @@ const Apply = () => {
                         portfolio={portfolio}
                         accepted={accepted}
                         contracts={contracts}
+                        worldChangeable={worldPrefilled}
+                        onChangeDiscipline={setDiscipline}
+                        uploadStates={busy ? uploadStates : undefined}
                       />
                     )}
                   </div>
@@ -553,7 +624,7 @@ const Apply = () => {
                       type="button"
                       variant="outline"
                       onClick={back}
-                      disabled={step === (user ? 1 : 0) || busy}
+                      disabled={step === minStep || busy}
                       className="rounded-none"
                     >
                       {t("common.back")}
@@ -608,6 +679,35 @@ function Progress({ current, minutesLeft, steps }: { current: number; minutesLef
   );
 }
 
+function DisciplinePicker({ discipline, onChange }: { discipline: DisciplineId | null; onChange: (id: DisciplineId) => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      {DISCIPLINE_LIST.map((rawD) => {
+        const d = translateDiscipline(t, rawD);
+        return (
+          <button
+            key={d.id}
+            type="button"
+            aria-pressed={discipline === d.id}
+            onClick={() => onChange(d.id)}
+            className={cn(
+              "border p-5 text-left transition-colors",
+              discipline === d.id
+                ? "border-foreground bg-foreground text-background"
+                : "border-border hover:border-foreground",
+            )}
+          >
+            <span className="font-serif text-2xl font-light">{d.label}</span>
+            <span className="mt-1 block text-sm opacity-75">{d.tagline}</span>
+          </button>
+        );
+      })}
+      <p className="text-xs text-muted-foreground">{t("apply.discipline.multiHint")}</p>
+    </div>
+  );
+}
+
 function Field({ id, label, value, onChange, type = "text", placeholder, hint }: {
   id: string; label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; hint?: string;
 }) {
@@ -658,18 +758,21 @@ function PortfolioUpload({ files, setFiles, hint }: { files: File[]; setFiles: (
   );
 }
 
-function ReviewList({ data, world, extra, portfolio, accepted, contracts }: {
+function ReviewList({ data, world, extra, portfolio, accepted, contracts, worldChangeable, onChangeDiscipline, uploadStates }: {
   data: FormState;
   world: TranslatedDiscipline | null;
   extra: Record<string, string>;
   portfolio: File[];
   accepted: Record<string, boolean>;
   contracts: ContractRow[];
+  worldChangeable?: boolean;
+  onChangeDiscipline?: (id: DisciplineId) => void;
+  uploadStates?: UploadState[];
 }) {
   const { t } = useI18n();
+  const [changingWorld, setChangingWorld] = useState(false);
   const empty = t("apply.review.empty");
   const rows: [string, string][] = [
-    [t("apply.review.welt"), world?.label ?? empty],
     [t("apply.review.haus"), data.brandName],
     [t("apply.review.rechtsname"), data.legalName],
     [t("apply.review.ort"), `${data.location}${data.country ? `, ${data.country}` : ""}`],
@@ -681,6 +784,24 @@ function ReviewList({ data, world, extra, portfolio, accepted, contracts }: {
   ];
   return (
     <ul className="divide-y divide-border text-sm">
+      <li className="py-2">
+        <div className="grid grid-cols-2 items-baseline gap-3">
+          <span className="text-muted-foreground">{t("apply.review.welt")}</span>
+          <span className="flex items-center justify-between gap-2 truncate">
+            {world?.label ?? empty}
+            {worldChangeable && onChangeDiscipline && (
+              <button type="button" onClick={() => setChangingWorld((v) => !v)} className="shrink-0 text-xs uppercase tracking-[0.2em] text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                {t("common.change")}
+              </button>
+            )}
+          </span>
+        </div>
+        {changingWorld && onChangeDiscipline && (
+          <div className="mt-3">
+            <DisciplinePicker discipline={world?.id ?? null} onChange={(id) => { onChangeDiscipline(id); setChangingWorld(false); }} />
+          </div>
+        )}
+      </li>
       {rows.map(([k, v]) => (
         <li key={k} className="grid grid-cols-2 gap-3 py-2">
           <span className="text-muted-foreground">{k}</span>
@@ -691,6 +812,19 @@ function ReviewList({ data, world, extra, portfolio, accepted, contracts }: {
         <span className="text-muted-foreground">{t("apply.review.vereinbarungen")}</span>
         <span>{t("apply.review.vereinbarungenCount", { accepted: contracts.filter((c) => accepted[c.id]).length, total: contracts.length })}</span>
       </li>
+      {uploadStates && uploadStates.length > 0 && (
+        <li className="py-3">
+          <p className="mb-2 text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{t("apply.upload.progressTitle")}</p>
+          <ul className="space-y-1 text-xs">
+            {portfolio.map((f, i) => (
+              <li key={i} className="flex items-center justify-between gap-2">
+                <span className="truncate text-muted-foreground">{f.name}</span>
+                <span className="shrink-0">{t(`apply.upload.${uploadStates[i] ?? "idle"}`)}</span>
+              </li>
+            ))}
+          </ul>
+        </li>
+      )}
     </ul>
   );
 }
