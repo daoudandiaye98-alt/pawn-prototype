@@ -2165,7 +2165,9 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
         if (mapped.followers != null) patch.followers = mapped.followers;
         if (mapped.website) patch.website = mapped.website;
         if (mapped.scrape_images.length) patch.scrape_images = mapped.scrape_images;
-        if (mapped.email) { patch.email = mapped.email; patch.channel = "email"; patch.contact_source = "bio"; }
+        if (mapped.email && pruefeEmailPlausibilitaet(mapped.email, mapped.website, mapped.handle).ok) {
+          patch.email = mapped.email; patch.channel = "email"; patch.contact_source = "bio";
+        }
         const { data: touched } = await admin.from("acquisition_leads")
           .update(patch as never).eq("handle", mapped.handle).is("email", null).select("id");
         updated += (touched ?? []).length;
