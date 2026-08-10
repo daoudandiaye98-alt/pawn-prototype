@@ -322,6 +322,37 @@ function AcquisitionPulsePanel({ pulse, navigate }: { pulse: ReturnType<typeof u
             );
           })}
         </div>
+
+        {/* WP7 "Ende der Done-Lüge": die Balken oben zählen nur, was von Hand durchgeklickt
+            wurde (angewärmt/kontaktiert/…) — hier stehen die echten, automatisch geschriebenen
+            Signale, unabhängig davon, ob jemand manuell Status gepflegt hat. */}
+        <div className="mt-5 border-t border-white/[0.06] pt-4">
+          <p className="text-[0.55rem] uppercase tracking-[0.24em] text-[hsl(0_0%_50%)]">Echte Wirkung (automatisch)</p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10.5px] text-[hsl(0_0%_70%)]">
+            <span><span className="font-serif text-[15px] text-[hsl(0_0%_94%)]">{pulse.loading ? "…" : pulse.echtQualifiziert}</span> qualifiziert</span>
+            <span><span className="font-serif text-[15px] text-[hsl(0_0%_94%)]">{pulse.loading ? "…" : pulse.echtBeworben}</span> beworben</span>
+            <span><span className="font-serif text-[15px] text-[hsl(0_0%_94%)]">{pulse.loading ? "…" : pulse.echtGewonnen}</span> gewonnen</span>
+          </div>
+        </div>
+
+        {/* Tagesziel-Wächter: nur eine sichtbare Warnung ab 18 Uhr, kein Auto-Versand. */}
+        <div className="mt-4 border-t border-white/[0.06] pt-4">
+          <div className="flex items-center justify-between text-[10.5px] text-[hsl(0_0%_55%)]">
+            <span className="uppercase tracking-[0.18em]">Heute versendet</span>
+            <span className="tabular-nums">{pulse.loading ? "…" : pulse.heuteVersendet} / {pulse.tagesziel}</span>
+          </div>
+          <div className="mt-1 h-1 w-full bg-white/[0.06]">
+            <div
+              className={`h-full ${pulse.heuteVersendet >= pulse.tagesziel ? "bg-white/40" : "bg-[hsl(0_70%_55%)]"}`}
+              style={{ width: `${Math.min(100, Math.round((pulse.heuteVersendet / Math.max(1, pulse.tagesziel)) * 100))}%` }}
+            />
+          </div>
+          {!pulse.loading && new Date().getHours() >= 18 && pulse.heuteVersendet < pulse.tagesziel && (
+            <p className="mt-2 text-[10.5px] text-[hsl(0_70%_65%)]">
+              Tagesziel noch nicht erreicht — {pulse.tagesziel - pulse.heuteVersendet} fehlen.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

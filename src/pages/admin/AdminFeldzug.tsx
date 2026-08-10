@@ -292,6 +292,13 @@ function GespraechCard({
 
 /* ─────────────────────── Hauptseite ─────────────────────── */
 
+interface TodayFunnel {
+  neu: number;
+  kontaktiert: number;
+  geantwortet: number;
+  beworben: number;
+}
+
 export default function AdminFeldzug() {
   const { user, roles, loading } = useAuth();
   const [rows, setRows] = useState<FeldzugLead[]>([]);
@@ -299,17 +306,32 @@ export default function AdminFeldzug() {
   const [mainTab, setMainTab] = useState<MainTab>("heute");
   const [channelTab, setChannelTab] = useState<ChannelTab>("dm");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [todayFunnel, setTodayFunnel] = useState<TodayFunnel | null>(null);
 
   const load = async () => {
     setFetching(true);
-    const { data, error } = await supabase
-      .from("acquisition_leads")
-      .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type")
-      .eq("lead_type", "designer")
-      .in("status", ["qualifiziert", "kontaktiert"])
-      .order("kurator_score", { ascending: false, nullsFirst: false });
-    if (error) toast.error(error.message);
-    setRows((data as FeldzugLead[] | null) ?? []);
+    const heuteStart = new Date(); heuteStart.setHours(0, 0, 0, 0);
+    const heuteIso = heuteStart.toISOString();
+    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes] = await Promise.all([
+      supabase
+        .from("acquisition_leads")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type")
+        .eq("lead_type", "designer")
+        .in("status", ["qualifiziert", "kontaktiert"])
+        .order("kurator_score", { ascending: false, nullsFirst: false }),
+      supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("created_at", heuteIso),
+      supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("contacted_at", heuteIso),
+      supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("replied_at", heuteIso),
+      supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("applied_at", heuteIso),
+    ]);
+    if (leadsRes.error) toast.error(leadsRes.error.message);
+    setRows((leadsRes.data as FeldzugLead[] | null) ?? []);
+    setTodayFunnel({
+      neu: neuRes.count ?? 0,
+      kontaktiert: kontaktiertRes.count ?? 0,
+      geantwortet: geantwortetRes.count ?? 0,
+      beworben: beworbenRes.count ?? 0,
+    });
     setFetching(false);
   };
 
@@ -379,6 +401,24 @@ export default function AdminFeldzug() {
 
   return (
     <AdminShell title="Feldzug" eyebrow="Die mobile Sende-Rampe">
+      {/* WP7 "Wirkungs-Cockpit": ehrliches Heute-Band statt reiner Warteschlangen-Zahlen —
+          nur Felder mit echtem Zeitstempel (created_at/contacted_at/replied_at/applied_at). */}
+      {todayFunnel && (
+        <div className="mb-6 grid grid-cols-2 gap-px border-[1.5px] border-black bg-black sm:grid-cols-4">
+          {[
+            { label: "Neu heute", value: todayFunnel.neu },
+            { label: "Kontaktiert heute", value: todayFunnel.kontaktiert },
+            { label: "Geantwortet heute", value: todayFunnel.geantwortet },
+            { label: "Beworben heute", value: todayFunnel.beworben },
+          ].map((s) => (
+            <div key={s.label} className="bg-white px-4 py-3">
+              <p className="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">{s.label}</p>
+              <p className="mt-1 font-serif text-2xl tabular-nums">{s.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap gap-2">
         {(["heute", "gespraech"] as MainTab[]).map((t) => (
           <button

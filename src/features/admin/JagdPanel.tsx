@@ -74,6 +74,8 @@ export function JagdPanel() {
   const [stats, setStats] = useState<KontaktStats | null>(null);
   const [dailyRuns, setDailyRuns] = useState(16);
   const [dailyRunsSaving, setDailyRunsSaving] = useState(false);
+  const [dailyGoal, setDailyGoal] = useState(50);
+  const [dailyGoalSaving, setDailyGoalSaving] = useState(false);
 
   const load = useCallback(async () => {
     const seit = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
@@ -89,6 +91,8 @@ export function JagdPanel() {
     setQueryText(parsed.map((q) => `${q.query} · ${q.world}`).join("\n"));
     const storedDailyRuns = (configRes.data?.value as { hunt_daily_runs?: number } | null)?.hunt_daily_runs;
     if (typeof storedDailyRuns === "number") setDailyRuns(storedDailyRuns);
+    const storedDailyGoal = (configRes.data?.value as { daily_goal?: number } | null)?.daily_goal;
+    if (typeof storedDailyGoal === "number") setDailyGoal(storedDailyGoal);
 
     const leads = (leadsRes.data as { status: string; email: string | null; contact_url: string | null }[] | null) ?? [];
     setStats({
@@ -164,6 +168,18 @@ export function JagdPanel() {
     toast.success(`Tempo gespeichert: ${value} Suchläufe pro Jagd.`);
   }
 
+  async function saveDailyGoal(value: number) {
+    setDailyGoalSaving(true);
+    const { data: current } = await supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
+    const base = (current?.value as Record<string, unknown> | null) ?? {};
+    const { error } = await supabase.from("ai_config")
+      .upsert({ key: "akquise_config", value: { ...base, daily_goal: value } as unknown as never }, { onConflict: "key" });
+    setDailyGoalSaving(false);
+    if (error) { toast.error(error.message); return; }
+    setDailyGoal(value);
+    toast.success(`Tagesziel gespeichert: ${value} Erstkontakte pro Tag.`);
+  }
+
   const running = hunts.filter((h) => h.status === "gestartet").length;
 
   return (
@@ -226,6 +242,33 @@ export function JagdPanel() {
             </div>
           ))}
         </dl>
+      )}
+
+      {/* WP7 Tagesziel-Wächter: nur eine sichtbare Warnung, kein Auto-Versand. */}
+      {stats && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+          <p className="text-xs text-muted-foreground">
+            Tagesziel: <span className="tabular-nums text-foreground">{stats.heuteGesendet} / {dailyGoal}</span>
+            {new Date().getHours() >= 18 && stats.heuteGesendet < dailyGoal && (
+              <span className="ml-2 text-[0.65rem] uppercase tracking-[0.18em] text-destructive">
+                {dailyGoal - stats.heuteGesendet} fehlen noch heute
+              </span>
+            )}
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number" min={1} max={500} value={dailyGoal}
+              onChange={(e) => setDailyGoal(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
+              className="h-8 w-16 border-[1.5px] border-black px-2 text-center text-sm tabular-nums"
+            />
+            <Button
+              size="sm" variant="outline" disabled={dailyGoalSaving} onClick={() => void saveDailyGoal(dailyGoal)}
+              className="rounded-none border-black hover:bg-black hover:text-white"
+            >
+              {dailyGoalSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ziel speichern"}
+            </Button>
+          </div>
+        </div>
       )}
 
 

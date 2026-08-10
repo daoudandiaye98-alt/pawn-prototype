@@ -298,6 +298,17 @@ export interface AcquisitionPulse {
   toWarmUp: number;
   toContact: number;
   followupDue: number;
+  // WP7 "Ende der Done-Lüge": stageCounts oben bildet nur den MANUELLEN Admin-Status ab
+  // (kontaktiert/antwort/registriert/aktiviert werden nie automatisch gesetzt — sie zeigen
+  // nur, was von Hand durchgeklickt wurde). Die Zahlen hier sind die echten, automatisch
+  // geschriebenen Signale: qualifiziert (PAWN-Einschätzung), beworben/gewonnen (WP1, echte
+  // Bewerbung bzw. echtes neues Haus) — die gelten unabhängig davon, ob jemand manuell Status
+  // gepflegt hat.
+  echtQualifiziert: number;
+  echtBeworben: number;
+  echtGewonnen: number;
+  heuteVersendet: number;
+  tagesziel: number;
 }
 
 const ACQUISITION_STAGES = ["neu", "angewaermt", "kontaktiert", "antwort", "registriert", "aktiviert"] as const;
@@ -313,20 +324,24 @@ export function useAcquisitionPulse(refreshKey: number | string = 0): Acquisitio
     stageCounts: { neu: 0, angewaermt: 0, kontaktiert: 0, antwort: 0, registriert: 0, aktiviert: 0 },
     worldCounts: { Mode: 0, Kunst: 0, Interior: 0 },
     toWarmUp: 0, toContact: 0, followupDue: 0,
+    echtQualifiziert: 0, echtBeworben: 0, echtGewonnen: 0, heuteVersendet: 0, tagesziel: 50,
   });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("acquisition_leads")
-        .select("status, world, warmed_at, contacted_at, followup_at")
-        .limit(5000);
+      const heuteStart = new Date(); heuteStart.setHours(0, 0, 0, 0);
+      const [leadsRes, configRes] = await Promise.all([
+        supabase.from("acquisition_leads")
+          .select("status, world, warmed_at, contacted_at, followup_at").limit(5000),
+        supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle(),
+      ]);
       if (cancelled) return;
-      const rows = data ?? [];
+      const rows = leadsRes.data ?? [];
       const stageCounts = { neu: 0, angewaermt: 0, kontaktiert: 0, antwort: 0, registriert: 0, aktiviert: 0 };
       const worldCounts = { Mode: 0, Kunst: 0, Interior: 0 };
       let toWarmUp = 0, toContact = 0, followupDue = 0;
+      let echtQualifiziert = 0, echtBeworben = 0, echtGewonnen = 0, heuteVersendet = 0;
       for (const r of rows) {
         const status = r.status as string;
         if (status in stageCounts) stageCounts[status as keyof typeof stageCounts] += 1;
@@ -334,8 +349,16 @@ export function useAcquisitionPulse(refreshKey: number | string = 0): Acquisitio
         if (status === "neu") toWarmUp += 1;
         if (status === "angewaermt" && (daysSinceIso(r.warmed_at) ?? 0) >= 2) toContact += 1;
         if (status === "kontaktiert" && !r.followup_at && (daysSinceIso(r.contacted_at) ?? 0) >= 5) followupDue += 1;
+        if (status === "qualifiziert") echtQualifiziert++;
+        if (status === "beworben") echtBeworben++;
+        if (status === "gewonnen") echtGewonnen++;
+        if (r.contacted_at && new Date(r.contacted_at) >= heuteStart) heuteVersendet++;
       }
-      setState({ loading: false, stageCounts, worldCounts, toWarmUp, toContact, followupDue });
+      const tagesziel = Number((configRes.data?.value as { daily_goal?: number } | null)?.daily_goal) || 50;
+      setState({
+        loading: false, stageCounts, worldCounts, toWarmUp, toContact, followupDue,
+        echtQualifiziert, echtBeworben, echtGewonnen, heuteVersendet, tagesziel,
+      });
     })();
     return () => { cancelled = true; };
   }, [refreshKey]);
