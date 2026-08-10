@@ -245,6 +245,9 @@ interface AkquiseConfig {
   dm_daily_cap: number;
   /** Teil 39 AP4: nach so vielen Tagen werden aussortierte/abgemeldete Leads auf Minimaldaten reduziert. */
   retention_days: number;
+  /** WP7 "Die ersten Fünfzig": angestrebte Erstkontakte pro Tag — reiner Anzeige-/Warn-Wert im
+   * Cockpit (Tagesziel-Wächter), erzwingt nie einen Versand. */
+  daily_goal: number;
 }
 
 
@@ -281,6 +284,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   email_run_cap: 12,
   dm_daily_cap: 20,
   retention_days: 180,
+  daily_goal: 50,
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
