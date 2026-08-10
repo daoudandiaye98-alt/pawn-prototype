@@ -106,9 +106,9 @@ export type Database = {
           qc_passed: boolean | null
           recherche_attempted_at: string | null
           ref_code: string | null
+          replied_at: string | null
           reply_channel: string | null
           reply_sentiment: string | null
-          replied_at: string | null
           retention_purged_at: string | null
           score_reasons: Json | null
           scrape_images: Json | null
@@ -158,9 +158,9 @@ export type Database = {
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
           ref_code?: string | null
+          replied_at?: string | null
           reply_channel?: string | null
           reply_sentiment?: string | null
-          replied_at?: string | null
           retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
@@ -210,9 +210,9 @@ export type Database = {
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
           ref_code?: string | null
+          replied_at?: string | null
           reply_channel?: string | null
           reply_sentiment?: string | null
-          replied_at?: string | null
           retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
@@ -3485,7 +3485,10 @@ export type Database = {
       }
       backfill_lead_attribution: {
         Args: never
-        Returns: { examined_count: number; matched_count: number }[]
+        Returns: {
+          examined_count: number
+          matched_count: number
+        }[]
       }
       book_ai_spend: {
         Args: { _cents: number; _designer_id: string }
@@ -3536,13 +3539,20 @@ export type Database = {
           unique_visitors: number
         }[]
       }
+      generate_ref_code: { Args: never; Returns: string }
       get_attribution_stats: {
         Args: never
-        Returns: { attributed: number; total: number }[]
+        Returns: {
+          attributed: number
+          total: number
+        }[]
       }
       get_founding_social_proof: {
         Args: never
-        Returns: { brand_name: string; world: string }[]
+        Returns: {
+          brand_name: string
+          world: string
+        }[]
       }
       get_lead_invitation: {
         Args: { _ref_code: string }
