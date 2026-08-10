@@ -3500,6 +3500,7 @@ export type Database = {
         Args: { p_asset_id: string; p_metric: string }
         Returns: undefined
       }
+      count_founding_designers: { Args: never; Returns: number }
       customer_behavior_segments: {
         Args: never
         Returns: {
@@ -3523,6 +3524,15 @@ export type Database = {
           returning_visitors: number
           total_visits: number
           unique_visitors: number
+        }[]
+      }
+      get_lead_invitation: {
+        Args: { _ref_code: string }
+        Returns: {
+          handle: string
+          lead_type: string
+          personal_line: string
+          world: string
         }[]
       }
       grant_credits: {

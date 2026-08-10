@@ -29,6 +29,7 @@ import Vision from "./pages/Vision.tsx";
 import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
 import Start from "./pages/Start.tsx";
+import Einladung from "./pages/Einladung.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import Impressum from "./pages/Impressum.tsx";
 import Versand from "./pages/Versand.tsx";
@@ -158,6 +159,7 @@ const App = () => (
                 <Route path="/apply" element={<ApplyLanding />} />
                 <Route path="/apply/form" element={<Apply />} />
                 <Route path="/start" element={<Start />} />
+                <Route path="/einladung/:refCode" element={<Einladung />} />
                 <Route path="/datenschutz" element={<Datenschutz />} />
                 <Route path="/impressum" element={<Impressum />} />
                 <Route path="/versand" element={<Versand />} />

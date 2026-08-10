@@ -33,3 +33,38 @@ export function clearLeadRef(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
 }
+
+/**
+ * WP1/WP2 "Die ersten Fünfzig": der kurze, öffentlich sichtbare ref_code aus der
+ * Einladungsseite (/einladung/{ref_code}). Eigener Schlüssel, unabhängig vom obigen
+ * (raw-UUID-basierten) Lead-Ref UND vom Referral-Code (?ref=<designer-slug>, Teil 17d) —
+ * drei getrennte Mechanismen, keiner überschreibt einen anderen.
+ */
+const REF_CODE_KEY = "pawn:akquise-ref-code";
+
+interface StoredRefCode { code: string; at: number }
+
+export function captureRefCode(code: string | null): void {
+  if (typeof window === "undefined" || !code) return;
+  const trimmed = code.trim();
+  if (!trimmed) return;
+  window.localStorage.setItem(REF_CODE_KEY, JSON.stringify({ code: trimmed, at: Date.now() } as StoredRefCode));
+}
+
+export function readRefCode(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(REF_CODE_KEY);
+  if (!raw) return null;
+  try {
+    const stored = JSON.parse(raw) as StoredRefCode;
+    if (Date.now() - stored.at > TTL_MS) { window.localStorage.removeItem(REF_CODE_KEY); return null; }
+    return stored.code;
+  } catch {
+    return null;
+  }
+}
+
+export function clearRefCode(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(REF_CODE_KEY);
+}
