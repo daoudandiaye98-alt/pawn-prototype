@@ -242,6 +242,8 @@ interface AkquiseConfig {
   email_run_cap: number;
   /** Höchstens so viele DM-Karten pro Tag im Sende-Stapel — schützt das Konto vor auffälligem Verhalten (Teil 23). */
   dm_daily_cap: number;
+  /** Teil 39 AP4: nach so vielen Tagen werden aussortierte/abgemeldete Leads auf Minimaldaten reduziert. */
+  retention_days: number;
 }
 
 
@@ -277,6 +279,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   batch_profile: 40, batch_kontakt: 60, batch_kuratieren: 60, batch_verfassen: 40,
   email_run_cap: 12,
   dm_daily_cap: 20,
+  retention_days: 180,
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -755,6 +758,29 @@ async function checkNachrichten(admin: SupabaseClient): Promise<NoticeCandidate[
   }];
 }
 
+/** Teil 39 AP4 — Datenminimierung: aussortierte/abgemeldete Leads verlieren nach der konfigurierten
+ * Frist (akquise_config.retention_days) ihre personenbezogenen Felder. Läuft als Teil des
+ * Herzschlags (kein eigener Cron-Auth-Pfad nötig), rührt frische/aktive Leads nie an. */
+async function runAkquiseRetention(admin: SupabaseClient): Promise<number> {
+  const config = await loadAkquiseConfig(admin);
+  const cutoff = new Date(Date.now() - config.retention_days * 86_400_000).toISOString();
+  const { data: rows } = await admin.from("acquisition_leads")
+    .select("id")
+    .in("status", ["aussortiert", "abgemeldet"])
+    .lt("updated_at", cutoff)
+    .is("retention_purged_at", null)
+    .limit(200);
+  if (!rows?.length) return 0;
+  const nowIso = new Date().toISOString();
+  for (const row of rows as { id: string }[]) {
+    await admin.from("acquisition_leads").update({
+      email: null, message_draft: null, personal_line: null, outlet: null, scrape_images: null,
+      retention_purged_at: nowIso,
+    }).eq("id", row.id);
+  }
+  return rows.length;
+}
+
 /** Legt neue Meldungen nur an, wenn sich der Inhalt gegenüber der noch offenen Meldung gleicher Art geändert hat. */
 async function upsertNotices(admin: SupabaseClient, candidates: NoticeCandidate[]): Promise<number> {
   let created = 0;
@@ -881,6 +907,7 @@ async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): P
   if (runningRows && runningRows.length > 0) return { skipped: "laeuft_bereits" };
 
   const evolutionResult = await runEvolution(admin).catch(() => ({ summary: "" }));
+  await runAkquiseRetention(admin).catch(() => 0);
 
   if (inQuietHours(config)) return { skipped: "ruhezeit", evolution: evolutionResult.summary };
 
@@ -2909,8 +2936,31 @@ const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sicht
 
 const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio sichtbar ist. Eine kurze Antwort genügt, dann lassen wir dich in Ruhe weiterarbeiten.";
 
+interface BusinessProfile {
+  legal_name?: string; contact_email?: string;
+  address_line1?: string; address_line2?: string;
+  postal_code?: string; city?: string; country?: string;
+}
+
+/** Teil 39 AP4 — UWG §7: jede Akquise-E-Mail trägt ein vollständiges Impressum + einen
+ * Ein-Klick-Abmeldelink, der ohne Login funktioniert (kein "Antworten, um dich abzumelden"). */
+async function loadBusinessImpressumLine(admin: SupabaseClient): Promise<string> {
+  const { data } = await admin.from("ai_config").select("value").eq("key", "business_profile").maybeSingle();
+  const b = (data?.value as BusinessProfile | null) ?? {};
+  const name = b.legal_name ?? "PAWN";
+  const addr = [b.address_line1, b.address_line2, [b.postal_code, b.city].filter(Boolean).join(" "), b.country]
+    .filter(Boolean).join(", ");
+  const contact = b.contact_email ?? "pawnstudio.co@gmail.com";
+  return addr ? `${name}, ${addr}. Kontakt: ${contact}.` : `${name}. Kontakt: ${contact}.`;
+}
+
+function unsubscribeUrl(leadId: string): string {
+  return `https://pawn.vision/akquise-abmelden?lead=${leadId}`;
+}
+
 async function sendResendEmail(
-  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string, footer?: string, startLink?: string,
+  resendKey: string, config: AkquiseConfig, to: string, subject: string, text: string,
+  opts: { footer?: string; startLink?: string; impressum: string; unsubscribe: string },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -2918,7 +2968,7 @@ async function sendResendEmail(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
       body: JSON.stringify({
         from: config.email_from, to: [to], reply_to: config.email_reply_to, subject,
-        text: `${text}\n\n—\n${footer ?? DEFAULT_MAIL_FOOTER}${startLink ? `\n\n${startLink}` : ""}`,
+        text: `${text}\n\n—\n${opts.footer ?? DEFAULT_MAIL_FOOTER}${opts.startLink ? `\n\n${opts.startLink}` : ""}\n\n${opts.impressum}\nDu willst keine weiteren Nachrichten? Ein Klick, keine Anmeldung nötig: ${opts.unsubscribe}`,
       }),
     });
     if (!res.ok) {
@@ -2937,6 +2987,7 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   if (!resendKey) return { ok: false, error: "Kein RESEND_API_KEY hinterlegt." };
   if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
   const config = await loadAkquiseConfig(admin);
+  const impressum = await loadBusinessImpressumLine(admin);
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score").in("id", leadIds);
 
@@ -2966,7 +3017,9 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
       : undefined;
     // Teil 37/AP2 — Wizard-Einstieg mit Lead-Attribution, nur für Designer-Leads (Presse bewirbt sich nicht).
     const startLink = isPresse ? undefined : `Dein Einstieg: https://pawn.vision/start?lead=${lead.id}`;
-    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, footer, startLink);
+    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, {
+      footer, startLink, impressum, unsubscribe: unsubscribeUrl(lead.id),
+    });
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
     await admin.from("ai_actions_log").insert({
       source: "jarvis", action: isFollowup ? "akquise_followup_email" : "akquise_erstkontakt_email",
