@@ -1755,6 +1755,105 @@ function pickBestEmail(candidates: string[], host: string): string | null {
   return clean.sort((a, b) => score(b) - score(a))[0];
 }
 
+/* ============================================================================
+ * Teil 42 „Plausibilität": eine gefundene Adresse gehört erst dann zum Lead,
+ * wenn sie nachweislich zur Marke passt. Fremde Redaktionen und Sammelseiten
+ * bleiben draußen — eine kleine saubere Liste ist mehr wert als eine große.
+ * ========================================================================== */
+
+/** Zusammengesetzte Endungen, bei denen die eintragbare Domain drei Teile hat. */
+const ZWEISTUFIGE_TLD = new Set([
+  "co.uk", "org.uk", "ac.uk", "gov.uk", "co.jp", "co.kr", "co.nz", "co.za", "co.in",
+  "com.au", "com.br", "com.mx", "com.tr", "com.ar", "com.hk", "com.sg", "com.pl", "net.au",
+]);
+
+/** Registrierbare Domain ohne 'www.' und ohne Subdomains: shop.marke.co.uk -> marke.co.uk */
+function registrableDomain(hostOrUrl: string): string {
+  let host = (hostOrUrl || "").trim().toLowerCase();
+  if (!host) return "";
+  if (host.includes("/") || host.startsWith("http")) {
+    try { host = new URL(host.startsWith("http") ? host : `https://${host}`).hostname; } catch { /* Rohwert */ }
+  }
+  host = host.replace(/^www\./, "").replace(/\.$/, "");
+  const parts = host.split(".").filter(Boolean);
+  if (parts.length <= 2) return parts.join(".");
+  const letzteZwei = parts.slice(-2).join(".");
+  return ZWEISTUFIGE_TLD.has(letzteZwei) ? parts.slice(-3).join(".") : letzteZwei;
+}
+
+const FREEMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de",
+  "hotmail.com", "hotmail.de", "hotmail.fr", "hotmail.co.uk", "live.com", "live.de",
+  "yahoo.com", "yahoo.de", "yahoo.fr", "yahoo.co.uk", "ymail.com",
+  "outlook.com", "outlook.de", "outlook.fr", "msn.com",
+  "icloud.com", "me.com", "mac.com", "aol.com",
+  "proton.me", "protonmail.com", "pm.me", "mail.com", "t-online.de", "freenet.de", "posteo.de",
+]);
+
+/** Kleinschreibung, Trennzeichen weg — 'Amina.Saada' und 'amina_saada' sind dasselbe. */
+function normalisiereKennung(value: string): string {
+  return (value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+interface PlausiPruefung { ok: boolean; grund: string }
+
+/**
+ * Gehört die Adresse zur Marke? (a) gleiche registrierbare Domain wie die Website, oder
+ * (b) Freemailer, dessen lokaler Teil zum Handle/Namen passt. Alles andere fliegt raus.
+ */
+function pruefeEmailPlausibilitaet(
+  email: string, website: string | null, handle: string, name?: string | null,
+): PlausiPruefung {
+  const adresse = (email || "").trim().toLowerCase();
+  const at = adresse.lastIndexOf("@");
+  if (at < 1) return { ok: false, grund: "adresse_unlesbar" };
+  const lokal = adresse.slice(0, at);
+  const mailDomain = registrableDomain(adresse.slice(at + 1));
+  const siteDomain = website ? registrableDomain(website) : "";
+
+  if (siteDomain && mailDomain === siteDomain) return { ok: true, grund: "domain_gleich" };
+
+  const freemail = FREEMAIL_DOMAINS.has(mailDomain);
+  if (freemail) {
+    const l = normalisiereKennung(lokal);
+    const kennungen = [handle, name ?? "", siteDomain.split(".")[0] ?? ""]
+      .map(normalisiereKennung).filter((k) => k.length >= 3);
+    const passt = kennungen.some((k) => l === k || l.includes(k) || k.includes(l));
+    return passt
+      ? { ok: true, grund: "freemail_kennung_passt" }
+      : { ok: false, grund: "freemail_fremde_kennung" };
+  }
+
+  // Eigene Domain ohne bekannte Website: die Adresse selbst ist die Spur — plausibel,
+  // sofern die Kennung passt oder gar keine Website zum Vergleich vorliegt.
+  if (!siteDomain) return { ok: true, grund: "ohne_website_eigene_domain" };
+  return { ok: false, grund: "fremde_domain" };
+}
+
+/**
+ * Domains, die niemals die Website eines Designer-Leads sind: Presse, Magazine, Portale,
+ * Marktplätze. Für lead_type 'presse' gilt die Liste bewusst NICHT.
+ */
+const DEFAULT_DOMAIN_SPERRLISTE = [
+  "timesofindia.indiatimes.com", "indiatimes.com", "vogue", "elle", "harpersbazaar", "gq",
+  "designboom.com", "dezeen.com", "architecturaldigest", "ad-magazin.de", "wallpaper.com",
+  "couchstyle.de", "medium.com", "substack.com", "wikipedia.org", "wordpress.com", "blogspot",
+  "pinterest", "etsy.com", "amazon", "ebay", "notonthehighstreet.com", "saatchiart.com",
+  "artsy.net", "behance.net", "dribbble.com", "kickstarter.com", "gofundme.com", "eventbrite",
+  "shopify.com", "bigcartel.com", "depop.com", "vinted", "ebay-kleinanzeigen.de", "yelp",
+  "tripadvisor", "google.com", "youtube.com", "facebook.com", "issuu.com", "flickr.com",
+];
+
+/** Steht die Adresse auf der Sperrliste (Default + ai_config.akquise_config.domain_sperrliste)? */
+function istGesperrteWebsite(url: string | null, extra: string[] = []): boolean {
+  if (!url) return false;
+  const domain = registrableDomain(url);
+  if (!domain) return false;
+  const liste = [...DEFAULT_DOMAIN_SPERRLISTE, ...extra].map((d) => d.trim().toLowerCase()).filter(Boolean);
+  return liste.some((eintrag) => domain === eintrag || domain.startsWith(`${eintrag}.`) || domain.includes(eintrag));
+}
+
+
 /**
  * Cloudflare-Verschleierung auflösen: data-cfemail="a1b2…" ist die Adresse hex-kodiert,
  * das erste Byte ist der Schlüssel. Auf vielen Seiten die einzige Form der Adresse im HTML.
