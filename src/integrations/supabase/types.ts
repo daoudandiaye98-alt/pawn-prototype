@@ -71,7 +71,9 @@ export type Database = {
       acquisition_leads: {
         Row: {
           admin_decision: string | null
+          applied_at: string | null
           bio: string | null
+          blocked_reason: string | null
           bounce_type: string | null
           channel: string | null
           clips: Json | null
@@ -100,6 +102,11 @@ export type Database = {
           outlet: string | null
           personal_line: string | null
           qc_passed: boolean | null
+          recherche_attempted_at: string | null
+          ref_code: string | null
+          reply_channel: string | null
+          reply_sentiment: string | null
+          replied_at: string | null
           retention_purged_at: string | null
           score_reasons: Json | null
           scrape_images: Json | null
@@ -107,13 +114,16 @@ export type Database = {
           status: string
           unsubscribed_at: string | null
           updated_at: string | null
+          variant_id: string | null
           warmed_at: string | null
           website: string | null
           world: string | null
         }
         Insert: {
           admin_decision?: string | null
+          applied_at?: string | null
           bio?: string | null
+          blocked_reason?: string | null
           bounce_type?: string | null
           channel?: string | null
           clips?: Json | null
@@ -142,6 +152,11 @@ export type Database = {
           outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
+          recherche_attempted_at?: string | null
+          ref_code?: string | null
+          reply_channel?: string | null
+          reply_sentiment?: string | null
+          replied_at?: string | null
           retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
@@ -149,13 +164,16 @@ export type Database = {
           status?: string
           unsubscribed_at?: string | null
           updated_at?: string | null
+          variant_id?: string | null
           warmed_at?: string | null
           website?: string | null
           world?: string | null
         }
         Update: {
           admin_decision?: string | null
+          applied_at?: string | null
           bio?: string | null
+          blocked_reason?: string | null
           bounce_type?: string | null
           channel?: string | null
           clips?: Json | null
@@ -184,6 +202,11 @@ export type Database = {
           outlet?: string | null
           personal_line?: string | null
           qc_passed?: boolean | null
+          recherche_attempted_at?: string | null
+          ref_code?: string | null
+          reply_channel?: string | null
+          reply_sentiment?: string | null
+          replied_at?: string | null
           retention_purged_at?: string | null
           score_reasons?: Json | null
           scrape_images?: Json | null
@@ -191,6 +214,7 @@ export type Database = {
           status?: string
           unsubscribed_at?: string | null
           updated_at?: string | null
+          variant_id?: string | null
           warmed_at?: string | null
           website?: string | null
           world?: string | null
