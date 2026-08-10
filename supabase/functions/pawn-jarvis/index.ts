@@ -2510,6 +2510,108 @@ async function ladeVariantenZuteiler(admin: SupabaseClient): Promise<(world: str
 }
 
 /** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
+
+/* ============================================================================
+ * Teil 43 WP1/WP2 „Bildspiegelung" — Instagram-CDN-Adressen tragen ein Ablaufdatum
+ * und einen Hotlink-Schutz; in einer E-Mail oder auf der Platte wären sie nach
+ * kurzer Zeit tote Rahmen. Deshalb holt PAWN die Bilder einmal ab, verkleinert sie
+ * und legt sie im eigenen Speicher ab. Qualitätsfilter: Profilbilder und zu kleine
+ * Dateien fliegen raus — lieber keine Platte als eine schwache.
+ * ========================================================================== */
+
+const PLATTE_BUCKET = "einladungen";
+const PLATTE_MAX_KANTE = 1400;
+const PLATTE_MIN_KANTE = 600;
+const PLATTE_MIN_BILDER = 3;
+const PLATTE_MAX_BILDER = 3;
+const PLATTE_BATCH = 5;
+const PLATTE_LAUFZEIT_MS = 50_000;
+// Zehn Jahre: die Adresse soll die Einladung überleben, ohne den Speicher öffentlich zu machen.
+const PLATTE_SIGNATUR_SEK = 315_360_000;
+
+/** Profilbilder sind keine Werkbilder — Instagram markiert sie in Pfad oder Parametern. */
+function istProfilbild(url: string): boolean {
+  return /profile[_-]?pic|\/s150x150\/|\/s320x320\/|profile_images/i.test(url);
+}
+
+interface SpiegelErgebnis { ok: true; platten: number; zu_wenig: number; fehlgeschlagen: number; geprueft: number; details: string[] }
+
+async function runAkquiseBilderSpiegeln(admin: SupabaseClient): Promise<SpiegelErgebnis> {
+  const start = Date.now();
+  const details: string[] = [];
+  let platten = 0, zuWenig = 0, fehlgeschlagen = 0, geprueft = 0;
+
+  const { data: leads } = await admin
+    .from("acquisition_leads")
+    .select("id, handle, ref_code, scrape_images, plate_status, created_at")
+    .eq("lead_type", "designer")
+    .is("plate_images", null)
+    .is("plate_status", null)
+    .not("ref_code", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(PLATTE_BATCH);
+
+  const rows = (leads ?? []) as { id: string; handle: string; ref_code: string; scrape_images: unknown; created_at: string }[];
+  if (!rows.length) return { ok: true, platten: 0, zu_wenig: 0, fehlgeschlagen: 0, geprueft: 0, details: ["Nichts zu spiegeln."] };
+
+  // Plattennummer fortlaufend und stabil: einmal vergeben, nie neu berechnet.
+  const { data: maxRow } = await admin
+    .from("acquisition_leads").select("plate_number")
+    .not("plate_number", "is", null).order("plate_number", { ascending: false }).limit(1).maybeSingle();
+  let naechsteNummer = ((maxRow as { plate_number: number } | null)?.plate_number ?? 0) + 1;
+
+  const { Image } = await import("https://deno.land/x/imagescript@1.3.0/mod.ts");
+
+  for (const lead of rows) {
+    if (Date.now() - start > PLATTE_LAUFZEIT_MS) { details.push("Laufzeit erreicht — Rest beim nächsten Lauf."); break; }
+    geprueft++;
+    const kandidaten = (Array.isArray(lead.scrape_images) ? lead.scrape_images : [])
+      .filter((u): u is string => typeof u === "string" && u.startsWith("http"))
+      .filter((u) => !istProfilbild(u));
+
+    const urls: string[] = [];
+    let fehler: string | null = null;
+    for (const quelle of kandidaten) {
+      if (urls.length >= PLATTE_MAX_BILDER) break;
+      try {
+        const res = await fetch(quelle, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" } });
+        if (!res.ok) continue;
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const bild = await Image.decode(bytes);
+        if (Math.min(bild.width, bild.height) < PLATTE_MIN_KANTE) continue;
+        const faktor = Math.min(1, PLATTE_MAX_KANTE / Math.max(bild.width, bild.height));
+        const fertig = faktor < 1 ? bild.resize(Math.round(bild.width * faktor), Math.round(bild.height * faktor)) : bild;
+        const jpeg = await fertig.encodeJPEG(82);
+        const pfad = `${lead.ref_code}/${urls.length}.jpg`;
+        const up = await admin.storage.from(PLATTE_BUCKET).upload(pfad, jpeg, { contentType: "image/jpeg", upsert: true });
+        if (up.error) { fehler = up.error.message; continue; }
+        const signed = await admin.storage.from(PLATTE_BUCKET).createSignedUrl(pfad, PLATTE_SIGNATUR_SEK);
+        if (signed.error || !signed.data?.signedUrl) { fehler = signed.error?.message ?? "keine Adresse"; continue; }
+        urls.push(signed.data.signedUrl);
+      } catch (e) { fehler = (e as Error).message; }
+    }
+
+    if (urls.length >= PLATTE_MIN_BILDER) {
+      await admin.from("acquisition_leads").update({
+        plate_images: urls as never, plate_status: "fertig", plate_number: naechsteNummer,
+      } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Platte ${naechsteNummer} mit ${urls.length} Bildern.`);
+      naechsteNummer++;
+      platten++;
+    } else if (fehler && kandidaten.length >= PLATTE_MIN_BILDER) {
+      await admin.from("acquisition_leads").update({ plate_status: "bilder_fehlgeschlagen" } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Bilder nicht abrufbar (${fehler}).`);
+      fehlgeschlagen++;
+    } else {
+      await admin.from("acquisition_leads").update({ plate_status: "zu_wenig_material" } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: zu wenig brauchbares Material (${urls.length} von ${PLATTE_MIN_BILDER}).`);
+      zuWenig++;
+    }
+  }
+
+  return { ok: true, platten, zu_wenig: zuWenig, fehlgeschlagen, geprueft, details };
+}
+
 async function researchAndDraftLead(
   apiKey: string, lead: { handle: string; world: string; bio: string | null; name?: string | null },
   styleLaw: string, languages: string[], sprachgesetze: string, variant: "A" | "B",
