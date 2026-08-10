@@ -69,7 +69,7 @@ type Mode =
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
   | "akquise_jagd" | "akquise_jagd_lernen" | "akquise_wirkungsbericht"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
-  | "akquise_dm_vorbereiten"
+  | "akquise_dm_vorbereiten" | "akquise_bilder_spiegeln"
   | "presse_jagd" | "presse_verfassen"
   | "multiplikator_jagd" | "multiplikator_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
@@ -166,6 +166,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   broll_einsammeln: "gruen",
   akquise_zyklus: "gruen",
   akquise_dm_vorbereiten: "gruen",
+  akquise_bilder_spiegeln: "gruen",
   presse_jagd: "gelb",
   presse_verfassen: "gelb",
   multiplikator_jagd: "gelb",
@@ -4932,7 +4933,7 @@ Deno.serve(async (req) => {
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
       "akquise_jagd", "akquise_jagd_lernen", "akquise_wirkungsbericht",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "akquise_dm_vorbereiten",
+      "akquise_dm_vorbereiten", "akquise_bilder_spiegeln",
       "presse_jagd", "presse_verfassen",
       "multiplikator_jagd", "multiplikator_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
@@ -4950,7 +4951,7 @@ Deno.serve(async (req) => {
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
       "akquise_jagd", "akquise_jagd_lernen", "akquise_wirkungsbericht",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
-      "akquise_dm_vorbereiten",
+      "akquise_dm_vorbereiten", "akquise_bilder_spiegeln",
       "presse_jagd", "presse_verfassen",
       "multiplikator_jagd", "multiplikator_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
