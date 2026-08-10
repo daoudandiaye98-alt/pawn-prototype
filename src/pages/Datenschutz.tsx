@@ -14,6 +14,7 @@ interface Business {
 export default function Datenschutz() {
   const L = useLegalText();
   const [b, setB] = useState<Business>({});
+  const L = useLegalText();
   useEffect(() => {
     supabase.from("ai_config").select("value").eq("key", "business_profile").maybeSingle()
       .then(({ data }) => data?.value && setB(data.value as Business));
@@ -35,123 +36,311 @@ export default function Datenschutz() {
             {L("Datenschutz.", "Privacy Policy.")}
           </h1>
           <p className="mt-8 border-l-2 border-[#000000] bg-[rgba(0,0,0,.04)] px-4 py-3 font-serif italic text-[#000000]/80">
-            Vorläufige Fassung — anwaltliche Prüfung ausstehend. Wo Angaben noch fehlen, ist das offen markiert statt geraten.
+            {L(
+              "Vorläufige Fassung — anwaltliche Prüfung ausstehend. Wo Angaben noch fehlen, ist das offen markiert statt geraten.",
+              "Draft version — legal review pending. Where information is still missing, it is marked openly rather than guessed.",
+            )}
           </p>
         </Reveal>
 
         <div className="palace-serif mt-16 space-y-10 text-[#000000]/85">
-          <Section title="1. Verantwortlicher">
+          <Section title={L("1. Verantwortlicher", "1. Data Controller")}>
             <p>
               {name}<br />
-              {b.address_line1 || <em className="text-black/60">[Adresse wird ergänzt]</em>}<br />
+              {b.address_line1 || <em className="text-black/60">{L("[Adresse wird ergänzt]", "[address to be added]")}</em>}<br />
               {b.address_line2 && <>{b.address_line2}<br /></>}
-              {[b.postal_code, b.city].filter(Boolean).join(" ") || <em className="text-black/60">[PLZ Ort]</em>}<br />
-              {b.country ?? "Deutschland"}<br />
-              E-Mail: <a href={`mailto:${email}`} className="underline">{email}</a>
+              {[b.postal_code, b.city].filter(Boolean).join(" ") || <em className="text-black/60">{L("[PLZ Ort]", "[postal code, city]")}</em>}<br />
+              {b.country ?? L("Deutschland", "Germany")}<br />
+              {L("E-Mail", "Email")}: <a href={`mailto:${email}`} className="underline">{email}</a>
             </p>
           </Section>
 
           <Section title={L("2. Welche Daten wir verarbeiten", "2. What Data We Process")}>
             <ul className="list-disc space-y-2 pl-6 font-sans text-[0.95rem]">
-              <li><strong>Konto:</strong> E-Mail, angezeigter Name, Rollen (Kunde, Designer:in, Admin), Zeitpunkte. Anmeldung wahlweise per Passwort oder über Google (OAuth) — Google erhält dabei nur die zur Anmeldung nötigen Basisdaten, keine weiteren Berechtigungen.</li>
-              <li><strong>Chat mit PAWN ("Frag PAWN"):</strong> Deine Nachrichten und eine anonyme Session-ID (in deinem Browser gespeichert), damit wir dir passende Stücke zeigen können. Angemeldete werden zusätzlich mit ihrer Nutzer-ID verknüpft. Die Antworten erzeugen KI-Sprachmodelle von Anthropic (Claude) bzw. OpenAI — deine Nachrichten werden zur Verarbeitung an diese Anbieter übermittelt (siehe Abschnitt 8).</li>
-              <li><strong>Geschmackssignale:</strong> Aus dem Chat extrahieren wir Welt (Mode/Interior/Kunst), Stimmung und Anlass — nicht deinen Rohtext für Werbezwecke, sondern für die Empfehlung im Katalog.</li>
-              <li><strong>Bewerbung als Designer:in:</strong> Brand-Name, Portfolio-Uploads, Verträge/Zustimmungen (revisionssicher protokolliert: welche Vertragsversion, wann, mit welchem Text-Prüfwert).</li>
-              <li><strong>Bild-/Video-Erzeugung im Designer-Studio:</strong> Hochgeladene Produktfotos und daraus erzeugte Kampagnenbilder/-videos (Anprobe-Darstellungen, Produktfotos, Kurzvideos) — verarbeitet über die Dienste fal.ai (Anprobe-Bilder, Produktfotos) und WAN (Video), siehe Abschnitt 8. Ob PAWN erzeugte Aufnahmen zusätzlich zur Werbung für die Plattform nutzen darf, entscheidet jedes Haus selbst per einmaliger, jederzeit widerruflicher Zustimmung im Studio.</li>
-              <li><strong>Bestellungen:</strong> Rechnungs-/Versanddaten, wenn du kaufst. Die Zahlung selbst wickelt der Zahlungsdienstleister Stripe ab (siehe Abschnitt 8) — Kartendaten laufen nie über unsere eigenen Server.</li>
-              <li><strong>Aufrufe/Nutzung:</strong> welche Seiten wie oft aufgerufen werden (erste Partei, kein Tracking Dritter) — für Reihenfolge/Empfehlung, siehe Abschnitt 4.</li>
+              <li>
+                <strong>{L("Konto:", "Account:")}</strong>{" "}
+                {L(
+                  "E-Mail, angezeigter Name, Rollen (Kunde, Designer:in, Admin), Zeitpunkte. Anmeldung wahlweise per Passwort oder über Google (OAuth) — Google erhält dabei nur die zur Anmeldung nötigen Basisdaten, keine weiteren Berechtigungen.",
+                  "Email, display name, roles (customer, designer, admin), timestamps. Sign-in either by password or via Google (OAuth) — Google receives only the basic data needed for sign-in, no further permissions.",
+                )}
+              </li>
+              <li>
+                <strong>{L('Chat mit PAWN ("Frag PAWN"):', 'Chat with PAWN ("Ask PAWN"):')}</strong>{" "}
+                {L(
+                  "Deine Nachrichten und eine anonyme Session-ID (in deinem Browser gespeichert), damit wir dir passende Stücke zeigen können. Angemeldete werden zusätzlich mit ihrer Nutzer-ID verknüpft. Die Antworten erzeugen KI-Sprachmodelle von Anthropic (Claude) bzw. OpenAI — deine Nachrichten werden zur Verarbeitung an diese Anbieter übermittelt (siehe Abschnitt 8).",
+                  "Your messages and an anonymous session ID (stored in your browser) so we can show you matching pieces. Signed-in users are additionally linked to their user ID. Responses are generated by AI language models from Anthropic (Claude) and/or OpenAI — your messages are transmitted to these providers for processing (see section 8).",
+                )}
+              </li>
+              <li>
+                <strong>{L("Geschmackssignale:", "Taste Signals:")}</strong>{" "}
+                {L(
+                  "Aus dem Chat extrahieren wir Welt (Mode/Interior/Kunst), Stimmung und Anlass — nicht deinen Rohtext für Werbezwecke, sondern für die Empfehlung im Katalog.",
+                  "From the chat we extract world (fashion/interior/art), mood, and occasion — not your raw text for advertising purposes, but for recommendations in the catalogue.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Bewerbung als Designer:in:", "Application as a Designer:")}</strong>{" "}
+                {L(
+                  "Brand-Name, Portfolio-Uploads, Verträge/Zustimmungen (revisionssicher protokolliert: welche Vertragsversion, wann, mit welchem Text-Prüfwert).",
+                  "Brand name, portfolio uploads, contracts/consents (logged in a tamper-evident manner: which contract version, when, with which text checksum).",
+                )}
+              </li>
+              <li>
+                <strong>{L("Bild-/Video-Erzeugung im Designer-Studio:", "Image/Video Generation in the Designer Studio:")}</strong>{" "}
+                {L(
+                  "Hochgeladene Produktfotos und daraus erzeugte Kampagnenbilder/-videos (Anprobe-Darstellungen, Produktfotos, Kurzvideos) — verarbeitet über die Dienste fal.ai (Anprobe-Bilder, Produktfotos) und WAN (Video), siehe Abschnitt 8. Ob PAWN erzeugte Aufnahmen zusätzlich zur Werbung für die Plattform nutzen darf, entscheidet jedes Haus selbst per einmaliger, jederzeit widerruflicher Zustimmung im Studio.",
+                  "Uploaded product photos and the campaign images/videos generated from them (try-on renderings, product shots, short videos) — processed via the services fal.ai (try-on images, product shots) and WAN (video), see section 8. Whether PAWN may additionally use generated footage to promote the platform is decided by each house individually via a one-time, revocable consent in the Studio.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Bestellungen:", "Orders:")}</strong>{" "}
+                {L(
+                  "Rechnungs-/Versanddaten, wenn du kaufst. Die Zahlung selbst wickelt der Zahlungsdienstleister Stripe ab (siehe Abschnitt 8) — Kartendaten laufen nie über unsere eigenen Server.",
+                  "Billing/shipping data, when you make a purchase. The payment itself is processed by the payment service provider Stripe (see section 8) — card data never passes through our own servers.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Aufrufe/Nutzung:", "Views/Usage:")}</strong>{" "}
+                {L(
+                  "welche Seiten wie oft aufgerufen werden (erste Partei, kein Tracking Dritter) — für Reihenfolge/Empfehlung, siehe Abschnitt 4.",
+                  "which pages are viewed how often (first-party, no third-party tracking) — for ordering/recommendations, see section 4.",
+                )}
+              </li>
             </ul>
           </Section>
 
           <Section title={L("3. Zwecke und Rechtsgrundlagen", "3. Purposes and Legal Bases")}>
             <ul className="list-disc space-y-2 pl-6 font-sans text-[0.95rem]">
-              <li>Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO) — Konto, Bestellungen, Designer-Portal, Zahlungsabwicklung.</li>
-              <li>Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) — Personalisierung deiner Empfehlungen, Betrieb und Absicherung der Plattform, Ansprache möglicher neuer Häuser (siehe Abschnitt 7).</li>
-              <li>Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) — freiwillige Angaben im Chat, Cookie-Einstellungen, Nutzung von Bild-/Videomaterial zu Werbezwecken über die eigene Präsentation hinaus.</li>
+              <li>
+                {L(
+                  "Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO) — Konto, Bestellungen, Designer-Portal, Zahlungsabwicklung.",
+                  "Performance of contract (Art. 6(1)(b) GDPR) — account, orders, designer portal, payment processing.",
+                )}
+              </li>
+              <li>
+                {L(
+                  "Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) — Personalisierung deiner Empfehlungen, Betrieb und Absicherung der Plattform, Ansprache möglicher neuer Häuser (siehe Abschnitt 7).",
+                  "Legitimate interest (Art. 6(1)(f) GDPR) — personalising your recommendations, operating and securing the platform, reaching out to potential new houses (see section 7).",
+                )}
+              </li>
+              <li>
+                {L(
+                  "Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) — freiwillige Angaben im Chat, Cookie-Einstellungen, Nutzung von Bild-/Videomaterial zu Werbezwecken über die eigene Präsentation hinaus.",
+                  "Consent (Art. 6(1)(a) GDPR) — voluntary information provided in the chat, cookie settings, use of image/video material for promotional purposes beyond a house's own presentation.",
+                )}
+              </li>
             </ul>
           </Section>
 
           <Section title={L("4. Abgeleitete Verhaltensprofile", "4. Derived Behavioural Profiles")}>
             <p>
-              Aus deinem Kaufverhalten und deinen Aufrufen leiten wir automatisiert ein grobes Verhaltensprofil ab
-              (z. B. „hat sich umgesehen, aber noch nichts gekauft" oder „kauft gezielt bei einem Haus"). Grundlage:
-              Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer sinnvollen Reihenfolge und Empfehlung).{" "}
-              <strong>Diese Profile beeinflussen ausschließlich Reihenfolge und Empfehlung — niemals Preis,
-              Verfügbarkeit, Versand oder Angebot.</strong> Sie werden nur aggregiert für Admin-Auswertungen
-              verwendet, nie mit deinem Namen oder deiner E-Mail an Designer:innen weitergegeben. Du kannst der
-              Bildung eines solchen Profils jederzeit widersprechen (Art. 21 DSGVO) — schreib an die Kontaktadresse
-              in Abschnitt 11, wir schalten die Personalisierung für dein Konto dann ab.
+              {L(
+                'Aus deinem Kaufverhalten und deinen Aufrufen leiten wir automatisiert ein grobes Verhaltensprofil ab (z. B. „hat sich umgesehen, aber noch nichts gekauft" oder „kauft gezielt bei einem Haus"). Grundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer sinnvollen Reihenfolge und Empfehlung). ',
+                'From your purchasing behaviour and page views we automatically derive a rough behavioural profile (e.g. "has browsed but not yet bought" or "buys specifically from one house"). Legal basis: Art. 6(1)(f) GDPR (legitimate interest in meaningful ordering and recommendations). ',
+              )}
+              <strong>
+                {L(
+                  "Diese Profile beeinflussen ausschließlich Reihenfolge und Empfehlung — niemals Preis, Verfügbarkeit, Versand oder Angebot.",
+                  "These profiles influence only ordering and recommendations — never price, availability, shipping, or offers.",
+                )}
+              </strong>{" "}
+              {L(
+                "Sie werden nur aggregiert für Admin-Auswertungen verwendet, nie mit deinem Namen oder deiner E-Mail an Designer:innen weitergegeben. Du kannst der Bildung eines solchen Profils jederzeit widersprechen (Art. 21 DSGVO) — schreib an die Kontaktadresse in Abschnitt 12, wir schalten die Personalisierung für dein Konto dann ab.",
+                "They are used only in aggregated form for admin analytics and are never passed on to designers along with your name or email. You can object to the creation of such a profile at any time (Art. 21 GDPR) — write to the contact address in section 12 and we will disable personalisation for your account.",
+              )}
             </p>
           </Section>
 
           <Section title={L("5. Cookies und persistente Speicherung", "5. Cookies and Persistent Storage")}>
             <p>
-              Nach deiner ausdrücklichen Zustimmung nutzen wir einen technischen Cookie <code>pawn_consent</code> sowie
-              lokalen Speicher (<em>localStorage</em>) unter Schlüsseln wie <code>palace.chat.session_id</code> und
-              <code>pawn.personalization.cache.v1</code>. Zweck: dass PAWN dich bei erneuten Besuchen wiedererkennt und
-              deine Geschmackssignale — deinem Konto zugeordnet — weiterführt. Wenn du nur „notwendige" wählst,
-              behalten wir keine Signale zwischen Sitzungen. <strong>Widerruf jederzeit</strong> über den Link
-              „Cookie-Einstellungen" im Footer oder in deinem Konto unter „Meine Daten". Speicherdauer für den
-              Consent-Cookie: 12 Monate. Deine Signale löschen wir mit deinem Konto vollständig. Wir setzen keine
-              Werbe- oder Analytics-Cookies Dritter — nur die hier beschriebene erst-Party-Speicherung.
+              {L(
+                "Nach deiner ausdrücklichen Zustimmung nutzen wir einen technischen Cookie ",
+                "With your explicit consent we use a technical cookie ",
+              )}
+              <code>pawn_consent</code>
+              {L(" sowie lokalen Speicher (", " as well as local storage (")}
+              <em>localStorage</em>
+              {L(") unter Schlüsseln wie ", ") under keys such as ")}
+              <code>palace.chat.session_id</code> {L("und", "and")} <code>pawn.personalization.cache.v1</code>.{" "}
+              {L(
+                'Zweck: dass PAWN dich bei erneuten Besuchen wiedererkennt und deine Geschmackssignale — deinem Konto zugeordnet — weiterführt. Wenn du nur „notwendige" wählst, behalten wir keine Signale zwischen Sitzungen. ',
+                'Purpose: so PAWN recognises you on repeat visits and continues your taste signals — linked to your account. If you choose only "necessary", we retain no signals between sessions. ',
+              )}
+              <strong>{L("Widerruf jederzeit", "Withdrawal at any time")}</strong>{" "}
+              {L(
+                'über den Link „Cookie-Einstellungen" im Footer oder in deinem Konto unter „Meine Daten". Speicherdauer für den Consent-Cookie: 12 Monate. Deine Signale löschen wir mit deinem Konto vollständig. Wir setzen keine Werbe- oder Analytics-Cookies Dritter — nur die hier beschriebene erst-Party-Speicherung.',
+                'via the "Cookie Settings" link in the footer or in your account under "My Data". Retention period for the consent cookie: 12 months. Your signals are fully deleted along with your account. We do not use third-party advertising or analytics cookies — only the first-party storage described here.',
+              )}
             </p>
           </Section>
 
-          <Section title="6. Speicherdauer">
-            <p>Konto- und Bestelldaten so lange, wie gesetzlich vorgeschrieben (insb. handels- und steuerrechtliche
-              Aufbewahrungsfristen von bis zu 10 Jahren für Rechnungsdaten). Chat-Sessions und Geschmackssignale
-              bis zu 24 Monate ab letzter Aktivität, danach automatische Löschung oder Anonymisierung. Für den Akquise-Bereich
-              siehe Abschnitt 7. <em>[TODO: exakte Fristen final durch Kanzlei prüfen]</em></p>
-          </Section>
-
-          <Section title="7. Kontaktaufnahme mit möglichen neuen Häusern (Akquise)">
+          <Section title={L("6. Speicherdauer", "6. Retention Period")}>
             <p>
-              PAWN sucht aktiv nach Designer:innen, die zur Plattform passen könnten. Dafür werten wir öffentlich
-              zugängliche Informationen aus (z. B. Angaben auf der eigenen Website oder einem öffentlichen
-              Geschäftsprofil eines Labels) — <strong>niemals private oder eingeschränkt sichtbare Inhalte</strong>.
-              Verarbeitet werden dabei: öffentlicher Name/Marke, öffentlich genannte Kontaktadresse, öffentlich
-              sichtbare Bilder des Sortiments zur Einschätzung der stilistischen Passung.
+              {L(
+                "Konto- und Bestelldaten so lange, wie gesetzlich vorgeschrieben (insb. handels- und steuerrechtliche Aufbewahrungsfristen von bis zu 10 Jahren für Rechnungsdaten). Chat-Sessions und Geschmackssignale bis zu 24 Monate ab letzter Aktivität, danach automatische Löschung oder Anonymisierung. Für den Akquise-Bereich siehe Abschnitt 7.",
+                "Account and order data for as long as legally required (in particular commercial and tax law retention periods of up to 10 years for invoice data). Chat sessions and taste signals for up to 24 months from last activity, after which they are automatically deleted or anonymised. For the acquisition area, see section 7.",
+              )}{" "}
+              <em>{L("[TODO: exakte Fristen final durch Kanzlei prüfen]", "[TODO: exact retention periods to be confirmed by a law firm]")}</em>
+            </p>
+          </Section>
+
+          <Section title={L("7. Kontaktaufnahme mit möglichen neuen Häusern (Akquise)", "7. Contacting Potential New Houses (Acquisition)")}>
+            <p>
+              {L(
+                "PAWN sucht aktiv nach Designer:innen, die zur Plattform passen könnten. Dafür werten wir öffentlich zugängliche Informationen aus (z. B. Angaben auf der eigenen Website oder einem öffentlichen Geschäftsprofil eines Labels) — ",
+                "PAWN actively looks for designers who could be a good fit for the platform. To do this, we evaluate publicly accessible information (e.g. details on a label's own website or a public business profile) — ",
+              )}
+              <strong>{L("niemals private oder eingeschränkt sichtbare Inhalte", "never private or access-restricted content")}</strong>
+              {L(
+                ". Verarbeitet werden dabei: öffentlicher Name/Marke, öffentlich genannte Kontaktadresse, öffentlich sichtbare Bilder des Sortiments zur Einschätzung der stilistischen Passung.",
+                ". We process: public name/brand, publicly stated contact address, publicly visible images of the range to assess stylistic fit.",
+              )}
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6 font-sans text-[0.95rem]">
-              <li><strong>Rechtsgrundlage:</strong> berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) an der gezielten Gewinnung passender Häuser für einen kuratierten Marktplatz.</li>
-              <li><strong>Informationspflicht (Art. 14 DSGVO):</strong> diese Erklärung erfüllt die Informationspflicht gegenüber Personen, deren Daten wir nicht direkt bei ihnen selbst erhoben haben. Jede Erstansprache per E-Mail benennt diese Datenquelle zusätzlich direkt in der Nachricht.</li>
-              <li><strong>Speicherdauer:</strong> Kontaktdaten, die zu keiner Bewerbung führen, werden nach angemessener Frist auf ein Minimum reduziert (nur ein technischer Kennwert zur dauerhaften Unterdrückung erneuter Ansprache bleibt bestehen).</li>
-              <li><strong>Widerspruchsrecht (Art. 21 DSGVO):</strong> jede Nachricht enthält einen direkten Abmeldelink — ein Klick genügt, keine Anmeldung nötig, die Unterdrückung ist dauerhaft und wird bei jedem erneuten Fund derselben Adresse respektiert.</li>
+              <li>
+                <strong>{L("Rechtsgrundlage:", "Legal basis:")}</strong>{" "}
+                {L(
+                  "berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) an der gezielten Gewinnung passender Häuser für einen kuratierten Marktplatz.",
+                  "legitimate interest (Art. 6(1)(f) GDPR) in the targeted acquisition of suitable houses for a curated marketplace.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Informationspflicht (Art. 14 DSGVO):", "Duty to inform (Art. 14 GDPR):")}</strong>{" "}
+                {L(
+                  "diese Erklärung erfüllt die Informationspflicht gegenüber Personen, deren Daten wir nicht direkt bei ihnen selbst erhoben haben. Jede Erstansprache per E-Mail benennt diese Datenquelle zusätzlich direkt in der Nachricht.",
+                  "this statement fulfils the duty to inform individuals whose data we did not collect directly from them. Every initial email outreach additionally names this data source directly in the message.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Speicherdauer:", "Retention period:")}</strong>{" "}
+                {L(
+                  "Kontaktdaten, die zu keiner Bewerbung führen, werden nach angemessener Frist auf ein Minimum reduziert (nur ein technischer Kennwert zur dauerhaften Unterdrückung erneuter Ansprache bleibt bestehen).",
+                  "Contact data that does not lead to an application is reduced to a minimum after a reasonable period (only a technical marker to permanently suppress renewed outreach remains).",
+                )}
+              </li>
+              <li>
+                <strong>{L("Widerspruchsrecht (Art. 21 DSGVO):", "Right to object (Art. 21 GDPR):")}</strong>{" "}
+                {L(
+                  "jede Nachricht enthält einen direkten Abmeldelink — ein Klick genügt, keine Anmeldung nötig, die Unterdrückung ist dauerhaft und wird bei jedem erneuten Fund derselben Adresse respektiert.",
+                  "every message contains a direct unsubscribe link — one click is enough, no login required; the suppression is permanent and is respected every time the same address is found again.",
+                )}
+              </li>
             </ul>
           </Section>
 
-          <Section title="8. Empfänger und Auftragsverarbeiter">
-            <p>Wir geben Daten nur an Dienstleister weiter, die sie in unserem Auftrag verarbeiten (Auftragsverarbeitung nach Art. 28 DSGVO) oder als eigenständig Verantwortliche einbinden, wenn das gesetzlich zulässig ist. Keine Weitergabe an Werbenetzwerke.</p>
+          <Section title={L("8. Empfänger und Auftragsverarbeiter", "8. Recipients and Data Processors")}>
+            <p>
+              {L(
+                "Wir geben Daten nur an Dienstleister weiter, die sie in unserem Auftrag verarbeiten (Auftragsverarbeitung nach Art. 28 DSGVO) oder als eigenständig Verantwortliche einbinden, wenn das gesetzlich zulässig ist. Keine Weitergabe an Werbenetzwerke.",
+                "We only share data with service providers who process it on our behalf (data processing under Art. 28 GDPR), or involve them as independent controllers where legally permitted. No disclosure to advertising networks.",
+              )}
+            </p>
             <ul className="mt-3 list-disc space-y-2 pl-6 font-sans text-[0.95rem]">
-              <li><strong>Hosting Frontend:</strong> Vercel Inc. (USA) — Auslieferung der Website. Datentransfer in die USA über die von Vercel bereitgestellten Standardvertragsklauseln.</li>
-              <li><strong>Datenbank, Backend, Datei-Speicher:</strong> Supabase — Konten, Bestellungen, Nachrichten, hochgeladene Bilder.</li>
-              <li><strong>Zahlungsabwicklung:</strong> Stripe — Kaufpreise, Abo-Zahlungen, Auszahlungen an Designer:innen (Stripe Connect). Stripe ist eigenständig Verantwortlicher für die von ihm verarbeiteten Zahlungsdaten.</li>
-              <li><strong>KI-Chat:</strong> Anthropic (Claude) und/oder OpenAI — Verarbeitung deiner Chat-Nachrichten zur Erzeugung einer Antwort. Kein Training der Modelle mit deinen Daten laut Anbieter-Vereinbarung.</li>
-              <li><strong>Bild-/Video-Erzeugung:</strong> fal.ai (Anprobe-Bilder, Produktfotos) und WAN (Kampagnen-Videos) — Verarbeitung hochgeladener Produktfotos zur Erzeugung neuer Aufnahmen.</li>
-              <li><strong>E-Mail-Versand:</strong> Resend — Konto-Benachrichtigungen, Bestellbestätigungen, Akquise-Nachrichten an mögliche neue Häuser.</li>
+              <li>
+                <strong>{L("Hosting Frontend:", "Frontend Hosting:")}</strong>{" "}
+                {L(
+                  "Vercel Inc. (USA) — Auslieferung der Website. Datentransfer in die USA über die von Vercel bereitgestellten Standardvertragsklauseln.",
+                  "Vercel Inc. (USA) — delivery of the website. Data transfer to the USA via the standard contractual clauses provided by Vercel.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Datenbank, Backend, Datei-Speicher:", "Database, Backend, File Storage:")}</strong>{" "}
+                {L(
+                  "Supabase — Konten, Bestellungen, Nachrichten, hochgeladene Bilder.",
+                  "Supabase — accounts, orders, messages, uploaded images.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Zahlungsabwicklung:", "Payment Processing:")}</strong>{" "}
+                {L(
+                  "Stripe — Kaufpreise, Abo-Zahlungen, Auszahlungen an Designer:innen (Stripe Connect). Stripe ist eigenständig Verantwortlicher für die von ihm verarbeiteten Zahlungsdaten.",
+                  "Stripe — purchase prices, subscription payments, payouts to designers (Stripe Connect). Stripe is an independent controller for the payment data it processes.",
+                )}
+              </li>
+              <li>
+                <strong>{L("KI-Chat:", "AI Chat:")}</strong>{" "}
+                {L(
+                  "Anthropic (Claude) und/oder OpenAI — Verarbeitung deiner Chat-Nachrichten zur Erzeugung einer Antwort. Kein Training der Modelle mit deinen Daten laut Anbieter-Vereinbarung.",
+                  "Anthropic (Claude) and/or OpenAI — processing of your chat messages to generate a response. No training of the models on your data, per the providers' agreements.",
+                )}
+              </li>
+              <li>
+                <strong>{L("Bild-/Video-Erzeugung:", "Image/Video Generation:")}</strong>{" "}
+                {L(
+                  "fal.ai (Anprobe-Bilder, Produktfotos) und WAN (Kampagnen-Videos) — Verarbeitung hochgeladener Produktfotos zur Erzeugung neuer Aufnahmen.",
+                  "fal.ai (try-on images, product shots) and WAN (campaign videos) — processing of uploaded product photos to generate new footage.",
+                )}
+              </li>
+              <li>
+                <strong>{L("E-Mail-Versand:", "Email Delivery:")}</strong>{" "}
+                {L(
+                  "Resend — Konto-Benachrichtigungen, Bestellbestätigungen, Akquise-Nachrichten an mögliche neue Häuser.",
+                  "Resend — account notifications, order confirmations, acquisition messages to potential new houses.",
+                )}
+              </li>
             </ul>
-            <p className="mt-3"><em>[TODO: vollständige AVV-Liste mit Vertragsdaten/Sitzland je Anbieter final durch Kanzlei ergänzen]</em></p>
+            <p className="mt-3">
+              <em>
+                {L(
+                  "[TODO: vollständige AVV-Liste mit Vertragsdaten/Sitzland je Anbieter final durch Kanzlei ergänzen]",
+                  "[TODO: complete data processing agreement list with contract details/country per provider, to be finalised by a law firm]",
+                )}
+              </em>
+            </p>
           </Section>
 
-          <Section title="9. Deine Rechte">
-            <p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch und Widerruf erteilter Einwilligungen.
-              In deinem Konto findest du unter „Meine Daten" die Buttons <em>Daten exportieren</em> und <em>Konto löschen</em>.
-              Die Konto-Löschung entfernt nachweislich auch alle Signale und Sessions.</p>
+          <Section title={L("9. Deine Rechte", "9. Your Rights")}>
+            <p>
+              {L(
+                'Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch und Widerruf erteilter Einwilligungen. In deinem Konto findest du unter „Meine Daten" die Buttons ',
+                'Access, rectification, erasure, restriction, data portability, objection, and withdrawal of consent given. In your account under "My Data" you will find the buttons ',
+              )}
+              <em>{L("Daten exportieren", "Export data")}</em> {L("und", "and")}{" "}
+              <em>{L("Konto löschen", "Delete account")}</em>.{" "}
+              {L(
+                "Die Konto-Löschung entfernt nachweislich auch alle Signale und Sessions.",
+                "Account deletion demonstrably removes all signals and sessions as well.",
+              )}
+            </p>
           </Section>
 
-          <Section title="10. Aufsichtsbehörde">
-            <p>Du hast das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Zuständig ist die
-              Behörde deines gewöhnlichen Aufenthalts, deines Arbeitsplatzes oder unseres Sitzes.{" "}
-              <em className="text-black/60">[TODO: zuständige Landesdatenschutzbehörde je nach endgültigem Firmensitz eintragen]</em></p>
+          <Section title={L("10. Aufsichtsbehörde", "10. Supervisory Authority")}>
+            <p>
+              {L(
+                "Du hast das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Zuständig ist die Behörde deines gewöhnlichen Aufenthalts, deines Arbeitsplatzes oder unseres Sitzes.",
+                "You have the right to lodge a complaint with a data protection supervisory authority. The competent authority is that of your habitual residence, your place of work, or our registered office.",
+              )}{" "}
+              <em className="text-black/60">
+                {L(
+                  "[TODO: zuständige Landesdatenschutzbehörde je nach endgültigem Firmensitz eintragen]",
+                  "[TODO: enter the competent state data protection authority once the final company seat is set]",
+                )}
+              </em>
+            </p>
           </Section>
 
-          <Section title="11. Kontakt">
-            <p>Fragen zum Datenschutz: <a href={`mailto:${email}`} className="underline">{email}</a>.</p>
+          <Section title={L("11. Einsatz von Künstlicher Intelligenz", "11. Use of Artificial Intelligence")}>
+            <p>
+              {L(
+                'PAWN nutzt KI-Sprachmodelle (für den Chat „Frag PAWN" und die Studio-Begleitung) sowie KI-Bild-/Video-Modelle (für Anprobe-Darstellungen, Produktfotos und Kampagnen-Videos der Häuser). Wo ein KI-System mit dir spricht, steht das sichtbar dabei; wo eine Darstellung eine synthetische Person zeigt, trägt sie ein „KI-generiert"-Zeichen. Details, Zwecke und Widerspruchsmöglichkeiten: ',
+                'PAWN uses AI language models (for the "Ask PAWN" chat and Studio companion) as well as AI image/video models (for try-on renderings, product shots, and campaign videos of the houses). Where an AI system is talking to you, this is visibly indicated; where a depiction shows a synthetic person, it carries an "AI-generated" mark. Details, purposes, and how to object: ',
+              )}
+              <a href="/wie-pawn-ki-nutzt" className="underline">{L("Wie PAWN KI nutzt", "How PAWN Uses AI")}</a>.
+            </p>
+          </Section>
+
+          <Section title={L("12. Kontakt", "12. Contact")}>
+            <p>
+              {L("Fragen zum Datenschutz: ", "Questions about privacy: ")}
+              <a href={`mailto:${email}`} className="underline">{email}</a>.
+            </p>
           </Section>
 
           {addrMissing && (
             <p className="border border-dashed border-[rgba(0,0,0,.28)] p-3 font-sans text-xs text-black/60">
-              Adressfelder sind noch leer. Admins können sie in <code>ai_config.business_profile</code> ergänzen.
+              {L("Adressfelder sind noch leer. Admins können sie in ", "Address fields are still empty. Admins can fill them in via ")}
+              <code>ai_config.business_profile</code>
+              {L(" ergänzen.", ".")}
             </p>
           )}
         </div>
