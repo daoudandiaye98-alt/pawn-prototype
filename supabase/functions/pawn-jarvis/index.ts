@@ -2277,11 +2277,23 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
   // Direkt im Anschluss die Profil-Anreicherung anstoßen: ohne Bio/Website/E-Mail ist ein Lead nur ein Name.
   const profile = await runAkquiseProfile(admin);
 
+  // Teil 44 FIX 5 — Instagram-Bildadressen gelten nur wenige Tage. Deshalb wird direkt im
+  // Import-Lauf gespiegelt, solange die Adressen frisch sind; der Cron bleibt nur das Netz
+  // für Nachzügler.
+  let gespiegelt = 0;
+  for (let runde = 0; runde < 3; runde++) {
+    const s = await runAkquiseBilderSpiegeln(admin);
+    gespiegelt += s.platten;
+    if (s.geprueft === 0) break;
+  }
+
   return {
     ok: true, imported, skipped, angereichert: enriched,
     hunts_fertig: finished, hunts_offen: stillRunning, hunts_fehlgeschlagen: failedRuns,
     profil_laeufe: (profile as { gestartet?: number }).gestartet ?? 0,
+    platten_gespiegelt: gespiegelt,
   };
+
 
 }
 
@@ -2524,42 +2536,83 @@ const PLATTE_MAX_KANTE = 1400;
 const PLATTE_MIN_KANTE = 600;
 const PLATTE_MIN_BILDER = 3;
 const PLATTE_MAX_BILDER = 3;
-const PLATTE_BATCH = 5;
+const PLATTE_BATCH = 2;
 const PLATTE_LAUFZEIT_MS = 50_000;
 // Zehn Jahre: die Adresse soll die Einladung überleben, ohne den Speicher öffentlich zu machen.
 const PLATTE_SIGNATUR_SEK = 315_360_000;
 
-/** Profilbilder sind keine Werkbilder — Instagram markiert sie im Pfad, in Parametern oder im
- * base64-kodierten "efg"-Parameter (dort steht der encode-tag, z. B. "profile_pic.www.200.C3"). */
+/** Teil 44 FIX 1 — nur bei positivem Nachweis verwerfen, nie bei fehlender Angabe.
+ * Zwei verlässliche Signale: (a) Pfadtyp `t51.<zahl>-19` = Profilbild (`-15` = Beitragsbild),
+ * (b) efg vorhanden UND dekodiert enthält "profile_pic". Fehlt der efg-Parameter oder ist er
+ * nicht dekodierbar, gilt das Bild als Werkbild — "keine Angabe" ist kein Beweis. */
 function istProfilbild(url: string): boolean {
-  if (/profile[_-]?pic|\/s150x150\/|\/s320x320\/|profile_images/i.test(url)) return true;
+  if (/\/t51\.\d+-19\b/i.test(url) || /profile_images/i.test(url)) return true;
   try {
     const efg = new URL(url).searchParams.get("efg");
-    if (efg && /profile_pic/i.test(atob(efg))) return true;
-  } catch { /* kein gültiges efg — dann zählt nur die Pfadprüfung oben */ }
+    if (efg) {
+      const dekodiert = atob(efg.replace(/-/g, "+").replace(/_/g, "/"));
+      if (/profile_pic/i.test(dekodiert)) return true;
+    }
+  } catch { /* nicht dekodierbar — niemals ein Grund zum Verwerfen */ }
   return false;
 }
 
 interface SpiegelErgebnis { ok: true; platten: number; zu_wenig: number; fehlgeschlagen: number; geprueft: number; details: string[] }
 
-async function runAkquiseBilderSpiegeln(admin: SupabaseClient): Promise<SpiegelErgebnis> {
+/** Teil 44 FIX 3 — der Instagram-CDN antwortet technischen User-Agents mit 403. */
+const PLATTE_BILD_HEADERS: Record<string, string> = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+  "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+  "Referer": "https://www.instagram.com/",
+};
+
+async function ladeBild(url: string, retry = true): Promise<{ status: number; bytes: Uint8Array | null }> {
+  try {
+    const res = await fetch(url, { headers: PLATTE_BILD_HEADERS, redirect: "follow", signal: AbortSignal.timeout(15000) });
+    if ((res.status === 403 || res.status === 503) && retry) {
+      await new Promise((r) => setTimeout(r, 800));
+      return await ladeBild(url, false);
+    }
+    if (!res.ok) { await res.body?.cancel(); return { status: res.status, bytes: null }; }
+    return { status: res.status, bytes: new Uint8Array(await res.arrayBuffer()) };
+  } catch {
+    return { status: 0, bytes: null };
+  }
+}
+
+async function runAkquiseBilderSpiegeln(admin: SupabaseClient, nurLeadIds?: string[]): Promise<SpiegelErgebnis> {
   const start = Date.now();
   const details: string[] = [];
   let platten = 0, zuWenig = 0, fehlgeschlagen = 0, geprueft = 0;
 
-  const { data: leads } = await admin
+  let query = admin
     .from("acquisition_leads")
-    .select("id, handle, ref_code, scrape_images, plate_status, created_at")
+    .select("id, handle, ref_code, scrape_images, plate_status, recherche_log, created_at")
     .eq("lead_type", "designer")
     .is("plate_images", null)
     .is("plate_status", null)
     .not("scrape_images", "is", null)
-    .not("ref_code", "is", null)
-    .order("created_at", { ascending: true })
-    .limit(PLATTE_BATCH);
+    .not("ref_code", "is", null);
+  if (nurLeadIds?.length) query = query.in("id", nurLeadIds);
+  const { data: leads } = await query.order("created_at", { ascending: false }).limit(200);
 
-  const rows = (leads ?? []) as { id: string; handle: string; ref_code: string; scrape_images: unknown; created_at: string }[];
-  if (!rows.length) return { ok: true, platten: 0, zu_wenig: 0, fehlgeschlagen: 0, geprueft: 0, details: ["Nichts zu spiegeln."] };
+  const alleRows = (leads ?? []) as { id: string; handle: string; ref_code: string; scrape_images: unknown; recherche_log: unknown; created_at: string }[];
+  const hatBilder = (l: { scrape_images: unknown }) =>
+    Array.isArray(l.scrape_images) && l.scrape_images.some((u) => typeof u === "string" && u.startsWith("http"));
+
+  // Leads ganz ohne Bildadressen kosten keine Ladezeit — sie werden gebündelt abgehakt,
+  // damit die Warteschlange nicht von leeren Einträgen verstopft wird.
+  const leere = alleRows.filter((l) => !hatBilder(l)).slice(0, 100);
+  if (leere.length) {
+    await admin.from("acquisition_leads").update({ plate_status: "zu_wenig_material" } as never)
+      .in("id", leere.map((l) => l.id));
+    details.push(`${leere.length} Leads ohne Bildadressen abgehakt.`);
+  }
+
+  const rows = alleRows.filter(hatBilder).slice(0, PLATTE_BATCH);
+  if (!rows.length) return { ok: true, platten: 0, zu_wenig: leere.length, fehlgeschlagen: 0, geprueft: 0, details: details.length ? details : ["Nichts zu spiegeln."] };
+
 
   // Plattennummer fortlaufend und stabil: einmal vergeben, nie neu berechnet.
   const { data: maxRow } = await admin
@@ -2572,59 +2625,79 @@ async function runAkquiseBilderSpiegeln(admin: SupabaseClient): Promise<SpiegelE
   for (const lead of rows) {
     if (Date.now() - start > PLATTE_LAUFZEIT_MS) { details.push("Laufzeit erreicht — Rest beim nächsten Lauf."); break; }
     geprueft++;
-    const kandidaten = (Array.isArray(lead.scrape_images) ? lead.scrape_images : [])
-      .filter((u): u is string => typeof u === "string" && u.startsWith("http"))
-      .filter((u) => !istProfilbild(u));
+    const alle = (Array.isArray(lead.scrape_images) ? lead.scrape_images : [])
+      .filter((u): u is string => typeof u === "string" && u.startsWith("http"));
 
+    // Teil 44 FIX 4 — je Bild ein nachlesbarer Grund statt eines Sammelurteils.
+    const bildLog: { url: string; ergebnis: string }[] = [];
     const urls: string[] = [];
     let fehler: string | null = null;
     let abgelaufen = 0;
-    for (const quelle of kandidaten) {
+
+    for (const quelle of alle) {
       if (urls.length >= PLATTE_MAX_BILDER) break;
+      const kurz = quelle.split("?")[0].slice(-60);
+      if (istProfilbild(quelle)) { bildLog.push({ url: kurz, ergebnis: "profilbild" }); continue; }
       try {
-        const res = await fetch(quelle, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" } });
-        // Instagram-Adressen tragen ein Ablaufdatum: 403 heißt fast immer "Link abgelaufen",
-        // nicht "kein Material". Der Unterschied muss im Status sichtbar bleiben.
-        if (!res.ok) { if (res.status === 403 || res.status === 410) abgelaufen++; continue; }
-        const bytes = new Uint8Array(await res.arrayBuffer());
+        const { status, bytes } = await ladeBild(quelle);
+        if (!bytes) {
+          if (status === 403 || status === 410) { abgelaufen++; bildLog.push({ url: kurz, ergebnis: "download_403" }); }
+          else { fehler = `HTTP ${status}`; bildLog.push({ url: kurz, ergebnis: `download_fehler: ${status}` }); }
+          continue;
+        }
+        // Teil 44 FIX 2 — Größe an den echten Bytes messen, nicht am Pfad raten.
         const bild = await Image.decode(bytes);
-        if (Math.min(bild.width, bild.height) < PLATTE_MIN_KANTE) continue;
+        if (Math.min(bild.width, bild.height) < PLATTE_MIN_KANTE) {
+          bildLog.push({ url: kurz, ergebnis: `zu_klein: ${bild.width}x${bild.height}` });
+          continue;
+        }
         const faktor = Math.min(1, PLATTE_MAX_KANTE / Math.max(bild.width, bild.height));
         const fertig = faktor < 1 ? bild.resize(Math.round(bild.width * faktor), Math.round(bild.height * faktor)) : bild;
         const jpeg = await fertig.encodeJPEG(82);
         const pfad = `${lead.ref_code}/${urls.length}.jpg`;
         const up = await admin.storage.from(PLATTE_BUCKET).upload(pfad, jpeg, { contentType: "image/jpeg", upsert: true });
-        if (up.error) { fehler = up.error.message; continue; }
+        if (up.error) { fehler = up.error.message; bildLog.push({ url: kurz, ergebnis: `upload_fehler: ${up.error.message}` }); continue; }
         const signed = await admin.storage.from(PLATTE_BUCKET).createSignedUrl(pfad, PLATTE_SIGNATUR_SEK);
-        if (signed.error || !signed.data?.signedUrl) { fehler = signed.error?.message ?? "keine Adresse"; continue; }
+        if (signed.error || !signed.data?.signedUrl) { fehler = signed.error?.message ?? "keine Adresse"; bildLog.push({ url: kurz, ergebnis: "signatur_fehler" }); continue; }
         urls.push(signed.data.signedUrl);
-      } catch (e) { fehler = (e as Error).message; }
+        bildLog.push({ url: kurz, ergebnis: `uebernommen: ${bild.width}x${bild.height}` });
+      } catch (e) {
+        fehler = (e as Error).message;
+        bildLog.push({ url: kurz, ergebnis: `download_fehler: ${(e as Error).message}` });
+      }
     }
+
+    const logEintrag = {
+      ...(lead.recherche_log && typeof lead.recherche_log === "object" ? lead.recherche_log as Record<string, unknown> : {}),
+      spiegel: { geprueft_am: new Date().toISOString(), kandidaten: alle.length, uebernommen: urls.length, bilder: bildLog.slice(0, 20) },
+    };
+    const grundText = bildLog.map((b) => b.ergebnis).join(", ") || "keine Bildadressen vorhanden";
 
     if (urls.length >= PLATTE_MIN_BILDER) {
       await admin.from("acquisition_leads").update({
-        plate_images: urls as never, plate_status: "fertig", plate_number: naechsteNummer,
+        plate_images: urls as never, plate_status: "fertig", plate_number: naechsteNummer, recherche_log: logEintrag as never,
       } as never).eq("id", lead.id);
-      details.push(`${lead.handle}: Platte ${naechsteNummer} mit ${urls.length} Bildern.`);
+      details.push(`${lead.handle}: Platte ${naechsteNummer} mit ${urls.length} Bildern (${grundText}).`);
       naechsteNummer++;
       platten++;
-    } else if (abgelaufen > 0) {
-      await admin.from("acquisition_leads").update({ plate_status: "bilder_abgelaufen" } as never).eq("id", lead.id);
-      details.push(`${lead.handle}: Instagram-Adressen abgelaufen (${abgelaufen}) — braucht einen frischen Profil-Scrape.`);
+    } else if (abgelaufen > 0 && urls.length === 0) {
+      await admin.from("acquisition_leads").update({ plate_status: "bilder_abgelaufen", recherche_log: logEintrag as never } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Instagram-Adressen abgelaufen (${abgelaufen}) — ${grundText}.`);
       fehlgeschlagen++;
-    } else if (fehler && kandidaten.length >= PLATTE_MIN_BILDER) {
-      await admin.from("acquisition_leads").update({ plate_status: "bilder_fehlgeschlagen" } as never).eq("id", lead.id);
-      details.push(`${lead.handle}: Bilder nicht abrufbar (${fehler}).`);
+    } else if (fehler && alle.length >= PLATTE_MIN_BILDER) {
+      await admin.from("acquisition_leads").update({ plate_status: "bilder_fehlgeschlagen", recherche_log: logEintrag as never } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Bilder nicht abrufbar — ${grundText}.`);
       fehlgeschlagen++;
     } else {
-      await admin.from("acquisition_leads").update({ plate_status: "zu_wenig_material" } as never).eq("id", lead.id);
-      details.push(`${lead.handle}: zu wenig brauchbares Material (${urls.length} von ${PLATTE_MIN_BILDER}).`);
+      await admin.from("acquisition_leads").update({ plate_status: "zu_wenig_material", recherche_log: logEintrag as never } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: ${urls.length} von ${PLATTE_MIN_BILDER} Bildern — ${grundText}.`);
       zuWenig++;
     }
   }
 
   return { ok: true, platten, zu_wenig: zuWenig, fehlgeschlagen, geprueft, details };
 }
+
 
 async function researchAndDraftLead(
   apiKey: string, lead: { handle: string; world: string; bio: string | null; name?: string | null },
