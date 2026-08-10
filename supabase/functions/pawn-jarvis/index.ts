@@ -3656,6 +3656,74 @@ async function sendResendEmail(
   }
 }
 
+
+/* ============================================================================
+ * Teil 43 WP4 „Die Titelseite" — die E-Mail zur Platte. Zustellbarkeit schlägt
+ * Pracht: Tabellen-Layout, alles inline, keine Webfonts, genau ein Bild, unter
+ * 100 KB. Ohne geladene Bilder steht jede Aussage trotzdem im Text.
+ * ========================================================================== */
+
+function escapeHtml(v: string): string {
+  return v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+interface TitelseiteDaten {
+  handle: string; world: string | null; refCode: string; plateNumber: number | null;
+  personalLine: string | null; bild: string | null; language: string | null;
+}
+
+function titelseiteTexte(d: TitelseiteDaten) {
+  const en = d.language === "en";
+  return {
+    subject: en ? "Your page in Issue 01" : "Deine Seite in Ausgabe 01",
+    masthead: en ? "PAWN — Issue 01" : "PAWN — Ausgabe 01",
+    etikett: [
+      en ? `Plate ${d.plateNumber ?? ""}`.trim() : `Platte ${d.plateNumber ?? ""}`.trim(),
+      d.world ?? "",
+      d.refCode,
+    ].filter(Boolean).join(" · "),
+    satz1: d.personalLine?.trim()
+      || (en ? "We looked at your work and kept a page for it." : "Wir haben uns deine Arbeit angesehen und ihr eine Seite freigehalten."),
+    satz2: en
+      ? "PAWN is a curated house for independent design. Your page already exists — it is private, and it is yours to keep."
+      : "PAWN ist ein kuratiertes Haus für unabhängiges Design. Deine Seite gibt es bereits — sie ist privat, und sie gehört dir.",
+    link: en ? "See your plate →" : "Deine Platte ansehen →",
+    alt: en ? `Work by ${d.handle}` : `Arbeit von ${d.handle}`,
+  };
+}
+
+function titelseiteHtml(d: TitelseiteDaten, opts: { impressum: string; unsubscribe: string; footer: string }): string {
+  const t = titelseiteTexte(d);
+  const url = `https://pawn.vision/einladung/${d.refCode}`;
+  const serif = "Georgia,'Times New Roman',serif";
+  const sans = "Helvetica,Arial,sans-serif";
+  const bild = d.bild
+    ? `<tr><td style="padding:0 0 20px 0;"><img src="${escapeHtml(d.bild)}" width="560" alt="${escapeHtml(t.alt)}" style="display:block;width:100%;max-width:560px;height:auto;border:0;filter:grayscale(100%);" /></td></tr>`
+    : "";
+  return `<!doctype html><html lang="${d.language === "en" ? "en" : "de"}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${escapeHtml(t.subject)}</title></head>
+<body style="margin:0;padding:0;background:#0A0A0B;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0A0A0B;">
+<tr><td align="center" style="padding:28px 16px 40px 16px;">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;">
+<tr><td style="padding:0 0 22px 0;font-family:${sans};font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#89857D;">&#9823; ${escapeHtml(t.masthead)}</td></tr>
+${bild}
+<tr><td style="padding:0 0 10px 0;font-family:${sans};font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#A8BEB2;">${escapeHtml(t.etikett)}</td></tr>
+<tr><td style="padding:0 0 18px 0;font-family:${serif};font-size:34px;line-height:38px;color:#F2F0EA;">${escapeHtml(d.handle)}</td></tr>
+<tr><td style="padding:0 0 10px 0;font-family:${sans};font-size:15px;line-height:24px;color:#F2F0EA;font-weight:300;">${escapeHtml(t.satz1)}</td></tr>
+<tr><td style="padding:0 0 22px 0;font-family:${sans};font-size:15px;line-height:24px;color:#89857D;font-weight:300;">${escapeHtml(t.satz2)}</td></tr>
+<tr><td style="padding:0 0 26px 0;font-family:${sans};font-size:15px;line-height:24px;"><a href="${url}" style="color:#A8BEB2;text-decoration:underline;">${escapeHtml(t.link)}</a><br /><span style="color:#89857D;font-size:12px;">${url}</span></td></tr>
+<tr><td style="border-top:1px solid #26262A;padding:16px 0 0 0;font-family:${sans};font-size:11px;line-height:18px;color:#89857D;">
+${escapeHtml(opts.footer)}<br /><br />${escapeHtml(opts.impressum)}<br />
+<a href="${escapeHtml(opts.unsubscribe)}" style="color:#89857D;text-decoration:underline;">${d.language === "en" ? "Unsubscribe with one click" : "Mit einem Klick abmelden"}</a>
+</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
+function titelseiteText(d: TitelseiteDaten): string {
+  const t = titelseiteTexte(d);
+  return `${t.masthead}\n${t.etikett}\n\n${d.handle}\n\n${t.satz1}\n${t.satz2}\n\n${t.link} https://pawn.vision/einladung/${d.refCode}`;
+}
+
 /** Versendet eine bestätigte Tages-Sendeliste (Erstkontakt + Follow-up, nur Kanal E-Mail). */
 async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promise<Record<string, unknown>> {
   const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -3664,12 +3732,12 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   const config = await loadAkquiseConfig(admin);
   const impressum = await loadBusinessImpressumLine(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score").in("id", leadIds);
+    .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score, world, ref_code, language, plate_images, plate_number, plate_status").in("id", leadIds);
 
   let sent = 0;
   const failed: string[] = [];
   const skipped: string[] = [];
-  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null; kurator_score: number | null }[]) {
+  for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null; kurator_score: number | null; world: string | null; ref_code: string | null; language: string | null; plate_images: unknown; plate_number: number | null; plate_status: string | null }[]) {
     const isPresse = lead.lead_type === "presse";
     // Studios mit gefundener E-Mail dürfen automatisch angeschrieben werden, sobald die Automatik
     // läuft und der Kurator-Score hoch genug ist. Presse und DM bleiben bei deinem "Ja".
@@ -3692,13 +3760,30 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
       : undefined;
     // Teil 37/AP2 — Wizard-Einstieg mit Lead-Attribution, nur für Designer-Leads (Presse bewirbt sich nicht).
     const startLink = isPresse ? undefined : `Dein Einstieg: https://pawn.vision/start?lead=${lead.id}`;
-    const result = await sendResendEmail(resendKey, config, lead.email, subject, text, {
-      footer, startLink, impressum, unsubscribe: unsubscribeUrl(lead.id),
+
+    // Teil 43 WP4: hat dieser Designer eine fertige Platte, wird aus der Erstnachricht die
+    // Titelseite von Ausgabe 01. Alle anderen bekommen unverändert die bisherige Textmail.
+    const plateBilder = Array.isArray(lead.plate_images) ? (lead.plate_images as string[]) : [];
+    const hatPlatte = !isPresse && !isFollowup && lead.lead_type === "designer"
+      && lead.plate_status === "fertig" && plateBilder.length >= 3 && !!lead.ref_code;
+    const platte: TitelseiteDaten | null = hatPlatte
+      ? {
+          handle: lead.handle, world: lead.world, refCode: lead.ref_code!, plateNumber: lead.plate_number,
+          personalLine: lead.personal_line, bild: plateBilder[0] ?? null, language: lead.language,
+        }
+      : null;
+    const finalSubject = platte ? titelseiteTexte(platte).subject : subject;
+    const finalText = platte ? titelseiteText(platte) : text;
+    const result = await sendResendEmail(resendKey, config, lead.email, finalSubject, finalText, {
+      footer, startLink: platte ? undefined : startLink, impressum, unsubscribe: unsubscribeUrl(lead.id),
+      html: platte
+        ? titelseiteHtml(platte, { impressum, unsubscribe: unsubscribeUrl(lead.id), footer: footer ?? DEFAULT_MAIL_FOOTER })
+        : undefined,
     });
     // Jeder Versuch hinterlässt eine Spur — Fehlschläge dürfen nicht stumm bleiben.
     await admin.from("ai_actions_log").insert({
       source: "jarvis", action: isFollowup ? "akquise_followup_email" : "akquise_erstkontakt_email",
-      params: { lead_id: lead.id, handle: lead.handle, to: lead.email, from: config.email_from, subject } as never,
+      params: { lead_id: lead.id, handle: lead.handle, to: lead.email, from: config.email_from, subject: finalSubject, platte: !!platte } as never,
       status: result.ok ? "ok" : "failed", error: result.ok ? null : result.error ?? null,
     } as never);
     if (!result.ok) { failed.push(`${lead.handle}: ${result.error ?? "unbekannter Fehler"}`); continue; }
