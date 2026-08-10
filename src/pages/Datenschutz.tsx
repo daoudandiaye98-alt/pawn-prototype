@@ -3,6 +3,7 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { Reveal } from "@/components/palace/Reveal";
 import { LegalTranslationNote } from "@/components/palace/LegalTranslationNote";
 import { supabase } from "@/integrations/supabase/client";
+import { useLegalText } from "@/lib/legalText";
 
 interface Business {
   legal_name?: string; contact_email?: string;
@@ -11,6 +12,7 @@ interface Business {
 }
 
 export default function Datenschutz() {
+  const L = useLegalText();
   const [b, setB] = useState<Business>({});
   useEffect(() => {
     supabase.from("ai_config").select("value").eq("key", "business_profile").maybeSingle()
