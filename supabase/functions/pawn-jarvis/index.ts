@@ -1850,7 +1850,15 @@ function istGesperrteWebsite(url: string | null, extra: string[] = []): boolean 
   const domain = registrableDomain(url);
   if (!domain) return false;
   const liste = [...DEFAULT_DOMAIN_SPERRLISTE, ...extra].map((d) => d.trim().toLowerCase()).filter(Boolean);
-  return liste.some((eintrag) => domain === eintrag || domain.startsWith(`${eintrag}.`) || domain.includes(eintrag));
+  const ersteLabel = domain.split(".")[0];
+  return liste.some((eintrag) =>
+    eintrag.includes(".")
+      // Volle Domain: exakt oder als Elterndomain (vogue.fr matcht auch de.vogue.fr).
+      ? domain === eintrag || domain.endsWith(`.${eintrag}`)
+      // Markenwort ohne Endung: nur der Domain-Stamm zählt (vogue -> vogue.de, vogue.com).
+      : ersteLabel === eintrag,
+  );
+
 }
 
 
