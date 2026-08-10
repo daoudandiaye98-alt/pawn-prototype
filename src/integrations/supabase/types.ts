@@ -639,6 +639,7 @@ export type Database = {
       contract_versions: {
         Row: {
           body_markdown: string
+          body_markdown_en: string | null
           checksum: string
           created_at: string
           effective_from: string
@@ -650,6 +651,7 @@ export type Database = {
         }
         Insert: {
           body_markdown: string
+          body_markdown_en?: string | null
           checksum: string
           created_at?: string
           effective_from?: string
@@ -661,6 +663,7 @@ export type Database = {
         }
         Update: {
           body_markdown?: string
+          body_markdown_en?: string | null
           checksum?: string
           created_at?: string
           effective_from?: string
