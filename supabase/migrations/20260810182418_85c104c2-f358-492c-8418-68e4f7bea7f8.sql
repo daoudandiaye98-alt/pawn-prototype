@@ -1,0 +1,1 @@
+ALTER TABLE public.acquisition_leads ADD COLUMN IF NOT EXISTS recherche_log jsonb;

@@ -105,6 +105,7 @@ export type Database = {
           personal_line: string | null
           qc_passed: boolean | null
           recherche_attempted_at: string | null
+          recherche_log: Json | null
           ref_code: string | null
           replied_at: string | null
           reply_channel: string | null
@@ -157,6 +158,7 @@ export type Database = {
           personal_line?: string | null
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
+          recherche_log?: Json | null
           ref_code?: string | null
           replied_at?: string | null
           reply_channel?: string | null
@@ -209,6 +211,7 @@ export type Database = {
           personal_line?: string | null
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
+          recherche_log?: Json | null
           ref_code?: string | null
           replied_at?: string | null
           reply_channel?: string | null
