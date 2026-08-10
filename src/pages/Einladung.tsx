@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { supabase } from "@/integrations/supabase/client";
 import { captureRefCode } from "@/features/acquisition/leadAttribution";
+import { useI18n, type Locale } from "@/lib/i18n";
 
-interface Invitation { handle: string; world: string | null; personal_line: string | null; lead_type: string }
+interface Invitation { handle: string; world: string | null; personal_line: string | null; lead_type: string; language: string | null }
 
 const FOUNDING_SEATS = 50;
 
@@ -15,9 +16,15 @@ const FOUNDING_SEATS = 50;
  * WP2 "Die ersten Fünfzig" — die persönliche Einladungsseite. Wer über einen Akquise-Link
  * kommt, landet nicht auf der generischen Bewerbungsseite, sondern auf einer, die für ihn/sie
  * geschrieben wirkt. Ungültiger/fehlender Code: sauberer Fallback auf /apply, kein Fehlerbild.
+ *
+ * PART 40 WP2 "Sprachheilung": die Seite wählt beim Laden die Sprache des Leads (aus dem
+ * verfassten Draft) als Ausgangspunkt — der Sprach-Toggle im Header bleibt danach voll bedienbar,
+ * das setzt nur den Startzustand, damit ein englischsprachiger Lead nicht auf einer deutschen
+ * Seite landet.
  */
 export default function Einladung() {
   const { refCode } = useParams<{ refCode: string }>();
+  const { t, setLocale } = useI18n();
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [foundingCount, setFoundingCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,9 +41,11 @@ export default function Einladung() {
       if (!row) { setNotFound(true); setLoading(false); return; }
       captureRefCode(refCode);
       setInvitation(row);
+      if (row.language === "en" || row.language === "de") setLocale(row.language as Locale);
       setFoundingCount(typeof count === "number" ? count : 0);
       setLoading(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refCode]);
 
   if (loading) return null;
@@ -44,10 +53,10 @@ export default function Einladung() {
 
   const seatsTaken = foundingCount ?? 0;
   const seatsLine = seatsTaken <= 0
-    ? "Die ersten 50 Plätze sind offen — du wärst unter den Allerersten."
+    ? t("einladung.seatsOpen")
     : seatsTaken >= FOUNDING_SEATS
-      ? "Die ersten 50 Plätze sind vergeben — schreib uns trotzdem, wir führen eine Warteliste."
-      : `${seatsTaken} von ${FOUNDING_SEATS} Plätzen sind vergeben.`;
+      ? t("einladung.seatsFull")
+      : t("einladung.seatsProgress", { taken: seatsTaken, total: FOUNDING_SEATS });
 
   return (
     <PalaceLayout transparentHeader={false}>
@@ -63,7 +72,7 @@ export default function Einladung() {
             className="palace-serif mt-4 text-center font-light text-[#000000]"
             style={{ fontSize: "clamp(2rem,5vw,3.2rem)", lineHeight: 1.1, letterSpacing: "-0.02em" }}
           >
-            PAWN hat deine Arbeit gesehen, @{invitation.handle}.
+            {t("einladung.title", { handle: invitation.handle })}
           </h1>
           {invitation.personal_line && (
             <p className="mx-auto mt-6 max-w-[560px] text-center font-serif text-lg italic text-[#000000]/80">
@@ -74,20 +83,16 @@ export default function Einladung() {
 
         <Reveal>
           <div className="mt-14 border-[1.5px] border-[#000000] p-6 text-center md:p-8">
-            <p className="palace-eyebrow">Die ersten 50 Plätze.</p>
+            <p className="palace-eyebrow">{t("einladung.eyebrow")}</p>
             <p className="mt-3 font-serif text-xl">{seatsLine}</p>
-            <p className="mt-4 text-sm text-[#000000]/70">
-              Kostenloser Einstieg, du behältst 93 % jedes Verkaufs. Kein Abo nötig, um zu starten.
-            </p>
+            <p className="mt-4 text-sm text-[#000000]/70">{t("einladung.offer")}</p>
             <Button asChild variant="editorial" size="chip" className="mt-6 justify-center border-black bg-black text-white hover:bg-white hover:text-black">
-              <Link to="/apply/form">Jetzt bewerben →</Link>
+              <Link to="/apply/form">{t("einladung.cta")}</Link>
             </Button>
           </div>
         </Reveal>
 
-        <p className="mt-10 text-center text-xs text-[#000000]/50">
-          Kein Interesse? Diese Einladung verfällt einfach — es passiert nichts automatisch.
-        </p>
+        <p className="mt-10 text-center text-xs text-[#000000]/50">{t("einladung.decline")}</p>
       </section>
     </PalaceLayout>
   );

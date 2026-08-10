@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { readLeadRef, clearLeadRef, readRefCode, clearRefCode } from "@/features/acquisition/leadAttribution";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useI18n, type Locale } from "@/lib/i18n";
 import {
   DISCIPLINES,
   DISCIPLINE_LIST,
@@ -30,32 +31,51 @@ import {
 
 const DRAFT_KEY = "pawn.apply.draft";
 
-const accountSchema = z.object({
-  displayName: z.string().trim().min(2, "Bitte gib deinen Namen an.").max(120),
-  email: z.string().trim().email("Bitte gib eine gültige E-Mail-Adresse an.").max(255),
-  password: z.string().min(8, "Dein Passwort braucht mindestens 8 Zeichen."),
-});
-const houseSchema = z.object({
-  brandName: z.string().trim().min(2, "Wie heißt dein Haus?").max(120),
-  location: z.string().trim().min(2, "In welcher Stadt arbeitest du?").max(120),
-  country: z.string().trim().min(2, "In welchem Land arbeitest du?").max(120),
-});
-const workSchema = z.object({
-  story: z.string().trim().min(30, "Erzähl uns ein paar Sätze über deine Arbeit — mindestens 30 Zeichen."),
-  tags: z.string().trim().min(2, "Nenne mindestens ein Stichwort zu deinem Stil."),
-});
+/** PART 40 WP2 "Sprachheilung": Zod-Schemas brauchen die aktuelle t()-Funktion für ihre
+ * Fehlermeldungen — deshalb Fabrikfunktionen statt statischer Objekte. */
+function makeAccountSchema(t: (k: string) => string) {
+  return z.object({
+    displayName: z.string().trim().min(2, t("apply.zod.nameRequired")).max(120),
+    email: z.string().trim().email(t("apply.zod.emailInvalid")).max(255),
+    password: z.string().min(8, t("apply.zod.passwordShort")),
+  });
+}
+function makeHouseSchema(t: (k: string) => string) {
+  return z.object({
+    brandName: z.string().trim().min(2, t("apply.zod.brandNameRequired")).max(120),
+    location: z.string().trim().min(2, t("apply.zod.locationRequired")).max(120),
+    country: z.string().trim().min(2, t("apply.zod.countryRequired")).max(120),
+  });
+}
+function makeWorkSchema(t: (k: string) => string) {
+  return z.object({
+    story: z.string().trim().min(30, t("apply.zod.storyShort")),
+    tags: z.string().trim().min(2, t("apply.zod.tagsRequired")),
+  });
+}
 
-const STEPS = ["Konto", "Welt", "Dein Haus", "Deine Arbeit", "Verträge", "Absenden"] as const;
+const STEP_KEYS = ["apply.step.konto", "apply.step.welt", "apply.step.haus", "apply.step.arbeit", "apply.step.vertraege", "apply.step.absenden"] as const;
 const STEP_MINUTES = [3, 1, 2, 4, 2, 1];
+const STEP_WHY_KEYS = ["apply.stepWhy.0", "apply.stepWhy.1", "apply.stepWhy.2", "apply.stepWhy.3", "apply.stepWhy.4", "apply.stepWhy.5"];
 
-const STEP_WHY: Record<number, string> = {
-  0: "Damit du deine Bewerbung später fortsetzen und dein Studio betreten kannst.",
-  1: "Deine Welt bestimmt, welche Angaben wir brauchen und wie deine Seite später aussieht.",
-  2: "Name, Ort und Land stehen auf deiner Hausseite und auf deinen Rechnungen.",
-  3: "Das ist der Teil, den unsere Kuratoren wirklich lesen. Nimm dir hier Zeit.",
-  4: "Zwei kurze Vereinbarungen. Du kannst jeden Text vorher vollständig lesen.",
-  5: "Letzter Blick, dann geht sie raus.",
-};
+/** Übersetzte Sicht auf eine Disziplin — disciplines.ts selbst bleibt deutsch (dort stehen
+ * nur die technischen Schlüssel), die sichtbaren Texte kommen für Apply.tsx aus dem Wörterbuch. */
+function translateDiscipline(t: (k: string, vars?: Record<string, string | number>) => string, d: Discipline) {
+  return {
+    id: d.id,
+    label: t(`apply.discipline.${d.id}.label`),
+    tagline: t(`apply.discipline.${d.id}.tagline`),
+    portfolioHint: t(`apply.discipline.${d.id}.portfolioHint`),
+    tagExample: t(`apply.discipline.${d.id}.tagExample`),
+    fields: d.fields.map((f) => ({
+      key: f.key,
+      label: t(`apply.discipline.${d.id}.field.${f.key}.label`),
+      placeholder: t(`apply.discipline.${d.id}.field.${f.key}.placeholder`),
+      hint: t(`apply.discipline.${d.id}.field.${f.key}.hint`),
+    })),
+  };
+}
+type TranslatedDiscipline = ReturnType<typeof translateDiscipline>;
 
 interface ContractRow {
   id: string;
@@ -63,6 +83,7 @@ interface ContractRow {
   version: number;
   title: string;
   body_markdown: string;
+  body_markdown_en: string | null;
   checksum: string;
 }
 
@@ -106,6 +127,7 @@ function loadDraft(): Draft | null {
 const Apply = () => {
   const { user, loading } = useAuth();
   const [params] = useSearchParams();
+  const { t, locale, setLocale } = useI18n();
 
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormState>(initial);
@@ -119,7 +141,17 @@ const Apply = () => {
   const [existingStatus, setExistingStatus] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
 
-  const world: Discipline | null = discipline ? DISCIPLINES[discipline] : null;
+  const accountSchema = useMemo(() => makeAccountSchema(t), [t]);
+  const houseSchema = useMemo(() => makeHouseSchema(t), [t]);
+  const workSchema = useMemo(() => makeWorkSchema(t), [t]);
+  const STEPS = useMemo(() => STEP_KEYS.map((k) => t(k)), [t]);
+  const STEP_WHY = useMemo(() => STEP_WHY_KEYS.map((k) => t(k)), [t]);
+
+  const rawWorld: Discipline | null = discipline ? DISCIPLINES[discipline] : null;
+  const world: TranslatedDiscipline | null = useMemo(
+    () => (rawWorld ? translateDiscipline(t, rawWorld) : null),
+    [rawWorld, t],
+  );
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setData((prev) => ({ ...prev, [k]: v }));
@@ -137,6 +169,19 @@ const Apply = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // PART 40 WP2 "Sprachheilung": Initialsprache aus dem gespeicherten Ref-Code-Lead (falls
+  // vorhanden) — sonst bleibt es bei Browser-Erkennung/manuellem Toggle aus dem I18nProvider.
+  useEffect(() => {
+    const code = readRefCode();
+    if (!code) return;
+    (async () => {
+      const { data: rows } = await supabase.rpc("get_lead_invitation", { _ref_code: code });
+      const row = (rows as { language: string | null }[] | null)?.[0];
+      if (row?.language === "en" || row?.language === "de") setLocale(row.language as Locale);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Zwischenstand sichern (niemals das Passwort)
   useEffect(() => {
     if (submitted) return;
@@ -150,9 +195,14 @@ const Apply = () => {
 
   useEffect(() => {
     (async () => {
+      // WP1 "Hochtouren": nur die zwei bewerbungsrelevanten Vertragsarten (Hauptvertrag +
+      // Haus-Ordnung) — Revenue-Share, Bildnutzung, KI-Nutzungsrechte und das Ranking gehören
+      // ins Studio-Onboarding NACH der Annahme, nicht vor die Bewerbung.
       const { data: rows } = await supabase
         .from("contract_versions")
-        .select("id, kind, version, title, body_markdown, checksum")
+        .select("id, kind, version, title, body_markdown, body_markdown_en, checksum")
+        .in("kind", ["designer", "designer_terms"])
+        .is("effective_to", null)
         .order("version", { ascending: false });
       const latest = new Map<string, ContractRow>();
       (rows ?? []).forEach((r) => { if (!latest.has(r.kind)) latest.set(r.kind, r); });
@@ -187,16 +237,16 @@ const Apply = () => {
       const r = accountSchema.safeParse(data);
       if (!r.success) message = r.error.issues[0]?.message ?? null;
     } else if (current === 1) {
-      if (!discipline) message = "Bitte wähle eine Welt.";
+      if (!discipline) message = t("apply.zod.disciplineRequired");
     } else if (current === 2) {
       const r = houseSchema.safeParse(data);
       if (!r.success) message = r.error.issues[0]?.message ?? null;
     } else if (current === 3) {
       const r = workSchema.safeParse({ story: data.story, tags: data.tags });
       if (!r.success) message = r.error.issues[0]?.message ?? null;
-      else if (portfolio.length < 3) message = "Bitte lade mindestens drei Bilder deiner Arbeit hoch.";
+      else if (portfolio.length < 3) message = t("apply.zod.portfolioMin");
     } else if (current === 4 && !allContractsAccepted) {
-      message = "Bitte bestätige beide Vereinbarungen.";
+      message = t("apply.zod.contractsRequired");
     }
     if (message) {
       setFieldError(message);
@@ -242,7 +292,7 @@ const Apply = () => {
 
   async function submit() {
     if (!allContractsAccepted) {
-      toast.error("Bitte bestätige beide Vereinbarungen.");
+      toast.error(t("apply.zod.contractsRequired"));
       return;
     }
     setBusy(true);
@@ -250,12 +300,12 @@ const Apply = () => {
       let portfolioPaths: string[] = [];
       if (user && portfolio.length > 0) {
         portfolioPaths = await uploadPortfolio(user.id).catch((e) => {
-          toast.error(`Bilder konnten nicht hochgeladen werden: ${e.message}`);
+          toast.error(t("apply.toast.uploadFailed", { error: e.message }));
           return [];
         });
       }
 
-      const styleTags = data.tags.split(",").map((t) => t.trim()).filter(Boolean);
+      const styleTags = data.tags.split(",").map((tag) => tag.trim()).filter(Boolean);
       const payload = {
         email: user ? undefined : data.email,
         password: user ? undefined : data.password,
@@ -267,7 +317,9 @@ const Apply = () => {
         website: data.website || undefined,
         instagram: data.instagram || undefined,
         story: composedStory() || undefined,
-        tags: world ? [world.label, ...styleTags] : styleTags,
+        // Kanonischer (deutscher) Weltname geht ins Backend — Matching/Kategorisierung
+        // erwartet "Mode"/"Interior"/"Kunst", unabhängig von der Anzeigesprache.
+        tags: rawWorld ? [rawWorld.label, ...styleTags] : styleTags,
         productionStatus: data.productionStatus || extra.fertigung || extra.auflage || undefined,
         portfolioPaths,
         acceptedContractIds: contracts.filter((c) => accepted[c.id]).map((c) => c.id),
@@ -283,21 +335,21 @@ const Apply = () => {
       }
       const r = res as { ok?: boolean; error?: string; needs_email_confirmation?: boolean } | null;
       if (!r?.ok) {
-        toast.error(r?.error ?? "Deine Bewerbung konnte nicht gespeichert werden.");
+        toast.error(r?.error ?? t("apply.toast.submitFailed"));
         setBusy(false);
         return;
       }
       if (r.needs_email_confirmation) {
-        toast.success("Bewerbung eingereicht. Bitte bestätige noch deine E-Mail-Adresse.");
+        toast.success(t("apply.toast.submittedNeedsConfirm"));
       } else {
-        toast.success("Bewerbung eingereicht.");
+        toast.success(t("apply.toast.submitted"));
       }
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* egal */ }
       clearLeadRef();
       clearRefCode();
       setSubmitted(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unbekannter Fehler.");
+      toast.error(e instanceof Error ? e.message : t("apply.toast.unknownError"));
     } finally {
       setBusy(false);
     }
@@ -310,29 +362,29 @@ const Apply = () => {
       <PublicHeader />
       <main className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_1fr]">
         <aside className="relative hidden flex-col justify-between border-r border-border bg-foreground p-12 text-background lg:flex">
-          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-background/60">PAWN · Bewerbung</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-background/60">{t("apply.aside.eyebrow")}</p>
           <div>
             <h1 className="font-serif text-6xl font-light leading-[0.92] xl:text-7xl">
-              Einmal bewerben.<br />
-              <em>Dann gestalten.</em>
+              {t("apply.aside.title1")}<br />
+              <em>{t("apply.aside.title2")}</em>
             </h1>
             <p className="mt-6 max-w-md text-background/70">
               {world
-                ? `${world.tagline} Wir lesen jede Bewerbung persönlich und antworten innerhalb von sieben Tagen.`
-                : "Wir lesen jede Bewerbung persönlich und antworten innerhalb von sieben Tagen — auch bei einer Absage."}
+                ? t("apply.aside.introWithWorld", { tagline: world.tagline })
+                : t("apply.aside.introNoWorld")}
             </p>
           </div>
           <ol className="space-y-2 text-xs uppercase tracking-[0.22em] text-background/50">
-            <li>— Antwort in sieben Tagen</li>
-            <li>— Wir bauen deine Hausseite mit dir auf</li>
-            <li>— 93 % jedes Verkaufs gehen direkt an dich</li>
+            <li>{t("apply.aside.point1")}</li>
+            <li>{t("apply.aside.point2")}</li>
+            <li>{t("apply.aside.point3")}</li>
           </ol>
         </aside>
 
         <section className="p-6 md:p-12">
           <div className="mx-auto w-full max-w-xl">
             <Link to="/apply" className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
-              ← Zurück zur Übersicht
+              {t("apply.backToOverview")}
             </Link>
 
             {submitted ? (
@@ -341,11 +393,11 @@ const Apply = () => {
               <ExistingState status={existingStatus} />
             ) : (
               <>
-                <Progress current={step} minutesLeft={minutesLeft} />
+                <Progress current={step} minutesLeft={minutesLeft} steps={STEPS} />
 
                 <div className="mt-8 border border-border bg-card p-6 md:p-8">
                   <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">
-                    Schritt {step + 1} von {STEPS.length}
+                    {t("apply.stepOf", { current: step + 1, total: STEPS.length })}
                   </p>
                   <h2 className="mt-2 font-serif text-3xl font-light">{STEPS[step]}</h2>
                   <p className="mt-2 text-sm text-muted-foreground">{STEP_WHY[step]}</p>
@@ -353,43 +405,46 @@ const Apply = () => {
                   <div className="mt-8 space-y-5">
                     {step === 0 && (
                       <>
-                        <Field id="displayName" label="Dein Name" value={data.displayName} onChange={(v) => update("displayName", v)} hint="Der Name der Person hinter dem Haus — nicht öffentlich sichtbar." />
-                        <Field id="email" type="email" label="E-Mail-Adresse" value={data.email} onChange={(v) => update("email", v)} hint="Hierhin schicken wir unsere Antwort." />
-                        <Field id="password" type="password" label="Passwort" value={data.password} onChange={(v) => update("password", v)} hint="Mindestens 8 Zeichen." />
+                        <Field id="displayName" label={t("apply.field.displayName.label")} value={data.displayName} onChange={(v) => update("displayName", v)} hint={t("apply.field.displayName.hint")} />
+                        <Field id="email" type="email" label={t("apply.field.email.label")} value={data.email} onChange={(v) => update("email", v)} hint={t("apply.field.email.hint")} />
+                        <Field id="password" type="password" label={t("apply.field.password.label")} value={data.password} onChange={(v) => update("password", v)} hint={t("apply.field.password.hint")} />
                       </>
                     )}
 
                     {step === 1 && (
                       <div className="grid grid-cols-1 gap-3">
-                        {DISCIPLINE_LIST.map((d) => (
-                          <button
-                            key={d.id}
-                            type="button"
-                            aria-pressed={discipline === d.id}
-                            onClick={() => setDiscipline(d.id)}
-                            className={cn(
-                              "border p-5 text-left transition-colors",
-                              discipline === d.id
-                                ? "border-foreground bg-foreground text-background"
-                                : "border-border hover:border-foreground",
-                            )}
-                          >
-                            <span className="font-serif text-2xl font-light">{d.label}</span>
-                            <span className="mt-1 block text-sm opacity-75">{d.tagline}</span>
-                          </button>
-                        ))}
+                        {DISCIPLINE_LIST.map((rawD) => {
+                          const d = translateDiscipline(t, rawD);
+                          return (
+                            <button
+                              key={d.id}
+                              type="button"
+                              aria-pressed={discipline === d.id}
+                              onClick={() => setDiscipline(d.id)}
+                              className={cn(
+                                "border p-5 text-left transition-colors",
+                                discipline === d.id
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-border hover:border-foreground",
+                              )}
+                            >
+                              <span className="font-serif text-2xl font-light">{d.label}</span>
+                              <span className="mt-1 block text-sm opacity-75">{d.tagline}</span>
+                            </button>
+                          );
+                        })}
                         <p className="text-xs text-muted-foreground">
-                          Du arbeitest in mehreren Welten? Wähle deinen Schwerpunkt — im Studio ordnest du später jedes Stück einzeln zu.
+                          {t("apply.discipline.multiHint")}
                         </p>
                       </div>
                     )}
 
                     {step === 2 && (
                       <>
-                        <Field id="brandName" label="Name deines Hauses" value={data.brandName} onChange={(v) => update("brandName", v)} hint="So steht er auf deiner Seite. Dein eigener Name geht auch." />
-                        <Field id="legalName" label="Rechtsname (für Auszahlungen)" value={data.legalName} onChange={(v) => update("legalName", v)} hint="Nur für Verträge und Auszahlung, nie öffentlich." />
-                        <Field id="location" label="Stadt" value={data.location} onChange={(v) => update("location", v)} />
-                        <Field id="country" label="Land" value={data.country} onChange={(v) => update("country", v)} placeholder="Deutschland" hint="Bestimmt Versandwege und Steuersatz." />
+                        <Field id="brandName" label={t("apply.field.brandName.label")} value={data.brandName} onChange={(v) => update("brandName", v)} hint={t("apply.field.brandName.hint")} />
+                        <Field id="legalName" label={t("apply.field.legalName.label")} value={data.legalName} onChange={(v) => update("legalName", v)} hint={t("apply.field.legalName.hint")} />
+                        <Field id="location" label={t("apply.field.location.label")} value={data.location} onChange={(v) => update("location", v)} />
+                        <Field id="country" label={t("apply.field.country.label")} value={data.country} onChange={(v) => update("country", v)} placeholder={t("apply.field.country.placeholder")} hint={t("apply.field.country.hint")} />
                       </>
                     )}
 
@@ -397,7 +452,7 @@ const Apply = () => {
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="story" className="text-[0.65rem] uppercase tracking-[0.28em]">
-                            {world ? `Erzähl uns von deiner Arbeit` : "Erzähl uns von deiner Arbeit"}
+                            {t("apply.field.story.label")}
                           </Label>
                           <Textarea
                             id="story"
@@ -405,10 +460,10 @@ const Apply = () => {
                             onChange={(e) => update("story", e.target.value)}
                             rows={6}
                             className="rounded-none"
-                            placeholder="Wie bist du dazu gekommen? Was unterscheidet deine Arbeit von anderen? Woran arbeitest du gerade?"
+                            placeholder={t("apply.field.story.placeholder")}
                           />
                           <p className="text-xs text-muted-foreground">
-                            Kein Marketingtext. Schreib so, wie du es jemandem in deiner Werkstatt erzählen würdest.
+                            {t("apply.field.story.hint")}
                           </p>
                         </div>
 
@@ -426,14 +481,14 @@ const Apply = () => {
 
                         <Field
                           id="tags"
-                          label="Stichworte zu deinem Stil"
-                          placeholder={world?.tagExample ?? "reduziert, handgefertigt, Vintage-Stoffe"}
-                          hint="Drei bis fünf Begriffe, mit Komma getrennt. Danach finden dich Menschen mit passendem Geschmack."
+                          label={t("apply.field.tags.label")}
+                          placeholder={world?.tagExample ?? t("apply.field.tags.placeholderFallback")}
+                          hint={t("apply.field.tags.hint")}
                           value={data.tags}
                           onChange={(v) => update("tags", v)}
                         />
-                        <Field id="website" label="Website (falls vorhanden)" value={data.website} onChange={(v) => update("website", v)} />
-                        <Field id="instagram" label="Instagram (falls vorhanden)" value={data.instagram} onChange={(v) => update("instagram", v)} placeholder="@atelier" />
+                        <Field id="website" label={t("apply.field.website.label")} value={data.website} onChange={(v) => update("website", v)} />
+                        <Field id="instagram" label={t("apply.field.instagram.label")} value={data.instagram} onChange={(v) => update("instagram", v)} placeholder={t("apply.field.instagram.placeholder")} />
 
                         <PortfolioUpload files={portfolio} setFiles={setPortfolio} hint={world?.portfolioHint} />
                       </>
@@ -441,25 +496,25 @@ const Apply = () => {
 
                     {step === 4 && (
                       <>
-                        {contracts.length === 0 && <p className="text-sm text-muted-foreground">Vereinbarungen werden geladen…</p>}
+                        {contracts.length === 0 && <p className="text-sm text-muted-foreground">{t("apply.contracts.loading")}</p>}
                         {contracts.map((c) => (
                           <div key={c.id} className="border border-border bg-background p-4">
                             <div className="mb-3 flex items-baseline justify-between">
                               <p className="font-serif text-lg">{c.title}</p>
-                              <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">Fassung {c.version}</span>
+                              <span className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground">{t("apply.contracts.version", { version: c.version })}</span>
                             </div>
                             <Dialog>
                               <DialogTrigger asChild>
                                 <button type="button" className="text-xs uppercase tracking-[0.22em] text-muted-foreground underline underline-offset-4 hover:text-foreground">
-                                  Ganzen Text lesen →
+                                  {t("apply.contracts.readFull")}
                                 </button>
                               </DialogTrigger>
                               <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto rounded-none">
                                 <DialogHeader>
-                                  <DialogTitle className="font-serif text-2xl">{c.title} · Fassung {c.version}</DialogTitle>
+                                  <DialogTitle className="font-serif text-2xl">{t("apply.contracts.dialogTitle", { title: c.title, version: c.version })}</DialogTitle>
                                 </DialogHeader>
                                 <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                                  {c.body_markdown}
+                                  {locale === "en" && c.body_markdown_en ? c.body_markdown_en : c.body_markdown}
                                 </div>
                               </DialogContent>
                             </Dialog>
@@ -468,7 +523,7 @@ const Apply = () => {
                                 checked={!!accepted[c.id]}
                                 onCheckedChange={(v) => setAccepted((p) => ({ ...p, [c.id]: !!v }))}
                               />
-                              <span>Ich habe <strong>{c.title}</strong> gelesen und stimme zu.</span>
+                              <span>{t("apply.contracts.agreePrefix")}<strong>{c.title}</strong>{t("apply.contracts.agreeSuffix")}</span>
                             </label>
                           </div>
                         ))}
@@ -501,11 +556,11 @@ const Apply = () => {
                       disabled={step === (user ? 1 : 0) || busy}
                       className="rounded-none"
                     >
-                      Zurück
+                      {t("common.back")}
                     </Button>
                     {step < STEPS.length - 1 ? (
                       <Button type="button" onClick={next} disabled={busy} className="rounded-none">
-                        Weiter
+                        {t("apply.nav.next")}
                       </Button>
                     ) : (
                       <Button
@@ -514,14 +569,14 @@ const Apply = () => {
                         disabled={busy || !data.brandName || !allContractsAccepted}
                         className="rounded-none"
                       >
-                        {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Wird gesendet…</> : "Bewerbung absenden"}
+                        {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("apply.nav.submitting")}</> : t("apply.nav.submit")}
                       </Button>
                     )}
                   </div>
                 </div>
 
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Dein Zwischenstand bleibt in diesem Browser gespeichert — du kannst jederzeit pausieren.
+                  {t("apply.draftHint")}
                 </p>
               </>
             )}
@@ -532,15 +587,16 @@ const Apply = () => {
   );
 };
 
-function Progress({ current, minutesLeft }: { current: number; minutesLeft: number }) {
+function Progress({ current, minutesLeft, steps }: { current: number; minutesLeft: number; steps: string[] }) {
+  const { t } = useI18n();
   return (
     <div className="mt-8">
       <div className="flex items-baseline justify-between text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">
-        <span>{STEPS[current]}</span>
-        <span>noch ca. {minutesLeft} Min.</span>
+        <span>{steps[current]}</span>
+        <span>{t("apply.progress.minutesLeft", { min: minutesLeft })}</span>
       </div>
-      <ol className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${STEPS.length}, minmax(0,1fr))` }}>
-        {STEPS.map((label, i) => (
+      <ol className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0,1fr))` }}>
+        {steps.map((label, i) => (
           <li
             key={label}
             aria-current={i === current ? "step" : undefined}
@@ -565,15 +621,16 @@ function Field({ id, label, value, onChange, type = "text", placeholder, hint }:
 }
 
 function PortfolioUpload({ files, setFiles, hint }: { files: File[]; setFiles: (f: File[]) => void; hint?: string }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
-      <Label className="text-[0.65rem] uppercase tracking-[0.28em]">Bilder deiner Arbeit (3–8)</Label>
+      <Label className="text-[0.65rem] uppercase tracking-[0.28em]">{t("apply.portfolio.label")}</Label>
       <p className="text-xs text-muted-foreground">
-        {hint ?? "3–8 Bilder deiner Arbeit. Handyfotos sind völlig in Ordnung — Hauptsache ehrlich und gut belichtet."}
+        {hint ?? t("apply.portfolio.hintFallback")}
       </p>
       <label className="flex w-full cursor-pointer items-center gap-3 border border-dashed border-border bg-background p-4 text-left text-sm text-muted-foreground hover:border-foreground">
         <Upload className="h-4 w-4" />
-        <span>Bilder auswählen…</span>
+        <span>{t("apply.portfolio.choose")}</span>
         <input
           type="file"
           multiple
@@ -590,7 +647,7 @@ function PortfolioUpload({ files, setFiles, hint }: { files: File[]; setFiles: (
           {files.map((f, i) => (
             <li key={i} className="flex items-center justify-between border border-border bg-background px-3 py-2">
               <span className="truncate">{f.name}</span>
-              <button type="button" aria-label="Bild entfernen" onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-foreground">
+              <button type="button" aria-label={t("apply.portfolio.remove")} onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-foreground">
                 <X className="h-3 w-3" />
               </button>
             </li>
@@ -603,60 +660,63 @@ function PortfolioUpload({ files, setFiles, hint }: { files: File[]; setFiles: (
 
 function ReviewList({ data, world, extra, portfolio, accepted, contracts }: {
   data: FormState;
-  world: Discipline | null;
+  world: TranslatedDiscipline | null;
   extra: Record<string, string>;
   portfolio: File[];
   accepted: Record<string, boolean>;
   contracts: ContractRow[];
 }) {
+  const { t } = useI18n();
+  const empty = t("apply.review.empty");
   const rows: [string, string][] = [
-    ["Welt", world?.label ?? "—"],
-    ["Haus", data.brandName],
-    ["Rechtsname", data.legalName],
-    ["Ort", `${data.location}${data.country ? `, ${data.country}` : ""}`],
-    ["Website", data.website],
-    ["Instagram", data.instagram],
-    ["Stichworte", data.tags],
+    [t("apply.review.welt"), world?.label ?? empty],
+    [t("apply.review.haus"), data.brandName],
+    [t("apply.review.rechtsname"), data.legalName],
+    [t("apply.review.ort"), `${data.location}${data.country ? `, ${data.country}` : ""}`],
+    [t("apply.review.website"), data.website],
+    [t("apply.review.instagram"), data.instagram],
+    [t("apply.review.stichworte"), data.tags],
     ...(world ? world.fields.map((f) => [f.label, extra[f.key] ?? ""] as [string, string]) : []),
-    ["Bilder", `${portfolio.length} Datei(en)`],
+    [t("apply.review.bilder"), t("apply.review.bilderCount", { n: portfolio.length })],
   ];
   return (
     <ul className="divide-y divide-border text-sm">
       {rows.map(([k, v]) => (
         <li key={k} className="grid grid-cols-2 gap-3 py-2">
           <span className="text-muted-foreground">{k}</span>
-          <span className="truncate">{v || <em className="text-muted-foreground">—</em>}</span>
+          <span className="truncate">{v || <em className="text-muted-foreground">{empty}</em>}</span>
         </li>
       ))}
       <li className="grid grid-cols-2 gap-3 py-2">
-        <span className="text-muted-foreground">Vereinbarungen</span>
-        <span>{contracts.filter((c) => accepted[c.id]).length} von {contracts.length} bestätigt</span>
+        <span className="text-muted-foreground">{t("apply.review.vereinbarungen")}</span>
+        <span>{t("apply.review.vereinbarungenCount", { accepted: contracts.filter((c) => accepted[c.id]).length, total: contracts.length })}</span>
       </li>
     </ul>
   );
 }
 
 function SuccessState() {
+  const { t } = useI18n();
   return (
     <div className="mt-12 border border-border bg-card p-8 text-center md:p-12">
       <div className="mx-auto flex h-14 w-14 items-center justify-center border border-foreground">
         <Check className="h-6 w-6" />
       </div>
-      <h2 className="mt-6 font-serif text-4xl font-light">Deine Bewerbung ist da.</h2>
+      <h2 className="mt-6 font-serif text-4xl font-light">{t("apply.success.title")}</h2>
       <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-        Wir sehen sie uns persönlich an und antworten innerhalb von sieben Tagen per E-Mail — auch bei einer Absage, mit Begründung.
+        {t("apply.success.body")}
       </p>
       <div className="mx-auto mt-8 max-w-md border border-border p-5 text-left text-sm text-muted-foreground">
-        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-foreground">Bis dahin</p>
+        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-foreground">{t("apply.success.untilThenTitle")}</p>
         <ul className="mt-3 space-y-2">
-          <li>— Leg dir Fotos deiner ersten drei Stücke bereit.</li>
-          <li>— Überleg dir Preise inklusive Steuer und Versand.</li>
-          <li>— Halte deine Bankdaten für die Auszahlung parat.</li>
+          <li>{t("apply.success.point1")}</li>
+          <li>{t("apply.success.point2")}</li>
+          <li>{t("apply.success.point3")}</li>
         </ul>
       </div>
       <div className="mt-8 flex justify-center gap-3">
         <Button asChild variant="outline" className="rounded-none">
-          <Link to="/">Zur Startseite</Link>
+          <Link to="/">{t("apply.toHome")}</Link>
         </Button>
       </div>
     </div>
@@ -664,29 +724,19 @@ function SuccessState() {
 }
 
 function ExistingState({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    submitted: "Deine Bewerbung liegt bei uns. Wir melden uns innerhalb von sieben Tagen.",
-    in_review: "Deine Bewerbung wird gerade gelesen.",
-    approved: "Du bist aufgenommen. Willkommen — dein Studio steht bereit.",
-    rejected: "Deine Bewerbung wurde diesmal nicht angenommen. Du kannst dich später erneut bewerben.",
-    archived: "Deine Bewerbung wurde archiviert.",
-  };
-  const titles: Record<string, string> = {
-    submitted: "Eingegangen",
-    in_review: "In Prüfung",
-    approved: "Angenommen",
-    rejected: "Nicht angenommen",
-    archived: "Archiviert",
-  };
+  const { t } = useI18n();
+  const known = ["submitted", "in_review", "approved", "rejected", "archived"];
+  const title = known.includes(status) ? t(`apply.existing.status.${status}.title`) : status;
+  const body = known.includes(status) ? t(`apply.existing.status.${status}.body`) : "";
   return (
     <div className="mt-12 border border-border bg-card p-8 text-center md:p-12">
-      <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">Status</p>
-      <h2 className="mt-2 font-serif text-3xl font-light">{titles[status] ?? status}</h2>
-      <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">{map[status] ?? ""}</p>
+      <p className="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground">{t("apply.existing.eyebrow")}</p>
+      <h2 className="mt-2 font-serif text-3xl font-light">{title}</h2>
+      <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">{body}</p>
       <div className="mt-8 flex justify-center gap-3">
-        <Button asChild className="rounded-none"><Link to="/">Zur Startseite</Link></Button>
+        <Button asChild className="rounded-none"><Link to="/">{t("apply.toHome")}</Link></Button>
         {status === "approved" && (
-          <Button asChild variant="outline" className="rounded-none"><Link to="/studio">Zum Studio</Link></Button>
+          <Button asChild variant="outline" className="rounded-none"><Link to="/studio">{t("apply.existing.toStudio")}</Link></Button>
         )}
       </div>
     </div>

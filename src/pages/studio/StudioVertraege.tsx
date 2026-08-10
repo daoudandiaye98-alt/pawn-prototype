@@ -10,9 +10,10 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { formatDate } from "@/lib/format";
+import { toast } from "sonner";
 
 interface ContractRow {
-  id: string; kind: string; version: number; title: string; body_markdown: string;
+  id: string; kind: string; version: number; title: string; body_markdown: string; checksum: string;
   effective_from: string; effective_to: string | null;
 }
 interface ConsentRow { contract_version_id: string; accepted_at: string; revoked_at: string | null }
@@ -25,19 +26,39 @@ export default function StudioVertraege() {
   const [consents, setConsents] = useState<ConsentRow[]>([]);
   const [openKind, setOpenKind] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!designer || !user) return;
     (async () => {
-      const [{ data: c }, { data: cs }] = await Promise.all([
-        supabase.from("contract_versions").select("id, kind, version, title, body_markdown, effective_from, effective_to").order("kind").order("version", { ascending: false }),
+      const [{ data: c }, { data: cs }, { data: app }] = await Promise.all([
+        supabase.from("contract_versions").select("id, kind, version, title, body_markdown, checksum, effective_from, effective_to").order("kind").order("version", { ascending: false }),
         supabase.from("designer_consents").select("contract_version_id, accepted_at, revoked_at").eq("user_id", user.id),
+        supabase.from("designer_applications").select("id").eq("user_id", user.id).maybeSingle(),
       ]);
       setContracts((c as ContractRow[] | null) ?? []);
       setConsents((cs as ConsentRow[] | null) ?? []);
+      setApplicationId((app as { id: string } | null)?.id ?? null);
       setLoading(false);
     })();
   }, [designer, user]);
+
+  // WP1 "Hochtouren": die vier Vertragsarten, die vor der Bewerbung nicht mehr abgefragt werden
+  // (Revenue-Share, Bildnutzung, KI-Nutzungsrechte, Ranking), müssen hier aktiv bestätigt werden
+  // können — sonst bekämen neue Häuser dafür nie eine designer_consents-Zeile.
+  async function accept(c: ContractRow) {
+    if (!user || !applicationId) return;
+    setAccepting(c.id);
+    const { error } = await supabase.from("designer_consents").upsert({
+      application_id: applicationId, user_id: user.id, contract_version_id: c.id,
+      checksum_at_accept: c.checksum, user_agent: navigator.userAgent,
+    }, { onConflict: "application_id,contract_version_id" });
+    setAccepting(null);
+    if (error) { toast.error(error.message); return; }
+    setConsents((cs) => [...cs.filter((x) => x.contract_version_id !== c.id), { contract_version_id: c.id, accepted_at: new Date().toISOString(), revoked_at: null }]);
+    toast.success(t("studio.vertraege.acceptSuccess"));
+  }
 
   if (designerLoading || loading) return <StudioShell title={t("studioShell.nav.vertraege")}><PawnLoading /></StudioShell>;
   if (!designer) return <StudioShell title={t("studioShell.nav.vertraege")}><p className="text-sm text-muted-foreground">{t("studio.settings.noAccess")}</p></StudioShell>;
@@ -66,10 +87,18 @@ export default function StudioVertraege() {
                       : t("studio.vertraege.notYetAccepted")}
                   </p>
                 </div>
-                <button type="button" onClick={() => setOpenKind(open ? null : c.kind)}
-                  className="border border-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
-                  {open ? t("studio.vertraege.hide") : t("studio.vertraege.show")}
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  {!consent && (
+                    <button type="button" disabled={accepting === c.id} onClick={() => void accept(c)}
+                      className="border border-foreground bg-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] text-background hover:bg-background hover:text-foreground disabled:opacity-50">
+                      {accepting === c.id ? t("studio.vertraege.accepting") : t("studio.vertraege.accept")}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setOpenKind(open ? null : c.kind)}
+                    className="border border-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">
+                    {open ? t("studio.vertraege.hide") : t("studio.vertraege.show")}
+                  </button>
+                </div>
               </div>
               {open && (
                 <pre className="mt-4 whitespace-pre-wrap border-t border-border pt-4 font-sans text-sm leading-relaxed text-foreground/85">{c.body_markdown}</pre>

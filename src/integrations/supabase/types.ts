@@ -3530,6 +3530,7 @@ export type Database = {
         Args: { _ref_code: string }
         Returns: {
           handle: string
+          language: string
           lead_type: string
           personal_line: string
           world: string
