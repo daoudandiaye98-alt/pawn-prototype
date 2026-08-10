@@ -2769,7 +2769,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
       // Zweistufig: kein Link in dieser ersten Nachricht, unabhängig davon, was das Modell
       // geschrieben hat.
       message = entferneEinladungslink(message);
-    } else if (lead.ref_code && !message.includes("/einladung/")) {
+    } else if (lead.ref_code && lead.plate_status === "fertig" && !message.includes("/einladung/")) {
       // WP1 "Die ersten Fünfzig": jede direkte Erstnachricht trägt den persönlichen Rückkanal.
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
@@ -2806,7 +2806,7 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
   const allowed = config.languages.length ? config.languages : ["de", "en"];
   const naechsteVariante = await ladeVariantenZuteiler(admin);
 
-  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null; lead_type: string }[])
+  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
     .filter((l) => l.handle)
     .slice(0, config.batch_verfassen);
 
@@ -2853,9 +2853,9 @@ Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
     if (variant === "B") {
       // Zweistufig: kein Link in dieser ersten Nachricht — harte Prüfung im Code.
       message = entferneEinladungslink(message);
-    } else if (lead.ref_code && !message.includes("/einladung/")) {
-      // WP1 "Die ersten Fünfzig": Rückkanal auch dann sichergestellt, wenn das Modell den
-      // Link nicht wörtlich übernommen hat.
+    } else if (lead.ref_code && lead.plate_status === "fertig" && !message.includes("/einladung/")) {
+      // WP1 "Die ersten Fünfzig" / Teil 43: Rückkanal auch dann sichergestellt, wenn das Modell
+      // den Link nicht wörtlich übernommen hat — aber nur, wenn die Platte wirklich existiert.
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
 
@@ -2883,7 +2883,7 @@ const NACHFASSEN_NACH_TAGEN = 3;
 async function runAkquiseNachfassenVorbereiten(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const grenze = new Date(Date.now() - NACHFASSEN_NACH_TAGEN * 86_400_000).toISOString();
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, personal_line, language, ref_code, lead_type")
+    .select("id, handle, world, personal_line, language, ref_code, lead_type, plate_status")
     .eq("lead_type", "designer").eq("status", "kontaktiert").eq("opt_out", false)
     .neq("channel", "email")
     .is("replied_at", null).is("dm_followup_sent_at", null).is("dm_followup_draft", null)
@@ -2894,7 +2894,7 @@ async function runAkquiseNachfassenVorbereiten(admin: SupabaseClient): Promise<R
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   const deadline = Date.now() + 55_000;
   let ready = 0, tokensUsed = 0, attempted = 0;
-  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; personal_line: string | null; language: string | null; ref_code: string | null; lead_type: string }[]) {
+  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; personal_line: string | null; language: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[]) {
     if (Date.now() > deadline) break;
     attempted++;
     if (lead.lead_type !== "designer") continue; // harte Prüfung im Code, s. WP4
@@ -2916,7 +2916,7 @@ Ton: freundlich, unaufdringlich, keine Erinnerung an eine Absage, kein neues Zah
       text = fixed.text;
     }
     text = entferneEinladungslink(text);
-    if (lead.ref_code) text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
+    if (lead.ref_code && lead.plate_status === "fertig") text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     await admin.from("acquisition_leads").update({ dm_followup_draft: text }).eq("id", lead.id);
     ready++;
   }
