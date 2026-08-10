@@ -2529,9 +2529,15 @@ const PLATTE_LAUFZEIT_MS = 50_000;
 // Zehn Jahre: die Adresse soll die Einladung überleben, ohne den Speicher öffentlich zu machen.
 const PLATTE_SIGNATUR_SEK = 315_360_000;
 
-/** Profilbilder sind keine Werkbilder — Instagram markiert sie in Pfad oder Parametern. */
+/** Profilbilder sind keine Werkbilder — Instagram markiert sie im Pfad, in Parametern oder im
+ * base64-kodierten "efg"-Parameter (dort steht der encode-tag, z. B. "profile_pic.www.200.C3"). */
 function istProfilbild(url: string): boolean {
-  return /profile[_-]?pic|\/s150x150\/|\/s320x320\/|profile_images/i.test(url);
+  if (/profile[_-]?pic|\/s150x150\/|\/s320x320\/|profile_images/i.test(url)) return true;
+  try {
+    const efg = new URL(url).searchParams.get("efg");
+    if (efg && /profile_pic/i.test(atob(efg))) return true;
+  } catch { /* kein gültiges efg — dann zählt nur die Pfadprüfung oben */ }
+  return false;
 }
 
 interface SpiegelErgebnis { ok: true; platten: number; zu_wenig: number; fehlgeschlagen: number; geprueft: number; details: string[] }
@@ -2547,6 +2553,7 @@ async function runAkquiseBilderSpiegeln(admin: SupabaseClient): Promise<SpiegelE
     .eq("lead_type", "designer")
     .is("plate_images", null)
     .is("plate_status", null)
+    .not("scrape_images", "is", null)
     .not("ref_code", "is", null)
     .order("created_at", { ascending: true })
     .limit(PLATTE_BATCH);
@@ -2571,11 +2578,14 @@ async function runAkquiseBilderSpiegeln(admin: SupabaseClient): Promise<SpiegelE
 
     const urls: string[] = [];
     let fehler: string | null = null;
+    let abgelaufen = 0;
     for (const quelle of kandidaten) {
       if (urls.length >= PLATTE_MAX_BILDER) break;
       try {
         const res = await fetch(quelle, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" } });
-        if (!res.ok) continue;
+        // Instagram-Adressen tragen ein Ablaufdatum: 403 heißt fast immer "Link abgelaufen",
+        // nicht "kein Material". Der Unterschied muss im Status sichtbar bleiben.
+        if (!res.ok) { if (res.status === 403 || res.status === 410) abgelaufen++; continue; }
         const bytes = new Uint8Array(await res.arrayBuffer());
         const bild = await Image.decode(bytes);
         if (Math.min(bild.width, bild.height) < PLATTE_MIN_KANTE) continue;
@@ -2598,6 +2608,10 @@ async function runAkquiseBilderSpiegeln(admin: SupabaseClient): Promise<SpiegelE
       details.push(`${lead.handle}: Platte ${naechsteNummer} mit ${urls.length} Bildern.`);
       naechsteNummer++;
       platten++;
+    } else if (abgelaufen > 0) {
+      await admin.from("acquisition_leads").update({ plate_status: "bilder_abgelaufen" } as never).eq("id", lead.id);
+      details.push(`${lead.handle}: Instagram-Adressen abgelaufen (${abgelaufen}) — braucht einen frischen Profil-Scrape.`);
+      fehlgeschlagen++;
     } else if (fehler && kandidaten.length >= PLATTE_MIN_BILDER) {
       await admin.from("acquisition_leads").update({ plate_status: "bilder_fehlgeschlagen" } as never).eq("id", lead.id);
       details.push(`${lead.handle}: Bilder nicht abrufbar (${fehler}).`);
