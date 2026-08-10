@@ -3483,6 +3483,10 @@ export type Database = {
         Args: { _application_id: string }
         Returns: undefined
       }
+      backfill_lead_attribution: {
+        Args: never
+        Returns: { examined_count: number; matched_count: number }[]
+      }
       book_ai_spend: {
         Args: { _cents: number; _designer_id: string }
         Returns: Json
@@ -3531,6 +3535,10 @@ export type Database = {
           total_visits: number
           unique_visitors: number
         }[]
+      }
+      get_attribution_stats: {
+        Args: never
+        Returns: { attributed: number; total: number }[]
       }
       get_founding_social_proof: {
         Args: never

@@ -335,12 +335,16 @@ export default function AdminFeldzug() {
   const [todayFunnel, setTodayFunnel] = useState<TodayFunnel | null>(null);
   // WP5 "Die Rampe auf Hochtouren": Tagesziel aus ai_config.akquise_config.daily_goal, Standard 50.
   const [dailyGoal, setDailyGoal] = useState(50);
+  // WP6/WP7 "Das Attributions-Netz": wie viele Bewerbungen lassen sich auf einen Akquise-Kontakt
+  // zurückführen — "X von Y", nie mehr behauptet als real gezählt.
+  const [attribution, setAttribution] = useState<{ attributed: number; total: number } | null>(null);
+  const [backfillBusy, setBackfillBusy] = useState(false);
 
   const load = async () => {
     setFetching(true);
     const heuteStart = new Date(); heuteStart.setHours(0, 0, 0, 0);
     const heuteIso = heuteStart.toISOString();
-    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes] = await Promise.all([
+    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
         .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at")
@@ -352,6 +356,7 @@ export default function AdminFeldzug() {
       supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("replied_at", heuteIso),
       supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("applied_at", heuteIso),
       supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle(),
+      supabase.rpc("get_attribution_stats"),
     ]);
     if (leadsRes.error) toast.error(leadsRes.error.message);
     setRows((leadsRes.data as FeldzugLead[] | null) ?? []);
@@ -363,8 +368,26 @@ export default function AdminFeldzug() {
     });
     const goal = (configRes.data?.value as { daily_goal?: number } | null)?.daily_goal;
     if (typeof goal === "number" && goal > 0) setDailyGoal(goal);
+    const attrRow = (attributionRes.data as { attributed: number; total: number }[] | null)?.[0] ?? null;
+    if (attrRow) setAttribution(attrRow);
     setFetching(false);
   };
+
+  async function runBackfill() {
+    setBackfillBusy(true);
+    const { data, error } = await supabase.rpc("backfill_lead_attribution");
+    setBackfillBusy(false);
+    if (error) { toast.error(error.message); return; }
+    const result = (data as { matched_count: number; examined_count: number }[] | null)?.[0];
+    if (!result || result.examined_count === 0) {
+      toast("Keine unzugeordneten Bewerbungen mit Instagram-Handle gefunden.");
+    } else if (result.matched_count === 0) {
+      toast(`${result.examined_count} geprüft, aber kein eindeutiger Instagram-Handle-Treffer gefunden.`);
+    } else {
+      toast.success(`${result.matched_count} von ${result.examined_count} geprüften Bewerbungen zugeordnet.`);
+    }
+    void load();
+  }
 
   useEffect(() => { if (user && roles.includes("admin")) void load(); }, [user, roles]);
 
@@ -473,6 +496,26 @@ export default function AdminFeldzug() {
             </p>
           )}
         </>
+      )}
+
+      {/* WP7 "Das Attributions-Netz": ehrliche Zuordnungsrate + manueller Nachzieh-Lauf. */}
+      {attribution && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-[1.5px] border-black bg-white px-4 py-3">
+          <p className="text-sm">
+            <span className="font-serif text-lg tabular-nums">{attribution.attributed} von {attribution.total}</span>{" "}
+            <span className="text-muted-foreground">Bewerbungen einem Akquise-Kontakt zugeordnet.</span>
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={backfillBusy}
+            onClick={() => void runBackfill()}
+            className="rounded-none border-black hover:bg-black hover:text-white"
+          >
+            {backfillBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Ursprünge nachziehen
+          </Button>
+        </div>
       )}
 
       <div className="mb-6 flex flex-wrap gap-2">
