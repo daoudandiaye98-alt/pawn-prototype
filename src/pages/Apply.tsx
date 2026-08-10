@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { readLeadRef, clearLeadRef } from "@/features/acquisition/leadAttribution";
+import { readLeadRef, clearLeadRef, readRefCode, clearRefCode } from "@/features/acquisition/leadAttribution";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -272,6 +272,7 @@ const Apply = () => {
         portfolioPaths,
         acceptedContractIds: contracts.filter((c) => accepted[c.id]).map((c) => c.id),
         acquisitionLeadId: readLeadRef() ?? undefined,
+        ref: readRefCode() ?? undefined,
       };
 
       const { data: res, error } = await supabase.functions.invoke("submit-application", { body: payload });
@@ -293,6 +294,7 @@ const Apply = () => {
       }
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* egal */ }
       clearLeadRef();
+      clearRefCode();
       setSubmitted(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unbekannter Fehler.");
