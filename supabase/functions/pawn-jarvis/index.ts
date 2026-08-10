@@ -2158,7 +2158,7 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
     if (hunt.query_type === "profil") {
       let updated = 0;
       for (const item of items) {
-        const mapped = mapScrapeItem(item, hunt.world || config.default_world, hunt.id, "profil");
+        const mapped = mapScrapeItem(item, hunt.world || config.default_world, hunt.id, "profil", config.domain_sperrliste);
         if (!mapped.handle) continue;
         const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
         if (mapped.bio) patch.bio = mapped.bio;
@@ -2182,7 +2182,7 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
 
 
     const rows = items
-      .map((item) => mapScrapeItem(item, hunt.world || config.default_world, hunt.id, hunt.query_type === "nachbarschaft" ? "nachbarschaft" : "hashtag"))
+      .map((item) => mapScrapeItem(item, hunt.world || config.default_world, hunt.id, hunt.query_type === "nachbarschaft" ? "nachbarschaft" : "hashtag", config.domain_sperrliste))
       .filter((r) => r.handle && !known.has(r.handle));
     const deduped = Array.from(new Map(rows.map((r) => [r.handle, r])).values());
     const passing = deduped.filter((r) => passesPrefilter(r, config));
@@ -2214,7 +2214,7 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
       return { ok: false, error: `Apify nicht erreichbar: ${(e as Error).message}` };
     }
     const rows = items
-      .map((item) => mapScrapeItem(item, config.default_world, null, "manuell"))
+      .map((item) => mapScrapeItem(item, config.default_world, null, "manuell", config.domain_sperrliste))
       .filter((r) => r.handle && !known.has(r.handle))
       .filter((r) => passesPrefilter(r, config));
     const res = await insertLeads(admin, Array.from(new Map(rows.map((r) => [r.handle, r])).values()));
