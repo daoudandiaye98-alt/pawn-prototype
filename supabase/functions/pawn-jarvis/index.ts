@@ -2536,7 +2536,7 @@ const PLATTE_MAX_KANTE = 1400;
 const PLATTE_MIN_KANTE = 600;
 const PLATTE_MIN_BILDER = 3;
 const PLATTE_MAX_BILDER = 3;
-const PLATTE_BATCH = 5;
+const PLATTE_BATCH = 2;
 const PLATTE_LAUFZEIT_MS = 50_000;
 // Zehn Jahre: die Adresse soll die Einladung überleben, ohne den Speicher öffentlich zu machen.
 const PLATTE_SIGNATUR_SEK = 315_360_000;
