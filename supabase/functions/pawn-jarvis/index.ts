@@ -2034,6 +2034,13 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       continue;
     }
 
+    // Teil 42: Presseartikel/Portale sind nie die Website eines Hauses (Presse-Leads ausgenommen).
+    if (lead.lead_type !== "presse" && istGesperrteWebsite(start, config.domain_sperrliste)) {
+      log.push({ quelle: "website", wert: start, status: "gesperrte_domain" });
+      await abschluss({ website: null, channel: "dm", contact_channel: "dm" }, "website_unbrauchbar");
+      continue;
+    }
+
     let base: URL;
     try { base = new URL(start.startsWith("http") ? start : `https://${start}`); }
     catch {
