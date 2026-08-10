@@ -39,7 +39,7 @@ interface FeldzugLead {
   dm_followup_sent_at: string | null;
 }
 
-type ChannelTab = "dm" | "nachfassen" | "email" | "blockiert";
+type ChannelTab = "dm" | "nachfassen" | "multiplikator" | "email" | "blockiert";
 type MainTab = "heute" | "gespraech";
 
 function isMobileDevice(): boolean {
@@ -339,12 +339,16 @@ export default function AdminFeldzug() {
   // zurückführen — "X von Y", nie mehr behauptet als real gezählt.
   const [attribution, setAttribution] = useState<{ attributed: number; total: number } | null>(null);
   const [backfillBusy, setBackfillBusy] = useState(false);
+  // WP8 "Zufuhr-Verzehnfachung": Multiplikatoren (Concept-Stores, Showrooms, Kurator:innen mit
+  // eigenem Designer-Netzwerk) sind eine eigene Zielgruppe — eigene Warteschlange, eigener Tab,
+  // niemals in der Designer-Warteschlange gemischt (die filtert ohnehin schon auf lead_type='designer').
+  const [multiplikatorRows, setMultiplikatorRows] = useState<FeldzugLead[]>([]);
 
   const load = async () => {
     setFetching(true);
     const heuteStart = new Date(); heuteStart.setHours(0, 0, 0, 0);
     const heuteIso = heuteStart.toISOString();
-    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes] = await Promise.all([
+    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes, multiplikatorRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
         .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at")
@@ -357,9 +361,16 @@ export default function AdminFeldzug() {
       supabase.from("acquisition_leads").select("id", { count: "exact", head: true }).gte("applied_at", heuteIso),
       supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle(),
       supabase.rpc("get_attribution_stats"),
+      supabase
+        .from("acquisition_leads")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at")
+        .eq("lead_type", "multiplikator").eq("status", "qualifiziert").is("contacted_at", null)
+        .not("message_draft", "is", null)
+        .order("kurator_score", { ascending: false, nullsFirst: false }),
     ]);
     if (leadsRes.error) toast.error(leadsRes.error.message);
     setRows((leadsRes.data as FeldzugLead[] | null) ?? []);
+    setMultiplikatorRows((multiplikatorRes.data as FeldzugLead[] | null) ?? []);
     setTodayFunnel({
       neu: neuRes.count ?? 0,
       kontaktiert: kontaktiertRes.count ?? 0,
@@ -413,6 +424,28 @@ export default function AdminFeldzug() {
 
   const currentDm = dmQueue[0] ?? null;
   const currentNachfassen = nachfassenQueue[0] ?? null;
+  const currentMultiplikator = multiplikatorRows[0] ?? null;
+
+  async function markMultiplikatorSent(lead: FeldzugLead) {
+    setBusyId(lead.id);
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("acquisition_leads")
+      .update({ status: "kontaktiert", contacted_at: now, updated_at: now }).eq("id", lead.id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    setMultiplikatorRows((rs) => rs.filter((r) => r.id !== lead.id));
+    toast.success(`@${lead.handle} als gesendet markiert.`);
+  }
+
+  async function skipMultiplikator(lead: FeldzugLead, reason: string) {
+    setBusyId(lead.id);
+    const { error } = await supabase.from("acquisition_leads")
+      .update({ blocked_reason: reason, updated_at: new Date().toISOString() }).eq("id", lead.id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    setMultiplikatorRows((rs) => rs.filter((r) => r.id !== lead.id));
+    toast.success(`@${lead.handle} übersprungen.`);
+  }
 
   async function markSent(lead: FeldzugLead) {
     setBusyId(lead.id);
@@ -543,6 +576,7 @@ export default function AdminFeldzug() {
             {([
               { key: "dm" as ChannelTab, label: `DM (${dmQueue.length})` },
               { key: "nachfassen" as ChannelTab, label: `Nachfassen (${nachfassenQueue.length})` },
+              { key: "multiplikator" as ChannelTab, label: `Multiplikatoren (${multiplikatorRows.length})` },
               { key: "email" as ChannelTab, label: `E-Mail (${emailQueue.length})` },
               { key: "blockiert" as ChannelTab, label: `Blockiert (${blockedQueue.length})` },
             ]).map((c) => (
@@ -586,6 +620,22 @@ export default function AdminFeldzug() {
               <div className="border-[1.5px] border-black p-16 text-center text-muted-foreground">
                 Kein Nachfassen fällig — PAWN bereitet Nachfass-Entwürfe automatisch vor, sobald
                 kontaktierte Leads seit mindestens drei Tagen ohne Antwort sind.
+              </div>
+            )
+          )}
+          {channelTab === "multiplikator" && (
+            currentMultiplikator ? (
+              <DmCard
+                lead={currentMultiplikator}
+                busy={busyId === currentMultiplikator.id}
+                onSent={() => void markMultiplikatorSent(currentMultiplikator)}
+                onSkip={(reason) => void skipMultiplikator(currentMultiplikator, reason)}
+              />
+            ) : (
+              <div className="border-[1.5px] border-black p-16 text-center text-muted-foreground">
+                Keine Multiplikator-Anfrage fällig — das sind Concept-Stores, Showrooms und
+                Kurator:innen mit eigenem Designer-Netzwerk, keine Designer:innen selbst. Eine
+                Partnerschafts-Anfrage, nie eine Einladung zum Bewerben.
               </div>
             )
           )}
