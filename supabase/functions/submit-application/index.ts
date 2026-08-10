@@ -20,6 +20,9 @@ interface Body {
   portfolioPaths?: string[];
   acceptedContractIds?: string[];
   acquisitionLeadId?: string;
+  /** WP1 "Die ersten Fünfzig": kurzer ref_code aus der Einladungsseite (/einladung/{ref_code}).
+   * Hat Vorrang vor acquisitionLeadId (der ältere, direkte Lead-ID-Weg über /start?lead=). */
+  ref?: string;
 }
 
 function json(status: number, body: unknown) {
@@ -100,6 +103,15 @@ Deno.serve(async (req) => {
 
     if (!userId) return json(500, { error: "no_user" });
 
+    // WP1 "Die ersten Fünfzig": ref_code aus der Einladungsseite löst den Ursprungs-Lead auf —
+    // hat Vorrang vor der älteren, direkten acquisitionLeadId (falls beide gesetzt wären).
+    let acquisitionLeadId = body.acquisitionLeadId ?? null;
+    if (body.ref && typeof body.ref === "string" && body.ref.trim()) {
+      const { data: leadByRef } = await admin.from("acquisition_leads")
+        .select("id").eq("ref_code", body.ref.trim().toUpperCase()).maybeSingle();
+      if (leadByRef) acquisitionLeadId = leadByRef.id as string;
+    }
+
     // Load checksums for the accepted contracts
     const { data: contracts } = await admin
       .from("contract_versions")
@@ -123,7 +135,7 @@ Deno.serve(async (req) => {
           tags: body.tags ?? [],
           production_status: body.productionStatus ?? null,
           portfolio_paths: body.portfolioPaths ?? [],
-          acquisition_lead_id: body.acquisitionLeadId ?? null,
+          acquisition_lead_id: acquisitionLeadId,
           status: "submitted",
           submitted_at: new Date().toISOString(),
         },
@@ -133,6 +145,18 @@ Deno.serve(async (req) => {
       .single();
 
     if (insErr || !app) return json(500, { error: insErr?.message ?? "application_insert_failed" });
+
+    // WP1 "Die ersten Fünfzig": Lead-Status auf 'beworben' — nur vorwärts, nie über
+    // 'gewonnen' zurückschreiben (Idempotenz bei doppeltem Submit desselben Leads).
+    if (acquisitionLeadId) {
+      const { data: leadRow } = await admin.from("acquisition_leads")
+        .select("status").eq("id", acquisitionLeadId).maybeSingle();
+      if (leadRow && leadRow.status !== "gewonnen") {
+        await admin.from("acquisition_leads")
+          .update({ status: "beworben", applied_at: new Date().toISOString() })
+          .eq("id", acquisitionLeadId);
+      }
+    }
 
     // Consents
     const consentRows = body.acceptedContractIds

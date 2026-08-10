@@ -2196,7 +2196,7 @@ function vornameVon(name: string | null | undefined): string | null {
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email, contact_url, contact_name").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
+    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
@@ -2205,7 +2205,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
   // Reine Instagram-Leads (keine E-Mail, kein Kontaktformular) schreibt akquise_dm_vorbereiten —
   // die kürzere DM-Fassung für den Sende-Stapel, nicht diese lange Mail-Fassung.
-  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null }[])
+  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null }[])
     .filter((l) => l.email || l.contact_url)
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
   const stapel = alle.slice(0, config.batch_verfassen);
@@ -2230,6 +2230,11 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
       if (fixed.text !== message) { message = fixed.text; entverneint++; }
     }
 
+    // WP1 "Die ersten Fünfzig": jede Erstnachricht trägt den persönlichen Rückkanal.
+    if (lead.ref_code && !message.includes("/einladung/")) {
+      message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
+    }
+
     // Der Weg entscheidet sich hier: Adresse -> E-Mail, Formular -> Formular, sonst DM.
     const weg = lead.email ? "email" : lead.contact_url ? "formular" : "dm";
     await admin.from("acquisition_leads").update({
@@ -2251,7 +2256,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
  */
 async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, contact_name")
+    .select("id, handle, world, bio, contact_name, ref_code")
     .eq("lead_type", "designer").eq("status", "qualifiziert")
     .is("email", null).is("contact_url", null).is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
@@ -2260,7 +2265,7 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   const allowed = config.languages.length ? config.languages : ["de", "en"];
 
-  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null }[])
+  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null }[])
     .filter((l) => l.handle)
     .slice(0, config.batch_verfassen);
 
@@ -2281,7 +2286,7 @@ AUFBAU (kurz, fließend, in dieser Reihenfolge, keine Aufzählungszeichen):
 2. Eine persönliche Zeile zur konkreten Arbeit dieser Person (das ist die personal_line) — zeigt, dass wirklich hingesehen wurde.
 3. Ein Satz, was PAWN ist: ein kuratierter Marktplatz für unabhängige Designer:innen.
 4. Die Konditionen als Zusage in einem Halbsatz: kostenlos, du behältst 93 % jedes Verkaufs.
-5. Eine kurze Einladung mit pawn.vision zum Schluss.
+5. Eine kurze Einladung zum Schluss mit dem persönlichen Link https://pawn.vision/einladung/${lead.ref_code ?? ""}.
 
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige DM, 40–70 Wörter>"}
 
@@ -2298,6 +2303,12 @@ Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
       const fixed = await entverneinen(message, gesetze);
       tokensUsed += fixed.tokens;
       if (fixed.text !== message) { message = fixed.text; entverneint++; }
+    }
+
+    // WP1 "Die ersten Fünfzig": Rückkanal auch dann sichergestellt, wenn das Modell den
+    // Link nicht wörtlich übernommen hat.
+    if (lead.ref_code && !message.includes("/einladung/")) {
+      message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
 
     await admin.from("acquisition_leads").update({
