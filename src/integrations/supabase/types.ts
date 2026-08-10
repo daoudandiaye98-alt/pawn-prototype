@@ -3532,6 +3532,10 @@ export type Database = {
           unique_visitors: number
         }[]
       }
+      get_founding_social_proof: {
+        Args: never
+        Returns: { brand_name: string; world: string }[]
+      }
       get_lead_invitation: {
         Args: { _ref_code: string }
         Returns: {

@@ -9,8 +9,22 @@ import { captureRefCode } from "@/features/acquisition/leadAttribution";
 import { useI18n, type Locale } from "@/lib/i18n";
 
 interface Invitation { handle: string; world: string | null; personal_line: string | null; lead_type: string; language: string | null }
+interface SocialProofHouse { brand_name: string; world: string | null }
 
 const FOUNDING_SEATS = 50;
+const SOCIAL_PROOF_MIN_HOUSES = 3;
+
+const WORLD_LABEL_KEY: Record<string, string> = {
+  Mode: "apply.discipline.mode.label",
+  Interior: "apply.discipline.interior.label",
+  Kunst: "apply.discipline.kunst.label",
+};
+
+function worldLabel(t: (k: string) => string, world: string | null): string | null {
+  if (!world) return null;
+  const key = WORLD_LABEL_KEY[world];
+  return key ? t(key) : world;
+}
 
 /**
  * WP2 "Die ersten Fünfzig" — die persönliche Einladungsseite. Wer über einen Akquise-Link
@@ -27,15 +41,17 @@ export default function Einladung() {
   const { t, setLocale } = useI18n();
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [foundingCount, setFoundingCount] = useState<number | null>(null);
+  const [socialProof, setSocialProof] = useState<SocialProofHouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!refCode) { setNotFound(true); setLoading(false); return; }
     (async () => {
-      const [{ data: leadRows }, { data: count }] = await Promise.all([
+      const [{ data: leadRows }, { data: count }, { data: houses }] = await Promise.all([
         supabase.rpc("get_lead_invitation", { _ref_code: refCode }),
         supabase.rpc("count_founding_designers"),
+        supabase.rpc("get_founding_social_proof"),
       ]);
       const row = (leadRows as Invitation[] | null)?.[0] ?? null;
       if (!row) { setNotFound(true); setLoading(false); return; }
@@ -43,6 +59,7 @@ export default function Einladung() {
       setInvitation(row);
       if (row.language === "en" || row.language === "de") setLocale(row.language as Locale);
       setFoundingCount(typeof count === "number" ? count : 0);
+      setSocialProof((houses as SocialProofHouse[] | null) ?? []);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,6 +108,23 @@ export default function Einladung() {
             </Button>
           </div>
         </Reveal>
+
+        {seatsTaken >= SOCIAL_PROOF_MIN_HOUSES && socialProof.length >= 2 && (
+          <Reveal>
+            <div className="mt-10 border-t border-[#000000]/15 pt-8 text-center">
+              <p className="palace-eyebrow">{t("einladung.foundingTitle")}</p>
+              <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-[#000000]/70">
+                {socialProof.map((h, i) => (
+                  <li key={h.brand_name}>
+                    {h.brand_name}
+                    {worldLabel(t, h.world) && <span className="text-[#000000]/40"> · {worldLabel(t, h.world)}</span>}
+                    {i < socialProof.length - 1 && <span className="ml-3 text-[#000000]/30">—</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+        )}
 
         <p className="mt-10 text-center text-xs text-[#000000]/50">{t("einladung.decline")}</p>
       </section>

@@ -39,7 +39,7 @@ const NOT_LOOKING_FOR = [
 
 const FLOW = [
   { label: "Bewerben", body: "Ein geführtes Formular, etwa zehn Minuten. Du kannst zwischendurch aufhören — dein Stand bleibt gespeichert." },
-  { label: "Prüfung", body: "Wir sehen uns deine Arbeit persönlich an und antworten innerhalb von sieben Tagen. Auch bei Absage, mit Begründung." },
+  { label: "Prüfung", body: "Wir sehen uns deine Arbeit persönlich an und antworten innerhalb von 48 Stunden. Auch bei Absage, mit Begründung." },
   { label: "Einrichtung", body: "Wir bauen deine Hausseite mit dir auf, verbinden dein Auszahlungskonto und übergeben dir dein Studio." },
   { label: "Auftritt", body: "Dein erstes Stück geht live, deine erste Kampagne entsteht. Ab hier gestaltest du." },
 ];
@@ -395,7 +395,7 @@ export default function ApplyLanding() {
 
           <p className="mt-14 text-center font-serif italic text-[1rem] text-[#000000]/70">
             <Editable as="span" contentKey="apply_cta_footnote_v2" multiline>
-              Wir lesen jede Bewerbung persönlich und antworten innerhalb von sieben Tagen — auch bei einer Absage.
+              Wir lesen jede Bewerbung persönlich und antworten innerhalb von 48 Stunden — auch bei einer Absage.
             </Editable>
           </p>
         </div>
