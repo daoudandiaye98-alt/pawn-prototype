@@ -37,9 +37,11 @@ interface FeldzugLead {
   followup_at: string | null;
   dm_followup_draft: string | null;
   dm_followup_sent_at: string | null;
+  contact_url: string | null;
+  contact_channel: string | null;
 }
 
-type ChannelTab = "dm" | "nachfassen" | "multiplikator" | "email" | "blockiert";
+type ChannelTab = "dm" | "formular" | "nachfassen" | "multiplikator" | "email" | "blockiert";
 type MainTab = "heute" | "gespraech";
 
 function isMobileDevice(): boolean {
@@ -180,6 +182,115 @@ function DmCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─────────────────────── Formular-Karte: Website-Kontaktformular als eigener Zug ─────────────────────── */
+
+/**
+ * Teil 41 „Treffsicherheit": Häuser ohne offene E-Mail-Adresse, aber mit Kontaktformular auf der
+ * eigenen Seite. Gleiche Handgriffe wie bei der DM: Nachricht kopieren → Formular öffnen →
+ * Gesendet ✓. Auch hier sendet ausschließlich der Mensch.
+ */
+function FormularCard({
+  lead, onSent, onSkip, busy,
+}: {
+  lead: FeldzugLead;
+  onSent: () => void;
+  onSkip: (reason: string) => void;
+  busy: boolean;
+}) {
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [skipOpen, setSkipOpen] = useState(false);
+  const [skipReason, setSkipReason] = useState("");
+
+  useEffect(() => { setStep(0); setSkipOpen(false); setSkipReason(""); }, [lead.id]);
+
+  async function copyText() {
+    await navigator.clipboard.writeText(lead.message_draft ?? "");
+    toast.success("Nachricht kopiert.");
+    setStep((s) => (s < 1 ? 1 : s));
+  }
+
+  function openForm() {
+    if (!lead.contact_url) return;
+    window.open(lead.contact_url, "_blank", "noopener,noreferrer");
+    setStep(2);
+  }
+
+  return (
+    <div className="border-[1.5px] border-black bg-white">
+      <header className="border-b-[1.5px] border-black px-5 py-4">
+        <p className="editorial-eyebrow">{lead.world ?? "—"} · Formular</p>
+        <h2 className="font-serif text-2xl">@{lead.handle}</h2>
+        {lead.contact_url && (
+          <p className="mt-1 break-all text-xs text-muted-foreground">{lead.contact_url}</p>
+        )}
+      </header>
+
+      <div className="px-5 py-5">
+        <p className="editorial-eyebrow mb-2">Nachricht</p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">
+          {lead.message_draft || "Kein Entwurf vorhanden."}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
+        <Button
+          onClick={copyText}
+          variant={step === 0 ? "default" : "outline"}
+          className={cn("rounded-none justify-center", step === 0 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+        >
+          <Copy className="mr-2 h-4 w-4" /> Nachricht kopieren
+        </Button>
+        <Button
+          onClick={openForm}
+          disabled={!lead.contact_url}
+          variant={step === 1 ? "default" : "outline"}
+          className={cn("rounded-none justify-center", step === 1 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+        >
+          <ExternalLink className="mr-2 h-4 w-4" /> Formular öffnen
+        </Button>
+        <Button
+          onClick={onSent}
+          disabled={busy}
+          variant={step === 2 ? "default" : "outline"}
+          className={cn("rounded-none justify-center", step === 2 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+        >
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Gesendet ✓
+        </Button>
+      </div>
+
+      <div className="border-t border-border px-5 py-3">
+        {!skipOpen ? (
+          <button
+            type="button"
+            onClick={() => setSkipOpen(true)}
+            className="inline-flex items-center gap-1.5 text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"
+          >
+            <SkipForward className="h-3.5 w-3.5" /> Überspringen
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <Textarea
+              value={skipReason}
+              onChange={(e) => setSkipReason(e.target.value)}
+              rows={2}
+              placeholder="Warum überspringen? (Pflichtfeld)"
+              className="rounded-none border-black text-sm"
+            />
+            <div className="flex gap-2">
+              <Button size="sm" disabled={busy || !skipReason.trim()} onClick={() => onSkip(skipReason.trim())} className="rounded-none bg-black text-white hover:bg-white hover:text-black">
+                Überspringen bestätigen
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setSkipOpen(false); setSkipReason(""); }} className="rounded-none border-black">
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -351,7 +462,7 @@ export default function AdminFeldzug() {
     const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes, multiplikatorRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
         .eq("lead_type", "designer")
         .in("status", ["qualifiziert", "kontaktiert"])
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -363,7 +474,7 @@ export default function AdminFeldzug() {
       supabase.rpc("get_attribution_stats"),
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
         .eq("lead_type", "multiplikator").eq("status", "qualifiziert").is("contacted_at", null)
         .not("message_draft", "is", null)
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -411,7 +522,9 @@ export default function AdminFeldzug() {
 
   // "Heutige Züge": freigegeben, geprüft, noch nicht kontaktiert.
   const readyToday = rows.filter((r) => r.admin_decision === "ja" && r.qc_passed === true && !r.contacted_at);
-  const dmQueue = readyToday.filter((r) => r.channel !== "email" && !r.blocked_reason);
+  // Teil 41: Formular-Leads sind ein eigener Zug — sie tauchen nicht mehr in der DM-Liste auf.
+  const formularQueue = readyToday.filter((r) => r.contact_channel === "formular" && !!r.contact_url && !r.blocked_reason);
+  const dmQueue = readyToday.filter((r) => r.channel !== "email" && !r.blocked_reason && !formularQueue.includes(r));
   // WP5: die E-Mail-Ansicht zeigt jetzt die ganze Spur (auch schon Kontaktierte), nicht nur die
   // Warteschlange — sonst ist von "Erstkontakt/Nachgefasst/Antwort" nie etwas zu sehen.
   const emailQueue = rows.filter((r) => r.channel === "email");
@@ -423,6 +536,7 @@ export default function AdminFeldzug() {
   const gespraech = rows.filter((r) => r.status === "kontaktiert" && r.channel !== "email" && !r.replied_at);
 
   const currentDm = dmQueue[0] ?? null;
+  const currentFormular = formularQueue[0] ?? null;
   const currentNachfassen = nachfassenQueue[0] ?? null;
   const currentMultiplikator = multiplikatorRows[0] ?? null;
 
@@ -575,6 +689,7 @@ export default function AdminFeldzug() {
           <div className="mb-4 flex flex-wrap gap-2">
             {([
               { key: "dm" as ChannelTab, label: `DM (${dmQueue.length})` },
+              { key: "formular" as ChannelTab, label: `Formular (${formularQueue.length})` },
               { key: "nachfassen" as ChannelTab, label: `Nachfassen (${nachfassenQueue.length})` },
               { key: "multiplikator" as ChannelTab, label: `Multiplikatoren (${multiplikatorRows.length})` },
               { key: "email" as ChannelTab, label: `E-Mail (${emailQueue.length})` },
@@ -604,6 +719,21 @@ export default function AdminFeldzug() {
             ) : (
               <div className="border-[1.5px] border-black p-16 text-center text-muted-foreground">
                 Für heute erledigt — alle freigegebenen DMs sind raus.
+              </div>
+            )
+          )}
+          {channelTab === "formular" && (
+            currentFormular ? (
+              <FormularCard
+                lead={currentFormular}
+                busy={busyId === currentFormular.id}
+                onSent={() => void markSent(currentFormular)}
+                onSkip={(reason) => void skipLead(currentFormular, reason)}
+              />
+            ) : (
+              <div className="border-[1.5px] border-black p-16 text-center text-muted-foreground">
+                Kein Formular-Zug offen — hier erscheinen Häuser mit Kontaktformular auf der eigenen
+                Seite, sobald PAWN eines gefunden hat.
               </div>
             )
           )}

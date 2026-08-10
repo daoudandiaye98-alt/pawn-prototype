@@ -1646,6 +1646,8 @@ function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: str
   const bio = String(item.biography ?? item.bio ?? "").trim() || null;
   const email = extractBusinessEmail(item, bio);
   const links = Array.isArray(item.bioLinks) ? item.bioLinks as Array<{ url?: string }> : [];
+  // Teil 41: die verlinkte Adresse wird VOLLSTÄNDIG übernommen (mit Pfad) — bei Sammelseiten
+  // wie bio.site ist erst der Pfad die eigentliche Spur, der bloße Stamm ist Datenmüll.
   const website = String(item.externalUrl ?? item.website ?? links[0]?.url ?? "").trim() || null;
   return {
     handle, world, source, followers, bio, email, website,
@@ -1753,29 +1755,48 @@ function pickBestEmail(candidates: string[], host: string): string | null {
   return clean.sort((a, b) => score(b) - score(a))[0];
 }
 
-/** Findet E-Mails im HTML: mailto-Links, Klartext und verschleierte Schreibweisen („name (at) domain.de"). */
+/**
+ * Cloudflare-Verschleierung auflösen: data-cfemail="a1b2…" ist die Adresse hex-kodiert,
+ * das erste Byte ist der Schlüssel. Auf vielen Seiten die einzige Form der Adresse im HTML.
+ */
+function decodeCfEmail(hex: string): string | null {
+  try {
+    const key = parseInt(hex.slice(0, 2), 16);
+    let out = "";
+    for (let i = 2; i < hex.length; i += 2) out += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16) ^ key);
+    return /@/.test(out) ? out : null;
+  } catch { return null; }
+}
+
+/** Findet E-Mails im HTML: mailto, Klartext, Cloudflare-Schutz, JSON-LD und verschleierte Schreibweisen. */
 function extractEmailsFromHtml(html: string): string[] {
   const out: string[] = [];
   for (const m of html.matchAll(/mailto:([^"'?>\s]+)/gi)) out.push(decodeURIComponent(m[1]));
   for (const m of html.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)) out.push(m[0]);
-  for (const m of html.matchAll(/([A-Za-z0-9._%+-]+)\s*(?:\(at\)|\[at\]|\s@\s|&#64;)\s*([A-Za-z0-9.-]+)\s*(?:\(dot\)|\[dot\]|\.)\s*([A-Za-z]{2,})/gi)) {
-    out.push(`${m[1]}@${m[2]}.${m[3]}`);
+  for (const m of html.matchAll(/data-cfemail=["']([0-9a-fA-F]+)["']/g)) {
+    const dec = decodeCfEmail(m[1]);
+    if (dec) out.push(dec);
   }
+  // JSON-LD / schema.org: "email": "hallo@marke.de"
+  for (const m of html.matchAll(/"email"\s*:\s*"([^"]+)"/gi)) out.push(m[1].replace(/^mailto:/i, ""));
+  // Verschleierte Schreibweisen inkl. (ät), {at}, " at " mit Leerzeichen, " punkt ".
+  const AT = String.raw`\(at\)|\[at\]|\{at\}|\(ät\)|\[ät\]|&#64;|\s@\s|\sat\s|\s\(a\)\s`;
+  const DOT = String.raw`\(dot\)|\[dot\]|\{dot\}|\spunkt\s|\sdot\s|\.`;
+  const re = new RegExp(String.raw`([A-Za-z0-9._%+-]+)\s*(?:${AT})\s*([A-Za-z0-9.-]+?)\s*(?:${DOT})\s*([A-Za-z]{2,})`, "gi");
+  for (const m of html.matchAll(re)) out.push(`${m[1]}@${m[2]}.${m[3]}`);
   return out;
 }
 
 /**
  * akquise_kontakt — die Kontakt-Kette. Für jeden Lead ohne Adresse geht Jarvis der Reihe nach
  * vor: eigene Website (Start, Kontakt, Impressum, Legal) → Sammelseiten wie Linktree auflösen →
- * ohne bekannte Website eine Websuche nach der Marke → als letzte Stufe die Kontaktformular-URL
- * merken. Reines Lesen, kein LLM. Bleibt alles leer, wird der Lead ein DM-Fall.
+ * Kontakt-Links aus dem HTML verfolgen → Kontaktformular als vollwertiger Kanal merken.
+ * Reines Lesen, kein LLM. Jeder Schritt wird in recherche_log sichtbar festgehalten (Ehrlichkeits-
+ * gesetz auf Organ-Ebene); bleibt alles leer, bekommt der Lead einen konkreten blocked_reason.
  */
 async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const MAX_VERSUCHE = 3;
-  // WP4 "Die ersten Fünfzig" — Idempotenz: ein Lead wird nicht bei jedem Zeitplan-Tick erneut
-  // angefasst, nur weil er noch unter dem Versuchslimit liegt. recherche_attempted_at (WP1) hält
-  // den letzten Versuch fest; erst nach 6 Stunden Ruhe kommt derselbe Lead wieder dran.
   const kuehlzeit = new Date(Date.now() - 6 * 60 * 60_000).toISOString();
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, website, bio, contact_attempts")
@@ -1787,85 +1808,123 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
     .order("kurator_score", { ascending: false, nullsFirst: false })
     .limit(Math.min(config.batch_kontakt, 10));
 
-  // Zeitbudget: ein Lauf bleibt unter der Grenze der Laufzeitumgebung, der Rest kommt beim nächsten.
   const deadline = Date.now() + 55_000;
-  const paths = ["", "/kontakt", "/impressum", "/contact", "/about", "/pages/contact"];
-  const formPaths = ["/kontakt", "/contact", "/pages/contact"];
-  const linkAggregator = /(linktr\.ee|beacons\.ai|linkin\.bio|bio\.link|milkshake\.app|taplink|komi\.io|solo\.to)/i;
+  const paths = [
+    "", "/kontakt", "/contact", "/contact-us", "/pages/contact", "/pages/kontakt",
+    "/impressum", "/mentions-legales", "/legal", "/about", "/info",
+  ];
+  const linkAggregator = /(linktr\.ee|beacons\.ai|linkin\.bio|bio\.link|bio\.site|milkshake\.app|taplink|komi\.io|solo\.to)/i;
   const fremd = /(instagram|facebook|tiktok|youtube|pinterest|twitter|x\.com|spotify|apple|google|cdn|gstatic|etsy|amazon|paypal|whatsapp)/i;
+  const kontaktWort = /(contact|kontakt|impressum|about|legal|mentions)/i;
   let found = 0, checked = 0, formulare = 0, viaSuche = 0, blockiert = 0;
 
-  async function fetchHtml(url: string): Promise<string | null> {
+  const BROWSER_HEADERS: Record<string, string> = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "de-DE,de;q=0.9,en;q=0.8,fr;q=0.7",
+  };
+
+  interface Abruf { status: number; html: string | null; note?: string }
+
+  /** Holt eine Seite und meldet ehrlich, was passiert ist — nie still null. */
+  async function fetchHtml(url: string, retry = true): Promise<Abruf> {
     try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": "PAWN-Jarvis/1.0 (+https://pawn.vision)" },
-        signal: AbortSignal.timeout(6000),
-      });
-      if (!res.ok) return null;
-      return (await res.text()).slice(0, 60_000);
-    } catch { return null; }
+      const res = await fetch(url, { headers: BROWSER_HEADERS, redirect: "follow", signal: AbortSignal.timeout(9000) });
+      if ((res.status === 403 || res.status === 503) && retry) {
+        await new Promise((r) => setTimeout(r, 800));
+        return await fetchHtml(url, false);
+      }
+      if (!res.ok) {
+        await res.body?.cancel();
+        return { status: res.status, html: null };
+      }
+      const text = (await res.text()).slice(0, 250_000);
+      if (/(cf-browser-verification|Just a moment\.\.\.|Attention Required! \| Cloudflare|challenge-platform)/i.test(text)) {
+        return { status: res.status, html: text, note: "challenge" };
+      }
+      return { status: res.status, html: text };
+    } catch (e) {
+      const msg = String((e as Error)?.name ?? e);
+      return { status: 0, html: null, note: /Timeout|Abort/i.test(msg) ? "timeout" : "netzfehler" };
+    }
   }
 
-  /** Findet über eine offene Websuche die eigene Domain einer Marke. */
-  async function sucheWebsite(handle: string, bio: string | null): Promise<string | null> {
-    const begriff = encodeURIComponent(`${handle.replace(/[._-]+/g, " ")} ${bio?.slice(0, 40) ?? ""} shop kontakt impressum`);
-    const html = await fetchHtml(`https://duckduckgo.com/html/?q=${begriff}`);
-    if (!html) return null;
-    for (const m of html.matchAll(/uddg=([^"&]+)/g)) {
-      try {
-        const url = new URL(decodeURIComponent(m[1]));
-        if (!fremd.test(url.hostname) && !linkAggregator.test(url.hostname) && !/duckduckgo/i.test(url.hostname)) {
-          return url.origin;
-        }
-      } catch { /* nächster Treffer */ }
-    }
-    return null;
+  /** www/non-www als zweiter Versuch, wenn der erste Abruf ins Leere lief. */
+  async function fetchMitFallback(url: string): Promise<Abruf> {
+    const erst = await fetchHtml(url);
+    if (erst.html) return erst;
+    try {
+      const u = new URL(url);
+      u.hostname = u.hostname.startsWith("www.") ? u.hostname.slice(4) : `www.${u.hostname}`;
+      const zweit = await fetchHtml(u.toString());
+      if (zweit.html) return zweit;
+      return erst.status ? erst : zweit;
+    } catch { return erst; }
+  }
+
+  /** Generische Formularerkennung — Shopify nennt Felder contact[email], nicht email. */
+  function hatFormular(html: string): boolean {
+    if (!/<form/i.test(html)) return false;
+    return /type=["']?email/i.test(html) || /name=["'][^"']*email[^"']*["']/i.test(html) || /action=["'][^"']*\/contact/i.test(html);
   }
 
   for (const lead of (leads ?? []) as { id: string; handle: string; website: string | null; bio: string | null; contact_attempts: number }[]) {
     if (Date.now() > deadline) break;
     checked++;
-    let quelle = "website";
-    let start = lead.website;
+    const quelle = "website";
+    const log: Record<string, unknown>[] = [];
+    const versuche = lead.contact_attempts + 1;
+    const jetzt = new Date().toISOString();
 
-    // Bio zuerst durchsehen — manche schreiben ihre Adresse direkt hinein.
+    /** Ein Lead endet immer mit einem sichtbaren Ergebnis — nie stumm. */
+    const abschluss = async (patch: Record<string, unknown>, grund?: string) => {
+      const p: Record<string, unknown> = {
+        ...patch,
+        contact_attempts: versuche,
+        recherche_attempted_at: jetzt,
+        recherche_log: { geprueft_am: jetzt, versuch: versuche, schritte: log.slice(0, 24), ergebnis: grund ?? "fund" },
+        updated_at: jetzt,
+      };
+      if (grund) { p.blocked_reason = grund; blockiert++; }
+      await admin.from("acquisition_leads").update(p).eq("id", lead.id);
+    };
+
+    // Bio zuerst — manche schreiben ihre Adresse direkt hinein.
     const ausBio = lead.bio ? pickBestEmail(extractEmailsFromHtml(lead.bio), "") : null;
     if (ausBio) {
-      await admin.from("acquisition_leads").update({
-        email: ausBio, channel: "email", contact_channel: "email", contact_source: "bio",
-        contact_attempts: lead.contact_attempts + 1, updated_at: new Date().toISOString(),
-      }).eq("id", lead.id);
+      log.push({ quelle: "bio", fund: "email" });
+      await abschluss({ email: ausBio, channel: "email", contact_channel: "email", contact_source: "bio" });
       found++;
       continue;
     }
 
+    const start = lead.website;
     if (!start) {
-      start = await sucheWebsite(lead.handle, lead.bio);
-      quelle = "websuche";
-      if (start) viaSuche++;
-    }
-    if (!start) {
-      const versuche = lead.contact_attempts + 1;
-      const patch: Record<string, unknown> = {
-        contact_attempts: versuche, contact_channel: "dm",
-        recherche_attempted_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-      };
-      // Erschöpft und kein Instagram-Handle als Rückfallebene (heute selten, da fast alle Leads
-      // aus Instagram-Jagden stammen — greift vor allem für künftige nicht-Instagram-Quellen):
-      // ohne E-Mail und ohne DM-Weg ist der Lead wirklich ein Sackgasse-Fall.
-      if (versuche >= MAX_VERSUCHE && !lead.handle) { patch.blocked_reason = "keine_email_gefunden"; blockiert++; }
-      await admin.from("acquisition_leads").update(patch).eq("id", lead.id);
+      // Die offene Websuche (DuckDuckGo-HTML) wird von Rechenzentrums-Adressen blockiert und traf
+      // nie — sie ist entfernt. Ohne Website bleibt der Lead ein DM-Fall.
+      log.push({ quelle: "websuche", status: "deaktiviert", hinweis: "kein Such-API-Schlüssel hinterlegt" });
+      await abschluss({ contact_channel: "dm" }, versuche >= MAX_VERSUCHE ? "kein_fund" : undefined);
       continue;
     }
 
     let base: URL;
     try { base = new URL(start.startsWith("http") ? start : `https://${start}`); }
-    catch { continue; }
+    catch {
+      log.push({ quelle: "website", wert: start, status: "unlesbar" });
+      await abschluss({ contact_channel: "dm" }, "website_unbrauchbar");
+      continue;
+    }
 
-    // Sammelseiten (Linktree & Co.) auflösen: die erste echte eigene Domain dahinter zählt.
+    // Sammelseiten (Linktree & Co.): ohne eigenen Pfad ist der Eintrag Datenmüll.
     if (linkAggregator.test(base.hostname)) {
-      const html = await fetchHtml(base.toString());
-      const links = html ? Array.from(html.matchAll(/https?:\/\/[^"'\s\\]+/g)).map((m) => m[0]) : [];
+      if (base.pathname.replace(/\/+$/, "") === "") {
+        log.push({ quelle: "aggregator", url: base.toString(), status: "ohne Pfad" });
+        await abschluss({ website: null, contact_channel: "dm" }, "website_unbrauchbar");
+        continue;
+      }
+      const abruf = await fetchMitFallback(base.toString());
+      log.push({ url: base.toString(), status: abruf.status, note: abruf.note, rolle: "aggregator" });
+      const links = abruf.html ? Array.from(abruf.html.matchAll(/https?:\/\/[^"'\s\\]+/g)).map((m) => m[0]) : [];
       const own = links.find((l) => {
         try {
           const h = new URL(l).hostname;
@@ -1877,42 +1936,71 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
 
     let email: string | null = null;
     let formular: string | null = null;
-    // Alle Seiten gleichzeitig holen — ein Lead ist damit in Sekunden geprüft statt in Minuten.
+    let irgendwas200 = false;
+    let botSchutz = false;
+    let timeouts = 0;
+
+    const pruefe = (url: string, abruf: Abruf) => {
+      log.push({ url, status: abruf.status, note: abruf.note });
+      if (abruf.status === 403 || abruf.status === 503 || abruf.note === "challenge") botSchutz = true;
+      if (abruf.note === "timeout") timeouts++;
+      if (!abruf.html) return;
+      irgendwas200 = true;
+      if (!email) {
+        const best = pickBestEmail(extractEmailsFromHtml(abruf.html), base.hostname);
+        if (best) { email = best; log[log.length - 1].fund = "email"; }
+      }
+      const istKontaktseite = kontaktWort.test(url);
+      if (!formular && istKontaktseite) {
+        if (hatFormular(abruf.html)) { formular = url; log[log.length - 1].fund = "formular"; }
+        else { formular = url; log[log.length - 1].fund = "kontaktseite_ohne_formular"; }
+      }
+    };
+
+    // Feste Pfadliste parallel prüfen.
     const seiten = await Promise.all(paths.map(async (path) => {
       const url = new URL(path, base).toString();
-      return { path, url, html: await fetchHtml(url) };
+      return { url, abruf: await fetchMitFallback(url) };
     }));
-    for (const seite of seiten) {
-      if (!seite.html) continue;
-      if (!email) {
-        const best = pickBestEmail(extractEmailsFromHtml(seite.html), base.hostname);
-        if (best) email = best;
+    for (const s of seiten) pruefe(s.url, s.abruf);
+
+    // Kontakt-Links aus der Startseite verfolgen, wenn noch nichts gefunden wurde.
+    if (!email && !formular) {
+      const startHtml = seiten[0]?.abruf.html;
+      if (startHtml) {
+        const kandidaten: string[] = [];
+        for (const m of startHtml.matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]{0,80}?)<\/a>/gi)) {
+          if (!kontaktWort.test(m[1]) && !kontaktWort.test(m[2])) continue;
+          try {
+            const u = new URL(m[1], base);
+            if (u.hostname !== base.hostname) continue;
+            const s = u.toString();
+            if (!kandidaten.includes(s) && !seiten.some((x) => x.url === s)) kandidaten.push(s);
+          } catch { /* nächster Link */ }
+        }
+        for (const url of kandidaten.slice(0, 4)) {
+          if (Date.now() > deadline) break;
+          pruefe(url, await fetchHtml(url));
+          if (email) break;
+        }
       }
-      if (!formular && formPaths.includes(seite.path)
-          && /<form/i.test(seite.html) && /name=["']?email/i.test(seite.html)) {
-        formular = seite.url;
-      }
-      if (email && formular) break;
     }
 
-    const versuche = lead.contact_attempts + 1;
-    const patch: Record<string, unknown> = {
-      website: base.origin,
-      contact_attempts: versuche,
-      recherche_attempted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    // Pfad erhalten, wenn die Spur erst im Pfad steckt (Sammelseiten mit eigenem Unterweg).
+    const websiteWert = base.pathname.replace(/\/+$/, "") ? base.toString() : base.origin;
     if (email) {
-      patch.email = email; patch.channel = "email"; patch.contact_channel = "email"; patch.contact_source = quelle;
+      await abschluss({ website: websiteWert, email, channel: "email", contact_channel: "email", contact_source: quelle });
       found++;
     } else if (formular) {
-      patch.contact_url = formular; patch.contact_channel = "formular"; patch.contact_source = "formular";
+      await abschluss({ website: websiteWert, contact_url: formular, contact_channel: "formular", contact_source: "formular" });
       formulare++;
     } else {
-      patch.contact_channel = "dm";
-      if (versuche >= MAX_VERSUCHE && !lead.handle) { patch.blocked_reason = "keine_email_gefunden"; blockiert++; }
+      const grund = botSchutz ? "blockiert_bot_schutz"
+        : (!irgendwas200 && timeouts > 0) ? "timeout"
+        : !irgendwas200 ? "website_unbrauchbar"
+        : "kein_fund";
+      await abschluss({ website: websiteWert, contact_channel: "dm" }, grund);
     }
-    await admin.from("acquisition_leads").update(patch).eq("id", lead.id);
   }
   return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche, blockiert };
 }
