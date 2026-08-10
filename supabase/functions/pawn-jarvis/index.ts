@@ -2629,7 +2629,9 @@ ${aufbauFuerVariante(variant)}
 
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht>"}
 
-Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
+Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}
+
+RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein — sie meldet, dass PAWN bereits eine Seite gemacht hat. Ein Satz davon gehört in den Text: wir haben dir eine Seite in Ausgabe 01 freigehalten. Der Link darauf wird automatisch ergänzt.`;
   const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
@@ -2718,7 +2720,7 @@ function vornameVon(name: string | null | undefined): string | null {
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code, lead_type").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
+    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code, lead_type, plate_status").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
@@ -2728,7 +2730,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
   // Reine Instagram-Leads (keine E-Mail, kein Kontaktformular) schreibt akquise_dm_vorbereiten —
   // die kürzere DM-Fassung für den Sende-Stapel, nicht diese lange Mail-Fassung.
-  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null; lead_type: string }[])
+  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
     .filter((l) => l.email || l.contact_url)
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
   const stapel = alle.slice(0, config.batch_verfassen);
@@ -2796,7 +2798,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
  */
 async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, contact_name, ref_code, lead_type")
+    .select("id, handle, world, bio, contact_name, ref_code, lead_type, plate_status")
     .eq("lead_type", "designer").eq("status", "qualifiziert")
     .is("email", null).is("contact_url", null).is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
@@ -2835,7 +2837,9 @@ ${aufbauFuerVariante(variant)}
 
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige DM>"}
 
-Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
+Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}
+
+RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein — sie meldet, dass PAWN bereits eine Seite gemacht hat. Ein Satz davon gehört in den Text: wir haben dir eine Seite in Ausgabe 01 freigehalten. Der Link darauf wird automatisch ergänzt.`;
     const user = `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.`;
     const { json, tokens } = await searchJson(apiKey, system, user, 500);
     tokensUsed += tokens;
