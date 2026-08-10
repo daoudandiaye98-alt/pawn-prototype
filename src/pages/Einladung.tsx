@@ -7,12 +7,23 @@ import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { supabase } from "@/integrations/supabase/client";
 import { captureRefCode } from "@/features/acquisition/leadAttribution";
 import { useI18n, type Locale } from "@/lib/i18n";
+import { Platte } from "@/features/acquisition/Platte";
 
-interface Invitation { handle: string; world: string | null; personal_line: string | null; lead_type: string; language: string | null }
+interface Invitation {
+  handle: string;
+  world: string | null;
+  personal_line: string | null;
+  lead_type: string;
+  language: string | null;
+  plate_images?: string[] | null;
+  plate_number?: number | null;
+  plate_status?: string | null;
+}
 interface SocialProofHouse { brand_name: string; world: string | null }
 
 const FOUNDING_SEATS = 50;
 const SOCIAL_PROOF_MIN_HOUSES = 3;
+const PLATE_MIN_IMAGES = 3;
 
 const WORLD_LABEL_KEY: Record<string, string> = {
   Mode: "apply.discipline.mode.label",
@@ -35,6 +46,10 @@ function worldLabel(t: (k: string) => string, world: string | null): string | nu
  * verfassten Draft) als Ausgangspunkt — der Sprach-Toggle im Header bleibt danach voll bedienbar,
  * das setzt nur den Startzustand, damit ein englischsprachiger Lead nicht auf einer deutschen
  * Seite landet.
+ *
+ * PART 43 "Ausgabe 01": liegen gespiegelte Bilder vor, wird aus der Einladung eine Magazinseite
+ * (Platte). Fehlt das Material, bleibt es exakt bei der bisherigen typografischen Fassung —
+ * lieber keine Platte als eine schwache.
  */
 export default function Einladung() {
   const { refCode } = useParams<{ refCode: string }>();
@@ -44,6 +59,15 @@ export default function Einladung() {
   const [socialProof, setSocialProof] = useState<SocialProofHouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Die Seite ist privat — Suchmaschinen bleiben draußen.
+  useEffect(() => {
+    const meta = document.createElement("meta");
+    meta.name = "robots";
+    meta.content = "noindex,nofollow";
+    document.head.appendChild(meta);
+    return () => { document.head.removeChild(meta); };
+  }, []);
 
   useEffect(() => {
     if (!refCode) { setNotFound(true); setLoading(false); return; }
@@ -69,6 +93,25 @@ export default function Einladung() {
   if (notFound || !invitation) return <Navigate to="/apply" replace />;
 
   const seatsTaken = foundingCount ?? 0;
+  const plateImages = Array.isArray(invitation.plate_images) ? invitation.plate_images.filter(Boolean) : [];
+  const hasPlate = invitation.plate_status === "fertig" && plateImages.length >= PLATE_MIN_IMAGES;
+
+  if (hasPlate) {
+    return (
+      <Platte
+        handle={invitation.handle}
+        world={invitation.world}
+        refCode={refCode!}
+        plateNumber={invitation.plate_number ?? null}
+        personalLine={invitation.personal_line}
+        images={plateImages}
+        seatsTaken={seatsTaken}
+        seatsTotal={FOUNDING_SEATS}
+        language={invitation.language === "en" ? "en" : "de"}
+      />
+    );
+  }
+
   const seatsLine = seatsTaken <= 0
     ? t("einladung.seatsOpen")
     : seatsTaken >= FOUNDING_SEATS
