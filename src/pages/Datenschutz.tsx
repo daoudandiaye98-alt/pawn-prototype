@@ -24,13 +24,13 @@ export default function Datenschutz() {
     <PalaceLayout transparentHeader={false}>
       <section className="mx-auto max-w-[820px] px-6 pt-32 pb-24 md:pt-40">
         <Reveal>
-          <p className="palace-eyebrow">Rechtliches</p>
+          <p className="palace-eyebrow">{L("Rechtliches", "Legal")}</p>
           <LegalTranslationNote />
           <h1
             className="palace-serif mt-6 font-light text-[#000000]"
             style={{ fontSize: "clamp(2.4rem, 5vw, 3.8rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
           >
-            Datenschutz.
+            {L("Datenschutz.", "Privacy Policy.")}
           </h1>
           <p className="mt-8 border-l-2 border-[#000000] bg-[rgba(0,0,0,.04)] px-4 py-3 font-serif italic text-[#000000]/80">
             Vorläufige Fassung — anwaltliche Prüfung ausstehend. Wo Angaben noch fehlen, ist das offen markiert statt geraten.
@@ -49,7 +49,7 @@ export default function Datenschutz() {
             </p>
           </Section>
 
-          <Section title="2. Welche Daten wir verarbeiten">
+          <Section title={L("2. Welche Daten wir verarbeiten", "2. What Data We Process")}>
             <ul className="list-disc space-y-2 pl-6 font-sans text-[0.95rem]">
               <li><strong>Konto:</strong> E-Mail, angezeigter Name, Rollen (Kunde, Designer:in, Admin), Zeitpunkte. Anmeldung wahlweise per Passwort oder über Google (OAuth) — Google erhält dabei nur die zur Anmeldung nötigen Basisdaten, keine weiteren Berechtigungen.</li>
               <li><strong>Chat mit PAWN ("Frag PAWN"):</strong> Deine Nachrichten und eine anonyme Session-ID (in deinem Browser gespeichert), damit wir dir passende Stücke zeigen können. Angemeldete werden zusätzlich mit ihrer Nutzer-ID verknüpft. Die Antworten erzeugen KI-Sprachmodelle von Anthropic (Claude) bzw. OpenAI — deine Nachrichten werden zur Verarbeitung an diese Anbieter übermittelt (siehe Abschnitt 8).</li>
@@ -61,7 +61,7 @@ export default function Datenschutz() {
             </ul>
           </Section>
 
-          <Section title="3. Zwecke und Rechtsgrundlagen">
+          <Section title={L("3. Zwecke und Rechtsgrundlagen", "3. Purposes and Legal Bases")}>
             <ul className="list-disc space-y-2 pl-6 font-sans text-[0.95rem]">
               <li>Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO) — Konto, Bestellungen, Designer-Portal, Zahlungsabwicklung.</li>
               <li>Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) — Personalisierung deiner Empfehlungen, Betrieb und Absicherung der Plattform, Ansprache möglicher neuer Häuser (siehe Abschnitt 7).</li>
@@ -69,7 +69,7 @@ export default function Datenschutz() {
             </ul>
           </Section>
 
-          <Section title="4. Abgeleitete Verhaltensprofile">
+          <Section title={L("4. Abgeleitete Verhaltensprofile", "4. Derived Behavioural Profiles")}>
             <p>
               Aus deinem Kaufverhalten und deinen Aufrufen leiten wir automatisiert ein grobes Verhaltensprofil ab
               (z. B. „hat sich umgesehen, aber noch nichts gekauft" oder „kauft gezielt bei einem Haus"). Grundlage:
@@ -82,7 +82,7 @@ export default function Datenschutz() {
             </p>
           </Section>
 
-          <Section title="5. Cookies und persistente Speicherung">
+          <Section title={L("5. Cookies und persistente Speicherung", "5. Cookies and Persistent Storage")}>
             <p>
               Nach deiner ausdrücklichen Zustimmung nutzen wir einen technischen Cookie <code>pawn_consent</code> sowie
               lokalen Speicher (<em>localStorage</em>) unter Schlüsseln wie <code>palace.chat.session_id</code> und
