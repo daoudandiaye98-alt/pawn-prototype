@@ -25,6 +25,8 @@ interface QueueRow {
   created_at: string;
   story_reason?: string | null;
   story_score?: number | null;
+  geprueft_von?: string | null;
+  geprueft_am?: string | null;
   campaigns?: {
     title: string;
     content: { asset_url?: string; caption?: string; hashtags?: string[] } | null;
@@ -42,7 +44,7 @@ export default function AdminPosting() {
 
   const refresh = async () => {
     const { data } = await supabase.from("posting_queue" as never)
-      .select("id, campaign_id, channel, scheduled_at, status, posted_url, posted_at, created_at, story_reason, story_score, campaigns:campaign_id(title, content, designer_id)")
+      .select("id, campaign_id, channel, scheduled_at, status, posted_url, posted_at, created_at, story_reason, story_score, geprueft_von, geprueft_am, campaigns:campaign_id(title, content, designer_id)")
       .order("scheduled_at", { ascending: true })
       .limit(200);
     setRows((data ?? []) as unknown as QueueRow[]);
@@ -106,7 +108,10 @@ export default function AdminPosting() {
       {suggestions.length > 0 && (
         <div className="mt-8">
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">
-            Vorschläge · {suggestions.length} — wenige, starke Beiträge statt Massenposting
+            Redaktionelle Prüfung · {suggestions.length} KI-Vorschlag/-Vorschläge — wenige, starke Beiträge statt Massenposting
+          </p>
+          <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+            PAWN schlägt vor, ein Mensch entscheidet: „Freigeben" hält fest, wer den Beitrag vor der Veröffentlichung geprüft hat.
           </p>
           <ul className="mt-3 divide-y divide-border border-[1.5px] border-foreground bg-card">
             {suggestions.map((r) => (
@@ -130,7 +135,7 @@ export default function AdminPosting() {
                   )}
                 </div>
                 <div className="flex gap-2 self-start">
-                  <button onClick={() => promote(r)} className="flex-1 border border-foreground bg-foreground px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-background">Freigeben</button>
+                  <button onClick={() => promote(r)} className="flex-1 border border-foreground bg-foreground px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-background">Geprüft, freigeben</button>
                   <button onClick={() => cancel(r)} className="border border-border px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] hover:bg-muted">Verwerfen</button>
                 </div>
               </li>
@@ -156,6 +161,11 @@ export default function AdminPosting() {
                 {CH_LABEL[r.channel]} · {new Date(r.scheduled_at).toLocaleString("de-DE")}
                 {" "}· <span className="uppercase tracking-[0.22em]">{LABELS[r.status]}</span>
               </p>
+              {r.geprueft_am && (
+                <p className="mt-1 text-[0.65rem] text-muted-foreground">
+                  Redaktionell geprüft am {new Date(r.geprueft_am).toLocaleString("de-DE")}
+                </p>
+              )}
               {r.campaigns?.content?.caption && (
                 <p className="mt-3 text-sm">{r.campaigns.content.caption}</p>
               )}

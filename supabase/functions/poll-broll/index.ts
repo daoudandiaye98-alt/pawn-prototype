@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 
     const { data: rows } = await admin.from("generation_requests")
-      .select("id, status, error, provider_handles, tier, campaign_id, created_at, retry_count, signature_id, duration_s, campaigns!inner(designer_id, designers!inner(user_id, media_rights_granted_at, preferred_language, brand_dna, video_taste_weights))")
+      .select("id, status, error, provider_handles, tier, campaign_id, created_at, retry_count, signature_id, duration_s, campaigns!inner(designer_id, content, designers!inner(user_id, media_rights_granted_at, preferred_language, brand_dna, video_taste_weights))")
       .in("id", request_ids);
     if (!rows) return json({ ok: true, results: [] });
 
@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
       signature_id: string | null; duration_s: number | null;
       campaigns: {
         designer_id: string;
+        content: { tryon?: boolean } | null;
         designers: {
           user_id: string; media_rights_granted_at: string | null; preferred_language: string | null;
           brand_dna: { signals?: string[]; worlds?: Record<string, number> } | null;
@@ -263,6 +264,7 @@ Deno.serve(async (req) => {
               laenge_s: r.duration_s ?? 5, modelltyp: "kinematisch",
             },
             rights_granted: !!r.campaigns.designers.media_rights_granted_at,
+            shows_synthetic_person: !!r.campaigns.content?.tryon,
           } as never).select("id").single();
           await admin.from("notifications").insert({
             user_id: r.campaigns.designers.user_id,

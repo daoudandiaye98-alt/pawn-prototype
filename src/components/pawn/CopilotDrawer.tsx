@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { X, Send, Sparkles, Undo2, PlayCircle } from "lucide-react";
+import { AiDisclosureNote } from "./AiDisclosureNote";
 
 type ProposedAction = { action: string; params: Record<string, unknown>; label: string };
 type Msg =
@@ -231,7 +232,10 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
               </div>
             )}
 
-            <div className="flex items-center gap-2 border-t border-border p-4">
+            <div className="border-t border-border px-4 pt-3">
+              <AiDisclosureNote />
+            </div>
+            <div className="flex items-center gap-2 p-4 pt-3">
               <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
                 placeholder={isAdmin ? t("copilotDrawer.placeholderAdmin") : t("copilotDrawer.placeholderUser")}

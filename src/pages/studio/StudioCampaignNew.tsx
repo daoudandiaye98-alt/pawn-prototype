@@ -843,7 +843,7 @@ export default function StudioCampaignNew() {
         title: `${designer.brand_name} · Draft`,
         kind: "video",
         status: "draft",
-        content: { image_urls: inputImages, cinematic: true } as unknown as Record<string, unknown>,
+        content: { image_urls: inputImages, cinematic: true, tryon: !!modelShotUrl } as unknown as Record<string, unknown>,
         created_by: user?.id ?? null,
       } as never).select("id").single();
       if (campErr || !campRow) throw new Error(campErr?.message ?? t("studio.campaignNew.error.draftCreateFailed"));
@@ -1074,6 +1074,7 @@ export default function StudioCampaignNew() {
           tempo, seed, format, cinematic: true,
         } as unknown as Record<string, unknown>,
         rights_granted: rightsGranted,
+        shows_synthetic_person: hasModelShot,
       } as never).select("id").single();
       await supabase.from("media_assets" as never).insert({
         designer_id: designer.id, kind: "video", origin: "erzeugt", url: signedUrl,
@@ -1082,6 +1083,7 @@ export default function StudioCampaignNew() {
         campaign_id: (campRow as { id: string } | null)?.id ?? null,
         product_id: chosenProduct?.id ?? null,
         advertises_text: chosenProduct ? null : advertisesText.trim(),
+        shows_synthetic_person: hasModelShot,
       } as never);
 
       toast.success(t("studio.campaignNew.toast.savedForApproval"));
@@ -1124,6 +1126,7 @@ export default function StudioCampaignNew() {
         campaign_id: (campRow as { id: string } | null)?.id ?? null,
         product_id: chosenProduct?.id ?? null,
         advertises_text: chosenProduct ? null : advertisesText.trim(),
+        shows_synthetic_person: hasModelShot,
       } as never);
       toast.success(t("studio.campaignNew.toast.savedForApproval"));
       nav("/studio/kampagnen");

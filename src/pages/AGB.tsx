@@ -48,15 +48,8 @@ export default function AGB() {
               )}
             </p>
           </S>
-          <S title={L("2. Vertragsschluss", "2. Formation of Contract")}>
-            <p>
-              {L("Kaufverträge kommen ausschließlich ", "Purchase contracts are formed exclusively ")}
-              <strong>{L("direkt zwischen Kunde und der jeweiligen Designer:in", "directly between the customer and the respective designer")}</strong>
-              {L(
-                " zustande. Die Produktseite nennt die verkaufende Marke; deren Angaben (Impressum, Lieferzeiten, Rückgabe) sind maßgeblich. Der Vertrag entsteht mit Bestätigung der Bestellung im Checkout.",
-                ". The product page names the selling brand; its information (legal notice, delivery times, returns) governs. The contract is formed upon confirmation of the order at checkout.",
-              )}
-            </p>
+          <S title="2. Vertragsschluss">
+            <p>Kaufverträge kommen ausschließlich <strong>direkt zwischen Kunde und der jeweiligen Designer:in</strong> zustande. Die Produktseite nennt die verkaufende Marke; deren Angaben (Impressum, Lieferzeiten, Rückgabe) sind maßgeblich. Der Vertrag entsteht erst mit Klick auf die ausdrücklich mit dem Zahlungshinweis versehene Schaltfläche im letzten Bestellschritt — davor lässt sich die Bestellung jederzeit ändern oder abbrechen.</p>
           </S>
           <S title={L("3. Zahlungsabwicklung via Stripe", "3. Payment Processing via Stripe")}>
             <p>
@@ -83,18 +76,8 @@ export default function AGB() {
               {L(", unabhängig vom gewählten Designer-Plan.", ", regardless of the designer's chosen plan.")}
             </p>
           </S>
-          <S title={L("5. Optionale Pläne für Designer:innen", "5. Optional Plans for Designers")}>
-            <p>
-              {L(
-                "Designer:innen können Zusatzpakete buchen: Haus (0 €/Monat, Basis), Atelier (19 €/Monat), Maison (79 €/Monat). Die Pakete enthalten unterschiedliche Limits an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. ",
-                "Designers can book additional packages: Haus (€0/month, basic), Atelier (€19/month), Maison (€79/month). The packages include different limits on campaign videos and access to advanced AI tools. ",
-              )}
-              <strong>{L("Monatliche Kündigung", "Monthly cancellation")}</strong>
-              {L(
-                " jederzeit im Studio möglich; keine Mindestlaufzeit. Kein Einfluss auf die 7%-Provision.",
-                " possible at any time in the Studio; no minimum term. No effect on the 7% commission.",
-              )}
-            </p>
+          <S title="5. Optionale Pläne für Designer:innen">
+            <p>Designer:innen können zwischen zwei Plänen wählen: <strong>Frei</strong> (0 €/Monat, Basiszugang) und <strong>Paid</strong> (Preis und Kontingente einsehbar unter <a href="/studio/plan" className="underline">/studio/plan</a>). Ein älterer, nicht mehr neu abschließbarer Zwischenplan „Atelier" bleibt für bestehende Abos zu dessen ursprünglichem Preis bestehen. Die Pläne enthalten unterschiedliche Limits an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. <strong>Monatliche Kündigung jederzeit</strong> über die eigene Kündigungsseite unter <a href="/vertrag-kuendigen" className="underline">/vertrag-kuendigen</a> möglich; keine Mindestlaufzeit, keine Kündigungsfrist außer dem Ende der laufenden Abrechnungsperiode. Kein Einfluss auf die 7%-Provision.</p>
           </S>
           <S title={L("6. Lieferzeiten, Anfertigungen", "6. Delivery Times, Made-to-Order")}>
             <p>

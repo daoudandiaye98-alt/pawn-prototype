@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface PremiereItem {
   id: string;
   url: string;
+  shows_synthetic_person: boolean;
   designers: { brand_name: string; slug: string; house_number: number | null } | null;
   campaigns: { title: string; products: { slug: string; name: string } | null } | null;
 }
@@ -21,7 +22,7 @@ export function PremiereSection() {
 
   useEffect(() => {
     void supabase.from("video_assets" as never)
-      .select("id, url, designers:designer_id(brand_name, slug, house_number), campaigns:campaign_id(title, products:product_id(slug, name))")
+      .select("id, url, shows_synthetic_person, designers:designer_id(brand_name, slug, house_number), campaigns:campaign_id(title, products:product_id(slug, name))")
       .eq("premiere", true)
       .order("created_at", { ascending: false })
       .limit(6)
@@ -54,13 +55,18 @@ export function PremiereSection() {
           return (
             <Reveal key={it.id}>
               <div className="group border border-[#000] bg-white">
-                <div className="border-b border-[#000] bg-black">
+                <div className="relative border-b border-[#000] bg-black">
                   <video
                     src={it.url}
                     muted autoPlay loop playsInline
                     onPlay={() => onPlay(it.id)}
                     className="aspect-[9/16] w-full bg-black object-contain"
                   />
+                  {it.shows_synthetic_person && (
+                    <span className="absolute left-2 top-2 border border-white bg-black/70 px-2 py-1 text-[0.55rem] uppercase tracking-[0.22em] text-white">
+                      KI-generiert
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between p-4">
                   <div>

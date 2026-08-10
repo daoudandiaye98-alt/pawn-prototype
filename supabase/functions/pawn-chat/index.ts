@@ -4,6 +4,18 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { schreibePartieZug } from "../_shared/partieZug.ts";
 import { schreibeSignal } from "../_shared/pawnSignal.ts";
 
+/** Teil 39 AP5 — Missbrauchs-/Kostenschutz. Fixes Ein-Minuten-Fenster pro Bucket (Nutzer- oder
+ * IP-Schlüssel); Konfiguration liegt in ai_config, bewusst NICHT über die Client-Allowlist lesbar
+ * — nur der Service-Role-Key (dieser Edge-Function-Kontext) liest sie. */
+async function checkRateLimit(admin: SupabaseClient, bucket: string, limit: number): Promise<boolean> {
+  const since = new Date(Date.now() - 60_000).toISOString();
+  const { count } = await admin.from("rate_limit_hits").select("id", { count: "exact", head: true })
+    .eq("bucket", bucket).gte("created_at", since);
+  if ((count ?? 0) >= limit) return false;
+  await admin.from("rate_limit_hits").insert({ bucket } as never);
+  return true;
+}
+
 type Msg = { role: "user" | "assistant" | "system"; content: string };
 type World = "Mode" | "Interior" | "Kunst";
 type Mood = "ruhig" | "kante";
@@ -346,6 +358,42 @@ function scoreProduct(p: DBProduct, terms: string[], world: World | undefined): 
 function detectCatalogIntent(t: string): boolean {
   const s = t.toLowerCase();
   return /\b(passt (das|es|die|der)?( zu (mir|meinem stil))?|katalog|empfiehl|empfehlung|vorschlag|welche(s)? stück|welches produkt|was gibt(’|'|)s? es|was habt ihr|zu meinem stil)\b/.test(s);
+}
+/**
+ * Part 38 AP2 — Wissen erreicht die Designer: brand_knowledge (Markenaufbau + neu Wirtschaft)
+ * wird intent-getriggert durchsucht, gleiches Scoring-/Schwellwert-/Ehrlichkeitsprinzip wie beim
+ * Katalog-Retrieval (36b/36c) oben. Wirtschafts-Fragen (Preis, Kalkulation, Produktion, Vertrieb)
+ * routen gezielt auf kategorie="wirtschaft", alles andere Markenaufbau-Artige auf "markenaufbau".
+ */
+function detectWissenKategorie(t: string): "wirtschaft" | "markenaufbau" | null {
+  const s = t.toLowerCase();
+  if (/\b(preis|kalkulation|kalkulieren|marge|einkaufspreis|verkaufspreis|moq|mindestbestellmenge|großhandel|grosshandel|d2c|umsatzsteuer|mehrwertsteuer|versandkosten|steuer|produktionskosten|lieferant|sampling|stückkosten)\b/.test(s)) return "wirtschaft";
+  if (/\b(markenaufbau|content.?rhythmus|posting.?frequenz|community aufbauen|wiederkäufer|storytelling|markenstimme|produktfotografie|erste käufer|wie poste ich|wie oft posten)\b/.test(s)) return "markenaufbau";
+  return null;
+}
+const WISSEN_MATCH_THRESHOLD = 2;
+async function queryBrandKnowledge(
+  admin: SupabaseClient, kategorie: "wirtschaft" | "markenaufbau", terms: string[],
+): Promise<{ headline: string; body: string; source_title: string | null }[]> {
+  const { data } = await admin.from("brand_knowledge")
+    .select("headline, body, topic, source_title")
+    .eq("kategorie", kategorie).eq("active", true).eq("approved", true)
+    .order("created_at", { ascending: false }).limit(80);
+  const rows = (data ?? []) as { headline: string; body: string; topic: string; source_title: string | null }[];
+  if (!rows.length) return [];
+  const lowerTerms = terms.map((t) => t.toLowerCase()).filter((t) => t.length >= 3);
+  const scored = rows.map((r) => {
+    const head = `${r.headline} ${r.topic}`.toLowerCase();
+    const body = r.body.toLowerCase();
+    let score = 0;
+    for (const t of lowerTerms) {
+      if (head.includes(t)) score += 2;
+      else if (body.includes(t)) score += 1;
+    }
+    return { r, score };
+  }).filter((x) => x.score >= WISSEN_MATCH_THRESHOLD || lowerTerms.length === 0)
+    .sort((a, b) => b.score - a.score).slice(0, 2);
+  return scored.map(({ r }) => ({ headline: r.headline, body: r.body, source_title: r.source_title }));
 }
 function detectNavAction(text: string, all: { designers: DBDesigner[]; products: DBProduct[] }): Action | null {
   const t = text.toLowerCase();
@@ -716,6 +764,27 @@ Deno.serve(async (req) => {
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const admin = url && key ? createClient(url, key, { auth: { persistSession: false } }) : null;
 
+    // Teil 39 AP5 — Rate-Limit: pro Konto UND pro IP, damit weder ein einzelnes Konto noch viele
+    // Konten hinter derselben IP das KI-Budget sprengen können. Fällt ai_config oder die DB aus,
+    // wird nicht blockiert (Ausfallsicherheit vor Limit) — das Limit ist Missbrauchsschutz, kein
+    // Sicherheitsnetz, das den Chat selbst lahmlegen darf.
+    if (admin) {
+      const { data: rlConfigRow } = await admin.from("ai_config").select("value").eq("key", "pawn_chat_rate_limits").maybeSingle();
+      const rlConfig = (rlConfigRow?.value as { per_user_per_minute?: number; per_ip_per_minute?: number } | null) ?? {};
+      const perUserLimit = rlConfig.per_user_per_minute ?? 20;
+      const perIpLimit = rlConfig.per_ip_per_minute ?? 40;
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("cf-connecting-ip") ?? "unknown";
+      const checks = await Promise.all([
+        user_id ? checkRateLimit(admin, `pawn-chat:user:${user_id}`, perUserLimit) : Promise.resolve(true),
+        checkRateLimit(admin, `pawn-chat:ip:${ip}`, perIpLimit),
+      ]).catch(() => [true, true]);
+      if (checks.some((ok) => ok === false)) {
+        return new Response(JSON.stringify({ reply: "Kurz durchatmen — gleich geht's weiter. Versuch's in einer Minute noch einmal.", rate_limited: true }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Teil 28b: "Die erste Partie" ist ein eigener, in sich geschlossener Ablauf (eigene Fragen,
     // eigener Zustand in designers.onboarding_state) — läuft komplett getrennt vom freien Gespräch.
     if (body.mode === "erste_partie") {
@@ -800,12 +869,16 @@ Deno.serve(async (req) => {
     let contextHint = "";
     let trendCards: Card[] = [];
     let trendReplyPrefix = "";
+    let zeitgeistHint = "";
+    let wissenHint = "";
     if (admin) {
       const cand = await loadCandidates(admin, extracted.world);
       action = detectNavAction(lastUser, { designers: cand.allDesigners, products: cand.allProducts });
 
-      // Trend intent: "was ist im trend / trends / momentum"
-      const trendIntent = /\b(trend|trends|im trend|momentum|angesagt|gerade beliebt)\b/i.test(lastUser);
+      // Trend intent: "was ist im trend / trends / momentum" — Part 38 AP2: um Zeitgeist erweitert,
+      // damit cultural_currents (nicht nur trend_momentum/trend_snapshots) angezapft wird, mit
+      // ehrlichem Fallback statt schweigendem Nichtstun, wenn (noch) keine Daten da sind.
+      const trendIntent = /\b(trend|trends|im trend|momentum|angesagt|gerade beliebt|zeitgeist|strömung|welle|kulturell)\b/i.test(lastUser);
       if (trendIntent) {
         const worldForTrends = extracted.world ?? "Mode";
         const { data: mo } = await admin.rpc("trend_momentum" as never, { _world: worldForTrends } as never);
@@ -820,6 +893,19 @@ Deno.serve(async (req) => {
             trendCards.push({ kind: "product", title: p.name, subtitle: p.world ?? undefined, href: `/product/${p.slug}`, reason: "Gerade im Aufwärtstrend." });
           }
           trendReplyPrefix = `Aktuell im Aufwärtstrend in ${worldForTrends}: ${top3.map((r) => r.term).join(", ")}.`;
+        }
+        const { data: currents } = await admin.from("cultural_currents")
+          .select("name, zeitraum, visuelle_merkmale, ontologie_begriffe")
+          .order("created_at", { ascending: false }).limit(30);
+        const currentRows = (currents ?? []) as { name: string; zeitraum: string | null; visuelle_merkmale: Record<string, unknown> | null; ontologie_begriffe: string[] | null }[];
+        const term3 = new Set(top3.map((r) => r.term.toLowerCase()));
+        const matchedCurrent = currentRows.find((c) => (c.ontologie_begriffe ?? []).some((b) => term3.has(b.toLowerCase())));
+        if (matchedCurrent) {
+          // Nur an contextHint (System-Ebene) anhängen, nie an trendReplyPrefix — das wird weiter
+          // unten auch als wörtlicher Text-Fallback vor die Antwort gesetzt (Zeile ~1013).
+          zeitgeistHint = `Zeitgeist-Strömung dazu: "${matchedCurrent.name}"${matchedCurrent.zeitraum ? ` (${matchedCurrent.zeitraum})` : ""}.`;
+        } else if (!top3.length && !currentRows.length) {
+          zeitgeistHint = "KEIN ZEITGEIST-SIGNAL: Sag ehrlich, dass PAWN noch zu wenig Daten für eine begründete Zeitgeist-Einschätzung hat, statt zu spekulieren.";
         }
       }
 
@@ -857,8 +943,23 @@ Deno.serve(async (req) => {
           contextHint = "KEIN AUSREICHENDER KATALOG-TREFFER: Sag in einem Satz ehrlich, dass es dafür aktuell nichts ausreichend Passendes gibt, und biete konkret einen nächsten Schritt an (Wunschliste, /designers entdecken). Erfinde kein Produkt und keine Marke.";
         }
       }
+
+      // Part 38 AP2: Wirtschafts-/Markenaufbau-Fragen gegen brand_knowledge matchen — gleiche
+      // Ehrlichkeitsregel: leerer/zu schwacher Treffer wird als solcher benannt, nie umschrieben.
+      const wissenKategorie = detectWissenKategorie(lastUser);
+      if (wissenKategorie) {
+        const wissenTerms = [...ontologyTerms.map((t) => t.term), ...lastUser.split(/\s+/)];
+        const hits = await queryBrandKnowledge(admin, wissenKategorie, wissenTerms);
+        if (hits.length) {
+          wissenHint = `${wissenKategorie === "wirtschaft" ? "Kalkulations-Wissen" : "Markenaufbau-Wissen"} (nutze NUR das hier, keine erfundenen Zahlen/Regeln — als Orientierung formulieren, keine Rechts-/Steuerberatung): ${hits.map((h) => `"${h.headline}" — ${h.body}${h.source_title ? ` (Quelle: ${h.source_title})` : ""}`).join(" | ")}`;
+        } else {
+          wissenHint = `KEIN ${wissenKategorie.toUpperCase()}-WISSEN VORHANDEN: Sag ehrlich, dass PAWN dazu noch keine gesammelten Bausteine hat, statt generisch zu antworten. Konkreter nächster Schritt: Frage kann trotzdem allgemein beantwortet werden, aber ohne PAWN-Wissen als Quelle auszugeben.`;
+        }
+      }
     }
     if (action) contextHint = `Der Nutzer hat gerade nach Navigation gefragt: ${action.label}. Antworte in EINEM kurzen warmen Satz, bestätige dass du ihn hinbringst. Keine Fragen.`;
+    if (zeitgeistHint) contextHint = [contextHint, zeitgeistHint].filter(Boolean).join(" ");
+    if (wissenHint) contextHint = [contextHint, wissenHint].filter(Boolean).join(" ");
 
     // Weave memory into the system prompt
     let memoryHint = "";
@@ -932,6 +1033,11 @@ Deno.serve(async (req) => {
     // Sprachgesetz gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite).
     const voiceLaw = admin && pc?.route === "/dna" ? await loadVoiceLaw(admin) : "";
 
+    // Teil 39 AP6 — Zwei-Register-Gesetz: sobald es um Geld, Fehler oder Verträge geht, wechselt
+    // PAWN von der Bühnen-Erzählstimme in klaren Bedienungs-Ton — ein Satz, was ist, ein Satz,
+    // was als Nächstes zu tun ist. Siehe ai_config.voice_law.zwei_register / VOICE_LAW.md.
+    const REGISTER_LAW_HINT = "Zwei-Register-Gesetz: Bei Geld (Preise, Provision, Kündigung), Fehlern oder Verträgen sprichst du in klarem Bedienungs-Ton — ein Satz Fakt, ein Satz was als Nächstes zu tun ist, keine Andeutung, keine Metapher. Sonst darf dein Ton warm und erzählend bleiben.";
+
     // Teil 32 — Rückfluss der Nutzungs-Schleife an Mini-PAWN: im Studio-Gespräch des Hauses
     // selbst (nicht beim Kunden auf der Produktseite) fließt ein, welche Räume das Haus
     // schon nutzt oder noch meidet.
@@ -949,9 +1055,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    const system = [persona, houseStyleLaw, CATALOG_HONESTY_LAW, voiceLaw, houseTone, nutzungsprofil, markenKartei, medienHint, directiveBlock].filter(Boolean).join("\n\n");
+    const system = [persona, houseStyleLaw, CATALOG_HONESTY_LAW, REGISTER_LAW_HINT, voiceLaw, houseTone, nutzungsprofil, markenKartei, medienHint, directiveBlock].filter(Boolean).join("\n\n");
     const bildDeskriptorHint = buildBildDeskriptorHint(extracted.bild_deskriptor);
-    const fullContextHint = [pageContextHint, memoryHint, bildDeskriptorHint, contextHint].filter(Boolean).join("\n\n");
+    const guardedPageContext = pageContextHint ? `«PRODUKTFAKTEN»\n${pageContextHint}\n«ENDE PRODUKTFAKTEN»` : "";
+    const guardedMemory = memoryHint ? `«ERINNERUNGEN»\n${memoryHint}\n«ENDE ERINNERUNGEN»` : "";
+    const fullContextHint = [guardedPageContext, guardedMemory, bildDeskriptorHint, contextHint].filter(Boolean).join("\n\n");
 
     // Model tier je nach Rolle/Plan
     let tier: Tier = "standard";

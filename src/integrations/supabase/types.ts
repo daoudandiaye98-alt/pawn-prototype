@@ -452,6 +452,7 @@ export type Database = {
           gueltigkeitsvermutung: string | null
           headline: string
           id: string
+          kategorie: string
           quelle_typ: string
           source_title: string | null
           source_url: string | null
@@ -468,6 +469,7 @@ export type Database = {
           gueltigkeitsvermutung?: string | null
           headline: string
           id?: string
+          kategorie?: string
           quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           gueltigkeitsvermutung?: string | null
           headline?: string
           id?: string
+          kategorie?: string
           quelle_typ?: string
           source_title?: string | null
           source_url?: string | null
@@ -1372,6 +1375,8 @@ export type Database = {
           stripe_details_submitted: boolean
           stripe_payouts_enabled: boolean
           stripe_requirements: Json
+          stripe_subscription_id: string | null
+          stripe_customer_id: string | null
           studio_last_seen_at: string | null
           tags: string[] | null
           updated_at: string
@@ -1379,7 +1384,8 @@ export type Database = {
           vat_rate: number
           video_taste_weights: Json
           website: string | null
-          weekly_impulse: boolean
+          weekly_impulse: string | null
+          weekly_impulse_at: string | null
         }
         Insert: {
           application_id?: string | null
@@ -1426,6 +1432,8 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -1433,7 +1441,8 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
-          weekly_impulse?: boolean
+          weekly_impulse?: string | null
+          weekly_impulse_at?: string | null
         }
         Update: {
           application_id?: string | null
@@ -1480,6 +1489,8 @@ export type Database = {
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
           stripe_requirements?: Json
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
           studio_last_seen_at?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -1487,7 +1498,8 @@ export type Database = {
           vat_rate?: number
           video_taste_weights?: Json
           website?: string | null
-          weekly_impulse?: boolean
+          weekly_impulse?: string | null
+          weekly_impulse_at?: string | null
         }
         Relationships: [
           {
@@ -2297,6 +2309,7 @@ export type Database = {
           review_note: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
           rights_granted: boolean
+          shows_synthetic_person: boolean
           thumb_url: string | null
           title: string | null
           updated_at: string
@@ -2318,6 +2331,7 @@ export type Database = {
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           thumb_url?: string | null
           title?: string | null
           updated_at?: string
@@ -2339,6 +2353,7 @@ export type Database = {
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           thumb_url?: string | null
           title?: string | null
           updated_at?: string
@@ -2720,6 +2735,8 @@ export type Database = {
           channel: Database["public"]["Enums"]["posting_channel"]
           created_at: string
           error: string | null
+          geprueft_am: string | null
+          geprueft_von: string | null
           id: string
           posted_at: string | null
           posted_url: string | null
@@ -2734,6 +2751,8 @@ export type Database = {
           channel?: Database["public"]["Enums"]["posting_channel"]
           created_at?: string
           error?: string | null
+          geprueft_am?: string | null
+          geprueft_von?: string | null
           id?: string
           posted_at?: string | null
           posted_url?: string | null
@@ -2748,6 +2767,8 @@ export type Database = {
           channel?: Database["public"]["Enums"]["posting_channel"]
           created_at?: string
           error?: string | null
+          geprueft_am?: string | null
+          geprueft_von?: string | null
           id?: string
           posted_at?: string | null
           posted_url?: string | null
@@ -2846,6 +2867,10 @@ export type Database = {
           designer_id: string
           designer_note: string | null
           edition_info: string | null
+          gpsr_eu_responsible: string | null
+          gpsr_manufacturer_address: string | null
+          gpsr_manufacturer_name: string | null
+          gpsr_safety_warning: string | null
           height_cm: number | null
           id: string
           image_url: string | null
@@ -2886,6 +2911,10 @@ export type Database = {
           designer_id: string
           designer_note?: string | null
           edition_info?: string | null
+          gpsr_eu_responsible?: string | null
+          gpsr_manufacturer_address?: string | null
+          gpsr_manufacturer_name?: string | null
+          gpsr_safety_warning?: string | null
           height_cm?: number | null
           id?: string
           image_url?: string | null
@@ -2926,6 +2955,10 @@ export type Database = {
           designer_id?: string
           designer_note?: string | null
           edition_info?: string | null
+          gpsr_eu_responsible?: string | null
+          gpsr_manufacturer_address?: string | null
+          gpsr_manufacturer_name?: string | null
+          gpsr_safety_warning?: string | null
           height_cm?: number | null
           id?: string
           image_url?: string | null
@@ -3290,6 +3323,7 @@ export type Database = {
           premiere: boolean
           regisseur_verdict: Json | null
           rights_granted: boolean
+          shows_synthetic_person: boolean
           source: Database["public"]["Enums"]["video_source"]
           thumb: string | null
           url: string
@@ -3304,6 +3338,7 @@ export type Database = {
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null
           url: string
@@ -3318,6 +3353,7 @@ export type Database = {
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
+          shows_synthetic_person?: boolean
           source?: Database["public"]["Enums"]["video_source"]
           thumb?: string | null
           url?: string
