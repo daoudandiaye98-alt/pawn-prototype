@@ -67,7 +67,7 @@ type Mode =
   | "morgenbericht" | "wochenbericht" | "recherche" | "befehl"
   | "heartbeat" | "confirm_action" | "reject_action"
   | "diagnose" | "evolution" | "wissen" | "zeitgeist"
-  | "akquise_jagd" | "akquise_jagd_lernen"
+  | "akquise_jagd" | "akquise_jagd_lernen" | "akquise_wirkungsbericht"
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "akquise_dm_vorbereiten"
   | "presse_jagd" | "presse_verfassen"
@@ -154,6 +154,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   wissen: "gruen",
   akquise_jagd: "gruen",
   akquise_jagd_lernen: "gruen",
+  akquise_wirkungsbericht: "gruen",
   akquise_kuratieren: "gruen",
   akquise_verfassen: "gruen",
   akquise_senden: "rot",
@@ -2020,49 +2021,60 @@ async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<strin
   const hunts = (huntRows ?? []) as { id: string; query: string; query_type: string; world: string; leads_created: number }[];
   if (!hunts.length) return { ok: true, message: "Noch keine abgeschlossenen Jagden zum Auswerten." };
 
+  // WP6 "Lernen auf Wirkung": bis hierhin zählte "qualifiziert" als Erfolgssignal — das ist nur
+  // die eigene Vision-Einschätzung von PAWN, kein echtes Interesse von außen. "kontaktiert",
+  // "antwort", "registriert", "aktiviert" wurden hier zwar mitgezählt, aber nirgends im Code
+  // tatsächlich als Status gesetzt — totes Gewicht. Echtes Wirkungssignal: hat der Mensch
+  // geantwortet (replied_at) oder sich sogar beworben/ist Haus geworden (beworben/gewonnen, WP1).
   const { data: leadRows } = await admin.from("acquisition_leads")
-    .select("hunt_id, status, kurator_score").not("hunt_id", "is", null).limit(5000);
-  const leads = (leadRows ?? []) as { hunt_id: string; status: string; kurator_score: number | null }[];
+    .select("hunt_id, status, replied_at").not("hunt_id", "is", null).limit(5000);
+  const leads = (leadRows ?? []) as { hunt_id: string; status: string; replied_at: string | null }[];
 
-  const perHunt = new Map<string, { total: number; qualified: number }>();
+  const perHunt = new Map<string, { total: number; qualified: number; wirkung: number }>();
   for (const l of leads) {
-    const entry = perHunt.get(l.hunt_id) ?? { total: 0, qualified: 0 };
+    const entry = perHunt.get(l.hunt_id) ?? { total: 0, qualified: 0, wirkung: 0 };
     entry.total++;
-    if (["qualifiziert", "kontaktiert", "antwort", "registriert", "aktiviert"].includes(l.status)) entry.qualified++;
+    if (l.status === "qualifiziert" || l.status === "beworben" || l.status === "gewonnen") entry.qualified++;
+    if (l.replied_at || l.status === "beworben" || l.status === "gewonnen") entry.wirkung++;
     perHunt.set(l.hunt_id, entry);
   }
 
-  const perQuery = new Map<string, { total: number; qualified: number; world: string; type: string }>();
+  const perQuery = new Map<string, { total: number; qualified: number; wirkung: number; world: string; type: string }>();
   for (const h of hunts) {
-    const stats = perHunt.get(h.id) ?? { total: 0, qualified: 0 };
+    const stats = perHunt.get(h.id) ?? { total: 0, qualified: 0, wirkung: 0 };
     const key = h.query.toLowerCase();
-    const entry = perQuery.get(key) ?? { total: 0, qualified: 0, world: h.world, type: h.query_type };
+    const entry = perQuery.get(key) ?? { total: 0, qualified: 0, wirkung: 0, world: h.world, type: h.query_type };
     entry.total += stats.total;
     entry.qualified += stats.qualified;
+    entry.wirkung += stats.wirkung;
     perQuery.set(key, entry);
     // Trefferzahl je Jagd nachtragen, damit das Cockpit die Quote zeigen kann.
     await admin.from("acquisition_hunts").update({ qualified_count: stats.qualified }).eq("id", h.id);
   }
 
+  // Ehrlichkeits-Wächter: unter 20 Kontakten ist jede Quote Zufall — ein einzelner Treffer aus
+  // einer Handvoll Konten hätte den Begriff sonst sofort auf Gewicht 3 katapultiert. Unter der
+  // Schwelle bleibt das bestehende Gewicht unverändert (weder Belohnung noch Strafe).
+  const MIN_SAMPLE = 20;
   const updated: HuntQuery[] = [];
   const dropped: string[] = [];
   for (const q of config.hunt_queries ?? []) {
     const stats = perQuery.get(q.query.toLowerCase());
-    if (!stats || stats.total === 0) { updated.push(q); continue; }
-    const rate = stats.qualified / stats.total;
-    if (stats.total >= 20 && stats.qualified === 0) { dropped.push(q.query); continue; }
-    const weight = Math.max(0.2, Math.min(3, Number((0.5 + rate * 4).toFixed(2))));
+    if (!stats || stats.total < MIN_SAMPLE) { updated.push(q); continue; }
+    if (stats.wirkung === 0) { dropped.push(q.query); continue; }
+    const rate = stats.wirkung / stats.total;
+    const weight = Math.max(0.2, Math.min(3, Number((0.5 + rate * 8).toFixed(2))));
     updated.push({ ...q, weight });
   }
   await saveHuntQueries(admin, config, updated);
 
   const ranking = [...perQuery.entries()]
     .filter(([, s]) => s.total > 0)
-    .sort((a, b) => (b[1].qualified / b[1].total) - (a[1].qualified / a[1].total))
+    .sort((a, b) => (b[1].wirkung / b[1].total) - (a[1].wirkung / a[1].total))
     .slice(0, 10)
-    .map(([q, s]) => `- ${q} (${s.world}): ${s.qualified} von ${s.total} qualifiziert`);
+    .map(([q, s]) => `- ${q} (${s.world}): ${s.wirkung} von ${s.total} mit echter Wirkung (Antwort/Bewerbung) · ${s.qualified} von PAWN als passend eingeschätzt`);
 
-  const body = `Was die Jagd gebracht hat:\n${ranking.length ? ranking.join("\n") : "- Noch keine auswertbaren Treffer."}\n\n${dropped.length ? `Aussortierte Begriffe (20+ Konten, kein einziger Treffer):\n${dropped.map((d) => `- ${d}`).join("\n")}` : "Kein Begriff musste aussortiert werden."}`;
+  const body = `Was die Jagd wirklich gebracht hat (Antwort oder Bewerbung, nicht nur PAWNs eigene Einschätzung):\n${ranking.length ? ranking.join("\n") : "- Noch keine auswertbaren Treffer."}\n\n${dropped.length ? `Aussortierte Begriffe (${MIN_SAMPLE}+ Konten, keine einzige Antwort/Bewerbung):\n${dropped.map((d) => `- ${d}`).join("\n")}` : "Kein Begriff musste aussortiert werden."}\n\nBegriffe mit unter ${MIN_SAMPLE} Konten wurden nicht neu gewichtet — zu wenig Daten für eine ehrliche Aussage.`;
   await admin.from("jarvis_reports").insert({
     kind: "jagd", title: `Jagd-Auswertung · ${new Date().toLocaleDateString("de-DE")}`, body,
     data: { ranking, dropped, queries: updated },
@@ -2071,6 +2083,51 @@ async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<strin
   return { ok: true, ausgewertet: perQuery.size, aussortiert: dropped.length, begriffe: updated.length };
 }
 
+/**
+ * akquise_wirkungsbericht (WP6 "Lernen auf Wirkung") — wöchentlicher, rein lesender Bericht:
+ * wie viele versendete Erstnachrichten haben tatsächlich eine Antwort oder eine Bewerbung
+ * gebracht, aufgeschlüsselt je Variante (vorlage vs. frei, aus akquise_verfassen). Schreibt NUR
+ * einen jarvis_reports-Eintrag zum Nachlesen im Maschinenraum — verändert nichts automatisch,
+ * verschickt nichts. Ehrlichkeits-Wächter: Aussagen zu einer Variante nur ab 20 versendeten
+ * Nachrichten dieser Variante, sonst wird die geringe Stichprobe offen benannt statt verschwiegen.
+ */
+async function runAkquiseWirkungsbericht(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const MIN_SAMPLE = 20;
+  const { data: rows } = await admin.from("acquisition_leads")
+    .select("variant_id, contacted_at, replied_at, status")
+    .eq("lead_type", "designer").not("contacted_at", "is", null).limit(5000);
+  const sent = (rows ?? []) as { variant_id: string | null; contacted_at: string; replied_at: string | null; status: string }[];
+
+  const perVariant = new Map<string, { total: number; antworten: number; bewerbungen: number }>();
+  for (const r of sent) {
+    const key = r.variant_id ?? "unbekannt";
+    const entry = perVariant.get(key) ?? { total: 0, antworten: 0, bewerbungen: 0 };
+    entry.total++;
+    if (r.replied_at) entry.antworten++;
+    if (r.status === "beworben" || r.status === "gewonnen") entry.bewerbungen++;
+    perVariant.set(key, entry);
+  }
+
+  const zeilen = [...perVariant.entries()].map(([variant, s]) => {
+    if (s.total < MIN_SAMPLE) {
+      return `- ${variant}: nur ${s.total} versendet — zu wenig für eine ehrliche Aussage (Schwelle ${MIN_SAMPLE}).`;
+    }
+    const antwortquote = Math.round((s.antworten / s.total) * 100);
+    const bewerbungsquote = Math.round((s.bewerbungen / s.total) * 100);
+    return `- ${variant}: ${s.total} versendet, ${s.antworten} Antworten (${antwortquote}%), ${s.bewerbungen} Bewerbungen (${bewerbungsquote}%).`;
+  });
+
+  const body = sent.length === 0
+    ? "Noch keine versendeten Erstnachrichten mit Zeitstempel — noch nichts auszuwerten."
+    : `Wirkung nach Variante (Antwort/Bewerbung, nicht Vision-Einschätzung):\n${zeilen.join("\n")}`;
+
+  await admin.from("jarvis_reports").insert({
+    kind: "wirkung", title: `Wirkungsbericht · ${new Date().toLocaleDateString("de-DE")}`, body,
+    data: { perVariant: Object.fromEntries(perVariant) },
+  });
+
+  return { ok: true, ausgewertet: sent.length, varianten: perVariant.size };
+}
 
 /** akquise_kuratieren — bewertet bis zu 20 neue Leads per Bild-Analyse (Claude Vision). */
 async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
@@ -2264,9 +2321,13 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
 
     // Der Weg entscheidet sich hier: Adresse -> E-Mail, Formular -> Formular, sonst DM.
     const weg = lead.email ? "email" : lead.contact_url ? "formular" : "dm";
+    // WP6 "Lernen auf Wirkung": die einzige real vorhandene Variantenachse dieses Modus — feste
+    // Vorlage mit eingesetztem Satz vs. freier Claude-Entwurf — wird markiert, damit ein späterer
+    // Wirkungsbericht Antwort-/Bewerbungsraten je Variante vergleichen kann.
+    const variantId = template && template.trim() ? "vorlage" : "frei";
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language: draft.language,
-      channel: weg === "formular" ? "dm" : weg, contact_channel: weg,
+      channel: weg === "formular" ? "dm" : weg, contact_channel: weg, variant_id: variantId,
     }).eq("id", lead.id);
     ready++;
   }
@@ -4301,7 +4362,7 @@ Deno.serve(async (req) => {
     const validModes: Mode[] = [
       "morgenbericht", "wochenbericht", "recherche", "befehl",
       "heartbeat", "confirm_action", "reject_action", "diagnose", "evolution", "wissen", "zeitgeist",
-      "akquise_jagd", "akquise_jagd_lernen",
+      "akquise_jagd", "akquise_jagd_lernen", "akquise_wirkungsbericht",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
@@ -4318,7 +4379,7 @@ Deno.serve(async (req) => {
     // confirm_action, reject_action, wochenbericht) bleiben strikt admin-only.
     const CRON_TRIGGERABLE_MODES: Mode[] = [
       "heartbeat", "wissen", "zeitgeist", "diagnose", "evolution", "morgenbericht",
-      "akquise_jagd", "akquise_jagd_lernen",
+      "akquise_jagd", "akquise_jagd_lernen", "akquise_wirkungsbericht",
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
@@ -4447,17 +4508,21 @@ Deno.serve(async (req) => {
 
     // --- Die Jagd: startet Apify-Suchläufe. Braucht nur dann Claude, wenn noch keine Suchbegriffe
     // hinterlegt sind (einmalige Destillation) — deshalb kostenlos und ohne Cost-Gate. ---
-    if (mode === "akquise_jagd" || mode === "akquise_jagd_lernen") {
+    if (mode === "akquise_jagd" || mode === "akquise_jagd_lernen" || mode === "akquise_wirkungsbericht") {
       const trig = body.trigger === "cron" || isCronSecretCaller ? "cron" : "manual";
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: trig, mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = mode === "akquise_jagd"
         ? await runAkquiseJagd(admin, Deno.env.get("ANTHROPIC_API_KEY") ?? null)
-        : await runAkquiseJagdLernen(admin);
+        : mode === "akquise_jagd_lernen"
+          ? await runAkquiseJagdLernen(admin)
+          : await runAkquiseWirkungsbericht(admin);
       const tokensUsed = (result as { tokensUsed?: number }).tokensUsed ?? 0;
       const summary = mode === "akquise_jagd"
         ? `Jagd: ${(result as { started?: number }).started ?? 0} Suchlauf/Suchläufe gestartet${(result as { message?: string }).message ? ` · ${(result as { message?: string }).message}` : ""}`
-        : `Jagd-Auswertung: ${(result as { ausgewertet?: number }).ausgewertet ?? 0} Begriffe, ${(result as { aussortiert?: number }).aussortiert ?? 0} aussortiert`;
+        : mode === "akquise_jagd_lernen"
+          ? `Jagd-Auswertung: ${(result as { ausgewertet?: number }).ausgewertet ?? 0} Begriffe, ${(result as { aussortiert?: number }).aussortiert ?? 0} aussortiert`
+          : `Wirkungsbericht: ${(result as { ausgewertet?: number }).ausgewertet ?? 0} Nachrichten, ${(result as { varianten?: number }).varianten ?? 0} Varianten`;
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: (result as { ok?: boolean }).ok === false ? "failed" : "done",
         summary, error: (result as { ok?: boolean }).ok === false ? (result as { error?: string }).error ?? null : null,
