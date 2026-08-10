@@ -49,14 +49,15 @@ export function PruefStapel({
 }: {
   rows: PruefLead[];
   onChange: (id: string, patch: Partial<PruefLead>) => void;
-  /** "designer" = Häuser-Akquise, "presse" = Presse-Kontakte. */
-  leadType?: "designer" | "presse";
+  /** "designer" = Häuser-Akquise, "presse" = Presse-Kontakte, "multiplikator" = Concept-Stores/
+   * Showrooms/Kurator:innen mit eigenem Designer-Netzwerk — wie Presse nie automatisch versendet. */
+  leadType?: "designer" | "presse" | "multiplikator";
   title?: string;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [threshold, setThreshold] = useState(70);
-  const isPresse = leadType === "presse";
+  const isPresse = leadType === "presse" || leadType === "multiplikator";
 
   const decidablePool = useMemo(
     () => rows

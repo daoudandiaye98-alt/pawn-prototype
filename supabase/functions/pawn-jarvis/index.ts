@@ -71,6 +71,7 @@ type Mode =
   | "akquise_import" | "akquise_kontakt" | "akquise_profile" | "akquise_kuratieren" | "akquise_verfassen" | "akquise_senden" | "bewerbung_pruefen"
   | "akquise_dm_vorbereiten"
   | "presse_jagd" | "presse_verfassen"
+  | "multiplikator_jagd" | "multiplikator_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
   | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft";
@@ -167,6 +168,8 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   akquise_dm_vorbereiten: "gruen",
   presse_jagd: "gelb",
   presse_verfassen: "gelb",
+  multiplikator_jagd: "gelb",
+  multiplikator_verfassen: "gelb",
   verstaerker: "gruen",
   automatik_ausfuehren: "gruen",
   signalstrom_verdichten: "gruen",
@@ -248,6 +251,10 @@ interface AkquiseConfig {
   /** WP7 "Die ersten Fünfzig": angestrebte Erstkontakte pro Tag — reiner Anzeige-/Warn-Wert im
    * Cockpit (Tagesziel-Wächter), erzwingt nie einen Versand. */
   daily_goal: number;
+  /** WP8 "Zufuhr-Verzehnfachung": Steuerungs-Gewicht je Welt — höher als 1 bevorzugt diese Welt
+   * bei Suchbegriff-Auswahl (Jagd) und Bearbeitungsreihenfolge (Kuratieren), wenn Batch/Zeitbudget
+   * nicht für alle wartenden Leads reicht. Fehlt eine Welt hier, gilt Gewicht 1 (neutral). */
+  world_priority: Record<string, number>;
 }
 
 
@@ -285,6 +292,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   dm_daily_cap: 20,
   retention_days: 180,
   daily_goal: 50,
+  world_priority: { Kunst: 1.8 },
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -1576,11 +1584,18 @@ async function runAkquiseJagd(admin: SupabaseClient, apiKey: string | null): Pro
   const { data: recent } = await admin.from("acquisition_hunts").select("query").gte("created_at", since);
   const recentSet = new Set(((recent ?? []) as { query: string }[]).map((r) => r.query.toLowerCase()));
 
+  // WP8 "Zufuhr-Verzehnfachung": world_priority steuert zusätzlich zur Frische/dem eigenen
+  // Gewicht, welche Welt bei knappen Slots (hunt_daily_runs) öfter drankommt — z. B. Kunst
+  // bevorzugen, wenn diese Welt bisher unterrepräsentiert ist.
   const ranked = [...queries].sort((a, b) => {
     const freshA = recentSet.has(a.query.toLowerCase()) ? 0 : 1;
     const freshB = recentSet.has(b.query.toLowerCase()) ? 0 : 1;
     if (freshA !== freshB) return freshB - freshA;
-    return (b.weight ?? 1) - (a.weight ?? 1);
+    const prioA = config.world_priority[a.world] ?? 1;
+    const prioB = config.world_priority[b.world] ?? 1;
+    const scoreA = (a.weight ?? 1) * prioA;
+    const scoreB = (b.weight ?? 1) * prioB;
+    return scoreB - scoreA;
   });
 
   const slots = Math.max(1, config.hunt_daily_runs);
@@ -2151,12 +2166,23 @@ async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Prom
   // Claude-Vision-Aufrufe in EINEM Funktionsaufruf sprengen das Zeitbudget der Edge Function lange
   // bevor der Batch fertig ist — "Pflicht vor Volumen": kleinere Batches, dafür braucht es einen
   // häufigeren Zeitplan, um dieselbe Tagesmenge zu erreichen (siehe PR-Beschreibung).
-  const { data: leads } = await admin.from("acquisition_leads")
+  // WP8 "Zufuhr-Verzehnfachung": größerer Kandidaten-Pool wird nach world_priority sortiert
+  // (Array.prototype.sort ist stabil, created_at-Reihenfolge bleibt also innerhalb derselben
+  // Priorität erhalten), erst danach greift die harte 8er-Grenze — so kommt eine bevorzugte
+  // Welt (z. B. Kunst) öfter dran, wenn die Warteschlange länger ist als ein Lauf schafft.
+  const { data: leadsPool } = await admin.from("acquisition_leads")
     .select("id, handle, world, bio, scrape_images").eq("lead_type", "designer").eq("status", "neu")
-    .order("created_at", { ascending: true }).limit(Math.min(config.batch_kuratieren, 8));
+    .order("created_at", { ascending: true }).limit(Math.max(config.batch_kuratieren, 40));
+  const leads = ((leadsPool ?? []) as { id: string; handle: string; world: string; bio: string | null; scrape_images: unknown }[])
+    .sort((a, b) => (config.world_priority[b.world] ?? 1) - (config.world_priority[a.world] ?? 1))
+    .slice(0, Math.min(config.batch_kuratieren, 8));
 
+  // Zeitbudget: ein Lauf bleibt unter der Grenze der Laufzeitumgebung, der Rest kommt beim nächsten
+  // (gleiches Muster wie akquise_kontakt) — Vision-Aufrufe können vereinzelt langsam sein.
+  const deadline = Date.now() + 55_000;
   let qualified = 0, sortedOut = 0, tokensUsed = 0;
-  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; scrape_images: unknown }[]) {
+  for (const lead of leads) {
+    if (Date.now() > deadline) break;
     const images = Array.isArray(lead.scrape_images) ? (lead.scrape_images as string[]) : [];
     const prompt = `Bewerte dieses Instagram-Konto als möglichen PAWN-Designer (kuratierter Marktplatz für unabhängige Designer aus Mode, Interior, Kunst). Handle: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}. Bewerte anhand der Bilder: Handwerk/Qualität der Arbeit, kohärente Bildsprache über die Posts hinweg, Foto-Qualität, Anzeichen von Unabhängigkeit (kein Großlabel, kein reines Dropshipping), Passung zur Welt "${lead.world}". Antworte NUR mit JSON: {"score": <0-100>, "handwerk": "...", "bildsprache": "...", "foto_qualitaet": "...", "unabhaengigkeit": "...", "welt_passung": "..."}`;
     const { json: result, tokens } = images.length ? await claudeVisionJson(apiKey, prompt, images) : { json: null, tokens: 0 };
@@ -2349,8 +2375,13 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
   const stapel = alle.slice(0, config.batch_verfassen);
 
-  let ready = 0, tokensUsed = 0, entverneint = 0;
+  // WP8 "Zufuhr-Verzehnfachung": hartes Zeitbudget — jeder Lead durchläuft eine mehrstufige
+  // Websuche/Recherche, das kann bei größeren Batches das Zeitlimit der Laufzeitumgebung sprengen.
+  const deadline = Date.now() + 55_000;
+  let ready = 0, tokensUsed = 0, entverneint = 0, attempted = 0;
   for (const lead of stapel) {
+    if (Date.now() > deadline) break;
+    attempted++;
     // WP4 "Hochtouren": der Einladungslink gehört ausschließlich Designer-Leads — harte Prüfung
     // im Code (nicht nur über den Query-Filter oben), damit der Fehler vom 10.08. (42 falsch
     // verlinkte Presse-/Multiplikator-Entwürfe) sich nie wiederholt.
@@ -2394,7 +2425,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     }).eq("id", lead.id);
     ready++;
   }
-  return { ok: true, processed: stapel.length, ready, entverneint, tokensUsed };
+  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, tokensUsed };
 }
 
 /**
@@ -2421,8 +2452,12 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
     .filter((l) => l.handle)
     .slice(0, config.batch_verfassen);
 
-  let ready = 0, tokensUsed = 0, entverneint = 0;
+  // WP8 "Zufuhr-Verzehnfachung": hartes Zeitbudget wie bei akquise_verfassen.
+  const deadline = Date.now() + 55_000;
+  let ready = 0, tokensUsed = 0, entverneint = 0, attempted = 0;
   for (const lead of stapel) {
+    if (Date.now() > deadline) break;
+    attempted++;
     // WP4 "Hochtouren": harte Prüfung im Code — der Einladungslink unten gehört ausschließlich
     // Designer-Leads, unabhängig vom Query-Filter oben.
     if (lead.lead_type !== "designer") continue;
@@ -2473,7 +2508,7 @@ Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
     ready++;
   }
   const nachfassen = await runAkquiseNachfassenVorbereiten(admin);
-  return { ok: true, processed: stapel.length, ready, entverneint, tokensUsed, nachfassen };
+  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, tokensUsed, nachfassen };
 }
 
 /** WP5 "Die Rampe auf Hochtouren" — bereitet kurze Nachfass-Entwürfe (1–2 Sätze) für DM/Instagram-
@@ -2499,8 +2534,11 @@ async function runAkquiseNachfassenVorbereiten(admin: SupabaseClient): Promise<R
 
   const config = await loadAkquiseConfig(admin);
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
-  let ready = 0, tokensUsed = 0;
+  const deadline = Date.now() + 55_000;
+  let ready = 0, tokensUsed = 0, attempted = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; personal_line: string | null; language: string | null; ref_code: string | null; lead_type: string }[]) {
+    if (Date.now() > deadline) break;
+    attempted++;
     if (lead.lead_type !== "designer") continue; // harte Prüfung im Code, s. WP4
     const sprache = lead.language === "en" ? "Englisch" : "Deutsch";
     const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine sehr kurze Nachfass-Nachricht (höchstens 2 Sätze) an einen Designer, der auf die erste Instagram-Nachricht noch nicht geantwortet hat. Sprache: ${sprache}.
@@ -2524,7 +2562,7 @@ Ton: freundlich, unaufdringlich, keine Erinnerung an eine Absage, kein neues Zah
     await admin.from("acquisition_leads").update({ dm_followup_draft: text }).eq("id", lead.id);
     ready++;
   }
-  return { processed: (leads ?? []).length, ready, tokensUsed };
+  return { processed: attempted, queued: (leads ?? []).length, ready, tokensUsed };
 }
 
 /* ------------------------------------------------------------------ *
@@ -2865,6 +2903,162 @@ Link: https://pawn.vision/designer/${haus.slug}`;
     ready++;
   }
   return { ok: true, processed: (leads ?? []).length, ready, tokensUsed };
+}
+
+/* ------------------------------------------------------------------ *
+ * WP8 "Zufuhr-Verzehnfachung" — der Multiplikatoren-Jäger.
+ * Weder Designer noch Presse: Menschen mit einem eigenen Netzwerk aus mehreren unabhängigen
+ * Designer:innen — Concept-Store- und Showroom-Betreiber:innen, Kurator:innen kleiner
+ * Handwerksmessen/Popups, Galerist:innen für junge Kunst. Die Ansprache ist eine Partnerschafts-
+ * Anfrage ("kennst du gute Häuser, die zu uns passen würden?"), NIEMALS eine Einladung zum
+ * Bewerben und NIEMALS mit Einladungslink — dafür gibt es hier gar keinen Ref-Code-Anhang-Code,
+ * anders als bei Designer-Leads. Leads liegen in derselben Tabelle, lead_type = 'multiplikator'
+ * (DB-Wert existiert bereits seit der Jagd-Härtung).
+ * ------------------------------------------------------------------ */
+
+const MULTIPLIKATOR_WELTEN = ["Mode", "Interior", "Kunst"] as const;
+
+interface MultiplikatorTreffer {
+  name?: string;
+  organisation?: string;
+  rolle?: string;
+  fokus?: string;
+  url?: string;
+  email?: string;
+  sprache?: string;
+  land?: string;
+  relevanz?: number;
+}
+
+function multiplikatorHandle(t: MultiplikatorTreffer): string | null {
+  const base = `${t.organisation ?? ""} ${t.name ?? ""}`.trim().toLowerCase();
+  const slug = base.replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "").slice(0, 48);
+  return slug ? `multiplikator-${slug}` : null;
+}
+
+/** multiplikator_jagd — sucht Concept-Stores, Showrooms, Messen und Galerien mit eigenem
+ * Designer-Netzwerk je Welt und legt sie als Multiplikator-Leads an. */
+async function runMultiplikatorJagd(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: channel } = await admin.from("growth_channels").select("enabled, daily_cap").eq("key", "multiplikator").maybeSingle();
+  const row = channel as { enabled?: boolean; daily_cap?: number } | null;
+  if (row && row.enabled === false) return { ok: true, gefunden: 0, angelegt: 0, message: "Multiplikator-Kanal ist ausgeschaltet." };
+  const cap = Math.max(1, Math.min(30, row?.daily_cap ?? 10));
+
+  const known = new Set<string>();
+  const { data: existing } = await admin.from("acquisition_leads").select("handle").eq("lead_type", "multiplikator").limit(2000);
+  for (const l of (existing ?? []) as { handle: string }[]) known.add(l.handle);
+
+  const { data: houses } = await admin.from("designers")
+    .select("brand_name, country").eq("status", "active").limit(15);
+  const housesText = ((houses ?? []) as { brand_name: string; country: string | null }[])
+    .map((h) => `${h.brand_name}${h.country ? ` (${h.country})` : ""}`).join(", ") || "noch keine öffentlichen Häuser";
+
+  let gefunden = 0, angelegt = 0, tokensUsed = 0;
+  for (const welt of MULTIPLIKATOR_WELTEN) {
+    if (angelegt >= cap) break;
+    const system = `Du recherchierst für PAWN (pawn.vision), einen kuratierten Marktplatz für unabhängige Designer aus Mode, Interior und Kunst. Finde echte, aktuell aktive Organisationen oder Personen im deutschsprachigen und europäischen Raum, die selbst ein Netzwerk aus mehreren unabhängigen Designer:innen/Marken haben und diese sichtbar machen: Concept-Store- und Showroom-Betreiber:innen, Kurator:innen kleiner Handwerksmessen oder Popups, Galerist:innen für junge Kunst. KEINE Presse, KEINE einzelnen Designer:innen.
+
+Erfinde nichts. Nur Organisationen/Personen, die du in der Websuche wirklich gesehen hast. Eine E-Mail-Adresse nur dann, wenn sie öffentlich auf der Seite steht — sonst lass das Feld leer.
+
+Antworte NUR mit JSON: {"treffer": [{"name": "...", "organisation": "...", "rolle": "z.B. Concept-Store-Betreiberin", "fokus": "welche Art Designer/Marken sie zeigen, ein Satz", "url": "...", "email": "", "sprache": "de", "land": "DE", "relevanz": 0}]}`;
+    const user = `Welt: ${welt}. Suche 6 passende Organisationen/Personen mit eigenem Designer-Netzwerk. Unsere Häuser: ${housesText}. Kleine, kuratierte Orte sind uns lieber als große Ketten, weil sie eher offen für neue unabhängige Häuser sind.`;
+    const { json, tokens } = await searchJson(apiKey, system, user);
+    tokensUsed += tokens;
+    const treffer = Array.isArray((json as { treffer?: unknown } | null)?.treffer)
+      ? ((json as { treffer: MultiplikatorTreffer[] }).treffer) : [];
+    gefunden += treffer.length;
+
+    for (const t of treffer) {
+      if (angelegt >= cap) break;
+      const handle = multiplikatorHandle(t);
+      if (!handle || known.has(handle)) continue;
+      const relRaw = Number(t.relevanz);
+      const score = Number.isFinite(relRaw) ? Math.max(0, Math.min(100, Math.round(relRaw))) : 50;
+      const email = typeof t.email === "string" && t.email.includes("@") ? t.email.trim() : null;
+      const { error } = await admin.from("acquisition_leads").insert({
+        lead_type: "multiplikator",
+        handle,
+        outlet: t.organisation ?? null,
+        contact_name: t.name ?? null,
+        world: welt,
+        source: "multiplikator_jagd",
+        bio: t.fokus ? `${t.rolle ?? ""}: ${t.fokus}`.trim() : (t.rolle ?? null),
+        website: t.url ?? null,
+        email,
+        channel: email ? "email" : "dm",
+        language: t.sprache === "en" ? "en" : "de",
+        status: "qualifiziert",
+        kurator_score: score,
+        qc_passed: true,
+        score_reasons: { begruendung: t.fokus ?? null, rolle: t.rolle ?? null, quelle: t.url ?? null },
+      } as never);
+      if (!error) { known.add(handle); angelegt++; }
+    }
+  }
+  return { ok: true, gefunden, angelegt, tokensUsed };
+}
+
+/** multiplikator_verfassen — schreibt je Multiplikator-Lead eine kurze Partnerschafts-Anfrage.
+ * Kein Verkaufsversprechen, keine Einladung zum Bewerben, NIE ein Einladungslink. */
+async function runMultiplikatorVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, outlet, contact_name, world, bio, email, language")
+    .eq("lead_type", "multiplikator").eq("status", "qualifiziert").is("message_draft", null).limit(8);
+  if (!(leads ?? []).length) return { ok: true, processed: 0, ready: 0 };
+
+  const styleLaw = await loadHouseStyleLaw(admin);
+  const multiplikatorConfig = await loadAkquiseConfig(admin);
+  const gesetze = multiplikatorConfig.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
+  const deadline = Date.now() + 55_000;
+  let ready = 0, tokensUsed = 0, attempted = 0;
+
+  for (const lead of (leads ?? []) as { id: string; handle: string; outlet: string | null; contact_name: string | null; world: string; bio: string | null; email: string | null; language: string | null }[]) {
+    if (Date.now() > deadline) break;
+    attempted++;
+    const sprache = lead.language === "en" ? "en" : "de";
+
+    const system = `Du schreibst als Daouda, Gründer von PAWN (pawn.vision, Köln), eine kurze Partnerschafts-Anfrage an eine Organisation oder Person mit einem eigenen Netzwerk aus unabhängigen Designer:innen. Sprache: ${sprache === "en" ? "Englisch" : "Deutsch"}.
+
+Regeln:
+- Höchstens 130 Wörter. Nüchtern und konkret, mit echten Angaben.
+- Beginne mit einem konkreten Satz darüber, was diese Organisation/Person zeigt oder kuratiert.
+- Das ist KEINE Einladung, sich selbst als Designer:in zu bewerben, und KEIN Presse-Pitch — es ist eine Partnerschafts-Frage: ob sie gute unabhängige Häuser aus ihrem Netzwerk kennen, die zu PAWN passen würden, oder offen für einen Austausch wären.
+- Schreibe KEINEN Link zu pawn.vision/einladung — der existiert für diese Zielgruppe nicht.
+- Ende mit einer offenen Frage, keinem Zahlen-Angebot.
+- Sprich die Person mit Namen an, wenn ein Name bekannt ist. Text ohne Anführungszeichen, ohne Anhänge.
+
+SPRACHGESETZE (bindend):
+${gesetze}
+
+Stilgesetz: ${styleLaw}
+
+Antworte NUR mit JSON: {"betreff": "...", "nachricht": "..."}`;
+    const user = `Kontakt: ${lead.contact_name ?? "Ansprechpartner:in"}${lead.outlet ? ` · ${lead.outlet}` : ""}. Beschreibung: ${lead.bio ?? "unbekannt"}. Welt: ${lead.world}.`;
+
+    const { json, tokens } = await claudeJsonOnce(apiKey, system, user, 800);
+    tokensUsed += tokens;
+    let nachricht = typeof json?.nachricht === "string" ? json.nachricht : null;
+    if (!nachricht) continue;
+    if (hatVerneinung(nachricht)) {
+      const fixed = await entverneinen(nachricht, gesetze);
+      tokensUsed += fixed.tokens;
+      nachricht = fixed.text;
+    }
+    // Harte Prüfung im Code (nicht nur im Prompt) — derselbe Fehler wie am 10.08. (falsch
+    // verlinkte Presse-/Multiplikator-Entwürfe) darf sich nie wiederholen: kein Link, Punkt.
+    nachricht = entferneEinladungslink(nachricht);
+    const betreff = typeof json?.betreff === "string" ? json.betreff : `Austausch mit PAWN`;
+
+    await admin.from("acquisition_leads").update({
+      message_draft: nachricht,
+      personal_line: betreff,
+      language: sprache,
+      channel: lead.email ? "email" : "dm",
+      notes: "Partnerschafts-Anfrage (Multiplikator)",
+    }).eq("id", lead.id);
+    ready++;
+  }
+  return { ok: true, processed: attempted, queued: (leads ?? []).length, ready, tokensUsed };
 }
 
 interface TuerFund { title?: string; ort?: string; typ?: string; quelle_url?: string; warum?: string; entwurf?: string; kontakt_email?: string }
@@ -4485,6 +4679,7 @@ Deno.serve(async (req) => {
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
+      "multiplikator_jagd", "multiplikator_verfassen",
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
@@ -4502,6 +4697,7 @@ Deno.serve(async (req) => {
       "akquise_import", "akquise_kontakt", "akquise_profile", "akquise_kuratieren", "akquise_verfassen", "akquise_senden", "bewerbung_pruefen",
       "akquise_dm_vorbereiten",
       "presse_jagd", "presse_verfassen",
+      "multiplikator_jagd", "multiplikator_verfassen",
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
@@ -4775,6 +4971,7 @@ Deno.serve(async (req) => {
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
         || mode === "akquise_dm_vorbereiten"
         || mode === "presse_jagd" || mode === "presse_verfassen"
+        || mode === "multiplikator_jagd" || mode === "multiplikator_verfassen"
         || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau" || mode === "tueren_finden"
         || mode === "maison_sichtbarkeitszug" || mode === "wissen_wirtschaft") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger, mode, status: "running" }).select("id").single();
@@ -4789,6 +4986,8 @@ Deno.serve(async (req) => {
         : mode === "akquise_dm_vorbereiten" ? await runAkquiseDmVorbereiten(admin, apiKey)
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
+        : mode === "multiplikator_jagd" ? await runMultiplikatorJagd(admin, apiKey)
+        : mode === "multiplikator_verfassen" ? await runMultiplikatorVerfassen(admin, apiKey)
         : mode === "akquise_zyklus" ? await runAkquiseZyklus(admin, apiKey)
         : mode === "verstaerker" ? await runVerstaerker(admin, apiKey)
         : await runBewerbungPruefen(admin, apiKey);
@@ -4811,6 +5010,10 @@ Deno.serve(async (req) => {
         ? `Presse-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
         : mode === "presse_verfassen"
         ? `Presse-Pitches: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : mode === "multiplikator_jagd"
+        ? `Multiplikator-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
+        : mode === "multiplikator_verfassen"
+        ? `Multiplikator-Anfragen: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
         : mode === "akquise_zyklus"
         ? `Zyklus: ${(result as { qualifiziert?: number }).qualifiziert ?? 0} geprüft, ${(result as { verfasst?: number }).verfasst ?? 0} geschrieben, ${(result as { dm_vorbereitet?: number }).dm_vorbereitet ?? 0} DM vorbereitet, ${(result as { gesendet?: number }).gesendet ?? 0} gesendet`
         : mode === "verstaerker"
