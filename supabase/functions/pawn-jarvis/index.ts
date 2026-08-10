@@ -255,6 +255,8 @@ interface AkquiseConfig {
    * bei Suchbegriff-Auswahl (Jagd) und Bearbeitungsreihenfolge (Kuratieren), wenn Batch/Zeitbudget
    * nicht für alle wartenden Leads reicht. Fehlt eine Welt hier, gilt Gewicht 1 (neutral). */
   world_priority: Record<string, number>;
+  /** Teil 42: zusätzliche Domains, die niemals Website eines Designer-Leads werden (ohne Deploy pflegbar). */
+  domain_sperrliste: string[];
 }
 
 
@@ -293,6 +295,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   retention_days: 180,
   daily_goal: 50,
   world_priority: { Kunst: 1.8 },
+  domain_sperrliste: [],
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -1639,7 +1642,10 @@ function passesPrefilter(row: { handle: string; followers: number | null; bio: s
   return !config.hunt_exclude_words.some((w) => w.trim() && haystack.includes(w.toLowerCase()));
 }
 
-function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: string | null, source: string) {
+function mapScrapeItem(
+  item: Record<string, unknown>, world: string, huntId: string | null, source: string,
+  sperrliste: string[] = [],
+) {
   const handle = String(item.username ?? item.handle ?? item.ownerUsername ?? "").replace(/^@/, "").trim().toLowerCase();
   const followersRaw = item.followersCount ?? item.followers ?? (item.edge_followed_by as { count?: number } | undefined)?.count;
   const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
@@ -1648,7 +1654,10 @@ function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: str
   const links = Array.isArray(item.bioLinks) ? item.bioLinks as Array<{ url?: string }> : [];
   // Teil 41: die verlinkte Adresse wird VOLLSTÄNDIG übernommen (mit Pfad) — bei Sammelseiten
   // wie bio.site ist erst der Pfad die eigentliche Spur, der bloße Stamm ist Datenmüll.
-  const website = String(item.externalUrl ?? item.website ?? links[0]?.url ?? "").trim() || null;
+  const rohWebsite = String(item.externalUrl ?? item.website ?? links[0]?.url ?? "").trim() || null;
+  // Teil 42: Presseartikel, Portale und Marktplätze sind nie die Website eines Hauses —
+  // sonst erntet die Kontakt-Kette später brav die Adresse einer fremden Redaktion.
+  const website = istGesperrteWebsite(rohWebsite, sperrliste) ? null : rohWebsite;
   return {
     handle, world, source, followers, bio, email, website,
     contact_source: email ? "bio" : null,
@@ -1755,6 +1764,127 @@ function pickBestEmail(candidates: string[], host: string): string | null {
   return clean.sort((a, b) => score(b) - score(a))[0];
 }
 
+/* ============================================================================
+ * Teil 42 „Plausibilität": eine gefundene Adresse gehört erst dann zum Lead,
+ * wenn sie nachweislich zur Marke passt. Fremde Redaktionen und Sammelseiten
+ * bleiben draußen — eine kleine saubere Liste ist mehr wert als eine große.
+ * ========================================================================== */
+
+/** Zusammengesetzte Endungen, bei denen die eintragbare Domain drei Teile hat. */
+const ZWEISTUFIGE_TLD = new Set([
+  "co.uk", "org.uk", "ac.uk", "gov.uk", "co.jp", "co.kr", "co.nz", "co.za", "co.in",
+  "com.au", "com.br", "com.mx", "com.tr", "com.ar", "com.hk", "com.sg", "com.pl", "net.au",
+]);
+
+/** Registrierbare Domain ohne 'www.' und ohne Subdomains: shop.marke.co.uk -> marke.co.uk */
+function registrableDomain(hostOrUrl: string): string {
+  let host = (hostOrUrl || "").trim().toLowerCase();
+  if (!host) return "";
+  if (host.includes("/") || host.startsWith("http")) {
+    try { host = new URL(host.startsWith("http") ? host : `https://${host}`).hostname; } catch { /* Rohwert */ }
+  }
+  host = host.replace(/^www\./, "").replace(/\.$/, "");
+  const parts = host.split(".").filter(Boolean);
+  if (parts.length <= 2) return parts.join(".");
+  const letzteZwei = parts.slice(-2).join(".");
+  return ZWEISTUFIGE_TLD.has(letzteZwei) ? parts.slice(-3).join(".") : letzteZwei;
+}
+
+const FREEMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de",
+  "hotmail.com", "hotmail.de", "hotmail.fr", "hotmail.co.uk", "live.com", "live.de",
+  "yahoo.com", "yahoo.de", "yahoo.fr", "yahoo.co.uk", "ymail.com",
+  "outlook.com", "outlook.de", "outlook.fr", "msn.com",
+  "icloud.com", "me.com", "mac.com", "aol.com",
+  "proton.me", "protonmail.com", "pm.me", "mail.com", "mail.de", "t-online.de", "freenet.de", "posteo.de",
+  "live.co.uk", "live.fr", "laposte.net", "orange.fr", "free.fr", "wanadoo.fr", "seznam.cz",
+]);
+
+/** Kleinschreibung, Trennzeichen weg — 'Amina.Saada' und 'amina_saada' sind dasselbe. */
+function normalisiereKennung(value: string): string {
+  return (value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+interface PlausiPruefung { ok: boolean; grund: string }
+
+/**
+ * Gehört die Adresse zur Marke? (a) gleiche registrierbare Domain wie die Website, oder
+ * (b) Freemailer, dessen lokaler Teil zum Handle/Namen passt. Alles andere fliegt raus.
+ */
+function pruefeEmailPlausibilitaet(
+  email: string, website: string | null, handle: string, name?: string | null,
+): PlausiPruefung {
+  const adresse = (email || "").trim().toLowerCase();
+  const at = adresse.lastIndexOf("@");
+  if (at < 1) return { ok: false, grund: "adresse_unlesbar" };
+  const lokal = adresse.slice(0, at);
+  const mailDomain = registrableDomain(adresse.slice(at + 1));
+  const siteDomain = website ? registrableDomain(website) : "";
+
+  if (siteDomain && mailDomain === siteDomain) return { ok: true, grund: "domain_gleich" };
+
+  // Kennungen der Marke: Handle, Name, Domain-Stamm — jeweils ganz und in Wortteilen,
+  // damit 'crafted_by_maruf' zu 'marufmahfuz07@' passt.
+  const kennungen: string[] = [];
+  for (const roh of [handle, name ?? "", siteDomain.split(".")[0] ?? ""]) {
+    const ganz = normalisiereKennung(roh);
+    if (ganz.length >= 3) kennungen.push(ganz);
+    for (const teil of (roh || "").split(/[^A-Za-z0-9]+/)) {
+      const t = normalisiereKennung(teil);
+      if (t.length >= 4) kennungen.push(t);
+    }
+  }
+  const passtZu = (wert: string): boolean => {
+    const w = normalisiereKennung(wert);
+    if (w.length < 3) return false;
+    return kennungen.some((k) => w === k || w.includes(k) || k.includes(w));
+  };
+
+  if (FREEMAIL_DOMAINS.has(mailDomain)) {
+    return passtZu(lokal)
+      ? { ok: true, grund: "freemail_kennung_passt" }
+      : { ok: false, grund: "freemail_fremde_kennung" };
+  }
+
+  // Eigene Domain ohne bekannte Website: die Adresse selbst ist die Spur.
+  if (!siteDomain) return { ok: true, grund: "ohne_website_eigene_domain" };
+  // Eigene Marken-Domain neben der Website (annikavogler.de zu annikavoglerkeramik.com).
+  if (passtZu(mailDomain.split(".")[0])) return { ok: true, grund: "marken_domain_passt" };
+  return { ok: false, grund: "fremde_domain" };
+}
+
+/**
+ * Domains, die niemals die Website eines Designer-Leads sind: Presse, Magazine, Portale,
+ * Marktplätze. Für lead_type 'presse' gilt die Liste bewusst NICHT.
+ */
+const DEFAULT_DOMAIN_SPERRLISTE = [
+  "timesofindia.indiatimes.com", "indiatimes.com", "vogue", "elle", "harpersbazaar", "gq",
+  "designboom.com", "dezeen.com", "architecturaldigest", "ad-magazin.de", "wallpaper.com",
+  "couchstyle.de", "medium.com", "substack.com", "wikipedia.org", "wordpress.com", "blogspot",
+  "pinterest", "etsy.com", "amazon", "ebay", "notonthehighstreet.com", "saatchiart.com",
+  "artsy.net", "behance.net", "dribbble.com", "kickstarter.com", "gofundme.com", "eventbrite",
+  "shopify.com", "bigcartel.com", "depop.com", "vinted", "ebay-kleinanzeigen.de", "yelp",
+  "tripadvisor", "google.com", "youtube.com", "facebook.com", "issuu.com", "flickr.com",
+];
+
+/** Steht die Adresse auf der Sperrliste (Default + ai_config.akquise_config.domain_sperrliste)? */
+function istGesperrteWebsite(url: string | null, extra: string[] = []): boolean {
+  if (!url) return false;
+  const domain = registrableDomain(url);
+  if (!domain) return false;
+  const liste = [...DEFAULT_DOMAIN_SPERRLISTE, ...extra].map((d) => d.trim().toLowerCase()).filter(Boolean);
+  const ersteLabel = domain.split(".")[0];
+  return liste.some((eintrag) =>
+    eintrag.includes(".")
+      // Volle Domain: exakt oder als Elterndomain (vogue.fr matcht auch de.vogue.fr).
+      ? domain === eintrag || domain.endsWith(`.${eintrag}`)
+      // Markenwort ohne Endung: nur der Domain-Stamm zählt (vogue -> vogue.de, vogue.com).
+      : ersteLabel === eintrag,
+  );
+
+}
+
+
 /**
  * Cloudflare-Verschleierung auflösen: data-cfemail="a1b2…" ist die Adresse hex-kodiert,
  * das erste Byte ist der Schlüssel. Auf vielen Seiten die einzige Form der Adresse im HTML.
@@ -1799,7 +1929,7 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
   const MAX_VERSUCHE = 3;
   const kuehlzeit = new Date(Date.now() - 6 * 60 * 60_000).toISOString();
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, website, bio, contact_attempts")
+    .select("id, handle, website, bio, contact_attempts, contact_name, lead_type")
     .in("status", ["neu", "qualifiziert", "angewaermt"])
     .is("email", null).eq("opt_out", false)
     .lt("contact_attempts", MAX_VERSUCHE)
@@ -1868,7 +1998,11 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
     return /type=["']?email/i.test(html) || /name=["'][^"']*email[^"']*["']/i.test(html) || /action=["'][^"']*\/contact/i.test(html);
   }
 
-  for (const lead of (leads ?? []) as { id: string; handle: string; website: string | null; bio: string | null; contact_attempts: number }[]) {
+  let unplausibel = 0;
+  for (const lead of (leads ?? []) as {
+    id: string; handle: string; website: string | null; bio: string | null;
+    contact_attempts: number; contact_name: string | null; lead_type: string | null;
+  }[]) {
     if (Date.now() > deadline) break;
     checked++;
     const quelle = "website";
@@ -1892,9 +2026,16 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
     // Bio zuerst — manche schreiben ihre Adresse direkt hinein.
     const ausBio = lead.bio ? pickBestEmail(extractEmailsFromHtml(lead.bio), "") : null;
     if (ausBio) {
-      log.push({ quelle: "bio", fund: "email" });
-      await abschluss({ email: ausBio, channel: "email", contact_channel: "email", contact_source: "bio" });
-      found++;
+      const p = pruefeEmailPlausibilitaet(ausBio, lead.website, lead.handle, lead.contact_name);
+      if (p.ok) {
+        log.push({ quelle: "bio", fund: "email", plausibel: p.grund });
+        await abschluss({ email: ausBio, channel: "email", contact_channel: "email", contact_source: "bio" });
+        found++;
+        continue;
+      }
+      log.push({ quelle: "bio", verworfen: ausBio, grund: p.grund });
+      unplausibel++;
+      await abschluss({ channel: "dm", contact_channel: "dm" }, "kontakt_unplausibel");
       continue;
     }
 
@@ -1904,6 +2045,13 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       // nie — sie ist entfernt. Ohne Website bleibt der Lead ein DM-Fall.
       log.push({ quelle: "websuche", status: "deaktiviert", hinweis: "kein Such-API-Schlüssel hinterlegt" });
       await abschluss({ contact_channel: "dm" }, versuche >= MAX_VERSUCHE ? "kein_fund" : undefined);
+      continue;
+    }
+
+    // Teil 42: Presseartikel/Portale sind nie die Website eines Hauses (Presse-Leads ausgenommen).
+    if (lead.lead_type !== "presse" && istGesperrteWebsite(start, config.domain_sperrliste)) {
+      log.push({ quelle: "website", wert: start, status: "gesperrte_domain" });
+      await abschluss({ website: null, channel: "dm", contact_channel: "dm" }, "website_unbrauchbar");
       continue;
     }
 
@@ -1988,12 +2136,29 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
 
     // Pfad erhalten, wenn die Spur erst im Pfad steckt (Sammelseiten mit eigenem Unterweg).
     const websiteWert = base.pathname.replace(/\/+$/, "") ? base.toString() : base.origin;
+
+    // Teil 42: erst prüfen, ob der Fund zur Marke gehört. Eine fremde Redaktionsadresse
+    // kostet Absenderruf — der Lead wird dann ehrlich zum DM-Fall.
+    let verworfen: string | null = null;
+    if (email) {
+      const p = pruefeEmailPlausibilitaet(email, websiteWert, lead.handle, lead.contact_name);
+      log.push({ pruefung: "email", wert: email, plausibel: p.ok, grund: p.grund });
+      if (!p.ok) { verworfen = email; email = null; }
+    }
+    if (formular && registrableDomain(formular) !== registrableDomain(websiteWert)) {
+      log.push({ pruefung: "formular", wert: formular, plausibel: false, grund: "fremde_domain" });
+      formular = null;
+    }
+
     if (email) {
       await abschluss({ website: websiteWert, email, channel: "email", contact_channel: "email", contact_source: quelle });
       found++;
     } else if (formular) {
       await abschluss({ website: websiteWert, contact_url: formular, contact_channel: "formular", contact_source: "formular" });
       formulare++;
+    } else if (verworfen) {
+      unplausibel++;
+      await abschluss({ website: websiteWert, channel: "dm", contact_channel: "dm" }, "kontakt_unplausibel");
     } else {
       const grund = botSchutz ? "blockiert_bot_schutz"
         : (!irgendwas200 && timeouts > 0) ? "timeout"
@@ -2002,7 +2167,7 @@ async function runAkquiseKontakt(admin: SupabaseClient): Promise<Record<string, 
       await abschluss({ website: websiteWert, contact_channel: "dm" }, grund);
     }
   }
-  return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche, blockiert };
+  return { ok: true, geprueft: checked, gefunden: found, formulare, via_suche: viaSuche, blockiert, unplausibel };
 }
 
 
@@ -2042,14 +2207,16 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
     if (hunt.query_type === "profil") {
       let updated = 0;
       for (const item of items) {
-        const mapped = mapScrapeItem(item, hunt.world || config.default_world, hunt.id, "profil");
+        const mapped = mapScrapeItem(item, hunt.world || config.default_world, hunt.id, "profil", config.domain_sperrliste);
         if (!mapped.handle) continue;
         const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
         if (mapped.bio) patch.bio = mapped.bio;
         if (mapped.followers != null) patch.followers = mapped.followers;
         if (mapped.website) patch.website = mapped.website;
         if (mapped.scrape_images.length) patch.scrape_images = mapped.scrape_images;
-        if (mapped.email) { patch.email = mapped.email; patch.channel = "email"; patch.contact_source = "bio"; }
+        if (mapped.email && pruefeEmailPlausibilitaet(mapped.email, mapped.website, mapped.handle).ok) {
+          patch.email = mapped.email; patch.channel = "email"; patch.contact_source = "bio";
+        }
         const { data: touched } = await admin.from("acquisition_leads")
           .update(patch as never).eq("handle", mapped.handle).is("email", null).select("id");
         updated += (touched ?? []).length;
@@ -2066,7 +2233,7 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
 
 
     const rows = items
-      .map((item) => mapScrapeItem(item, hunt.world || config.default_world, hunt.id, hunt.query_type === "nachbarschaft" ? "nachbarschaft" : "hashtag"))
+      .map((item) => mapScrapeItem(item, hunt.world || config.default_world, hunt.id, hunt.query_type === "nachbarschaft" ? "nachbarschaft" : "hashtag", config.domain_sperrliste))
       .filter((r) => r.handle && !known.has(r.handle));
     const deduped = Array.from(new Map(rows.map((r) => [r.handle, r])).values());
     const passing = deduped.filter((r) => passesPrefilter(r, config));
@@ -2098,7 +2265,7 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
       return { ok: false, error: `Apify nicht erreichbar: ${(e as Error).message}` };
     }
     const rows = items
-      .map((item) => mapScrapeItem(item, config.default_world, null, "manuell"))
+      .map((item) => mapScrapeItem(item, config.default_world, null, "manuell", config.domain_sperrliste))
       .filter((r) => r.handle && !known.has(r.handle))
       .filter((r) => passesPrefilter(r, config));
     const res = await insertLeads(admin, Array.from(new Map(rows.map((r) => [r.handle, r])).values()));
