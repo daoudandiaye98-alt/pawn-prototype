@@ -86,6 +86,8 @@ export type Database = {
           created_at: string | null
           decided_at: string | null
           discovery_source: string | null
+          dm_followup_draft: string | null
+          dm_followup_sent_at: string | null
           email: string | null
           followers: number | null
           followup_at: string | null
@@ -136,6 +138,8 @@ export type Database = {
           created_at?: string | null
           decided_at?: string | null
           discovery_source?: string | null
+          dm_followup_draft?: string | null
+          dm_followup_sent_at?: string | null
           email?: string | null
           followers?: number | null
           followup_at?: string | null
@@ -186,6 +190,8 @@ export type Database = {
           created_at?: string | null
           decided_at?: string | null
           discovery_source?: string | null
+          dm_followup_draft?: string | null
+          dm_followup_sent_at?: string | null
           email?: string | null
           followers?: number | null
           followup_at?: string | null

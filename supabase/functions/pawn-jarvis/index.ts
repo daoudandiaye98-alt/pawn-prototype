@@ -2472,7 +2472,59 @@ Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
     }).eq("id", lead.id);
     ready++;
   }
-  return { ok: true, processed: stapel.length, ready, entverneint, tokensUsed };
+  const nachfassen = await runAkquiseNachfassenVorbereiten(admin);
+  return { ok: true, processed: stapel.length, ready, entverneint, tokensUsed, nachfassen };
+}
+
+/** WP5 "Die Rampe auf Hochtouren" — bereitet kurze Nachfass-Entwürfe (1–2 Sätze) für DM/Instagram-
+ * Leads vor, die seit mindestens drei Tagen kontaktiert sind, aber noch keine Antwort haben.
+ * Schreibt NUR dm_followup_draft — der Versand bleibt wie jede Erstnachricht Handarbeit im Feldzug
+ * (Entwurfs-Prinzip). Höchstens ein Nachfass-Entwurf pro Lead: die WHERE-Bedingung schließt Leads
+ * mit bereits gesetztem dm_followup_sent_at oder dm_followup_draft aus, ein zweiter Lauf erzeugt
+ * also nie einen zweiten Versuch. Kein Einladungslink erneut vom Modell — der wird, falls ein
+ * Ref-Code existiert, deterministisch im Code angehängt (gleiche harte Prüfung wie bei der
+ * Erstnachricht).
+ */
+const NACHFASSEN_NACH_TAGEN = 3;
+
+async function runAkquiseNachfassenVorbereiten(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const grenze = new Date(Date.now() - NACHFASSEN_NACH_TAGEN * 86_400_000).toISOString();
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, world, personal_line, language, ref_code, lead_type")
+    .eq("lead_type", "designer").eq("status", "kontaktiert").eq("opt_out", false)
+    .neq("channel", "email")
+    .is("replied_at", null).is("dm_followup_sent_at", null).is("dm_followup_draft", null)
+    .lte("contacted_at", grenze)
+    .limit(30);
+
+  const config = await loadAkquiseConfig(admin);
+  const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
+  let ready = 0, tokensUsed = 0;
+  for (const lead of (leads ?? []) as { id: string; handle: string; world: string; personal_line: string | null; language: string | null; ref_code: string | null; lead_type: string }[]) {
+    if (lead.lead_type !== "designer") continue; // harte Prüfung im Code, s. WP4
+    const sprache = lead.language === "en" ? "Englisch" : "Deutsch";
+    const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine sehr kurze Nachfass-Nachricht (höchstens 2 Sätze) an einen Designer, der auf die erste Instagram-Nachricht noch nicht geantwortet hat. Sprache: ${sprache}.
+
+SPRACHGESETZE (bindend, jede Zeile gilt):
+${gesetze}
+
+Ton: freundlich, unaufdringlich, keine Erinnerung an eine Absage, kein neues Zahlen-Angebot (das stand schon in der ersten Nachricht). Ein Satz kurze Nachfrage, ein Satz der zur Einladung zurückführt. Der persönliche Link wird automatisch ergänzt — schreibe ihn NICHT selbst aus. Antworte NUR mit dem Text, ohne Anführungszeichen, ohne Betreffzeile.`;
+    const user = `Die erste Nachricht bezog sich auf: ${lead.personal_line ?? `die Arbeit von @${lead.handle}`}. Welt: ${lead.world}.`;
+    const r = await llm({ system, user, maxTokens: 150 });
+    tokensUsed += r.tokens;
+    if (r.error || !r.text) continue;
+    let text = r.text.trim();
+    if (hatVerneinung(text)) {
+      const fixed = await entverneinen(text, gesetze);
+      tokensUsed += fixed.tokens;
+      text = fixed.text;
+    }
+    text = entferneEinladungslink(text);
+    if (lead.ref_code) text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
+    await admin.from("acquisition_leads").update({ dm_followup_draft: text }).eq("id", lead.id);
+    ready++;
+  }
+  return { processed: (leads ?? []).length, ready, tokensUsed };
 }
 
 /* ------------------------------------------------------------------ *
