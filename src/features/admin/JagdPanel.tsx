@@ -72,6 +72,8 @@ export function JagdPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [stats, setStats] = useState<KontaktStats | null>(null);
+  const [dailyRuns, setDailyRuns] = useState(16);
+  const [dailyRunsSaving, setDailyRunsSaving] = useState(false);
 
   const load = useCallback(async () => {
     const seit = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
@@ -85,6 +87,8 @@ export function JagdPanel() {
     const parsed = parseQueries(configRes.data?.value);
     setQueries(parsed);
     setQueryText(parsed.map((q) => `${q.query} · ${q.world}`).join("\n"));
+    const storedDailyRuns = (configRes.data?.value as { hunt_daily_runs?: number } | null)?.hunt_daily_runs;
+    if (typeof storedDailyRuns === "number") setDailyRuns(storedDailyRuns);
 
     const leads = (leadsRes.data as { status: string; email: string | null; contact_url: string | null }[] | null) ?? [];
     setStats({
@@ -146,6 +150,18 @@ export function JagdPanel() {
     setQueries(parsed);
     setEditing(false);
     toast.success("Suchbegriffe gespeichert.");
+  }
+
+  async function saveDailyRuns(value: number) {
+    setDailyRunsSaving(true);
+    const { data: current } = await supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
+    const base = (current?.value as Record<string, unknown> | null) ?? {};
+    const { error } = await supabase.from("ai_config")
+      .upsert({ key: "akquise_config", value: { ...base, hunt_daily_runs: value } as unknown as never }, { onConflict: "key" });
+    setDailyRunsSaving(false);
+    if (error) { toast.error(error.message); return; }
+    setDailyRuns(value);
+    toast.success(`Tempo gespeichert: ${value} Suchläufe pro Jagd.`);
   }
 
   const running = hunts.filter((h) => h.status === "gestartet").length;
@@ -213,6 +229,26 @@ export function JagdPanel() {
       )}
 
 
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">Tempo</p>
+          <p className="mt-1 text-xs text-muted-foreground">Suchläufe, die „Jetzt jagen" pro Klick startet.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="number" min={1} max={200} value={dailyRuns}
+            onChange={(e) => setDailyRuns(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
+            className="h-9 w-20 border-[1.5px] border-black px-2 text-center font-serif text-lg tabular-nums"
+          />
+          <Button
+            size="sm" disabled={dailyRunsSaving} onClick={() => void saveDailyRuns(dailyRuns)}
+            className="rounded-none bg-black text-white hover:bg-white hover:text-black"
+          >
+            {dailyRunsSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Speichern"}
+          </Button>
+        </div>
+      </div>
 
       <div className="border-b border-border px-5 py-4">
         <div className="flex items-center justify-between gap-3">

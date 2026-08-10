@@ -271,7 +271,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
   apify_actor_profile: "apify~instagram-profile-scraper",
   hunt_queries: [],
-  hunt_daily_runs: 8,
+  hunt_daily_runs: 16,
   hunt_results_per_run: 80,
   hunt_min_followers: 300,
   hunt_max_followers: 200000,
@@ -1551,10 +1551,17 @@ async function runAkquiseJagd(admin: SupabaseClient, apiKey: string | null): Pro
 
   let queries = config.hunt_queries ?? [];
   let tokensUsed = 0;
-  if (!queries.length) {
+  // WP5 "Jagd-Verzehnfachung": früher wurde nur EIN einziges Mal destilliert (nur beim
+  // allerersten Lauf) — akquise_jagd_lernen sortiert seitdem erfolglose Begriffe aus, aber nichts
+  // füllte den Pool je wieder auf. Ohne Nachschub schrumpft die Vielfalt der Quellen mit jeder
+  // Bereinigung. Ab jetzt: sobald der Pool unter 15 Begriffe fällt, holt Jarvis frischen Nachschub
+  // und ergänzt ihn (bestehende Begriffe/Gewichte bleiben erhalten, keine Dubletten).
+  if (queries.length < 15) {
     const distilled = await destillHuntQueries(admin, apiKey ?? "");
     tokensUsed = distilled.tokens;
-    queries = distilled.queries;
+    const known = new Set(queries.map((q) => q.query.toLowerCase()));
+    const fresh = distilled.queries.filter((q) => !known.has(q.query.toLowerCase()));
+    queries = [...queries, ...fresh];
     if (!queries.length) return { ok: false, error: "Konnte keine Suchbegriffe destillieren." };
     await saveHuntQueries(admin, config, queries);
   }
@@ -2068,9 +2075,13 @@ async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<strin
 /** akquise_kuratieren — bewertet bis zu 20 neue Leads per Bild-Analyse (Claude Vision). */
 async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
+  // WP5 "Die ersten Fünfzig" — Timeout-Ursache: bis zu batch_kuratieren (Default 60) sequenzielle
+  // Claude-Vision-Aufrufe in EINEM Funktionsaufruf sprengen das Zeitbudget der Edge Function lange
+  // bevor der Batch fertig ist — "Pflicht vor Volumen": kleinere Batches, dafür braucht es einen
+  // häufigeren Zeitplan, um dieselbe Tagesmenge zu erreichen (siehe PR-Beschreibung).
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, world, bio, scrape_images").eq("lead_type", "designer").eq("status", "neu")
-    .order("created_at", { ascending: true }).limit(config.batch_kuratieren);
+    .order("created_at", { ascending: true }).limit(Math.min(config.batch_kuratieren, 8));
 
   let qualified = 0, sortedOut = 0, tokensUsed = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; bio: string | null; scrape_images: unknown }[]) {
