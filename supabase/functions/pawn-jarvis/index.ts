@@ -255,6 +255,8 @@ interface AkquiseConfig {
    * bei Suchbegriff-Auswahl (Jagd) und Bearbeitungsreihenfolge (Kuratieren), wenn Batch/Zeitbudget
    * nicht für alle wartenden Leads reicht. Fehlt eine Welt hier, gilt Gewicht 1 (neutral). */
   world_priority: Record<string, number>;
+  /** Teil 42: zusätzliche Domains, die niemals Website eines Designer-Leads werden (ohne Deploy pflegbar). */
+  domain_sperrliste: string[];
 }
 
 
@@ -293,6 +295,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   retention_days: 180,
   daily_goal: 50,
   world_priority: { Kunst: 1.8 },
+  domain_sperrliste: [],
 };
 async function loadAkquiseConfig(admin: SupabaseClient): Promise<AkquiseConfig> {
   try {
@@ -1639,7 +1642,10 @@ function passesPrefilter(row: { handle: string; followers: number | null; bio: s
   return !config.hunt_exclude_words.some((w) => w.trim() && haystack.includes(w.toLowerCase()));
 }
 
-function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: string | null, source: string) {
+function mapScrapeItem(
+  item: Record<string, unknown>, world: string, huntId: string | null, source: string,
+  sperrliste: string[] = [],
+) {
   const handle = String(item.username ?? item.handle ?? item.ownerUsername ?? "").replace(/^@/, "").trim().toLowerCase();
   const followersRaw = item.followersCount ?? item.followers ?? (item.edge_followed_by as { count?: number } | undefined)?.count;
   const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
@@ -1648,7 +1654,10 @@ function mapScrapeItem(item: Record<string, unknown>, world: string, huntId: str
   const links = Array.isArray(item.bioLinks) ? item.bioLinks as Array<{ url?: string }> : [];
   // Teil 41: die verlinkte Adresse wird VOLLSTÄNDIG übernommen (mit Pfad) — bei Sammelseiten
   // wie bio.site ist erst der Pfad die eigentliche Spur, der bloße Stamm ist Datenmüll.
-  const website = String(item.externalUrl ?? item.website ?? links[0]?.url ?? "").trim() || null;
+  const rohWebsite = String(item.externalUrl ?? item.website ?? links[0]?.url ?? "").trim() || null;
+  // Teil 42: Presseartikel, Portale und Marktplätze sind nie die Website eines Hauses —
+  // sonst erntet die Kontakt-Kette später brav die Adresse einer fremden Redaktion.
+  const website = istGesperrteWebsite(rohWebsite, sperrliste) ? null : rohWebsite;
   return {
     handle, world, source, followers, bio, email, website,
     contact_source: email ? "bio" : null,
