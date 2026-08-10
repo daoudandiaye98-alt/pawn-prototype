@@ -2088,18 +2088,28 @@ async function runAkquiseJagdLernen(admin: SupabaseClient): Promise<Record<strin
 }
 
 /**
- * akquise_wirkungsbericht (WP6 "Lernen auf Wirkung") — wöchentlicher, rein lesender Bericht:
- * wie viele versendete Erstnachrichten haben tatsächlich eine Antwort oder eine Bewerbung
- * gebracht, aufgeschlüsselt je Variante (vorlage vs. frei, aus akquise_verfassen). Schreibt NUR
- * einen jarvis_reports-Eintrag zum Nachlesen im Maschinenraum — verändert nichts automatisch,
- * verschickt nichts. Ehrlichkeits-Wächter: Aussagen zu einer Variante nur ab 20 versendeten
- * Nachrichten dieser Variante, sonst wird die geringe Stichprobe offen benannt statt verschwiegen.
+ * akquise_wirkungsbericht (WP6 "Lernen auf Wirkung", ab WP4 "Hochtouren" auf die neue A/B-Achse
+ * umgestellt) — wöchentlicher, rein lesender Bericht: wie viele seit dem letzten Montag versendete
+ * Erstnachrichten haben tatsächlich eine Antwort oder eine Bewerbung gebracht, aufgeschlüsselt je
+ * Variante. Der Vergleich beginnt bewusst erst am Montag der laufenden Woche, damit ältere
+ * "vorlage"/"frei"-Läufe aus WP6 den neuen A/B-Test nicht verwässern. Schreibt NUR einen
+ * jarvis_reports-Eintrag zum Nachlesen im Maschinenraum — verändert nichts automatisch, verschickt
+ * nichts. Ehrlichkeits-Wächter: Aussagen zu einer Variante nur ab 20 versendeten Nachrichten dieser
+ * Variante, sonst wird die geringe Stichprobe offen benannt statt verschwiegen.
  */
+function letzterMontagIso(): string {
+  const now = new Date();
+  const diffZuMontag = (now.getUTCDay() + 6) % 7;
+  const montag = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffZuMontag));
+  return montag.toISOString();
+}
+
 async function runAkquiseWirkungsbericht(admin: SupabaseClient): Promise<Record<string, unknown>> {
   const MIN_SAMPLE = 20;
+  const seit = letzterMontagIso();
   const { data: rows } = await admin.from("acquisition_leads")
     .select("variant_id, contacted_at, replied_at, status")
-    .eq("lead_type", "designer").not("contacted_at", "is", null).limit(5000);
+    .eq("lead_type", "designer").not("contacted_at", "is", null).gte("contacted_at", seit).limit(5000);
   const sent = (rows ?? []) as { variant_id: string | null; contacted_at: string; replied_at: string | null; status: string }[];
 
   const perVariant = new Map<string, { total: number; antworten: number; bewerbungen: number }>();
@@ -2121,16 +2131,17 @@ async function runAkquiseWirkungsbericht(admin: SupabaseClient): Promise<Record<
     return `- ${variant}: ${s.total} versendet, ${s.antworten} Antworten (${antwortquote}%), ${s.bewerbungen} Bewerbungen (${bewerbungsquote}%).`;
   });
 
+  const seitDatum = new Date(seit).toLocaleDateString("de-DE");
   const body = sent.length === 0
-    ? "Noch keine versendeten Erstnachrichten mit Zeitstempel — noch nichts auszuwerten."
-    : `Wirkung nach Variante (Antwort/Bewerbung, nicht Vision-Einschätzung):\n${zeilen.join("\n")}`;
+    ? `Noch keine seit Montag (${seitDatum}) versendeten Erstnachrichten mit Zeitstempel — noch nichts auszuwerten.`
+    : `Wirkung nach Variante seit Montag, ${seitDatum} (Antwort/Bewerbung, nicht Vision-Einschätzung):\n${zeilen.join("\n")}`;
 
   await admin.from("jarvis_reports").insert({
     kind: "wirkung", title: `Wirkungsbericht · ${new Date().toLocaleDateString("de-DE")}`, body,
-    data: { perVariant: Object.fromEntries(perVariant) },
+    data: { perVariant: Object.fromEntries(perVariant), seit },
   });
 
-  return { ok: true, ausgewertet: sent.length, varianten: perVariant.size };
+  return { ok: true, ausgewertet: sent.length, varianten: perVariant.size, seit };
 }
 
 /** akquise_kuratieren — bewertet bis zu 20 neue Leads per Bild-Analyse (Claude Vision). */
@@ -2169,10 +2180,57 @@ function hatVerneinung(text: string): boolean {
   return NEGATION_PATTERN.test(text);
 }
 
+/** WP4 "Hochtouren" — Aufbau-Text je Variante: A = direkte Einladung mit Link, B = zweistufig
+ * (persönliche Zeile + Frage, noch kein Link — der folgt erst persönlich nach einer Antwort). */
+function aufbauFuerVariante(variant: "A" | "B"): string {
+  return variant === "A"
+    ? `Höchstens 5 Sätze insgesamt, in dieser Reihenfolge:
+1. Persönliche Anrede mit Namen (falls bekannt) und ein konkreter Satz zu genau dieser Arbeit — Material, Haltung, Handschrift — der zeigt, dass wirklich hingesehen wurde (das ist die personal_line).
+2. Genau ein Satz, was PAWN ist: ein kuratierter Marktplatz für unabhängige Designer:innen.
+3. Das Angebot in Zahlen, als Zusage in einem Satz: kostenloser Einstieg, du behältst 93 % jedes Verkaufs, ein Platz unter den ersten 50 Häusern.
+4. Ein Satz, der zur Einladung überleitet — der persönliche Link wird automatisch danach ergänzt, schreibe ihn NICHT selbst aus.
+Keine Aufzählungszeichen, keine Anführungszeichen, keine erfundenen Fakten.`
+    : `Höchstens 3 Sätze, zweistufig — noch KEIN Link, KEINE Zahlen-Angebote in dieser ersten Nachricht:
+1. Persönliche Anrede mit Namen (falls bekannt) und ein konkreter Satz zu genau dieser Arbeit — das ist die personal_line.
+2. Eine kurze, echte Frage, die zum Antworten einlädt (z. B. Interesse an mehr Informationen über PAWN).
+Der Link und das Zahlen-Angebot folgen erst persönlich, sobald diese Person antwortet — erwähne beides hier NICHT.`;
+}
+
+/** WP4 "Hochtouren" — entfernt einen versehentlich mitgeschriebenen Einladungslink, falls das
+ * Modell die Variante-B-Vorgabe (noch kein Link) ignoriert hat. Harte Prüfung im Code, nicht nur
+ * im Prompt. */
+function entferneEinladungslink(text: string): string {
+  return text.replace(/https?:\/\/(www\.)?pawn\.vision\/einladung\/\S+/gi, "").trim();
+}
+
+/**
+ * WP4 "Hochtouren" — A/B-Test der Ansprache (direkter Link vs. zweistufig), rotierend je Welt statt
+ * fest zugeordnet. Liest die bisherige Verteilung je Welt aus den bereits verfassten Erstnachrichten
+ * und gibt danach immer die bisher seltener genutzte Variante der jeweiligen Welt aus — so bleibt
+ * die Verteilung über viele Läufe hinweg ausgeglichen, ohne einen eigenen Zähler-Zustand zu brauchen.
+ */
+async function ladeVariantenZuteiler(admin: SupabaseClient): Promise<(world: string) => "A" | "B"> {
+  const { data: rows } = await admin.from("acquisition_leads")
+    .select("world, variant_id").eq("lead_type", "designer").in("variant_id", ["A", "B"]).limit(5000);
+  const counts = new Map<string, { a: number; b: number }>();
+  for (const r of (rows ?? []) as { world: string; variant_id: string }[]) {
+    const c = counts.get(r.world) ?? { a: 0, b: 0 };
+    if (r.variant_id === "A") c.a++; else c.b++;
+    counts.set(r.world, c);
+  }
+  return (world: string): "A" | "B" => {
+    const c = counts.get(world) ?? { a: 0, b: 0 };
+    const variant: "A" | "B" = c.a <= c.b ? "A" : "B";
+    if (variant === "A") c.a++; else c.b++;
+    counts.set(world, c);
+    return variant;
+  };
+}
+
 /** Recherchiert kurz per Websuche und verfasst personal_line + komplette Erstnachricht in Daoudas Ton. */
 async function researchAndDraftLead(
   apiKey: string, lead: { handle: string; world: string; bio: string | null; name?: string | null },
-  styleLaw: string, languages: string[], sprachgesetze: string,
+  styleLaw: string, languages: string[], sprachgesetze: string, variant: "A" | "B",
 ): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> {
   const allowed = languages.length ? languages : ["de", "en"];
   const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision.
@@ -2182,16 +2240,8 @@ Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unte
 SPRACHGESETZE (bindend, jede Zeile gilt):
 ${sprachgesetze}
 
-TON UND AUFBAU (nach dieser Fassung von Daouda):
-1. Persönliche Anrede mit Namen, wenn bekannt.
-2. Ein konkreter Satz zu genau dieser Arbeit — Material, Haltung, Handschrift — der zeigt, dass wirklich hingesehen wurde (das ist die personal_line).
-3. Was PAWN ist: ein neuer kuratierter Marktplatz für unabhängige Designer:innen, Künstler:innen und die Geschichten hinter ihrer Arbeit.
-4. Warum: Großartiges Design wird kraftvoller, wenn man den Menschen, die Idee und den Weg dahinter kennt. Marken mit einem Gesicht. Stücke mit einer Geschichte. Künstler:innen, deren Arbeit gesehen wird.
-5. Der Moment: PAWN steht am Anfang und bringt gerade die ersten Häuser zusammen, die es mitprägen.
-6. Die Konditionen als Zusage: Teilnahme ist kostenlos, du bestimmst deine Preise selbst, du behältst 93 % jedes Verkaufs — PAWN wächst also genau dann, wenn du wächst.
-7. Einladung zum Schluss: wir zeigen dir gerne, was gerade entsteht. Link: pawn.vision. Gruß im Namen von PAWN.
-
-Länge: 120–200 Wörter. Keine Aufzählungszeichen, keine Anführungszeichen um die Nachricht, keine erfundenen Fakten.
+TON UND AUFBAU (Variante ${variant}):
+${aufbauFuerVariante(variant)}
 
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht>"}
 
@@ -2284,30 +2334,38 @@ function vornameVon(name: string | null | undefined): string | null {
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
+    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code, lead_type").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
+  const naechsteVariante = await ladeVariantenZuteiler(admin);
 
   // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
   // Reine Instagram-Leads (keine E-Mail, kein Kontaktformular) schreibt akquise_dm_vorbereiten —
   // die kürzere DM-Fassung für den Sende-Stapel, nicht diese lange Mail-Fassung.
-  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null }[])
+  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null; lead_type: string }[])
     .filter((l) => l.email || l.contact_url)
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
   const stapel = alle.slice(0, config.batch_verfassen);
 
   let ready = 0, tokensUsed = 0, entverneint = 0;
   for (const lead of stapel) {
+    // WP4 "Hochtouren": der Einladungslink gehört ausschließlich Designer-Leads — harte Prüfung
+    // im Code (nicht nur über den Query-Filter oben), damit der Fehler vom 10.08. (42 falsch
+    // verlinkte Presse-/Multiplikator-Entwürfe) sich nie wiederholt.
+    if (lead.lead_type !== "designer") continue;
     const name = vornameVon(lead.contact_name);
-    const draft = await researchAndDraftLead(apiKey, { ...lead, name }, styleLaw, config.languages, gesetze);
+    const variant = naechsteVariante(lead.world);
+    const draft = await researchAndDraftLead(apiKey, { ...lead, name }, styleLaw, config.languages, gesetze, variant);
     if (!draft) continue;
     tokensUsed += draft.tokens;
     // Feste Vorlage schlägt den freien Entwurf: Jarvis liefert nur den persönlichen Satz,
-    // der Rest bleibt wortgleich so, wie Daouda ihn festgelegt hat.
+    // der Rest bleibt wortgleich so, wie Daouda ihn festgelegt hat. Die A/B-Struktur gilt nur
+    // für den freien Entwurf — eine gesetzte Vorlage ist Daoudas eigener, fester Text.
     const template = draft.language === "en" ? config.template_en : config.template_de;
-    let message = template && template.trim()
+    const hatVorlage = !!(template && template.trim());
+    let message = hatVorlage
       ? fillTemplate(template, draft.personal_line, name)
       : draft.message;
 
@@ -2318,20 +2376,21 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
       if (fixed.text !== message) { message = fixed.text; entverneint++; }
     }
 
-    // WP1 "Die ersten Fünfzig": jede Erstnachricht trägt den persönlichen Rückkanal.
-    if (lead.ref_code && !message.includes("/einladung/")) {
+    if (!hatVorlage && variant === "B") {
+      // Zweistufig: kein Link in dieser ersten Nachricht, unabhängig davon, was das Modell
+      // geschrieben hat.
+      message = entferneEinladungslink(message);
+    } else if (lead.ref_code && !message.includes("/einladung/")) {
+      // WP1 "Die ersten Fünfzig": jede direkte Erstnachricht trägt den persönlichen Rückkanal.
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
 
     // Der Weg entscheidet sich hier: Adresse -> E-Mail, Formular -> Formular, sonst DM.
     const weg = lead.email ? "email" : lead.contact_url ? "formular" : "dm";
-    // WP6 "Lernen auf Wirkung": die einzige real vorhandene Variantenachse dieses Modus — feste
-    // Vorlage mit eingesetztem Satz vs. freier Claude-Entwurf — wird markiert, damit ein späterer
-    // Wirkungsbericht Antwort-/Bewerbungsraten je Variante vergleichen kann.
-    const variantId = template && template.trim() ? "vorlage" : "frei";
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language: draft.language,
-      channel: weg === "formular" ? "dm" : weg, contact_channel: weg, variant_id: variantId,
+      channel: weg === "formular" ? "dm" : weg, contact_channel: weg,
+      variant_id: hatVorlage ? "vorlage" : variant,
     }).eq("id", lead.id);
     ready++;
   }
@@ -2348,7 +2407,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
  */
 async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, contact_name, ref_code")
+    .select("id, handle, world, bio, contact_name, ref_code, lead_type")
     .eq("lead_type", "designer").eq("status", "qualifiziert")
     .is("email", null).is("contact_url", null).is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
@@ -2356,31 +2415,32 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
   const config = await loadAkquiseConfig(admin);
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   const allowed = config.languages.length ? config.languages : ["de", "en"];
+  const naechsteVariante = await ladeVariantenZuteiler(admin);
 
-  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null }[])
+  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null; lead_type: string }[])
     .filter((l) => l.handle)
     .slice(0, config.batch_verfassen);
 
   let ready = 0, tokensUsed = 0, entverneint = 0;
   for (const lead of stapel) {
+    // WP4 "Hochtouren": harte Prüfung im Code — der Einladungslink unten gehört ausschließlich
+    // Designer-Leads, unabhängig vom Query-Filter oben.
+    if (lead.lead_type !== "designer") continue;
     const name = vornameVon(lead.contact_name);
+    const variant = naechsteVariante(lead.world);
     const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine kurze Instagram-Direktnachricht an einen unabhängigen Designer für pawn.vision.
 
-Instagram-DMs werden nach wenigen Zeilen abgeschnitten — die Nachricht muss deutlich kürzer sein als eine E-Mail: 40–70 Wörter, ein Fließtext, keine Betreffzeile, keine Aufzählung.
+Instagram-DMs werden nach wenigen Zeilen abgeschnitten — die Nachricht muss deutlich kürzer sein als eine E-Mail: ${variant === "A" ? "40–70 Wörter" : "20–40 Wörter"}, ein Fließtext, keine Betreffzeile, keine Aufzählung.
 
 Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe in dieser Sprache. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
 
 SPRACHGESETZE (bindend, jede Zeile gilt):
 ${gesetze}
 
-AUFBAU (kurz, fließend, in dieser Reihenfolge, keine Aufzählungszeichen):
-1. Anrede mit Namen, wenn bekannt.
-2. Eine persönliche Zeile zur konkreten Arbeit dieser Person (das ist die personal_line) — zeigt, dass wirklich hingesehen wurde.
-3. Ein Satz, was PAWN ist: ein kuratierter Marktplatz für unabhängige Designer:innen.
-4. Die Konditionen als Zusage in einem Halbsatz: kostenlos, du behältst 93 % jedes Verkaufs.
-5. Eine kurze Einladung zum Schluss mit dem persönlichen Link https://pawn.vision/einladung/${lead.ref_code ?? ""}.
+AUFBAU (Variante ${variant}):
+${aufbauFuerVariante(variant)}
 
-Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige DM, 40–70 Wörter>"}
+Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige DM>"}
 
 Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
     const user = `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.`;
@@ -2397,15 +2457,18 @@ Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}`;
       if (fixed.text !== message) { message = fixed.text; entverneint++; }
     }
 
-    // WP1 "Die ersten Fünfzig": Rückkanal auch dann sichergestellt, wenn das Modell den
-    // Link nicht wörtlich übernommen hat.
-    if (lead.ref_code && !message.includes("/einladung/")) {
+    if (variant === "B") {
+      // Zweistufig: kein Link in dieser ersten Nachricht — harte Prüfung im Code.
+      message = entferneEinladungslink(message);
+    } else if (lead.ref_code && !message.includes("/einladung/")) {
+      // WP1 "Die ersten Fünfzig": Rückkanal auch dann sichergestellt, wenn das Modell den
+      // Link nicht wörtlich übernommen hat.
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
 
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language,
-      channel: "instagram", contact_channel: "instagram",
+      channel: "instagram", contact_channel: "instagram", variant_id: variant,
     }).eq("id", lead.id);
     ready++;
   }
