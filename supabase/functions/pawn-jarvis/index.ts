@@ -2277,11 +2277,23 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
   // Direkt im Anschluss die Profil-Anreicherung anstoßen: ohne Bio/Website/E-Mail ist ein Lead nur ein Name.
   const profile = await runAkquiseProfile(admin);
 
+  // Teil 44 FIX 5 — Instagram-Bildadressen gelten nur wenige Tage. Deshalb wird direkt im
+  // Import-Lauf gespiegelt, solange die Adressen frisch sind; der Cron bleibt nur das Netz
+  // für Nachzügler.
+  let gespiegelt = 0;
+  for (let runde = 0; runde < 3; runde++) {
+    const s = await runAkquiseBilderSpiegeln(admin);
+    gespiegelt += s.platten;
+    if (s.geprueft === 0) break;
+  }
+
   return {
     ok: true, imported, skipped, angereichert: enriched,
     hunts_fertig: finished, hunts_offen: stillRunning, hunts_fehlgeschlagen: failedRuns,
     profil_laeufe: (profile as { gestartet?: number }).gestartet ?? 0,
+    platten_gespiegelt: gespiegelt,
   };
+
 
 }
 
