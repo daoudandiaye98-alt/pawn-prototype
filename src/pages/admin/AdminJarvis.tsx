@@ -83,6 +83,7 @@ interface CulturalCurrent {
 const KIND_LABELS: Record<string, string> = {
   morgen: "Morgenbericht", woche: "Wochenbericht", recherche: "Recherche", antwort: "Antwort",
   diagnose: "Diagnose", wissen: "Wissenslauf", zeitgeist: "Zeitgeist", regie: "Kampagnen-Regie", dossier: "Haus-Dossier",
+  jagd: "Jagd-Auswertung", wirkung: "Wirkungsbericht",
 };
 
 const EXPERIMENT_STATUS_LABELS: Record<string, string> = {
