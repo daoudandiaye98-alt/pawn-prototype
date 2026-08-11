@@ -2147,6 +2147,56 @@ export type Database = {
         }
         Relationships: []
       }
+      inbound_email_events: {
+        Row: {
+          created_at: string
+          from_email: string
+          id: string
+          matched_at: string | null
+          matched_by: string | null
+          matched_lead_id: string | null
+          raw_payload: Json | null
+          received_at: string
+          resend_email_id: string | null
+          subject: string | null
+          to_email: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_email: string
+          id?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          matched_lead_id?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          resend_email_id?: string | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_email?: string
+          id?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          matched_lead_id?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          resend_email_id?: string | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_email_events_matched_lead_id_fkey"
+            columns: ["matched_lead_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jarvis_experiments: {
         Row: {
           after: Json | null
@@ -3634,6 +3684,13 @@ export type Database = {
         Args: { _application_id: string }
         Returns: undefined
       }
+      match_inbound_email: {
+        Args: { _event_id: string; _lead_id: string }
+        Returns: {
+          ok: boolean
+          previous_status: string
+        }[]
+      }
       merge_anon_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: number
@@ -3667,6 +3724,13 @@ export type Database = {
       reject_designer: {
         Args: { _application_id: string; _reason: string }
         Returns: undefined
+      }
+      resolve_inbound_reply: {
+        Args: { _channel?: string; _lead_id: string }
+        Returns: {
+          ok: boolean
+          previous_status: string
+        }[]
       }
       resequence_posting_queue_day: {
         Args: { _day: string }
