@@ -334,28 +334,36 @@ const ProductDetail = () => {
 
   const actionButtons = (
     <>
-      <Button
-        type="button"
-        variant="editorial"
-        size="chip"
-        onClick={buyNow}
-        loading={buyBusy}
-        disabled={soldOut && !isMto}
-        style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
-      >
-        {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
-      </Button>
-      <Button
-        type="button"
-        variant="editorial"
-        size="chip"
-        onClick={addToBag}
-        disabled={soldOut && !isMto}
-        className="house-ink house-hair"
-        style={{ background: "var(--house-bg)" }}
-      >
-        {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
-      </Button>
+      {!hausKannVerkaufen ? (
+        <span className="house-hair house-ink border px-3 py-2 text-[0.56rem] uppercase tracking-[0.24em]">
+          Dieses Haus öffnet in Kürze
+        </span>
+      ) : (
+        <>
+          <Button
+            type="button"
+            variant="editorial"
+            size="chip"
+            onClick={buyNow}
+            loading={buyBusy}
+            disabled={soldOut && !isMto}
+            style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
+          >
+            {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
+          </Button>
+          <Button
+            type="button"
+            variant="editorial"
+            size="chip"
+            onClick={addToBag}
+            disabled={soldOut && !isMto}
+            className="house-ink house-hair"
+            style={{ background: "var(--house-bg)" }}
+          >
+            {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
+          </Button>
+        </>
+      )}
       <Button
         type="button"
         variant="editorial"
