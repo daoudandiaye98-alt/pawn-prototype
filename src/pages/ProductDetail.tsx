@@ -157,6 +157,9 @@ const ProductDetail = () => {
   const stock = dbProduct?.inventory_mode === "stock" ? dbProduct.stock_quantity : null;
   const soldOut = stock === 0;
   const lowStock = stock !== null && stock > 0 && stock < 5;
+  // PART 45 — der Kaufknopf bleibt ruhig, solange das Haus kein Geld empfangen kann.
+  // Ein Kauf, der an der Kasse scheitert, kostet mehr Vertrauen als eine ehrliche Zeile.
+  const hausKannVerkaufen = dbProduct?.designers?.verkaufsbereit !== false;
   const canRequest = !!dbProduct?.allow_custom_requests;
 
   function addToBag() {
