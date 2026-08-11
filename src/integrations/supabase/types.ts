@@ -2586,9 +2586,14 @@ export type Database = {
           dispute_updated_at: string | null
           fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
           id: string
+          invoice_error: string | null
+          invoice_issued_at: string | null
+          invoice_kleinunternehmer: boolean | null
           invoice_number: string | null
+          invoice_path: string | null
           items: Json
           last_email_error: string | null
+          net_amount_cents: number | null
           paid_at: string | null
           refunded_amount_cents: number
           refunded_at: string | null
@@ -2596,6 +2601,7 @@ export type Database = {
           shipped_email_sent_at: string | null
           shipping_address_line1: string | null
           shipping_address_line2: string | null
+          shipping_amount_cents: number
           shipping_city: string | null
           shipping_country: string | null
           shipping_name: string | null
@@ -2627,9 +2633,14 @@ export type Database = {
           dispute_updated_at?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
+          invoice_error?: string | null
+          invoice_issued_at?: string | null
+          invoice_kleinunternehmer?: boolean | null
           invoice_number?: string | null
+          invoice_path?: string | null
           items?: Json
           last_email_error?: string | null
+          net_amount_cents?: number | null
           paid_at?: string | null
           refunded_amount_cents?: number
           refunded_at?: string | null
@@ -2637,6 +2648,7 @@ export type Database = {
           shipped_email_sent_at?: string | null
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
+          shipping_amount_cents?: number
           shipping_city?: string | null
           shipping_country?: string | null
           shipping_name?: string | null
@@ -2668,9 +2680,14 @@ export type Database = {
           dispute_updated_at?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
+          invoice_error?: string | null
+          invoice_issued_at?: string | null
+          invoice_kleinunternehmer?: boolean | null
           invoice_number?: string | null
+          invoice_path?: string | null
           items?: Json
           last_email_error?: string | null
+          net_amount_cents?: number | null
           paid_at?: string | null
           refunded_amount_cents?: number
           refunded_at?: string | null
@@ -2678,6 +2695,7 @@ export type Database = {
           shipped_email_sent_at?: string | null
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
+          shipping_amount_cents?: number
           shipping_city?: string | null
           shipping_country?: string | null
           shipping_name?: string | null
@@ -3506,6 +3524,10 @@ export type Database = {
       archive_application: {
         Args: { _application_id: string }
         Returns: undefined
+      }
+      assign_invoice_number: {
+        Args: { _designer_id: string; _order_id: string }
+        Returns: string
       }
       backfill_lead_attribution: {
         Args: never
