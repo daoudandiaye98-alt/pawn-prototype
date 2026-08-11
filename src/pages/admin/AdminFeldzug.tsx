@@ -32,7 +32,6 @@ interface FeldzugLead {
   replied_at: string | null;
   reply_sentiment: string | null;
   notes: string | null;
-  scrape_images: unknown;
   bounce_type: string | null;
   lead_type: string;
   followup_at: string | null;
@@ -40,6 +39,8 @@ interface FeldzugLead {
   dm_followup_sent_at: string | null;
   contact_url: string | null;
   contact_channel: string | null;
+  plate_images: unknown;
+  plate_status: string | null;
 }
 
 type ChannelTab = "dm" | "formular" | "nachfassen" | "multiplikator" | "email" | "blockiert";
@@ -66,8 +67,26 @@ function openInstagramDeeplink(handle: string) {
   }
 }
 
-function scrapeImages(lead: FeldzugLead): string[] {
-  return Array.isArray(lead.scrape_images) ? (lead.scrape_images as string[]).slice(0, 3) : [];
+/**
+ * Befund 2 "Die Rampe zeigt kaputte Bilder": scrape_images sind rohe, signierte Instagram-CDN-
+ * Adressen, die nach ca. 5 Tagen verfallen — die Karte zeigte sie trotzdem direkt an, mit dem
+ * Ergebnis, dass ein Großteil der Karten (62 von 79 zum Zeitpunkt der Prüfung) kaputte
+ * Platzhalter-Icons zeigte. plate_images sind die dauerhaft gespiegelten Kopien im eigenen
+ * Storage-Bucket ("einladungen", langlebig signiert) — nur diese werden noch angezeigt.
+ */
+function plateImages(lead: FeldzugLead): string[] {
+  return Array.isArray(lead.plate_images) ? (lead.plate_images as string[]).filter((u) => typeof u === "string").slice(0, 3) : [];
+}
+
+/** Ehrlichkeitsgesetz: statt eines Platzhalters oder kaputten Icons nennt die Karte den echten
+ * Grund, warum keine Bilder da sind — in Alltagssprache, aus plate_status abgeleitet. */
+function plateStatusText(status: string | null): string {
+  switch (status) {
+    case "bilder_abgelaufen": return "Bildadressen abgelaufen";
+    case "bilder_fehlgeschlagen": return "Bilder nicht abrufbar";
+    case "zu_wenig_material": return "Zu wenig Material";
+    default: return "Bilder noch nicht gespiegelt";
+  }
 }
 
 /* ─────────────────────── DM-Karte: eine pro Lead, Vollbild mobil ─────────────────────── */
@@ -87,8 +106,10 @@ function DmCard({
   const [step, setStep] = useState<0 | 1 | 2>(0); // 0 = frisch, 1 = kopiert, 2 = Instagram geöffnet
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
-  const images = scrapeImages(lead);
+  const [images, setImages] = useState(() => plateImages(lead));
   const text = textOverride ?? lead.message_draft;
+
+  useEffect(() => { setImages(plateImages(lead)); }, [lead.id, lead.plate_images]);
 
   useEffect(() => { setStep(0); setSkipOpen(false); setSkipReason(""); }, [lead.id]);
 
@@ -120,12 +141,21 @@ function DmCard({
             <span className="shrink-0 text-xs text-muted-foreground">{lead.followers.toLocaleString("de-DE")} Follower</span>
           )}
         </div>
-        {images.length > 0 && (
+        {images.length > 0 ? (
           <div className="mt-3 flex gap-2">
             {images.map((src) => (
-              <img key={src} src={src} alt={`Arbeit von @${lead.handle}`} loading="lazy" className="h-16 w-16 border border-black object-cover" />
+              <img
+                key={src}
+                src={src}
+                alt={`Arbeit von @${lead.handle}`}
+                loading="lazy"
+                className="h-16 w-16 border border-black object-cover"
+                onError={() => setImages((cur) => cur.filter((u) => u !== src))}
+              />
             ))}
           </div>
+        ) : (
+          <p className="mt-3 text-xs text-muted-foreground">{plateStatusText(lead.plate_status)}</p>
         )}
       </header>
 
@@ -583,7 +613,7 @@ export default function AdminFeldzug() {
     const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes, multiplikatorRes, inboundRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status")
         .eq("lead_type", "designer")
         .in("status", ["qualifiziert", "kontaktiert"])
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -595,7 +625,7 @@ export default function AdminFeldzug() {
       supabase.rpc("get_attribution_stats"),
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status")
         .eq("lead_type", "multiplikator").eq("status", "qualifiziert").is("contacted_at", null)
         .not("message_draft", "is", null)
         .order("kurator_score", { ascending: false, nullsFirst: false }),
