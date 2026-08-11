@@ -58,6 +58,8 @@ interface Lead {
   admin_decision: string | null;
   decided_at: string | null;
   scrape_images: unknown;
+  ref_code: string | null;
+  language: string | null;
 }
 
 const WORLDS: World[] = ["Mode", "Kunst", "Interior"];
@@ -96,12 +98,21 @@ Ich baue gerade PAWN — eine kuratierte Ausstellung für unabhängige Designer 
 
 Für dich entstehen keine Kosten. Keine Grundgebühr, keine Mindestlaufzeit. Du lädst deine Stücke einmal hoch — die Fotos hast du ja längst — und wir kümmern uns darum, dass man dich sieht. Wenn etwas verkauft wird, bleiben 93% bei dir.
 
-Ausgabe 08 öffnet gerade, die ersten Häuser ziehen ein: pawn.vision
+pawn.vision — die ersten Häuser ziehen ein
 
 Wenn's nichts für dich ist — auch gut, mach weiter so.`;
 }
 
-const FOLLOWUP_MESSAGE = `Kein Stress — wollte nur sichergehen, dass meine Nachricht nicht im Anfragen-Ordner versackt ist. Falls du reinschauen magst: pawn.vision. Kostet nichts, und Ausgabe 08 hat noch Platz. Wenn nicht, ist das auch völlig okay.`;
+/**
+ * PART 47 Befund 2: die alte FOLLOWUP_MESSAGE-Konstante war generisch (keine persönliche Zeile),
+ * enthielt die erfundene "Ausgabe 08 hat noch Platz" und keinen Einladungslink. Ersetzt durch
+ * eine kurze, personalisierte Nachricht mit dem echten Ref-Code-Link.
+ */
+function buildFollowupMessage(lead: { personal_line: string | null; ref_code: string | null }) {
+  const link = lead.ref_code ? `pawn.vision/einladung/${lead.ref_code}` : "pawn.vision";
+  const personal = lead.personal_line?.trim();
+  return `Nur ein kurzer Nachtrag, falls meine erste Nachricht untergegangen ist.${personal ? ` ${personal}` : ""} Hier ist deine Seite, ganz ohne Eile: ${link}`;
+}
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -203,7 +214,7 @@ function LeadDrawer({
   }
 
   async function copyFollowup() {
-    await navigator.clipboard.writeText(FOLLOWUP_MESSAGE);
+    await navigator.clipboard.writeText(buildFollowupMessage(lead));
     const now = new Date().toISOString();
     const { error } = await supabase
       .from("acquisition_leads")
@@ -564,7 +575,7 @@ function buildStapel(rows: Lead[]): StapelItem[] {
     if (r.status === "qualifiziert" && r.message_draft && r.admin_decision === "ja") {
       items.push({ lead: r, kind: "erstkontakt", text: r.message_draft });
     } else if (r.status === "kontaktiert" && !r.followup_at && r.next_touch_at && new Date(r.next_touch_at).getTime() <= now) {
-      items.push({ lead: r, kind: "followup", text: FOLLOWUP_MESSAGE });
+      items.push({ lead: r, kind: "followup", text: buildFollowupMessage(r) });
     }
   }
   return items.sort((a, b) => {
