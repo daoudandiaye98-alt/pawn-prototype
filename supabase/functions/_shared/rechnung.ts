@@ -227,7 +227,17 @@ export function baueRechnungsPdf(d: PdfDaten): Uint8Array {
     L.push({ text: "Gesamtbetrag", bold: true, gapBefore: 16, rightText: euro(d.brutto) });
     zeile("Gemaess § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).", { size: 9, gapBefore: 12 });
   }
-  if (d.steuer.hinweis && d.steuer.rate > 0) zeile(d.steuer.hinweis, { size: 8, gapBefore: 12 });
+  if (d.steuer.hinweis && d.steuer.rate > 0) {
+    // Umbruch von Hand: der Bauer kennt keine Textbreite, lange Zeilen liefen sonst aus der Seite.
+    const woerter = d.steuer.hinweis.split(" ");
+    let zeileText = "";
+    let erste = true;
+    for (const w of woerter) {
+      if ((zeileText + " " + w).trim().length > 95) { zeile(zeileText, { size: 8, gapBefore: erste ? 12 : 0 }); erste = false; zeileText = w; }
+      else zeileText = (zeileText + " " + w).trim();
+    }
+    if (zeileText) zeile(zeileText, { size: 8, gapBefore: erste ? 12 : 0 });
+  }
 
   const ret = ruecksendeadresse(b);
   if (ret.length) {
