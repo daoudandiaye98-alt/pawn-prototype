@@ -5,6 +5,8 @@
 // nie als stiller Abbruch (freundliche Degradierung).
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { erstelleRechnung, type OrderForInvoice } from "../_shared/rechnung.ts";
+import { rechnungsprofilVollstaendig } from "../_shared/verkaufsbereit.ts";
 
 interface Body {
   order_id: string;
@@ -28,100 +30,6 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
-// --- Dependency-free, hand-built single-page PDF (no npm PDF lib — Deno-edge-safe). ---
-
-function winAnsiByte(ch: string): number {
-  const cp = ch.codePointAt(0)!;
-  if (cp >= 0x20 && cp <= 0x7e) return cp;
-  if (cp >= 0xa0 && cp <= 0xff) return cp;
-  const special: Record<number, number> = {
-    0x20ac: 0x80, 0x201a: 0x82, 0x201e: 0x84, 0x2026: 0x85,
-    0x2013: 0x96, 0x2014: 0x97, 0x2018: 0x91, 0x2019: 0x92,
-    0x201c: 0x93, 0x201d: 0x94,
-  };
-  return special[cp] ?? 0x3f;
-}
-function pdfEscape(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-}
-function asciiBytes(s: string): Uint8Array {
-  return Uint8Array.from(Array.from(s).map((c) => c.charCodeAt(0)));
-}
-function concatBytes(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((n, c) => n + c.length, 0);
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) { out.set(c, off); off += c.length; }
-  return out;
-}
-
-interface PdfLine { text: string; size?: number; bold?: boolean; gapBefore?: number; gapAfter?: number }
-
-function buildInvoicePdf(lines: PdfLine[]): Uint8Array {
-  const PAGE_W = 595, PAGE_H = 842;
-  const marginX = 50;
-  let y = PAGE_H - 60;
-
-  const streamParts: string[] = ["BT\n"];
-  let curFont: string | null = null;
-  let curSize: number | null = null;
-  for (const line of lines) {
-    const size = line.size ?? 10;
-    const font = line.bold ? "F2" : "F1";
-    y -= line.gapBefore ?? 0;
-    if (font !== curFont || size !== curSize) {
-      streamParts.push(`/${font} ${size} Tf\n`);
-      curFont = font; curSize = size;
-    }
-    streamParts.push(`1 0 0 1 ${marginX} ${Math.round(y)} Tm (${pdfEscape(line.text)}) Tj\n`);
-    y -= line.gapAfter ?? Math.round(size * 1.4);
-  }
-  streamParts.push("ET");
-
-  const streamStr = streamParts.join("");
-  const streamBytes = Uint8Array.from(Array.from(streamStr).map(winAnsiByte));
-
-  const objects = [
-    asciiBytes(`<< /Type /Catalog /Pages 2 0 R >>`),
-    asciiBytes(`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`),
-    asciiBytes(`<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Contents 6 0 R >>`),
-    asciiBytes(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`),
-    asciiBytes(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`),
-  ];
-
-  const head = asciiBytes("%PDF-1.4\n");
-  const chunks: Uint8Array[] = [head];
-  const offsets: number[] = [0];
-  let pos = head.length;
-
-  for (let i = 0; i < objects.length; i++) {
-    const num = i + 1;
-    offsets[num] = pos;
-    const objHead = asciiBytes(`${num} 0 obj\n`);
-    const objTail = asciiBytes(`\nendobj\n`);
-    chunks.push(objHead, objects[i], objTail);
-    pos += objHead.length + objects[i].length + objTail.length;
-  }
-  {
-    const num = 6;
-    offsets[num] = pos;
-    const objHead = asciiBytes(`${num} 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n`);
-    const objTail = asciiBytes(`\nendstream\nendobj\n`);
-    chunks.push(objHead, streamBytes, objTail);
-    pos += objHead.length + streamBytes.length + objTail.length;
-  }
-
-  const xrefStart = pos;
-  const totalObjs = 7;
-  let xref = `xref\n0 ${totalObjs}\n0000000000 65535 f \n`;
-  for (let i = 1; i < totalObjs; i++) xref += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
-  const xrefBytes = asciiBytes(xref);
-  chunks.push(xrefBytes);
-
-  chunks.push(asciiBytes(`trailer\n<< /Size ${totalObjs} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`));
-  return concatBytes(chunks);
-}
-
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
@@ -137,10 +45,8 @@ interface BillingProfile {
   tax_id: string | null; kleinunternehmer: boolean;
 }
 
-function billingComplete(b: BillingProfile | null): boolean {
-  if (!b) return false;
-  return !!(b.legal_name && b.address_line1 && b.postal_code && b.city && b.country && (b.tax_id || b.kleinunternehmer));
-}
+// Dieselbe fachliche Regel wie in Datenbank, Studio und Kasse — eine Quelle.
+const billingComplete = (b: BillingProfile | null): boolean => rechnungsprofilVollstaendig(b);
 
 const TRACKING_URLS: Record<string, (t: string) => string> = {
   DHL: (t) => `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(t)}`,
@@ -150,8 +56,6 @@ const TRACKING_URLS: Record<string, (t: string) => string> = {
   UPS: (t) => `https://www.ups.com/track?tracknum=${encodeURIComponent(t)}`,
   "Deutsche Post": (t) => `https://www.deutschepost.de/sendung/simpleQuery.html?form.sendungsnummer=${encodeURIComponent(t)}`,
 };
-
-const VAT_RATE = 0.19; // Vereinfachung: deutscher Regelsteuersatz — keine länderspezifische Erkennung.
 
 async function resendSend(fromAddr: string, to: string, subject: string, text: string, replyTo?: string | null, attachment?: { filename: string; content: string }) {
   const key = Deno.env.get("RESEND_API_KEY");
@@ -194,62 +98,24 @@ interface OrderRow {
   tracking_number: string | null; carrier: string | null; invoice_number: string | null;
 }
 
-/** Erzeugt (falls nötig) die Rechnung und verschickt die Versandbestätigung — genutzt von "ship" und "retry-email". */
+/**
+ * Versandbestätigung. Die Rechnung selbst kommt aus der gemeinsamen Quelle
+ * (_shared/rechnung.ts) — hier wird sie nur noch angefordert und angehängt,
+ * damit es keine zweite, abweichende Rechnungswahrheit gibt.
+ */
 async function sendShippedEmail(admin: SupabaseClient, order: OrderRow, designerId: string, designerName: string, designerUserId: string | null) {
   const locale = order.buyer_locale === "en" ? "en" : "de";
-  const { data: billing } = await admin.from("designer_billing_profiles").select("*").eq("designer_id", designerId).maybeSingle();
-  const b = billing as (BillingProfile & { invoice_next_number: number }) | null;
 
-  let invoiceNumber = order.invoice_number;
-  if (!invoiceNumber) {
-    const { data: num, error } = await admin.rpc("next_invoice_number", { _designer_id: designerId });
-    if (error || !num) return { ok: false, error: error?.message ?? "Rechnungsnummer konnte nicht vergeben werden." };
-    invoiceNumber = num as string;
-    await admin.from("orders").update({ invoice_number: invoiceNumber }).eq("id", order.id);
+  const rechnung = await erstelleRechnung(admin, order as unknown as OrderForInvoice, designerId);
+  if (!rechnung.ok && !order.invoice_number) {
+    return { ok: false, error: rechnung.hinweis ?? "Rechnung konnte nicht erstellt werden." };
   }
+  const invoiceNumber = rechnung.invoice_number ?? order.invoice_number;
 
-  const gross = order.amount_total / 100;
-  const net = b?.kleinunternehmer ? gross : gross / (1 + VAT_RATE);
-  const tax = gross - net;
+  const pfad = rechnung.path ?? `${order.id}.pdf`;
+  const { data: blob } = await admin.storage.from("invoices").download(pfad);
+  const pdfBytes = blob ? new Uint8Array(await blob.arrayBuffer()) : null;
 
-  const lines: PdfLine[] = [
-    { text: `${designerName}`, size: 16, bold: true },
-    { text: b?.address_line1 ?? "", size: 9, gapBefore: 4 },
-    { text: [b?.postal_code, b?.city].filter(Boolean).join(" "), size: 9 },
-    { text: b?.country ?? "", size: 9 },
-    { text: locale === "en" ? "Invoice" : "Rechnung", size: 14, bold: true, gapBefore: 24 },
-    { text: `${locale === "en" ? "Invoice no." : "Rechnungsnummer"}: ${invoiceNumber}`, gapBefore: 10 },
-    { text: `${locale === "en" ? "Date" : "Datum"}: ${new Date().toLocaleDateString(locale === "en" ? "en-GB" : "de-DE")}` },
-    { text: `${locale === "en" ? "Order" : "Bestellung"}: ${order.id.slice(0, 8)}` },
-  ];
-  lines.push({ text: locale === "en" ? "Items" : "Positionen", bold: true, gapBefore: 20 });
-  for (const it of order.items ?? []) {
-    const label = `${it.name}${it.size ? ` · ${locale === "en" ? "Size" : "Größe"} ${it.size}` : ""} × ${it.qty}`;
-    const price = `€ ${((it.unit_amount * it.qty) / 100).toFixed(2)}`;
-    lines.push({ text: `${label}  —  ${price}`, gapBefore: 6 });
-  }
-  if (b?.kleinunternehmer) {
-    lines.push({ text: `${locale === "en" ? "Total" : "Gesamt"}: € ${gross.toFixed(2)}`, bold: true, gapBefore: 20 });
-    lines.push({
-      text: locale === "en"
-        ? "No VAT is shown pursuant to § 19 UStG (small business regulation)."
-        : "Gemäß § 19 UStG wird keine Umsatzsteuer ausgewiesen (Kleinunternehmerregelung).",
-      size: 9, gapBefore: 10,
-    });
-  } else {
-    lines.push({ text: `${locale === "en" ? "Net" : "Netto"}: € ${net.toFixed(2)}`, gapBefore: 20 });
-    lines.push({ text: `${locale === "en" ? "VAT" : "USt."} ${Math.round(VAT_RATE * 100)}%: € ${tax.toFixed(2)}` });
-    lines.push({ text: `${locale === "en" ? "Total" : "Brutto"}: € ${gross.toFixed(2)}`, bold: true, gapBefore: 4 });
-  }
-  lines.push({
-    text: locale === "en"
-      ? "Sold via PAWN (pawn.vision), acting as intermediary on behalf of the house above."
-      : "Verkauft über PAWN (pawn.vision), als Vermittler im Namen des oben genannten Hauses.",
-    size: 8, gapBefore: 24,
-  });
-
-  const pdfBytes = buildInvoicePdf(lines);
-  await admin.storage.from("invoices").upload(`${order.id}.pdf`, pdfBytes, { contentType: "application/pdf", upsert: true });
 
   if (!order.customer_email) return { ok: true, emailSent: false, invoiceNumber };
 
@@ -261,9 +127,9 @@ async function sendShippedEmail(admin: SupabaseClient, order: OrderRow, designer
 
   const from = await senderFrom(admin);
   const replyTo = await designerEmail(admin, designerUserId);
-  const sent = await resendSend(from, order.customer_email, subject, text, replyTo, {
-    filename: `Rechnung-${invoiceNumber}.pdf`, content: bytesToBase64(pdfBytes),
-  });
+  const sent = await resendSend(from, order.customer_email, subject, text, replyTo,
+    pdfBytes ? { filename: `Rechnung-${invoiceNumber}.pdf`, content: bytesToBase64(pdfBytes) } : undefined,
+  );
 
   await admin.from("orders").update(
     sent.ok ? { shipped_email_sent_at: new Date().toISOString(), last_email_error: null } : { last_email_error: sent.error },

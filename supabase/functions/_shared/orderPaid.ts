@@ -4,6 +4,7 @@
 // Stripe-Konto des Hauses entstehen).
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { schreibePartieZug } from "./partieZug.ts";
+import { erstelleRechnung, rechnungsLink, type OrderForInvoice } from "./rechnung.ts";
 
 interface Address {
   line1?: string | null;
@@ -19,6 +20,7 @@ export interface PaidSessionLike {
   metadata?: Record<string, string> | null;
   shipping_details?: { name?: string | null; address?: Address | null } | null;
   customer_details?: { name?: string | null; address?: Address | null } | null;
+  total_details?: { amount_shipping?: number | null } | null;
 }
 
 type OrderRow = Record<string, unknown> & {
@@ -55,6 +57,7 @@ export async function handleOrderPaid(
     status: "paid",
     paid_at: new Date().toISOString(),
     stripe_payment_intent_id: paymentIntentId(session),
+    shipping_amount_cents: Math.max(0, session.total_details?.amount_shipping ?? 0),
     ...(connectedAccountId ? { connected_account_id: connectedAccountId } : {}),
     ...(shipping
       ? {
@@ -89,6 +92,7 @@ export async function handleOrderPaid(
   }).then(() => {}, () => {});
 
   // Bestand abbauen + Haus benachrichtigen
+  let hausId: string | null = null;
   try {
     const items = (o.items as { slug?: string; qty?: number }[]) ?? [];
     const slugs = items.map((i) => i.slug).filter(Boolean) as string[];
@@ -101,6 +105,7 @@ export async function handleOrderPaid(
         await admin.rpc("decrement_stock_for_order", { _product_id: prod.id, _qty: Math.max(1, item.qty ?? 1) });
       }
       const designerIds = Array.from(new Set((prods ?? []).map((p) => p.designer_id).filter(Boolean)));
+      hausId = (designerIds[0] as string | undefined) ?? null;
       if (designerIds.length) {
         const { data: designers } = await admin.from("designers").select("id, user_id").in("id", designerIds);
         for (const d of designers ?? []) {
@@ -119,6 +124,18 @@ export async function handleOrderPaid(
     }
   } catch { /* best effort */ }
 
+  // WP2 — Rechnung erstellen. Wirft nie; Probleme stehen in orders.invoice_error.
+  const rechnung = await erstelleRechnung(admin, {
+    ...(o as unknown as Record<string, unknown>),
+    id: o.id,
+    items: o.items,
+    amount_total: o.amount_total,
+    shipping_amount_cents: (patch.shipping_amount_cents as number) ?? 0,
+  } as OrderForInvoice, hausId);
+  const rechnungUrl = rechnung.path ? await rechnungsLink(admin, rechnung.path).catch(() => null) : null;
+
+
+
   // Bestellbestätigung — E-Mail-Fehler dürfen die Bestellung nie anfassen.
   if (o.customer_email) {
     try {
@@ -130,9 +147,16 @@ export async function handleOrderPaid(
       const replyTo = cfgv.email_reply_to || "pawnstudio.co@gmail.com";
       const locale = o.buyer_locale === "en" ? "en" : "de";
       const subject = locale === "en" ? "Your PAWN order is confirmed" : "Deine PAWN-Bestellung ist bestätigt";
-      const text = locale === "en"
-        ? `Thank you — your order (€ ${(o.amount_total / 100).toFixed(2)}) is confirmed and on its way to the house that made it.\n\nYou'll hear from us again the moment it ships, with tracking and invoice attached.`
-        : `Danke — deine Bestellung (€ ${(o.amount_total / 100).toFixed(2)}) ist bestätigt und geht an das Haus, das sie gemacht hat.\n\nSobald sie verschickt wird, meldest du dich — mit Sendungsnummer und Rechnung im Anhang.`;
+      const rechnungZeile = rechnungUrl
+        ? (locale === "en"
+          ? `\n\nYour invoice${rechnung.invoice_number ? ` (${rechnung.invoice_number})` : ""}: ${rechnungUrl}`
+          : `\n\nDeine Rechnung${rechnung.invoice_number ? ` (${rechnung.invoice_number})` : ""}: ${rechnungUrl}`)
+        : (locale === "en"
+          ? "\n\nYour invoice will follow shortly by email."
+          : "\n\nDeine Rechnung folgt in Kürze per E-Mail.");
+      const text = (locale === "en"
+        ? `Thank you — your order (€ ${(o.amount_total / 100).toFixed(2)}) is confirmed and on its way to the house that made it.\n\nYou'll hear from us again the moment it ships, with tracking included.`
+        : `Danke — deine Bestellung (€ ${(o.amount_total / 100).toFixed(2)}) ist bestätigt und geht an das Haus, das sie gemacht hat.\n\nSobald sie verschickt wird, melden wir uns wieder — mit Sendungsnummer.`) + rechnungZeile;
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
