@@ -925,6 +925,8 @@ async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): P
 
   const evolutionResult = await runEvolution(admin).catch(() => ({ summary: "" }));
   await runAkquiseRetention(admin).catch(() => 0);
+  // PART 45: die Kasse wird bei jedem Herzschlag mitgeprüft — Geld darf nie stumm hängen bleiben.
+  await runKasseWache(admin).catch(() => null);
 
   if (inQuietHours(config)) return { skipped: "ruhezeit", evolution: evolutionResult.summary };
 
