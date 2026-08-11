@@ -56,6 +56,7 @@ export async function handleOrderPaid(
     status: "paid",
     paid_at: new Date().toISOString(),
     stripe_payment_intent_id: paymentIntentId(session),
+    shipping_amount_cents: Math.max(0, session.total_details?.amount_shipping ?? 0),
     ...(connectedAccountId ? { connected_account_id: connectedAccountId } : {}),
     ...(shipping
       ? {
