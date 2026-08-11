@@ -181,7 +181,7 @@ interface PdfDaten {
   versand: number;
 }
 
-function baueRechnungsPdf(d: PdfDaten): Uint8Array {
+export function baueRechnungsPdf(d: PdfDaten): Uint8Array {
   const b = d.billing;
   const L: PdfLine[] = [];
   const zeile = (text: string, opts: Partial<PdfLine> = {}) => { if (text.trim()) L.push({ text, ...opts }); };
