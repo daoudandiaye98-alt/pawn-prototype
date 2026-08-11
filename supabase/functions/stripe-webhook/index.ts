@@ -6,6 +6,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
 import { handleOrderPaid, handleCreditsPurchase, type PaidSessionLike } from "../_shared/orderPaid.ts";
 import { pickByLang } from "../_shared/locale.ts";
+import { handleAccountUpdated } from "../_shared/accountUpdated.ts";
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -40,33 +42,14 @@ Deno.serve(async (req) => {
       }
     } else if (event.type === "checkout.session.expired") {
       const session = event.data.object as { id?: string };
-      if (session.id) await admin.from("orders").update({ status: "failed" }).eq("stripe_session_id", session.id).eq("status", "pending");
+      if (session.id) await admin.from("orders").update({ status: "expired" }).eq("stripe_session_id", session.id).eq("status", "pending");
     } else if (event.type === "payment_intent.payment_failed") {
       // Bei einem PaymentIntent-Ereignis ist die ID die des Intents, nicht der Session.
       const pi = event.data.object as { id?: string };
       if (pi.id) await admin.from("orders").update({ status: "failed" }).eq("stripe_payment_intent_id", pi.id).eq("status", "pending");
     } else if (event.type === "account.updated") {
-      // Konto-Status eines Hauses hat sich geändert (Nachweise eingereicht, freigeschaltet, gesperrt).
-      const account = event.data.object as Stripe.Account;
-      const requirements = (account.requirements ?? {}) as unknown as Record<string, unknown>;
-      const { data: designer } = await admin.from("designers").update({
-        stripe_charges_enabled: !!account.charges_enabled,
-        stripe_details_submitted: !!account.details_submitted,
-        stripe_payouts_enabled: !!account.payouts_enabled,
-        stripe_requirements: requirements,
-        ...(account.country ? { stripe_country: account.country } : {}),
-      }).eq("stripe_account_id", account.id).select("id, user_id, stripe_charges_enabled, preferred_language").maybeSingle();
+      await handleAccountUpdated(admin, event.data.object as unknown as Parameters<typeof handleAccountUpdated>[1]);
 
-      const dueNow = (account.requirements?.currently_due ?? []) as string[];
-      if (designer?.user_id && dueNow.length > 0) {
-        await admin.from("notifications").insert({
-          user_id: designer.user_id,
-          type: "payout.requirements",
-          title: pickByLang(designer.preferred_language, "Stripe braucht noch Angaben von dir.", "Stripe still needs information from you."),
-          body: pickByLang(designer.preferred_language, "Ohne diese Nachweise kann dein Haus keine Zahlungen annehmen. Ein Klick führt dich hin.", "Without this evidence your house can't accept payments. One click takes you there."),
-          link: "/studio/auszahlung",
-        });
-      }
     } else if (
       event.type === "customer.subscription.created" ||
       event.type === "customer.subscription.updated" ||

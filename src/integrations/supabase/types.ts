@@ -1436,6 +1436,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vat_rate: number
+          verkaufsbereit: boolean
           video_taste_weights: Json
           website: string | null
           weekly_impulse: string | null
@@ -1493,6 +1494,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vat_rate?: number
+          verkaufsbereit?: boolean
           video_taste_weights?: Json
           website?: string | null
           weekly_impulse?: string | null
@@ -1550,6 +1552,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vat_rate?: number
+          verkaufsbereit?: boolean
           video_taste_weights?: Json
           website?: string | null
           weekly_impulse?: string | null
@@ -3594,6 +3597,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      ist_verkaufsbereit: { Args: { _designer_id: string }; Returns: boolean }
       jarvis_heartbeat_sql: { Args: never; Returns: Json }
       mark_application_in_review: {
         Args: { _application_id: string }
@@ -3698,7 +3702,7 @@ export type Database = {
         | "attribute"
         | "style"
         | "mood"
-      order_status: "pending" | "paid" | "failed" | "refunded"
+      order_status: "pending" | "paid" | "failed" | "refunded" | "expired"
       page_block_kind:
         | "auftakt"
         | "editorial_text"
@@ -3890,7 +3894,7 @@ export const Constants = {
         "style",
         "mood",
       ],
-      order_status: ["pending", "paid", "failed", "refunded"],
+      order_status: ["pending", "paid", "failed", "refunded", "expired"],
       page_block_kind: [
         "auftakt",
         "editorial_text",

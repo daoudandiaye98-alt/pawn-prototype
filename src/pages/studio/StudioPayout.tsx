@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useVerkaufsbereitschaft } from "@/features/studio/useVerkaufsbereitschaft";
+import { STRIPE_ANFORDERUNGEN } from "@/features/commerce/verkaufsbereit";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -55,6 +57,16 @@ const EMPTY_SHIPPING: ShippingRates = {
 export default function StudioPayout() {
   const { t } = useI18n();
   const { designer, refresh } = useMyDesigner();
+  const verkauf = useVerkaufsbereitschaft();
+  // Stripe-Fachbegriffe in Klartext, ohne Dopplungen; unbekannte Schlüssel bleiben ehrlich stehen.
+  const reqTexte = (keys: string[]): string[] => {
+    const out: string[] = [];
+    for (const k of keys) {
+      const text = REQUIREMENT_LABEL_KEYS[k] ? t(REQUIREMENT_LABEL_KEYS[k]) : (STRIPE_ANFORDERUNGEN[k] ?? k);
+      if (!out.includes(text)) out.push(text);
+    }
+    return out.slice(0, 8);
+  };
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
   const [searchParams] = useSearchParams();
@@ -199,6 +211,40 @@ export default function StudioPayout() {
         ]}
       />
       <div className="max-w-xl space-y-6">
+        {/* PART 45 — die Kasse in drei Zeilen: was fehlt, steht hier und nirgends sonst versteckt. */}
+        <div className={`border-[1.5px] border-black p-5 ${verkauf.bereit ? "bg-white" : "bg-black text-white"}`}>
+          <p className="editorial-eyebrow">{verkauf.bereit ? "Deine Kasse ist offen" : "Bis zum ersten Verkauf fehlt noch"}</p>
+          <ul className="mt-3 space-y-2">
+            {verkauf.checks.map((c) => (
+              <li key={c.key} className="flex items-start gap-3 text-sm">
+                <span aria-hidden className="mt-[2px] inline-block w-4 text-center">{c.done ? "×" : "○"}</span>
+                <span>
+                  <span className={c.done ? "line-through opacity-50" : ""}>{c.label}</span>
+                  {!c.done && <span className={`block text-xs ${verkauf.bereit ? "text-muted-foreground" : "opacity-70"}`}>{c.hint}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {!verkauf.bereit && verkauf.offen.some((c) => c.key === "versand") && (
+            <Link to="/studio/versand" className="mt-4 inline-block border-[1.5px] border-white px-5 py-2 text-[0.7rem] uppercase tracking-[0.24em] hover:bg-white hover:text-black">
+              Versandkosten setzen
+            </Link>
+          )}
+        </div>
+
+        {/* Konto verbunden, aber Stripe wartet noch auf Angaben — der häufigste stille Stillstand. */}
+        {status?.connected && !status.charges_enabled && requirementsDue.length > 0 && (
+          <div className="border-[1.5px] border-black p-5">
+            <p className="editorial-eyebrow">Stripe wartet auf dich</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Dein Konto ist verbunden, aber noch nicht freigeschaltet. Diese Angaben fehlen:
+            </p>
+            <ul className="mt-3 space-y-1 text-sm">
+              {reqTexte(requirementsDue).map((r) => <li key={r}>· {r}</li>)}
+            </ul>
+          </div>
+        )}
+
         <div className="border border-foreground bg-white p-5">
           <p className="editorial-eyebrow">{t("studio.payout.share.title")}</p>
           <p className="mt-2 font-serif text-2xl">
@@ -208,6 +254,7 @@ export default function StudioPayout() {
             {t("studio.payout.share.pawnTakes", { pct: commissionPct })}
           </p>
         </div>
+
 
         {setupBlocked && (
           <div className="border-[1.5px] border-black bg-black p-5 text-white">
@@ -250,8 +297,8 @@ export default function StudioPayout() {
               <div className="mt-4 border border-black p-4">
                 <p className="editorial-eyebrow">{t("studio.payout.requirementsDue")}</p>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  {requirementsDue.slice(0, 6).map((r) => (
-                    <li key={r}>· {REQUIREMENT_LABEL_KEYS[r] ? t(REQUIREMENT_LABEL_KEYS[r]) : r}</li>
+                  {reqTexte(requirementsDue).map((r) => (
+                    <li key={r}>· {r}</li>
                   ))}
                 </ul>
               </div>
@@ -281,8 +328,8 @@ export default function StudioPayout() {
               <div className="mt-4 border border-black p-4">
                 <p className="editorial-eyebrow">{t("studio.payout.requirementsDue")}</p>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  {requirementsDue.slice(0, 6).map((r) => (
-                    <li key={r}>· {REQUIREMENT_LABEL_KEYS[r] ? t(REQUIREMENT_LABEL_KEYS[r]) : r}</li>
+                  {reqTexte(requirementsDue).map((r) => (
+                    <li key={r}>· {r}</li>
                   ))}
                 </ul>
               </div>
