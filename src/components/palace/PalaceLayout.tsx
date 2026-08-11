@@ -65,6 +65,7 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
               title: "Für Designer",
               links: [
                 { label: "Bewerben", to: "/apply" },
+                { label: "Pläne", to: "/preise" },
                 { label: "Studio", to: "/studio" },
                 { label: "Copilot", to: "/studio/copilot" },
                 { label: "Kampagnen", to: "/studio/kampagnen" },
