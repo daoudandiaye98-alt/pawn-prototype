@@ -244,6 +244,10 @@ interface AkquiseConfig {
   /** PART 49 WP2: Tag 1 der Aufwärmkurve für die Absenderreputation — leer, bis der erste
    * Autopilot-Versand tatsächlich läuft, dann einmalig gesetzt und nie wieder verschoben. */
   autopilot_started_at: string | null;
+  /** PART 49 WP3: Wasserzeichen der Akquise-Wache — Beschwerden werden nur AB diesem Zeitpunkt
+   * gezählt, damit dieselbe alte Beschwerde nicht bei jedem Lauf erneut die Notbremse zieht,
+   * nachdem ein Mensch sie bereits gelöst hat. Bei jedem Wache-Lauf auf "jetzt" nachgezogen. */
+  autopilot_wache_last_run_at: string | null;
   // Jagd (Teil 23): Jarvis startet Apify-Läufe selbst, statt nur den letzten Lauf zu lesen.
   apify_actor_hashtag: string;
   apify_actor_profile: string;
@@ -298,6 +302,7 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   autopilot_pause: false,
   autopilot_pause_grund: "",
   autopilot_started_at: null,
+  autopilot_wache_last_run_at: null,
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
   apify_actor_profile: "apify~instagram-profile-scraper",
   hunt_queries: [],
@@ -4399,6 +4404,121 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
   return { ok: true, mode: "queued", pending_action_id: (pendingRow as { id: string } | null)?.id, count: candidateIds.length };
 }
 
+interface ResendWebhookEndpoint { id: string; endpoint: string; events: string[]; status?: string }
+
+async function resendGet(pfad: string, key: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`https://api.resend.com/${pfad}`, { headers: { Authorization: `Bearer ${key}` } });
+    if (!res.ok) return null;
+    return await res.json() as Record<string, unknown>;
+  } catch { return null; }
+}
+
+/** PART 49 "Autopilot" WP3, nach dem PART-46-Muster (pruefeWebhookVerdrahtung für Stripe):
+ * Soll-Liste gegen tatsächlich bei Resend abonnierte Ereignisse. Rein meldend — eine kaputte
+ * Verdrahtung zieht für sich allein NICHT die Notbremse (das wäre eine Vermutung, kein Beleg für
+ * ein echtes Zustellungsproblem), erscheint aber in der Meldung, damit sie nicht unbemerkt bleibt. */
+const RESEND_WEBHOOK_SOLL = ["email.bounced", "email.complained"];
+async function pruefeResendWebhookVerdrahtung(key: string): Promise<{ ok: boolean; befund: string[] }> {
+  const liste = await resendGet("webhooks", key);
+  if (!liste) return { ok: false, befund: ["Resend-Webhooks nicht abrufbar (API-Antwort ungültig oder Endpunkt nicht verfügbar)."] };
+  const endpoints = ((liste.data ?? []) as ResendWebhookEndpoint[]).filter((e) => (e.status ?? "enabled") !== "disabled");
+  const zustellung = endpoints.filter((e) => e.endpoint.includes("resend-webhook") && !e.endpoint.includes("inbound"));
+  if (zustellung.length === 0) return { ok: false, befund: ["Zustellungs-Webhook (resend-webhook) fehlt oder ist deaktiviert — Bounces/Beschwerden kommen nie in der Datenbank an."] };
+  const vorhanden = new Set(zustellung.flatMap((e) => e.events));
+  const fehlt = RESEND_WEBHOOK_SOLL.filter((s) => !vorhanden.has(s));
+  return { ok: fehlt.length === 0, befund: fehlt.length ? [`Zustellungs-Webhook: ${fehlt.join(", ")} nicht abonniert.`] : [] };
+}
+
+/**
+ * akquise_wache — PART 49 "Autopilot" WP3: die Notbremse, die 100 % Automatisierung erst
+ * verantwortbar macht. Mechanisch, ohne LLM, läuft auch bei pausiertem Jarvis weiter (gleiches
+ * Muster wie kasse_wache) — eine Notbremse darf nicht am eigenen Pause-Schalter hängen.
+ *
+ * Drei Auslöser für autopilot_pause=true (löst niemals selbst, das darf nur ein Mensch):
+ * 1) Harte Bounce-Quote > 5 % der letzten 50 tatsächlichen Versendungen.
+ * 2) Mindestens eine neue Spam-Beschwerde (email.complained) seit dem letzten Wache-Lauf —
+ *    "seit dem letzten Lauf", nicht "jemals", sonst würde dieselbe alte, bereits behandelte
+ *    Beschwerde die Bremse endlos neu ziehen, nachdem ein Mensch sie schon gelöst hat.
+ * 3) 100+ Versendungen insgesamt und null erfasste Antworten — die Lehre aus dem
+ *    44-Leads-Vorfall (PART 47): ein Versand ohne funktionierendes Zuhören ist ein Systemfehler.
+ * Die Resend-Verdrahtungsprüfung ist rein meldend (siehe pruefeResendWebhookVerdrahtung).
+ */
+async function runAkquiseWache(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const config = await loadAkquiseConfig(admin);
+  const gruende: string[] = [];
+
+  // 1) Bounce-Quote der letzten 50 tatsächlichen Versendungen (ai_actions_log trägt die lead_id
+  // in params — die Bounce-Auskunft selbst steht auf der Lead, daher der zweite Griff).
+  const { data: sends } = await admin.from("ai_actions_log")
+    .select("params").in("action", ["akquise_erstkontakt_email", "akquise_followup_email"])
+    .eq("status", "ok").order("created_at", { ascending: false }).limit(50);
+  const gesendeteLeadIds = ((sends ?? []) as { params: { lead_id?: string } | null }[])
+    .map((s) => s.params?.lead_id).filter((id): id is string => !!id);
+  let bounceQuotePct = 0;
+  if (gesendeteLeadIds.length >= 10) {
+    const { data: leadsData } = await admin.from("acquisition_leads").select("bounce_type").in("id", gesendeteLeadIds);
+    const harte = ((leadsData ?? []) as { bounce_type: string | null }[]).filter((l) => l.bounce_type === "hard").length;
+    bounceQuotePct = Math.round((harte / gesendeteLeadIds.length) * 100);
+    if (harte / gesendeteLeadIds.length > 0.05) {
+      gruende.push(`Bounce-Quote ${bounceQuotePct} % der letzten ${gesendeteLeadIds.length} Versendungen`);
+    }
+  }
+
+  // 2) Neue Beschwerden seit dem letzten Wache-Lauf.
+  const seitLetztemLauf = config.autopilot_wache_last_run_at ?? new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { count: beschwerden } = await admin.from("ai_actions_log")
+    .select("id", { count: "exact", head: true })
+    .eq("source", "resend-webhook").eq("action", "email.complained")
+    .gte("created_at", seitLetztemLauf);
+  if ((beschwerden ?? 0) > 0) gruende.push(`${beschwerden} Spam-Beschwerde(n) seit dem letzten Wache-Lauf`);
+
+  // 3) Stille-Prüfung — insgesamt, nicht auf ein Zeitfenster begrenzt (ein kaputtes Zuhören
+  // bleibt kaputt, unabhängig davon, wann genau der letzte Versand war).
+  const { count: gesendetGesamt } = await admin.from("acquisition_leads").select("id", { count: "exact", head: true })
+    .eq("lead_type", "designer").eq("channel", "email").not("contacted_at", "is", null);
+  const { count: geantwortetGesamt } = await admin.from("acquisition_leads").select("id", { count: "exact", head: true })
+    .eq("lead_type", "designer").eq("channel", "email").not("replied_at", "is", null);
+  if ((gesendetGesamt ?? 0) >= 100 && (geantwortetGesamt ?? 0) === 0) {
+    gruende.push("100+ Versendungen, keine Antworten messbar — Erfassung prüfen");
+  }
+
+  const ausgeloest = gruende.length > 0 && !config.autopilot_pause;
+  await admin.from("ai_config").upsert({
+    key: "akquise_config",
+    value: {
+      ...config,
+      ...(ausgeloest ? { autopilot_pause: true, autopilot_pause_grund: gruende.join("; ") } : {}),
+      autopilot_wache_last_run_at: new Date().toISOString(),
+    } as never,
+  });
+
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const verdrahtung = resendKey
+    ? await pruefeResendWebhookVerdrahtung(resendKey)
+    : { ok: false, befund: ["RESEND_API_KEY nicht gesetzt — Verdrahtung nicht prüfbar."] };
+  const meldungen = [...gruende, ...verdrahtung.befund];
+
+  if (meldungen.length > 0) {
+    const { data: vorhanden } = await admin.from("jarvis_notices")
+      .select("id").eq("kind", "akquise_wache").is("dismissed_at", null).limit(1);
+    if (!vorhanden || vorhanden.length === 0) {
+      await admin.from("jarvis_notices").insert({
+        kind: "akquise_wache",
+        title: ausgeloest ? "Notbremse gezogen — Akquise pausiert" : "Akquise-Wache meldet",
+        body: meldungen.join(" "),
+      });
+    }
+  }
+
+  return {
+    ok: true, ausgeloest, bereits_pausiert: config.autopilot_pause,
+    bounce_quote_pct: bounceQuotePct, beschwerden: beschwerden ?? 0,
+    gesendet_gesamt: gesendetGesamt ?? 0, geantwortet_gesamt: geantwortetGesamt ?? 0,
+    verdrahtung_ok: verdrahtung.ok, verdrahtung_befund: verdrahtung.befund, gruende,
+  };
+}
+
 /**
  * akquise_zyklus — der kurze Rundlauf: Adressen suchen → prüfen → schreiben → senden.
  * Profile laden und Ergebnisse einsammeln haben eigene, häufige Zeitpläne; hier bleibt der Lauf
@@ -5844,6 +5964,21 @@ Deno.serve(async (req) => {
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runAkquiseAutopilot(admin);
       const summary = `${(result as { auto?: number }).auto ?? 0} automatisch freigegeben, ${(result as { ausnahme?: number }).ausnahme ?? 0} Ausnahme(n), ${(result as { blockiert?: number }).blockiert ?? 0} blockiert (${(result as { geprueft?: number }).geprueft ?? 0} geprüft).`;
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
+    }
+
+    // --- PART 49 "Autopilot" WP3: die Notbremse — mechanisch, ohne LLM, läuft auch bei
+    // pausiertem Jarvis (gleiches Muster wie kasse_wache). ---
+    if (mode === "akquise_wache") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = await runAkquiseWache(admin);
+      const summary = (result as { ausgeloest?: boolean }).ausgeloest
+        ? `Notbremse gezogen: ${((result as { gruende?: string[] }).gruende ?? []).join("; ")}.`
+        : `Grün — Bounce-Quote ${(result as { bounce_quote_pct?: number }).bounce_quote_pct ?? 0} %, ${(result as { beschwerden?: number }).beschwerden ?? 0} Beschwerde(n), Verdrahtung ${(result as { verdrahtung_ok?: boolean }).verdrahtung_ok ? "vollständig" : "unvollständig"}.`;
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
