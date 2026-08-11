@@ -11,7 +11,7 @@
 //   umgesetzt — stattdessen wird der Fall erkannt, mit dem Inlandssatz gerechnet und
 //   auf der Rechnung sowie in invoice_error als offener Punkt vermerkt.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
+
 
 export interface BillingRow {
   legal_name?: string | null;
@@ -96,6 +96,81 @@ export function berechneSteuer(brutto: number, billing: BillingRow, lieferLand: 
   };
 }
 
+
+// --- Abhängigkeitsfreier einseitiger PDF-Bauer (bewährt aus dem Versand-Werkzeug,
+// bewusst ohne npm-PDF-Bibliothek, damit die Edge-Laufzeit nichts nachladen muss). ---
+interface PdfLine { text: string; size?: number; bold?: boolean; gapBefore?: number; rightText?: string; rightX?: number }
+
+function winAnsiByte(ch: string): number {
+  const cp = ch.codePointAt(0)!;
+  if (cp >= 0x20 && cp <= 0x7e) return cp;
+  if (cp >= 0xa0 && cp <= 0xff) return cp;
+  const special: Record<number, number> = {
+    0x20ac: 0x80, 0x201a: 0x82, 0x201e: 0x84, 0x2026: 0x85,
+    0x2013: 0x96, 0x2014: 0x97, 0x2018: 0x91, 0x2019: 0x92,
+    0x201c: 0x93, 0x201d: 0x94,
+  };
+  return special[cp] ?? 0x3f;
+}
+const pdfEscape = (s: string) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+const asciiBytes = (s: string) => Uint8Array.from(Array.from(s).map((c) => c.charCodeAt(0)));
+function concatBytes(chunks: Uint8Array[]): Uint8Array {
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+
+function buildPdf(lines: PdfLine[]): Uint8Array {
+  const PAGE_W = 595, PAGE_H = 842, marginX = 50;
+  let y = PAGE_H - 60;
+  const parts: string[] = ["BT\n"];
+  let curFont: string | null = null, curSize: number | null = null;
+  for (const line of lines) {
+    const size = line.size ?? 10;
+    const font = line.bold ? "F2" : "F1";
+    y -= line.gapBefore ?? 0;
+    if (font !== curFont || size !== curSize) { parts.push(`/${font} ${size} Tf\n`); curFont = font; curSize = size; }
+    parts.push(`1 0 0 1 ${marginX} ${Math.round(y)} Tm (${pdfEscape(line.text)}) Tj\n`);
+    if (line.rightText) {
+      parts.push(`1 0 0 1 ${line.rightX ?? 430} ${Math.round(y)} Tm (${pdfEscape(line.rightText)}) Tj\n`);
+    }
+    y -= Math.round(size * 1.4);
+  }
+  parts.push("ET");
+  const streamBytes = Uint8Array.from(Array.from(parts.join("")).map(winAnsiByte));
+  const objects = [
+    asciiBytes(`<< /Type /Catalog /Pages 2 0 R >>`),
+    asciiBytes(`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`),
+    asciiBytes(`<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Contents 6 0 R >>`),
+    asciiBytes(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`),
+    asciiBytes(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`),
+  ];
+  const head = asciiBytes("%PDF-1.4\n");
+  const chunks: Uint8Array[] = [head];
+  const offsets: number[] = [0];
+  let pos = head.length;
+  for (let i = 0; i < objects.length; i++) {
+    const num = i + 1;
+    offsets[num] = pos;
+    const objHead = asciiBytes(`${num} 0 obj\n`), objTail = asciiBytes(`\nendobj\n`);
+    chunks.push(objHead, objects[i], objTail);
+    pos += objHead.length + objects[i].length + objTail.length;
+  }
+  offsets[6] = pos;
+  const sHead = asciiBytes(`6 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n`);
+  const sTail = asciiBytes(`\nendstream\nendobj\n`);
+  chunks.push(sHead, streamBytes, sTail);
+  pos += sHead.length + streamBytes.length + sTail.length;
+  const xrefStart = pos;
+  let xref = `xref\n0 7\n0000000000 65535 f \n`;
+  for (let i = 1; i < 7; i++) xref += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  chunks.push(asciiBytes(xref));
+  chunks.push(asciiBytes(`trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`));
+  return concatBytes(chunks);
+}
+
 interface PdfDaten {
   nummer: string;
   datum: string;
@@ -106,99 +181,59 @@ interface PdfDaten {
   versand: number;
 }
 
-async function bauePdf(d: PdfDaten): Promise<Uint8Array> {
-  const doc = await PDFDocument.create();
-  const page = doc.addPage([595.28, 841.89]); // A4
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const schwarz = rgb(0, 0, 0);
-  let y = 790;
+function baueRechnungsPdf(d: PdfDaten): Uint8Array {
+  const b = d.billing;
+  const L: PdfLine[] = [];
+  const zeile = (text: string, opts: Partial<PdfLine> = {}) => { if (text.trim()) L.push({ text, ...opts }); };
 
-  const text = (s: string, opts?: { size?: number; fett?: boolean; x?: number; dy?: number }) => {
-    const size = opts?.size ?? 10;
-    page.drawText(s, { x: opts?.x ?? 56, y, size, font: opts?.fett ? bold : font, color: schwarz });
-    y -= opts?.dy ?? size + 5;
-  };
-  const rechts = (s: string, size = 10, fett = false) => {
-    const f = fett ? bold : font;
-    const w = f.widthOfTextAtSize(s, size);
-    page.drawText(s, { x: 539.28 - w, y, size, font: f, color: schwarz });
-  };
-  const linie = () => { page.drawLine({ start: { x: 56, y }, end: { x: 539.28, y }, thickness: 1, color: schwarz }); y -= 14; };
+  // Absender: das Haus ist der Verkäufer, PAWN nur Vermittler.
+  zeile((b.legal_name ?? "").trim() || "-", { size: 15, bold: true });
+  zeile((b.address_line1 ?? "").trim(), { size: 9, gapBefore: 4 });
+  zeile((b.address_line2 ?? "").trim(), { size: 9 });
+  zeile(`${b.postal_code ?? ""} ${b.city ?? ""}`.trim(), { size: 9 });
+  zeile((b.country ?? "").trim(), { size: 9 });
+  if ((b.tax_id ?? "").trim()) zeile(`USt-IdNr./Steuernummer: ${b.tax_id}`, { size: 9 });
 
-  // Absender = das Haus
-  text((d.billing.legal_name ?? "").trim() || "—", { size: 14, fett: true, dy: 20 });
-  for (const z of [d.billing.address_line1, d.billing.address_line2, `${d.billing.postal_code ?? ""} ${d.billing.city ?? ""}`.trim(), d.billing.country]) {
-    if ((z ?? "").trim()) text((z as string).trim(), { size: 9 });
-  }
-  if ((d.billing.tax_id ?? "").trim()) text(`USt-IdNr./Steuernummer: ${d.billing.tax_id}`, { size: 9 });
-  y -= 16;
+  zeile("RECHNUNG", { size: 16, bold: true, gapBefore: 26 });
+  zeile(`Rechnungsnummer: ${d.nummer}`, { gapBefore: 8 });
+  zeile(`Rechnungsdatum: ${d.datum}`);
+  zeile(`Bestellung: ${d.order.id}`, { size: 9 });
 
-  text("RECHNUNG", { size: 20, fett: true, dy: 26 });
-  text(`Rechnungsnummer: ${d.nummer}`, { size: 10 });
-  text(`Rechnungsdatum: ${d.datum}`, { size: 10 });
-  text(`Bestellnummer: ${d.order.id}`, { size: 9 });
-  y -= 12;
+  zeile("Rechnungs- und Lieferanschrift", { size: 9, bold: true, gapBefore: 18 });
+  zeile((d.order.shipping_name ?? "").trim(), { size: 10, gapBefore: 4 });
+  zeile((d.order.shipping_address_line1 ?? "").trim(), { size: 10 });
+  zeile((d.order.shipping_address_line2 ?? "").trim(), { size: 10 });
+  zeile(`${d.order.shipping_postal_code ?? ""} ${d.order.shipping_city ?? ""}`.trim(), { size: 10 });
+  zeile((d.order.shipping_country ?? "").trim(), { size: 10 });
+  if (!(d.order.shipping_address_line1 ?? "").trim()) zeile((d.order.customer_email ?? "").trim(), { size: 10 });
 
-  text("Rechnungs- und Lieferanschrift", { size: 9, fett: true });
-  for (const z of [
-    d.order.shipping_name,
-    d.order.shipping_address_line1,
-    d.order.shipping_address_line2,
-    `${d.order.shipping_postal_code ?? ""} ${d.order.shipping_city ?? ""}`.trim(),
-    d.order.shipping_country,
-  ]) {
-    if ((z ?? "").trim()) text((z as string).trim(), { size: 10 });
-  }
-  if (!(d.order.shipping_address_line1 ?? "").trim() && d.order.customer_email) text(d.order.customer_email, { size: 10 });
-  y -= 16;
-
-  // Positionen
-  page.drawText("Position", { x: 56, y, size: 9, font: bold });
-  page.drawText("Menge", { x: 340, y, size: 9, font: bold });
-  rechts("Betrag", 9, true);
-  y -= 6; linie();
-
+  L.push({ text: "Position", bold: true, size: 9, gapBefore: 22, rightText: "Betrag" });
   const items = (Array.isArray(d.order.items) ? d.order.items : []) as { name?: string; qty?: number; unit_amount?: number; size?: string }[];
   for (const it of items) {
-    const name = `${it.name ?? "Stück"}${it.size ? ` · ${it.size}` : ""}`.slice(0, 58);
     const qty = Math.max(1, it.qty ?? 1);
-    page.drawText(name, { x: 56, y, size: 10, font });
-    page.drawText(String(qty), { x: 340, y, size: 10, font });
-    rechts(euro((it.unit_amount ?? 0) * qty));
-    y -= 16;
+    const name = `${it.name ?? "Stueck"}${it.size ? ` - ${it.size}` : ""} x ${qty}`.slice(0, 60);
+    L.push({ text: name, gapBefore: 6, rightText: euro((it.unit_amount ?? 0) * qty) });
   }
-  if (d.versand > 0) {
-    page.drawText("Versand", { x: 56, y, size: 10, font });
-    rechts(euro(d.versand));
-    y -= 16;
-  }
-  y -= 4; linie();
+  if (d.versand > 0) L.push({ text: "Versand", gapBefore: 6, rightText: euro(d.versand) });
 
-  // Summen
   if (d.steuer.rate > 0) {
-    page.drawText("Nettobetrag", { x: 340, y, size: 10, font }); rechts(euro(d.steuer.net_cents)); y -= 16;
-    page.drawText(`Umsatzsteuer ${d.steuer.rate} %`, { x: 340, y, size: 10, font }); rechts(euro(d.steuer.vat_cents)); y -= 16;
+    L.push({ text: "Nettobetrag", gapBefore: 16, rightText: euro(d.steuer.net_cents) });
+    L.push({ text: `Umsatzsteuer ${d.steuer.rate} %`, rightText: euro(d.steuer.vat_cents) });
+    L.push({ text: "Gesamtbetrag (brutto)", bold: true, gapBefore: 4, rightText: euro(d.brutto) });
+  } else {
+    L.push({ text: "Gesamtbetrag", bold: true, gapBefore: 16, rightText: euro(d.brutto) });
+    zeile("Gemaess § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).", { size: 9, gapBefore: 12 });
   }
-  page.drawText("Gesamtbetrag", { x: 340, y, size: 11, font: bold });
-  rechts(euro(d.brutto), 11, true);
-  y -= 28;
+  if (d.steuer.hinweis && d.steuer.rate > 0) zeile(d.steuer.hinweis, { size: 8, gapBefore: 12 });
 
-  if (d.billing.kleinunternehmer === true) {
-    text("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).", { size: 9 });
-  }
-  if (d.steuer.hinweis && d.steuer.rate > 0) text(d.steuer.hinweis, { size: 8 });
-  y -= 10;
-
-  const ret = ruecksendeadresse(d.billing);
+  const ret = ruecksendeadresse(b);
   if (ret.length) {
-    text("Rücksendungen an:", { size: 9, fett: true });
-    for (const z of ret) text(z, { size: 9 });
+    zeile("Ruecksendungen an:", { size: 9, bold: true, gapBefore: 20 });
+    for (const z of ret) zeile(z, { size: 9 });
   }
-  y -= 10;
-  text("Vermittelt über PAWN — pawn.vision. Verkäufer und Rechnungssteller ist das oben genannte Haus.", { size: 8 });
+  zeile("Vermittelt ueber PAWN (pawn.vision). Verkaeufer und Rechnungssteller ist das oben genannte Haus.", { size: 8, gapBefore: 20 });
 
-  return await doc.save();
+  return buildPdf(L);
 }
 
 /**
@@ -249,7 +284,7 @@ export async function erstelleRechnung(
     const steuer = berechneSteuer(brutto, b, order.shipping_country ?? null);
     const datum = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-    const bytes = await bauePdf({ nummer: nummer as string, datum, billing: b, order, steuer, brutto, versand });
+    const bytes = baueRechnungsPdf({ nummer: nummer as string, datum, billing: b, order, steuer, brutto, versand });
     const pfad = `${order.id}.pdf`;
     const { error: upError } = await admin.storage.from("invoices")
       .upload(pfad, bytes, { contentType: "application/pdf", upsert: true });
