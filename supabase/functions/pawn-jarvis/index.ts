@@ -74,7 +74,7 @@ type Mode =
   | "multiplikator_jagd" | "multiplikator_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
-  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft";
+  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft" | "kasse_wache";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -178,6 +178,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   tueren_finden: "gruen",
   maison_sichtbarkeitszug: "gruen",
   wissen_wirtschaft: "gruen",
+  kasse_wache: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -5379,6 +5380,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
+      "kasse_wache",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -5397,6 +5399,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
+      "kasse_wache",
     ];
     // Teil 39 AP5 — Zeitkonstanter Vergleich statt "===": verhindert, dass jemand den Secret-Wert
     // Zeichen für Zeichen über minimale Antwortzeit-Unterschiede erraten könnte (Timing-Angriff).
