@@ -19,6 +19,7 @@ export interface PaidSessionLike {
   metadata?: Record<string, string> | null;
   shipping_details?: { name?: string | null; address?: Address | null } | null;
   customer_details?: { name?: string | null; address?: Address | null } | null;
+  total_details?: { amount_shipping?: number | null } | null;
 }
 
 type OrderRow = Record<string, unknown> & {
