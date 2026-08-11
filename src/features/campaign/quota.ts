@@ -118,11 +118,12 @@ export function planLabel(plan: Plan): string {
   return plan === "haus" ? "Haus" : plan === "atelier" ? "Atelier" : "Maison";
 }
 
-/** Sanfter Hinweis, wenn ein Limit endet — kein Dauerbanner. Seit Teil 38 AP7 (Preisumbau
- * Frei/Paid) nennt der Upgrade-Hinweis nur noch den Plan Paid, unabhängig davon, ob das Haus
- * gerade Frei oder ein Atelier-Bestandsabo ist — Maison ist die einzige Obergrenze. */
+/** Sanfter Hinweis, wenn ein Limit endet — kein Dauerbanner. PART 38 WP7: PAWN hat wieder drei
+ * kaufbare Pläne, der Hinweis nennt daher den jeweils nächsthöheren statt pauschal "Paid". */
 export function quotaExhaustedHint(plan: Plan, noun: string): string {
-  return plan === "maison"
-    ? `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da.`
-    : `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle in den Plan Paid.`;
+  if (plan === "maison") {
+    return `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da.`;
+  }
+  const next = plan === "haus" ? "Atelier oder Maison" : "Maison";
+  return `Dein Limit an ${noun} für diesen Monat ist aufgebraucht — am 1. ist es wieder da, oder wechsle in den Plan ${next}.`;
 }

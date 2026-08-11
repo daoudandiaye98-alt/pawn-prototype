@@ -77,7 +77,7 @@ export default function AGB() {
             </p>
           </S>
           <S title="5. Optionale Pläne für Designer:innen">
-            <p>Designer:innen können zwischen zwei Plänen wählen: <strong>Frei</strong> (0 €/Monat, Basiszugang) und <strong>Paid</strong> (Preis und Kontingente einsehbar unter <a href="/studio/plan" className="underline">/studio/plan</a>). Ein älterer, nicht mehr neu abschließbarer Zwischenplan „Atelier" bleibt für bestehende Abos zu dessen ursprünglichem Preis bestehen. Die Pläne enthalten unterschiedliche Limits an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. <strong>Monatliche Kündigung jederzeit</strong> über die eigene Kündigungsseite unter <a href="/vertrag-kuendigen" className="underline">/vertrag-kuendigen</a> möglich; keine Mindestlaufzeit, keine Kündigungsfrist außer dem Ende der laufenden Abrechnungsperiode. Kein Einfluss auf die 7%-Provision.</p>
+            <p>Designer:innen können zwischen drei Plänen wählen: <strong>Haus</strong> (0 €/Monat, Basiszugang), <strong>Atelier</strong> und <strong>Maison</strong> (Preise und Kontingente einsehbar unter <a href="/studio/plan" className="underline">/studio/plan</a>). Die Pläne enthalten unterschiedliche Limits an Kampagnen-Videos und Zugang zu erweiterten KI-Werkzeugen. <strong>Monatliche Kündigung jederzeit</strong> über die eigene Kündigungsseite unter <a href="/vertrag-kuendigen" className="underline">/vertrag-kuendigen</a> möglich; keine Mindestlaufzeit, keine Kündigungsfrist außer dem Ende der laufenden Abrechnungsperiode. Kein Einfluss auf die 7%-Provision.</p>
           </S>
           <S title={L("6. Lieferzeiten, Anfertigungen", "6. Delivery Times, Made-to-Order")}>
             <p>
