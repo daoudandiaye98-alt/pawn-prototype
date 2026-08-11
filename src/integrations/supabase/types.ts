@@ -2572,6 +2572,7 @@ export type Database = {
         Row: {
           amount_total: number
           application_fee_cents: number | null
+          application_fee_refunded_cents: number
           buyer_locale: string
           carrier: string | null
           confirmation_email_sent_at: string | null
@@ -2582,6 +2583,7 @@ export type Database = {
           delivered_at: string | null
           destination_account: string | null
           dispute_status: string | null
+          dispute_updated_at: string | null
           fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
           id: string
           invoice_number: string | null
@@ -2589,6 +2591,7 @@ export type Database = {
           last_email_error: string | null
           paid_at: string | null
           refunded_amount_cents: number
+          refunded_at: string | null
           shipped_at: string | null
           shipped_email_sent_at: string | null
           shipping_address_line1: string | null
@@ -2610,6 +2613,7 @@ export type Database = {
         Insert: {
           amount_total?: number
           application_fee_cents?: number | null
+          application_fee_refunded_cents?: number
           buyer_locale?: string
           carrier?: string | null
           confirmation_email_sent_at?: string | null
@@ -2620,6 +2624,7 @@ export type Database = {
           delivered_at?: string | null
           destination_account?: string | null
           dispute_status?: string | null
+          dispute_updated_at?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           invoice_number?: string | null
@@ -2627,6 +2632,7 @@ export type Database = {
           last_email_error?: string | null
           paid_at?: string | null
           refunded_amount_cents?: number
+          refunded_at?: string | null
           shipped_at?: string | null
           shipped_email_sent_at?: string | null
           shipping_address_line1?: string | null
@@ -2648,6 +2654,7 @@ export type Database = {
         Update: {
           amount_total?: number
           application_fee_cents?: number | null
+          application_fee_refunded_cents?: number
           buyer_locale?: string
           carrier?: string | null
           confirmation_email_sent_at?: string | null
@@ -2658,6 +2665,7 @@ export type Database = {
           delivered_at?: string | null
           destination_account?: string | null
           dispute_status?: string | null
+          dispute_updated_at?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           id?: string
           invoice_number?: string | null
@@ -2665,6 +2673,7 @@ export type Database = {
           last_email_error?: string | null
           paid_at?: string | null
           refunded_amount_cents?: number
+          refunded_at?: string | null
           shipped_at?: string | null
           shipped_email_sent_at?: string | null
           shipping_address_line1?: string | null
