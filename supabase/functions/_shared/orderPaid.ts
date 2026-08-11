@@ -91,6 +91,7 @@ export async function handleOrderPaid(
   }).then(() => {}, () => {});
 
   // Bestand abbauen + Haus benachrichtigen
+  let hausId: string | null = null;
   try {
     const items = (o.items as { slug?: string; qty?: number }[]) ?? [];
     const slugs = items.map((i) => i.slug).filter(Boolean) as string[];
@@ -103,6 +104,7 @@ export async function handleOrderPaid(
         await admin.rpc("decrement_stock_for_order", { _product_id: prod.id, _qty: Math.max(1, item.qty ?? 1) });
       }
       const designerIds = Array.from(new Set((prods ?? []).map((p) => p.designer_id).filter(Boolean)));
+      hausId = (designerIds[0] as string | undefined) ?? null;
       if (designerIds.length) {
         const { data: designers } = await admin.from("designers").select("id, user_id").in("id", designerIds);
         for (const d of designers ?? []) {
@@ -120,6 +122,18 @@ export async function handleOrderPaid(
       }
     }
   } catch { /* best effort */ }
+
+  // WP2 — Rechnung erstellen. Wirft nie; Probleme stehen in orders.invoice_error.
+  const rechnung = await erstelleRechnung(admin, {
+    ...(o as unknown as Record<string, unknown>),
+    id: o.id,
+    items: o.items,
+    amount_total: o.amount_total,
+    shipping_amount_cents: (patch.shipping_amount_cents as number) ?? 0,
+  } as OrderForInvoice, hausId);
+  const rechnungUrl = rechnung.path ? await rechnungsLink(admin, rechnung.path).catch(() => null) : null;
+
+
 
   // Bestellbestätigung — E-Mail-Fehler dürfen die Bestellung nie anfassen.
   if (o.customer_email) {
