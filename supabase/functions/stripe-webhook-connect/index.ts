@@ -7,6 +7,7 @@ import Stripe from "npm:stripe@14";
 import { handleOrderPaid, type PaidSessionLike } from "../_shared/orderPaid.ts";
 import { pickByLang } from "../_shared/locale.ts";
 import { handleAccountUpdated } from "../_shared/accountUpdated.ts";
+import { handleChargeRefunded, handleDispute } from "../_shared/erstattung.ts";
 
 
 interface Bilingual { de: string; en: string }
@@ -45,13 +46,6 @@ Deno.serve(async (req) => {
 
     const account = (event.account as string | undefined) ?? null;
 
-    async function orderByPaymentIntent(pi: string | null) {
-      if (!pi) return null;
-      const { data } = await admin.from("orders")
-        .select("id, amount_total, application_fee_cents, user_id, customer_email, buyer_locale, refunded_amount_cents")
-        .eq("stripe_payment_intent_id", pi).maybeSingle();
-      return data;
-    }
 
     async function notifyHouse(orderId: string, title: Bilingual, body: Bilingual) {
       const { data: order } = await admin.from("orders").select("items").eq("id", orderId).maybeSingle();

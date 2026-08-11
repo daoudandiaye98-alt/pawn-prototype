@@ -7,6 +7,7 @@ import Stripe from "npm:stripe@14";
 import { handleOrderPaid, handleCreditsPurchase, type PaidSessionLike } from "../_shared/orderPaid.ts";
 import { pickByLang } from "../_shared/locale.ts";
 import { handleAccountUpdated } from "../_shared/accountUpdated.ts";
+import { handleChargeRefunded, handleDispute } from "../_shared/erstattung.ts";
 
 
 Deno.serve(async (req) => {
@@ -47,6 +48,13 @@ Deno.serve(async (req) => {
       // Bei einem PaymentIntent-Ereignis ist die ID die des Intents, nicht der Session.
       const pi = event.data.object as { id?: string };
       if (pi.id) await admin.from("orders").update({ status: "failed" }).eq("stripe_payment_intent_id", pi.id).eq("status", "pending");
+    } else if (event.type === "charge.refunded") {
+      // Häuser, die über das Plattformkonto verkaufen (Admin-Häuser): auch hier gilt eine
+      // Erstattung als Normalbetrieb und muss in der Bestellung sichtbar werden.
+      const erg = await handleChargeRefunded(admin, stripe, event.data.object as Stripe.Charge);
+      if (erg.hinweis) console.error("[stripe-webhook] Erstattung:", erg.hinweis);
+    } else if (event.type === "charge.dispute.created" || event.type === "charge.dispute.closed") {
+      await handleDispute(admin, event.data.object as Stripe.Dispute);
     } else if (event.type === "account.updated") {
       await handleAccountUpdated(admin, event.data.object as unknown as Parameters<typeof handleAccountUpdated>[1]);
 
