@@ -6,7 +6,7 @@ import { schreibePartieZug } from "../_shared/partieZug.ts";
 import { schreibeSignal } from "../_shared/pawnSignal.ts";
 import { guardAiBudget, bookAiSpend } from "../_shared/budgetGuard.ts";
 import { checkAndCount, canUse, ladePlaene, type Plan } from "../_shared/planGate.ts";
-import { harteSpracherkennung } from "../_shared/spracherkennung.ts";
+import { harteSpracherkennung, domainEndung, biospracheDeutsch, standortDeutsch } from "../_shared/spracherkennung.ts";
 
 const MODEL = "claude-sonnet-4-5";
 const MAX_TOOL_TURNS = 6;
@@ -76,7 +76,8 @@ type Mode =
   | "multiplikator_jagd" | "multiplikator_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
-  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft" | "kasse_wache";
+  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft" | "kasse_wache"
+  | "akquise_autopilot" | "akquise_wache";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -148,9 +149,11 @@ async function loadJarvisConfig(admin: SupabaseClient): Promise<JarvisConfig> {
 
 // Vertrauens-Zonen je Organ (Teil 9b) — rot: läuft nur auf Knopfdruck im Maschinenraum, du entscheidest;
 // gelb: läuft automatisch und meldet sich; grün: läuft automatisch und still, erscheint nur im Bericht.
-// Ersetzt den alten Einzel-Schalter akquise_config.autosend_email (akquise_senden: rot ≙ autosend_email=false,
-// gelb/grün ≙ autosend_email=true). Unumkehrbares (Geld, Veröffentlichung, Haus-Aufnahme) läuft NICHT über diese
-// Tafel — das bleibt bei der bestehenden, hart codierten zoneForAction()-Sperre für einzelne pawn_actions.
+// akquise_senden steht bewusst auf rot, bis PART 49 "Autopilot" (WP1-3) live und beobachtet ist —
+// wer wirklich automatisch versendet werden darf, entscheidet seither admin_decision='auto'
+// (siehe akquise_autopilot), nicht mehr diese Zonen-Tafel allein. Unumkehrbares (Geld,
+// Veröffentlichung, Haus-Aufnahme) läuft NICHT über diese Tafel — das bleibt bei der bestehenden,
+// hart codierten zoneForAction()-Sperre für einzelne pawn_actions.
 type JarvisZones = Record<string, Zone>;
 const DEFAULT_JARVIS_ZONES: JarvisZones = {
   heartbeat: "gruen",
@@ -219,7 +222,6 @@ interface AkquiseConfig {
   default_world: string;
   min_score: number;
   email_daily_cap: number;
-  autosend_email: boolean;
   email_from: string;
   email_reply_to: string;
   followup_after_days: number;
@@ -230,8 +232,18 @@ interface AkquiseConfig {
   template_en: string;
   /** Sprachgesetze für jede Erstnachricht — positiv formulieren, Verneinungen drehen. */
   sprachgesetze: string;
-  /** Ab diesem Kurator-Score darf eine E-Mail ohne Freigabe rausgehen. */
-  autosend_min_score: number;
+  /** PART 49 "Autopilot" WP1: Mindest-Kurator-Score für die automatische Freigabe
+   * (admin_decision='auto'). Startwert 0 (die reale Score-Verteilung ist zu niedrig für eine
+   * harte Schwelle) — ohne Deploy nachschärfbar, sobald der Wirkungsbericht Daten liefert.
+   * Ersetzt das alte autosend_min_score (wertete erst beim Versand aus, ohne Prüfspur). */
+  autopilot_min_score: number;
+  /** PART 49 WP3: von der Akquise-Wache (oder von Hand) gesetzte Notbremse — steht sie, sendet
+   * kein Lauf und kein Direktversand mehr etwas (sendAkquiseBatch prüft das zuerst). */
+  autopilot_pause: boolean;
+  autopilot_pause_grund: string;
+  /** PART 49 WP2: Tag 1 der Aufwärmkurve für die Absenderreputation — leer, bis der erste
+   * Autopilot-Versand tatsächlich läuft, dann einmalig gesetzt und nie wieder verschoben. */
+  autopilot_started_at: string | null;
   // Jagd (Teil 23): Jarvis startet Apify-Läufe selbst, statt nur den letzten Lauf zu lesen.
   apify_actor_hashtag: string;
   apify_actor_profile: string;
@@ -246,8 +258,6 @@ interface AkquiseConfig {
   batch_kontakt: number;
   batch_kuratieren: number;
   batch_verfassen: number;
-  /** Obergrenze pro Lauf; die Tagesgrenze bleibt email_daily_cap. */
-  email_run_cap: number;
   /** Höchstens so viele DM-Karten pro Tag im Sende-Stapel — schützt das Konto vor auffälligem Verhalten (Teil 23). */
   dm_daily_cap: number;
   /** Teil 39 AP4: nach so vielen Tagen werden aussortierte/abgemeldete Leads auf Minimaldaten reduziert. */
@@ -280,11 +290,14 @@ const DEFAULT_SPRACHGESETZE = [
 
 const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   apify_actor_id: "", default_world: "Mode", min_score: 55, email_daily_cap: 50,
-  autosend_email: true, email_from: "PAWN <support@pawn.vision>", email_reply_to: "support@pawn.vision",
+  email_from: "PAWN <support@pawn.vision>", email_reply_to: "support@pawn.vision",
   followup_after_days: 5, max_touches: 2, languages: ["de", "en"],
   template_de: "", template_en: "",
   sprachgesetze: DEFAULT_SPRACHGESETZE,
-  autosend_min_score: 55,
+  autopilot_min_score: 0,
+  autopilot_pause: false,
+  autopilot_pause_grund: "",
+  autopilot_started_at: null,
   apify_actor_hashtag: "apify~instagram-hashtag-scraper",
   apify_actor_profile: "apify~instagram-profile-scraper",
   hunt_queries: [],
@@ -294,7 +307,6 @@ const DEFAULT_AKQUISE_CONFIG: AkquiseConfig = {
   hunt_max_followers: 200000,
   hunt_exclude_words: ["dropshipping", "reseller", "wholesale", "agency", "agentur", "marketing", "shopify expert", "link in bio deals"],
   batch_profile: 40, batch_kontakt: 60, batch_kuratieren: 60, batch_verfassen: 40,
-  email_run_cap: 12,
   dm_daily_cap: 20,
   retention_days: 180,
   daily_goal: 50,
@@ -4069,6 +4081,12 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   if (!resendKey) return { ok: false, error: "Kein RESEND_API_KEY hinterlegt." };
   if (!leadIds.length) return { ok: true, sent: 0, failed: [] };
   const config = await loadAkquiseConfig(admin);
+  // PART 49 "Autopilot" WP3: die Notbremse gilt für JEDEN Versand über diese Funktion — den
+  // Cron-Lauf genauso wie den Direktversand aus dem Prüf-Stapel ("Ja" klicken). Eine Bremse, die
+  // nur den Cron-Pfad anhält, wäre keine echte Notbremse.
+  if (config.autopilot_pause) {
+    return { ok: true, sent: 0, failed: [], skipped: leadIds, paused: true, pause_grund: config.autopilot_pause_grund || "Notbremse aktiv" };
+  }
   const impressum = await loadBusinessImpressumLine(admin);
   const { data: leads } = await admin.from("acquisition_leads")
     .select("id, handle, email, message_draft, status, opt_out, admin_decision, lead_type, personal_line, outlet, kurator_score, world, ref_code, language, plate_images, plate_number, plate_status").in("id", leadIds);
@@ -4078,11 +4096,11 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   const skipped: string[] = [];
   for (const lead of (leads ?? []) as { id: string; handle: string; email: string | null; message_draft: string | null; status: string; opt_out: boolean; admin_decision: string | null; lead_type: string | null; personal_line: string | null; outlet: string | null; kurator_score: number | null; world: string | null; ref_code: string | null; language: string | null; plate_images: unknown; plate_number: number | null; plate_status: string | null }[]) {
     const isPresse = lead.lead_type === "presse";
-    // Studios mit gefundener E-Mail dürfen automatisch angeschrieben werden, sobald die Automatik
-    // läuft und der Kurator-Score hoch genug ist. Presse und DM bleiben bei deinem "Ja".
-    const autoErlaubt = config.autosend_email && !isPresse && !!lead.email
-      && (lead.kurator_score ?? 0) >= config.autosend_min_score;
-    if (lead.status !== "kontaktiert" && lead.admin_decision !== "ja" && !autoErlaubt) { skipped.push(lead.handle); continue; }
+    // PART 49 "Autopilot": wer ohne Freigabe rausgeht, steht schon fest — admin_decision='auto'
+    // kommt ausschließlich aus akquise_autopilot (geprüft, mit Prüfspur), nie aus einer erneuten
+    // Score-Bewertung an dieser Stelle. Presse bleibt unverändert bei deinem "Ja".
+    const freigegeben = lead.status === "kontaktiert" || lead.admin_decision === "ja" || (!isPresse && lead.admin_decision === "auto");
+    if (!freigegeben) { skipped.push(lead.handle); continue; }
     if (lead.admin_decision === "nein") { skipped.push(lead.handle); continue; }
     if (lead.opt_out) { skipped.push(lead.handle); continue; }
     if (!lead.email) { skipped.push(lead.handle); continue; }
@@ -4147,64 +4165,219 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
   return { ok: true, sent, failed, skipped };
 }
 
+/** Vertrauenswürdige Herkunft einer gefundenen E-Mail-Adresse — die einzigen drei Werte, die
+ * contact_source im Code tatsächlich je bekommt (siehe mapScrapeItem/extractBusinessEmail für
+ * "instagram_profil"/"bio" und runAkquiseKontakt für "bio"/"website"; "formular" gehört nicht
+ * hierher, das sind Kontaktformular-, keine E-Mail-Leads). PART 42 hat die Plausibilität der
+ * Adresse selbst schon beim Schreiben geprüft — dieser Satz ist eine zweite, schlanke Schranke:
+ * nur Herkünfte, die PAWN selbst aus dem Profil/der Seite des Hauses gezogen hat, nie eine Adresse
+ * unbekannter Herkunft. */
+const AUTOPILOT_VERTRAUTE_QUELLEN = new Set(["instagram_profil", "bio", "website"]);
+
+/**
+ * PART 49 "Autopilot" Bedingung 5: "Sprache mit positivem Beleg gesetzt, nie Voreinstellung".
+ * Die gespeicherte language-Spalte allein verrät das nicht mehr (seit Befund 1 aus PART 48 ist
+ * "en" IMMER der Endwert, ob durch echten Beleg oder durch den beleglosen Rückfall) — deshalb
+ * prüft dieser Satz dieselben drei Signale wie harteSpracherkennung() einzeln durch: hat
+ * mindestens eine der drei Quellen (Domain-Endung, Bio-Text, Profil-Standort) tatsächlich
+ * angeschlagen, gilt die Sprache als belegt, unabhängig vom Ergebnis "de" oder "en".
+ */
+function spracheBelegt(website: string | null, bio: string | null, location: string | null): boolean {
+  return domainEndung(website) !== null || biospracheDeutsch(bio) !== null || standortDeutsch(location) !== null;
+}
+
+interface AutopilotLead {
+  id: string; handle: string; email: string | null; message_draft: string | null; ref_code: string | null;
+  website: string | null; bio: string | null; profile_location: string | null; kurator_score: number | null;
+  contact_source: string | null;
+}
+
+/**
+ * akquise_autopilot — PART 49 "Autopilot" WP1: die Freigabe für E-Mail-Erstkontakte an
+ * Designer-Leads wandert von der Einzelentscheidung zur Regel. Läuft NACH akquise_verfassen
+ * (braucht den fertigen Entwurf für Bedingung 6) und VOR akquise_senden — ein Lead, der hier
+ * admin_decision='auto' bekommt, geht beim nächsten akquise_senden-Lauf ohne weiteres Zutun rein
+ * über den Versand-Mechanismus aus WP2/WP3 (Aufwärmkurve, Streuung, Fenster, Notbremse).
+ *
+ * Acht Bedingungen, davon zwei "weich" (5 Sprache, 6 Entwurf mit Einladungslink) — scheitert
+ * GENAU EINE davon bei sonst bestandener Prüfung, bekommt der Lead keine Entscheidung, sondern
+ * eine Ausnahme-Markierung (autopilot_checks.exception_reason) für die Prüfen-Warteschlange
+ * (WP4). Scheitern beide weichen Bedingungen zugleich, ist das im Auftrag nicht ausdrücklich
+ * vorgesehen ("genau eine") — diese Funktion behandelt es gleich (Ausnahme mit zwei Gründen),
+ * statt den Lead kommentarlos unberührt zu lassen. Bedingung 4 (Herkunft) ist hart: scheitert sie,
+ * bleibt der Lead liegen wie bisher, mit blocked_reason — keine Ausnahme, kein admin_decision.
+ * Bedingungen 1/2/3/7/8 sind bereits die SQL-Auswahl selbst (lead_type/status/qc_passed/
+ * opt_out/unsubscribed_at/bounce_type/blocked_reason/contacted_at) — ein Lead, der diese nicht
+ * erfüllt, taucht in dieser Funktion nie auf und bleibt unverändert.
+ */
+async function runAkquiseAutopilot(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const config = await loadAkquiseConfig(admin);
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, email, message_draft, ref_code, website, bio, profile_location, kurator_score, contact_source")
+    .eq("lead_type", "designer").eq("status", "qualifiziert").eq("qc_passed", true)
+    .is("admin_decision", null).is("contacted_at", null).eq("opt_out", false)
+    .is("unsubscribed_at", null).is("bounce_type", null).is("blocked_reason", null)
+    .not("email", "is", null)
+    .limit(200);
+
+  let auto = 0, ausnahme = 0, blockiert = 0, uebersprungen = 0;
+  const now = new Date().toISOString();
+
+  for (const lead of (leads ?? []) as AutopilotLead[]) {
+    if ((lead.kurator_score ?? 0) < config.autopilot_min_score) { uebersprungen++; continue; }
+
+    if (!AUTOPILOT_VERTRAUTE_QUELLEN.has(lead.contact_source ?? "")) {
+      await admin.from("acquisition_leads").update({
+        blocked_reason: "autopilot_quelle_ungeprueft", autopilot_at: now,
+        autopilot_checks: { herkunft_vertraut: false, quelle: lead.contact_source } as never,
+        updated_at: now,
+      }).eq("id", lead.id);
+      blockiert++;
+      continue;
+    }
+
+    const spracheOk = spracheBelegt(lead.website, lead.bio, lead.profile_location);
+    const linkOk = !!lead.message_draft && !!lead.ref_code && lead.message_draft.includes(`/einladung/${lead.ref_code}`);
+
+    const gruende: string[] = [];
+    if (!spracheOk) gruende.push("Sprache ohne Beleg");
+    if (!linkOk) gruende.push(lead.message_draft ? "Entwurf ohne Einladungslink" : "Entwurf fehlt");
+
+    const checks = {
+      herkunft_vertraut: true, score: lead.kurator_score ?? 0, min_score: config.autopilot_min_score,
+      sprache_belegt: spracheOk, entwurf_mit_link: linkOk,
+    };
+
+    if (gruende.length === 0) {
+      await admin.from("acquisition_leads").update({
+        admin_decision: "auto", autopilot_at: now, autopilot_checks: checks as never, updated_at: now,
+      }).eq("id", lead.id);
+      auto++;
+    } else {
+      await admin.from("acquisition_leads").update({
+        autopilot_at: now,
+        autopilot_checks: { ...checks, exception_reason: gruende.join("; ") } as never,
+      }).eq("id", lead.id);
+      ausnahme++;
+    }
+  }
+
+  return { ok: true, auto, ausnahme, blockiert, uebersprungen_score: uebersprungen, geprueft: (leads ?? []).length };
+}
+
+/** PART 49 "Autopilot" WP2: 09:00–19:00 Europe/Berlin — außerhalb sendet der automatische Lauf
+ * nichts. Der Direktversand (dein "Ja" im Prüf-Stapel) läuft unverändert sofort, unabhängig
+ * von der Uhrzeit — das ist eine bewusste menschliche Handlung, kein automatischer Lauf. */
+function imVersandfenster(): boolean {
+  const stunde = Number(new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "numeric", hour12: false }).format(new Date()));
+  return stunde >= 9 && stunde < 19;
+}
+
+/** PART 49 WP2: Aufwärmkurve für die Absenderreputation — die Domain hat bislang kaum Volumen
+ * gesehen und der Versand stand tagelang still (deaktivierter Cron). Tag 1–3 höchstens 15/Tag,
+ * danach +10/Tag bis zum konfigurierten Tages-Limit. autopilot_started_at wird einmalig beim
+ * ersten echten Sendeversuch gesetzt (siehe runAkquiseSenden) und nie wieder verschoben. */
+function aufwaermkurveCap(startedAt: string | null, tagesLimit: number): number {
+  const start = startedAt ? new Date(startedAt) : new Date();
+  const tag = Math.floor((Date.now() - start.getTime()) / 86_400_000) + 1;
+  const kurve = tag <= 3 ? 15 : 15 + (tag - 3) * 10;
+  return Math.min(tagesLimit, kurve);
+}
+
+/** PART 49 WP2 "Streuung statt Salve": höchstens so viele E-Mails je Cron-Tick — der Stundentakt
+ * verteilt den Rest über den Tag, statt alles in einem Lauf zu verschicken. */
+const AUTOPILOT_STREUUNG_PRO_LAUF = 5;
+
 /**
  * akquise_senden — Kanal E-Mail: Erstkontakt (qualifiziert, Entwurf fertig) + fällige Follow-ups.
  * Zone Rot: eine Sendeliste als jarvis_pending_actions-Eintrag, ein Tipp bestätigt den ganzen Stapel.
  * Zone Gelb/Grün: Jarvis versendet direkt und meldet es.
- * Läuft die Automatik (akquise_config.autosend_email), gehen Studios MIT gefundener E-Mail und
- * Score >= autosend_min_score ohne Freigabe raus — der DM-Weg und die Presse bleiben bei deinem "Ja".
+ * PART 49 "Autopilot": wer ohne Freigabe rausgehen darf, entscheidet ausschließlich
+ * admin_decision='auto' aus akquise_autopilot (vorab geprüft, mit Prüfspur) — nicht mehr diese
+ * Funktion selbst beim Versand. Freigegeben (admin_decision='ja') und automatisch (='auto') gehen
+ * beide raus, deine manuelle Freigabe zuerst; der DM-Weg und die Presse bleiben unverändert bei
+ * deinem "Ja".
  */
 async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: string[]): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
   const nowIso = new Date().toISOString();
 
-  // Gezielter Einzelversand aus dem Prüf-Stapel: dein "Ja" schickt sofort.
+  // Gezielter Einzelversand aus dem Prüf-Stapel: dein "Ja" schickt sofort — Fenster, Aufwärmkurve
+  // und Streuung (unten) gelten nur für den automatischen Lauf. Die Notbremse (WP3) gilt für
+  // beide, geprüft in sendAkquiseBatch selbst.
   if (leadIds && leadIds.length) {
     return { ok: true, mode: "direkt", ...(await sendAkquiseBatch(admin, leadIds)) };
   }
 
-  // Tagesgrenze ehrlich rechnen: was heute schon rausging, zählt mit.
+  if (config.autopilot_pause) {
+    return { ok: true, sent: 0, message: `Notbremse aktiv — ${config.autopilot_pause_grund || "kein Grund hinterlegt"}.` };
+  }
+  if (!imVersandfenster()) {
+    return { ok: true, sent: 0, message: "Außerhalb des Versandfensters (09:00–19:00 Europe/Berlin)." };
+  }
+
+  // Tagesgrenze ehrlich rechnen: was heute schon rausging, zählt mit — begrenzt durch die
+  // Aufwärmkurve, nicht direkt durch email_daily_cap (das bleibt das langfristige Ziel).
   const tagStart = new Date(); tagStart.setUTCHours(0, 0, 0, 0);
   const { count: heute } = await admin.from("ai_actions_log")
     .select("id", { count: "exact", head: true })
     .in("action", ["akquise_erstkontakt_email", "akquise_followup_email"])
     .eq("status", "ok").gte("created_at", tagStart.toISOString());
-  const restHeute = Math.max(0, config.email_daily_cap - (heute ?? 0));
-  const cap = Math.min(restHeute, Math.max(1, config.email_run_cap));
+  const tagesCap = aufwaermkurveCap(config.autopilot_started_at, config.email_daily_cap);
+  const restHeute = Math.max(0, tagesCap - (heute ?? 0));
+  const cap = Math.min(restHeute, AUTOPILOT_STREUUNG_PRO_LAUF);
   if (cap === 0) {
-    return { ok: true, sent: 0, message: `Tagesgrenze erreicht (${config.email_daily_cap}).` };
+    return { ok: true, sent: 0, message: `Tagesgrenze erreicht (${tagesCap} von ${config.email_daily_cap}, Aufwärmkurve).`, tagescap: tagesCap };
   }
 
   const basis = () => admin.from("acquisition_leads").select("id")
     .eq("status", "qualifiziert").eq("opt_out", false)
     .not("message_draft", "is", null).not("email", "is", null);
 
-  // Freigegebene Kontakte zuerst — sie warten am längsten auf dich.
+  // Freigegebene Kontakte zuerst — deine manuelle Freigabe hat immer Vorrang vor dem Autopilot.
   const { data: freigegeben } = await basis().eq("admin_decision", "ja")
     .order("created_at", { ascending: true }).limit(cap);
 
   let firstTouch = (freigegeben ?? []) as { id: string }[];
 
-  // Automatik: Studios mit Adresse und tragfähigem Score gehen ohne Freigabe raus.
+  // PART 49 "Autopilot": admin_decision='auto' kommt ausschließlich aus akquise_autopilot
+  // (vorab geprüft, mit Prüfspur) — keine erneute Score-Bewertung an dieser Stelle.
   const autoCap = Math.max(0, cap - firstTouch.length);
-  if (config.autosend_email && autoCap > 0) {
+  if (autoCap > 0) {
     const { data: auto } = await basis()
-      .eq("lead_type", "designer").is("admin_decision", null)
-      .gte("kurator_score", config.autosend_min_score)
-      .order("kurator_score", { ascending: false }).limit(autoCap);
+      .eq("lead_type", "designer").eq("admin_decision", "auto")
+      .order("autopilot_at", { ascending: true }).limit(autoCap);
     firstTouch = [...firstTouch, ...((auto ?? []) as { id: string }[])];
   }
 
   // Nachfassen hat sein eigenes kleines Kontingent, damit es Erstkontakte nie verdrängt.
+  // PART 49 WP5: zusätzlich darf kein noch unzugeordnetes eingehendes Mail-Event mit passender
+  // Absenderadresse vorliegen — lieber ein Nachfassen zu wenig als eines an jemanden, der
+  // längst geantwortet hat, dessen Antwort nur noch nicht manuell zugeordnet wurde.
   const followupCap = Math.max(0, Math.min(cap - firstTouch.length, Math.ceil(cap / 3)));
-  const { data: followups } = followupCap > 0 && config.max_touches >= 2
-    ? await admin.from("acquisition_leads").select("id")
+  let followups: { id: string }[] = [];
+  if (followupCap > 0 && config.max_touches >= 2) {
+    const { data: faellig } = await admin.from("acquisition_leads").select("id, email")
       .eq("status", "kontaktiert").eq("opt_out", false).not("email", "is", null)
-      .is("followup_at", null).lte("next_touch_at", nowIso).limit(followupCap)
-    : { data: [] as { id: string }[] };
+      .is("followup_at", null).is("replied_at", null).lte("next_touch_at", nowIso)
+      .limit(followupCap * 3);
+    const kandidaten = (faellig ?? []) as { id: string; email: string }[];
+    if (kandidaten.length) {
+      const { data: unzugeordnet } = await admin.from("inbound_email_events")
+        .select("from_email").is("matched_lead_id", null)
+        .in("from_email", kandidaten.map((k) => k.email));
+      const riskant = new Set(((unzugeordnet ?? []) as { from_email: string }[]).map((e) => e.from_email));
+      followups = kandidaten.filter((k) => !riskant.has(k.email)).slice(0, followupCap);
+    }
+  }
 
-  const candidateIds = [...firstTouch.map((r) => r.id), ...(followups ?? []).map((r: { id: string }) => r.id)];
+  const candidateIds = [...firstTouch.map((r) => r.id), ...followups.map((r) => r.id)];
   if (!candidateIds.length) return { ok: true, sent: 0, queued: 0, message: "Nichts zu versenden — kein Kontakt mit Adresse und fertigem Text offen." };
+
+  // Aufwärmkurve beginnt am ersten echten Sendeversuch, nicht am Tag des Deploys.
+  if (!config.autopilot_started_at) {
+    await admin.from("ai_config").upsert({ key: "akquise_config", value: { ...config, autopilot_started_at: nowIso } as never });
+  }
 
   if (zone !== "rot") {
     const result = await sendAkquiseBatch(admin, candidateIds);
@@ -4212,9 +4385,9 @@ async function runAkquiseSenden(admin: SupabaseClient, zone: Zone, leadIds?: str
     const failedList = (result as { failed?: string[] }).failed ?? [];
     await admin.from("jarvis_notices").insert({
       kind: "akquise_gesendet", title: "Akquise-Mails verschickt",
-      body: `${sentCount} E-Mail(s) verschickt${failedList.length ? `, ${failedList.length} fehlgeschlagen (${failedList.join(", ")})` : ""} — Zone ${zone === "gruen" ? "Grün" : "Gelb"}, automatisch.`,
+      body: `${sentCount} E-Mail(s) verschickt${failedList.length ? `, ${failedList.length} fehlgeschlagen (${failedList.join(", ")})` : ""} — Zone ${zone === "gruen" ? "Grün" : "Gelb"}, automatisch. Tagesstand ${(heute ?? 0) + sentCount} von ${tagesCap} (Aufwärmkurve, Ziel ${config.email_daily_cap}).`,
     });
-    return { ok: true, mode: "autosend", heute_bereits: heute ?? 0, tagesgrenze: config.email_daily_cap, ...result };
+    return { ok: true, mode: "autosend", heute_bereits: heute ?? 0, tagescap: tagesCap, tagesgrenze: config.email_daily_cap, ...result };
   }
 
   const expiresAt = new Date(Date.now() + 48 * 3600_000).toISOString();
@@ -4239,6 +4412,10 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
   // Reine Instagram-Leads (keine Adresse) bekommen ihre kurze DM-Fassung für den Sende-Stapel —
   // eigener Modus, weil dort nie automatisch versendet wird, nur vorbereitet.
   const dmVorbereitet = await runAkquiseDmVorbereiten(admin, apiKey);
+  // PART 49 "Autopilot" WP1: erst NACH dem Entwurf prüfen (braucht den fertigen Text für
+  // Bedingung 6), aber VOR dem Versand — ein Lead, der hier admin_decision='auto' bekommt,
+  // geht im selben Zyklus schon über runAkquiseSenden mit raus.
+  const autopilot = await runAkquiseAutopilot(admin);
   const gesendet = await runAkquiseSenden(admin, zones.akquise_senden ?? "rot");
 
   const tokensUsed = ((kuratiert as { tokensUsed?: number }).tokensUsed ?? 0)
@@ -4251,6 +4428,8 @@ async function runAkquiseZyklus(admin: SupabaseClient, apiKey: string): Promise<
     qualifiziert: (kuratiert as { qualified?: number }).qualified ?? 0,
     verfasst: (verfasst as { ready?: number }).ready ?? 0,
     dm_vorbereitet: (dmVorbereitet as { ready?: number }).ready ?? 0,
+    autopilot_auto: (autopilot as { auto?: number }).auto ?? 0,
+    autopilot_ausnahme: (autopilot as { ausnahme?: number }).ausnahme ?? 0,
     gesendet: (gesendet as { sent?: number }).sent ?? 0,
     versand_modus: (gesendet as { mode?: string }).mode ?? "keiner",
     tokensUsed,
@@ -5556,7 +5735,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
-      "kasse_wache",
+      "kasse_wache", "akquise_autopilot", "akquise_wache",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -5575,7 +5754,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
-      "kasse_wache",
+      "kasse_wache", "akquise_autopilot", "akquise_wache",
     ];
     // Teil 39 AP5 — Zeitkonstanter Vergleich statt "===": verhindert, dass jemand den Secret-Wert
     // Zeichen für Zeichen über minimale Antwortzeit-Unterschiede erraten könnte (Timing-Angriff).
@@ -5650,6 +5829,21 @@ Deno.serve(async (req) => {
       runId = (runRow as { id: string } | null)?.id ?? null;
       const result = await runKasseWache(admin);
       const summary = `${(result as { geprueft?: number }).geprueft ?? 0} offene Bestellungen geprüft, ${(result as { repariert?: number }).repariert ?? 0} korrigiert; Webhooks ${(result as { webhooks_ok?: boolean }).webhooks_ok ? "vollständig" : "unvollständig"}.`;
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
+    }
+
+    // --- PART 49 "Autopilot" WP1: mechanisch, ohne LLM — reine Regelprüfung + Prüfspur.
+    // Eigener Modus statt Anhang an akquise_kuratieren, weil Bedingung 6 (Entwurf mit
+    // Einladungslink) erst nach akquise_verfassen geprüft werden kann; separat aufrufbar hält
+    // den WP6-Testlauf (Batch 5) unabhängig vom vollen Zyklus. ---
+    if (mode === "akquise_autopilot") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = await runAkquiseAutopilot(admin);
+      const summary = `${(result as { auto?: number }).auto ?? 0} automatisch freigegeben, ${(result as { ausnahme?: number }).ausnahme ?? 0} Ausnahme(n), ${(result as { blockiert?: number }).blockiert ?? 0} blockiert (${(result as { geprueft?: number }).geprueft ?? 0} geprüft).`;
       if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
         finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
       }).eq("id", runId);
