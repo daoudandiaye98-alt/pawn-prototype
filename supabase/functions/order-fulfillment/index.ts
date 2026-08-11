@@ -223,9 +223,9 @@ async function sendShippedEmail(admin: SupabaseClient, order: OrderRow, designer
 
   const from = await senderFrom(admin);
   const replyTo = await designerEmail(admin, designerUserId);
-  const sent = await resendSend(from, order.customer_email, subject, text, replyTo, {
-    filename: `Rechnung-${invoiceNumber}.pdf`, content: bytesToBase64(pdfBytes),
-  });
+  const sent = await resendSend(from, order.customer_email, subject, text, replyTo,
+    pdfBytes ? { filename: `Rechnung-${invoiceNumber}.pdf`, content: bytesToBase64(pdfBytes) } : undefined,
+  );
 
   await admin.from("orders").update(
     sent.ok ? { shipped_email_sent_at: new Date().toISOString(), last_email_error: null } : { last_email_error: sent.error },
