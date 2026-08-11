@@ -5463,6 +5463,18 @@ Deno.serve(async (req) => {
 
     // --- Kinematische Clips einsammeln: mechanisch, ohne LLM, läuft auch bei pausiertem Jarvis
     // weiter — ein bezahltes Rendering eines Designers darf nicht am Pause-Schalter hängen bleiben. ---
+    // --- Wächter der Kasse (PART 45): mechanisch, ohne LLM, läuft auch bei pausiertem Jarvis. ---
+    if (mode === "kasse_wache") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = await runKasseWache(admin);
+      const summary = `${(result as { geprueft?: number }).geprueft ?? 0} offene Bestellungen geprüft, ${(result as { repariert?: number }).repariert ?? 0} korrigiert; Webhooks ${(result as { webhooks_ok?: boolean }).webhooks_ok ? "vollständig" : "unvollständig"}.`;
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
+    }
+
     if (mode === "broll_einsammeln") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
