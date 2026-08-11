@@ -770,6 +770,23 @@ function Buhne({
         )}
       </div>
 
+      {/* Die Kasse (PART 45) */}
+      <div className="mt-6 border-t border-white/[0.08] pt-5">
+        <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Die Kasse</p>
+        <p className="mt-3 text-[13px] text-[hsl(0_0%_88%)]">
+          {kasse === null
+            ? "Lade …"
+            : kasse.gesamt === 0
+              ? "Noch kein sichtbares Haus."
+              : `${kasse.bereit} von ${kasse.gesamt} sichtbaren Häusern können Geld empfangen.`}
+        </p>
+        {kasse !== null && kasse.gesamt > kasse.bereit && (
+          <p className="mt-1 text-[12px] text-[hsl(0_0%_66%)]">
+            Bei den übrigen fehlt Stripe-Freigabe, Rechnungsprofil oder Versandkosten — der Kaufknopf bleibt dort ruhig.
+          </p>
+        )}
+      </div>
+
       {/* Die Häuser */}
       <div className="mt-6 border-t border-white/[0.08] pt-5">
         <p className="text-[0.6rem] uppercase tracking-[0.28em] text-[hsl(0_0%_55%)]">Die Häuser</p>
