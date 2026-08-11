@@ -2463,6 +2463,33 @@ async function runAkquiseWirkungsbericht(admin: SupabaseClient): Promise<Record<
   return { ok: true, ausgewertet: sent.length, varianten: perVariant.size, seit };
 }
 
+/**
+ * PART 47 Befund 5 "Die Verlorenen": froth__art (Bio "Featuring Hand-Crafted Fine Art", 9.180
+ * Follower, 3.073 Beiträge) zeigt fremde Arbeiten — eine Einladung "stell dein Werk bei PAWN
+ * aus" landet nirgends, weil das Konto selbst nicht ausstellt, sondern kuratiert. Bio-Phrasen
+ * sind das verlässlichste Signal (bewusst konservativ: nur eindeutige Formulierungen, kein
+ * einzelnes zufälliges Wort). Kein Verlust, sondern ein Gewinn — solche Konten sind als
+ * Partnerschaft weit wertvoller als als (fehlgeschlagene) Einladung: sie markieren in ihren
+ * eigenen Beiträgen bereits genau die Häuser, nach denen PAWN sucht.
+ */
+const KURATOR_BIO_PHRASEN = /\b(featuring|we feature|curated by|curating|curator|showcasing|spotlight(ing)?|submit your work|dm (us |me )?for feature|guest artist|guest designer|multi[- ]brand|kuratiert von|wir zeigen|wir kuratieren)\b/i;
+
+function istKuratorBio(bio: string | null): boolean {
+  return !!bio && KURATOR_BIO_PHRASEN.test(bio);
+}
+
+/** Stuft eine fälschlich als Designer eingeordnete Lead auf Multiplikator um — ohne
+ * Einladungslink, ohne Verkaufsversprechen (PART 42/43 bleiben in Kraft). Der Eintrag landet mit
+ * status='qualifiziert' und leerem message_draft exakt dort, wo runMultiplikatorVerfassen ihn
+ * ohnehin schon abholt — kein zweiter Texterstellungsweg nötig. */
+async function stufeAufMultiplikatorUm(admin: SupabaseClient, lead: { id: string; handle: string }, grund: string): Promise<void> {
+  await admin.from("acquisition_leads").update({
+    lead_type: "multiplikator", status: "qualifiziert",
+    score_reasons: { hinweis: `Als Multiplikator erkannt (nicht als Designer): ${grund}` } as never,
+    updated_at: new Date().toISOString(),
+  }).eq("id", lead.id);
+}
+
 /** akquise_kuratieren — bewertet bis zu 20 neue Leads per Bild-Analyse (Claude Vision). */
 async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const config = await loadAkquiseConfig(admin);
@@ -2484,13 +2511,28 @@ async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Prom
   // Zeitbudget: ein Lauf bleibt unter der Grenze der Laufzeitumgebung, der Rest kommt beim nächsten
   // (gleiches Muster wie akquise_kontakt) — Vision-Aufrufe können vereinzelt langsam sein.
   const deadline = Date.now() + 55_000;
-  let qualified = 0, sortedOut = 0, tokensUsed = 0;
+  let qualified = 0, sortedOut = 0, tokensUsed = 0, alsMultiplikator = 0;
   for (const lead of leads) {
     if (Date.now() > deadline) break;
+    // PART 47 Befund 5: eindeutige Kurator-Bio schlägt die Vision-Bewertung als Designer —
+    // kostet keinen Vision-Aufruf, ist das verlässlichste der beiden Signale.
+    if (istKuratorBio(lead.bio)) {
+      await stufeAufMultiplikatorUm(admin, lead, `Bio-Formulierung deutet auf Kuratieren fremder Arbeit hin ("${lead.bio}")`);
+      alsMultiplikator++;
+      continue;
+    }
     const images = Array.isArray(lead.scrape_images) ? (lead.scrape_images as string[]) : [];
-    const prompt = `Bewerte dieses Instagram-Konto als möglichen PAWN-Designer (kuratierter Marktplatz für unabhängige Designer aus Mode, Interior, Kunst). Handle: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}. Bewerte anhand der Bilder: Handwerk/Qualität der Arbeit, kohärente Bildsprache über die Posts hinweg, Foto-Qualität, Anzeichen von Unabhängigkeit (kein Großlabel, kein reines Dropshipping), Passung zur Welt "${lead.world}". Antworte NUR mit JSON: {"score": <0-100>, "handwerk": "...", "bildsprache": "...", "foto_qualitaet": "...", "unabhaengigkeit": "...", "welt_passung": "..."}`;
+    const prompt = `Bewerte dieses Instagram-Konto als möglichen PAWN-Designer (kuratierter Marktplatz für unabhängige Designer aus Mode, Interior, Kunst). Handle: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}. Bewerte anhand der Bilder: Handwerk/Qualität der Arbeit, kohärente Bildsprache über die Posts hinweg, Foto-Qualität, Anzeichen von Unabhängigkeit (kein Großlabel, kein reines Dropshipping), Passung zur Welt "${lead.world}". Prüfe außerdem: zeigen die Bilder erkennbar unterschiedliche Handschriften/Stile verschiedener Urheber:innen statt der kohärenten Arbeit einer einzigen Marke (Zeichen für einen kuratierenden Account, der fremde Werke zeigt, statt selbst auszustellen)? Antworte NUR mit JSON: {"score": <0-100>, "handwerk": "...", "bildsprache": "...", "foto_qualitaet": "...", "unabhaengigkeit": "...", "welt_passung": "...", "ist_kurator": <true/false>, "kurator_grund": "..."}`;
     const { json: result, tokens } = images.length ? await claudeVisionJson(apiKey, prompt, images) : { json: null, tokens: 0 };
     tokensUsed += tokens;
+    // PART 47 Befund 5: erkennt die Vision-Analyse anhand inkonsistenter Bildsprache einen
+    // kuratierenden Account (nicht über die Bio, sondern über die Bilder selbst), gilt dieselbe
+    // Umstufung — auch ohne eindeutige Bio-Phrase.
+    if (result?.ist_kurator === true) {
+      await stufeAufMultiplikatorUm(admin, lead, String(result.kurator_grund ?? "Inkonsistente Bildsprache über mehrere Urheber:innen hinweg (Vision-Analyse)."));
+      alsMultiplikator++;
+      continue;
+    }
     const scoreRaw = typeof result?.score === "number" ? result.score : Number(result?.score);
     const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(100, Math.round(scoreRaw))) : 0;
     const reasons = result ?? { hinweis: "Keine auswertbaren Bilder vom Scrape gefunden." };
@@ -2501,7 +2543,7 @@ async function runAkquiseKuratieren(admin: SupabaseClient, apiKey: string): Prom
     }).eq("id", lead.id);
     if (qualifies) qualified++; else sortedOut++;
   }
-  return { ok: true, processed: (leads ?? []).length, qualified, sorted_out: sortedOut, tokensUsed };
+  return { ok: true, processed: (leads ?? []).length, qualified, sorted_out: sortedOut, als_multiplikator: alsMultiplikator, tokensUsed };
 }
 
 /** Erkennt Verneinungs-Muster, die in einer Erstansprache nichts verloren haben. */
