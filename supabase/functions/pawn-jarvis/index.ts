@@ -1432,14 +1432,21 @@ async function runBrollEinsammeln(admin: SupabaseClient): Promise<Record<string,
 
 // --- Akquise-Autopilot ---
 
-function extractBusinessEmail(item: Record<string, unknown>, bio: string | null): string | null {
+/**
+ * PART 47 Befund 4 "Die Verlorenen": `businessEmail`/`publicEmail` kommen direkt von Instagrams
+ * eigenem Business-Kontaktfeld — das Konto veröffentlicht diese Adresse selbst über seinen
+ * Kontakt-Knopf. Das ist etwas grundsätzlich anderes als eine aus dem Bio-Fließtext geregelte
+ * Adresse: Instagram bürgt hier für die Zugehörigkeit, eine Bio-Regex nicht. Die Herkunft wird
+ * daher mitgegeben, damit die Aufrufer sie unterschiedlich behandeln können.
+ */
+function extractBusinessEmail(item: Record<string, unknown>, bio: string | null): { email: string | null; source: "instagram_profil" | "bio" | null } {
   const direct = item.businessEmail ?? item.publicEmail ?? item.email;
-  if (typeof direct === "string" && direct.includes("@")) return direct.trim();
+  if (typeof direct === "string" && direct.includes("@")) return { email: direct.trim(), source: "instagram_profil" };
   if (bio) {
     const match = bio.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
-    if (match) return match[0];
+    if (match) return { email: match[0], source: "bio" };
   }
-  return null;
+  return { email: null, source: null };
 }
 
 function extractScrapeImages(item: Record<string, unknown>): string[] {
@@ -1654,7 +1661,7 @@ function mapScrapeItem(
   const followersRaw = item.followersCount ?? item.followers ?? (item.edge_followed_by as { count?: number } | undefined)?.count;
   const followers = typeof followersRaw === "number" ? followersRaw : Number(followersRaw) || null;
   const bio = String(item.biography ?? item.bio ?? "").trim() || null;
-  const email = extractBusinessEmail(item, bio);
+  const { email, source: emailSource } = extractBusinessEmail(item, bio);
   const links = Array.isArray(item.bioLinks) ? item.bioLinks as Array<{ url?: string }> : [];
   // Teil 41: die verlinkte Adresse wird VOLLSTÄNDIG übernommen (mit Pfad) — bei Sammelseiten
   // wie bio.site ist erst der Pfad die eigentliche Spur, der bloße Stamm ist Datenmüll.
@@ -1662,11 +1669,17 @@ function mapScrapeItem(
   // Teil 42: Presseartikel, Portale und Marktplätze sind nie die Website eines Hauses —
   // sonst erntet die Kontakt-Kette später brav die Adresse einer fremden Redaktion.
   const website = istGesperrteWebsite(rohWebsite, sperrliste) ? null : rohWebsite;
+  // PART 47 Befund 4: Instagram veröffentlicht bei Business-Accounts eigene Kontaktfelder
+  // (Telefon, Kategorie) über den Kontakt-Knopf — bislang ungenutzt, obwohl gerade Häuser ohne
+  // jede Website/E-Mail sonst für die automatische Kette gar nicht erreichbar sind.
+  const businessPhone = typeof item.businessPhoneNumber === "string" ? item.businessPhoneNumber.trim() || null : null;
+  const businessCategory = typeof item.businessCategoryName === "string" ? item.businessCategoryName.trim() || null : null;
   return {
     handle, world, source, followers, bio, email, website,
-    contact_source: email ? "bio" : null,
+    contact_source: emailSource,
     channel: email ? "email" : "dm", scrape_images: extractScrapeImages(item), status: "neu",
     hunt_id: huntId, discovery_source: source,
+    business_phone: businessPhone, business_category: businessCategory,
   };
 }
 
@@ -2218,8 +2231,19 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
         if (mapped.followers != null) patch.followers = mapped.followers;
         if (mapped.website) patch.website = mapped.website;
         if (mapped.scrape_images.length) patch.scrape_images = mapped.scrape_images;
-        if (mapped.email && pruefeEmailPlausibilitaet(mapped.email, mapped.website, mapped.handle).ok) {
-          patch.email = mapped.email; patch.channel = "email"; patch.contact_source = "bio";
+        if (mapped.business_phone) patch.business_phone = mapped.business_phone;
+        if (mapped.business_category) patch.business_category = mapped.business_category;
+        if (mapped.email) {
+          // PART 47 Befund 4 (Ausnahme zu Teil 42): eine Adresse, die Instagram selbst als
+          // Geschäftskontakt des Kontos veröffentlicht (businessEmail/publicEmail), ist per
+          // Definition plausibel — Instagram bürgt für die Zugehörigkeit, anders als bei einer
+          // aus dem Bio-Fließtext geregelten Adresse. Nur die Bio-Quelle durchläuft weiter die
+          // Domain-/Kennungs-Prüfung aus Teil 42.
+          const plausibel = mapped.contact_source === "instagram_profil"
+            || pruefeEmailPlausibilitaet(mapped.email, mapped.website, mapped.handle).ok;
+          if (plausibel) {
+            patch.email = mapped.email; patch.channel = "email"; patch.contact_source = mapped.contact_source;
+          }
         }
         const { data: touched } = await admin.from("acquisition_leads")
           .update(patch as never).eq("handle", mapped.handle).is("email", null).select("id");

@@ -75,6 +75,8 @@ export type Database = {
           bio: string | null
           blocked_reason: string | null
           bounce_type: string | null
+          business_category: string | null
+          business_phone: string | null
           channel: string | null
           clips: Json | null
           contact_attempts: number
@@ -131,6 +133,8 @@ export type Database = {
           bio?: string | null
           blocked_reason?: string | null
           bounce_type?: string | null
+          business_category?: string | null
+          business_phone?: string | null
           channel?: string | null
           clips?: Json | null
           contact_attempts?: number
@@ -187,6 +191,8 @@ export type Database = {
           bio?: string | null
           blocked_reason?: string | null
           bounce_type?: string | null
+          business_category?: string | null
+          business_phone?: string | null
           channel?: string | null
           clips?: Json | null
           contact_attempts?: number
