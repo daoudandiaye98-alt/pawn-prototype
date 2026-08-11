@@ -42,10 +42,11 @@ interface FeldzugLead {
   plate_images: unknown;
   plate_status: string | null;
   language: string | null;
+  autopilot_checks: { exception_reason?: string; [key: string]: unknown } | null;
 }
 
 type ChannelTab = "dm" | "formular" | "nachfassen" | "multiplikator" | "email" | "blockiert";
-type MainTab = "heute" | "gespraech";
+type MainTab = "heute" | "pruefen" | "gespraech";
 
 interface InboundEvent {
   id: string;
@@ -430,6 +431,101 @@ function BlockedList({ leads }: { leads: FeldzugLead[] }) {
   );
 }
 
+/* ─────────────────────── Prüfen: Autopilot-Ausnahmen ─────────────────────── */
+
+/**
+ * PART 49 "Autopilot" WP4: Leads, die an genau einer weichen Autopilot-Bedingung gescheitert
+ * sind (Sprache ohne Beleg oder Entwurf ohne Einladungslink — siehe akquise_autopilot), landen
+ * hier statt automatisch versendet zu werden. Alles, was den Autopilot besteht, taucht hier nie
+ * auf. Freigeben = admin_decision='ja' (geht mit dem nächsten Versandlauf raus wie jede manuelle
+ * Freigabe); Zurückstellen = derselbe blocked_reason-Handgriff wie das "Überspringen" anderswo im
+ * Feldzug — ein Grund ist Pflicht, damit ein Zurückstellen nachvollziehbar bleibt.
+ */
+function PruefenCard({
+  lead, onFreigeben, onZurueckstellen, busy,
+}: {
+  lead: FeldzugLead;
+  onFreigeben: () => void;
+  onZurueckstellen: (reason: string) => void;
+  busy: boolean;
+}) {
+  const [zurueckOpen, setZurueckOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const grund = lead.autopilot_checks?.exception_reason;
+
+  return (
+    <li className="border-b border-border px-5 py-4 last:border-0">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="font-serif text-base">@{lead.handle}</p>
+          <p className="text-xs text-muted-foreground">{lead.world ?? "—"}</p>
+        </div>
+        <LanguageChip language={lead.language} />
+      </div>
+      {grund && <p className="mt-2 text-sm">{grund}</p>}
+      {lead.message_draft && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs uppercase tracking-[0.18em] text-muted-foreground">Entwurf ansehen</summary>
+          <p className="mt-2 whitespace-pre-wrap border-l-2 border-black pl-3 text-sm">{lead.message_draft}</p>
+        </details>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" disabled={busy} onClick={onFreigeben} className="rounded-none bg-black text-white hover:bg-white hover:text-black">
+          Freigeben
+        </Button>
+        {!zurueckOpen && (
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => setZurueckOpen(true)} className="rounded-none border-black hover:bg-black hover:text-white">
+            Zurückstellen
+          </Button>
+        )}
+      </div>
+      {zurueckOpen && (
+        <div className="mt-2 space-y-2">
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            placeholder="Grund für das Zurückstellen…"
+            className="rounded-none border-black text-sm"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" disabled={busy || !reason.trim()} onClick={() => onZurueckstellen(reason.trim())} className="rounded-none bg-black text-white hover:bg-white hover:text-black">
+              Bestätigen
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setZurueckOpen(false); setReason(""); }} className="rounded-none border-black">
+              Abbrechen
+            </Button>
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function PruefenList({
+  leads, onFreigeben, onZurueckstellen, busyId,
+}: {
+  leads: FeldzugLead[];
+  onFreigeben: (lead: FeldzugLead) => void;
+  onZurueckstellen: (lead: FeldzugLead, reason: string) => void;
+  busyId: string | null;
+}) {
+  if (leads.length === 0) return <p className="p-16 text-center text-muted-foreground">Nichts zu prüfen — der Autopilot ist mit allem einig oder wartet noch auf Entwürfe.</p>;
+  return (
+    <ul>
+      {leads.map((l) => (
+        <PruefenCard
+          key={l.id}
+          lead={l}
+          busy={busyId === l.id}
+          onFreigeben={() => onFreigeben(l)}
+          onZurueckstellen={(reason) => onZurueckstellen(l, reason)}
+        />
+      ))}
+    </ul>
+  );
+}
+
 /* ─────────────────────── Im Gespräch ─────────────────────── */
 
 const SENTIMENTS: { key: "positiv" | "neutral" | "negativ"; label: string }[] = [
@@ -643,6 +739,11 @@ export default function AdminFeldzug() {
   // PART 47 Befund 1: eingehende Mails, die der Resend-Inbound-Webhook keiner Lead eindeutig
   // zuordnen konnte (kein/mehrdeutiger Treffer per Absenderadresse) — warten auf einen Menschen.
   const [inboundEvents, setInboundEvents] = useState<InboundEvent[]>([]);
+  // PART 49 "Autopilot" WP4: Stand der Notbremse + Aufwärmkurve-Zielwert für das Kopfband.
+  const [autopilotPause, setAutopilotPause] = useState(false);
+  const [autopilotPauseGrund, setAutopilotPauseGrund] = useState("");
+  const [emailDailyCap, setEmailDailyCap] = useState(50);
+  const [bremseBusy, setBremseBusy] = useState(false);
 
   const load = async () => {
     setFetching(true);
@@ -651,7 +752,7 @@ export default function AdminFeldzug() {
     const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes, multiplikatorRes, inboundRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status, language")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status, language, autopilot_checks")
         .eq("lead_type", "designer")
         .in("status", ["qualifiziert", "kontaktiert"])
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -663,7 +764,7 @@ export default function AdminFeldzug() {
       supabase.rpc("get_attribution_stats"),
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status, language")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status, language, autopilot_checks")
         .eq("lead_type", "multiplikator").eq("status", "qualifiziert").is("contacted_at", null)
         .not("message_draft", "is", null)
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -684,8 +785,11 @@ export default function AdminFeldzug() {
       geantwortet: geantwortetRes.count ?? 0,
       beworben: beworbenRes.count ?? 0,
     });
-    const goal = (configRes.data?.value as { daily_goal?: number } | null)?.daily_goal;
-    if (typeof goal === "number" && goal > 0) setDailyGoal(goal);
+    const cfg = configRes.data?.value as { daily_goal?: number; email_daily_cap?: number; autopilot_pause?: boolean; autopilot_pause_grund?: string } | null;
+    if (typeof cfg?.daily_goal === "number" && cfg.daily_goal > 0) setDailyGoal(cfg.daily_goal);
+    if (typeof cfg?.email_daily_cap === "number" && cfg.email_daily_cap > 0) setEmailDailyCap(cfg.email_daily_cap);
+    setAutopilotPause(cfg?.autopilot_pause === true);
+    setAutopilotPauseGrund(cfg?.autopilot_pause_grund ?? "");
     const attrRow = (attributionRes.data as { attributed: number; total: number }[] | null)?.[0] ?? null;
     if (attrRow) setAttribution(attrRow);
     setFetching(false);
@@ -705,6 +809,20 @@ export default function AdminFeldzug() {
       toast.success(`${result.matched_count} von ${result.examined_count} geprüften Bewerbungen zugeordnet.`);
     }
     void load();
+  }
+
+  /** PART 49 WP4: die Notbremse lösen darf nur ein Mensch (WP3) — dieser Knopf ist die einzige
+   * Stelle im Feldzug, die autopilot_pause zurücksetzt. */
+  async function bremseLoesen() {
+    setBremseBusy(true);
+    const { data: cfg } = await supabase.from("ai_config").select("value").eq("key", "akquise_config").maybeSingle();
+    const value = { ...(cfg?.value as Record<string, unknown> ?? {}), autopilot_pause: false, autopilot_pause_grund: "" };
+    const { error } = await supabase.from("ai_config").update({ value }).eq("key", "akquise_config");
+    setBremseBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setAutopilotPause(false);
+    setAutopilotPauseGrund("");
+    toast.success("Notbremse gelöst — der Autopilot kann wieder senden.");
   }
 
   useEffect(() => { if (user && roles.includes("admin")) void load(); }, [user, roles]);
@@ -731,6 +849,14 @@ export default function AdminFeldzug() {
   // Bildern (Befund 2) still an, bis wieder jemand von Hand hinschaut — der Rückstau bleibt so
   // sichtbar, solange geladene Leads (Designer + Multiplikatoren) ohne gespiegelte Platte da sind.
   const missingPlateCount = [...rows, ...multiplikatorRows].filter((r) => plateImages(r).length === 0).length;
+
+  // PART 49 "Autopilot" WP4: Leads mit genau einer weichen Ausnahme aus akquise_autopilot,
+  // noch ohne Entscheidung — alles, was der Autopilot durchwinkt, taucht hier nie auf.
+  const pruefenQueue = rows.filter((r) => r.lead_type === "designer" && !r.admin_decision && !!r.autopilot_checks?.exception_reason);
+  // Heute automatisch versendet — dieselbe Definition wie "Heute gesendet" oben, nur auf
+  // admin_decision='auto' eingeschränkt, damit Autopilot und manuelle Freigabe sichtbar getrennt bleiben.
+  const heuteStartFuerBand = new Date(); heuteStartFuerBand.setHours(0, 0, 0, 0);
+  const autopilotSentToday = rows.filter((r) => r.admin_decision === "auto" && r.contacted_at && new Date(r.contacted_at) >= heuteStartFuerBand).length;
 
   // "Im Gespräch": kontaktiert, noch keine Antwort erfasst — PART 47 Befund 1: auch E-Mail-Leads
   // gehören hierher. Solange der automatische Antworten-Abgleich (Resend Inbound) nicht per MX
@@ -797,6 +923,29 @@ export default function AdminFeldzug() {
     toast.success(`@${lead.handle} übersprungen.`);
   }
 
+  // PART 49 "Autopilot" WP4: Freigeben = dieselbe manuelle Freigabe wie im Prüf-Stapel — geht
+  // mit dem nächsten Versandlauf raus, keine erneute Prüfung nötig.
+  async function freigebenAutopilotAusnahme(lead: FeldzugLead) {
+    setBusyId(lead.id);
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("acquisition_leads")
+      .update({ admin_decision: "ja", decided_at: now, updated_at: now }).eq("id", lead.id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    patch(lead.id, { admin_decision: "ja" });
+    toast.success(`@${lead.handle} freigegeben — geht mit dem nächsten Versandlauf raus.`);
+  }
+
+  async function zurueckstellenAutopilotAusnahme(lead: FeldzugLead, reason: string) {
+    setBusyId(lead.id);
+    const { error } = await supabase.from("acquisition_leads")
+      .update({ blocked_reason: reason, updated_at: new Date().toISOString() }).eq("id", lead.id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    patch(lead.id, { blocked_reason: reason });
+    toast.success(`@${lead.handle} zurückgestellt.`);
+  }
+
   async function markReplied(lead: FeldzugLead, sentiment: "positiv" | "neutral" | "negativ") {
     setBusyId(lead.id);
     const now = new Date().toISOString();
@@ -858,6 +1007,35 @@ export default function AdminFeldzug() {
         </p>
       )}
 
+      {/* PART 49 "Autopilot" WP4: das Band macht sichtbar, was sonst nur im Versandlauf selbst
+          passiert — wie viele E-Mails heute automatisch rausgingen, wie viele auf eine
+          Ausnahme-Prüfung warten, und ob die Notbremse (Akquise-Wache oder von Hand) aktiv ist. */}
+      {!fetching && (
+        <div className={cn(
+          "mb-6 flex flex-wrap items-center justify-between gap-3 border-[1.5px] border-black px-4 py-3 text-sm",
+          autopilotPause ? "bg-black text-white" : "bg-white",
+        )}>
+          <p>
+            Heute automatisch gesendet{" "}
+            <span className="font-serif text-lg tabular-nums">{autopilotSentToday}/{emailDailyCap}</span>{" "}
+            · Ausnahmen <span className="font-serif text-lg tabular-nums">{pruefenQueue.length}</span>{" "}
+            · Bremse: {autopilotPause ? `ROT (${autopilotPauseGrund || "kein Grund erfasst"})` : "grün"}
+          </p>
+          {autopilotPause && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bremseBusy}
+              onClick={() => void bremseLoesen()}
+              className="rounded-none border-white bg-white text-black hover:bg-black hover:text-white"
+            >
+              {bremseBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Bremse lösen
+            </Button>
+          )}
+        </div>
+      )}
+
       <InboundMailPanel
         events={inboundEvents}
         onResolved={(eventId) => setInboundEvents((es) => es.filter((e) => e.id !== eventId))}
@@ -884,7 +1062,7 @@ export default function AdminFeldzug() {
       )}
 
       <div className="mb-6 flex flex-wrap gap-2">
-        {(["heute", "gespraech"] as MainTab[]).map((t) => (
+        {(["heute", "pruefen", "gespraech"] as MainTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setMainTab(t)}
@@ -893,7 +1071,11 @@ export default function AdminFeldzug() {
               mainTab === t ? "bg-black text-white" : "hover:bg-black hover:text-white",
             )}
           >
-            {t === "heute" ? `Heutige Züge (${dmQueue.length})` : `Im Gespräch (${gespraech.length})`}
+            {t === "heute"
+              ? `Heutige Züge (${dmQueue.length})`
+              : t === "pruefen"
+              ? `Prüfen (${pruefenQueue.length})`
+              : `Im Gespräch (${gespraech.length})`}
           </button>
         ))}
       </div>
@@ -997,6 +1179,15 @@ export default function AdminFeldzug() {
               <BlockedList leads={blockedQueue} />
             </div>
           )}
+        </div>
+      ) : mainTab === "pruefen" ? (
+        <div className="border-[1.5px] border-black">
+          <PruefenList
+            leads={pruefenQueue}
+            onFreigeben={(l) => void freigebenAutopilotAusnahme(l)}
+            onZurueckstellen={(l, r) => void zurueckstellenAutopilotAusnahme(l, r)}
+            busyId={busyId}
+          />
         </div>
       ) : (
         <div className="border-[1.5px] border-black">
