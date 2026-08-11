@@ -63,19 +63,26 @@ Deno.serve(async (req) => {
       event.type === "customer.subscription.updated" ||
       event.type === "customer.subscription.deleted"
     ) {
-      const sub = event.data.object as Stripe.Subscription & { metadata?: Record<string, string> };
+      const sub = event.data.object as Stripe.Subscription & { metadata?: Record<string, string>; current_period_end?: number };
       const plan = (sub.metadata?.plan ?? "").toLowerCase();
       const user_id = sub.metadata?.user_id;
       const cancelled = event.type === "customer.subscription.deleted" || sub.status === "canceled" || sub.status === "incomplete_expired";
       // PART 38 WP7: Atelier und Maison sind beide gültige, neu abschließbare Ziele.
       const targetPlan = cancelled ? "haus" : (plan === "atelier" || plan === "maison" ? plan : null);
       if (user_id && targetPlan) {
+        // PART 48 AP5: plan_bis hält fest, bis wann die laufende Zahlungsperiode reicht (Grundlage
+        // für einen künftigen Lese-Fallback, falls ein Webhook einmal ausfällt); plan_seit wird nur
+        // beim einmaligen Neuabschluss gesetzt, nicht bei jeder monatlichen Verlängerung.
+        const plan_bis = !cancelled && sub.current_period_end
+          ? new Date(sub.current_period_end * 1000).toISOString() : null;
         // Teil 39 AP1: subscription_id/customer_id mitschreiben — sonst gibt es keine Stelle,
         // an der das Kündigungsbutton-Feature (§312k BGB) das laufende Abo eines Hauses
         // wiederfindet. Bei Kündigung/Ablauf wird die subscription_id wieder geleert.
         const { data: designer } = await admin.from("designers").update({
           plan: targetPlan,
           stripe_subscription_id: cancelled ? null : sub.id,
+          plan_bis,
+          ...(event.type === "customer.subscription.created" && !cancelled ? { plan_seit: new Date().toISOString() } : {}),
           ...(sub.customer ? { stripe_customer_id: String(sub.customer) } : {}),
         }).eq("user_id", user_id).select("id, user_id, preferred_language").maybeSingle();
         if (designer) {

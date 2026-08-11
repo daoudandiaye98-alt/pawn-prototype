@@ -80,6 +80,19 @@ Deno.serve(async (req) => {
           message: "Unbekannter Plan.",
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
       }
+      // PART 48 AP5: client_reference_id erleichtert die Zuordnung im Stripe-Dashboard —
+      // die eigentliche Plan-Zuweisung im Webhook läuft weiterhin über die zuverlässigeren
+      // metadata-Felder (plan/user_id), das hier ist zusätzliche Beobachtbarkeit, kein Ersatz.
+      let designerIdForRef: string | null = null;
+      if (user_id) {
+        const url = Deno.env.get("SUPABASE_URL");
+        const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (url && svc) {
+          const admin = createClient(url, svc, { auth: { persistSession: false } });
+          const { data: designer } = await admin.from("designers").select("id").eq("user_id", user_id).maybeSingle();
+          designerIdForRef = designer?.id ?? null;
+        }
+      }
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         line_items: [{ price: body.price_id, quantity: 1 }],
@@ -87,7 +100,7 @@ Deno.serve(async (req) => {
         cancel_url: body.cancel_url ?? `${origin}/studio/plan`,
         customer_email: body.customer_email,
         locale,
-
+        ...(designerIdForRef ? { client_reference_id: designerIdForRef } : {}),
         metadata: { plan: body.plan ?? "", user_id: user_id ?? "" },
         subscription_data: { metadata: { plan: body.plan ?? "", user_id: user_id ?? "" } },
       });
