@@ -8,7 +8,8 @@ import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Loader2, Copy } from "lucide-react";
-import { canUse, ladePlanGate, type Plan } from "@/lib/planGate";
+import { canUse, ladePlanGate, limitFor, type Plan } from "@/lib/planGate";
+import { Gesperrt } from "@/components/Gesperrt";
 
 /**
  * Teil 34a/34b — Offene Türen: reale, ortsnahe Chancen (Galerien, Ausstellungen, Märkte, offene
@@ -52,6 +53,11 @@ export default function StudioOffeneTueren() {
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draftText, setDraftText] = useState("");
+  const plan: Plan = (designer as unknown as { plan?: Plan })?.plan ?? "haus";
+  // PART 48 AP7: unterscheidet "kein Entwurf, weil noch keine Kontakt-Adresse gefunden" von
+  // "kein Entwurf, weil das monatliche Tür-Kontingent des Plans aufgebraucht ist" — sonst wirkt
+  // eine plangebundene Sperre wie ein echter Rechercheausfall.
+  const [tuerenAufgebraucht, setTuerenAufgebraucht] = useState(false);
 
   useEffect(() => {
     if (!designer) return;
@@ -63,15 +69,22 @@ export default function StudioOffeneTueren() {
       // PART 48 AP2/AP4: ohne Tür-Vorlauf (nur Maison) bleiben ganz neue Türen 48h unsichtbar —
       // die Tür selbst existiert schon (Zeitpunkt der KI-Suche), erscheint dem Haus aber erst
       // nach der Frist. sichtbar_ab=null (ältere Zeilen vor dieser Migration) gilt als sichtbar.
-      const plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
       const alle = (data as unknown as Tuer[]) ?? [];
       const sichtbar = canUse(plan, "tuer_vorlauf")
         ? alle
         : alle.filter((r) => !r.sichtbar_ab || new Date(r.sichtbar_ab).getTime() <= Date.now());
       setRows(sichtbar);
       setRowsLoading(false);
+
+      const limit = limitFor(plan, "tuer_oeffnen");
+      if (limit >= 0) {
+        const { data: stand } = await supabase.rpc("plan_usage_stand" as never, {
+          p_designer_id: designer.id, p_feature: "tuer_oeffnen",
+        } as never);
+        setTuerenAufgebraucht((Number(stand) || 0) >= limit);
+      }
     })();
-  }, [designer]);
+  }, [designer, plan]);
 
   async function decide(door: Tuer, decision: "interessiert" | "verworfen" | "angenommen" | "abgelehnt") {
     setBusy(door.id);
@@ -195,7 +208,9 @@ export default function StudioOffeneTueren() {
                   </p>
                 )}
 
-                {door.art === "physisch" && !door.contact_email && (
+                {door.art === "physisch" && !door.contact_email && !door.message_draft && tuerenAufgebraucht ? (
+                  <div className="mt-3"><Gesperrt feature="tuer_oeffnen" was="Tür-Entwürfe" plan={plan} grund="kontingent" /></div>
+                ) : door.art === "physisch" && !door.contact_email && (
                   <p className="mt-3 text-sm text-muted-foreground">{t("studio.tueren.noContact")}</p>
                 )}
 

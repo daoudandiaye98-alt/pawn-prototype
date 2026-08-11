@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ArrowRight, Plus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { schreibePawnSignal } from "@/lib/pawnSignal";
+import { ladePlanGate, limitFor, type Plan } from "@/lib/planGate";
 
 /** Rang der Figur folgt dem echten Milestone-Level des Hauses (useDesignerLevel). */
 const RANK_BY_LEVEL: Record<string, PawnRank> = {
@@ -105,6 +106,22 @@ export default function StudioOverview() {
   const [unsubmittedMediaCount, setUnsubmittedMediaCount] = useState(0);
   const [partieZuege, setPartieZuege] = useState<{ id: string; nr: number; text: string; akteur: string; created_at: string }[]>([]);
   const [tapLine, setTapLine] = useState<string | null>(null);
+
+  // PART 48 AP7: die Verbrauchszeile — eine ruhige Zeile statt Guthabenstand, live aus
+  // plan_usage_stand + ai_config.plans (planGate). Nur monatliche Kontingente, kein
+  // dauerhafter Degradierungs-Indikator (der zeigt sich transient im Gespräch selbst).
+  const [verbrauch, setVerbrauch] = useState<{ tueren: number; nachrichten: number } | null>(null);
+  useEffect(() => {
+    if (!designer) return;
+    (async () => {
+      await ladePlanGate();
+      const [{ data: tueren }, { data: nachrichten }] = await Promise.all([
+        supabase.rpc("plan_usage_stand" as never, { p_designer_id: designer.id, p_feature: "tuer_oeffnen" } as never),
+        supabase.rpc("plan_usage_stand" as never, { p_designer_id: designer.id, p_feature: "chat_nachricht" } as never),
+      ]);
+      setVerbrauch({ tueren: Number(tueren) || 0, nachrichten: Number(nachrichten) || 0 });
+    })();
+  }, [designer]);
 
   const lastSeenSnapshotRef = useRef<string | null>(null);
   const [lastSeenSnapshotReady, setLastSeenSnapshotReady] = useState(false);
@@ -394,6 +411,21 @@ export default function StudioOverview() {
           {t("studio.overview.quickrow.myPage")}
         </Link>
       </div>
+
+      {/* PART 48 AP7 — Verbrauchszeile: eine ruhige Zeile statt Guthabenstand, live aus
+          plan_usage_stand + ai_config.plans. -1 = unbegrenzt, zeigt dann keine Zahl. */}
+      {verbrauch && (() => {
+        const plan: Plan = designer.plan ?? "haus";
+        const tuerenLimit = limitFor(plan, "tuer_oeffnen");
+        const nachrichtenLimit = limitFor(plan, "chat_nachricht");
+        const teile = [
+          tuerenLimit < 0 ? null : `${verbrauch.tueren} von ${tuerenLimit} Türen diesen Monat`,
+          nachrichtenLimit < 0 ? null : `${verbrauch.nachrichten} von ${nachrichtenLimit} Nachrichten`,
+        ].filter(Boolean);
+        return teile.length > 0 ? (
+          <p className="mb-8 text-xs text-muted-foreground">{teile.join(" · ")}</p>
+        ) : null;
+      })()}
 
       {/* Schritt 1 · Dein Zug */}
       <section data-guide={t("studio.guide.nextMove")} className="mb-6 scroll-mt-20 border-[1.5px] border-foreground bg-white p-6 sm:p-8">

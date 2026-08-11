@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Send, Sparkles, RefreshCw } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useMyDesigner } from "@/features/studio/useMyDesigner";
+import { Gesperrt } from "@/components/Gesperrt";
+import { ladePlanGate, type Plan } from "@/lib/planGate";
 
 interface MirrorStats {
   views_total: number;
@@ -16,11 +19,16 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 export default function StudioCopilot() {
   const { t, locale } = useI18n();
+  const { designer } = useMyDesigner();
+  const plan: Plan = designer?.plan ?? "haus";
   const [mirror, setMirror] = useState<{ text: string; stats: MirrorStats } | null>(null);
   const [loadingMirror, setLoadingMirror] = useState(true);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [gesperrtGrund, setGesperrtGrund] = useState<"plan" | "kontingent" | "budget" | undefined>(undefined);
+
+  useEffect(() => { void ladePlanGate(); }, []);
 
   const loadMirror = async () => {
     setLoadingMirror(true);
@@ -37,12 +45,14 @@ export default function StudioCopilot() {
     const next = [...messages, { role: "user", content: q } as Msg];
     setMessages(next);
     setInput("");
+    setGesperrtGrund(undefined);
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "chat", messages: next, locale } });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    const reply = (data as { reply?: string })?.reply ?? "…";
-    setMessages([...next, { role: "assistant", content: reply }]);
+    const res = data as { reply?: string; gesperrt?: boolean; grund?: "plan" | "kontingent" | "budget" };
+    if (res.gesperrt) { setGesperrtGrund(res.grund ?? "kontingent"); return; }
+    setMessages([...next, { role: "assistant", content: res.reply ?? "…" }]);
   };
 
   return (
@@ -103,6 +113,7 @@ export default function StudioCopilot() {
               </div>
             ))}
             {busy && <p className="text-xs text-muted-foreground">{t("chat.thinking")}</p>}
+            {gesperrtGrund && <Gesperrt feature="chat_nachricht" was="Nachrichten mit PAWN" plan={plan} grund={gesperrtGrund} />}
           </div>
           <div className="flex items-center gap-2 border-t border-border p-4">
             <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()}
