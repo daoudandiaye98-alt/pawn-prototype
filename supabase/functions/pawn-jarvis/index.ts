@@ -1674,12 +1674,20 @@ function mapScrapeItem(
   // jede Website/E-Mail sonst für die automatische Kette gar nicht erreichbar sind.
   const businessPhone = typeof item.businessPhoneNumber === "string" ? item.businessPhoneNumber.trim() || null : null;
   const businessCategory = typeof item.businessCategoryName === "string" ? item.businessCategoryName.trim() || null : null;
+  // PART 47 Befund 3: schwächstes der drei Sprachsignale — der von Instagram angegebene
+  // Profil-Standort (nur bei Business-Accounts vorhanden, daher best-effort über mehrere
+  // mögliche Feldnamen der Scraper-Rohdaten).
+  const businessAddress = item.businessAddress as Record<string, unknown> | undefined;
+  const profileLocation = String(
+    businessAddress?.city_name ?? item.cityName ?? item.city ?? businessAddress?.country_code ?? "",
+  ).trim() || null;
   return {
     handle, world, source, followers, bio, email, website,
     contact_source: emailSource,
     channel: email ? "email" : "dm", scrape_images: extractScrapeImages(item), status: "neu",
     hunt_id: huntId, discovery_source: source,
     business_phone: businessPhone, business_category: businessCategory,
+    profile_location: profileLocation,
   };
 }
 
@@ -2233,6 +2241,7 @@ async function runAkquiseImport(admin: SupabaseClient): Promise<Record<string, u
         if (mapped.scrape_images.length) patch.scrape_images = mapped.scrape_images;
         if (mapped.business_phone) patch.business_phone = mapped.business_phone;
         if (mapped.business_category) patch.business_category = mapped.business_category;
+        if (mapped.profile_location) patch.profile_location = mapped.profile_location;
         if (mapped.email) {
           // PART 47 Befund 4 (Ausnahme zu Teil 42): eine Adresse, die Instagram selbst als
           // Geschäftskontakt des Kontos veröffentlicht (businessEmail/publicEmail), ist per
@@ -2725,15 +2734,80 @@ async function runAkquiseBilderSpiegeln(admin: SupabaseClient, nurLeadIds?: stri
   return { ok: true, platten, zu_wenig: zuWenig, fehlgeschlagen, geprueft, details };
 }
 
+/* ============================================================================
+ * PART 47 Befund 3 „Die Verlorenen": d.oostingartist (.nl-Domain, niederländische Bio)
+ * bekam trotzdem 'de', weil Spracherkennung bislang allein ein LLM-Urteil über den Bio-Text
+ * war, mit Deutsch als Rückfall bei Unklarheit — die Domain wurde nie geprüft. Härtung: ein
+ * deterministischer Check in dieser Priorität — (1) Domain-Länder-Code, (2) Bio-Text,
+ * (3) Profil-Standort. Liefert dieser Check ein Ergebnis, gilt es als bindend (überschreibt
+ * ein abweichendes LLM-Urteil); liefert er keins, bleibt Englisch der sichere Rückfall statt
+ * Deutsch — nur .de/.at/.ch oder ein eindeutig deutscher Bio-Text ergeben Deutsch.
+ * ========================================================================== */
+
+const NICHT_DEUTSCHE_TLDS = new Set(["nl", "fr", "it", "es", "se", "dk", "be", "pt", "uk", "pl", "cz"]);
+const DEUTSCHE_TLDS = new Set(["de", "at", "ch"]);
+
+function domainEndung(website: string | null): string | null {
+  if (!website) return null;
+  try {
+    const host = new URL(website.startsWith("http") ? website : `https://${website}`).hostname.replace(/^www\./, "");
+    const teile = host.split(".");
+    return teile.length > 1 ? teile[teile.length - 1].toLowerCase() : null;
+  } catch { return null; }
+}
+
+/** Eindeutig deutsche Signalwörter/Umlaute im Bio-Text — bewusst konservativ, lieber "unklar"
+ * (null) als ein falsches Deutsch-Urteil aus einem einzelnen Fremdwort. */
+function biospracheDeutsch(bio: string | null): boolean | null {
+  if (!bio || bio.trim().length < 8) return null;
+  const b = bio.toLowerCase();
+  if (/[äöüß]/.test(b)) return true;
+  const deutscheWoerter = /\b(und|nicht|handgemacht|manufaktur|schmuck|kleidung|kollektion|künstlerin|künstler|designerin|designer aus|handwerk|einzelstück|nachhaltig)\b/;
+  const englischeWoerter = /\b(the|and|based in|handmade|jewelry|clothing|collection|artist|designer from|sustainable|one[- ]of[- ]a[- ]kind)\b/;
+  if (deutscheWoerter.test(b) && !englischeWoerter.test(b)) return true;
+  if (englischeWoerter.test(b)) return false;
+  return null;
+}
+
+function standortDeutsch(location: string | null): boolean | null {
+  if (!location) return null;
+  const l = location.toLowerCase();
+  if (/deutschland|germany|\bde\b|österreich|austria|\bat\b|schweiz|switzerland|\bch\b/.test(l)) return true;
+  if (l.trim().length > 0) return false;
+  return null;
+}
+
+/** Bindendes Ergebnis (überschreibt das LLM), oder null wenn alle drei Signale unklar bleiben —
+ * dann entscheidet das LLM frei, mit Englisch als Systemprompt-Rückfall statt Deutsch. */
+function harteSpracherkennung(website: string | null, bio: string | null, location: string | null): "de" | "en" | null {
+  const tld = domainEndung(website);
+  if (tld) {
+    if (DEUTSCHE_TLDS.has(tld)) return "de";
+    if (NICHT_DEUTSCHE_TLDS.has(tld)) return "en";
+  }
+  const bioSignal = biospracheDeutsch(bio);
+  if (bioSignal !== null) return bioSignal ? "de" : "en";
+  const standortSignal = standortDeutsch(location);
+  if (standortSignal !== null) return standortSignal ? "de" : "en";
+  return null;
+}
 
 async function researchAndDraftLead(
-  apiKey: string, lead: { handle: string; world: string; bio: string | null; name?: string | null },
+  apiKey: string,
+  lead: { handle: string; world: string; bio: string | null; name?: string | null; website?: string | null; profile_location?: string | null },
   styleLaw: string, languages: string[], sprachgesetze: string, variant: "A" | "B",
 ): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> {
   const allowed = languages.length ? languages : ["de", "en"];
+  // PART 47 Befund 3: harte, deterministische Vorentscheidung (Domain vor Bio vor Standort) statt
+  // allein dem LLM-Urteil über den Bio-Text zu vertrauen. Ein Ergebnis hier ist bindend; bleibt
+  // sie unklar, ist Englisch der sichere Rückfall im Prompt (nicht mehr Deutsch).
+  const vorentscheidung = harteSpracherkennung(lead.website ?? null, lead.bio, lead.profile_location ?? null);
+  const sprachAnweisung = vorentscheidung
+    ? `Die Sprache steht bereits fest: ${vorentscheidung === "de" ? "Deutsch" : "Englisch"} (aus Domain-Endung/Bio-Text/Profil-Standort ermittelt). Schreibe AUSSCHLIESSLICH in dieser Sprache, unabhängig vom eigenen Bio-Eindruck.`
+    : `Erkenne die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig deutsch, schreibe Deutsch. Sonst — auch bei Unklarheit — ist Englisch der sichere Rückfall (nicht Deutsch).`;
   const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine Erstkontakt-Nachricht an einen unabhängigen Designer für pawn.vision.
 
-Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe in dieser Sprache. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
+${sprachAnweisung}
 
 SPRACHGESETZE (bindend, jede Zeile gilt):
 ${sprachgesetze}
@@ -2750,6 +2824,14 @@ RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein �
   const minimalTools = [{ type: "web_search_20250305", name: "web_search" }];
   let tokens = 0;
 
+  // PART 47 Befund 3: die deterministische Vorentscheidung überschreibt ein abweichendes
+  // LLM-Urteil — das Modell darf die personal_line frei formulieren, aber nicht die Sprache
+  // gegen ein klares Domain-/Bio-/Standort-Signal entscheiden.
+  const entscheideSprache = (vomModell: string | undefined): string => {
+    if (vorentscheidung) return vorentscheidung;
+    return allowed.includes(vomModell ?? "") ? vomModell! : "en";
+  };
+
   // Ohne Anthropic-Schlüssel (oder wenn er nicht antwortet) schreibt die Modell-Kette den Entwurf
   // ohne Websuche — lieber eine gute Nachricht ohne Recherche als gar keine.
   const fallbackDraft = async (): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> => {
@@ -2761,8 +2843,7 @@ RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein �
     if (r.error || !r.text) return null;
     const json = extractJson(r.text) as { personal_line?: string; message?: string; language?: string } | null;
     if (!json?.personal_line || !json?.message) return null;
-    const language = allowed.includes(json.language ?? "") ? json.language! : "de";
-    return { personal_line: json.personal_line, message: json.message, language, tokens: tokens + r.tokens };
+    return { personal_line: json.personal_line, message: json.message, language: entscheideSprache(json.language), tokens: tokens + r.tokens };
   };
 
   if (!apiKey) return await fallbackDraft();
@@ -2785,8 +2866,7 @@ RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein �
       const text = data.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n");
       const json = extractJson(text) as { personal_line?: string; message?: string; language?: string } | null;
       if (json?.personal_line && json?.message) {
-        const language = allowed.includes(json.language ?? "") ? json.language! : "de";
-        return { personal_line: json.personal_line, message: json.message, language, tokens };
+        return { personal_line: json.personal_line, message: json.message, language: entscheideSprache(json.language), tokens };
       }
       return await fallbackDraft();
     }
@@ -2831,10 +2911,37 @@ function vornameVon(name: string | null | undefined): string | null {
   return first && /^[\p{L}][\p{L}'-]{1,}$/u.test(first) ? first : null;
 }
 
+/**
+ * PART 47 Befund 3: bereits verfasste, aber noch nicht gesendete Entwürfe erneut prüfen —
+ * stimmt die gespeicherte Sprache nicht mit dem deterministischen Check überein (Domain vor
+ * Bio vor Standort), wird der Entwurf gelöscht (nicht die Lead), damit runAkquiseVerfassen ihn
+ * im selben Lauf mit der richtigen Sprache neu schreibt. Nur qualifizierte, noch nicht
+ * kontaktierte Leads — ein bereits gesendeter Erstkontakt wird nie nachträglich verändert.
+ */
+async function korrigiereFalschSprachigeEntwuerfe(admin: SupabaseClient): Promise<number> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, handle, bio, website, profile_location, language")
+    .eq("lead_type", "designer").eq("status", "qualifiziert")
+    .not("message_draft", "is", null).is("contacted_at", null).not("language", "is", null)
+    .limit(300);
+  let korrigiert = 0;
+  for (const lead of (leads ?? []) as { id: string; bio: string | null; website: string | null; profile_location: string | null; language: string | null }[]) {
+    const erwartet = harteSpracherkennung(lead.website, lead.bio, lead.profile_location);
+    if (erwartet && erwartet !== lead.language) {
+      await admin.from("acquisition_leads")
+        .update({ message_draft: null, personal_line: null, language: null, updated_at: new Date().toISOString() })
+        .eq("id", lead.id);
+      korrigiert++;
+    }
+  }
+  return korrigiert;
+}
+
 /** akquise_verfassen — recherchiert und verfasst Erstnachrichten für qualifizierte Leads. */
 async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  const sprachkorrigiert = await korrigiereFalschSprachigeEntwuerfe(admin);
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, email, contact_url, contact_name, ref_code, lead_type, plate_status").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
+    .select("id, handle, world, bio, website, profile_location, email, contact_url, contact_name, ref_code, lead_type, plate_status").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
   const config = await loadAkquiseConfig(admin);
@@ -2844,7 +2951,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   // Adressen zuerst: wer erreichbar ist, bekommt seinen Text vor allen anderen.
   // Reine Instagram-Leads (keine E-Mail, kein Kontaktformular) schreibt akquise_dm_vorbereiten —
   // die kürzere DM-Fassung für den Sende-Stapel, nicht diese lange Mail-Fassung.
-  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
+  const alle = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; website: string | null; profile_location: string | null; email: string | null; contact_url: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
     .filter((l) => l.email || l.contact_url)
     .sort((a, b) => Number(!!b.email) - Number(!!a.email));
   const stapel = alle.slice(0, config.batch_verfassen);
@@ -2899,7 +3006,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     }).eq("id", lead.id);
     ready++;
   }
-  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, tokensUsed };
+  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, tokensUsed, sprachkorrigiert };
 }
 
 /**
@@ -2912,7 +3019,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
  */
 async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: leads } = await admin.from("acquisition_leads")
-    .select("id, handle, world, bio, contact_name, ref_code, lead_type, plate_status")
+    .select("id, handle, world, bio, website, profile_location, contact_name, ref_code, lead_type, plate_status")
     .eq("lead_type", "designer").eq("status", "qualifiziert")
     .is("email", null).is("contact_url", null).is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
@@ -2922,7 +3029,7 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
   const allowed = config.languages.length ? config.languages : ["de", "en"];
   const naechsteVariante = await ladeVariantenZuteiler(admin);
 
-  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
+  const stapel = ((leads ?? []) as { id: string; handle: string; world: string; bio: string | null; website: string | null; profile_location: string | null; contact_name: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[])
     .filter((l) => l.handle)
     .slice(0, config.batch_verfassen);
 
@@ -2937,11 +3044,16 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
     if (lead.lead_type !== "designer") continue;
     const name = vornameVon(lead.contact_name);
     const variant = naechsteVariante(lead.world);
+    // PART 47 Befund 3: gleiche deterministische Vorentscheidung wie bei akquise_verfassen.
+    const vorentscheidung = harteSpracherkennung(lead.website, lead.bio, lead.profile_location);
+    const sprachAnweisung = vorentscheidung
+      ? `Die Sprache steht bereits fest: ${vorentscheidung === "de" ? "Deutsch" : "Englisch"} (aus Domain-Endung/Bio-Text/Profil-Standort ermittelt). Schreibe AUSSCHLIESSLICH in dieser Sprache.`
+      : `Erkenne die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig deutsch, schreibe Deutsch. Sonst — auch bei Unklarheit — ist Englisch der sichere Rückfall (nicht Deutsch).`;
     const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine kurze Instagram-Direktnachricht an einen unabhängigen Designer für pawn.vision.
 
 Instagram-DMs werden nach wenigen Zeilen abgeschnitten — die Nachricht muss deutlich kürzer sein als eine E-Mail: ${variant === "A" ? "40–70 Wörter" : "20–40 Wörter"}, ein Fließtext, keine Betreffzeile, keine Aufzählung.
 
-Erkenne zuerst die Sprache dieser Person aus ihrer Bio (${lead.bio ? "siehe unten" : "keine Bio vorhanden — dann Deutsch"}). Erlaubte Sprachen: ${allowed.join(", ")}. Ist die Bio eindeutig nicht-deutsch und eine der erlaubten Sprachen erkennbar (meist Englisch), schreibe in dieser Sprache. Sonst — auch bei Unklarheit — bleibt Deutsch der Rückfall.
+${sprachAnweisung}
 
 SPRACHGESETZE (bindend, jede Zeile gilt):
 ${gesetze}
@@ -2959,7 +3071,7 @@ RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein �
     tokensUsed += tokens;
     const draft = json as { language?: string; personal_line?: string; message?: string } | null;
     if (!draft?.personal_line || !draft?.message) continue;
-    const language = allowed.includes(draft.language ?? "") ? draft.language! : "de";
+    const language = vorentscheidung ?? (allowed.includes(draft.language ?? "") ? draft.language! : "en");
 
     let message = draft.message;
     if (hatVerneinung(message)) {

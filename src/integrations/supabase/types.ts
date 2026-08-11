@@ -108,6 +108,7 @@ export type Database = {
           plate_images: Json | null
           plate_number: number | null
           plate_status: string | null
+          profile_location: string | null
           qc_passed: boolean | null
           recherche_attempted_at: string | null
           recherche_log: Json | null
@@ -166,6 +167,7 @@ export type Database = {
           plate_images?: Json | null
           plate_number?: number | null
           plate_status?: string | null
+          profile_location?: string | null
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
           recherche_log?: Json | null
@@ -224,6 +226,7 @@ export type Database = {
           plate_images?: Json | null
           plate_number?: number | null
           plate_status?: string | null
+          profile_location?: string | null
           qc_passed?: boolean | null
           recherche_attempted_at?: string | null
           recherche_log?: Json | null
