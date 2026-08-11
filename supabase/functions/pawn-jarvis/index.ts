@@ -3010,7 +3010,9 @@ Ton: freundlich, unaufdringlich, keine Erinnerung an eine Absage, kein neues Zah
       text = fixed.text;
     }
     text = entferneEinladungslink(text);
-    if (lead.ref_code && lead.plate_status === "fertig") text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
+    // PART 47 Befund 2: die Einladungsseite existiert auch ohne fertige Platte (typografische
+    // Fassung) — der Link gehörte vorher fälschlich nur an Leads mit plate_status='fertig'.
+    if (lead.ref_code) text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     await admin.from("acquisition_leads").update({ dm_followup_draft: text }).eq("id", lead.id);
     ready++;
   }
@@ -3796,7 +3798,22 @@ async function tuerAngenommenEreignis(admin: SupabaseClient, designerId: string,
   } catch { /* nie den Türen-Lauf daran scheitern lassen */ }
 }
 
-const FOLLOWUP_EMAIL_TEXT = `Ich schreibe kurz nach, damit meine Nachricht sichtbar bleibt. Falls du reinschauen magst: pawn.vision — die Teilnahme ist kostenlos, und Ausgabe 08 hat noch Platz. Melde dich gern, wann immer es für dich passt.`;
+/**
+ * PART 47 Befund 2 "Die Verlorenen": die alte Nachfass-Mail war unwürdig — ein erfundenes
+ * "Ausgabe 08 hat noch Platz" (nur Ausgabe 01 existiert), nie die persönliche Zeile der Lead,
+ * ein roher Kennung-Link statt des Einladungs-Links, und "Ich"-zentrierte Formulierung
+ * ("damit meine Nachricht sichtbar bleibt"). Ersetzt durch eine kurze (2–3 Sätze),
+ * personalisierte, sprachrichtige Nachricht aus Empfänger-Perspektive mit dem echten
+ * Einladungslink — kein Deck, keine Zahl, keine Verknappung.
+ */
+function buildFollowupEmailText(lead: { personal_line: string | null; ref_code: string | null; language: string | null }): string {
+  const link = lead.ref_code ? `pawn.vision/einladung/${lead.ref_code}` : "pawn.vision";
+  const personal = lead.personal_line?.trim();
+  if (lead.language === "en") {
+    return `Just a short follow-up in case this got buried.${personal ? ` ${personal}` : ""} Here's your page, whenever you have time to look: ${link}`;
+  }
+  return `Nur ein kurzer Nachtrag, falls meine erste Nachricht untergegangen ist.${personal ? ` ${personal}` : ""} Hier ist deine Seite, ganz ohne Eile: ${link}`;
+}
 
 const DEFAULT_MAIL_FOOTER = "Du bekommst diese Nachricht, weil dein Account öffentlich als unabhängiges Designstudio sichtbar ist. Eine kurze Antwort genügt, dann lassen wir dich in Ruhe weiterarbeiten.";
 
@@ -3950,12 +3967,14 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
       : isPresse
         ? (lead.personal_line?.trim() || "Ein unabhängiges Haus für deine nächste Geschichte")
         : "PAWN — eine Ausstellung für unabhängige Designer";
-    const text = isFollowup ? FOLLOWUP_EMAIL_TEXT : lead.message_draft;
+    const text = isFollowup ? buildFollowupEmailText(lead) : lead.message_draft;
     const footer = isPresse
       ? "Du bekommst diese Nachricht, weil du öffentlich über unabhängiges Design schreibst. Eine kurze Antwort genügt, dann lassen wir es dabei."
       : undefined;
     // Teil 37/AP2 — Wizard-Einstieg mit Lead-Attribution, nur für Designer-Leads (Presse bewirbt sich nicht).
-    const startLink = isPresse ? undefined : `Dein Einstieg: https://pawn.vision/start?lead=${lead.id}`;
+    // PART 47 Befund 2: das Nachfassen trägt seinen eigenen Einladungslink schon im Text
+    // (buildFollowupEmailText) — kein zweiter, roher /start?lead=-Link mehr obendrauf.
+    const startLink = isPresse || isFollowup ? undefined : `Dein Einstieg: https://pawn.vision/start?lead=${lead.id}`;
 
     // Teil 43 WP4: hat dieser Designer eine fertige Platte, wird aus der Erstnachricht die
     // Titelseite von Ausgabe 01. Alle anderen bekommen unverändert die bisherige Textmail.
