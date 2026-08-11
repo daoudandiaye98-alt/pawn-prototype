@@ -103,6 +103,9 @@ interface PdfLine { text: string; size?: number; bold?: boolean; gapBefore?: num
 
 function winAnsiByte(ch: string): number {
   const cp = ch.codePointAt(0)!;
+  // Zeilenumbrüche müssen durchgereicht werden — sonst zerfällt der PDF-Stream
+  // in unlesbare Operatoren (genau daran sind die alten Rechnungen gescheitert).
+  if (cp === 0x0a || cp === 0x0d) return cp;
   if (cp >= 0x20 && cp <= 0x7e) return cp;
   if (cp >= 0xa0 && cp <= 0xff) return cp;
   const special: Record<number, number> = {
