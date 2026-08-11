@@ -8,6 +8,7 @@ import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Loader2, Copy } from "lucide-react";
+import { canUse, ladePlanGate, type Plan } from "@/lib/planGate";
 
 /**
  * Teil 34a/34b — Offene Türen: reale, ortsnahe Chancen (Galerien, Ausstellungen, Märkte, offene
@@ -33,6 +34,7 @@ interface Tuer {
   followup_sent_at: string | null;
   delivery_status: string | null;
   created_at: string;
+  sichtbar_ab: string | null;
 }
 
 const TYP_KEYS = ["galerie", "ausstellung", "markt", "offenes_atelier", "schule_hochschule", "sonstiges"];
@@ -54,10 +56,19 @@ export default function StudioOffeneTueren() {
   useEffect(() => {
     if (!designer) return;
     (async () => {
+      await ladePlanGate();
       const { data } = await supabase.from("designer_opportunities" as never)
-        .select("id, title, ort, typ, art, match_score, quelle_url, warum, status, message_draft, contact_email, sent_at, followup_sent_at, delivery_status, created_at")
+        .select("id, title, ort, typ, art, match_score, quelle_url, warum, status, message_draft, contact_email, sent_at, followup_sent_at, delivery_status, created_at, sichtbar_ab")
         .eq("designer_id", designer.id).order("match_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
-      setRows((data as unknown as Tuer[]) ?? []);
+      // PART 48 AP2/AP4: ohne Tür-Vorlauf (nur Maison) bleiben ganz neue Türen 48h unsichtbar —
+      // die Tür selbst existiert schon (Zeitpunkt der KI-Suche), erscheint dem Haus aber erst
+      // nach der Frist. sichtbar_ab=null (ältere Zeilen vor dieser Migration) gilt als sichtbar.
+      const plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
+      const alle = (data as unknown as Tuer[]) ?? [];
+      const sichtbar = canUse(plan, "tuer_vorlauf")
+        ? alle
+        : alle.filter((r) => !r.sichtbar_ab || new Date(r.sichtbar_ab).getTime() <= Date.now());
+      setRows(sichtbar);
       setRowsLoading(false);
     })();
   }, [designer]);
