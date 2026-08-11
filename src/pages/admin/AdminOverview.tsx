@@ -671,6 +671,17 @@ function Buhne({
   markenKartei: ReturnType<typeof useMarkenKartei>;
 }) {
   const [showFehler, setShowFehler] = useState(false);
+  // PART 45 — die wichtigste Zahl des Hauses: wer kann überhaupt Geld empfangen?
+  const [kasse, setKasse] = useState<{ bereit: number; gesamt: number } | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const gesamt = await supabase.from("designers").select("id", { count: "exact", head: true })
+        .eq("status", "active").eq("published", true);
+      const bereit = await supabase.from("designers").select("id", { count: "exact", head: true })
+        .eq("status", "active").eq("published", true).eq("verkaufsbereit", true);
+      setKasse({ bereit: bereit.count ?? 0, gesamt: gesamt.count ?? 0 });
+    })();
+  }, []);
   const maschinenraum = condensedMaschinenraum(jarvisRuns, jarvisCronJobs);
 
   // Regelbasierter wichtigster Zug des Tages: voller Sende-Stapel > offene Prüfungen > stille Crons.
