@@ -23,6 +23,7 @@ interface FeldzugLead {
   message_draft: string | null;
   status: string;
   channel: string | null;
+  email: string | null;
   admin_decision: string | null;
   qc_passed: boolean | null;
   contacted_at: string | null;
@@ -43,6 +44,13 @@ interface FeldzugLead {
 
 type ChannelTab = "dm" | "formular" | "nachfassen" | "multiplikator" | "email" | "blockiert";
 type MainTab = "heute" | "gespraech";
+
+interface InboundEvent {
+  id: string;
+  from_email: string;
+  subject: string | null;
+  received_at: string;
+}
 
 function isMobileDevice(): boolean {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -312,7 +320,11 @@ function kurzDatum(iso: string): string {
 function EmailStatusList({ leads }: { leads: FeldzugLead[] }) {
   if (leads.length === 0) return <p className="p-6 text-sm text-muted-foreground">Keine E-Mail-Leads in der Warteschlange.</p>;
   return (
-    <ul className="divide-y divide-border">
+    <>
+      <p className="border-b border-border bg-background px-5 py-2 text-xs text-muted-foreground">
+        Eine Antwort erfassen: Tab „Im Gespräch" — dort erscheint jede kontaktierte E-Mail-Lead ohne Antwort.
+      </p>
+      <ul className="divide-y divide-border">
       {leads.map((l) => (
         <li key={l.id} className="flex items-center justify-between gap-3 px-5 py-3">
           <div>
@@ -329,7 +341,8 @@ function EmailStatusList({ leads }: { leads: FeldzugLead[] }) {
           </span>
         </li>
       ))}
-    </ul>
+      </ul>
+    </>
   );
 }
 
@@ -372,7 +385,10 @@ function GespraechCard({
     <li className="border-b border-border px-5 py-4 last:border-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-serif text-base">@{lead.handle}</p>
-        <span className="text-xs text-muted-foreground">{lead.world ?? "—"}</span>
+        <span className="text-xs text-muted-foreground">
+          {lead.world ?? "—"}
+          {lead.channel === "email" && lead.email ? ` · ${lead.email}` : lead.channel === "email" ? " · E-Mail" : " · Instagram DM"}
+        </span>
       </div>
       {lead.dm_followup_sent_at && (
         <p className="mt-2 text-xs text-muted-foreground">
@@ -427,6 +443,108 @@ function GespraechCard({
   );
 }
 
+/* ─────────────────────── Eingehende Mails ohne Zuordnung ─────────────────────── */
+
+/**
+ * PART 47 Befund 1 "Die Verlorenen": solange Resend Inbound nicht per MX eingerichtet ist,
+ * bleibt diese Liste leer — das ist ehrlich so und kein Fehler. Sobald sie läuft, landen hier
+ * eingehende Mails, deren Absenderadresse keiner (oder mehr als einer) Lead eindeutig zuzuordnen
+ * war. Ein Mensch sucht die passende Lead und verknüpft — die RPC `match_inbound_email` setzt
+ * dann auch replied_at/status auf der Lead selbst.
+ */
+function InboundMailEventRow({ event, onResolved }: { event: InboundEvent; onResolved: (eventId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{ id: string; handle: string; email: string | null }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+
+  useEffect(() => {
+    if (!open || query.trim().length < 2) { setResults([]); return; }
+    let cancelled = false;
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      const { data } = await supabase
+        .from("acquisition_leads")
+        .select("id, handle, email")
+        .or(`handle.ilike.%${query.trim()}%,email.ilike.%${query.trim()}%`)
+        .limit(8);
+      if (!cancelled) { setResults((data as { id: string; handle: string; email: string | null }[] | null) ?? []); setSearching(false); }
+    }, 350);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [open, query]);
+
+  async function assign(leadId: string) {
+    setAssigning(true);
+    const { error } = await supabase.rpc("match_inbound_email", { _event_id: event.id, _lead_id: leadId });
+    setAssigning(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Antwort zugeordnet.");
+    onResolved(event.id);
+  }
+
+  return (
+    <li className="border-b border-border px-5 py-4 last:border-0">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="font-serif text-base">{event.from_email}</p>
+          <p className="text-xs text-muted-foreground">
+            {event.subject || "Ohne Betreff"} · {new Date(event.received_at).toLocaleString("de-DE")}
+          </p>
+        </div>
+        {!open && (
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="rounded-none border-black hover:bg-black hover:text-white">
+            Lead zuordnen
+          </Button>
+        )}
+      </div>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <Textarea
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            rows={1}
+            placeholder="Handle oder E-Mail suchen…"
+            className="rounded-none border-black text-sm"
+          />
+          {searching && <p className="text-xs text-muted-foreground">Suche…</p>}
+          {results.length > 0 && (
+            <ul className="divide-y divide-border border border-border">
+              {results.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="text-sm">@{r.handle} {r.email && <span className="text-muted-foreground">· {r.email}</span>}</span>
+                  <Button size="sm" disabled={assigning} onClick={() => void assign(r.id)} className="rounded-none bg-black text-white hover:bg-white hover:text-black">
+                    Zuordnen
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button size="sm" variant="outline" onClick={() => { setOpen(false); setQuery(""); setResults([]); }} className="rounded-none border-black">
+            Abbrechen
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function InboundMailPanel({ events, onResolved }: { events: InboundEvent[]; onResolved: (eventId: string) => void }) {
+  if (events.length === 0) return null;
+  return (
+    <div className="mb-6 border-[1.5px] border-black">
+      <header className="border-b-[1.5px] border-black px-5 py-3">
+        <p className="editorial-eyebrow">Eingehende Mails ohne Zuordnung ({events.length})</p>
+      </header>
+      <ul>
+        {events.map((e) => (
+          <InboundMailEventRow key={e.id} event={e} onResolved={onResolved} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /* ─────────────────────── Hauptseite ─────────────────────── */
 
 interface TodayFunnel {
@@ -454,15 +572,18 @@ export default function AdminFeldzug() {
   // eigenem Designer-Netzwerk) sind eine eigene Zielgruppe — eigene Warteschlange, eigener Tab,
   // niemals in der Designer-Warteschlange gemischt (die filtert ohnehin schon auf lead_type='designer').
   const [multiplikatorRows, setMultiplikatorRows] = useState<FeldzugLead[]>([]);
+  // PART 47 Befund 1: eingehende Mails, die der Resend-Inbound-Webhook keiner Lead eindeutig
+  // zuordnen konnte (kein/mehrdeutiger Treffer per Absenderadresse) — warten auf einen Menschen.
+  const [inboundEvents, setInboundEvents] = useState<InboundEvent[]>([]);
 
   const load = async () => {
     setFetching(true);
     const heuteStart = new Date(); heuteStart.setHours(0, 0, 0, 0);
     const heuteIso = heuteStart.toISOString();
-    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes, multiplikatorRes] = await Promise.all([
+    const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes, multiplikatorRes, inboundRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
         .eq("lead_type", "designer")
         .in("status", ["qualifiziert", "kontaktiert"])
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -474,14 +595,21 @@ export default function AdminFeldzug() {
       supabase.rpc("get_attribution_stats"),
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, scrape_images, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel")
         .eq("lead_type", "multiplikator").eq("status", "qualifiziert").is("contacted_at", null)
         .not("message_draft", "is", null)
         .order("kurator_score", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("inbound_email_events")
+        .select("id, from_email, subject, received_at")
+        .is("matched_lead_id", null)
+        .order("received_at", { ascending: false })
+        .limit(20),
     ]);
     if (leadsRes.error) toast.error(leadsRes.error.message);
     setRows((leadsRes.data as FeldzugLead[] | null) ?? []);
     setMultiplikatorRows((multiplikatorRes.data as FeldzugLead[] | null) ?? []);
+    setInboundEvents((inboundRes.data as InboundEvent[] | null) ?? []);
     setTodayFunnel({
       neu: neuRes.count ?? 0,
       kontaktiert: kontaktiertRes.count ?? 0,
@@ -532,8 +660,12 @@ export default function AdminFeldzug() {
   // WP5: vorbereitete Nachfass-Entwürfe, noch nicht gesendet — eigener Zug neben der Erstnachricht.
   const nachfassenQueue = rows.filter((r) => r.dm_followup_draft && !r.dm_followup_sent_at);
 
-  // "Im Gespräch": kontaktiert (manueller Kanal), noch keine Antwort erfasst.
-  const gespraech = rows.filter((r) => r.status === "kontaktiert" && r.channel !== "email" && !r.replied_at);
+  // "Im Gespräch": kontaktiert, noch keine Antwort erfasst — PART 47 Befund 1: auch E-Mail-Leads
+  // gehören hierher. Solange der automatische Antworten-Abgleich (Resend Inbound) nicht per MX
+  // eingerichtet ist, ist dieser Tab der einzige Ort, an dem eine Antwort überhaupt erfasst
+  // werden kann — vorher fielen E-Mail-Leads hier komplett heraus und blieben für immer ohne
+  // Möglichkeit, "geantwortet" zu werden.
+  const gespraech = rows.filter((r) => r.status === "kontaktiert" && !r.replied_at);
 
   const currentDm = dmQueue[0] ?? null;
   const currentFormular = formularQueue[0] ?? null;
@@ -644,6 +776,11 @@ export default function AdminFeldzug() {
           )}
         </>
       )}
+
+      <InboundMailPanel
+        events={inboundEvents}
+        onResolved={(eventId) => setInboundEvents((es) => es.filter((e) => e.id !== eventId))}
+      />
 
       {/* WP7 "Das Attributions-Netz": ehrliche Zuordnungsrate + manueller Nachzieh-Lauf. */}
       {attribution && (

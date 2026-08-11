@@ -611,10 +611,13 @@ function SendeStapel({ rows, onChange }: { rows: Lead[]; onChange: (id: string, 
   async function markSent(item: StapelItem) {
     setBusyId(item.lead.id);
     const now = new Date().toISOString();
-    const patch: { status: string; updated_at: string; contacted_at?: string; next_touch_at?: string; followup_at?: string } =
+    // PART 47 Befund 1 "Schutzregel": ein gesendetes Nachfassen ist kein Beweis für Desinteresse
+    // — ohne echte Antwort-Prüfung darf hier nie automatisch "ruhe" stehen. Die Lead bleibt
+    // "kontaktiert" und wartet auf eine menschlich erfasste Antwort.
+    const patch: { status?: string; updated_at: string; contacted_at?: string; next_touch_at?: string; followup_at?: string } =
       item.kind === "erstkontakt"
         ? { status: "kontaktiert", contacted_at: now, next_touch_at: new Date(Date.now() + 5 * 86_400_000).toISOString(), updated_at: now }
-        : { status: "ruhe", followup_at: now, updated_at: now };
+        : { followup_at: now, updated_at: now };
     const { error } = await supabase.from("acquisition_leads").update(patch).eq("id", item.lead.id);
     setBusyId(null);
     if (error) { toast.error(error.message); return; }

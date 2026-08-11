@@ -3987,7 +3987,11 @@ async function sendAkquiseBatch(admin: SupabaseClient, leadIds: string[]): Promi
 
     const now = new Date().toISOString();
     if (isFollowup) {
-      await admin.from("acquisition_leads").update({ followup_at: now, status: "ruhe", updated_at: now }).eq("id", lead.id);
+      // PART 47 Befund 1 "Schutzregel": ein gesendetes Nachfassen ist kein Beweis für
+      // Desinteresse — ohne echte Antwort-Prüfung darf hier niemals automatisch "ruhe" stehen.
+      // Die Lead bleibt "kontaktiert" und taucht im Feldzug unter "Im Gespräch" auf, bis ein
+      // Mensch eine Antwort erfasst (oder sie manuell auf Ruhe setzt).
+      await admin.from("acquisition_leads").update({ followup_at: now, updated_at: now }).eq("id", lead.id);
     } else {
       const nextTouch = new Date(Date.now() + config.followup_after_days * 86_400_000).toISOString();
       await admin.from("acquisition_leads").update({
