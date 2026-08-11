@@ -147,9 +147,16 @@ export async function handleOrderPaid(
       const replyTo = cfgv.email_reply_to || "pawnstudio.co@gmail.com";
       const locale = o.buyer_locale === "en" ? "en" : "de";
       const subject = locale === "en" ? "Your PAWN order is confirmed" : "Deine PAWN-Bestellung ist bestätigt";
-      const text = locale === "en"
-        ? `Thank you — your order (€ ${(o.amount_total / 100).toFixed(2)}) is confirmed and on its way to the house that made it.\n\nYou'll hear from us again the moment it ships, with tracking and invoice attached.`
-        : `Danke — deine Bestellung (€ ${(o.amount_total / 100).toFixed(2)}) ist bestätigt und geht an das Haus, das sie gemacht hat.\n\nSobald sie verschickt wird, meldest du dich — mit Sendungsnummer und Rechnung im Anhang.`;
+      const rechnungZeile = rechnungUrl
+        ? (locale === "en"
+          ? `\n\nYour invoice${rechnung.invoice_number ? ` (${rechnung.invoice_number})` : ""}: ${rechnungUrl}`
+          : `\n\nDeine Rechnung${rechnung.invoice_number ? ` (${rechnung.invoice_number})` : ""}: ${rechnungUrl}`)
+        : (locale === "en"
+          ? "\n\nYour invoice will follow shortly by email."
+          : "\n\nDeine Rechnung folgt in Kürze per E-Mail.");
+      const text = (locale === "en"
+        ? `Thank you — your order (€ ${(o.amount_total / 100).toFixed(2)}) is confirmed and on its way to the house that made it.\n\nYou'll hear from us again the moment it ships, with tracking included.`
+        : `Danke — deine Bestellung (€ ${(o.amount_total / 100).toFixed(2)}) ist bestätigt und geht an das Haus, das sie gemacht hat.\n\nSobald sie verschickt wird, melden wir uns wieder — mit Sendungsnummer.`) + rechnungZeile;
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
