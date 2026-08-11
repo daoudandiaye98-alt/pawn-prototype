@@ -64,8 +64,10 @@ export function formatQuota(used: number, limit: number, noun: string): string {
 
 /**
  * Monats-Limite statt Guthaben: was der Designer sieht, sind Videos und Shots,
- * keine Punkte. Grenzen kommen aus ai_config.plan_limits, Verbrauch aus dem, was
- * wirklich entstanden ist (video_assets) bzw. serverseitig gebucht wurde.
+ * keine Punkte. videos/cinematic/shots bleiben feste Anhaltswerte (DEFAULT_PLAN_QUOTAS,
+ * die eigentliche Grenze ist die Credits-Kasse); signature_previews/emblem kommen live aus
+ * ai_config.plans (planGate). Verbrauch aus dem, was wirklich entstanden ist (video_assets)
+ * bzw. serverseitig gebucht wurde.
  */
 export function usePlanQuota(designerId?: string | null, plan: Plan = "haus", isAdmin = false): QuotaStatus {
   const [limits, setLimits] = useState<PlanQuota>(DEFAULT_PLAN_QUOTAS[plan]);
