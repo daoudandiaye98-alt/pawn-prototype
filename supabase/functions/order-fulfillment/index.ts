@@ -194,62 +194,24 @@ interface OrderRow {
   tracking_number: string | null; carrier: string | null; invoice_number: string | null;
 }
 
-/** Erzeugt (falls nötig) die Rechnung und verschickt die Versandbestätigung — genutzt von "ship" und "retry-email". */
+/**
+ * Versandbestätigung. Die Rechnung selbst kommt aus der gemeinsamen Quelle
+ * (_shared/rechnung.ts) — hier wird sie nur noch angefordert und angehängt,
+ * damit es keine zweite, abweichende Rechnungswahrheit gibt.
+ */
 async function sendShippedEmail(admin: SupabaseClient, order: OrderRow, designerId: string, designerName: string, designerUserId: string | null) {
   const locale = order.buyer_locale === "en" ? "en" : "de";
-  const { data: billing } = await admin.from("designer_billing_profiles").select("*").eq("designer_id", designerId).maybeSingle();
-  const b = billing as (BillingProfile & { invoice_next_number: number }) | null;
 
-  let invoiceNumber = order.invoice_number;
-  if (!invoiceNumber) {
-    const { data: num, error } = await admin.rpc("next_invoice_number", { _designer_id: designerId });
-    if (error || !num) return { ok: false, error: error?.message ?? "Rechnungsnummer konnte nicht vergeben werden." };
-    invoiceNumber = num as string;
-    await admin.from("orders").update({ invoice_number: invoiceNumber }).eq("id", order.id);
+  const rechnung = await erstelleRechnung(admin, order as unknown as OrderForInvoice, designerId);
+  if (!rechnung.ok && !order.invoice_number) {
+    return { ok: false, error: rechnung.hinweis ?? "Rechnung konnte nicht erstellt werden." };
   }
+  const invoiceNumber = rechnung.invoice_number ?? order.invoice_number;
 
-  const gross = order.amount_total / 100;
-  const net = b?.kleinunternehmer ? gross : gross / (1 + VAT_RATE);
-  const tax = gross - net;
+  const pfad = rechnung.path ?? `${order.id}.pdf`;
+  const { data: blob } = await admin.storage.from("invoices").download(pfad);
+  const pdfBytes = blob ? new Uint8Array(await blob.arrayBuffer()) : null;
 
-  const lines: PdfLine[] = [
-    { text: `${designerName}`, size: 16, bold: true },
-    { text: b?.address_line1 ?? "", size: 9, gapBefore: 4 },
-    { text: [b?.postal_code, b?.city].filter(Boolean).join(" "), size: 9 },
-    { text: b?.country ?? "", size: 9 },
-    { text: locale === "en" ? "Invoice" : "Rechnung", size: 14, bold: true, gapBefore: 24 },
-    { text: `${locale === "en" ? "Invoice no." : "Rechnungsnummer"}: ${invoiceNumber}`, gapBefore: 10 },
-    { text: `${locale === "en" ? "Date" : "Datum"}: ${new Date().toLocaleDateString(locale === "en" ? "en-GB" : "de-DE")}` },
-    { text: `${locale === "en" ? "Order" : "Bestellung"}: ${order.id.slice(0, 8)}` },
-  ];
-  lines.push({ text: locale === "en" ? "Items" : "Positionen", bold: true, gapBefore: 20 });
-  for (const it of order.items ?? []) {
-    const label = `${it.name}${it.size ? ` · ${locale === "en" ? "Size" : "Größe"} ${it.size}` : ""} × ${it.qty}`;
-    const price = `€ ${((it.unit_amount * it.qty) / 100).toFixed(2)}`;
-    lines.push({ text: `${label}  —  ${price}`, gapBefore: 6 });
-  }
-  if (b?.kleinunternehmer) {
-    lines.push({ text: `${locale === "en" ? "Total" : "Gesamt"}: € ${gross.toFixed(2)}`, bold: true, gapBefore: 20 });
-    lines.push({
-      text: locale === "en"
-        ? "No VAT is shown pursuant to § 19 UStG (small business regulation)."
-        : "Gemäß § 19 UStG wird keine Umsatzsteuer ausgewiesen (Kleinunternehmerregelung).",
-      size: 9, gapBefore: 10,
-    });
-  } else {
-    lines.push({ text: `${locale === "en" ? "Net" : "Netto"}: € ${net.toFixed(2)}`, gapBefore: 20 });
-    lines.push({ text: `${locale === "en" ? "VAT" : "USt."} ${Math.round(VAT_RATE * 100)}%: € ${tax.toFixed(2)}` });
-    lines.push({ text: `${locale === "en" ? "Total" : "Brutto"}: € ${gross.toFixed(2)}`, bold: true, gapBefore: 4 });
-  }
-  lines.push({
-    text: locale === "en"
-      ? "Sold via PAWN (pawn.vision), acting as intermediary on behalf of the house above."
-      : "Verkauft über PAWN (pawn.vision), als Vermittler im Namen des oben genannten Hauses.",
-    size: 8, gapBefore: 24,
-  });
-
-  const pdfBytes = buildInvoicePdf(lines);
-  await admin.storage.from("invoices").upload(`${order.id}.pdf`, pdfBytes, { contentType: "application/pdf", upsert: true });
 
   if (!order.customer_email) return { ok: true, emailSent: false, invoiceNumber };
 
