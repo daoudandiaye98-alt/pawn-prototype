@@ -73,7 +73,7 @@ export default function AdminKI() {
 
   const refreshAll = async () => {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, voiceLawCfg, sig, ses, resp, usageAll, ints, planCreditsCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg, tryonProviderCfg, stagingTemplatesCfg] = await Promise.all([
+    const [cfg, cfgCopilot, pc, pd, pa, dir, styleLaw, voiceLawCfg, sig, ses, resp, usageAll, ints, plansCfg, creditCostsCfg, creditPacksCfg, modelCatalogCfg, tryonProviderCfg, stagingTemplatesCfg] = await Promise.all([
       supabase.from("ai_config").select("value").eq("key", "pawn_chat_persona").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "copilot_prompt").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "persona_customer").maybeSingle(),
@@ -87,7 +87,7 @@ export default function AdminKI() {
       supabase.from("domain_events").select("id, at, payload").eq("type", "ai.response_logged").order("at", { ascending: false }).limit(20),
       supabase.from("domain_events").select("payload").eq("type", "ai.response_logged").gte("at", since),
       supabase.from("ai_integrations").select("*").order("created_at", { ascending: false }),
-      supabase.from("ai_config").select("value").eq("key", "plan_credits").maybeSingle(),
+      supabase.from("ai_config").select("value").eq("key", "plans").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "credit_costs").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "credit_packs").maybeSingle(),
       supabase.from("ai_config").select("value").eq("key", "model_catalog").maybeSingle(),
@@ -116,7 +116,14 @@ export default function AdminKI() {
     }
     setUsage({ chat, copilot, campaigns });
     setIntegrations((ints.data ?? []) as IntegrationRow[]);
-    if (planCreditsCfg.data?.value) setPlanCredits((prev) => ({ ...prev, ...(planCreditsCfg.data.value as Record<string, number>) }));
+    const plaene = (plansCfg.data?.value as { plaene?: Record<string, { credits_per_month?: number }> } | null)?.plaene;
+    if (plaene) {
+      setPlanCredits((prev) => ({
+        haus: plaene.haus?.credits_per_month ?? prev.haus,
+        atelier: plaene.atelier?.credits_per_month ?? prev.atelier,
+        maison: plaene.maison?.credits_per_month ?? prev.maison,
+      }));
+    }
     if (creditCostsCfg.data?.value) setCreditCosts((prev) => ({ ...prev, ...(creditCostsCfg.data.value as Record<string, number>) }));
     if (Array.isArray(creditPacksCfg.data?.value)) setCreditPacks(creditPacksCfg.data.value as unknown as CreditPackRow[]);
     if (Array.isArray(modelCatalogCfg.data?.value)) setModelCatalog(modelCatalogCfg.data.value as unknown as ModelCatalogRow[]);
@@ -174,7 +181,13 @@ export default function AdminKI() {
 
   const savePlanCredits = async (next: Record<string, number>) => {
     setBusy(true);
-    const { error } = await supabase.from("ai_config").upsert({ key: "plan_credits", value: next, updated_by: user.id });
+    const { data: row } = await supabase.from("ai_config").select("value").eq("key", "plans").maybeSingle();
+    const current = (row?.value ?? { version: 2, plaene: {} }) as { version: number; plaene: Record<string, Record<string, unknown>> };
+    const plaene = { ...current.plaene };
+    for (const p of ["haus", "atelier", "maison"] as const) {
+      plaene[p] = { ...(plaene[p] ?? {}), credits_per_month: next[p] ?? 0 };
+    }
+    const { error } = await supabase.from("ai_config").upsert({ key: "plans", value: { ...current, plaene } as unknown as never, updated_by: user.id });
     setBusy(false);
     if (error) toast.error(error.message); else { toast.success("Guthaben je Plan gespeichert."); setPlanCredits(next); }
   };
@@ -296,7 +309,7 @@ export default function AdminKI() {
         {(["denklogik","credits","staging","persona","signale","responses","integrationen"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`border-b-2 px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] ${tab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-            {t === "denklogik" ? "Denklogik" : t === "credits" ? "Credits" : t === "staging" ? "Inszenierung" : t === "persona" ? "Persona (Legacy)" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
+            {t === "denklogik" ? "Denklogik" : t === "credits" ? "Guthaben" : t === "staging" ? "Inszenierung" : t === "persona" ? "Persona (Legacy)" : t === "signale" ? "Signale" : t === "responses" ? "Antwort-Log" : "Integrationen"}
           </button>
         ))}
       </div>
@@ -650,7 +663,7 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
     <div className="space-y-8">
       <section className="border-[1.5px] border-foreground bg-card p-8">
         <p className="editorial-eyebrow">Guthaben je Plan · monatlich</p>
-        <p className="mt-2 text-sm text-muted-foreground">Credits, die jedes Haus pro Monat bekommt. Verfällt zum Monatsende.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Guthaben, das jedes Haus pro Monat bekommt. Verfällt zum Monatsende.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {(["haus", "atelier", "maison"] as const).map((p) => (
             <label key={p} className="block">
@@ -668,7 +681,7 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
 
       <section className="border-[1.5px] border-foreground bg-card p-8">
         <p className="editorial-eyebrow">Was jede Handlung kostet</p>
-        <p className="mt-2 text-sm text-muted-foreground">Credits pro Handlung — je nach Modell unterschiedlich teuer.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Guthaben-Einheiten pro Handlung — je nach Modell unterschiedlich teuer.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(cc).map(([key, val]) => (
             <label key={key} className="block">
@@ -698,7 +711,7 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
                   className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
               </label>
               <label className="block">
-                <span className="editorial-eyebrow">Credits</span>
+                <span className="editorial-eyebrow">Guthaben</span>
                 <input type="number" min={0} value={p.credits} onChange={(e) => setPacks(packs.map((x, j) => j === i ? { ...x, credits: Number(e.target.value) } : x))}
                   className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
               </label>
@@ -761,7 +774,7 @@ function CreditsEditor({ planCredits, onSavePlanCredits, creditCosts, onSaveCred
                   className="mt-1 w-full border-[1.5px] border-border bg-background p-2 text-sm" />
               </label>
               <label className="block">
-                <span className="editorial-eyebrow">Credits</span>
+                <span className="editorial-eyebrow">Kostengewicht</span>
                 <input type="number" min={0} value={m.credits} onChange={(e) => setModels(models.map((x, j) => j === i ? { ...x, credits: Number(e.target.value) } : x))}
                   className="mt-1 w-20 border-[1.5px] border-border bg-background p-2 text-sm tabular-nums" />
               </label>
@@ -937,7 +950,7 @@ function StagingTemplatesEditor({ templates, onSave, busy }: {
               <textarea value={r.prompt} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, prompt: e.target.value } : x)))}
                 placeholder="Prompt-Vorlage (Englisch)" rows={4} className="w-full border border-border bg-white p-2 text-xs" />
               <input type="number" value={r.credits} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, credits: Number(e.target.value) } : x)))}
-                placeholder="Credits" className="w-full border border-border bg-white p-2 text-sm" />
+                placeholder="Kostengewicht" className="w-full border border-border bg-white p-2 text-sm" />
               <div className="flex flex-col items-start gap-2">
                 <label className="flex items-center gap-1.5 text-xs">
                   <input type="checkbox" checked={r.active !== false} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)))} /> Aktiv
