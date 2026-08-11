@@ -26,6 +26,8 @@ import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
 import Ausgabe from "./pages/Ausgabe.tsx";
 import Vision from "./pages/Vision.tsx";
+import Preise from "./pages/Preise.tsx";
+import PreiseMaison from "./pages/PreiseMaison.tsx";
 import Apply from "./pages/Apply.tsx";
 import ApplyLanding from "./pages/ApplyLanding.tsx";
 import Start from "./pages/Start.tsx";
@@ -154,6 +156,8 @@ const App = () => (
                 <Route path="/designers" element={<Designers />} />
                 <Route path="/ausgabe" element={<Ausgabe />} />
                 <Route path="/vision" element={<Vision />} />
+                <Route path="/preise" element={<Preise />} />
+                <Route path="/preise/maison" element={<PreiseMaison />} />
                 <Route path="/about" element={<Vision />} />
                 <Route path="/designers/all" element={<DesignersIndex />} />
                 <Route path="/designer/:slug" element={<DesignerPage />} />
