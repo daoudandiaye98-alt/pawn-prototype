@@ -13,15 +13,14 @@ import {
   usePlanQuota, planLabel, formatQuota, DEFAULT_PLAN_QUOTAS,
   type Plan, type PlanQuota,
 } from "@/features/campaign/quota";
-import { isPaidPlan, isLegacyPlan, PAID_PLAN_KEY } from "@/lib/planGate";
+import { isPaidPlan } from "@/lib/planGate";
 import { useContentValue } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
 import { Check, Sparkles } from "lucide-react";
 
-// Teil 38 AP7 — Preisumbau: nach außen gibt es nur noch zwei Karten, Frei und Paid. 'atelier'
-// bleibt in der Datenbank für Bestandsabos (eigener Preis läuft unverändert weiter), wird aber
-// nicht mehr als eigene Karte angeboten — siehe PAID_PLAN_KEY in @/lib/planGate.
-const VISIBLE_PLANS: Plan[] = ["haus", PAID_PLAN_KEY];
+// PART 38 WP7: drei kaufbare Pläne, alle drei als eigene Karte sichtbar — Atelier ist wieder
+// ein regulärer, neu abschließbarer Plan (nicht mehr nur ein auslaufendes Bestandsabo).
+const VISIBLE_PLANS: Plan[] = ["haus", "atelier", "maison"];
 
 function useStaticBenefits(t: (key: string, vars?: Record<string, string | number>) => string): Record<Plan, string[]> {
   return {
@@ -173,20 +172,28 @@ export default function StudioPlan() {
     toast.success(t("studio.plan.toast.requestSent"));
   };
 
-  const upgrade = async () => {
+  // PART 38 WP7: drei kaufbare Pläne — ein Wechsel von Haus auf Atelier/Maison löst direkt einen
+  // Checkout für den Ziel-Plan aus; ein Wechsel zwischen zwei laufenden Bezahlplänen (z. B.
+  // Atelier → Maison) geht NIE automatisch über einen zweiten Checkout (Gefahr: zwei parallel
+  // laufende Abos), sondern als begleitete Anfrage ans Team.
+  const switchToPlan = async (target: Plan) => {
     if (!user || !designer) { toast.error(t("studio.plan.toast.pleaseSignIn")); return; }
-    if (isPaidPlan(plan)) return;
-    setBusy(PAID_PLAN_KEY);
+    if (plan === target) return;
+    setBusy(target);
     try {
-      const priceId = prices.maison?.stripe_price_id;
+      if (isPaidPlan(plan)) {
+        await requestPlanChange(`Ich bin aktuell im Plan ${planLabel(plan)} und möchte auf den Plan ${planLabel(target)} wechseln. Bitte meldet euch, um den Wechsel zu begleiten.`);
+        return;
+      }
+      const priceId = prices[target]?.stripe_price_id;
       if (!priceId) {
-        await requestPlanChange(`Ich möchte auf den Plan ${planLabel(PAID_PLAN_KEY)} (Paid) wechseln. Bitte meldet euch zur Freischaltung.`);
+        await requestPlanChange(`Ich möchte auf den Plan ${planLabel(target)} wechseln. Bitte meldet euch zur Freischaltung.`);
         return;
       }
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
-          mode: "subscription", plan: PAID_PLAN_KEY, price_id: priceId,
-          success_url: `${window.location.origin}/studio/plan?upgraded=${PAID_PLAN_KEY}`,
+          mode: "subscription", plan: target, price_id: priceId,
+          success_url: `${window.location.origin}/studio/plan?upgraded=${target}`,
           cancel_url: `${window.location.origin}/studio/plan`,
           customer_email: user.email,
         },
@@ -195,19 +202,7 @@ export default function StudioPlan() {
       const url = (data as { url?: string })?.url;
       if (url) window.location.href = url;
     } catch {
-      toast.error("Der Wechsel zu Paid hat gerade nicht geklappt. Versuch es in ein paar Minuten noch einmal.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const requestLegacySwitch = async () => {
-    if (!user || !designer) { toast.error(t("studio.plan.toast.pleaseSignIn")); return; }
-    setBusy(PAID_PLAN_KEY);
-    try {
-      await requestPlanChange("Ich bin aktuell im Plan Atelier und möchte auf den neuen Plan Paid wechseln. Bitte meldet euch, um den Wechsel zu begleiten.");
-    } catch {
-      toast.error("Deine Anfrage konnte nicht verschickt werden. Versuch es gleich noch einmal oder schreib uns direkt.");
+      toast.error(`Der Wechsel zu ${planLabel(target)} hat gerade nicht geklappt. Versuch es in ein paar Minuten noch einmal.`);
     } finally {
       setBusy(null);
     }
@@ -215,8 +210,8 @@ export default function StudioPlan() {
 
   const priceFor = (p: Plan): string => {
     if (p === "haus") return "0 €";
-    const eur = prices.maison?.eur_month;
-    return eur != null ? `${eur} €` : "99 €";
+    const eur = prices[p]?.eur_month;
+    return eur != null ? `${eur} €` : "–";
   };
 
   const benefitsFor = (p: Plan): string[] => {
@@ -251,8 +246,7 @@ export default function StudioPlan() {
       </div>
 
       <p className="mt-8 text-sm">
-        {t("studio.plan.currently")} <span className="font-medium">{planLabel(plan)}</span>
-        {isLegacyPlan(plan) && <span className="text-muted-foreground"> — {t("studio.plan.legacyNote")}</span>}.
+        {t("studio.plan.currently")} <span className="font-medium">{planLabel(plan)}</span>.
       </p>
 
       {!quota.loading && (
@@ -263,14 +257,10 @@ export default function StudioPlan() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {VISIBLE_PLANS.map((key) => {
-          const isPaidCard = key !== "haus";
-          // Ein Atelier-Bestandsabo zählt schon als Paid — die Paid-Karte markiert es als
-          // aktuell, damit niemand fälschlich als "noch Frei" erscheint.
-          const current = isPaidCard ? isPaidPlan(plan) : plan === "haus";
+          const current = plan === key;
           const badge = BADGES[key];
           const imageExample = imageExamples[key];
           const example = examples[key];
-          const tierLabel = key === "haus" ? t("studio.plan.tierLabel.frei") : t("studio.plan.tierLabel.paid");
           return (
             <div key={key} id={`plan-${key}`}
               className={`relative border ${current ? "border-foreground shadow-[6px_6px_0_0_rgba(0,0,0,0.9)]" : "border-border"} bg-white p-6`}>
@@ -280,7 +270,7 @@ export default function StudioPlan() {
                 </span>
               )}
               <p className="editorial-eyebrow">{t("studio.plan.planLabel")}</p>
-              <h3 className="mt-2 font-serif text-3xl">{tierLabel}</h3>
+              <h3 className="mt-2 font-serif text-3xl">{planLabel(key)}</h3>
               <p className="mt-2 tabular-nums text-xl">{priceFor(key)}<span className="text-sm text-muted-foreground"> {t("studio.plan.perMonth")}</span></p>
               <p className="mt-4 font-serif text-sm italic text-muted-foreground">{resolvedHeadlines[key]}</p>
 
@@ -307,19 +297,14 @@ export default function StudioPlan() {
                 ))}
               </ul>
               <div className="mt-6">
-                {current && !(isPaidCard && isLegacyPlan(plan)) ? (
+                {current ? (
                   <span className="inline-block border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em]">{t("studio.plan.yourPlan")}</span>
                 ) : key === "haus" ? (
                   <span className="text-xs text-muted-foreground">{t("studio.plan.baseAccess")}</span>
-                ) : isLegacyPlan(plan) ? (
-                  <button onClick={() => void requestLegacySwitch()} disabled={busy === PAID_PLAN_KEY}
-                    className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
-                    {busy === PAID_PLAN_KEY ? "…" : t("studio.plan.discussSwitch")}
-                  </button>
                 ) : (
-                  <button onClick={() => void upgrade()} disabled={busy === PAID_PLAN_KEY}
+                  <button onClick={() => void switchToPlan(key)} disabled={busy === key}
                     className="border border-foreground bg-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-background disabled:opacity-50">
-                    {busy === PAID_PLAN_KEY ? "…" : t("studio.plan.switchTo")}
+                    {busy === key ? "…" : t("studio.plan.switchTo")}
                   </button>
                 )}
               </div>
@@ -331,7 +316,7 @@ export default function StudioPlan() {
       <p className="mt-8 text-xs text-muted-foreground">
         {t("studio.plan.cancelHint.pre")} <a href="/agb" className="underline">{t("studio.plan.cancelHint.linkLabel")}</a>{t("studio.plan.cancelHint.post")}
       </p>
-      {!prices.maison?.stripe_price_id && (
+      {(!prices.atelier?.stripe_price_id || !prices.maison?.stripe_price_id) && (
         <p className="mt-3 text-xs text-muted-foreground">
           {t("studio.plan.paymentNotSetUp")}
         </p>
