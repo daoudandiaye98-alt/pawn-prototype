@@ -7,6 +7,7 @@ import Stripe from "npm:stripe@14";
 import { handleOrderPaid, type PaidSessionLike } from "../_shared/orderPaid.ts";
 import { pickByLang } from "../_shared/locale.ts";
 import { handleAccountUpdated } from "../_shared/accountUpdated.ts";
+import { handleChargeRefunded, handleDispute } from "../_shared/erstattung.ts";
 
 
 interface Bilingual { de: string; en: string }
@@ -45,13 +46,6 @@ Deno.serve(async (req) => {
 
     const account = (event.account as string | undefined) ?? null;
 
-    async function orderByPaymentIntent(pi: string | null) {
-      if (!pi) return null;
-      const { data } = await admin.from("orders")
-        .select("id, amount_total, application_fee_cents, user_id, customer_email, buyer_locale, refunded_amount_cents")
-        .eq("stripe_payment_intent_id", pi).maybeSingle();
-      return data;
-    }
 
     async function notifyHouse(orderId: string, title: Bilingual, body: Bilingual) {
       const { data: order } = await admin.from("orders").select("items").eq("id", orderId).maybeSingle();
@@ -116,48 +110,28 @@ Deno.serve(async (req) => {
 
       case "charge.refunded": {
         const charge = event.data.object as Stripe.Charge;
-        const piId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id ?? null;
-        const order = await orderByPaymentIntent(piId);
-        if (order) {
-          const refunded = charge.amount_refunded ?? 0;
-          const full = refunded >= (charge.amount ?? 0);
-          await admin.from("orders").update({
-            refunded_amount_cents: refunded,
-            stripe_charge_id: charge.id,
-            ...(full ? { status: "refunded" } : {}),
-          }).eq("id", order.id);
-          // Bei Vollerstattung gibt PAWN die Provision zurück — sie wird auf dem
-          // Plattformkonto als Application Fee geführt und kann von dort erstattet werden.
-          const feeRef = (charge as unknown as { application_fee?: string | { id?: string } }).application_fee;
-          const feeId = typeof feeRef === "string" ? feeRef : feeRef?.id ?? null;
-          if (full && feeId) {
-            try { await stripe.applicationFees.createRefund(feeId); }
-            catch (e) { console.error("[stripe-webhook-connect] fee refund failed:", (e as Error).message); }
-          }
+        const erg = await handleChargeRefunded(admin, stripe, charge);
+        if (erg.order_id) {
           await notifyHouse(
-            order.id,
-            full
+            erg.order_id,
+            erg.voll
               ? { de: "Eine Bestellung wurde vollständig erstattet.", en: "An order was fully refunded." }
               : { de: "Eine Bestellung wurde teilweise erstattet.", en: "An order was partially refunded." },
             {
-              de: `Erstatteter Betrag: € ${(refunded / 100).toFixed(2)}. Details findest du in deinem Stripe-Konto.`,
-              en: `Refunded amount: € ${(refunded / 100).toFixed(2)}. Details are in your Stripe account.`,
+              de: `Erstatteter Betrag: € ${(erg.refunded_amount_cents / 100).toFixed(2)}. Details findest du in deinem Stripe-Konto.`,
+              en: `Refunded amount: € ${(erg.refunded_amount_cents / 100).toFixed(2)}. Details are in your Stripe account.`,
             },
           );
         }
-
+        if (erg.hinweis) console.error("[stripe-webhook-connect] Erstattung:", erg.hinweis);
         break;
       }
 
       case "charge.dispute.created":
       case "charge.dispute.closed": {
         const dispute = event.data.object as Stripe.Dispute;
-        const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id ?? null;
-        const piId = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id ?? null;
-        const order = await orderByPaymentIntent(piId);
-        const target = order?.id ?? null;
+        const target = await handleDispute(admin, dispute);
         if (target) {
-          await admin.from("orders").update({ dispute_status: dispute.status, stripe_charge_id: chargeId }).eq("id", target);
           await notifyHouse(
             target,
             event.type === "charge.dispute.created"
@@ -171,6 +145,7 @@ Deno.serve(async (req) => {
         }
         break;
       }
+
 
       case "payout.paid":
       case "payout.failed": {

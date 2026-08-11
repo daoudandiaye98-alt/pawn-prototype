@@ -5111,10 +5111,17 @@ async function callClaude(
    Alles, was auffällt, landet als Meldung in jarvis_notices — nie stumm.
 ============================================================================ */
 
+// Soll-Liste der Verdrahtungsprüfung.
+// Regel (PART 46): Fehlt ein abonniertes Ereignis im Code, lautet die Antwort BEHANDELN —
+// niemals abbestellen und niemals aus dieser Liste streichen. Ein Ereignis darf nur mit
+// begründetem Kommentar entfallen, damit die Entscheidung sichtbar bleibt.
 const WEBHOOK_SOLL_PLATTFORM = [
   "checkout.session.completed",
   "checkout.session.expired",
   "payment_intent.payment_failed",
+  "charge.refunded",
+  "charge.dispute.created",
+  "charge.dispute.closed",
   "account.updated",
   "customer.subscription.created",
   "customer.subscription.updated",
@@ -5123,8 +5130,16 @@ const WEBHOOK_SOLL_PLATTFORM = [
 const WEBHOOK_SOLL_CONNECT = [
   "checkout.session.completed",
   "checkout.session.expired",
+  "payment_intent.succeeded",
+  "payment_intent.payment_failed",
+  "charge.refunded",
+  "charge.dispute.created",
+  "charge.dispute.closed",
   "account.updated",
+  "payout.paid",
+  "payout.failed",
 ];
+
 
 interface StripeEndpoint { id: string; url: string; enabled_events: string[]; status?: string; application?: string | null }
 
