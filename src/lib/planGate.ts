@@ -73,7 +73,7 @@ const FALLBACK_PLAENE: Record<Plan, PlanConfig> = {
     },
   },
   maison: {
-    label: "Maison", eur_month: 79, stripe_price_id: null, model_tier: "plus",
+    label: "Maison", eur_month: 79, stripe_price_id: null, model_tier: "max",
     budget_cents_month: 3000, credits_per_month: 1200,
     limits: {
       tuer_oeffnen: -1, chat_nachricht: 1000, produkte: -1, welten: 3, signature_previews: -1,

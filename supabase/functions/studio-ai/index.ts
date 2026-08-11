@@ -4,6 +4,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeLocale, localeInstruction } from "../_shared/locale.ts";
+import { checkAndCount, canUse, ladePlaene, type Plan } from "../_shared/planGate.ts";
 
 type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft" | "chat" | "aufbau";
 type Msg = { role: "user" | "assistant" | "system"; content: string };
@@ -176,6 +177,8 @@ Deno.serve(async (req) => {
     const personaText = await loadPrompt(admin);
     const tier: Tier = PLAN_TO_TIER[designer.plan ?? "haus"] ?? "standard";
     const model = await loadModelForTier(admin, tier);
+    const plaene = await ladePlaene(admin);
+    const plan: Plan = (designer.plan as Plan) ?? "haus";
     const system = `${personaText}\n\n${localeInstruction(locale)}`;
     void providerName; // provider is now derived from ai() return value
 
@@ -332,19 +335,23 @@ Format: {"caption":"…","hashtags":["#..","#.."]}`;
       // Wochenplan + Tagesimpuls für den Marken-Begleiter.
       const worldKey = ((designer.tags ?? []).find((t) => ["Mode", "Interior", "Kunst"].includes(t))) ?? "Mode";
       let knowledge = "";
-      try {
-        const { data: kb } = await admin.from("brand_knowledge")
-          .select("headline, body, example, world")
-          .eq("approved", true)
-          .order("created_at", { ascending: false })
-          .limit(12);
-        const rows = ((kb ?? []) as { headline: string; body: string; example: string | null; world: string | null }[])
-          .filter((r) => !r.world || r.world === worldKey)
-          .slice(0, 8);
-        if (rows.length) {
-          knowledge = "Erprobte Merksätze zum Markenaufbau:\n" + rows.map((r) => `- ${r.headline}: ${r.body}${r.example ? ` (Beispiel: ${r.example})` : ""}`).join("\n");
-        }
-      } catch { /* soft */ }
+      // PART 48 AP4: ohne chat_retrieval (nur Haus) kein Zugriff auf brand_knowledge — der
+      // Tagesimpuls entsteht trotzdem, nur ohne die erprobten Merksätze als Grundlage.
+      if (canUse(plaene, plan, "chat_retrieval")) {
+        try {
+          const { data: kb } = await admin.from("brand_knowledge")
+            .select("headline, body, example, world")
+            .eq("approved", true)
+            .order("created_at", { ascending: false })
+            .limit(12);
+          const rows = ((kb ?? []) as { headline: string; body: string; example: string | null; world: string | null }[])
+            .filter((r) => !r.world || r.world === worldKey)
+            .slice(0, 8);
+          if (rows.length) {
+            knowledge = "Erprobte Merksätze zum Markenaufbau:\n" + rows.map((r) => `- ${r.headline}: ${r.body}${r.example ? ` (Beispiel: ${r.example})` : ""}`).join("\n");
+          }
+        } catch { /* soft */ }
+      }
 
       const promptUser = `Ein unabhängiges Haus baut gerade seine Marke auf und braucht konkrete, machbare Vorschläge.
 Marke: ${designer.brand_name}
@@ -376,6 +383,18 @@ Jede Idee bezieht sich auf die tatsächliche Arbeit dieses Hauses, ist in einem 
     }
 
     if (mode === "chat") {
+      // PART 48 AP4: Nachrichtenlimit prüfen UND zählen, bevor überhaupt ein Modell aufgerufen
+      // wird — kein stiller Abbruch, die Antwort sagt gesperrt/Grund/minPlan, damit das Studio
+      // ehrlich anzeigen kann, warum gerade nicht weiterläuft.
+      const gate = await checkAndCount(admin, designer.id, "chat_nachricht");
+      if (!gate.erlaubt) {
+        return ok({
+          reply: locale === "en"
+            ? "Your monthly PAWN conversations are used up — back on the 1st, or switch to a bigger plan."
+            : "Deine PAWN-Gespräche für diesen Monat sind aufgebraucht — am 1. sind sie wieder da, oder wechsle in einen größeren Plan.",
+          gesperrt: true, grund: gate.grund, minPlan: gate.minPlan, provider: "gesperrt",
+        });
+      }
       const messages = (body.messages ?? []).slice(-12);
       const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? body.question ?? "";
       let contextHint = "";
@@ -385,10 +404,16 @@ Jede Idee bezieht sich auf die tatsächliche Arbeit dieses Hauses, ist in einem 
         const published = products.filter((p) => (p as { status?: string }).status === "published").length;
         contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht). Story: ${designer.story ?? "—"}.`;
       } catch { /* soft */ }
-      const aiRes = await ai(model, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]);
-      const reply = aiRes.text ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
+      const chatModel = gate.degradiert ? gate.modell : model;
+      const aiRes = await ai(chatModel, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]);
+      let reply = aiRes.text ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;
+      if (gate.degradiert) {
+        reply += locale === "en"
+          ? "\n\n(PAWN answers a bit shorter this month — the monthly budget is reached.)"
+          : "\n\n(PAWN antwortet diesen Monat kürzer — das Monatsbudget ist erreicht.)";
+      }
       await logResponse(admin, user_id, mode, designer.id, lastUser, reply, aiRes.provider);
-      return ok({ reply, provider: aiRes.provider });
+      return ok({ reply, provider: aiRes.provider, degradiert: gate.degradiert ?? false });
     }
 
     return ok({ ...fallbackFor(), error: "unknown_mode" });

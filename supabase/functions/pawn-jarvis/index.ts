@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { schreibePartieZug } from "../_shared/partieZug.ts";
 import { schreibeSignal } from "../_shared/pawnSignal.ts";
 import { guardAiBudget, bookAiSpend } from "../_shared/budgetGuard.ts";
+import { checkAndCount, canUse, ladePlaene, type Plan } from "../_shared/planGate.ts";
 
 const MODEL = "claude-sonnet-4-5";
 const MAX_TOOL_TURNS = 6;
@@ -3719,13 +3720,15 @@ function tuerMatchScore(houseWorlds: string[], doorWorld: string | null, gezielt
  */
 async function runTuerenFinden(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
   const { data: houses } = await admin.from("designers")
-    .select("id, brand_name, slug, location, country, brand_dna, aussenauge")
+    .select("id, brand_name, slug, location, country, brand_dna, aussenauge, plan")
     .eq("status", "active").limit(60);
   const houseList = (houses ?? []) as {
     id: string; brand_name: string; slug: string; location: string | null; country: string | null;
     brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
     aussenauge: { urteil?: string } | null;
+    plan: Plan;
   }[];
+  const plaene = await ladePlaene(admin);
   if (!houseList.length) return { ok: true, processed: 0, gefunden: 0, angelegt: 0, message: "Kein aktives Haus gefunden." };
 
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
@@ -3807,6 +3810,14 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen ${rahmen}.`;
       }
       const typ = TUER_TYPEN.includes(f.typ ?? "") ? (f.typ as string) : "sonstiges";
       const kontaktEmail = typeof f.kontakt_email === "string" && f.kontakt_email.includes("@") ? f.kontakt_email.trim() : null;
+      // PART 48 AP4: die Tür selbst (Fund, Frist, Passungserklärung) bleibt immer sichtbar —
+      // gesperrt ist nur der fertige Entwurf, wenn das Monatskontingent an Türöffnungen
+      // aufgebraucht ist. Tür-Vorlauf (Maison sieht sofort, andere Pläne 48h später) gilt
+      // für das eigene Haus, dessen Plan gerade gilt, nicht für ein geteiltes Türenregal.
+      const gate = await checkAndCount(admin, h.id, "tuer_oeffnen");
+      const sichtbarAb = canUse(plaene, h.plan, "tuer_vorlauf")
+        ? new Date().toISOString()
+        : new Date(Date.now() + 48 * 3_600_000).toISOString();
       const { error } = await admin.from("designer_opportunities" as never).insert({
         designer_id: h.id,
         title: title.slice(0, 200),
@@ -3817,8 +3828,9 @@ Finde bis zu ${Math.min(budget, 3)} passende, aktuelle Chancen ${rahmen}.`;
         quelle_url: (f.quelle_url ?? "").trim() || null,
         warum: (f.warum ?? "").trim() || null,
         status: "gefunden",
-        message_draft: entwurf,
-        contact_email: kontaktEmail,
+        message_draft: gate.erlaubt ? entwurf : null,
+        contact_email: gate.erlaubt ? kontaktEmail : null,
+        sichtbar_ab: sichtbarAb,
       } as never);
       if (!error) {
         angelegt++;
@@ -4616,13 +4628,18 @@ async function runWochenimpuls(admin: SupabaseClient): Promise<Record<string, un
 // vorgeprüft (0-Cent-Anfrage); ist ein Haus bereits über dem Monatslimit, wird es übersprungen und
 // eine jarvis_notices-Zeile hinterlässt die Spur.
 async function runMaisonSichtbarkeitszug(admin: SupabaseClient, apiKey: string): Promise<Record<string, unknown>> {
+  // PART 48 AP4: Plan-Berechtigung (nicht mehr fest "maison") kommt aus ai_config.plans — Cron
+  // filtert vor der Verarbeitung, damit für nicht-berechtigte Pläne weder Arbeit noch Kosten
+  // entstehen. Heute deckungsgleich mit dem alten fest verdrahteten Filter (nur maison=1).
+  const plaeneSichtbarkeitszug = await ladePlaene(admin);
   const { data: houses } = await admin.from("designers")
-    .select("id, user_id, brand_name, slug, story, brand_dna")
-    .eq("plan", "maison").eq("status", "active").eq("published", true);
-  const houseList = (houses ?? []) as {
+    .select("id, user_id, brand_name, slug, story, brand_dna, plan")
+    .eq("status", "active").eq("published", true);
+  const houseList = ((houses ?? []) as {
     id: string; user_id: string | null; brand_name: string; slug: string;
     story: string | null; brand_dna: { worlds?: Record<string, number>; signals?: string[] } | null;
-  }[];
+    plan: Plan;
+  }[]).filter((h) => canUse(plaeneSichtbarkeitszug, h.plan, "sichtbarkeitszug"));
   if (!houseList.length) return { ok: true, processed: 0, presse: 0, eingereiht: 0, verstaerkt: 0, uebersprungen: 0, message: "Kein aktives Maison-Haus." };
 
   const { data: automationRows } = await admin.from("designer_automations")
@@ -5044,8 +5061,13 @@ async function runKampagnenRegie(admin: SupabaseClient, apiKey: string): Promise
 
   const perHouseSummaries: Array<{ designer_id: string; brand_name: string; total_views: number; total_clicks: number; weights: Record<string, number>; near_current: string | null }> = [];
   let weightedHouses = 0;
+  const plaeneRegie = await ladePlaene(admin);
 
   for (const d of (designers ?? []) as { id: string; brand_name: string; plan: string; brand_dna: { worlds?: Record<string, number> } | null }[]) {
+    // PART 48 AP4: director_loop ist ein Maison-Vorteil — für andere Pläne wird der
+    // Bewertungsschritt übersprungen, die Video-Erzeugung selbst läuft für sie unverändert weiter
+    // (sie nutzt einfach die bisherigen/keine Geschmacksgewichte statt frisch verdichteter).
+    if (!canUse(plaeneRegie, d.plan as Plan, "director_loop")) continue;
     const { data: videos } = await admin.from("video_assets")
       .select("video_dna, performance").eq("designer_id", d.id).gte("created_at", since);
     const rows = (videos ?? []) as Array<{ video_dna: { signatur?: string; tempo?: string } | null; performance: { premiere_views?: number; shop_clicks?: number } | null }>;
