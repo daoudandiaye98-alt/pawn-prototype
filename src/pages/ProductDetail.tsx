@@ -157,6 +157,9 @@ const ProductDetail = () => {
   const stock = dbProduct?.inventory_mode === "stock" ? dbProduct.stock_quantity : null;
   const soldOut = stock === 0;
   const lowStock = stock !== null && stock > 0 && stock < 5;
+  // PART 45 — der Kaufknopf bleibt ruhig, solange das Haus kein Geld empfangen kann.
+  // Ein Kauf, der an der Kasse scheitert, kostet mehr Vertrauen als eine ehrliche Zeile.
+  const hausKannVerkaufen = dbProduct?.designers?.verkaufsbereit !== false;
   const canRequest = !!dbProduct?.allow_custom_requests;
 
   function addToBag() {
@@ -331,28 +334,36 @@ const ProductDetail = () => {
 
   const actionButtons = (
     <>
-      <Button
-        type="button"
-        variant="editorial"
-        size="chip"
-        onClick={buyNow}
-        loading={buyBusy}
-        disabled={soldOut && !isMto}
-        style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
-      >
-        {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
-      </Button>
-      <Button
-        type="button"
-        variant="editorial"
-        size="chip"
-        onClick={addToBag}
-        disabled={soldOut && !isMto}
-        className="house-ink house-hair"
-        style={{ background: "var(--house-bg)" }}
-      >
-        {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
-      </Button>
+      {!hausKannVerkaufen ? (
+        <span className="house-hair house-ink border px-3 py-2 text-[0.56rem] uppercase tracking-[0.24em]">
+          Dieses Haus öffnet in Kürze
+        </span>
+      ) : (
+        <>
+          <Button
+            type="button"
+            variant="editorial"
+            size="chip"
+            onClick={buyNow}
+            loading={buyBusy}
+            disabled={soldOut && !isMto}
+            style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
+          >
+            {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
+          </Button>
+          <Button
+            type="button"
+            variant="editorial"
+            size="chip"
+            onClick={addToBag}
+            disabled={soldOut && !isMto}
+            className="house-ink house-hair"
+            style={{ background: "var(--house-bg)" }}
+          >
+            {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
+          </Button>
+        </>
+      )}
       <Button
         type="button"
         variant="editorial"

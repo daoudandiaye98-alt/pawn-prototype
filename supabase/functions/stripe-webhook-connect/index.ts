@@ -6,6 +6,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
 import { handleOrderPaid, type PaidSessionLike } from "../_shared/orderPaid.ts";
 import { pickByLang } from "../_shared/locale.ts";
+import { handleAccountUpdated } from "../_shared/accountUpdated.ts";
+
 
 interface Bilingual { de: string; en: string }
 
@@ -76,6 +78,24 @@ Deno.serve(async (req) => {
         await handleOrderPaid(admin, session, account);
         break;
       }
+
+      // Der Käufer hat den Bezahlvorgang nicht abgeschlossen und Stripe hat die Sitzung
+      // geschlossen. Ohne diesen Fall bleibt eine Bestellung für immer auf "wartet".
+      case "checkout.session.expired": {
+        const session = event.data.object as { id?: string; metadata?: Record<string, string> | null };
+        const orderId = session.metadata?.order_id ?? null;
+        let q = admin.from("orders").update({ status: "expired" });
+        q = orderId ? q.eq("id", orderId) : q.eq("stripe_session_id", session.id ?? "");
+        await q.eq("status", "pending");
+        break;
+      }
+
+      // Konto-Status eines Hauses: hält Freischaltung und offene Nachweise dauerhaft aktuell.
+      case "account.updated": {
+        await handleAccountUpdated(admin, event.data.object as unknown as Parameters<typeof handleAccountUpdated>[1]);
+        break;
+      }
+
 
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;

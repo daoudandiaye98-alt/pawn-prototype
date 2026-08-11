@@ -3,6 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
 import { PAID_PLAN_KEY } from "../_shared/planGate.ts";
+import { fehlendeVerkaufsbedingungen } from "../_shared/verkaufsbereit.ts";
 
 interface Line { name: string; unit_amount: number; qty: number; product_id?: string; size?: string; slug?: string }
 interface Body {
@@ -164,9 +165,18 @@ Deno.serve(async (req) => {
           const isAdminHouse = !!roleRow;
 
           if (!isAdminHouse) {
-            if (!designer.stripe_account_id || !designer.stripe_charges_enabled) {
+            const { data: billing } = await admin.from("designer_billing_profiles")
+              .select("legal_name, address_line1, postal_code, city, country, tax_id, kleinunternehmer")
+              .eq("designer_id", designerId).maybeSingle();
+            const offen = fehlendeVerkaufsbedingungen({
+              chargesEnabled: !!designer.stripe_account_id && !!designer.stripe_charges_enabled,
+              billing,
+              shippingRates: shippingRates as Record<string, unknown>,
+            });
+            if (offen.length > 0) {
               return new Response(JSON.stringify({
                 error: "designer_not_ready",
+                fehlt: offen,
                 message: "Dieses Haus schließt gerade seine Einrichtung ab — versuch es in Kürze wieder.",
               }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
             }

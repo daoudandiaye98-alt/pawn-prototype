@@ -74,7 +74,7 @@ type Mode =
   | "multiplikator_jagd" | "multiplikator_verfassen"
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
-  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft";
+  | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft" | "kasse_wache";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -178,6 +178,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   tueren_finden: "gruen",
   maison_sichtbarkeitszug: "gruen",
   wissen_wirtschaft: "gruen",
+  kasse_wache: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -925,6 +926,8 @@ async function runHeartbeat(admin: SupabaseClient, selfRunId?: string | null): P
 
   const evolutionResult = await runEvolution(admin).catch(() => ({ summary: "" }));
   await runAkquiseRetention(admin).catch(() => 0);
+  // PART 45: die Kasse wird bei jedem Herzschlag mitgeprüft — Geld darf nie stumm hängen bleiben.
+  await runKasseWache(admin).catch(() => null);
 
   if (inQuietHours(config)) return { skipped: "ruhezeit", evolution: evolutionResult.summary };
 
@@ -5098,7 +5101,162 @@ async function callClaude(
   }
 }
 
+/* ============================================================================
+   PART 45 / WP4 — DIE KASSE HAT EINEN WÄCHTER
+   Drei Fragen, mechanisch, ohne LLM:
+   1. Liegt eine Bestellung zu lange auf "pending"? Dann bei Stripe nachsehen und
+      den wahren Zustand in die Datenbank schreiben (bezahlt oder abgelaufen).
+   2. Sind alle Webhooks so verdrahtet, wie sie sein müssen? (Ergänzung 3)
+   3. Gibt es Häuser, die sichtbar sind, aber kein Geld empfangen können?
+   Alles, was auffällt, landet als Meldung in jarvis_notices — nie stumm.
+============================================================================ */
+
+const WEBHOOK_SOLL_PLATTFORM = [
+  "checkout.session.completed",
+  "checkout.session.expired",
+  "payment_intent.payment_failed",
+  "account.updated",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+];
+const WEBHOOK_SOLL_CONNECT = [
+  "checkout.session.completed",
+  "checkout.session.expired",
+  "account.updated",
+];
+
+interface StripeEndpoint { id: string; url: string; enabled_events: string[]; status?: string; application?: string | null }
+
+async function stripeGet(pfad: string, key: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/${pfad}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) return null;
+    return await res.json() as Record<string, unknown>;
+  } catch { return null; }
+}
+
+async function pruefeWebhookVerdrahtung(key: string): Promise<{ ok: boolean; befund: string[] }> {
+  const befund: string[] = [];
+  const liste = await stripeGet("webhook_endpoints?limit=100", key);
+  const endpoints = ((liste?.data ?? []) as StripeEndpoint[]).filter((e) => (e.status ?? "enabled") === "enabled");
+  if (endpoints.length === 0) return { ok: false, befund: ["Kein aktiver Webhook bei Stripe registriert — Zahlungen kommen nie in der Datenbank an."] };
+
+  const connect = endpoints.filter((e) => e.url.includes("stripe-webhook-connect"));
+  const plattform = endpoints.filter((e) => e.url.includes("stripe-webhook") && !e.url.includes("connect"));
+
+  if (plattform.length === 0) befund.push("Plattform-Webhook (stripe-webhook) fehlt.");
+  if (connect.length === 0) befund.push("Connect-Webhook (stripe-webhook-connect) fehlt.");
+
+  const fehlend = (eps: StripeEndpoint[], soll: string[], name: string) => {
+    if (eps.length === 0) return;
+    const vorhanden = new Set(eps.flatMap((e) => e.enabled_events));
+    if (vorhanden.has("*")) return;
+    const fehlt = soll.filter((s) => !vorhanden.has(s));
+    if (fehlt.length) befund.push(`${name}: ${fehlt.join(", ")} nicht abonniert.`);
+  };
+  fehlend(plattform, WEBHOOK_SOLL_PLATTFORM, "Plattform-Webhook");
+  fehlend(connect, WEBHOOK_SOLL_CONNECT, "Connect-Webhook");
+
+  return { ok: befund.length === 0, befund };
+}
+
+async function runKasseWache(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const key = Deno.env.get("STRIPE_SECRET_KEY");
+  const meldungen: string[] = [];
+  let repariert = 0, abgelaufen = 0;
+
+  // 1) Hängende Bestellungen
+  const grenze = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const { data: haengend } = await admin.from("orders")
+    .select("id, stripe_session_id, connected_account_id, created_at, amount_total")
+    .eq("status", "pending").lt("created_at", grenze).limit(50);
+
+  const offen = (haengend ?? []) as Array<{ id: string; stripe_session_id: string | null; connected_account_id: string | null }>;
+  if (key) {
+    for (const o of offen) {
+      if (!o.stripe_session_id) continue;
+      const pfad = `checkout/sessions/${o.stripe_session_id}`;
+      const res = await (async () => {
+        try {
+          const r = await fetch(`https://api.stripe.com/v1/${pfad}`, {
+            headers: {
+              Authorization: `Bearer ${key}`,
+              ...(o.connected_account_id ? { "Stripe-Account": o.connected_account_id } : {}),
+            },
+          });
+          return r.ok ? await r.json() as Record<string, unknown> : null;
+        } catch { return null; }
+      })();
+      if (!res) continue;
+      const zahlung = String(res.payment_status ?? "");
+      const zustand = String(res.status ?? "");
+      if (zahlung === "paid") {
+        await admin.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", o.id);
+        repariert += 1;
+      } else if (zustand === "expired") {
+        await admin.from("orders").update({ status: "expired" }).eq("id", o.id);
+        abgelaufen += 1;
+      }
+    }
+  }
+  if (repariert > 0) {
+    meldungen.push(`${repariert} bezahlte Bestellung(en) standen noch auf "offen" — der Webhook hat sie nicht erreicht. Ich habe sie korrigiert.`);
+  }
+  const nochOffen = offen.length - repariert - abgelaufen;
+  if (nochOffen > 0) {
+    meldungen.push(`${nochOffen} Bestellung(en) liegen seit über zwei Stunden unbezahlt. Meist einfach abgebrochene Käufe — auffällig wird es erst, wenn es viele werden.`);
+  }
+
+  // 2) Verdrahtungsprüfung (Ergänzung 3)
+  let verdrahtung: { ok: boolean; befund: string[] } = { ok: false, befund: ["STRIPE_SECRET_KEY nicht gesetzt — Verdrahtung nicht prüfbar."] };
+  if (key) verdrahtung = await pruefeWebhookVerdrahtung(key);
+  if (!verdrahtung.ok) meldungen.push(...verdrahtung.befund);
+
+  // 3) Sichtbare Häuser ohne offene Kasse
+  const { data: stumm } = await admin.from("designers")
+    .select("id, brand_name, verkaufsbereit, published, status")
+    .eq("status", "active").eq("published", true).eq("verkaufsbereit", false);
+  const stummeHaeuser = (stumm ?? []) as Array<{ id: string; brand_name: string | null }>;
+  const mitStuecken: string[] = [];
+  for (const h of stummeHaeuser) {
+    const { count } = await admin.from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("designer_id", h.id).eq("status", "published");
+    if ((count ?? 0) > 0) mitStuecken.push(h.brand_name ?? h.id);
+  }
+  if (mitStuecken.length > 0) {
+    meldungen.push(`${mitStuecken.length} Haus/Häuser zeigen Stücke, können aber kein Geld empfangen: ${mitStuecken.slice(0, 5).join(", ")}.`);
+  }
+
+  if (meldungen.length > 0) {
+    const { data: vorhanden } = await admin.from("jarvis_notices")
+      .select("id").eq("kind", "kasse_wache").is("dismissed_at", null).limit(1);
+    if (!vorhanden || vorhanden.length === 0) {
+      await admin.from("jarvis_notices").insert({
+        kind: "kasse_wache",
+        title: "Die Kasse braucht einen Blick",
+        body: meldungen.join(" "),
+      });
+    }
+  }
+
+  return {
+    ok: true,
+    geprueft: offen.length,
+    repariert,
+    abgelaufen,
+    webhooks_ok: verdrahtung.ok,
+    webhook_befund: verdrahtung.befund,
+    haeuser_ohne_kasse: mitStuecken,
+    meldungen,
+  };
+}
+
 async function runAgentLoop(
+
   apiKey: string, admin: SupabaseClient, asCaller: SupabaseClient, system: string, userMessage: string,
   maxTurns: number = MAX_TOOL_TURNS,
 ): Promise<{ text: string; tokensUsed: number; error: string | null }> {
@@ -5224,6 +5382,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
+      "kasse_wache",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -5242,6 +5401,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
+      "kasse_wache",
     ];
     // Teil 39 AP5 — Zeitkonstanter Vergleich statt "===": verhindert, dass jemand den Secret-Wert
     // Zeichen für Zeichen über minimale Antwortzeit-Unterschiede erraten könnte (Timing-Angriff).
@@ -5310,6 +5470,18 @@ Deno.serve(async (req) => {
 
     // --- Kinematische Clips einsammeln: mechanisch, ohne LLM, läuft auch bei pausiertem Jarvis
     // weiter — ein bezahltes Rendering eines Designers darf nicht am Pause-Schalter hängen bleiben. ---
+    // --- Wächter der Kasse (PART 45): mechanisch, ohne LLM, läuft auch bei pausiertem Jarvis. ---
+    if (mode === "kasse_wache") {
+      const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
+      runId = (runRow as { id: string } | null)?.id ?? null;
+      const result = await runKasseWache(admin);
+      const summary = `${(result as { geprueft?: number }).geprueft ?? 0} offene Bestellungen geprüft, ${(result as { repariert?: number }).repariert ?? 0} korrigiert; Webhooks ${(result as { webhooks_ok?: boolean }).webhooks_ok ? "vollständig" : "unvollständig"}.`;
+      if (runId) await admin.from("jarvis_runs").update({ provider_used: providerUsed(),
+        finished_at: new Date().toISOString(), status: "done", summary, tokens_used: 0, cost_estimate: 0,
+      }).eq("id", runId);
+      return ok({ run_id: runId, ...result });
+    }
+
     if (mode === "broll_einsammeln") {
       const { data: runRow } = await admin.from("jarvis_runs").insert({ trigger: isCronSecretCaller ? "cron" : "manual", mode, status: "running" }).select("id").single();
       runId = (runRow as { id: string } | null)?.id ?? null;
