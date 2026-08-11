@@ -171,3 +171,25 @@ export function modelFor(plan: Plan): string {
 export function isPaidPlan(plan: Plan): boolean {
   return plan !== "haus";
 }
+
+/**
+ * "welten" ist eine Bestand-Grenze auf die Zahl VERSCHIEDENER Welten (Mode/Interior/Kunst), in
+ * denen ein Haus Stücke führt — nicht auf die Stückzahl. Ein Stück in einer bereits genutzten
+ * Welt ist immer erlaubt; eine bisher ungenutzte Welt nur, solange das Kontingent reicht.
+ */
+export function weltenErlaubt(plan: Plan, bestehendeWelten: string[], neueWelt: string): boolean {
+  if (bestehendeWelten.includes(neueWelt)) return true;
+  const limit = limitFor(plan, "welten");
+  return limit < 0 || bestehendeWelten.length < limit;
+}
+
+/** Nächsthöherer Plan, der mehr Welten gleichzeitig erlaubt als der aktuelle — für den Hinweistext. */
+export function naechsterPlanFuerMehrWelten(plan: Plan): Plan | null {
+  const aktuelles = limitFor(plan, "welten");
+  const idx = PLAN_REIHE.indexOf(plan);
+  for (let i = idx + 1; i < PLAN_REIHE.length; i++) {
+    const l = limitFor(PLAN_REIHE[i], "welten");
+    if (l < 0 || l > aktuelles) return PLAN_REIHE[i];
+  }
+  return null;
+}

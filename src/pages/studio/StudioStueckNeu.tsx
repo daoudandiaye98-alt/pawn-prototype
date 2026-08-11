@@ -17,6 +17,7 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePlanQuota, type Plan } from "@/features/campaign/quota";
+import { ladePlanGate, weltenErlaubt, naechsterPlanFuerMehrWelten } from "@/lib/planGate";
 import { Upload, ArrowRight } from "lucide-react";
 import { CoverMoment } from "@/features/studio/CoverMoment";
 import { useI18n } from "@/lib/i18n";
@@ -77,6 +78,18 @@ export default function StudioStueckNeu() {
   const [product, setProduct] = useState<LiveProduct | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(!!existingProductId);
   const [coverMoment, setCoverMoment] = useState<string | null>(null);
+
+  // PART 48 AP4: "welten" ist eine Bestand-Grenze auf verschiedene Welten je Haus, nicht auf
+  // Stückzahl — ein bisher ungenutztes Mode/Interior/Kunst braucht freies Kontingent.
+  const [gateReady, setGateReady] = useState(false);
+  const [existingWorlds, setExistingWorlds] = useState<World[]>([]);
+  useEffect(() => { void ladePlanGate().then(() => setGateReady(true)); }, []);
+  useEffect(() => {
+    if (!designer) return;
+    void supabase.from("products").select("world").eq("designer_id", designer.id)
+      .then(({ data }) => setExistingWorlds(Array.from(new Set((data ?? []).map((r) => r.world as World)))));
+  }, [designer]);
+  const weltGesperrt = gateReady && !weltenErlaubt(plan, existingWorlds, world);
 
   // Teil 27b: Der Cover-Moment — einmalig pro Stück, wenn es zum ersten Mal live geht.
   const maybeShowCover = async (productId: string, imageUrl: string | null) => {
@@ -183,6 +196,13 @@ export default function StudioStueckNeu() {
     const priceNum = Number(price);
     if (!price || isNaN(priceNum) || priceNum <= 0) { toast.error(t("studio.stueckNeu.toast.priceRequired")); return; }
     if (!sourceUrl) { toast.error(t("studio.stueckNeu.toast.photoRequired")); return; }
+    if (weltGesperrt) {
+      const naechster = naechsterPlanFuerMehrWelten(plan);
+      toast.error(naechster
+        ? `Diese Welt ist im Plan ${plan === "haus" ? "Haus" : plan === "atelier" ? "Atelier" : "Maison"} noch nicht frei — wechsle in ${naechster === "maison" ? "Maison" : "Atelier"}, um in mehr als einer Welt zu führen.`
+        : "Diese Welt ist für dein Haus noch nicht frei.");
+      return;
+    }
     const stockNum = Math.max(0, Math.floor(Number(stock) || 0));
     if (!madeToOrder && stockNum < 1) { toast.error(t("studio.stueckNeu.toast.stockRequired")); return; }
     setBusy(true);
@@ -258,13 +278,21 @@ export default function StudioStueckNeu() {
                   className="border border-border bg-white p-3 text-sm" />
               </div>
               <div className="flex gap-2">
-                {(["Mode", "Interior", "Kunst"] as World[]).map((w) => (
-                  <button key={w} type="button" onClick={() => setWorld(w)}
-                    className={`flex-1 border p-2 text-sm ${world === w ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-                    {t(WORLD_LABEL_KEY[w])}
-                  </button>
-                ))}
+                {(["Mode", "Interior", "Kunst"] as World[]).map((w) => {
+                  const gesperrt = gateReady && !weltenErlaubt(plan, existingWorlds, w);
+                  return (
+                    <button key={w} type="button" onClick={() => setWorld(w)}
+                      className={`flex-1 border p-2 text-sm ${world === w ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"} ${gesperrt ? "opacity-40" : ""}`}>
+                      {t(WORLD_LABEL_KEY[w])}
+                    </button>
+                  );
+                })}
               </div>
+              {weltGesperrt && (
+                <p className="text-xs text-muted-foreground">
+                  Diese Welt ist in deinem Plan noch nicht frei — {naechsterPlanFuerMehrWelten(plan) === "maison" ? "Maison" : "Atelier"} erlaubt mehr Welten gleichzeitig.
+                </p>
+              )}
               <textarea value={story} onChange={(e) => setStory(e.target.value)} placeholder={t("studio.stueckNeu.form.storyPlaceholder")} rows={2}
                 className="w-full border border-border bg-white p-3 text-sm" />
             </div>
