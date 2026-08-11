@@ -41,6 +41,7 @@ interface FeldzugLead {
   contact_channel: string | null;
   plate_images: unknown;
   plate_status: string | null;
+  language: string | null;
 }
 
 type ChannelTab = "dm" | "formular" | "nachfassen" | "multiplikator" | "email" | "blockiert";
@@ -87,6 +88,21 @@ function plateStatusText(status: string | null): string {
     case "zu_wenig_material": return "Zu wenig Material";
     default: return "Bilder noch nicht gespiegelt";
   }
+}
+
+/**
+ * Befund 4 "Vorbeugung in der Rampe": ein falschsprachiger Entwurf (Befund 1) fällt beim
+ * Durchklicken der Karten nur auf, wenn jemand jede Nachricht genau liest — ein kleiner
+ * Sprach-Chip macht ihn auf einen Blick sichtbar. Kein Wert (ältere Leads vor der Härtung) zeigt
+ * bewusst nichts an, statt eine Sprache zu behaupten, die niemand geprüft hat.
+ */
+function LanguageChip({ language }: { language: string | null }) {
+  if (language !== "de" && language !== "en") return null;
+  return (
+    <span className="shrink-0 border border-black px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.15em]">
+      {language}
+    </span>
+  );
 }
 
 /* ─────────────────────── DM-Karte: eine pro Lead, Vollbild mobil ─────────────────────── */
@@ -137,9 +153,12 @@ function DmCard({
             <p className="editorial-eyebrow">{lead.world ?? "—"}</p>
             <h2 className="font-serif text-2xl">@{lead.handle}</h2>
           </div>
-          {lead.followers != null && (
-            <span className="shrink-0 text-xs text-muted-foreground">{lead.followers.toLocaleString("de-DE")} Follower</span>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {lead.followers != null && (
+              <span className="text-xs text-muted-foreground">{lead.followers.toLocaleString("de-DE")} Follower</span>
+            )}
+            <LanguageChip language={lead.language} />
+          </div>
         </div>
         {images.length > 0 ? (
           <div className="mt-3 flex gap-2">
@@ -161,33 +180,41 @@ function DmCard({
 
       <div className="px-5 py-5">
         <p className="editorial-eyebrow mb-2">Nachricht</p>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{text || "Kein Entwurf vorhanden."}</p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{text || "Entwurf wird neu geschrieben."}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
-        <Button
-          onClick={copyText}
-          variant={step === 0 ? "default" : "outline"}
-          className={cn("rounded-none justify-center", step === 0 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
-        >
-          <Copy className="mr-2 h-4 w-4" /> Kopieren
-        </Button>
-        <Button
-          onClick={openInstagram}
-          variant={step === 1 ? "default" : "outline"}
-          className={cn("rounded-none justify-center", step === 1 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
-        >
-          <ExternalLink className="mr-2 h-4 w-4" /> Instagram öffnen
-        </Button>
-        <Button
-          onClick={onSent}
-          disabled={busy}
-          variant={step === 2 ? "default" : "outline"}
-          className={cn("rounded-none justify-center", step === 2 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
-        >
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Gesendet ✓
-        </Button>
-      </div>
+      {text ? (
+        <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
+          <Button
+            onClick={copyText}
+            variant={step === 0 ? "default" : "outline"}
+            className={cn("rounded-none justify-center", step === 0 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+          >
+            <Copy className="mr-2 h-4 w-4" /> Kopieren
+          </Button>
+          <Button
+            onClick={openInstagram}
+            variant={step === 1 ? "default" : "outline"}
+            className={cn("rounded-none justify-center", step === 1 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+          >
+            <ExternalLink className="mr-2 h-4 w-4" /> Instagram öffnen
+          </Button>
+          <Button
+            onClick={onSent}
+            disabled={busy}
+            variant={step === 2 ? "default" : "outline"}
+            className={cn("rounded-none justify-center", step === 2 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+          >
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Gesendet ✓
+          </Button>
+        </div>
+      ) : (
+        // Befund 4 "Vorbeugung in der Rampe": ohne Entwurf gibt es nichts zu senden — kein
+        // Senden-Knopf, der eine unversendete Nachricht als "Gesendet ✓" markieren könnte.
+        <div className="border-t-[1.5px] border-black p-5 text-xs text-muted-foreground">
+          PAWN schreibt diesen Entwurf beim nächsten Lauf neu (z. B. nach einer Sprachkorrektur) — noch nichts zu tun.
+        </div>
+      )}
 
       {!skipHidden && (
         <div className="border-t border-border px-5 py-3">
@@ -260,7 +287,10 @@ function FormularCard({
   return (
     <div className="border-[1.5px] border-black bg-white">
       <header className="border-b-[1.5px] border-black px-5 py-4">
-        <p className="editorial-eyebrow">{lead.world ?? "—"} · Formular</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="editorial-eyebrow">{lead.world ?? "—"} · Formular</p>
+          <LanguageChip language={lead.language} />
+        </div>
         <h2 className="font-serif text-2xl">@{lead.handle}</h2>
         {lead.contact_url && (
           <p className="mt-1 break-all text-xs text-muted-foreground">{lead.contact_url}</p>
@@ -270,35 +300,43 @@ function FormularCard({
       <div className="px-5 py-5">
         <p className="editorial-eyebrow mb-2">Nachricht</p>
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">
-          {lead.message_draft || "Kein Entwurf vorhanden."}
+          {lead.message_draft || "Entwurf wird neu geschrieben."}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
-        <Button
-          onClick={copyText}
-          variant={step === 0 ? "default" : "outline"}
-          className={cn("rounded-none justify-center", step === 0 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
-        >
-          <Copy className="mr-2 h-4 w-4" /> Nachricht kopieren
-        </Button>
-        <Button
-          onClick={openForm}
-          disabled={!lead.contact_url}
-          variant={step === 1 ? "default" : "outline"}
-          className={cn("rounded-none justify-center", step === 1 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
-        >
-          <ExternalLink className="mr-2 h-4 w-4" /> Formular öffnen
-        </Button>
-        <Button
-          onClick={onSent}
-          disabled={busy}
-          variant={step === 2 ? "default" : "outline"}
-          className={cn("rounded-none justify-center", step === 2 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
-        >
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Gesendet ✓
-        </Button>
-      </div>
+      {lead.message_draft ? (
+        <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
+          <Button
+            onClick={copyText}
+            variant={step === 0 ? "default" : "outline"}
+            className={cn("rounded-none justify-center", step === 0 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+          >
+            <Copy className="mr-2 h-4 w-4" /> Nachricht kopieren
+          </Button>
+          <Button
+            onClick={openForm}
+            disabled={!lead.contact_url}
+            variant={step === 1 ? "default" : "outline"}
+            className={cn("rounded-none justify-center", step === 1 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+          >
+            <ExternalLink className="mr-2 h-4 w-4" /> Formular öffnen
+          </Button>
+          <Button
+            onClick={onSent}
+            disabled={busy}
+            variant={step === 2 ? "default" : "outline"}
+            className={cn("rounded-none justify-center", step === 2 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
+          >
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Gesendet ✓
+          </Button>
+        </div>
+      ) : (
+        // Befund 4: ohne Entwurf kein Senden-Knopf, der eine unversendete Nachricht als
+        // "Gesendet ✓" markieren könnte.
+        <div className="border-t-[1.5px] border-black p-5 text-xs text-muted-foreground">
+          PAWN schreibt diesen Entwurf beim nächsten Lauf neu — noch nichts zu tun.
+        </div>
+      )}
 
       <div className="border-t border-border px-5 py-3">
         {!skipOpen ? (
@@ -613,7 +651,7 @@ export default function AdminFeldzug() {
     const [leadsRes, neuRes, kontaktiertRes, geantwortetRes, beworbenRes, configRes, attributionRes, multiplikatorRes, inboundRes] = await Promise.all([
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status, language")
         .eq("lead_type", "designer")
         .in("status", ["qualifiziert", "kontaktiert"])
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -625,7 +663,7 @@ export default function AdminFeldzug() {
       supabase.rpc("get_attribution_stats"),
       supabase
         .from("acquisition_leads")
-        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status")
+        .select("id, handle, world, followers, personal_line, message_draft, status, channel, email, admin_decision, qc_passed, contacted_at, kurator_score, blocked_reason, replied_at, reply_sentiment, notes, bounce_type, lead_type, followup_at, dm_followup_draft, dm_followup_sent_at, contact_url, contact_channel, plate_images, plate_status, language")
         .eq("lead_type", "multiplikator").eq("status", "qualifiziert").is("contacted_at", null)
         .not("message_draft", "is", null)
         .order("kurator_score", { ascending: false, nullsFirst: false }),
@@ -689,6 +727,10 @@ export default function AdminFeldzug() {
   const blockedQueue = readyToday.filter((r) => !!r.blocked_reason);
   // WP5: vorbereitete Nachfass-Entwürfe, noch nicht gesendet — eigener Zug neben der Erstnachricht.
   const nachfassenQueue = rows.filter((r) => r.dm_followup_draft && !r.dm_followup_sent_at);
+  // Befund 4 "Vorbeugung in der Rampe": ohne diesen Zähler sammelt sich der Rückstau an kaputten
+  // Bildern (Befund 2) still an, bis wieder jemand von Hand hinschaut — der Rückstau bleibt so
+  // sichtbar, solange geladene Leads (Designer + Multiplikatoren) ohne gespiegelte Platte da sind.
+  const missingPlateCount = [...rows, ...multiplikatorRows].filter((r) => plateImages(r).length === 0).length;
 
   // "Im Gespräch": kontaktiert, noch keine Antwort erfasst — PART 47 Befund 1: auch E-Mail-Leads
   // gehören hierher. Solange der automatische Antworten-Abgleich (Resend Inbound) nicht per MX
@@ -805,6 +847,15 @@ export default function AdminFeldzug() {
             </p>
           )}
         </>
+      )}
+
+      {/* Befund 4 "Vorbeugung in der Rampe": macht den Rückstau an nicht gespiegelten Bildern
+          (Befund 2) sichtbar, statt dass er sich still ansammelt. */}
+      {!fetching && (
+        <p className="mb-6 border-[1.5px] border-black bg-white px-4 py-3 text-sm">
+          <span className="font-serif text-lg tabular-nums">{missingPlateCount} von {rows.length + multiplikatorRows.length}</span>{" "}
+          <span className="text-muted-foreground">Karten ohne gespiegelte Bilder.</span>
+        </p>
       )}
 
       <InboundMailPanel
