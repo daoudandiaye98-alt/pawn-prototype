@@ -1255,6 +1255,7 @@ export type Database = {
           quelle_url: string | null
           resend_message_id: string | null
           sent_at: string | null
+          sichtbar_ab: string | null
           status: string
           title: string
           typ: string
@@ -1276,6 +1277,7 @@ export type Database = {
           quelle_url?: string | null
           resend_message_id?: string | null
           sent_at?: string | null
+          sichtbar_ab?: string | null
           status?: string
           title: string
           typ?: string
@@ -1297,6 +1299,7 @@ export type Database = {
           quelle_url?: string | null
           resend_message_id?: string | null
           sent_at?: string | null
+          sichtbar_ab?: string | null
           status?: string
           title?: string
           typ?: string
@@ -1421,6 +1424,8 @@ export type Database = {
           page_published_at: string | null
           pawn_guide_enabled: boolean
           plan: Database["public"]["Enums"]["designer_plan"]
+          plan_bis: string | null
+          plan_seit: string | null
           portrait_url: string | null
           preferred_language: string
           published: boolean
@@ -1479,6 +1484,8 @@ export type Database = {
           page_published_at?: string | null
           pawn_guide_enabled?: boolean
           plan?: Database["public"]["Enums"]["designer_plan"]
+          plan_bis?: string | null
+          plan_seit?: string | null
           portrait_url?: string | null
           preferred_language?: string
           published?: boolean
@@ -1537,6 +1544,8 @@ export type Database = {
           page_published_at?: string | null
           pawn_guide_enabled?: boolean
           plan?: Database["public"]["Enums"]["designer_plan"]
+          plan_bis?: string | null
+          plan_seit?: string | null
           portrait_url?: string | null
           preferred_language?: string
           published?: boolean
@@ -2872,6 +2881,41 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_usage: {
+        Row: {
+          anzahl: number
+          designer_id: string
+          feature: string
+          id: string
+          periode: string
+          updated_at: string
+        }
+        Insert: {
+          anzahl?: number
+          designer_id: string
+          feature: string
+          id?: string
+          periode: string
+          updated_at?: string
+        }
+        Update: {
+          anzahl?: number
+          designer_id?: string
+          feature?: string
+          id?: string
+          periode?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_usage_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posting_queue: {
         Row: {
           campaign_id: string
@@ -3712,6 +3756,14 @@ export type Database = {
       order_has_my_house_items: { Args: { _items: Json }; Returns: boolean }
       plan_priority: {
         Args: { _plan: Database["public"]["Enums"]["designer_plan"] }
+        Returns: number
+      }
+      plan_usage_inkrement: {
+        Args: { p_designer_id: string; p_feature: string; p_limit: number }
+        Returns: { erlaubt: boolean; limit_wert: number; stand: number }[]
+      }
+      plan_usage_stand: {
+        Args: { p_designer_id: string; p_feature: string }
         Returns: number
       }
       promote_posting_suggestion: {
