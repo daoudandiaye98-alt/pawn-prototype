@@ -1228,16 +1228,16 @@ async function runDiagnose(admin: SupabaseClient, asCaller: SupabaseClient, apiK
     }
   }
 
-  // 9) widersprüchliche Konfigurationswerte (Beispiel: plan_limits vs. plan_prices) → Geld, braucht Bestätigung
-  const { data: cfgRows } = await admin.from("ai_config").select("key, value").in("key", ["plan_limits", "plan_prices"]);
-  const cfgMap = new Map((cfgRows ?? []).map((r: { key: string; value: unknown }) => [r.key, r.value]));
-  const limits = cfgMap.get("plan_limits") as Record<string, unknown> | undefined;
-  const prices = cfgMap.get("plan_prices") as Record<string, unknown> | undefined;
-  if (limits && prices) {
-    const limitKeys = new Set(Object.keys(limits));
-    const priceKeys = new Set(Object.keys(prices));
-    const mismatch = [...limitKeys].some((k) => !priceKeys.has(k)) || [...priceKeys].some((k) => !limitKeys.has(k));
-    if (mismatch) needed.push("plan_limits und plan_prices haben unterschiedliche Plan-Schlüssel — braucht deine Bestätigung (Zone Rot, betrifft Geld).");
+  // 9) fehlende Stripe-Preis-IDs für Bezahlpläne → Geld, braucht Bestätigung. (PART 48: Preis
+  // und Limits liegen seit ai_config.plans in EINEM Objekt — ein Auseinanderdriften zwischen
+  // zwei Schlüsseln wie früher [plan_limits vs. plan_prices] ist strukturell nicht mehr möglich.)
+  const { data: plansRow } = await admin.from("ai_config").select("value").eq("key", "plans").maybeSingle();
+  const plaene = (plansRow?.value as { plaene?: Record<string, { stripe_price_id?: string | null }> } | null)?.plaene;
+  if (plaene) {
+    const ohnePreisId = (["atelier", "maison"] as const).filter((p) => !plaene[p]?.stripe_price_id);
+    if (ohnePreisId.length > 0) {
+      needed.push(`Plan${ohnePreisId.length === 1 ? "" : "e"} ohne Stripe-Preis-ID: ${ohnePreisId.join(", ")} — Checkout blockiert, bis die price_id in ai_config.plans eingetragen ist (Zone Rot, betrifft Geld).`);
+    }
   }
 
   // 10) Bug-Verdachtsfälle im Postfach bündeln — nur anonymisiertes Signal, keine Nachrichteninhalte.

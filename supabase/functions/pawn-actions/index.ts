@@ -3,7 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const CONFIG_WHITELIST = new Set([
-  "plan_limits", "platform_commission", "directives", "help_topics",
+  "plans", "platform_commission", "directives", "help_topics",
   "video_provider", "image_edit_provider", "model_tiers",
   "ausgabe_nummer", "show_seed_content", "provider_priority",
 ]);

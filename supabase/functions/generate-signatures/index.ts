@@ -7,6 +7,7 @@
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { ladePlaene, limitFor, type Plan } from "../_shared/planGate.ts";
 
 const MODEL = "claude-sonnet-4-5";
 
@@ -120,8 +121,7 @@ Deno.serve(async (req) => {
     };
     const mode = body.mode === "bulk" ? "bulk" : body.mode === "wish" ? "wish" : "single";
 
-    const { data: planLimitsRow } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
-    const planLimits = (planLimitsRow?.value as Record<string, { signature_previews?: number }> | null) ?? {};
+    const plaene = await ladePlaene(admin);
 
     if (mode === "bulk") {
       if (!isAdmin) return json({ error: "forbidden" }, 403);
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       for (const d of (designers ?? []) as Array<{ id: string; brand_name: string; brand_dna: Record<string, unknown> | null; video_taste_weights: Record<string, unknown> | null; plan: string }>) {
         const { count: existing } = await admin.from("house_signatures").select("id", { count: "exact", head: true }).eq("designer_id", d.id);
         if ((existing ?? 0) > 0) continue;
-        const limit = planLimits[d.plan]?.signature_previews ?? 1;
+        const limit = limitFor(plaene, d.plan as Plan, "signature_previews");
         const targetCount = limit < 0 ? 5 : Math.max(1, Math.min(5, limit));
         const { created, tokens } = await generateForDesigner(admin, apiKey, d, targetCount);
         totalCreated += created; totalTokens += tokens; processed++;
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
     }
     if (!designerRow) return json({ error: "not_found", message: "Kein Designer-Profil gefunden." }, 200);
 
-    const limit = planLimits[designerRow.plan]?.signature_previews ?? 1;
+    const limit = limitFor(plaene, designerRow.plan as Plan, "signature_previews");
 
     if (mode === "wish") {
       if (limit >= 0) return json({ error: "not_available", message: "Wunsch-Signaturen sind ein Maison-Vorteil." }, 200);

@@ -129,8 +129,10 @@ Deno.serve(async (req) => {
     }
     clipCreditCost = clipCreditCost * durationFactor;
 
-    const { data: limits } = await admin.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle();
-    const costUnits = ((limits?.value as { accent_cost_units?: number } | null)?.accent_cost_units) ?? 2;
+    // PART 48: accent_cost_units war ein globaler, nie geänderter Wert innerhalb des jetzt
+    // abgelösten plan_limits-Schlüssels (kein Pro-Plan-Wert) — als schlichte Konstante belassen,
+    // statt eine eigene ai_config-Zeile nur dafür weiterzuführen.
+    const costUnits = 2;
 
     const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
     const brollClipCents = ((costsCfg?.value as { broll_clip?: number } | null)?.broll_clip) ?? 35;
