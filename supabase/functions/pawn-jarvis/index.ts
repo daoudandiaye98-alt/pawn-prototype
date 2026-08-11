@@ -5115,8 +5115,10 @@ const WEBHOOK_SOLL_PLATTFORM = [
   "checkout.session.completed",
   "checkout.session.expired",
   "payment_intent.payment_failed",
-  "charge.refunded",
   "account.updated",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
 ];
 const WEBHOOK_SOLL_CONNECT = [
   "checkout.session.completed",
