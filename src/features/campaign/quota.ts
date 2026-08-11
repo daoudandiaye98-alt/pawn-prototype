@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ladePlanGate, limitFor, canUse } from "@/lib/planGate";
 
 export type Plan = "haus" | "atelier" | "maison";
 
-/** Was ein Haus pro Monat bekommt — in echten Dingen, nicht in Punkten. -1 = unbegrenzt. */
+/**
+ * Was ein Haus pro Monat bekommt — in echten Dingen, nicht in Punkten. -1 = unbegrenzt.
+ * videos/cinematic/shots sind grobe, feste Anhaltswerte (die eigentliche Grenze ist das
+ * gemeinsame Guthaben aus dem Credits-System, Teil 11a — verschiedene Aktionen kosten
+ * unterschiedlich viel, ein einzelner fester "Videos"-Zähler kann das nur annähern).
+ * signature_previews/emblem kommen live aus ai_config.plans (planGate).
+ */
 export interface PlanQuota {
   videos: number;
   cinematic: number;
@@ -71,8 +78,8 @@ export function usePlanQuota(designerId?: string | null, plan: Plan = "haus", is
     const month = currentMonth();
     const monthStart = `${month}-01T00:00:00.000Z`;
 
-    const [{ data: limitsCfg }, { data: ledger }, { count: videoCount }] = await Promise.all([
-      supabase.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle(),
+    const [, { data: ledger }, { count: videoCount }] = await Promise.all([
+      ladePlanGate(),
       supabase.from("credits_ledger" as never).select("history").eq("designer_id", designerId).eq("month", month).maybeSingle(),
       supabase.from("video_assets" as never)
         .select("id", { count: "exact", head: true })
@@ -80,8 +87,11 @@ export function usePlanQuota(designerId?: string | null, plan: Plan = "haus", is
         .gte("created_at", monthStart),
     ]);
 
-    const cfg = (limitsCfg?.value ?? {}) as Partial<Record<Plan, Partial<PlanQuota>>>;
-    setLimits({ ...DEFAULT_PLAN_QUOTAS[plan], ...(cfg[plan] ?? {}) });
+    setLimits({
+      ...DEFAULT_PLAN_QUOTAS[plan],
+      signature_previews: limitFor(plan, "signature_previews"),
+      emblem: canUse(plan, "emblem"),
+    });
 
     const history = ((ledger as unknown as { history?: LedgerHistoryItem[] } | null)?.history ?? [])
       .filter((h) => h.credits < 0);

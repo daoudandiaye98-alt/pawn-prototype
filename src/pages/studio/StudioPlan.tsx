@@ -1,7 +1,7 @@
 /**
  * Studio-Plan-Übersicht — eine Standortbestimmung, keine Preistabelle.
  * Kernbotschaft: 7% Provision bleibt immer 7%. Pläne sind optional.
- * Limits (Videos, Shots, Bildsprachen) kommen live aus ai_config.plan_limits.
+ * Preise und Feature-Grenzen kommen live aus ai_config.plans (planGate).
  */
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
@@ -13,7 +13,7 @@ import {
   usePlanQuota, planLabel, formatQuota, DEFAULT_PLAN_QUOTAS,
   type Plan, type PlanQuota,
 } from "@/features/campaign/quota";
-import { isPaidPlan } from "@/lib/planGate";
+import { isPaidPlan, ladePlanGate, preisFor, stripePriceFor, limitFor, canUse } from "@/lib/planGate";
 import { useContentValue } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
 import { Check, Sparkles } from "lucide-react";
@@ -52,11 +52,6 @@ function useHeadlines(t: (key: string, vars?: Record<string, string | number>) =
 }
 const BADGES: Record<Plan, string | undefined> = { haus: undefined, atelier: "PAWN+", maison: "PAWN+ Max" };
 
-interface PlanPrices {
-  atelier?: { eur_month?: number; stripe_price_id?: string | null };
-  maison?: { eur_month?: number; stripe_price_id?: string | null };
-}
-
 function fmt(t: (key: string, vars?: Record<string, string | number>) => string, n: number): string { return n < 0 ? t("studio.plan.all") : String(n); }
 function fmtCount(t: (key: string, vars?: Record<string, string | number>) => string, n: number, noun: string): string {
   return n < 0 ? t("studio.plan.unlimitedNoun", { noun }) : `${n} ${noun}`;
@@ -84,25 +79,12 @@ export default function StudioPlan() {
   const { t } = useI18n();
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = usePlanQuota(designer?.id, plan);
-  const [prices, setPrices] = useState<PlanPrices>({});
   const [busy, setBusy] = useState<Plan | null>(null);
   const [examples, setExamples] = useState<Partial<Record<Plan, string>>>({});
   const [imageExamples, setImageExamples] = useState<Partial<Record<Plan, string>>>({});
-  const [planLimits, setPlanLimits] = useState<Record<Plan, PlanQuota>>(DEFAULT_PLAN_QUOTAS);
+  const [gateReady, setGateReady] = useState(false);
 
-  useEffect(() => {
-    supabase.from("ai_config").select("value").eq("key", "plan_prices").maybeSingle()
-      .then(({ data }) => data?.value && setPrices(data.value as unknown as PlanPrices));
-    supabase.from("ai_config").select("value").eq("key", "plan_limits").maybeSingle()
-      .then(({ data }) => {
-        const cfg = (data?.value ?? {}) as Partial<Record<Plan, Partial<PlanQuota>>>;
-        setPlanLimits({
-          haus: { ...DEFAULT_PLAN_QUOTAS.haus, ...(cfg.haus ?? {}) },
-          atelier: { ...DEFAULT_PLAN_QUOTAS.atelier, ...(cfg.atelier ?? {}) },
-          maison: { ...DEFAULT_PLAN_QUOTAS.maison, ...(cfg.maison ?? {}) },
-        });
-      });
-  }, []);
+  useEffect(() => { void ladePlanGate().then(() => setGateReady(true)); }, []);
 
   useEffect(() => {
     void supabase.from("video_assets" as never)
@@ -185,7 +167,7 @@ export default function StudioPlan() {
         await requestPlanChange(`Ich bin aktuell im Plan ${planLabel(plan)} und möchte auf den Plan ${planLabel(target)} wechseln. Bitte meldet euch, um den Wechsel zu begleiten.`);
         return;
       }
-      const priceId = prices[target]?.stripe_price_id;
+      const priceId = stripePriceFor(target);
       if (!priceId) {
         await requestPlanChange(`Ich möchte auf den Plan ${planLabel(target)} wechseln. Bitte meldet euch zur Freischaltung.`);
         return;
@@ -210,12 +192,16 @@ export default function StudioPlan() {
 
   const priceFor = (p: Plan): string => {
     if (p === "haus") return "0 €";
-    const eur = prices[p]?.eur_month;
-    return eur != null ? `${eur} €` : "–";
+    const eur = preisFor(p);
+    return eur > 0 ? `${eur} €` : "–";
   };
 
   const benefitsFor = (p: Plan): string[] => {
-    const l = planLimits[p];
+    const l: PlanQuota = {
+      ...DEFAULT_PLAN_QUOTAS[p],
+      signature_previews: limitFor(p, "signature_previews"),
+      emblem: canUse(p, "emblem"),
+    };
     const videoLine = l.cinematic > 0 || l.cinematic < 0
       ? t("studio.plan.benefitLine.videosCinematic", {
           videos: fmtCount(t, l.videos, t("studio.plan.videosNoun")),
@@ -316,7 +302,7 @@ export default function StudioPlan() {
       <p className="mt-8 text-xs text-muted-foreground">
         {t("studio.plan.cancelHint.pre")} <a href="/agb" className="underline">{t("studio.plan.cancelHint.linkLabel")}</a>{t("studio.plan.cancelHint.post")}
       </p>
-      {(!prices.atelier?.stripe_price_id || !prices.maison?.stripe_price_id) && (
+      {gateReady && (!stripePriceFor("atelier") || !stripePriceFor("maison")) && (
         <p className="mt-3 text-xs text-muted-foreground">
           {t("studio.plan.paymentNotSetUp")}
         </p>
