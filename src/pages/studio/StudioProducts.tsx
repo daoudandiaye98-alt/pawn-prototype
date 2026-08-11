@@ -14,6 +14,7 @@ import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology"
 import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } from "@/features/share/shareKit";
 import { buildCreatorPackage } from "@/features/share/creatorPackage";
 import { CoverMoment } from "@/features/studio/CoverMoment";
+import { ladePlanGate, weltenErlaubt, naechsterPlanFuerMehrWelten, planLabel, type Plan } from "@/lib/planGate";
 import {
   effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
   materialSum, splitVat, vatNote, worldProfile,
@@ -183,6 +184,21 @@ export default function StudioProducts() {
   const save = async () => {
     if (!designer || !editing) return;
     if (!editing.name || editing.name.trim().length < 2) return toast.error(t("studio.products.nameRequired"));
+    // PART 48 AP4: "welten" ist eine Bestand-Grenze auf verschiedene Welten je Haus — nur beim
+    // Anlegen relevant, ein bereits laufendes Stück darf seine Welt weiter behalten.
+    if (!editing.id) {
+      await ladePlanGate();
+      const bestehendeWelten = Array.from(new Set(items.map((p) => p.world)));
+      const gewaehlteWelt = (editing.world ?? "Mode") as string;
+      const plan: Plan = designer.plan ?? "haus";
+      if (!weltenErlaubt(plan, bestehendeWelten, gewaehlteWelt)) {
+        const naechster = naechsterPlanFuerMehrWelten(plan);
+        toast.error(naechster
+          ? `Diese Welt ist in deinem Plan noch nicht frei — wechsle in ${planLabel(naechster)}, um in mehr als einer Welt zu führen.`
+          : "Diese Welt ist für dein Haus noch nicht frei.");
+        return;
+      }
+    }
     setBusy(true);
     const payload = buildPayload(editing);
     const q = editing.id
@@ -307,6 +323,8 @@ export default function StudioProducts() {
           save={save}
           busy={busy}
           setEditing={setEditing}
+          plan={designer.plan ?? "haus"}
+          existingWorlds={Array.from(new Set(items.map((p) => p.world)))}
         />
       )}
 
@@ -335,11 +353,15 @@ interface EditorProps {
   save: () => Promise<unknown>;
   busy: boolean;
   setEditing: (e: Partial<ProductRow> | null) => void;
+  plan: Plan;
+  existingWorlds: string[];
 }
 
-function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEditing, buildPayload }: EditorProps) {
+function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEditing, buildPayload, plan, existingWorlds }: EditorProps) {
   const { t, locale } = useI18n();
   const worldCopy = buildWorldCopy(t);
+  // PART 48 AP4: "welten" gilt nur beim Anlegen — ein laufendes Stück behält seine Welt.
+  const isNewProduct = !initial.id;
   const [local, setLocal] = useState<Partial<ProductRow>>(initial);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [autosaving, setAutosaving] = useState(false);
@@ -584,9 +606,10 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {(["Mode", "Interior", "Kunst"] as World[]).map((w) => {
                 const active = (local.world ?? "Mode") === w;
+                const gesperrt = isNewProduct && !weltenErlaubt(plan, existingWorlds, w);
                 return (
                   <button key={w} type="button" onClick={() => patch({ world: w })}
-                    className={`group relative flex flex-col items-start gap-2 border p-5 text-left transition-all ${active ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"}`}>
+                    className={`group relative flex flex-col items-start gap-2 border p-5 text-left transition-all ${active ? "border-foreground bg-foreground text-background" : "border-border bg-white hover:border-foreground"} ${gesperrt ? "opacity-40" : ""}`}>
                     <span className="font-serif text-xl font-medium">{worldCopy[w].title}</span>
                     <span className={`text-xs ${active ? "text-background/70" : "text-muted-foreground"}`}>{worldCopy[w].sub}</span>
                     {active && <span className="absolute right-3 top-3"><Check className="h-4 w-4" /></span>}
@@ -594,6 +617,11 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                 );
               })}
             </div>
+            {isNewProduct && !weltenErlaubt(plan, existingWorlds, (local.world ?? "Mode") as string) && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Diese Welt ist in deinem Plan noch nicht frei — {naechsterPlanFuerMehrWelten(plan) === "maison" ? "Maison" : "Atelier"} erlaubt mehr Welten gleichzeitig.
+              </p>
+            )}
           </Section>
 
           {/* Name + price */}
