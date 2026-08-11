@@ -30,33 +30,6 @@ function jwtSub(auth: string | null): string | null {
   } catch { return null; }
 }
 
-// --- Dependency-free, hand-built single-page PDF (no npm PDF lib — Deno-edge-safe). ---
-
-function winAnsiByte(ch: string): number {
-  const cp = ch.codePointAt(0)!;
-  if (cp >= 0x20 && cp <= 0x7e) return cp;
-  if (cp >= 0xa0 && cp <= 0xff) return cp;
-  const special: Record<number, number> = {
-    0x20ac: 0x80, 0x201a: 0x82, 0x201e: 0x84, 0x2026: 0x85,
-    0x2013: 0x96, 0x2014: 0x97, 0x2018: 0x91, 0x2019: 0x92,
-    0x201c: 0x93, 0x201d: 0x94,
-  };
-  return special[cp] ?? 0x3f;
-}
-function pdfEscape(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-}
-function asciiBytes(s: string): Uint8Array {
-  return Uint8Array.from(Array.from(s).map((c) => c.charCodeAt(0)));
-}
-function concatBytes(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((n, c) => n + c.length, 0);
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) { out.set(c, off); off += c.length; }
-  return out;
-}
-
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
