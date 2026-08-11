@@ -183,13 +183,21 @@ export function weltenErlaubt(plan: Plan, bestehendeWelten: string[], neueWelt: 
   return limit < 0 || bestehendeWelten.length < limit;
 }
 
-/** Nächsthöherer Plan, der mehr Welten gleichzeitig erlaubt als der aktuelle — für den Hinweistext. */
-export function naechsterPlanFuerMehrWelten(plan: Plan): Plan | null {
-  const aktuelles = limitFor(plan, "welten");
+/**
+ * Nächsthöherer Plan mit einem größeren (oder unbegrenzten) Kontingent für ein beliebiges
+ * Feature, falls es einen gibt — Grundlage für den Wechsel-Hinweis in Gesperrt.tsx.
+ */
+export function naechsterPlanFuerMehr(feature: string, plan: Plan): Plan | null {
+  const aktuelles = limitFor(plan, feature);
   const idx = PLAN_REIHE.indexOf(plan);
   for (let i = idx + 1; i < PLAN_REIHE.length; i++) {
-    const l = limitFor(PLAN_REIHE[i], "welten");
+    const l = limitFor(PLAN_REIHE[i], feature);
     if (l < 0 || l > aktuelles) return PLAN_REIHE[i];
   }
   return null;
+}
+
+/** Nächsthöherer Plan, der mehr Welten gleichzeitig erlaubt als der aktuelle — für den Hinweistext. */
+export function naechsterPlanFuerMehrWelten(plan: Plan): Plan | null {
+  return naechsterPlanFuerMehr("welten", plan);
 }
