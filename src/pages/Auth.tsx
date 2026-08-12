@@ -1,10 +1,9 @@
-import { useState } from "react";
-import { Navigate, useNavigate, Link } from "react-router-dom";
+import { Navigate, useSearchParams, Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { toast } from "sonner";
+import { useAuthForm } from "@/features/auth/useAuthForm";
 
 function homeForRoles(roles: string[]) {
   if (roles.includes("admin")) return "/admin";
@@ -12,39 +11,25 @@ function homeForRoles(roles: string[]) {
   return "/account";
 }
 
+// Return-to-Flow: /start (First Move) schickt hierher, wenn jemand mit bestehendem Zugang auf
+// "Ich hab schon einen Zugang" tippt — nach dem Login geht's exakt dahin zurück, nicht in die
+// rollenbasierte Standard-Startseite. Nur relative, interne Pfade — kein offenes Redirect-Ziel.
+function safeReturnTo(v: string | null): string | null {
+  if (!v || !v.startsWith("/") || v.startsWith("//") || v === "/auth") return null;
+  return v;
+}
+
 export default function Auth() {
-  const { user, roles, loading, signInWithPassword, signUp, signInWithGoogle } = useAuth();
+  const { user, roles, loading } = useAuth();
   const { t } = useI18n();
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<"in" | "up">("in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [params] = useSearchParams();
+  const returnTo = safeReturnTo(params.get("returnTo"));
+  const auth = useAuthForm({ checkEmailMessage: t("auth.checkEmail") });
 
   if (loading) return null;
-  if (user) return <Navigate to={homeForRoles(roles)} replace />;
+  if (user) return <Navigate to={returnTo ?? homeForRoles(roles)} replace />;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const { error } =
-      mode === "in"
-        ? await signInWithPassword(email, password)
-        : await signUp(email, password, displayName || email.split("@")[0]);
-    setBusy(false);
-    if (error) return toast.error(error);
-    if (mode === "up") toast.success(t("auth.checkEmail"));
-    // Role redirect happens automatically via the Navigate above once auth state updates.
-    else navigate("/account");
-  };
-
-  const handleGoogle = async () => {
-    setBusy(true);
-    const { error } = await signInWithGoogle();
-    setBusy(false);
-    if (error) toast.error(error);
-  };
+  const { mode, setMode, email, setEmail, password, setPassword, displayName, setDisplayName, busy, submit, submitGoogle } = auth;
 
   return (
     <PalaceLayout transparentHeader={false}>
@@ -99,7 +84,7 @@ export default function Auth() {
             <p className="mt-3 text-[0.7rem] text-black/60">{t("auth.designerHint")}</p>
           </div>
         )}
-        <form onSubmit={handleSubmit} className="mt-8 space-y-8">
+        <form onSubmit={submit} className="mt-8 space-y-8">
           {mode === "up" && (
             <Field label={t("auth.name")} value={displayName} onChange={setDisplayName} />
           )}
@@ -126,7 +111,7 @@ export default function Auth() {
           type="button"
           variant="editorial"
           size="chip"
-          onClick={handleGoogle}
+          onClick={submitGoogle}
           disabled={busy}
           className="w-full justify-center text-center"
         >
