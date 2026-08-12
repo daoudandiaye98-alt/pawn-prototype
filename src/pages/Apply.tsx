@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/imageCompress";
 import { useAuth } from "@/lib/auth";
 import { readLeadRef, clearLeadRef, readRefCode, clearRefCode } from "@/features/acquisition/leadAttribution";
 import { toast } from "sonner";
@@ -104,31 +105,6 @@ type UploadState = "idle" | "compressing" | "uploading" | "done" | "error";
  * ~85% Qualität verkleinern, bevor sie hochgeladen werden — WebP wenn der Browser es
  * unterstützt, sonst JPEG. Schlägt die Verkleinerung fehl, geht das Original hoch statt
  * die Bewerbung abzubrechen. */
-async function compressImage(file: File): Promise<File> {
-  const bitmap = await createImageBitmap(file);
-  const maxEdge = 1600;
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return file;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  const toBlob = (type: string, quality: number) =>
-    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
-  let blob = await toBlob("image/webp", 0.85);
-  let ext = "webp";
-  if (!blob) {
-    blob = await toBlob("image/jpeg", 0.85);
-    ext = "jpg";
-  }
-  if (!blob) return file;
-  const baseName = file.name.replace(/\.[^.]+$/, "");
-  return new File([blob], `${baseName}.${ext}`, { type: blob.type });
-}
-
 /** Übersetzte Sicht auf eine Disziplin — disciplines.ts selbst bleibt deutsch (dort stehen
  * nur die technischen Schlüssel), die sichtbaren Texte kommen für Apply.tsx aus dem Wörterbuch. */
 function translateDiscipline(t: (k: string, vars?: Record<string, string | number>) => string, d: Discipline) {
