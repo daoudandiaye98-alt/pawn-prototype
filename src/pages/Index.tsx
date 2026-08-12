@@ -10,6 +10,7 @@ import { useSiteContent } from "@/lib/siteContent";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice, formatCreditLine } from "@/lib/format";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
+import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 
 /**
  * Teil 27a — Die Bühne: Landing 1:1 nach docs/design-referenz/landing.html.
@@ -17,6 +18,18 @@ import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
  * (Footer kommt fertig aus PalaceLayout). Die drei Gesetze gelten überall in dieser Datei:
  * Bild ist Held, Schwarz-Weiß nur für die Halle, kein Systemschmuck.
  */
+
+/**
+ * PART 51 Teil A — Master-Slogan "YOUR MOVE." und die vier Zielgruppen-Zeilen sind exakt
+ * vorgegebene englische Kampagnensprache, unabhängig von der Sprachumschaltung — deshalb
+ * fest im Code statt über site_content/Editable oder i18n, wie die Wortmarke selbst.
+ */
+const YOUR_MOVE_LINES = [
+  "Show us what you've made.",
+  "Put your work out there.",
+  "Find something worth choosing.",
+  "Make something of it.",
+];
 
 const WORLDS: { key: "Mode" | "Interior" | "Kunst"; labelKey: string; label: string; textKey: string; text: string }[] = [
   { key: "Mode", labelKey: "landing.world_mode_label", label: "Mode", textKey: "landing.world_mode_text", text: "Stücke, die eine Handschrift tragen." },
@@ -82,24 +95,19 @@ const Index = () => {
           <span className="inline-block bg-black px-[0.8rem] py-[0.45rem] text-[0.62rem] uppercase tracking-[0.36em]">
             <Editable contentKey="landing.cover_kicker">Der kuratierte Marktplatz</Editable>
           </span>
-          <h1 className="mt-[1.3rem] max-w-[14ch] font-serif text-[clamp(2.7rem,9vw,7.6rem)] font-semibold leading-[0.92] tracking-[-0.028em]">
-            <Editable contentKey="landing.cover_headline_a">Kunst von Händen,</Editable>
-            <br />
-            <span className="font-serif font-medium italic">
-              <Editable contentKey="landing.cover_headline_b">geboren in Werkstätten.</Editable>
-            </span>
+          <PawnWordmark as="div" className="mt-[1.3rem] text-[clamp(1.3rem,2.8vw,2rem)] text-white/90" />
+          <h1 className="mt-[0.7rem] max-w-[16ch] font-serif text-[clamp(3.2rem,10vw,8.4rem)] font-semibold italic leading-[0.9] tracking-[-0.028em]">
+            YOUR MOVE.
           </h1>
           <p className="mt-[1.6rem] max-w-[44ch] text-[1rem] text-white/92">
-            <Editable contentKey="landing.cover_sub">
-              Unabhängige Designer und Künstler aus Mode, Interior und Kunst — geprüft, kuratiert, direkt von der Werkstatt zu dir.
-            </Editable>
+            PAWN turns creative potential into real-world opportunity.
           </p>
           <div className="mt-[2.2rem] flex flex-wrap gap-[0.9rem]">
             <Button asChild variant="editorial" size="chip" className="border-white bg-white text-black hover:bg-transparent hover:text-white">
-              <Link to="/neu">Ausstellung betreten</Link>
+              <Link to="/start">Mach deinen Zug</Link>
             </Button>
             <Button asChild variant="editorial" size="chip" className="border-white bg-transparent text-white hover:bg-white hover:text-black">
-              <Link to="/apply">Als Designer bewerben</Link>
+              <Link to="/designers">Häuser entdecken</Link>
             </Button>
           </div>
         </div>
@@ -108,6 +116,18 @@ const Index = () => {
             {formatCreditLine({ houseNumber: coverDesigner.house_number, brandName: coverDesigner.brand_name, third: coverDesigner.location })}
           </div>
         )}
+      </div>
+
+      {/* 01B ZIELGRUPPEN */}
+      <div className="border-b-[1.5px] border-black bg-white text-black">
+        <div className="mx-auto grid max-w-[1440px] grid-cols-1 divide-y divide-black sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
+          {YOUR_MOVE_LINES.map((line) => (
+            <div key={line} className="px-6 py-12 md:px-8 md:py-16">
+              <p className="text-[0.58rem] uppercase tracking-[0.34em] text-[#404040]">YOUR MOVE.</p>
+              <p className="mt-4 max-w-[20ch] font-serif text-[clamp(1.3rem,2.6vw,1.9rem)] italic leading-tight">{line}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 02 FAKTEN */}

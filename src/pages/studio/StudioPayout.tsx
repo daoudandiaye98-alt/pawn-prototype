@@ -213,7 +213,7 @@ export default function StudioPayout() {
       <div className="max-w-xl space-y-6">
         {/* PART 45 — die Kasse in drei Zeilen: was fehlt, steht hier und nirgends sonst versteckt. */}
         <div className={`border-[1.5px] border-black p-5 ${verkauf.bereit ? "bg-white" : "bg-black text-white"}`}>
-          <p className="editorial-eyebrow">{verkauf.bereit ? "Deine Kasse ist offen" : "Bis zum ersten Verkauf fehlt noch"}</p>
+          <p className="editorial-eyebrow">{verkauf.bereit ? "Deine Kasse ist offen" : "Auf dem Weg zur ersten Auszahlung"}</p>
           <ul className="mt-3 space-y-2">
             {verkauf.checks.map((c) => (
               <li key={c.key} className="flex items-start gap-3 text-sm">

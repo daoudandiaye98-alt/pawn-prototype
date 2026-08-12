@@ -1,7 +1,11 @@
 /**
  * PAWNs Vision — die Seite, die erklärt, was für ein Ort PAWN ist.
- * Kein Wort über Geld oder Konditionen: Haltung, Einladung, Versammlung.
- * Alle Texte hängen an site_content (Editable), damit sie ohne Code änderbar sind.
+ * PART 51 Teil A2: Erzählung statt Feature-Katalog, in fünf Teilen — Öffnung (der Bauer),
+ * die Kette (Talent → ... → Transformation), was PAWN tut, die Haltung, der Schlusssatz
+ * "PLAY YOUR OWN GAME." (erscheint bewusst nur hier, nirgends sonst als CTA oder im Produkt-UI).
+ * Alle Texte hängen an site_content (Editable), damit sie ohne Code änderbar sind — mit
+ * Ausnahme der beiden englischen Marken-Zeilen (Positionierungssatz, Schlusssatz), die wie
+ * der Master-Slogan auf der Landing fest vorgegeben sind.
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -15,28 +19,7 @@ interface Zaehler {
   laender: number;
 }
 
-const BELIEFS: ReadonlyArray<{ key: string; titel: string; text: string }> = [
-  {
-    key: "haus_kein_feed",
-    titel: "Ein Haus für jede Arbeit",
-    text: "Jede Arbeit bekommt Raum, Licht und Zeit — so viel, wie sie braucht, um wirken zu können.",
-  },
-  {
-    key: "herkunft",
-    titel: "Jedes Stück hat eine Herkunft",
-    text: "Wer es gemacht hat, woraus und warum: bei uns steht das direkt daneben.",
-  },
-  {
-    key: "wenige",
-    titel: "Ausgewählt, um zu bleiben",
-    text: "Wir kuratieren. Was hier einzieht, soll bleiben und über Jahre getragen, bewohnt, angesehen werden.",
-  },
-  {
-    key: "handschrift",
-    titel: "Die Handschrift gehört den Häusern",
-    text: "PAWN stellt Werkzeuge bereit. Die Sprache, die Bilder, die Richtung kommen von den Gestaltern selbst.",
-  },
-];
+const KETTE = ["Talent", "Ausdruck", "Sichtbarkeit", "Bewegung", "Identität", "Transformation"];
 
 function Zahl({ wert, label, geladen }: { wert: number; label: string; geladen: boolean }) {
   return (
@@ -75,93 +58,83 @@ export default function Vision() {
 
   return (
     <PalaceLayout
-      title="PAWNs Vision — ein Ort für die, die noch selbst machen"
+      title="PAWNs Vision — der Bauer, der sich verwandeln kann"
       description="Wofür PAWN steht: ein kuratiertes Haus, in dem sich unabhängige Gestalter aus Mode, Interior und Kunst versammeln — und Menschen sie finden."
     >
-      {/* Manifest */}
+      {/* 01 ÖFFNUNG — der Bauer */}
       <section className="border-b-[1.5px] border-black px-6 pb-20 pt-24 md:px-14 md:pb-28 md:pt-32">
         <Reveal>
           <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">
             <Editable contentKey="vision_kicker">PAWNs Vision</Editable>
           </p>
-          <h1 className="mt-8 max-w-[18ch] font-serif text-[clamp(2.6rem,8vw,7rem)] font-semibold leading-[0.95] text-black">
-            <Editable contentKey="vision_headline">Ein Ort für die, die noch selbst machen.</Editable>
-          </h1>
-          <p className="mt-8 max-w-[52ch] text-[1rem] leading-relaxed text-black md:text-[1.15rem]">
-            <Editable contentKey="vision_sub" multiline>
-              PAWN ist ein Haus für unabhängige Gestalter aus Mode, Interior und Kunst — und für
-              Menschen, die wissen wollen, wessen Hände hinter einem Stück stehen.
+          <h1 className="mt-8 max-w-[22ch] font-serif text-[clamp(2.4rem,7vw,6.4rem)] font-semibold leading-[1.02] text-black">
+            <Editable contentKey="vision_headline" multiline>
+              Der Bauer ist die kleinste Figur auf dem Brett — und die einzige, die sich verwandeln kann.
             </Editable>
-          </p>
+          </h1>
         </Reveal>
       </section>
 
-      {/* Warum es uns gibt */}
+      {/* 02 DIE KETTE */}
+      <section className="border-b-[1.5px] border-black px-6 py-14 md:px-14 md:py-20">
+        <Reveal>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+            {KETTE.map((glied, i) => (
+              <span key={glied} className="flex items-baseline gap-4">
+                <span className="font-serif text-[clamp(1.3rem,3.2vw,2.2rem)] italic leading-tight text-black">
+                  {glied}
+                </span>
+                {i < KETTE.length - 1 && (
+                  <span aria-hidden className="text-[1.1rem] text-black/40">→</span>
+                )}
+              </span>
+            ))}
+          </div>
+        </Reveal>
+      </section>
+
+      {/* 03 WAS PAWN TUT */}
       <section className="grid border-b-[1.5px] border-black md:grid-cols-[minmax(0,22ch)_1fr]">
         <div className="border-b-[1.5px] border-black px-6 py-8 md:border-b-0 md:border-r-[1.5px] md:px-14 md:py-16">
           <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">
-            <Editable contentKey="vision_warum_label">Warum es uns gibt</Editable>
+            <Editable contentKey="vision_tut_label">Was PAWN tut</Editable>
           </p>
         </div>
         <div className="px-6 py-10 md:px-14 md:py-16">
           <Reveal>
-            <p className="max-w-[62ch] font-serif text-[clamp(1.25rem,2.6vw,2rem)] leading-[1.35] text-black">
-              <Editable contentKey="vision_warum" multiline>
-                Mode entsteht heute im Wochentakt und verschwindet im Scrollen. Die Menschen, die
-                sie entwerfen, nähen, glasieren, malen, bleiben dabei unsichtbar. Wir bauen den
-                Gegenort: langsam, kuratiert, mit Namen. Ein Haus, in dem eine Arbeit stehen bleiben
-                darf, bis jemand sie wirklich sieht.
+            <p className="max-w-[52ch] font-serif text-[clamp(1.15rem,2.2vw,1.5rem)] italic leading-[1.4] text-black">
+              PAWN turns creative potential into real-world opportunity.
+            </p>
+            <p className="mt-6 max-w-[62ch] text-[1rem] leading-relaxed text-black md:text-[1.1rem]">
+              <Editable contentKey="vision_tut_text" multiline>
+                PAWN erkennt, was in einer Arbeit steckt, kuratiert die stärksten Stimmen aus Mode,
+                Interior und Kunst und entwickelt ihre Sichtbarkeit über Zeit — statt sie für einen
+                Moment im Feed verschwinden zu lassen. Am Ende verbindet PAWN sie mit den Menschen,
+                die genau danach gesucht haben.
               </Editable>
             </p>
           </Reveal>
         </div>
       </section>
 
-      {/* Überzeugungen */}
-      <section className="grid border-b-[1.5px] border-black md:grid-cols-2">
-        {BELIEFS.map((b, i) => (
-          <div
-            key={b.key}
-            className={`border-black px-6 py-12 md:px-14 md:py-16 ${
-              i % 2 === 1 ? "md:border-l-[1.5px]" : ""
-            } ${i < BELIEFS.length - 1 ? "border-b-[1.5px]" : ""} ${
-              i === BELIEFS.length - 2 ? "md:border-b-0" : ""
-            }`}
-          >
-            <Reveal>
-              <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">
-                {String(i + 1).padStart(2, "0")}
-              </p>
-              <h2 className="mt-6 font-serif text-[clamp(1.5rem,3.4vw,2.4rem)] leading-tight text-black">
-                <Editable contentKey={`vision_glaube_${b.key}_titel`}>{b.titel}</Editable>
-              </h2>
-              <p className="mt-4 max-w-[46ch] text-[0.95rem] leading-relaxed text-black">
-                <Editable contentKey={`vision_glaube_${b.key}_text`} multiline>
-                  {b.text}
-                </Editable>
-              </p>
-            </Reveal>
-          </div>
-        ))}
+      {/* 04 HALTUNG */}
+      <section className="border-b-[1.5px] border-black px-6 py-16 text-center md:px-14 md:py-24">
+        <Reveal>
+          <p className="mx-auto max-w-[36ch] font-serif text-[clamp(1.5rem,3.6vw,2.6rem)] italic leading-[1.4] text-black">
+            PAWN sagt nie: Wir machen dich zum Künstler.
+            <br />
+            PAWN sagt: Du bist dran.
+          </p>
+        </Reveal>
       </section>
 
-      {/* Versammlung + Besucher */}
+      {/* Zwei Wege weiter */}
       <section className="grid border-b-[1.5px] border-black md:grid-cols-2">
         <div className="border-b-[1.5px] border-black px-6 py-14 md:border-b-0 md:border-r-[1.5px] md:px-14 md:py-20">
           <Reveal>
-            <h2 className="font-serif text-[clamp(1.8rem,4vw,3rem)] leading-tight text-black">
-              <Editable contentKey="vision_versammlung_titel">Eine Versammlung</Editable>
-            </h2>
-            <p className="mt-6 max-w-[46ch] text-[0.98rem] leading-relaxed text-black">
-              <Editable contentKey="vision_versammlung_text" multiline>
-                Mode, Interior, Kunst — hier stehen sie nebeneinander, weil sie dieselbe Haltung
-                teilen. Jedes Haus behält seinen eigenen Auftritt und findet gleichzeitig andere,
-                die ähnlich arbeiten. Zusammen sind wir sichtbarer, als wir es einzeln wären.
-              </Editable>
-            </p>
             <Link
               to="/apply"
-              className="mt-10 inline-block border-[1.5px] border-black px-8 py-4 text-[0.68rem] uppercase tracking-[0.32em] text-black transition-colors hover:bg-black hover:text-white"
+              className="inline-block border-[1.5px] border-black px-8 py-4 text-[0.68rem] uppercase tracking-[0.32em] text-black transition-colors hover:bg-black hover:text-white"
             >
               <Editable contentKey="vision_cta_designer">Werde Teil davon</Editable>
             </Link>
@@ -169,17 +142,7 @@ export default function Vision() {
         </div>
         <div className="px-6 py-14 md:px-14 md:py-20">
           <Reveal>
-            <h2 className="font-serif text-[clamp(1.8rem,4vw,3rem)] leading-tight text-black">
-              <Editable contentKey="vision_besucher_titel">Für die, die suchen</Editable>
-            </h2>
-            <p className="mt-6 max-w-[46ch] text-[0.98rem] leading-relaxed text-black">
-              <Editable contentKey="vision_besucher_text" multiline>
-                Betrachte PAWN als Ausstellung, nicht als Katalog. Du gehst durch Häuser, liest
-                Geschichten, erkennst Handschriften — und nimmst am Ende ein Stück mit, von dem du
-                weißt, wer es gemacht hat.
-              </Editable>
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3">
               <Link
                 to="/shop"
                 className="inline-block border-[1.5px] border-black px-8 py-4 text-[0.68rem] uppercase tracking-[0.32em] text-black transition-colors hover:bg-black hover:text-white"
@@ -219,7 +182,7 @@ export default function Vision() {
       </section>
 
       {/* Zähler */}
-      <section className="px-0 py-4">
+      <section className="border-b-[1.5px] border-black px-0 py-4">
         <div className="px-6 pt-10 text-center md:px-14">
           <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">
             <Editable contentKey="vision_zaehler_label">Das Haus heute</Editable>
@@ -238,6 +201,13 @@ export default function Vision() {
           ) : (
             <Editable contentKey="vision_zaehler_wachstum">Und es werden mehr.</Editable>
           )}
+        </p>
+      </section>
+
+      {/* 05 SCHLUSSSATZ — steht allein, nie als CTA */}
+      <section className="px-6 py-24 text-center md:px-14 md:py-36">
+        <p className="font-serif text-[clamp(1.8rem,5.5vw,4rem)] font-semibold italic tracking-[-0.02em] text-black">
+          PLAY YOUR OWN GAME.
         </p>
       </section>
     </PalaceLayout>

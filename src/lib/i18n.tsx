@@ -1068,7 +1068,7 @@ const de = {
   "studio.mood.tatendrang.tap.5": "Ich bin ganz Ohr — und Auge.",
 
   "studio.mood.neugierig.greeting.1": "Ich hab dir schon etwas vorbereitet — {label}. Magst du nachsehen?",
-  "studio.mood.neugierig.greeting.2": "Da liegt noch ein Zug von mir bereit. Du musst nur nicken.",
+  "studio.mood.neugierig.greeting.2": "Da liegt noch ein Zug von mir bereit — nick einfach, wenn er dir gefällt.",
   "studio.mood.neugierig.greeting.3": "Ich hab schon was gemacht — {label} wartet auf deinen Blick.",
   "studio.mood.neugierig.greeting.4": "Neugierig, was ich vorbereitet habe? {label}.",
   "studio.mood.neugierig.greeting.5": "Einen Vorschlag hab ich noch für dich — schau mal rein.",
