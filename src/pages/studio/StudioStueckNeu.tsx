@@ -215,7 +215,7 @@ export default function StudioStueckNeu() {
   const createProduct = async () => {
     if (!designer) return;
     if (!name.trim() || name.trim().length < 2) { toast.error(t("studio.stueckNeu.toast.nameRequired")); return; }
-    const priceNum = Number(price);
+    const priceNum = Math.round(Number(price));
     if (!price || isNaN(priceNum) || priceNum <= 0) { toast.error(t("studio.stueckNeu.toast.priceRequired")); return; }
     if (!sourceUrl) { toast.error(t("studio.stueckNeu.toast.photoRequired")); return; }
     if (weltGesperrt) {
@@ -303,8 +303,11 @@ export default function StudioStueckNeu() {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("studio.stueckNeu.form.namePlaceholder")}
                 className="w-full border border-border bg-white p-3 text-sm" />
               <div className="grid grid-cols-2 gap-3">
-                <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder={t("studio.stueckNeu.form.pricePlaceholder")}
-                  className="border border-border bg-white p-3 text-sm" />
+                <div>
+                  <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="1" placeholder={t("studio.stueckNeu.form.pricePlaceholder")}
+                    className="w-full border border-border bg-white p-3 text-sm" />
+                  <p className="mt-1 text-[0.62rem] uppercase tracking-[0.14em] opacity-50">{t("studio.stueckNeu.form.priceHint")}</p>
+                </div>
                 <input value={size} onChange={(e) => setSize(e.target.value)} placeholder={t("studio.stueckNeu.form.sizePlaceholder")}
                   className="border border-border bg-white p-3 text-sm" />
               </div>

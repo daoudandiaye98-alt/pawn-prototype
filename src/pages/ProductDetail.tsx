@@ -30,15 +30,24 @@ import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { ProductServiceSheet } from "@/components/palace/ProductServiceSheet";
 import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
 import { ProductDetailsAccordion } from "@/components/palace/ProductDetailsAccordion";
+import { ProductLightbox } from "@/components/palace/ProductLightbox";
 
 import {
-  effectiveVatRate, vatNote, formatEuro, worldProfile,
+  effectiveVatRate, vatNote, formatEuro,
   type SizeVariant,
 } from "@/features/studio/productDetails";
 
+type TFn = ReturnType<typeof useI18n>["t"];
 
 // PART 51 Teil C — Budget-Vorstellung bei Anfragen ist eine Tap-Auswahl, kein Pflichtfeld-Freitext.
-const BUDGET_CHIPS = ["Bis 200 €", "200–500 €", "500–1.000 €", "1.000 €+"];
+function budgetChips(t: TFn) {
+  return [
+    t("product.budget.upTo200"),
+    t("product.budget.200to500"),
+    t("product.budget.500to1000"),
+    t("product.budget.1000plus"),
+  ];
+}
 
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
@@ -175,15 +184,15 @@ const ProductDetail = () => {
   const canRequest = !!dbProduct?.allow_custom_requests || !canBuy;
 
   function addToBag() {
-    if (soldOut) { toast.error("Ausverkauft."); return; }
+    if (soldOut) { toast.error(t("product.toast.soldOut")); return; }
     cart.add(product, size);
     push(`${product.name} betritt das Brett.`);
-    toast.success("Zur Tasche hinzugefügt.");
+    toast.success(t("product.toast.addedToBag"));
   }
 
   const [buyBusy, setBuyBusy] = useState(false);
   async function buyNow() {
-    if (soldOut && !isMto) { toast.error("Ausverkauft."); return; }
+    if (soldOut && !isMto) { toast.error(t("product.toast.soldOut")); return; }
     setBuyBusy(true);
     try {
       const price = dbProduct?.price ?? product.price;
@@ -204,13 +213,13 @@ const ProductDetail = () => {
       if (error) throw error;
       const url = (data as { url?: string })?.url;
       if (!url) {
-        const msg = (data as { message?: string })?.message ?? "Zahlung ist gerade nicht verfügbar.";
+        const msg = (data as { message?: string })?.message ?? t("product.toast.paymentUnavailable");
         toast.message(msg);
         return;
       }
       window.location.href = url;
     } catch (e) {
-      toast.error((e as Error)?.message ?? "Fehler beim Checkout.");
+      toast.error((e as Error)?.message ?? t("product.toast.checkoutError"));
     } finally {
       setBuyBusy(false);
     }
@@ -223,9 +232,9 @@ const ProductDetail = () => {
   }
 
   async function submitRequest() {
-    if (!user) { toast.error("Bitte anmelden."); return; }
-    if (!dbProduct?.designers?.id) { toast.error("Designer nicht verfügbar."); return; }
-    if (reqBody.trim().length < 10) { toast.error("Bitte beschreibe deinen Wunsch etwas ausführlicher."); return; }
+    if (!user) { toast.error(t("product.toast.pleaseSignIn")); return; }
+    if (!dbProduct?.designers?.id) { toast.error(t("product.toast.designerUnavailable")); return; }
+    if (reqBody.trim().length < 10) { toast.error(t("product.toast.requestTooShort")); return; }
     setReqBusy(true);
     try {
       await createCustomRequestThread({
@@ -237,10 +246,10 @@ const ProductDetail = () => {
         budget: reqBudget || undefined,
         name: reqName.trim() || undefined,
       });
-      toast.success("Anfrage gesendet.");
+      toast.success(t("product.toast.requestSent"));
       setReqOpen(false); setReqName(""); setReqBody(""); setReqBudget("");
     } catch (e) {
-      toast.error((e as Error)?.message ?? "Fehler beim Senden.");
+      toast.error((e as Error)?.message ?? t("product.toast.sendError"));
     } finally {
       setReqBusy(false);
     }
@@ -269,10 +278,12 @@ const ProductDetail = () => {
     return list.filter((u): u is string => typeof u === "string" && u.trim() !== "" && u !== heroImage).slice(0, 3);
   }, [dbProduct, heroImage]);
 
-  // Teil 36 — Desktop-Doppelseite: das große Bild links wechselt per Klick auf eine
-  // weitere Ansicht aus der Galerie; startet immer mit dem Hauptfoto.
-  const [activeImage, setActiveImage] = useState<string | null>(null);
-  useEffect(() => { setActiveImage(heroImage); }, [heroImage]);
+  // Teil J1 — alle Werkbilder (Hauptfoto + Galerie) in Anzeigereihenfolge, für die Lightbox.
+  const allImages = useMemo(
+    () => [heroImage, ...gallery].filter((u): u is string => !!u),
+    [heroImage, gallery],
+  );
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   if (productLoading) {
     return (
@@ -295,15 +306,15 @@ const ProductDetail = () => {
     return (
       <PalaceLayout transparentHeader={false}>
         <section className="mx-auto max-w-[720px] px-6 pt-40 pb-32 text-center md:px-14">
-          <p className="palace-eyebrow">Nicht gefunden</p>
+          <p className="palace-eyebrow">{t("product.notFound.eyebrow")}</p>
           <h1 className="palace-serif mt-6 text-[2.4rem] font-light leading-tight text-[#000000]">
-            Dieses Stück steht nicht mehr im Raum.
+            {t("product.notFound.title")}
           </h1>
           <p className="mt-6 font-serif italic text-[1.05rem] text-[#000000]/70">
-            Vielleicht ist es verkauft oder das Haus hat es zurückgezogen.
+            {t("product.notFound.sub")}
           </p>
           <Button asChild variant="editorial" size="chip" className="mt-10">
-            <Link to="/shop">Zur Boutique</Link>
+            <Link to="/shop">{t("product.notFound.cta")}</Link>
           </Button>
         </section>
       </PalaceLayout>
@@ -333,19 +344,19 @@ const ProductDetail = () => {
       )}
       {noCartKind && (
         <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
-          {kunstKind === "live_portrait" ? "Live-Porträt" : "Auftragsarbeit"}
+          {kunstKind === "live_portrait" ? t("studio.stueckNeu.kunstArt.live_portrait") : t("studio.stueckNeu.kunstArt.auftragsarbeit")}
         </span>
       )}
       {isMto && !noCartKind && (
         <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
-          Auf Anfertigung{dbProduct?.lead_time_days ? ` · ca. ${dbProduct.lead_time_days} Tage` : ""}
+          {t("product.badge.mto")}{dbProduct?.lead_time_days ? ` · ${t("product.badge.mtoLeadTime", { days: dbProduct.lead_time_days })}` : ""}
         </span>
       )}
       {!isMto && soldOut && (
-        <span className="border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]" style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}>Ausverkauft</span>
+        <span className="border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]" style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}>{t("product.badge.soldOut")}</span>
       )}
       {!isMto && lowStock && (
-        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">Noch {stock} verfügbar</span>
+        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">{t("product.badge.lowStock", { n: stock })}</span>
       )}
     </>
   );
@@ -360,7 +371,7 @@ const ProductDetail = () => {
           onClick={() => setReqOpen(true)}
           style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
         >
-          Anfragen
+          {t("product.action.request")}
         </Button>
       ) : (
         <>
@@ -373,7 +384,7 @@ const ProductDetail = () => {
             disabled={soldOut && !isMto}
             style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
           >
-            {soldOut && !isMto ? "Ausverkauft" : "Direkt kaufen"}
+            {soldOut && !isMto ? t("product.action.soldOut") : t("product.action.buyNow")}
           </Button>
           <Button
             type="button"
@@ -384,7 +395,7 @@ const ProductDetail = () => {
             className="house-ink house-hair"
             style={{ background: "var(--house-bg)" }}
           >
-            {soldOut && !isMto ? "Ausverkauft" : isMto ? "Anfertigen lassen" : "In die Tasche"}
+            {soldOut && !isMto ? t("product.action.soldOut") : isMto ? t("product.action.orderMade") : t("product.action.addToBag")}
           </Button>
         </>
       )}
@@ -393,7 +404,7 @@ const ProductDetail = () => {
         variant="editorial"
         size="chip"
         onClick={onSave}
-        aria-label="Merken"
+        aria-label={t("product.action.saveAria")}
         className="house-hair"
         style={(saved || wished) ? { background: "var(--house-fg)", color: "var(--house-bg)" } : { background: "var(--house-bg)", color: "var(--house-fg)" }}
       >
@@ -407,7 +418,7 @@ const ProductDetail = () => {
     <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
       {product.colors.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="house-ink palace-eyebrow opacity-60">Farbe</span>
+          <span className="house-ink palace-eyebrow opacity-60">{t("product.variant.colorLabel")}</span>
           {product.colors.map((c) => (
             <button
               key={c}
@@ -424,7 +435,7 @@ const ProductDetail = () => {
       )}
       {product.sizes.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="house-ink palace-eyebrow opacity-60">{worldProfile(product.world).variantPublicLabel}</span>
+          <span className="house-ink palace-eyebrow opacity-60">{t(`product.variant.publicLabel.${product.world}`)}</span>
           {product.sizes.map((s) => {
             const variant = sizeVariants.find((v) => v.size === s);
             const outOfStock = !!variant && !isMto && Number(variant.stock) <= 0;
@@ -433,7 +444,7 @@ const ProductDetail = () => {
                 key={s}
                 onClick={() => !outOfStock && setSize(s)}
                 disabled={outOfStock}
-                title={outOfStock ? worldProfile(product.world).variantSoldOut : undefined}
+                title={outOfStock ? t(`product.variant.soldOut.${product.world}`) : undefined}
                 className={cn(
                   "house-ink border px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.28em] transition-colors duration-300",
                   outOfStock && "cursor-not-allowed line-through opacity-40",
@@ -454,7 +465,7 @@ const ProductDetail = () => {
 
   const vatNoteLine = (
     <p className="house-ink text-[0.6rem] uppercase tracking-[0.22em] opacity-50">
-      {vatNote(effectiveVatRate(dbProduct?.vat_rate as number | null, (dbProduct?.designers as { vat_rate?: number } | null)?.vat_rate ?? 19))} · zzgl. Versand · Apple Pay · Google Pay · PayPal · Klarna · Karte
+      {vatNote(effectiveVatRate(dbProduct?.vat_rate as number | null, (dbProduct?.designers as { vat_rate?: number } | null)?.vat_rate ?? 19), locale)} · {t("product.vat.paymentMethods")}
     </p>
   );
 
@@ -470,7 +481,7 @@ const ProductDetail = () => {
 
       {dbProduct?.designer_note?.trim() && (
         <Reveal className="house-hair mt-12 border-t pt-10">
-          <p className="house-ink palace-eyebrow">Die Geschichte dahinter</p>
+          <p className="house-ink palace-eyebrow">{t("product.story.title")}</p>
           <p className="house-serif house-ink mt-4 italic" style={{ fontSize: "1.2rem", lineHeight: 1.6 }}>
             {dbProduct.designer_note}
           </p>
@@ -497,7 +508,7 @@ const ProductDetail = () => {
       )}
 
       <Reveal className="mt-4">
-        <ErrorBoundary label="Die Detailangaben zu diesem Stück lassen sich gerade nicht anzeigen.">
+        <ErrorBoundary label={t("product.detailsUnavailable")}>
           <ProductDetailsAccordion dbProduct={dbProduct} onPickSize={(s) => setSize(s)} />
         </ErrorBoundary>
       </Reveal>
@@ -533,7 +544,7 @@ const ProductDetail = () => {
         }}
         className="house-ink inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
       >
-        Frag PAWN zu diesem Stück →
+        {t("product.ask.askPawn")}
       </button>
       {canRequest && canBuy && (
         <button
@@ -541,7 +552,7 @@ const ProductDetail = () => {
           onClick={() => setReqOpen(true)}
           className="house-ink inline-flex text-[0.62rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
         >
-          Individuelle Anfrage stellen →
+          {t("product.ask.customRequest")}
         </button>
       )}
     </Reveal>
@@ -558,8 +569,8 @@ const ProductDetail = () => {
           >
             <button
               type="button"
-              onClick={() => setActiveImage(url)}
-              aria-label={`${product.name} — weitere Ansicht`}
+              onClick={() => setLightboxIndex(Math.max(0, allImages.indexOf(url)))}
+              aria-label={t("product.gallery.moreView", { name: product.name })}
               className="block w-full text-left"
             >
               <EditorialImage
@@ -580,7 +591,7 @@ const ProductDetail = () => {
   const bannerBlock = banner && (
     <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24">
       <Reveal className="mx-auto max-w-[1600px]">
-        <p className="house-accent palace-eyebrow">Aus dem Haus</p>
+        <p className="house-accent palace-eyebrow">{t("product.banner.fromHouse")}</p>
         {banner.kind === "video"
           ? <video src={banner.url} className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" muted autoPlay loop playsInline />
           : <img src={banner.url} alt="" className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" loading="lazy" />}
@@ -597,10 +608,17 @@ const ProductDetail = () => {
         <Reveal>
           <div className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
             {heroImage ? (
-              <img src={heroImage} alt={product.name} className="absolute inset-0 h-full w-full object-cover object-top md:object-contain md:object-center" />
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(0)}
+                aria-label={t("product.lightbox.openAria")}
+                className="absolute inset-0 block h-full w-full"
+              >
+                <img src={heroImage} alt={product.name} className="h-full w-full object-cover object-top md:object-contain md:object-center" />
+              </button>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black">
-                <span className="palace-eyebrow text-white/50">Ohne Bild</span>
+                <span className="palace-eyebrow text-white/50">{t("product.gallery.noImage")}</span>
               </div>
             )}
             {/* Schwarzer Balken-Unterleger statt Verlauf — Gesetz 1 */}
@@ -630,15 +648,22 @@ const ProductDetail = () => {
       {/* ===== DESKTOP (≥1024px): Doppelseite — sticky Bildspalte + Textspalte (Teil 36) ===== */}
       <section className="hidden lg:flex lg:items-start">
         <div className="sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden bg-black">
-          {activeImage ? (
-            <img
-              src={activeImage}
-              alt={product.name}
-              className="h-full w-auto max-w-full object-contain"
-              style={{ aspectRatio: "4 / 5" }}
-            />
+          {heroImage ? (
+            <button
+              type="button"
+              onClick={() => setLightboxIndex(0)}
+              aria-label={t("product.lightbox.openAria")}
+              className="flex h-full w-full items-center justify-center"
+            >
+              <img
+                src={heroImage}
+                alt={product.name}
+                className="h-full w-auto max-w-full object-contain"
+                style={{ aspectRatio: "4 / 5" }}
+              />
+            </button>
           ) : (
-            <span className="palace-eyebrow text-white/50">Ohne Bild</span>
+            <span className="palace-eyebrow text-white/50">{t("product.gallery.noImage")}</span>
           )}
           {creditLine && (
             <p className="absolute bottom-6 left-8 z-[2] text-[0.56rem] uppercase tracking-[0.24em] text-white/60">{creditLine}</p>
@@ -758,23 +783,23 @@ const ProductDetail = () => {
       {reqOpen && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 md:items-center md:p-6" onClick={() => setReqOpen(false)}>
           <div className="house-hair w-full max-w-lg border p-8" style={{ background: "var(--house-bg)" }} onClick={(e) => e.stopPropagation()}>
-            <p className="house-ink palace-eyebrow">Individuelle Anfrage</p>
+            <p className="house-ink palace-eyebrow">{t("product.requestModal.title")}</p>
             <h3 className="house-serif house-ink mt-3 text-[1.8rem] font-light leading-tight">{dbProduct?.name}</h3>
             <p className="house-ink mt-3 text-[0.9rem] opacity-60">
-              Deine Nachricht geht direkt an die Designer:in. Beschreibe, was du dir vorstellst — Maße, Materialien, Anlass.
+              {t("product.requestModal.body")}
             </p>
             <label className="mt-6 block">
-              <span className="house-ink palace-eyebrow">Name</span>
+              <span className="house-ink palace-eyebrow">{t("product.requestModal.nameLabel")}</span>
               <input value={reqName} onChange={(e) => setReqName(e.target.value)} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
             </label>
             <label className="mt-4 block">
-              <span className="house-ink palace-eyebrow">Wunsch</span>
+              <span className="house-ink palace-eyebrow">{t("product.requestModal.wishLabel")}</span>
               <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
             </label>
             <div className="mt-4">
-              <span className="house-ink palace-eyebrow">Budget-Vorstellung (optional)</span>
+              <span className="house-ink palace-eyebrow">{t("product.requestModal.budgetLabel")}</span>
               <div className="mt-2 flex flex-wrap gap-2">
-                {BUDGET_CHIPS.map((chip) => (
+                {budgetChips(t).map((chip) => (
                   <button
                     key={chip}
                     type="button"
@@ -788,14 +813,22 @@ const ProductDetail = () => {
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <Button type="button" variant="editorial" size="chip" onClick={() => setReqOpen(false)} className="house-hair house-ink" style={{ background: "var(--house-bg)" }}>Abbrechen</Button>
+              <Button type="button" variant="editorial" size="chip" onClick={() => setReqOpen(false)} className="house-hair house-ink" style={{ background: "var(--house-bg)" }}>{t("product.requestModal.cancel")}</Button>
               <Button type="button" variant="editorial" size="chip" onClick={submitRequest} loading={reqBusy} style={{ background: "var(--house-fg)", color: "var(--house-bg)" }}>
-                Anfrage senden
+                {t("product.requestModal.send")}
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      <ProductLightbox
+        images={allImages}
+        alt={product.name}
+        open={lightboxIndex !== null}
+        initialIndex={lightboxIndex ?? 0}
+        onClose={() => setLightboxIndex(null)}
+      />
       </div>
     </PalaceLayout>
   );
