@@ -14,31 +14,37 @@ import { Reveal } from "@/components/palace/Reveal";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ladePlanGate, preisFor, limitFor, type Plan } from "@/lib/planGate";
+import { useI18n } from "@/lib/i18n";
 
-function fmtCount(n: number, noun: string): string {
-  return n < 0 ? `Unbegrenzt ${noun}` : `${n} ${noun}`;
+function fmtCount(n: number, noun: string, unlimitedPrefix: string): string {
+  return n < 0 ? `${unlimitedPrefix} ${noun}` : `${n} ${noun}`;
 }
 
-function fourBoxLines(plan: Plan, commissionPct: number): string[] {
+function fourBoxLines(t: ReturnType<typeof useI18n>["t"], plan: Plan, commissionPct: number): string[] {
   if (plan === "haus") {
     return [
-      "Dein Haus. Live an einem Nachmittag.",
-      `Kostet nichts, riskiert nichts — wir verdienen erst mit ${commissionPct}%, wenn du verkaufst.`,
-      `Jeder Zug macht dich sichtbarer: ${fmtCount(limitFor("haus", "chat_nachricht"), "Nachrichten mit PAWN")}, ${fmtCount(limitFor("haus", "tuer_oeffnen"), "geöffnete Türen")} im Monat.`,
-      "Ohne Zug bleiben die Werke, wo sie jetzt sind: im Entwurf.",
+      t("preise.box.haus.1"),
+      t("preise.box.haus.2", { pct: commissionPct }),
+      t("preise.box.haus.3"),
+      t("preise.box.haus.4"),
     ];
   }
+  const unbegrenzt = t("preise.unbegrenzt");
+  const nachrichten = fmtCount(limitFor("atelier", "chat_nachricht"), t("preise.noun.nachrichten"), unbegrenzt);
+  const tueren = fmtCount(limitFor("atelier", "tuer_oeffnen"), t("preise.noun.tueren"), unbegrenzt);
+  const welten = fmtCount(limitFor("atelier", "welten"), t("preise.noun.welten"), unbegrenzt);
   return [
-    "Mehr Tempo für dein Haus — mehr KI-Werkzeug im Monat.",
-    `Dieselbe Provision wie im Haus-Plan — ${commissionPct}%, nie mehr, nur weil du zahlst.`,
-    `Freigeschaltete Züge: ${fmtCount(limitFor("atelier", "chat_nachricht"), "Nachrichten mit PAWN")}, ${fmtCount(limitFor("atelier", "tuer_oeffnen"), "Türen")}, ${fmtCount(limitFor("atelier", "welten"), "Welten gleichzeitig")}.`,
-    "Dein Rang wächst weiter nur durch das, was du baust und verkaufst — nie durch den Plan.",
+    t("preise.box.atelier.1"),
+    t("preise.box.atelier.2", { pct: commissionPct }),
+    t("preise.box.atelier.3", { nachrichten, tueren, welten }),
+    t("preise.box.rankGrowth"),
   ];
 }
 
 export default function Preise() {
   const { hasRole } = useAuth();
   const isDesigner = hasRole("designer");
+  const { t } = useI18n();
   const [gateReady, setGateReady] = useState(false);
   const [commissionPct, setCommissionPct] = useState(7);
 
@@ -52,48 +58,47 @@ export default function Preise() {
   }, []);
 
   const ctaHref = isDesigner ? "/studio/plan" : "/apply";
-  const ctaLabel = isDesigner ? "Zu deinem Plan" : "Bewerben";
+  const ctaLabel = isDesigner ? t("preise.cta.myPlan") : t("preise.cta.apply");
 
   return (
-    <PalaceLayout title="Pläne — PAWN" description="Haus und Atelier: was jeder Plan bei PAWN kostet und erlaubt — live, ohne Kleingedrucktes.">
+    <PalaceLayout title={t("preise.seo.title")} description={t("preise.seo.description")}>
       <section className="mx-auto max-w-[1100px] px-6 pt-32 pb-20 md:pt-40">
         <Reveal>
-          <p className="palace-eyebrow">Pläne</p>
+          <p className="palace-eyebrow">{t("preise.eyebrow")}</p>
           <h1 className="palace-serif mt-6 font-light text-black" style={{ fontSize: "clamp(2.4rem,5vw,3.8rem)", lineHeight: 1, letterSpacing: "-0.02em" }}>
-            Dein Haus, dein Tempo.
+            {t("preise.h1")}
           </h1>
           <p className="mt-6 max-w-2xl text-base text-black/70">
-            Jedes angenommene Haus verkauft von Anfang an — mit derselben Provision, unabhängig vom Plan.
-            Ein Plan bestimmt nur, wie viel KI-Werkzeug ein Haus im Monat zur Verfügung hat.
+            {t("preise.intro")}
           </p>
         </Reveal>
 
         <div className="mt-16 grid gap-px border-[1.5px] border-black bg-black md:grid-cols-2">
           {(["haus", "atelier"] as Plan[]).map((key) => (
             <Reveal key={key} className={`bg-white p-8 md:p-10 ${key === "atelier" ? "relative" : ""}`}>
-              <p className="palace-eyebrow">Plan</p>
-              <h2 className="palace-serif mt-2 text-3xl text-black">{key === "haus" ? "Haus" : "Atelier"}</h2>
+              <p className="palace-eyebrow">{t("preise.card.planLabel")}</p>
+              <h2 className="palace-serif mt-2 text-3xl text-black">{key === "haus" ? t("preise.card.name.haus") : t("preise.card.name.atelier")}</h2>
               <p className="mt-3 tabular-nums text-2xl text-black">
                 {key === "haus" ? "0 €" : gateReady ? `${preisFor("atelier")} €` : "…"}
-                <span className="text-sm text-black/60"> / Monat</span>
+                <span className="text-sm text-black/60"> {t("preise.card.perMonth")}</span>
               </p>
               <p className="mt-3 max-w-xs text-sm text-black/70">
-                {key === "haus" ? "Der Einstieg — jedes angenommene Haus startet hier." : "Für Häuser, die mehr Tempo wollen."}
+                {key === "haus" ? t("preise.card.desc.haus") : t("preise.card.desc.atelier")}
               </p>
 
               {gateReady ? (
                 <div className="mt-8 divide-y divide-black/10 border-t border-black/10 text-sm text-black">
-                  {fourBoxLines(key, commissionPct).map((line, i) => (
+                  {fourBoxLines(t, key, commissionPct).map((line, i) => (
                     <p key={i} className="py-3 leading-snug">{line}</p>
                   ))}
                 </div>
               ) : (
-                <p className="mt-8 text-sm text-black/50">Lädt …</p>
+                <p className="mt-8 text-sm text-black/50">{t("preise.card.loading")}</p>
               )}
 
               {key === "atelier" && (
                 <p className="mt-6 text-xs text-black/60">
-                  <Link to="/preise/maison" className="underline hover:no-underline">Mehr zu Maison, dem größten Plan →</Link>
+                  <Link to="/preise/maison" className="underline hover:no-underline">{t("preise.card.maisonLink")}</Link>
                 </p>
               )}
 
@@ -106,8 +111,8 @@ export default function Preise() {
         </div>
 
         <div className="mt-10 max-w-2xl space-y-2 text-sm text-black/60">
-          <p>Die Provision auf verkaufte Stücke bleibt für jedes Haus {commissionPct}% — unabhängig vom Plan.</p>
-          <p>Dein Rang (vom Bauern aufwärts) wächst durch das, was du baust und verkaufst — kein Plan beschleunigt ihn.</p>
+          <p>{t("preise.footer.commission", { pct: commissionPct })}</p>
+          <p>{t("preise.footer.rank")}</p>
         </div>
       </section>
     </PalaceLayout>

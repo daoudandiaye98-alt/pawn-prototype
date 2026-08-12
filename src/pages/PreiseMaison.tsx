@@ -14,14 +14,16 @@ import { Reveal } from "@/components/palace/Reveal";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ladePlanGate, preisFor, limitFor, canUse } from "@/lib/planGate";
+import { useI18n } from "@/lib/i18n";
 
-function fmtCount(n: number, noun: string): string {
-  return n < 0 ? `Unbegrenzt ${noun}` : `${n} ${noun}`;
+function fmtCount(n: number, noun: string, unlimitedPrefix: string): string {
+  return n < 0 ? `${unlimitedPrefix} ${noun}` : `${n} ${noun}`;
 }
 
 export default function PreiseMaison() {
   const { hasRole } = useAuth();
   const isDesigner = hasRole("designer");
+  const { t } = useI18n();
   const [gateReady, setGateReady] = useState(false);
   const [commissionPct, setCommissionPct] = useState(7);
 
@@ -38,39 +40,43 @@ export default function PreiseMaison() {
   // Türen-Vorlauf, Sichtbarkeitszug, Automatiken, Regisseur-Lernschleife) bleiben real und live
   // aus canUse(), landen aber verdichtet in Zeile 3 statt als eigene Aufzählungspunkte.
   const zuegeExtra = gateReady ? [
-    canUse("maison", "tuer_vorlauf") ? "deine eigenen Türen sofort sichtbar" : null,
-    canUse("maison", "sichtbarkeitszug") ? "ein wöchentlicher Presse-Entwurf zum Selbstverschicken" : null,
-    canUse("maison", "mini_pawn") ? "eigene Automatiken mit deiner Freigabe" : null,
+    canUse("maison", "tuer_vorlauf") ? t("preise.maison.extra.tuerVorlauf") : null,
+    canUse("maison", "sichtbarkeitszug") ? t("preise.maison.extra.presse") : null,
+    canUse("maison", "mini_pawn") ? t("preise.maison.extra.automatik") : null,
   ].filter((x): x is string => !!x) : [];
+  const unbegrenzt = t("preise.unbegrenzt");
   const boxLines = gateReady ? [
-    "Dein Hauptwerkzeug: Maison, wenn PAWN dein Alltag wird.",
-    `Dieselbe Provision wie jeder andere Plan — ${commissionPct}%, nie mehr, nur weil du zahlst.`,
-    `Freigeschaltete Züge: ${fmtCount(limitFor("maison", "chat_nachricht"), "Nachrichten mit PAWN")}, ${fmtCount(limitFor("maison", "tuer_oeffnen"), "Türen")}, alle Signaturen plus eine Wunsch-Signatur${zuegeExtra.length ? `, ${zuegeExtra.join(", ")}` : ""}.`,
-    "Dein Rang wächst weiter nur durch das, was du baust und verkaufst — nie durch den Plan.",
+    t("preise.maison.box.1"),
+    t("preise.maison.box.2", { pct: commissionPct }),
+    t("preise.maison.box.3", {
+      nachrichten: fmtCount(limitFor("maison", "chat_nachricht"), t("preise.noun.nachrichten"), unbegrenzt),
+      tueren: fmtCount(limitFor("maison", "tuer_oeffnen"), t("preise.noun.tueren"), unbegrenzt),
+      extra: zuegeExtra.length ? `, ${zuegeExtra.join(", ")}` : "",
+    }),
+    t("preise.box.rankGrowth"),
   ] : [];
 
   const ctaHref = isDesigner ? "/studio/plan" : "/apply";
-  const ctaLabel = isDesigner ? "Zu deinem Plan" : "Bewerben";
+  const ctaLabel = isDesigner ? t("preise.cta.myPlan") : t("preise.cta.apply");
 
   return (
-    <PalaceLayout title="Maison — PAWN" description="Der größte Plan bei PAWN: was Maison zusätzlich erlaubt — live, ohne Kleingedrucktes.">
+    <PalaceLayout title={t("preise.maison.seo.title")} description={t("preise.maison.seo.description")}>
       <section className="mx-auto max-w-[900px] px-6 pt-32 pb-20 md:pt-40">
         <Reveal>
-          <p className="palace-eyebrow"><Link to="/preise" className="hover:underline">Pläne</Link> · Maison</p>
+          <p className="palace-eyebrow"><Link to="/preise" className="hover:underline">{t("preise.maison.crumb")}</Link> · {t("preise.maison.planName")}</p>
           <h1 className="palace-serif mt-6 font-light text-black" style={{ fontSize: "clamp(2.4rem,5vw,3.8rem)", lineHeight: 1, letterSpacing: "-0.02em" }}>
-            Maison.
+            {t("preise.maison.title")}
           </h1>
           <p className="mt-6 max-w-xl text-base text-black/70">
-            Für Häuser, die aus PAWN ihr Hauptwerkzeug machen. Dieselbe Provision wie jeder andere
-            Plan — {gateReady ? `${preisFor("maison")} €` : "…"} im Monat für spürbar mehr Spielraum.
+            {t("preise.maison.intro", { price: gateReady ? `${preisFor("maison")} €` : "…" })}
           </p>
         </Reveal>
 
         <Reveal className="mt-14 border-[1.5px] border-black bg-white p-8 md:p-10">
-          <p className="palace-eyebrow">Plan</p>
-          <h2 className="palace-serif mt-2 text-3xl text-black">Maison</h2>
+          <p className="palace-eyebrow">{t("preise.card.planLabel")}</p>
+          <h2 className="palace-serif mt-2 text-3xl text-black">{t("preise.maison.planName")}</h2>
           <p className="mt-3 tabular-nums text-2xl text-black">
-            {gateReady ? `${preisFor("maison")} €` : "…"}<span className="text-sm text-black/60"> / Monat</span>
+            {gateReady ? `${preisFor("maison")} €` : "…"}<span className="text-sm text-black/60"> {t("preise.card.perMonth")}</span>
           </p>
 
           {gateReady ? (
@@ -80,7 +86,7 @@ export default function PreiseMaison() {
               ))}
             </div>
           ) : (
-            <p className="mt-8 text-sm text-black/50">Lädt …</p>
+            <p className="mt-8 text-sm text-black/50">{t("preise.card.loading")}</p>
           )}
 
           <Link to={ctaHref}
@@ -90,8 +96,8 @@ export default function PreiseMaison() {
         </Reveal>
 
         <div className="mt-10 max-w-xl space-y-2 text-sm text-black/60">
-          <p>Die Provision auf verkaufte Stücke bleibt {commissionPct}% — wie bei Haus und Atelier.</p>
-          <p>Dein Rang (vom Bauern aufwärts) wächst durch das, was du baust und verkaufst — kein Plan beschleunigt ihn.</p>
+          <p>{t("preise.maison.footer.commission", { pct: commissionPct })}</p>
+          <p>{t("preise.footer.rank")}</p>
         </div>
       </section>
     </PalaceLayout>
