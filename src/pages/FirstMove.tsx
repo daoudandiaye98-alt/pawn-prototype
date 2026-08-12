@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import { useAuth } from "@/lib/auth";
+import { useAuthForm } from "@/features/auth/useAuthForm";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompress";
 import { toast } from "sonner";
@@ -85,17 +86,15 @@ function formatEur(cents: number | null): string {
 }
 
 export default function FirstMove() {
-  const { user, signUp, signInWithPassword } = useAuth();
+  // Vereinheitlichte Auth: /start ruft dieselben Funktionen wie /auth auf (useAuth direkt,
+  // keine eigene Wrapper-Logik) — nur `loading` wird hier zusätzlich gebraucht, damit der
+  // Zugang-Schritt bei einer bereits aktiven Session nie kurz aufblitzt (s. loadingSession unten).
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const [loadingSession, setLoadingSession] = useState(true);
   const [step, setStep] = useState<StepKey>("zeigen");
-
-  const [accountMode, setAccountMode] = useState<"neu" | "login">("neu");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [accountBusy, setAccountBusy] = useState(false);
 
   const [brandName, setBrandName] = useState("");
   const [location, setLocation] = useState("");
@@ -135,6 +134,10 @@ export default function FirstMove() {
   const skipNextSave = useRef(true);
 
   useEffect(() => {
+    // Erst wenn useAuth mit dem Prüfen einer bestehenden Session fertig ist, gilt "kein User"
+    // wirklich als "kein User" — sonst blitzt der Zugang-Schritt bei jedem Aufruf kurz auf,
+    // auch wenn längst eine aktive Session da ist (die nur noch nicht geladen war).
+    if (authLoading) return;
     if (!user) { setLoadingSession(false); return; }
     void (async () => {
       const { data } = await supabase.from("first_move_sessions" as never).select("*").eq("user_id", user.id).maybeSingle();
@@ -167,7 +170,7 @@ export default function FirstMove() {
       }
       setLoadingSession(false);
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveDraft = useCallback((patch: Record<string, unknown>) => {
@@ -193,19 +196,6 @@ export default function FirstMove() {
         : {},
     });
   }, [step, brandName, location, country, aboutText, aboutSource, works, shippingDeEu, billing, loadingSession, saveDraft, rochadeDna, rochadeSource]);
-
-  async function handleAccount() {
-    if (!email.trim() || password.length < 8) { toast.error("E-Mail und mindestens 8 Zeichen fürs Passwort."); return; }
-    setAccountBusy(true);
-    try {
-      const r = accountMode === "neu"
-        ? await signUp(email.trim(), password, brandName || email.split("@")[0])
-        : await signInWithPassword(email.trim(), password);
-      if (r.error) { toast.error(r.error); return; }
-    } finally {
-      setAccountBusy(false);
-    }
-  }
 
   async function uploadAndAnalyze(work: Work) {
     if (!user || !work.file) return;
@@ -401,7 +391,7 @@ export default function FirstMove() {
           </p>
         )}
 
-        {loadingSession ? (
+        {authLoading || loadingSession ? (
           <div className="flex items-center gap-3 py-16 text-sm text-black/60">
             <Loader2 className="h-4 w-4 animate-spin" /> Lädt …
           </div>
@@ -410,9 +400,6 @@ export default function FirstMove() {
         ) : step === "zeigen" ? (
           <ZeigenStep
             user={!!user}
-            accountMode={accountMode} setAccountMode={setAccountMode}
-            email={email} setEmail={setEmail} password={password} setPassword={setPassword}
-            accountBusy={accountBusy} onAccount={handleAccount}
             brandName={brandName} setBrandName={setBrandName}
             location={location} setLocation={setLocation} country={country} setCountry={setCountry}
             works={works} fileInputRef={fileInputRef} onFilesSelected={onFilesSelected}
@@ -442,7 +429,7 @@ export default function FirstMove() {
           <ZiehenStep brandName={brandName} works={uploadedWorks} publishing={publishing} onPublish={handlePublish} />
         )}
 
-        {!published && !loadingSession && (
+        {!published && !authLoading && !loadingSession && (
           <div className="mt-10 flex items-center justify-between border-t-[1.5px] border-black pt-6">
             <Button
               type="button" variant="outline" size="chip"
@@ -470,9 +457,6 @@ export default function FirstMove() {
 
 function ZeigenStep(props: {
   user: boolean;
-  accountMode: "neu" | "login"; setAccountMode: (m: "neu" | "login") => void;
-  email: string; setEmail: (v: string) => void; password: string; setPassword: (v: string) => void;
-  accountBusy: boolean; onAccount: () => void;
   brandName: string; setBrandName: (v: string) => void;
   location: string; setLocation: (v: string) => void; country: string; setCountry: (v: string) => void;
   works: Work[]; fileInputRef: React.RefObject<HTMLInputElement>;
@@ -494,25 +478,28 @@ function ZeigenStep(props: {
   rochadeBusy: boolean; onRochade: () => void;
   rochadeSource: { type: string; ref: string; at: string } | null;
 }) {
+  // Vereinheitlichte Auth (eine Implementierung, zwei Hüllen): derselbe Hook wie /auth, hier nur
+  // in Sign-up-Voreinstellung ohne Moduswechsel — bestehender Zugang läuft über den echten
+  // Login (Return-to-Flow), nicht über eine zweite Passwort-Prüfung hier.
+  const zugang = useAuthForm({ initialMode: "up" });
   if (!props.user) {
     return (
       <div className="border-[1.5px] border-black p-6 md:p-8">
         <h1 className="font-serif text-2xl">Bevor's losgeht: dein Zugang.</h1>
         <p className="mt-2 text-sm text-black/70">Nur E-Mail und ein Passwort — der Rest ist Import, keine Konstruktion.</p>
-        <div className="mt-6 space-y-3">
-          <Input type="email" placeholder="E-Mail" value={props.email} onChange={(e) => props.setEmail(e.target.value)} />
-          <Input type="password" placeholder="Passwort (mind. 8 Zeichen)" value={props.password} onChange={(e) => props.setPassword(e.target.value)} />
-          <Button type="button" variant="editorial" size="chip" loading={props.accountBusy} onClick={props.onAccount} className="w-full">
-            {props.accountMode === "neu" ? "Zugang anlegen" : "Anmelden"}
+        <form onSubmit={zugang.submit} className="mt-6 space-y-3">
+          <Input type="email" placeholder="E-Mail" value={zugang.email} onChange={(e) => zugang.setEmail(e.target.value)} required />
+          <Input type="password" placeholder="Passwort" value={zugang.password} onChange={(e) => zugang.setPassword(e.target.value)} required />
+          <Button type="submit" variant="editorial" size="chip" loading={zugang.busy} className="w-full">
+            Zugang anlegen
           </Button>
-          <Button
-            type="button" variant="link" size="sm"
-            className="h-auto p-0 text-[0.62rem] uppercase tracking-[0.24em] text-black/60 hover:text-black hover:no-underline"
-            onClick={() => props.setAccountMode(props.accountMode === "neu" ? "login" : "neu")}
-          >
-            {props.accountMode === "neu" ? "Ich hab schon einen Zugang" : "Neuen Zugang anlegen"}
-          </Button>
-        </div>
+        </form>
+        <Link
+          to="/auth?returnTo=/start"
+          className="mt-3 inline-block text-[0.62rem] uppercase tracking-[0.24em] text-black/60 hover:text-black"
+        >
+          Ich hab schon einen Zugang
+        </Link>
       </div>
     );
   }
