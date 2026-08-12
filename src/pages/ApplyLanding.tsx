@@ -17,11 +17,11 @@ import {
 } from "@/features/apply/disciplines";
 
 const ACT_META = [
-  { number: "01", key: "hausseite", title: "Deine eigene Hausseite", tagline: "Editorial statt Katalog." },
-  { number: "02", key: "publikum", title: "Ein kuratiertes Publikum", tagline: "Publikum statt Reichweite." },
-  { number: "03", key: "studio", title: "Dein Studio mit KI-Hilfe", tagline: "Auftritt statt Post." },
+  { number: "01", key: "hausseite", title: "Deine eigene Hausseite", tagline: "Redaktionell inszeniert." },
+  { number: "02", key: "publikum", title: "Ein kuratiertes Publikum", tagline: "Ein Publikum, das hinsieht." },
+  { number: "03", key: "studio", title: "Dein Studio mit KI-Hilfe", tagline: "Ein echter Auftritt." },
   { number: "04", key: "auszahlung", title: "Geld kommt direkt zu dir", tagline: "93 % gehören dir." },
-  { number: "05", key: "einblicke", title: "Ehrliche Einblicke", tagline: "Einsicht statt Bauchgefühl." },
+  { number: "05", key: "einblicke", title: "Ehrliche Einblicke", tagline: "Einsicht aus echten Zahlen." },
 ] as const;
 
 const LOOKING_FOR = [

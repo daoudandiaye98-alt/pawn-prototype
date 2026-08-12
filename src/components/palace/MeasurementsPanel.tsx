@@ -62,7 +62,7 @@ export function MeasurementsPanel({ className }: { className?: string }) {
   return (
     <div className={className ?? "border-[1.5px] border-black bg-white p-6 md:p-8"}>
       <p className="editorial-eyebrow text-black/50">Dein Maßband</p>
-      <h2 className="mt-1 font-serif text-2xl leading-tight text-black">Was dir passt, statt was du hoffst.</h2>
+      <h2 className="mt-1 font-serif text-2xl leading-tight text-black">Was dir wirklich passt.</h2>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-black/70">
         Größe M heißt bei jedem Haus etwas anderes. Trag deine Maße einmal ein — dann steht auf jeder
         Artikelseite, welche Größe dir wirklich passt. Die Angaben sieht nur du, kein Haus, niemand sonst.

@@ -210,6 +210,23 @@ async function loadHouseStyleLaw(admin: SupabaseClient): Promise<string> {
   }
 }
 
+// PART 50 WP2: dasselbe Sprachgesetz (Teil 20/AP6), das generate-dna-voice, suggest-translation
+// und generate-content-feedback bereits laden — bisher fehlte es in den Akquise-Verfassen-Prompts,
+// die nur das kürzere house_style_law kannten. Fallback identisch zur Migration
+// 20260808090000_voice_law.sql + 20260812090000_voice_law_body_rules.sql.
+const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton. Über den Körper spricht PAWN nur über Kleidung: Proportion, Passform, Schwerpunkt, Wirkung von Schnitten — nie über den Körper selbst als Mangel. Ungefragt fällt kein Wort zu Figur, Größe oder Gewicht. Fragt jemand ausdrücklich nach Passform, antwortet PAWN sachlich über Schnitte und ihre Wirkung — nie mit dem Wort „kaschieren“ als Prämisse. Keine Aussagen zu Abnehmen, Diät oder Idealmaßen, auch nicht auf Nachfrage.";
+
+async function loadVoiceLaw(admin: SupabaseClient): Promise<string> {
+  try {
+    const { data } = await admin.from("ai_config").select("value").eq("key", "voice_law").maybeSingle();
+    const v = data?.value as { text?: string } | string | null;
+    const text = typeof v === "string" ? v : v?.text;
+    return typeof text === "string" && text.trim() ? text.trim() : DEFAULT_VOICE_LAW;
+  } catch {
+    return DEFAULT_VOICE_LAW;
+  }
+}
+
 /** Ein Suchauftrag der Jagd: ein Hashtag/Begriff oder ein Nachbarschafts-Startpunkt (Handle). */
 interface HuntQuery {
   query: string;
@@ -2810,7 +2827,7 @@ async function runAkquiseBilderSpiegeln(admin: SupabaseClient, nurLeadIds?: stri
 async function researchAndDraftLead(
   apiKey: string,
   lead: { handle: string; world: string; bio: string | null; name?: string | null; website?: string | null; profile_location?: string | null },
-  styleLaw: string, sprachgesetze: string, variant: "A" | "B",
+  styleLaw: string, sprachgesetze: string, variant: "A" | "B", voiceLaw: string,
 ): Promise<{ personal_line: string; message: string; language: string; tokens: number } | null> {
   // PART 47 Befund 3 / Befund 1: harteSpracherkennung liefert immer ein bindendes Ergebnis
   // (Domain vor Bio vor Standort, ohne jeden Beleg zählt Englisch) — das Modell schreibt in
@@ -2830,6 +2847,8 @@ ${aufbauFuerVariante(variant)}
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige Nachricht>"}
 
 Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}
+
+SPRACHGESETZ DER MARKE (ai_config.voice_law, PART 50 WP2 — gilt für jeden erzeugten Text, nicht nur DNA-Ansichten): ${voiceLaw}
 
 RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein — sie meldet, dass PAWN bereits eine Seite gemacht hat. Ein Satz davon gehört in den Text: wir haben dir eine Seite in Ausgabe 01 freigehalten. Der Link darauf wird automatisch ergänzt.`;
   const messages: unknown[] = [{ role: "user", content: `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.` }];
@@ -2978,6 +2997,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     .select("id, handle, world, bio, website, profile_location, email, contact_url, contact_name, ref_code, lead_type, plate_status").eq("lead_type", "designer").eq("status", "qualifiziert").is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
+  const voiceLaw = await loadVoiceLaw(admin);
   const config = await loadAkquiseConfig(admin);
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   const naechsteVariante = await ladeVariantenZuteiler(admin);
@@ -3003,7 +3023,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
     if (lead.lead_type !== "designer") continue;
     const name = vornameVon(lead.contact_name);
     const variant = naechsteVariante(lead.world);
-    const draft = await researchAndDraftLead(apiKey, { ...lead, name }, styleLaw, gesetze, variant);
+    const draft = await researchAndDraftLead(apiKey, { ...lead, name }, styleLaw, gesetze, variant, voiceLaw);
     if (!draft) continue;
     tokensUsed += draft.tokens;
     // Feste Vorlage schlägt den freien Entwurf: Jarvis liefert nur den persönlichen Satz,
@@ -3068,6 +3088,7 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
     .is("email", null).is("contact_url", null).is("message_draft", null)
     .order("kurator_score", { ascending: false, nullsFirst: false }).limit(200);
   const styleLaw = await loadHouseStyleLaw(admin);
+  const voiceLaw = await loadVoiceLaw(admin);
   const config = await loadAkquiseConfig(admin);
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   const naechsteVariante = await ladeVariantenZuteiler(admin);
@@ -3106,6 +3127,8 @@ ${aufbauFuerVariante(variant)}
 Recherchiere kurz mit web_search, was dieses Konto/diese Marke besonders macht (Material, Haltung, Herkunft, letzte Kollektion) — daraus entsteht die personal_line. Antworte am Ende NUR mit JSON: {"language": "de" oder "en", "personal_line": "...", "message": "<vollständige DM>"}
 
 Haus-Stilgesetz (gilt sprachübergreifend): ${styleLaw}
+
+SPRACHGESETZ DER MARKE (ai_config.voice_law, PART 50 WP2 — gilt für jeden erzeugten Text, nicht nur DNA-Ansichten): ${voiceLaw}
 
 RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein — sie meldet, dass PAWN bereits eine Seite gemacht hat. Ein Satz davon gehört in den Text: wir haben dir eine Seite in Ausgabe 01 freigehalten. Der Link darauf wird automatisch ergänzt.`;
     const user = `Instagram-Konto: @${lead.handle}. Welt: ${lead.world}. Bio: ${lead.bio ?? "keine Angabe"}.`;
