@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { useAuthForm } from "@/features/auth/useAuthForm";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompress";
+import { YOUR_MOVE_LINES } from "@/lib/yourMoveLines";
 import { toast } from "sonner";
 
 /**
@@ -507,7 +508,10 @@ function ZeigenStep(props: {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-serif text-2xl">Zeig uns dein Werk.</h1>
+        {/* Teil H2 — Sprachsystem: diese Zeile lebt genau hier, nie auf der Landing. */}
+        <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/50">YOUR MOVE.</p>
+        <p className="mt-1 font-serif italic text-[1.05rem] text-black/70">{YOUR_MOVE_LINES.zeigen}</p>
+        <h1 className="mt-3 font-serif text-2xl">Zeig uns dein Werk.</h1>
         <p className="mt-2 text-sm text-black/70">5–10 Fotos zeigen dein Haus am besten — weniger geht auch.</p>
       </div>
 
