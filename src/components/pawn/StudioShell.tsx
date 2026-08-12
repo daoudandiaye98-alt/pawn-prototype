@@ -36,12 +36,6 @@ const IMessages = (p: React.SVGProps<SVGSVGElement>) => (
 const IRetro = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M10 3l3 5 5 .8-3.6 3.6.9 5L10 15l-5.2 2.4.9-5L2 8.8 7 8l3-5z" /></svg>
 );
-const IPayout = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="6" width="14" height="10" /><path d="M3 9h14M7 13h3" /></svg>
-);
-const ISettings = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><circle cx="10" cy="10" r="2.5" /><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" /></svg>
-);
 const IVideothek = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="5" width="14" height="10" /><path d="M8.5 8l4 2-4 2V8z" /></svg>
 );
@@ -53,9 +47,6 @@ const IHausseite = (p: React.SVGProps<SVGSVGElement>) => (
 );
 const IContentBegleiter = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 4h9l3 3v9H4z" /><path d="M13 4v3h3" /><path d="M7 10h6M7 13h4" /></svg>
-);
-const IReferral = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><circle cx="5" cy="6" r="2" /><circle cx="15" cy="6" r="2" /><circle cx="10" cy="15" r="2" /><path d="M6.6 7.5L9 13.5M13.4 7.5L11 13.5" /></svg>
 );
 const IWerkbuch = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 3c3 1.5 3 12 0 14M16 3c-3 1.5-3 12 0 14M4 6c4 2 8 2 12 0M4 14c4-2 8-2 12 0" /></svg>
@@ -135,46 +126,40 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const brand = designer?.brand_name ?? t("studioShell.studioFallback");
   const initials = initialsOf(brand);
 
+  // Finale Form Teil F — Menü-Trinität: genau drei Flächen statt vier Gruppen mit 19 Einträgen.
+  // "Dein Zug" ist eine einzelne Karte (der Hub), "Dein Haus" bündelt alles, was am Werk/an der
+  // Doppelseite arbeitet, "Dein Postfach" alles, was auf eine Antwort wartet. Konto-/Verwaltungs-
+  // Kram (Plan, Auszahlung, Versand, Verträge, Automatik, Empfehlungen) liegt nicht mehr in der
+  // Hauptnav, sondern hinter dem Profil (Topbar-Avatar → /studio/einstellungen, s.u.) — dieselbe
+  // Regel wie "Insights werden Sätze auf Karten": Beweis lebt als Verweis auf dem Hub, nicht als
+  // eigene Fläche.
   const groups: { title: string; items: NavItem[] }[] = [
     {
-      title: t("studioShell.group.sell"),
+      title: t("studioShell.group.zug"),
       items: [
         { to: "/studio", label: t("studioShell.nav.start"), hint: t("studioShell.nav.start.hint"), icon: IStage, end: true },
-        { to: "/studio/aufbau", label: t("studioShell.nav.aufbau"), hint: t("studioShell.nav.aufbau.hint"), icon: IWerkbuch },
-        { to: "/studio/produkte", label: t("studioShell.nav.produkte"), hint: t("studioShell.nav.produkte.hint"), icon: ICollection },
-        { to: "/studio/bestellungen", label: t("studioShell.nav.bestellungen"), hint: t("studioShell.nav.bestellungen.hint"), icon: IOrders, badge: badges.orders },
-        { to: "/studio/beweis", label: t("studioShell.nav.beweis"), hint: t("studioShell.nav.beweis.hint"), icon: IBeweis },
-        { to: "/studio/versand", label: t("studioShell.nav.versand"), hint: t("studioShell.nav.versand.hint"), icon: IOrders },
       ],
     },
     {
-      title: t("studioShell.group.show"),
+      title: t("studioShell.group.haus"),
       items: [
+        { to: "/studio/aufbau", label: t("studioShell.nav.aufbau"), hint: t("studioShell.nav.aufbau.hint"), icon: IWerkbuch },
+        { to: "/studio/produkte", label: t("studioShell.nav.produkte"), hint: t("studioShell.nav.produkte.hint"), icon: ICollection },
         { to: "/studio/hausseite", label: t("studioShell.nav.hausseite"), hint: t("studioShell.nav.hausseite.hint"), icon: IHausseite },
         { to: "/studio/mediathek", label: t("studioShell.nav.mediathek"), hint: t("studioShell.nav.mediathek.hint"), icon: IMediathek },
         { to: "/studio/kampagnen", label: t("studioShell.nav.kampagnen"), hint: t("studioShell.nav.kampagnen.hint"), icon: ICampaigns, badge: badges.campaigns },
         { to: "/studio/videothek", label: t("studioShell.nav.videothek"), hint: t("studioShell.nav.videothek.hint"), icon: IVideothek },
-        { to: "/studio/tueren", label: t("studioShell.nav.tueren"), hint: t("studioShell.nav.tueren.hint"), icon: IDoor, badge: badges.tueren },
-      ],
-    },
-    {
-      title: t("studioShell.group.brand"),
-      items: [
         { to: "/studio/dna", label: t("studioShell.nav.dna"), hint: t("studioShell.nav.dna.hint"), icon: IWerkbuch },
         { to: "/studio/brand", label: t("studioShell.nav.brand"), hint: t("studioShell.nav.brand.hint"), icon: IRetro },
         { to: "/studio/content-begleiter", label: t("studioShell.nav.contentBegleiter"), hint: t("studioShell.nav.contentBegleiter.hint"), icon: IContentBegleiter },
       ],
     },
     {
-      title: t("studioShell.group.account"),
+      title: t("studioShell.group.postfach"),
       items: [
-        { to: "/studio/plan", label: t("studioShell.nav.plan"), hint: t("studioShell.nav.plan.hint"), icon: IPayout },
-        { to: "/studio/auszahlung", label: t("studioShell.nav.auszahlung"), hint: t("studioShell.nav.auszahlung.hint"), icon: IPayout },
+        { to: "/studio/bestellungen", label: t("studioShell.nav.bestellungen"), hint: t("studioShell.nav.bestellungen.hint"), icon: IOrders, badge: badges.orders },
         { to: "/studio/nachrichten", label: t("studioShell.nav.nachrichten"), hint: t("studioShell.nav.nachrichten.hint"), icon: IMessages, badge: badges.messages },
-        { to: "/studio/empfehlungen", label: t("studioShell.nav.empfehlungen"), hint: t("studioShell.nav.empfehlungen.hint"), icon: IReferral },
-        { to: "/studio/automatik", label: t("studioShell.nav.automatik"), hint: t("studioShell.nav.automatik.hint"), icon: ISettings },
-        { to: "/studio/vertraege", label: t("studioShell.nav.vertraege"), hint: t("studioShell.nav.vertraege.hint"), icon: ISettings },
-        { to: "/studio/einstellungen", label: t("studioShell.nav.einstellungen"), hint: t("studioShell.nav.einstellungen.hint"), icon: ISettings },
+        { to: "/studio/tueren", label: t("studioShell.nav.tueren"), hint: t("studioShell.nav.tueren.hint"), icon: IDoor, badge: badges.tueren },
       ],
     },
   ];
@@ -283,9 +268,10 @@ function Topbar({ title, section }: { title: string; section?: string }) {
           <Bell className="h-4 w-4" />
           {unread > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-foreground" />}
         </button>
-        <span className="hidden md:inline-flex h-9 w-9 items-center justify-center border border-border bg-white text-xs">
+        <Link to="/studio/einstellungen" aria-label={t("studioShell.profil")} title={t("studioShell.profil")}
+          className="hidden md:inline-flex h-9 w-9 items-center justify-center border border-border bg-white text-xs hover:bg-muted">
           {(firstName[0] ?? "?").toUpperCase()}
-        </span>
+        </Link>
         <button onClick={() => { void signOut(); nav("/"); }} aria-label={t("studioShell.signOut")} className="flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
           <LogOut className="h-3.5 w-3.5" />
         </button>
