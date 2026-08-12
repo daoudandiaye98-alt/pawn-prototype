@@ -11,7 +11,6 @@ import { useI18n } from "@/lib/i18n";
 import { formatPrice, formatCreditLine } from "@/lib/format";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
-import { YOUR_MOVE_LINES } from "@/lib/yourMoveLines";
 
 /**
  * Teil 27a — Die Bühne: Landing 1:1 nach docs/design-referenz/landing.html.
@@ -273,9 +272,6 @@ const Index = () => {
       <section className="flex min-h-[62vh] items-center border-t-[1.5px] border-black py-[5.5rem] md:py-32">
         <Reveal className="mx-auto w-full max-w-[1440px] px-6 md:px-10">
           <p className="text-[0.62rem] font-medium uppercase tracking-[0.34em] text-[#404040]">Für Designer</p>
-          {/* Teil H2 — Sprachsystem: diese Zeile lebt genau hier, nie auf der Landing-Startseite. */}
-          <p className="mt-3 text-[0.58rem] uppercase tracking-[0.34em] text-[#404040]/70">YOUR MOVE.</p>
-          <p className="mt-1 max-w-[20ch] font-serif italic text-[1.1rem] text-black/70">{YOUR_MOVE_LINES.designer}</p>
           <h2 className="mt-5 max-w-[15ch] font-serif text-[clamp(2.4rem,7.4vw,6rem)] font-semibold leading-[0.92] tracking-[-0.026em]">
             Jeder beginnt als Bauer.<br />
             <span className="font-serif font-medium italic">Keiner bleibt einer.</span>

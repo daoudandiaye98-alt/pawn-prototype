@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable } from "@/components/palace/Editable";
+import { YOUR_MOVE_LINES } from "@/lib/yourMoveLines";
 import {
   Accordion,
   AccordionContent,
@@ -100,7 +101,10 @@ export default function ApplyLanding() {
       <section className="relative overflow-hidden px-6 pt-32 pb-16 md:px-14 md:pt-56 md:pb-24">
         <div className="mx-auto max-w-[1600px]">
           <Reveal>
-            <Editable as="p" contentKey="apply_hero_eyebrow" className="palace-eyebrow">
+            {/* Teil H2 — Sprachsystem: diese Zeile lebt genau hier (Designer-Einstiegsfläche), nie auf der Landing. */}
+            <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/50">YOUR MOVE.</p>
+            <p className="mt-1 font-serif italic text-[1.05rem] text-black/70">{YOUR_MOVE_LINES.designer}</p>
+            <Editable as="p" contentKey="apply_hero_eyebrow" className="palace-eyebrow mt-4">
               PAWN · Bewerbung
             </Editable>
           </Reveal>
