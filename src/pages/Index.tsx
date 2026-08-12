@@ -19,18 +19,6 @@ import { PawnWordmark } from "@/components/pawn/PawnWordmark";
  * Bild ist Held, Schwarz-Weiß nur für die Halle, kein Systemschmuck.
  */
 
-/**
- * PART 51 Teil A — Master-Slogan "YOUR MOVE." und die vier Zielgruppen-Zeilen sind exakt
- * vorgegebene englische Kampagnensprache, unabhängig von der Sprachumschaltung — deshalb
- * fest im Code statt über site_content/Editable oder i18n, wie die Wortmarke selbst.
- */
-const YOUR_MOVE_LINES = [
-  "Show us what you've made.",
-  "Put your work out there.",
-  "Find something worth choosing.",
-  "Make something of it.",
-];
-
 const WORLDS: { key: "Mode" | "Interior" | "Kunst"; labelKey: string; label: string; textKey: string; text: string }[] = [
   { key: "Mode", labelKey: "landing.world_mode_label", label: "Mode", textKey: "landing.world_mode_text", text: "Stücke, die eine Handschrift tragen." },
   { key: "Interior", labelKey: "landing.world_interior_label", label: "Interior", textKey: "landing.world_interior_text", text: "Objekte, an denen man die Verbindung sieht." },
@@ -63,6 +51,16 @@ const Index = () => {
   }, [designers]);
   const coverImage = coverDesigner?.hero_image_url ?? coverDesigner?.banner_url ?? null;
 
+  // Aus den Häusern (Teil H): maximal sechs kuratierte/neueste veröffentlichte Werke — der
+  // Slogan behauptet, die Werke beweisen. products ist bereits nach created_at absteigend
+  // sortiert; is_featured-Häuser zuerst, danach die übrigen, nie aufgefüllt mit Platzhaltern.
+  const houseWorks: PublicProduct[] = useMemo(() => {
+    const featuredIds = new Set(designers.filter((d) => d.is_featured).map((d) => d.id));
+    const featured = products.filter((p) => featuredIds.has(p.designer_id));
+    const rest = products.filter((p) => !featuredIds.has(p.designer_id));
+    return [...featured, ...rest].slice(0, 6);
+  }, [products, designers]);
+
   // Drei Welten: das jüngste veröffentlichte Stück je Welt (products ist bereits nach
   // created_at absteigend sortiert) — ein echtes Werk statt eines Farbverlaufs.
   const worldImage = (world: "Mode" | "Interior" | "Kunst") => products.find((p) => p.world === world)?.image_url ?? null;
@@ -93,7 +91,7 @@ const Index = () => {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
         <div className="relative z-[2] mx-auto w-full max-w-[1440px] px-6 pb-12 pt-32 md:px-10">
           <span className="inline-block bg-black px-[0.8rem] py-[0.45rem] text-[0.62rem] uppercase tracking-[0.36em]">
-            <Editable contentKey="landing.cover_kicker">Der kuratierte Marktplatz</Editable>
+            <Editable contentKey="landing.cover_kicker">Der kuratierte Raum</Editable>
           </span>
           <PawnWordmark as="div" className="mt-[1.3rem] text-[clamp(1.3rem,2.8vw,2rem)] text-white/90" />
           <h1 className="mt-[0.7rem] max-w-[16ch] font-serif text-[clamp(3.2rem,10vw,8.4rem)] font-semibold italic leading-[0.9] tracking-[-0.028em]">
@@ -118,17 +116,39 @@ const Index = () => {
         )}
       </div>
 
-      {/* 01B ZIELGRUPPEN */}
-      <div className="border-b-[1.5px] border-black bg-white text-black">
-        <div className="mx-auto grid max-w-[1440px] grid-cols-1 divide-y divide-black sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
-          {YOUR_MOVE_LINES.map((line) => (
-            <div key={line} className="px-6 py-12 md:px-8 md:py-16">
-              <p className="text-[0.58rem] uppercase tracking-[0.34em] text-[#404040]">YOUR MOVE.</p>
-              <p className="mt-4 max-w-[20ch] font-serif text-[clamp(1.3rem,2.6vw,1.9rem)] italic leading-tight">{line}</p>
+      {/* 01B AUS DEN HÄUSERN — Teil H: der Slogan behauptet, die Werke beweisen. Kuratierte/
+          neueste veröffentlichte Stücke direkt unter dem Hero, maximal sechs (Choice-Paralysis-
+          Regel), nie Platzhalter. */}
+      {houseWorks.length > 0 && (
+        <section className="border-b-[1.5px] border-black bg-white text-black">
+          <div className="mx-auto max-w-[1440px] px-6 py-[3.5rem] md:px-10 md:py-[4.5rem]">
+            <Reveal>
+              <h2 className="font-serif text-[clamp(1.6rem,3.4vw,2.4rem)] font-semibold italic tracking-[-0.02em]">
+                <Editable contentKey="landing.from_houses_title">Aus den Häusern</Editable>
+              </h2>
+            </Reveal>
+            <div className="mt-8 grid grid-cols-2 gap-6 md:grid-cols-3 md:gap-8">
+              {houseWorks.map((p, i) => {
+                const designer = designerById.get(p.designer_id);
+                return (
+                  <Reveal key={p.id} delay={i * 60}>
+                    <Link to={`/product/${p.slug}`} className="group block">
+                      <EditorialImage seed={`house-${p.slug}`} src={p.image_url} ratio="4/5" className="w-full" />
+                      <p className="mt-3 font-serif text-[1.05rem] italic leading-tight">{p.name}</p>
+                      <p className="mt-1 text-[0.62rem] uppercase tracking-[0.24em] text-[#404040]">
+                        {designer?.brand_name ?? "PAWN"}
+                      </p>
+                      <p className="mt-1 text-[0.8rem] tabular-nums">
+                        €{Math.round(p.price).toLocaleString(locale === "en" ? "en-US" : "de-DE")}
+                      </p>
+                    </Link>
+                  </Reveal>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </section>
+      )}
 
       {/* 02 FAKTEN */}
       <div className="border-b-[1.5px] border-black">
