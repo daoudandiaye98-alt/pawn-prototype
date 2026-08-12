@@ -261,8 +261,14 @@ export function effectiveVatRate(productRate: number | null | undefined, houseRa
   return 19;
 }
 
-/** Hinweiszeile unter jedem Preis — gesetzlich vorgeschrieben. */
-export function vatNote(rate: number): string {
+/** Hinweiszeile unter jedem Preis — gesetzlich vorgeschrieben. Teil J1: zweisprachig, da
+ * dieser Text direkt auf der öffentlichen Artikelseite erscheint. */
+export function vatNote(rate: number, locale: "de" | "en" = "de"): string {
+  if (locale === "en") {
+    return rate > 0
+      ? `incl. ${formatRate(rate)}% VAT, plus shipping`
+      : "No VAT shown under §19 UStG (German small-business scheme), plus shipping";
+  }
   return rate > 0
     ? `inkl. ${formatRate(rate)} % MwSt., zzgl. Versand`
     : "Kein Ausweis der Umsatzsteuer nach § 19 UStG (Kleinunternehmerregelung), zzgl. Versand";

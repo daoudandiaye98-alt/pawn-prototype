@@ -661,7 +661,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                   rateSuffix: vat.rate > 0 ? ` (${formatRate(vat.rate)} %)` : "",
                 })}
               </p>
-              <p className="mt-1 text-muted-foreground">{t("studio.products.vatNoteLine", { note: vatNote(vat.rate) })}</p>
+              <p className="mt-1 text-muted-foreground">{t("studio.products.vatNoteLine", { note: vatNote(vat.rate, locale) })}</p>
             </div>
           </Section>
 

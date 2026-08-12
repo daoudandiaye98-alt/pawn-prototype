@@ -255,7 +255,7 @@ export default function FirstMove() {
         title: a?.ok && a.title ? a.title : w.title,
         description: a?.ok && a.description ? a.description : w.description,
         priceCents: a?.ok && a.price_cents_min
-          ? Math.round((a.price_cents_min + (a.price_cents_max ?? a.price_cents_min)) / 2)
+          ? Math.round((a.price_cents_min + (a.price_cents_max ?? a.price_cents_min)) / 200) * 100
           : w.priceCents,
       } : w)));
     } catch {
@@ -787,9 +787,9 @@ function BestaetigenStep(props: {
               <span className="min-w-0 flex-1 truncate text-sm">{w.title || t("start.bestaetigen.untitled")}</span>
               <div className="flex shrink-0 items-center gap-1">
                 <Input
-                  type="number" min={0}
+                  type="number" min={0} step={1}
                   value={formatEur(w.priceCents)}
-                  onChange={(e) => props.updateWork(w.id, { priceCents: e.target.value ? Math.round(Number(e.target.value) * 100) : null })}
+                  onChange={(e) => props.updateWork(w.id, { priceCents: e.target.value ? Math.round(Number(e.target.value)) * 100 : null })}
                   className="w-24"
                 />
                 <span className="text-sm">€</span>
