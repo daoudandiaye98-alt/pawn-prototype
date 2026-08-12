@@ -25,6 +25,19 @@ import { useI18n } from "@/lib/i18n";
 type World = "Mode" | "Interior" | "Kunst";
 const WORLD_LABEL_KEY: Record<World, string> = { Mode: "studio.stueckNeu.world.mode", Interior: "studio.stueckNeu.world.interior", Kunst: "studio.stueckNeu.world.kunst" };
 
+// PART 51 Teil C — Kunst-Angebotstypen. `products` hat keine eigene Typ-Spalte, deshalb landet
+// die Werkart in product_dna.kind (Konvention aus First Move/Rochade). Original ist immer ein
+// Unikat (Bestand fest 1), Auftragsarbeit/Live-Porträt haben nie einen Warenkorb — "Anfragen"
+// ist dort der einzige Weg (siehe ProductDetail.tsx).
+type KunstKind = "original" | "print" | "auftragsarbeit" | "live_portrait";
+const KUNST_KIND_ORDER: KunstKind[] = ["original", "print", "auftragsarbeit", "live_portrait"];
+const KUNST_KIND_LABEL_KEY: Record<KunstKind, string> = {
+  original: "studio.stueckNeu.kunstArt.original",
+  print: "studio.stueckNeu.kunstArt.print",
+  auftragsarbeit: "studio.stueckNeu.kunstArt.auftragsarbeit",
+  live_portrait: "studio.stueckNeu.kunstArt.live_portrait",
+};
+
 interface StagingTemplate {
   id: string; label: string; description?: string; prompt: string;
   preview_url?: string; credits: number; active?: boolean; groessenbezug?: boolean;
@@ -75,6 +88,12 @@ export default function StudioStueckNeu() {
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // PART 51 Teil C — Kunst-Ontologie, nur relevant wenn world === "Kunst".
+  const [kunstKind, setKunstKind] = useState<KunstKind>("original");
+  const [technik, setTechnik] = useState("");
+  const [medium, setMedium] = useState("");
+  const [jahr, setJahr] = useState("");
+
   const [product, setProduct] = useState<LiveProduct | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(!!existingProductId);
   const [coverMoment, setCoverMoment] = useState<string | null>(null);
@@ -90,6 +109,9 @@ export default function StudioStueckNeu() {
       .then(({ data }) => setExistingWorlds(Array.from(new Set((data ?? []).map((r) => r.world as World)))));
   }, [designer]);
   const weltGesperrt = gateReady && !weltenErlaubt(plan, existingWorlds, world);
+  const isKunst = world === "Kunst";
+  const isUnikat = isKunst && kunstKind === "original";
+  const isNoCheckoutKind = isKunst && (kunstKind === "auftragsarbeit" || kunstKind === "live_portrait");
 
   // Teil 27b: Der Cover-Moment — einmalig pro Stück, wenn es zum ersten Mal live geht.
   const maybeShowCover = async (productId: string, imageUrl: string | null) => {
@@ -203,17 +225,26 @@ export default function StudioStueckNeu() {
         : "Diese Welt ist für dein Haus noch nicht frei.");
       return;
     }
-    const stockNum = Math.max(0, Math.floor(Number(stock) || 0));
-    if (!madeToOrder && stockNum < 1) { toast.error(t("studio.stueckNeu.toast.stockRequired")); return; }
+    // Original ist immer Unikat (Bestand fest 1); Auftragsarbeit/Live-Porträt haben nie Bestand,
+    // weil sie nie über den Warenkorb laufen — beide Fälle brauchen keine Bestandsabfrage.
+    const effectiveMadeToOrder = isNoCheckoutKind ? true : isUnikat ? false : madeToOrder;
+    const effectiveStock = isUnikat ? 1 : isNoCheckoutKind ? 0 : Math.max(0, Math.floor(Number(stock) || 0));
+    if (!isUnikat && !isNoCheckoutKind && !effectiveMadeToOrder && effectiveStock < 1) {
+      toast.error(t("studio.stueckNeu.toast.stockRequired")); return;
+    }
     setBusy(true);
     try {
       const description = [story.trim(), size.trim() ? `Größe: ${size.trim()}` : null].filter(Boolean).join("\n\n") || null;
       const slug = `${slugify(designer.brand_name)}-${slugify(name)}-${Date.now().toString(36)}`;
+      const productDna = isKunst
+        ? { kind: kunstKind, ...(technik.trim() ? { technik: technik.trim() } : {}), ...(medium.trim() ? { medium: medium.trim() } : {}), ...(jahr.trim() ? { jahr: jahr.trim() } : {}) }
+        : null;
       const { data, error } = await supabase.from("products").insert({
         designer_id: designer.id, name: name.trim(), slug, price: priceNum, world, description,
         image_url: sourceUrl, status: "published",
-        inventory_mode: madeToOrder ? "made_to_order" : "stock",
-        stock_quantity: madeToOrder ? 0 : stockNum,
+        inventory_mode: effectiveMadeToOrder ? "made_to_order" : "stock",
+        stock_quantity: effectiveStock,
+        ...(productDna ? { product_dna: productDna } : {}),
       }).select("id, name, slug, price, image_url").single();
       if (error) throw error;
       setProduct(data as LiveProduct);
@@ -297,26 +328,56 @@ export default function StudioStueckNeu() {
                 className="w-full border border-border bg-white p-3 text-sm" />
             </div>
 
+            {isKunst && (
+              <>
+                <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.kunstArt")}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {KUNST_KIND_ORDER.map((k) => (
+                    <button key={k} type="button" onClick={() => setKunstKind(k)}
+                      className={`min-h-[36px] flex-1 border px-3 py-2 text-sm ${kunstKind === k ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                      {t(KUNST_KIND_LABEL_KEY[k])}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <input value={technik} onChange={(e) => setTechnik(e.target.value)} placeholder={t("studio.stueckNeu.form.technikPlaceholder")}
+                    className="border border-border bg-white p-3 text-sm" />
+                  <input value={medium} onChange={(e) => setMedium(e.target.value)} placeholder={t("studio.stueckNeu.form.mediumPlaceholder")}
+                    className="border border-border bg-white p-3 text-sm" />
+                  <input value={jahr} onChange={(e) => setJahr(e.target.value)} placeholder={t("studio.stueckNeu.form.jahrPlaceholder")}
+                    className="border border-border bg-white p-3 text-sm" />
+                </div>
+              </>
+            )}
+
             <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.availability")}</p>
             <div className="mt-2 space-y-3">
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setMadeToOrder(false)}
-                  className={`flex-1 border p-2 text-sm ${!madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-                  {t("studio.stueckNeu.availability.inStock")}
-                </button>
-                <button type="button" onClick={() => setMadeToOrder(true)}
-                  className={`flex-1 border p-2 text-sm ${madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-                  {t("studio.stueckNeu.availability.madeToOrder")}
-                </button>
-              </div>
-              {!madeToOrder ? (
-                <label className="block">
-                  <span className="text-xs text-muted-foreground">{t("studio.stueckNeu.availability.stockLabel")}</span>
-                  <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" min="1" step="1"
-                    className="mt-1 w-full border border-border bg-white p-3 text-sm" />
-                </label>
+              {isNoCheckoutKind ? (
+                <p className="text-xs text-muted-foreground">{t("studio.stueckNeu.kunstArt.noCheckoutHint")}</p>
+              ) : isUnikat ? (
+                <p className="text-xs text-muted-foreground">{t("studio.stueckNeu.kunstArt.unikatHint")}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">{t("studio.stueckNeu.availability.madeToOrderHint")}</p>
+                <>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setMadeToOrder(false)}
+                      className={`flex-1 border p-2 text-sm ${!madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                      {t("studio.stueckNeu.availability.inStock")}
+                    </button>
+                    <button type="button" onClick={() => setMadeToOrder(true)}
+                      className={`flex-1 border p-2 text-sm ${madeToOrder ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                      {t("studio.stueckNeu.availability.madeToOrder")}
+                    </button>
+                  </div>
+                  {!madeToOrder ? (
+                    <label className="block">
+                      <span className="text-xs text-muted-foreground">{t("studio.stueckNeu.availability.stockLabel")}</span>
+                      <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" min="1" step="1"
+                        className="mt-1 w-full border border-border bg-white p-3 text-sm" />
+                    </label>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">{t("studio.stueckNeu.availability.madeToOrderHint")}</p>
+                  )}
+                </>
               )}
             </div>
 

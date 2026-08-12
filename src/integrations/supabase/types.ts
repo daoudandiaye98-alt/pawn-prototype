@@ -1417,6 +1417,7 @@ export type Database = {
           image_usage_consent_at: string | null
           instagram: string | null
           is_featured: boolean
+          kauf_freigeschaltet: boolean
           location: string | null
           manifesto: string | null
           media_rights_granted_at: string | null
@@ -1477,6 +1478,7 @@ export type Database = {
           image_usage_consent_at?: string | null
           instagram?: string | null
           is_featured?: boolean
+          kauf_freigeschaltet?: boolean
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
@@ -1537,6 +1539,7 @@ export type Database = {
           image_usage_consent_at?: string | null
           instagram?: string | null
           is_featured?: boolean
+          kauf_freigeschaltet?: boolean
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
@@ -3731,6 +3734,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      ist_kauf_freigeschaltet: { Args: { _designer_id: string }; Returns: boolean }
       ist_verkaufsbereit: { Args: { _designer_id: string }; Returns: boolean }
       jarvis_heartbeat_sql: { Args: never; Returns: Json }
       mark_application_in_review: {

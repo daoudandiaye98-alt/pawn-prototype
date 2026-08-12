@@ -37,6 +37,9 @@ import {
 } from "@/features/studio/productDetails";
 
 
+// PART 51 Teil C — Budget-Vorstellung bei Anfragen ist eine Tap-Auswahl, kein Pflichtfeld-Freitext.
+const BUDGET_CHIPS = ["Bis 200 €", "200–500 €", "500–1.000 €", "1.000 €+"];
+
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
   const slug = params.slug ?? params.id ?? "asymmetric-coat";
@@ -84,6 +87,7 @@ const ProductDetail = () => {
   const [color, setColor] = useState(product.colors[0]);
   const [saved, setSaved] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
+  const [reqName, setReqName] = useState("");
   const [reqBody, setReqBody] = useState("");
   const [reqBudget, setReqBudget] = useState("");
   const [reqBusy, setReqBusy] = useState(false);
@@ -157,10 +161,18 @@ const ProductDetail = () => {
   const stock = dbProduct?.inventory_mode === "stock" ? dbProduct.stock_quantity : null;
   const soldOut = stock === 0;
   const lowStock = stock !== null && stock > 0 && stock < 5;
-  // PART 45 — der Kaufknopf bleibt ruhig, solange das Haus kein Geld empfangen kann.
-  // Ein Kauf, der an der Kasse scheitert, kostet mehr Vertrauen als eine ehrliche Zeile.
-  const hausKannVerkaufen = dbProduct?.designers?.verkaufsbereit !== false;
-  const canRequest = !!dbProduct?.allow_custom_requests;
+  // PART 45/51 Teil C — der Kaufknopf bleibt ruhig, solange das Haus kein Geld empfangen kann.
+  // `kauf_freigeschaltet` ist dieselbe Wahrheit wie `verkaufsbereit`, plus die Admin-Haus-Ausnahme
+  // (Haus Nr. 1 verkauft direkt an PAWN, auch ohne eigenes Stripe-Connect-Konto).
+  const hausKannVerkaufen = dbProduct?.designers?.kauf_freigeschaltet !== false;
+  // Kunst-Angebotstypen: Auftragsarbeit/Live-Porträt haben nie einen Warenkorb — "Anfragen" ist
+  // dort der einzige Weg, unabhängig vom Checkout-Status des Hauses.
+  const kunstKind = (dbProduct?.product_dna as { kind?: string } | null)?.kind;
+  const noCartKind = kunstKind === "auftragsarbeit" || kunstKind === "live_portrait";
+  const canBuy = hausKannVerkaufen && !noCartKind;
+  // Solange kein Kauf möglich ist (Übergangslösung ohne Connect, oder Werkart ohne Warenkorb),
+  // wird "Anfragen" zum einzigen — und damit stets verfügbaren — Kaufweg.
+  const canRequest = !!dbProduct?.allow_custom_requests || !canBuy;
 
   function addToBag() {
     if (soldOut) { toast.error("Ausverkauft."); return; }
@@ -222,10 +234,11 @@ const ProductDetail = () => {
         productId: dbProduct.id,
         productName: dbProduct.name,
         body: reqBody.trim(),
-        budget: reqBudget.trim() || undefined,
+        budget: reqBudget || undefined,
+        name: reqName.trim() || undefined,
       });
       toast.success("Anfrage gesendet.");
-      setReqOpen(false); setReqBody(""); setReqBudget("");
+      setReqOpen(false); setReqName(""); setReqBody(""); setReqBudget("");
     } catch (e) {
       toast.error((e as Error)?.message ?? "Fehler beim Senden.");
     } finally {
@@ -318,7 +331,12 @@ const ProductDetail = () => {
       {dbProduct?.compare_at_price && dbProduct.compare_at_price > (dbProduct?.price ?? 0) && (
         <span className="house-ink palace-eyebrow opacity-60 line-through">{formatPrice(Number(dbProduct.compare_at_price), locale)}</span>
       )}
-      {isMto && (
+      {noCartKind && (
+        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
+          {kunstKind === "live_portrait" ? "Live-Porträt" : "Auftragsarbeit"}
+        </span>
+      )}
+      {isMto && !noCartKind && (
         <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
           Auf Anfertigung{dbProduct?.lead_time_days ? ` · ca. ${dbProduct.lead_time_days} Tage` : ""}
         </span>
@@ -334,10 +352,16 @@ const ProductDetail = () => {
 
   const actionButtons = (
     <>
-      {!hausKannVerkaufen ? (
-        <span className="house-hair house-ink border px-3 py-2 text-[0.56rem] uppercase tracking-[0.24em]">
-          Dieses Haus öffnet in Kürze
-        </span>
+      {!canBuy ? (
+        <Button
+          type="button"
+          variant="editorial"
+          size="chip"
+          onClick={() => setReqOpen(true)}
+          style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}
+        >
+          Anfragen
+        </Button>
       ) : (
         <>
           <Button
@@ -511,7 +535,7 @@ const ProductDetail = () => {
       >
         Frag PAWN zu diesem Stück →
       </button>
-      {canRequest && (
+      {canRequest && canBuy && (
         <button
           type="button"
           onClick={() => setReqOpen(true)}
@@ -740,13 +764,29 @@ const ProductDetail = () => {
               Deine Nachricht geht direkt an die Designer:in. Beschreibe, was du dir vorstellst — Maße, Materialien, Anlass.
             </p>
             <label className="mt-6 block">
+              <span className="house-ink palace-eyebrow">Name</span>
+              <input value={reqName} onChange={(e) => setReqName(e.target.value)} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
+            </label>
+            <label className="mt-4 block">
               <span className="house-ink palace-eyebrow">Wunsch</span>
               <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
             </label>
-            <label className="mt-4 block">
-              <span className="house-ink palace-eyebrow">Budget (optional)</span>
-              <input value={reqBudget} onChange={(e) => setReqBudget(e.target.value)} placeholder="z.B. 800–1200 €" className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
-            </label>
+            <div className="mt-4">
+              <span className="house-ink palace-eyebrow">Budget-Vorstellung (optional)</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {BUDGET_CHIPS.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => setReqBudget((v) => (v === chip ? "" : chip))}
+                    className="house-hair house-ink min-h-[36px] border px-3 py-1.5 text-[0.68rem] uppercase tracking-[0.18em]"
+                    style={reqBudget === chip ? { background: "var(--house-fg)", color: "var(--house-bg)" } : undefined}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button type="button" variant="editorial" size="chip" onClick={() => setReqOpen(false)} className="house-hair house-ink" style={{ background: "var(--house-bg)" }}>Abbrechen</Button>
               <Button type="button" variant="editorial" size="chip" onClick={submitRequest} loading={reqBusy} style={{ background: "var(--house-fg)", color: "var(--house-bg)" }}>
