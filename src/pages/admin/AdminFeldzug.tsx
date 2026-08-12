@@ -106,6 +106,32 @@ function LanguageChip({ language }: { language: string | null }) {
   );
 }
 
+/**
+ * PART 50 "Die erste Berührung" WP1: Instagram schneidet Erstnachrichten bei rund 1.000 Zeichen
+ * ab — 900 (inklusive Link) ist derselbe Puffer wie serverseitig in akquise_verfassen/
+ * akquise_dm_vorbereiten (AKQUISE_ZEICHEN_LIMIT). Ein zu langer Entwurf sollte die Rampe im
+ * Normalfall nie erreichen (qc_passed wird serverseitig false), das Abzeichen ist das
+ * Sicherheitsnetz für den Rest: manuell bearbeitete Entwürfe, ältere Karten vor der Härtung.
+ */
+const RAMPE_ZEICHEN_LIMIT = 900;
+
+function CharCountBadge({ text }: { text: string | null | undefined }) {
+  const len = text?.length ?? 0;
+  if (len === 0) return null;
+  const zuLang = len > RAMPE_ZEICHEN_LIMIT;
+  return (
+    <span
+      className={cn(
+        "shrink-0 border px-1.5 py-0.5 text-[0.6rem] font-medium tabular-nums tracking-[0.1em]",
+        zuLang ? "border-black bg-black text-white" : "border-black text-foreground",
+      )}
+      title={zuLang ? "Zu lang für eine Instagram-Direktnachricht — wird beim nächsten Lauf gekürzt." : undefined}
+    >
+      {len} {zuLang && "— wird gekürzt"}
+    </span>
+  );
+}
+
 /* ─────────────────────── DM-Karte: eine pro Lead, Vollbild mobil ─────────────────────── */
 
 function DmCard({
@@ -125,6 +151,8 @@ function DmCard({
   const [skipReason, setSkipReason] = useState("");
   const [images, setImages] = useState(() => plateImages(lead));
   const text = textOverride ?? lead.message_draft;
+  // PART 50 WP1: lieber kurz warten als eine abgeschnittene Instagram-Nachricht senden.
+  const zuLang = (text?.length ?? 0) > RAMPE_ZEICHEN_LIMIT;
 
   useEffect(() => { setImages(plateImages(lead)); }, [lead.id, lead.plate_images]);
 
@@ -159,6 +187,7 @@ function DmCard({
               <span className="text-xs text-muted-foreground">{lead.followers.toLocaleString("de-DE")} Follower</span>
             )}
             <LanguageChip language={lead.language} />
+            <CharCountBadge text={text} />
           </div>
         </div>
         {images.length > 0 ? (
@@ -184,10 +213,16 @@ function DmCard({
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{text || "Entwurf wird neu geschrieben."}</p>
       </div>
 
+      {zuLang && (
+        <p className="border-t-[1.5px] border-black bg-black px-5 py-3 text-xs text-white">
+          Zu lang für eine Instagram-Direktnachricht ({text!.length} Zeichen) — PAWN kürzt den Entwurf beim nächsten Lauf. Kopieren ist bis dahin gesperrt.
+        </p>
+      )}
       {text ? (
         <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
           <Button
             onClick={copyText}
+            disabled={zuLang}
             variant={step === 0 ? "default" : "outline"}
             className={cn("rounded-none justify-center", step === 0 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
           >
@@ -270,6 +305,8 @@ function FormularCard({
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
+  // PART 50 WP1: lieber kurz warten als eine abgeschnittene Instagram-Nachricht senden.
+  const zuLang = (lead.message_draft?.length ?? 0) > RAMPE_ZEICHEN_LIMIT;
 
   useEffect(() => { setStep(0); setSkipOpen(false); setSkipReason(""); }, [lead.id]);
 
@@ -290,7 +327,10 @@ function FormularCard({
       <header className="border-b-[1.5px] border-black px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <p className="editorial-eyebrow">{lead.world ?? "—"} · Formular</p>
-          <LanguageChip language={lead.language} />
+          <div className="flex shrink-0 items-center gap-2">
+            <LanguageChip language={lead.language} />
+            <CharCountBadge text={lead.message_draft} />
+          </div>
         </div>
         <h2 className="font-serif text-2xl">@{lead.handle}</h2>
         {lead.contact_url && (
@@ -305,10 +345,16 @@ function FormularCard({
         </p>
       </div>
 
+      {zuLang && (
+        <p className="border-t-[1.5px] border-black bg-black px-5 py-3 text-xs text-white">
+          Zu lang für eine Instagram-Direktnachricht ({lead.message_draft!.length} Zeichen) — PAWN kürzt den Entwurf beim nächsten Lauf. Kopieren ist bis dahin gesperrt.
+        </p>
+      )}
       {lead.message_draft ? (
         <div className="grid grid-cols-1 gap-2 border-t-[1.5px] border-black p-5 sm:grid-cols-3">
           <Button
             onClick={copyText}
+            disabled={zuLang}
             variant={step === 0 ? "default" : "outline"}
             className={cn("rounded-none justify-center", step === 0 ? "bg-black text-white hover:bg-white hover:text-black" : "border-black hover:bg-black hover:text-white")}
           >

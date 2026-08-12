@@ -77,7 +77,7 @@ type Mode =
   | "kampagnen_regie" | "cron_status" | "jarvis_bauplan" | "broll_einsammeln"
   | "akquise_zyklus" | "verstaerker" | "wissen_markenaufbau"
   | "automatik_ausfuehren" | "signalstrom_verdichten" | "tueren_finden" | "maison_sichtbarkeitszug" | "wissen_wirtschaft" | "kasse_wache"
-  | "akquise_autopilot" | "akquise_wache";
+  | "akquise_autopilot" | "akquise_wache" | "akquise_entwuerfe_kuerzen";
 
 type Zone = "gruen" | "gelb" | "rot";
 
@@ -184,6 +184,7 @@ const DEFAULT_JARVIS_ZONES: JarvisZones = {
   maison_sichtbarkeitszug: "gruen",
   wissen_wirtschaft: "gruen",
   kasse_wache: "gruen",
+  akquise_entwuerfe_kuerzen: "gruen",
 };
 async function loadJarvisZones(admin: SupabaseClient): Promise<JarvisZones> {
   try {
@@ -2574,17 +2575,22 @@ function hatVerneinung(text: string): boolean {
 /** WP4 "Hochtouren" — Aufbau-Text je Variante: A = direkte Einladung mit Link, B = zweistufig
  * (persönliche Zeile + Frage, noch kein Link — der folgt erst persönlich nach einer Antwort). */
 function aufbauFuerVariante(variant: "A" | "B"): string {
+  // PART 50 WP1: die Zeichengrenze steht jetzt zusätzlich hart im Code (kuerzeFallsZuLang) — der
+  // Hinweis hier soll die Nachbesserung seltener nötig machen, ersetzt die Prüfung aber nicht.
+  const zeichenHinweis = `Jede Erstnachricht bleibt kurz genug für eine Instagram-Direktnachricht (Instagram schneidet bei rund 1.000 Zeichen ab): höchstens ${AKQUISE_ZEICHEN_LIMIT} Zeichen inklusive Link, unabhängig davon, ob diese Nachricht am Ende per E-Mail, Kontaktformular oder DM rausgeht. Kürzer wirkt persönlicher als länger.`;
   return variant === "A"
     ? `Höchstens 5 Sätze insgesamt, in dieser Reihenfolge:
 1. Persönliche Anrede mit Namen (falls bekannt) und ein konkreter Satz zu genau dieser Arbeit — Material, Haltung, Handschrift — der zeigt, dass wirklich hingesehen wurde (das ist die personal_line).
 2. Genau ein Satz, was PAWN ist: ein kuratierter Marktplatz für unabhängige Designer:innen.
 3. Das Angebot in Zahlen, als Zusage in einem Satz: kostenloser Einstieg, du behältst 93 % jedes Verkaufs, ein Platz unter den ersten 50 Häusern.
 4. Ein Satz, der zur Einladung überleitet — der persönliche Link wird automatisch danach ergänzt, schreibe ihn NICHT selbst aus.
-Keine Aufzählungszeichen, keine Anführungszeichen, keine erfundenen Fakten.`
+Keine Aufzählungszeichen, keine Anführungszeichen, keine erfundenen Fakten.
+${zeichenHinweis}`
     : `Höchstens 3 Sätze, zweistufig — noch KEIN Link, KEINE Zahlen-Angebote in dieser ersten Nachricht:
 1. Persönliche Anrede mit Namen (falls bekannt) und ein konkreter Satz zu genau dieser Arbeit — das ist die personal_line.
 2. Eine kurze, echte Frage, die zum Antworten einlädt (z. B. Interesse an mehr Informationen über PAWN).
-Der Link und das Zahlen-Angebot folgen erst persönlich, sobald diese Person antwortet — erwähne beides hier NICHT.`;
+Der Link und das Zahlen-Angebot folgen erst persönlich, sobald diese Person antwortet — erwähne beides hier NICHT.
+${zeichenHinweis}`;
 }
 
 /** WP4 "Hochtouren" — entfernt einen versehentlich mitgeschriebenen Einladungslink, falls das
@@ -2893,6 +2899,36 @@ Antworte NUR mit dem umgeschriebenen Text, ohne Anführungszeichen und ohne Komm
   return { text: out && !hatVerneinung(out) ? out : text, tokens: r.tokens };
 }
 
+/**
+ * PART 50 "Die erste Berührung" WP1: Instagram schneidet Direktnachrichten bei rund 1.000
+ * Zeichen ab — 900 Zeichen inklusive Link ist der Puffer. Gilt für jede Designer-Erstnachricht,
+ * nicht nur die DM-Fassung: die PART-40-Vorgabe "höchstens 5 Sätze" (aufbauFuerVariante) sah das
+ * ohnehin für alle Kanäle vor, wurde aber nie gemessen — 157 von 167 Bestandsentwürfen
+ * überschritten die Grenze, unbemerkt, weil nichts sie zählte. Ein Kürzungsversuch, danach lieber
+ * ein sauberer QC-Fehlschlag als eine "bestandene" Nachricht, die auf keiner Plattform ankommt.
+ */
+const AKQUISE_ZEICHEN_LIMIT = 900;
+
+async function kuerzeFallsZuLang(
+  message: string, sprache: string, sprachgesetze: string,
+): Promise<{ message: string; gekuerzt: boolean; tokens: number }> {
+  if (message.length <= AKQUISE_ZEICHEN_LIMIT) return { message, gekuerzt: false, tokens: 0 };
+  const r = await llm({
+    system: `Du bist Lektor für PAWN. Der folgende Text ist eine Erstnachricht an eine:n Designer:in und mit ${message.length} Zeichen zu lang — Instagram-Direktnachrichten werden bei rund 1.000 Zeichen abgeschnitten. Kürze ihn auf höchstens ${AKQUISE_ZEICHEN_LIMIT} Zeichen (inklusive Leerzeichen und eines enthaltenen Links).
+
+Straffe, kürze nicht die Kernaussage weg: Anrede, ein persönlicher Satz zur Arbeit, das Angebot in Zahlen, die Einladung bleiben erhalten. Sprache bleibt ${sprache === "en" ? "Englisch" : "Deutsch"}. Ein enthaltener Link (https://...) bleibt vollständig, unverändert und an derselben Stelle erhalten.
+
+${sprachgesetze}
+
+Antworte NUR mit dem gekürzten Text, ohne Anführungszeichen und ohne Kommentar.`,
+    user: message,
+    maxTokens: 700,
+  });
+  const out = (r.text ?? "").trim();
+  const erfolgreich = out.length > 0 && out.length <= AKQUISE_ZEICHEN_LIMIT;
+  return { message: erfolgreich ? out : message, gekuerzt: erfolgreich, tokens: r.tokens };
+}
+
 /** Setzt Vorname und persönlichen Satz in die feste Vorlage ein. */
 function fillTemplate(template: string, personalLine: string, name: string | null): string {
   const anrede = name ? `${name},` : "";
@@ -2957,7 +2993,7 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
   // WP8 "Zufuhr-Verzehnfachung": hartes Zeitbudget — jeder Lead durchläuft eine mehrstufige
   // Websuche/Recherche, das kann bei größeren Batches das Zeitlimit der Laufzeitumgebung sprengen.
   const deadline = Date.now() + 55_000;
-  let ready = 0, tokensUsed = 0, entverneint = 0, attempted = 0;
+  let ready = 0, tokensUsed = 0, entverneint = 0, attempted = 0, gekuerzt = 0, zuLang = 0;
   for (const lead of stapel) {
     if (Date.now() > deadline) break;
     attempted++;
@@ -2995,16 +3031,26 @@ async function runAkquiseVerfassen(admin: SupabaseClient, apiKey: string): Promi
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
 
+    // PART 50 WP1: die Zeichengrenze ist hart im Code — niemals ein zu langer Entwurf mit
+    // bestandenem QC. Ein Kürzungsversuch, danach lieber ein ehrlicher QC-Fehlschlag.
+    let qcZuLang = false;
+    if (message.length > AKQUISE_ZEICHEN_LIMIT) {
+      const kurz = await kuerzeFallsZuLang(message, draft.language, gesetze);
+      tokensUsed += kurz.tokens;
+      if (kurz.gekuerzt) { message = kurz.message; gekuerzt++; } else { qcZuLang = true; zuLang++; }
+    }
+
     // Der Weg entscheidet sich hier: Adresse -> E-Mail, Formular -> Formular, sonst DM.
     const weg = lead.email ? "email" : lead.contact_url ? "formular" : "dm";
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language: draft.language,
       channel: weg === "formular" ? "dm" : weg, contact_channel: weg,
       variant_id: hatVorlage ? "vorlage" : variant,
+      ...(qcZuLang ? { qc_passed: false, blocked_reason: "zu_lang" } : {}),
     }).eq("id", lead.id);
-    ready++;
+    if (!qcZuLang) ready++;
   }
-  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, tokensUsed, sprachkorrigiert };
+  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, gekuerzt, zu_lang: zuLang, tokensUsed, sprachkorrigiert };
 }
 
 /**
@@ -3032,7 +3078,7 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
 
   // WP8 "Zufuhr-Verzehnfachung": hartes Zeitbudget wie bei akquise_verfassen.
   const deadline = Date.now() + 55_000;
-  let ready = 0, tokensUsed = 0, entverneint = 0, attempted = 0;
+  let ready = 0, tokensUsed = 0, entverneint = 0, attempted = 0, gekuerzt = 0, zuLang = 0;
   for (const lead of stapel) {
     if (Date.now() > deadline) break;
     attempted++;
@@ -3047,7 +3093,7 @@ async function runAkquiseDmVorbereiten(admin: SupabaseClient, apiKey: string): P
     const sprachAnweisung = `Die Sprache steht bereits fest: ${vorentscheidung === "de" ? "Deutsch" : "Englisch"} (aus Domain-Endung/Bio-Text/Profil-Standort ermittelt, oder Englisch als Rückfall ohne jeden Beleg). Schreibe AUSSCHLIESSLICH in dieser Sprache.`;
     const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine kurze Instagram-Direktnachricht an einen unabhängigen Designer für pawn.vision.
 
-Instagram-DMs werden nach wenigen Zeilen abgeschnitten — die Nachricht muss deutlich kürzer sein als eine E-Mail: ${variant === "A" ? "40–70 Wörter" : "20–40 Wörter"}, ein Fließtext, keine Betreffzeile, keine Aufzählung.
+Instagram-DMs werden nach rund 1.000 Zeichen abgeschnitten — die Nachricht muss deutlich kürzer sein als eine E-Mail: ${variant === "A" ? "40–70 Wörter" : "20–40 Wörter"}, höchstens ${AKQUISE_ZEICHEN_LIMIT} Zeichen inklusive Link, ein Fließtext, keine Betreffzeile, keine Aufzählung.
 
 ${sprachAnweisung}
 
@@ -3085,14 +3131,23 @@ RAHMEN (Teil 43, „Ausgabe 01"): Die Nachricht lädt nicht zur Bewerbung ein �
       message = `${message}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
     }
 
+    // PART 50 WP1: dieselbe harte Zeichengrenze wie bei der E-Mail-/Formular-Fassung.
+    let qcZuLang = false;
+    if (message.length > AKQUISE_ZEICHEN_LIMIT) {
+      const kurz = await kuerzeFallsZuLang(message, language, gesetze);
+      tokensUsed += kurz.tokens;
+      if (kurz.gekuerzt) { message = kurz.message; gekuerzt++; } else { qcZuLang = true; zuLang++; }
+    }
+
     await admin.from("acquisition_leads").update({
       personal_line: draft.personal_line, message_draft: message, language,
       channel: "instagram", contact_channel: "instagram", variant_id: variant,
+      ...(qcZuLang ? { qc_passed: false, blocked_reason: "zu_lang" } : {}),
     }).eq("id", lead.id);
-    ready++;
+    if (!qcZuLang) ready++;
   }
   const nachfassen = await runAkquiseNachfassenVorbereiten(admin);
-  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, tokensUsed, nachfassen };
+  return { ok: true, processed: attempted, queued: stapel.length, ready, entverneint, gekuerzt, zu_lang: zuLang, tokensUsed, nachfassen };
 }
 
 /** WP5 "Die Rampe auf Hochtouren" — bereitet kurze Nachfass-Entwürfe (1–2 Sätze) für DM/Instagram-
@@ -3119,13 +3174,13 @@ async function runAkquiseNachfassenVorbereiten(admin: SupabaseClient): Promise<R
   const config = await loadAkquiseConfig(admin);
   const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
   const deadline = Date.now() + 55_000;
-  let ready = 0, tokensUsed = 0, attempted = 0;
+  let ready = 0, tokensUsed = 0, attempted = 0, gekuerzt = 0, zuLang = 0;
   for (const lead of (leads ?? []) as { id: string; handle: string; world: string; personal_line: string | null; language: string | null; ref_code: string | null; lead_type: string; plate_status: string | null }[]) {
     if (Date.now() > deadline) break;
     attempted++;
     if (lead.lead_type !== "designer") continue; // harte Prüfung im Code, s. WP4
     const sprache = lead.language === "en" ? "Englisch" : "Deutsch";
-    const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine sehr kurze Nachfass-Nachricht (höchstens 2 Sätze) an einen Designer, der auf die erste Instagram-Nachricht noch nicht geantwortet hat. Sprache: ${sprache}.
+    const system = `Du bist Jarvis und schreibst für Daouda (PAWN-Gründer, Köln) eine sehr kurze Nachfass-Nachricht (höchstens 2 Sätze, höchstens ${AKQUISE_ZEICHEN_LIMIT} Zeichen inklusive Link) an einen Designer, der auf die erste Instagram-Nachricht noch nicht geantwortet hat. Sprache: ${sprache}.
 
 SPRACHGESETZE (bindend, jede Zeile gilt):
 ${gesetze}
@@ -3145,10 +3200,56 @@ Ton: freundlich, unaufdringlich, keine Erinnerung an eine Absage, kein neues Zah
     // PART 47 Befund 2: die Einladungsseite existiert auch ohne fertige Platte (typografische
     // Fassung) — der Link gehörte vorher fälschlich nur an Leads mit plate_status='fertig'.
     if (lead.ref_code) text = `${text}\n\nhttps://pawn.vision/einladung/${lead.ref_code}`;
+    // PART 50 WP1: dieselbe Zeichengrenze gilt für den Nachfass-Entwurf. Anders als bei der
+    // Erstnachricht gibt es hier kein qc_passed, das den Lead aus der Warteschlange nimmt — bei
+    // gescheiterter Kürzung bleibt dm_followup_draft schlicht leer, der nächste Lauf versucht es
+    // erneut (die WHERE-Bedingung oben schließt nur Leads mit bereits GESETZTEM Entwurf aus).
+    if (text.length > AKQUISE_ZEICHEN_LIMIT) {
+      const kurz = await kuerzeFallsZuLang(text, lead.language ?? "de", gesetze);
+      tokensUsed += kurz.tokens;
+      if (kurz.gekuerzt) { text = kurz.message; gekuerzt++; } else { zuLang++; continue; }
+    }
     await admin.from("acquisition_leads").update({ dm_followup_draft: text }).eq("id", lead.id);
     ready++;
   }
-  return { processed: attempted, queued: (leads ?? []).length, ready, tokensUsed };
+  return { processed: attempted, queued: (leads ?? []).length, ready, gekuerzt, zu_lang: zuLang, tokensUsed };
+}
+
+/**
+ * PART 50 "Die erste Berührung" WP1.3 — Bestandskorrektur: einmaliger Korrekturvorlauf für
+ * Entwürfe, die VOR der Zeichengrenze (oben) geschrieben wurden. 157 von 167 Designer-DM-
+ * Entwürfen lagen zum Zeitpunkt der Prüfung über 900 Zeichen. Nur unkontaktierte Designer-Leads —
+ * ein bereits gesendeter Erstkontakt wird nie nachträglich verändert. Idempotent: ein zweiter
+ * Lauf findet nur noch, was der erste nicht schaffte (Zeitbudget) oder nicht kürzen konnte.
+ */
+async function runAkquiseEntwuerfeKuerzen(admin: SupabaseClient): Promise<Record<string, unknown>> {
+  const { data: leads } = await admin.from("acquisition_leads")
+    .select("id, message_draft, language")
+    .eq("lead_type", "designer").is("contacted_at", null).not("message_draft", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  const config = await loadAkquiseConfig(admin);
+  const gesetze = config.sprachgesetze?.trim() || DEFAULT_SPRACHGESETZE;
+  const zuLangeListe = ((leads ?? []) as { id: string; message_draft: string | null; language: string | null }[])
+    .filter((l) => (l.message_draft?.length ?? 0) > AKQUISE_ZEICHEN_LIMIT);
+
+  const deadline = Date.now() + 55_000;
+  let gekuerzt = 0, gescheitert = 0, tokensUsed = 0, geprueft = 0;
+  for (const lead of zuLangeListe) {
+    if (Date.now() > deadline) break;
+    geprueft++;
+    const kurz = await kuerzeFallsZuLang(lead.message_draft!, lead.language ?? "en", gesetze);
+    tokensUsed += kurz.tokens;
+    if (kurz.gekuerzt) {
+      await admin.from("acquisition_leads").update({ message_draft: kurz.message }).eq("id", lead.id);
+      gekuerzt++;
+    } else {
+      await admin.from("acquisition_leads").update({ qc_passed: false, blocked_reason: "zu_lang" }).eq("id", lead.id);
+      gescheitert++;
+    }
+  }
+  return { ok: true, gefunden: zuLangeListe.length, geprueft, gekuerzt, gescheitert, tokensUsed };
 }
 
 /* ------------------------------------------------------------------ *
@@ -5855,7 +5956,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "cron_status", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
-      "kasse_wache", "akquise_autopilot", "akquise_wache",
+      "kasse_wache", "akquise_autopilot", "akquise_wache", "akquise_entwuerfe_kuerzen",
     ];
     if (!validModes.includes(mode)) {
       return ok({ ok: false, error: `mode muss einer von ${validModes.join(", ")} sein.` });
@@ -5874,7 +5975,7 @@ Deno.serve(async (req) => {
       "kampagnen_regie", "jarvis_bauplan", "broll_einsammeln",
       "akquise_zyklus", "verstaerker", "automatik_ausfuehren", "signalstrom_verdichten",
       "wissen_markenaufbau", "tueren_finden", "maison_sichtbarkeitszug", "wissen_wirtschaft",
-      "kasse_wache", "akquise_autopilot", "akquise_wache",
+      "kasse_wache", "akquise_autopilot", "akquise_wache", "akquise_entwuerfe_kuerzen",
     ];
     // Teil 39 AP5 — Zeitkonstanter Vergleich statt "===": verhindert, dass jemand den Secret-Wert
     // Zeichen für Zeichen über minimale Antwortzeit-Unterschiede erraten könnte (Timing-Angriff).
@@ -6190,7 +6291,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode === "akquise_kuratieren" || mode === "akquise_verfassen" || mode === "bewerbung_pruefen"
-        || mode === "akquise_dm_vorbereiten"
+        || mode === "akquise_dm_vorbereiten" || mode === "akquise_entwuerfe_kuerzen"
         || mode === "presse_jagd" || mode === "presse_verfassen"
         || mode === "multiplikator_jagd" || mode === "multiplikator_verfassen"
         || mode === "akquise_zyklus" || mode === "verstaerker" || mode === "wissen_markenaufbau" || mode === "tueren_finden"
@@ -6205,6 +6306,7 @@ Deno.serve(async (req) => {
         : mode === "akquise_kuratieren" ? await runAkquiseKuratieren(admin, apiKey)
         : mode === "akquise_verfassen" ? await runAkquiseVerfassen(admin, apiKey)
         : mode === "akquise_dm_vorbereiten" ? await runAkquiseDmVorbereiten(admin, apiKey)
+        : mode === "akquise_entwuerfe_kuerzen" ? await runAkquiseEntwuerfeKuerzen(admin)
         : mode === "presse_jagd" ? await runPresseJagd(admin, apiKey)
         : mode === "presse_verfassen" ? await runPresseVerfassen(admin, apiKey)
         : mode === "multiplikator_jagd" ? await runMultiplikatorJagd(admin, apiKey)
@@ -6227,6 +6329,8 @@ Deno.serve(async (req) => {
         ? `Verfasst: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
         : mode === "akquise_dm_vorbereiten"
         ? `DM-Entwürfe: ${(result as { ready?: number }).ready ?? 0} von ${(result as { processed?: number }).processed ?? 0}`
+        : mode === "akquise_entwuerfe_kuerzen"
+        ? `Bestandskorrektur: ${(result as { gekuerzt?: number }).gekuerzt ?? 0} gekürzt, ${(result as { gescheitert?: number }).gescheitert ?? 0} gescheitert (${(result as { geprueft?: number }).geprueft ?? 0} von ${(result as { gefunden?: number }).gefunden ?? 0} über der Zeichengrenze geprüft)`
         : mode === "presse_jagd"
         ? `Presse-Jagd: ${(result as { angelegt?: number }).angelegt ?? 0} neue Kontakte von ${(result as { gefunden?: number }).gefunden ?? 0} gefundenen`
         : mode === "presse_verfassen"
