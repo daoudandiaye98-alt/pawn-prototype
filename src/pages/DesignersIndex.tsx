@@ -5,11 +5,14 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable, useContentValue } from "@/components/palace/Editable";
 import { Button } from "@/components/ui/button";
-import { useStore, marketplaceSelectors } from "@/core";
 import { supabase } from "@/integrations/supabase/client";
+import { usePublicDesigners } from "@/lib/publicData";
 
 const DesignersIndex = () => {
-  const designers = useStore(marketplaceSelectors.getAllDesignerViews);
+  // PART 51 Teil D — Sichtbarkeit ab Tag 1: "Alle Häuser" muss echte, veröffentlichte Häuser
+  // zeigen, nicht den leeren Kern-Store (der bewusst ohne Seed-Daten läuft). Dieselbe Quelle,
+  // die WorldPage.tsx (/mode, /interior, /kunst) schon für Häuser nutzt.
+  const { designers } = usePublicDesigners();
   const atelierCta = useContentValue("dindex_item_cta", "Zum Atelier →");
 
   // Teil 17d: gebündelte Reichweite sichtbar machen — das Netzwerk, nicht nur das einzelne Haus.
@@ -24,10 +27,8 @@ const DesignersIndex = () => {
   useEffect(() => {
     if (designers.length === 0) return;
     let cancelled = false;
+    const bySlug = new Map(designers.map((d) => [d.id, d.slug]));
     (async () => {
-      const { data: rows } = await supabase.from("designers").select("id, slug").in("slug", designers.map((d) => d.slug));
-      const bySlug = new Map(((rows ?? []) as { id: string; slug: string }[]).map((r) => [r.id, r.slug]));
-      if (bySlug.size === 0) return;
       const { data: themes } = await supabase.from("house_themes" as never)
         .select("designer_id, farbwelt").in("designer_id", Array.from(bySlug.keys())).eq("is_current", true);
       const map: Record<string, string> = {};
@@ -104,7 +105,7 @@ const DesignersIndex = () => {
                           className="palace-serif mt-2 font-light text-[#000000]"
                           style={{ fontSize: "clamp(1.4rem, 2.2vw, 1.9rem)", lineHeight: 1, letterSpacing: "-0.015em" }}
                         >
-                          {d.name}
+                          {d.brand_name}
                         </p>
                       </div>
                       <span className="palace-eyebrow text-black/60 group-hover:text-[#000000]">{atelierCta}</span>
