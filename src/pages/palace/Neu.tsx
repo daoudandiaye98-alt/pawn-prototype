@@ -5,11 +5,20 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable } from "@/components/palace/Editable";
 import { useSiteContent } from "@/lib/siteContent";
-import { useStore, marketplaceSelectors } from "@/core";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
+import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
 
 export default function Neu() {
-  const raw = useStore(marketplaceSelectors.getAllProductViews);
+  // PART 51 Teil D — Sichtbarkeit ab Tag 1: "Alles Neue" muss echte, veröffentlichte Stücke
+  // zeigen, nicht den leeren Kern-Store. Dieselbe Quelle wie WorldPage.tsx (/mode /interior /kunst).
+  const { designers } = usePublicDesigners();
+  const { products: dbProducts } = usePublishedProducts();
+  const raw = useMemo(() => dbProducts.map((p) => ({
+    id: p.id, slug: p.slug, name: p.name, world: p.world, category: "Neu",
+    designer: designers.find((d) => d.id === p.designer_id)?.brand_name ?? "PAWN",
+    designerSlug: designers.find((d) => d.id === p.designer_id)?.slug ?? "",
+    price: p.price, imageUrl: p.image_url,
+  })), [dbProducts, designers]);
   const personalization = usePersonalization();
   const products = useMemo(() => sortByPersonalization(raw, personalization, personalization.designerDna), [raw, personalization]);
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
