@@ -11,6 +11,8 @@ import { useI18n } from "@/lib/i18n";
 import { formatPrice, formatCreditLine } from "@/lib/format";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
+import heroImage1400 from "@/assets/landing-hero-1400.webp";
+import heroImage2400 from "@/assets/landing-hero-2400.webp";
 
 /**
  * Teil 27a — Die Bühne: Landing 1:1 nach docs/design-referenz/landing.html.
@@ -43,13 +45,12 @@ const Index = () => {
 
   const designerById = useMemo(() => new Map(designers.map((d) => [d.id, d])), [designers]);
 
-  // Cover: das stärkste verfügbare Werk — zuerst ein featured Haus mit Bild, sonst irgendein
-  // Haus mit Bild, sonst ehrlich leer (nie die farbigen Platzhalterflächen der Referenz).
+  // Teil J2 — das Hero-Bild ist ein festes Marken-Asset (kein dynamisches Haus-Foto mehr);
+  // coverDesigner bleibt für die Credit-Zeile unten links (echtes, aktuelles Feature-Haus).
   const coverDesigner = useMemo(() => {
     const withImage = designers.filter((d) => d.hero_image_url || d.banner_url);
     return withImage.find((d) => d.is_featured) ?? withImage[0] ?? null;
   }, [designers]);
-  const coverImage = coverDesigner?.hero_image_url ?? coverDesigner?.banner_url ?? null;
 
   // Aus den Häusern (Teil H): maximal sechs kuratierte/neueste veröffentlichte Werke — der
   // Slogan behauptet, die Werke beweisen. products ist bereits nach created_at absteigend
@@ -79,16 +80,19 @@ const Index = () => {
     <PalaceLayout showBreadcrumbs={false}>
       {/* 01 COVER */}
       <div className="relative flex min-h-[100svh] items-end overflow-hidden bg-black text-white">
-        {coverImage ? (
-          <img src={coverImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-black">
-            <span className="font-serif text-[15vw] font-semibold leading-none text-white/90 md:text-[10vw]">
-              Ausgabe {ausgabeNummer}
-            </span>
-          </div>
-        )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        <img
+          src={heroImage2400}
+          srcSet={`${heroImage1400} 1400w, ${heroImage2400} 2400w`}
+          sizes="100vw"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          fetchPriority="high"
+        />
+        {/* Teil J2 — das neue Hero-Bild ist hell; ein durchgehender Schwarz-Schleier plus
+            verstärkter Verlauf am Boden sichert die Lesbarkeit von "YOUR MOVE." (Designgesetz:
+            nur #000, kein Grauton als Fläche — deshalb reine Schwarz-Deckkraft statt Grau). */}
+        <div className="pointer-events-none absolute inset-0 bg-black/22" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/78 via-black/35 to-black/12" />
         <div className="relative z-[2] mx-auto w-full max-w-[1440px] px-6 pb-12 pt-32 md:px-10">
           <span className="inline-block bg-black px-[0.8rem] py-[0.45rem] text-[0.62rem] uppercase tracking-[0.36em]">
             <Editable contentKey="landing.cover_kicker">Der kuratierte Raum</Editable>
