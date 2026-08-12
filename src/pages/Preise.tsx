@@ -2,6 +2,10 @@
  * PART 48 AP6 — öffentliche Preisseite. Zwei Karten (Haus/Atelier), alle Zahlen live aus
  * ai_config.plans (planGate) — nichts hier ist hart verdrahtet oder erfunden. Maison bekommt
  * eine eigene Unterseite (/preise/maison), von der Atelier-Karte aus verlinkt.
+ *
+ * Finale Form Teil G — Vier-Boxen-Muster statt Feature-Matrix: jeder Plan besteht aus genau vier
+ * Zeilen (mehr Gutes / weniger Schlechtes / mehr Gutes bei Zug / ehrliche Realität ohne Zug) statt
+ * einer Häkchen-Liste. Rang bleibt in jeder Zeile ausdrücklich unkäuflich (harte Regel #8).
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -9,23 +13,27 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { Reveal } from "@/components/palace/Reveal";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { ladePlanGate, preisFor, limitFor, canUse, type Plan } from "@/lib/planGate";
-import { Check } from "lucide-react";
+import { ladePlanGate, preisFor, limitFor, type Plan } from "@/lib/planGate";
 
 function fmtCount(n: number, noun: string): string {
   return n < 0 ? `Unbegrenzt ${noun}` : `${n} ${noun}`;
 }
 
-function benefitsFor(plan: Plan): string[] {
-  const zeilen = [
-    fmtCount(limitFor(plan, "chat_nachricht"), "Nachrichten mit PAWN im Monat"),
-    fmtCount(limitFor(plan, "tuer_oeffnen"), "geöffnete Türen im Monat"),
-    fmtCount(limitFor(plan, "signature_previews"), limitFor(plan, "signature_previews") === 1 ? "Signatur-Kostprobe" : "Signaturen"),
-    fmtCount(limitFor(plan, "welten"), "Welt gleichzeitig"),
+function fourBoxLines(plan: Plan, commissionPct: number): string[] {
+  if (plan === "haus") {
+    return [
+      "Dein Haus. Live an einem Nachmittag.",
+      `Kostet nichts, riskiert nichts — wir verdienen erst mit ${commissionPct}%, wenn du verkaufst.`,
+      `Jeder Zug macht dich sichtbarer: ${fmtCount(limitFor("haus", "chat_nachricht"), "Nachrichten mit PAWN")}, ${fmtCount(limitFor("haus", "tuer_oeffnen"), "geöffnete Türen")} im Monat.`,
+      "Ohne Zug bleiben die Werke, wo sie jetzt sind: im Entwurf.",
+    ];
+  }
+  return [
+    "Mehr Tempo für dein Haus — mehr KI-Werkzeug im Monat.",
+    `Dieselbe Provision wie im Haus-Plan — ${commissionPct}%, nie mehr, nur weil du zahlst.`,
+    `Freigeschaltete Züge: ${fmtCount(limitFor("atelier", "chat_nachricht"), "Nachrichten mit PAWN")}, ${fmtCount(limitFor("atelier", "tuer_oeffnen"), "Türen")}, ${fmtCount(limitFor("atelier", "welten"), "Welten gleichzeitig")}.`,
+    "Dein Rang wächst weiter nur durch das, was du baust und verkaufst — nie durch den Plan.",
   ];
-  if (canUse(plan, "chat_retrieval")) zeilen.push("Katalog-Wissen im Gespräch mit PAWN");
-  if (canUse(plan, "dashboard_metriken")) zeilen.push("Kennzahlen im Cockpit");
-  return zeilen;
 }
 
 export default function Preise() {
@@ -74,13 +82,11 @@ export default function Preise() {
               </p>
 
               {gateReady ? (
-                <ul className="mt-8 space-y-3 text-sm text-black">
-                  {benefitsFor(key).map((b) => (
-                    <li key={b} className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span>{b}</span>
-                    </li>
+                <div className="mt-8 divide-y divide-black/10 border-t border-black/10 text-sm text-black">
+                  {fourBoxLines(key, commissionPct).map((line, i) => (
+                    <p key={i} className="py-3 leading-snug">{line}</p>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="mt-8 text-sm text-black/50">Lädt …</p>
               )}
