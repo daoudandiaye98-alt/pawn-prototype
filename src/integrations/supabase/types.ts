@@ -72,6 +72,8 @@ export type Database = {
         Row: {
           admin_decision: string | null
           applied_at: string | null
+          autopilot_at: string | null
+          autopilot_checks: Json | null
           bio: string | null
           blocked_reason: string | null
           bounce_type: string | null
@@ -131,6 +133,8 @@ export type Database = {
         Insert: {
           admin_decision?: string | null
           applied_at?: string | null
+          autopilot_at?: string | null
+          autopilot_checks?: Json | null
           bio?: string | null
           blocked_reason?: string | null
           bounce_type?: string | null
@@ -190,6 +194,8 @@ export type Database = {
         Update: {
           admin_decision?: string | null
           applied_at?: string | null
+          autopilot_at?: string | null
+          autopilot_checks?: Json | null
           bio?: string | null
           blocked_reason?: string | null
           bounce_type?: string | null
@@ -3760,7 +3766,11 @@ export type Database = {
       }
       plan_usage_inkrement: {
         Args: { p_designer_id: string; p_feature: string; p_limit: number }
-        Returns: { erlaubt: boolean; limit_wert: number; stand: number }[]
+        Returns: {
+          erlaubt: boolean
+          limit_wert: number
+          stand: number
+        }[]
       }
       plan_usage_stand: {
         Args: { p_designer_id: string; p_feature: string }
@@ -3786,16 +3796,16 @@ export type Database = {
         Args: { _application_id: string; _reason: string }
         Returns: undefined
       }
+      resequence_posting_queue_day: {
+        Args: { _day: string }
+        Returns: undefined
+      }
       resolve_inbound_reply: {
         Args: { _channel?: string; _lead_id: string }
         Returns: {
           ok: boolean
           previous_status: string
         }[]
-      }
-      resequence_posting_queue_day: {
-        Args: { _day: string }
-        Returns: undefined
       }
       slugify: { Args: { txt: string }; Returns: string }
       trend_momentum: {
