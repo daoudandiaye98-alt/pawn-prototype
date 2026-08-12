@@ -18,7 +18,7 @@ interface Zaehler {
 const BELIEFS: ReadonlyArray<{ key: string; titel: string; text: string }> = [
   {
     key: "haus_kein_feed",
-    titel: "Ein Haus, kein Feed",
+    titel: "Ein Haus für jede Arbeit",
     text: "Jede Arbeit bekommt Raum, Licht und Zeit — so viel, wie sie braucht, um wirken zu können.",
   },
   {
@@ -28,7 +28,7 @@ const BELIEFS: ReadonlyArray<{ key: string; titel: string; text: string }> = [
   },
   {
     key: "wenige",
-    titel: "Wenige statt viele",
+    titel: "Ausgewählt, um zu bleiben",
     text: "Wir kuratieren. Was hier einzieht, soll bleiben und über Jahre getragen, bewohnt, angesehen werden.",
   },
   {

@@ -86,7 +86,7 @@ const Index = () => {
             <Editable contentKey="landing.cover_headline_a">Kunst von Händen,</Editable>
             <br />
             <span className="font-serif font-medium italic">
-              <Editable contentKey="landing.cover_headline_b">nicht von Fabriken.</Editable>
+              <Editable contentKey="landing.cover_headline_b">geboren in Werkstätten.</Editable>
             </span>
           </h1>
           <p className="mt-[1.6rem] max-w-[44ch] text-[1rem] text-white/92">
@@ -116,7 +116,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-3">
             {[
               { titleKey: "landing.fact_1_title", title: "Kuratiert", bodyKey: "landing.fact_1_body", body: "Jede Bewerbung wird geprüft. Was hier hängt, hat jemand gemacht." },
-              { titleKey: "landing.fact_2_title", title: "93 % an die Hände", bodyKey: "landing.fact_2_body", body: "Vom Verkaufspreis geht fast alles an das Haus — PAWN nimmt 7 %." },
+              { titleKey: "landing.fact_2_title", title: "93 % ans Haus", bodyKey: "landing.fact_2_body", body: "93 % jedes Kaufs gehen direkt an das Haus — 7 % gehen an PAWN." },
               { titleKey: "landing.fact_3_title", title: "Drei Welten", bodyKey: "landing.fact_3_body", body: "Mode, Interior und Kunst — eine Halle, viele Räume." },
             ].map((f, i) => (
               <div
