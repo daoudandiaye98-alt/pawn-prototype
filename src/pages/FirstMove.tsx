@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import { useAuth } from "@/lib/auth";
 import { useAuthForm } from "@/features/auth/useAuthForm";
+import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompress";
 import { YOUR_MOVE_LINES } from "@/lib/yourMoveLines";
@@ -24,10 +25,14 @@ import { toast } from "sonner";
  * Judgment call (disclosed): ein eingeloggter Zugang ist technische Voraussetzung, bevor
  * überhaupt etwas gespeichert werden kann — dafür steht ein minimales Konto-Gate vor Zug 1,
  * nicht als eigener Zug gezählt, sondern als Teil der Karte "Zeigen".
+ *
+ * Finale Form Teil H4 — vollständig zweisprachig über i18n.tsx (t()); `t` wird als Prop an alle
+ * Unterkomponenten durchgereicht, da sie außerhalb von FirstMove als eigene Funktionen leben.
  */
 
 type WorkKind = "original" | "print";
 type StepKey = "zeigen" | "bestaetigen" | "ziehen";
+type TFn = ReturnType<typeof useI18n>["t"];
 
 interface Work {
   id: string;
@@ -54,22 +59,53 @@ interface Billing {
 }
 
 const STEP_ORDER: StepKey[] = ["zeigen", "bestaetigen", "ziehen"];
-const STEP_LABEL: Record<StepKey, string> = { zeigen: "Zeigen", bestaetigen: "Bestätigen", ziehen: "Ziehen" };
 const MAX_WORKS = 10;
 
-const CHIP_FRAGEN: { key: "medium" | "haltung" | "wunsch"; label: string; options: string[] }[] = [
-  { key: "medium", label: "Womit arbeitest du vor allem?", options: ["Malerei", "Skulptur", "Fotografie", "Keramik", "Mixed Media"] },
-  { key: "haltung", label: "Was treibt deine Arbeit an?", options: ["Beobachtung", "Erinnerung", "Material", "Form", "Gefühl"] },
-  { key: "wunsch", label: "Wofür soll man dich finden?", options: ["Ausstellungen", "Auftragsarbeiten", "den Verkauf einzelner Werke", "alles davon"] },
-];
+function stepLabel(t: TFn, step: StepKey): string {
+  return t(`start.step.${step}` as const);
+}
+
+function chipFragen(t: TFn): { key: "medium" | "haltung" | "wunsch"; label: string; options: { value: string; label: string }[] }[] {
+  return [
+    {
+      key: "medium", label: t("start.chip.medium.label"),
+      options: [
+        { value: t("start.chip.medium.malerei"), label: t("start.chip.medium.malerei") },
+        { value: t("start.chip.medium.skulptur"), label: t("start.chip.medium.skulptur") },
+        { value: t("start.chip.medium.fotografie"), label: t("start.chip.medium.fotografie") },
+        { value: t("start.chip.medium.keramik"), label: t("start.chip.medium.keramik") },
+        { value: t("start.chip.medium.mixedMedia"), label: t("start.chip.medium.mixedMedia") },
+      ],
+    },
+    {
+      key: "haltung", label: t("start.chip.haltung.label"),
+      options: [
+        { value: t("start.chip.haltung.beobachtung"), label: t("start.chip.haltung.beobachtung") },
+        { value: t("start.chip.haltung.erinnerung"), label: t("start.chip.haltung.erinnerung") },
+        { value: t("start.chip.haltung.material"), label: t("start.chip.haltung.material") },
+        { value: t("start.chip.haltung.form"), label: t("start.chip.haltung.form") },
+        { value: t("start.chip.haltung.gefuehl"), label: t("start.chip.haltung.gefuehl") },
+      ],
+    },
+    {
+      key: "wunsch", label: t("start.chip.wunsch.label"),
+      options: [
+        { value: t("start.chip.wunsch.ausstellungen"), label: t("start.chip.wunsch.ausstellungen") },
+        { value: t("start.chip.wunsch.auftragsarbeiten"), label: t("start.chip.wunsch.auftragsarbeiten") },
+        { value: t("start.chip.wunsch.verkauf"), label: t("start.chip.wunsch.verkauf") },
+        { value: t("start.chip.wunsch.alles"), label: t("start.chip.wunsch.alles") },
+      ],
+    },
+  ];
+}
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function chipsToText(answers: Partial<Record<"medium" | "haltung" | "wunsch", string>>): string {
+function chipsToText(t: TFn, answers: Partial<Record<"medium" | "haltung" | "wunsch", string>>): string {
   if (!answers.medium || !answers.haltung || !answers.wunsch) return "";
-  return `Ich arbeite vor allem mit ${answers.medium}. Meine Arbeit kommt aus ${answers.haltung}. Gefunden werden möchte ich für ${answers.wunsch}.`;
+  return t("start.chip.sentence", { medium: answers.medium, haltung: answers.haltung, wunsch: answers.wunsch });
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -91,6 +127,7 @@ export default function FirstMove() {
   // keine eigene Wrapper-Logik) — nur `loading` wird hier zusätzlich gebraucht, damit der
   // Zugang-Schritt bei einer bereits aktiven Session nie kurz aufblitzt (s. loadingSession unten).
   const { user, loading: authLoading } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -223,7 +260,7 @@ export default function FirstMove() {
       } : w)));
     } catch {
       setWorks((prev) => prev.map((w) => (w.id === work.id ? { ...w, uploading: false, uploaded: false, analyzing: false } : w)));
-      toast.error("Ein Foto konnte nicht hochgeladen werden — versuch es nochmal.");
+      toast.error(t("start.upload.err"));
     }
   }
 
@@ -255,7 +292,7 @@ export default function FirstMove() {
     try {
       let screenshotUrls: string[] = [];
       if (rochadeMode === "screenshots") {
-        if (rochadeFiles.length === 0) { toast.error("Bitte mindestens einen Screenshot auswählen."); return; }
+        if (rochadeFiles.length === 0) { toast.error(t("start.rochade.errNoScreenshot")); return; }
         const uploaded = await Promise.all(rochadeFiles.slice(0, 6).map(async (file) => {
           try {
             const compressed = await compressImage(file).catch(() => file);
@@ -268,7 +305,7 @@ export default function FirstMove() {
           } catch { return null; }
         }));
         screenshotUrls = uploaded.filter((u): u is string => !!u);
-        if (screenshotUrls.length === 0) { toast.error("Die Screenshots ließen sich nicht hochladen."); return; }
+        if (screenshotUrls.length === 0) { toast.error(t("start.rochade.errUploadFailed")); return; }
       }
 
       const { data } = await supabase.functions.invoke("haus-rochade", {
@@ -285,7 +322,7 @@ export default function FirstMove() {
         dna?: Record<string, unknown> | null; source_type?: string; source_ref?: string;
       } | null;
 
-      if (!r?.ok) { toast.error(r?.message ?? "Das hat nicht geklappt — leg deine Werke lieber von Hand an."); return; }
+      if (!r?.ok) { toast.error(r?.message ?? t("start.rochade.errGeneric")); return; }
 
       const imported: Work[] = (r.works ?? []).map((w) => ({
         id: uid(), previewUrl: w.image_url, kind: w.kind, title: w.title, description: w.description,
@@ -297,7 +334,10 @@ export default function FirstMove() {
       if (r.dna) setRochadeDna(r.dna);
       if (r.source_type) setRochadeSource({ type: r.source_type, ref: r.source_ref ?? "", at: new Date().toISOString() });
       setRochadeOpen(false);
-      toast.success(`${imported.length} Werk${imported.length === 1 ? "" : "e"} übernommen — schau sie dir an und passe an, was nicht passt.`);
+      toast.success(t("start.rochade.success", {
+        n: imported.length,
+        noun: t(imported.length === 1 ? "start.rochade.noun.one" : "start.rochade.noun.many"),
+      }));
     } finally {
       setRochadeBusy(false);
     }
@@ -318,7 +358,7 @@ export default function FirstMove() {
       mr.start();
       setRecording(true);
     } catch {
-      toast.error("Mikrofon nicht verfügbar — beantworte stattdessen die kurzen Fragen.");
+      toast.error(t("start.voice.errMic"));
       setShowChips(true);
     }
   }
@@ -338,7 +378,7 @@ export default function FirstMove() {
         setAboutText(r.text);
         setAboutSource("voice");
       } else {
-        toast.error(r?.message ?? "Die Aufnahme ließ sich nicht verarbeiten.");
+        toast.error(r?.message ?? t("start.voice.errTranscribe"));
         setShowChips(true);
       }
     } finally {
@@ -349,7 +389,7 @@ export default function FirstMove() {
   function pickChip(key: "medium" | "haltung" | "wunsch", value: string) {
     const next = { ...chipAnswers, [key]: value };
     setChipAnswers(next);
-    const text = chipsToText(next);
+    const text = chipsToText(t, next);
     if (text) { setAboutText(text); setAboutSource("chips"); }
   }
 
@@ -362,14 +402,14 @@ export default function FirstMove() {
       const { data, error } = await supabase.rpc("first_move_publish" as never);
       const r = data as { ok?: boolean; slug?: string; error?: string } | null;
       if (error || !r?.ok) {
-        toast.error("Das hat nicht geklappt — versuch's nochmal.");
+        toast.error(t("start.publish.err"));
         setPublishing(false);
         return;
       }
       setPublished({ slug: r.slug! });
       window.setTimeout(() => navigate("/studio"), reducedMotion ? 300 : 2200);
     } catch {
-      toast.error("Das hat nicht geklappt — versuch's nochmal.");
+      toast.error(t("start.publish.err"));
       setPublishing(false);
     }
   }
@@ -381,25 +421,26 @@ export default function FirstMove() {
       <header className="flex items-center justify-between border-b-[1.5px] border-black px-6 py-4 md:px-10">
         <PawnWordmark as="div" className="text-lg" />
         <Link to="/" className="text-[0.62rem] uppercase tracking-[0.3em] text-black/70 hover:text-black">
-          Abbrechen
+          {t("start.cancel")}
         </Link>
       </header>
 
       <div className="mx-auto max-w-[720px] px-6 py-10 md:px-10 md:py-16">
         {!published && (
           <p className="mb-8 text-[0.62rem] uppercase tracking-[0.34em] text-black/60">
-            Zug {stepIndex + 1} von 3 · {STEP_LABEL[step]}
+            {t("start.stepCounter", { n: stepIndex + 1, label: stepLabel(t, step) })}
           </p>
         )}
 
         {authLoading || loadingSession ? (
           <div className="flex items-center gap-3 py-16 text-sm text-black/60">
-            <Loader2 className="h-4 w-4 animate-spin" /> Lädt …
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
           </div>
         ) : published ? (
-          <SuccessState slug={published.slug} brandName={brandName} reducedMotion={reducedMotion} />
+          <SuccessState slug={published.slug} brandName={brandName} reducedMotion={reducedMotion} t={t} />
         ) : step === "zeigen" ? (
           <ZeigenStep
+            t={t}
             user={!!user}
             brandName={brandName} setBrandName={setBrandName}
             location={location} setLocation={setLocation} country={country} setCountry={setCountry}
@@ -422,12 +463,13 @@ export default function FirstMove() {
           />
         ) : step === "bestaetigen" ? (
           <BestaetigenStep
+            t={t}
             works={works} updateWork={updateWork}
             shippingDeEu={shippingDeEu} setShippingDeEu={setShippingDeEu}
             billing={billing} setBilling={setBilling} brandName={brandName}
           />
         ) : (
-          <ZiehenStep brandName={brandName} works={uploadedWorks} publishing={publishing} onPublish={handlePublish} />
+          <ZiehenStep t={t} brandName={brandName} works={uploadedWorks} publishing={publishing} onPublish={handlePublish} />
         )}
 
         {!published && !authLoading && !loadingSession && (
@@ -438,7 +480,7 @@ export default function FirstMove() {
               onClick={() => setStep(STEP_ORDER[Math.max(0, stepIndex - 1)])}
               className="disabled:invisible"
             >
-              Zurück
+              {t("start.back")}
             </Button>
             {step !== "ziehen" && (
               <Button
@@ -446,7 +488,7 @@ export default function FirstMove() {
                 disabled={step === "zeigen" ? !canProceedZeigen : false}
                 onClick={() => setStep(STEP_ORDER[Math.min(STEP_ORDER.length - 1, stepIndex + 1)])}
               >
-                Weiter
+                {t("start.continue")}
               </Button>
             )}
           </div>
@@ -457,6 +499,7 @@ export default function FirstMove() {
 }
 
 function ZeigenStep(props: {
+  t: TFn;
   user: boolean;
   brandName: string; setBrandName: (v: string) => void;
   location: string; setLocation: (v: string) => void; country: string; setCountry: (v: string) => void;
@@ -479,6 +522,7 @@ function ZeigenStep(props: {
   rochadeBusy: boolean; onRochade: () => void;
   rochadeSource: { type: string; ref: string; at: string } | null;
 }) {
+  const { t } = props;
   // Vereinheitlichte Auth (eine Implementierung, zwei Hüllen): derselbe Hook wie /auth, hier nur
   // in Sign-up-Voreinstellung ohne Moduswechsel — bestehender Zugang läuft über den echten
   // Login (Return-to-Flow), nicht über eine zweite Passwort-Prüfung hier.
@@ -486,20 +530,20 @@ function ZeigenStep(props: {
   if (!props.user) {
     return (
       <div className="border-[1.5px] border-black p-6 md:p-8">
-        <h1 className="font-serif text-2xl">Bevor's losgeht: dein Zugang.</h1>
-        <p className="mt-2 text-sm text-black/70">Nur E-Mail und ein Passwort — der Rest ist Import, keine Konstruktion.</p>
+        <h1 className="font-serif text-2xl">{t("start.gate.title")}</h1>
+        <p className="mt-2 text-sm text-black/70">{t("start.gate.subtitle")}</p>
         <form onSubmit={zugang.submit} className="mt-6 space-y-3">
-          <Input type="email" placeholder="E-Mail" value={zugang.email} onChange={(e) => zugang.setEmail(e.target.value)} required />
-          <Input type="password" placeholder="Passwort" value={zugang.password} onChange={(e) => zugang.setPassword(e.target.value)} required />
+          <Input type="email" placeholder={t("start.gate.email")} value={zugang.email} onChange={(e) => zugang.setEmail(e.target.value)} required />
+          <Input type="password" placeholder={t("start.gate.password")} value={zugang.password} onChange={(e) => zugang.setPassword(e.target.value)} required />
           <Button type="submit" variant="editorial" size="chip" loading={zugang.busy} className="w-full">
-            Zugang anlegen
+            {t("start.gate.createAccess")}
           </Button>
         </form>
         <Link
           to="/auth?returnTo=/start"
           className="mt-3 inline-block text-[0.62rem] uppercase tracking-[0.24em] text-black/60 hover:text-black"
         >
-          Ich hab schon einen Zugang
+          {t("start.gate.haveAccess")}
         </Link>
       </div>
     );
@@ -511,14 +555,14 @@ function ZeigenStep(props: {
         {/* Teil H2 — Sprachsystem: diese Zeile lebt genau hier, nie auf der Landing. */}
         <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/50">YOUR MOVE.</p>
         <p className="mt-1 font-serif italic text-[1.05rem] text-black/70">{YOUR_MOVE_LINES.zeigen}</p>
-        <h1 className="mt-3 font-serif text-2xl">Zeig uns dein Werk.</h1>
-        <p className="mt-2 text-sm text-black/70">5–10 Fotos zeigen dein Haus am besten — weniger geht auch.</p>
+        <h1 className="mt-3 font-serif text-2xl">{t("start.zeigen.headline")}</h1>
+        <p className="mt-2 text-sm text-black/70">{t("start.zeigen.sub")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Input placeholder="Wie heißt dein Haus?" value={props.brandName} onChange={(e) => props.setBrandName(e.target.value)} className="sm:col-span-3" />
-        <Input placeholder="Ort" value={props.location} onChange={(e) => props.setLocation(e.target.value)} className="sm:col-span-2" />
-        <Input placeholder="Land" value={props.country} onChange={(e) => props.setCountry(e.target.value)} />
+        <Input placeholder={t("start.zeigen.brandNamePlaceholder")} value={props.brandName} onChange={(e) => props.setBrandName(e.target.value)} className="sm:col-span-3" />
+        <Input placeholder={t("start.zeigen.locationPlaceholder")} value={props.location} onChange={(e) => props.setLocation(e.target.value)} className="sm:col-span-2" />
+        <Input placeholder={t("start.zeigen.countryPlaceholder")} value={props.country} onChange={(e) => props.setCountry(e.target.value)} />
       </div>
 
       <RochadeBlock {...props} />
@@ -533,7 +577,7 @@ function ZeigenStep(props: {
           onClick={() => props.fileInputRef.current?.click()}
           className="flex h-auto w-full items-center justify-center border-[1.5px] border-dashed border-black px-6 py-10 text-[0.68rem] uppercase tracking-[0.28em] hover:bg-black hover:text-white"
         >
-          Fotos hinzufügen
+          {t("start.zeigen.addPhotos")}
         </Button>
 
         {props.works.length > 0 && (
@@ -548,14 +592,14 @@ function ZeigenStep(props: {
                       onClick={() => props.updateWork(w.id, { kind: "original" })}
                       className={`h-auto border-[1.5px] border-black px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] ${w.kind === "original" ? "bg-black text-white" : "hover:bg-black hover:text-white"}`}
                     >
-                      Original
+                      {t("start.zeigen.original")}
                     </Button>
                     <Button
                       type="button" variant="outline" size="sm"
                       onClick={() => props.updateWork(w.id, { kind: "print" })}
                       className={`h-auto border-[1.5px] border-black px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] ${w.kind === "print" ? "bg-black text-white" : "hover:bg-black hover:text-white"}`}
                     >
-                      Print
+                      {t("start.zeigen.print")}
                     </Button>
                     {(w.uploading || w.analyzing) && <Loader2 className="h-3.5 w-3.5 animate-spin text-black/50" />}
                     <Button type="button" variant="ghost" size="icon" onClick={() => props.removeWork(w.id)} className="ml-auto h-auto w-auto p-1 text-black/40 hover:bg-transparent hover:text-black">
@@ -563,7 +607,7 @@ function ZeigenStep(props: {
                     </Button>
                   </div>
                   <Input
-                    placeholder="Titel" value={w.title}
+                    placeholder={t("start.zeigen.titlePlaceholder")} value={w.title}
                     onChange={(e) => props.updateWork(w.id, { title: e.target.value })}
                   />
                 </div>
@@ -574,26 +618,26 @@ function ZeigenStep(props: {
       </div>
 
       <div>
-        <h2 className="font-serif text-lg">Wer steht dahinter?</h2>
+        <h2 className="font-serif text-lg">{t("start.zeigen.whoHeadline")}</h2>
         {!props.showChips ? (
           <div className="mt-3 space-y-3">
             <div className="flex items-center gap-3">
               {!props.recording ? (
                 <Button type="button" variant="outline" size="chip" onClick={props.startRecording} disabled={props.transcribing}>
-                  <Mic className="h-4 w-4" /> Aufnehmen
+                  <Mic className="h-4 w-4" /> {t("start.zeigen.record")}
                 </Button>
               ) : (
                 <Button type="button" variant="editorial" size="chip" onClick={props.stopRecording}>
-                  <Square className="h-4 w-4" /> Fertig
+                  <Square className="h-4 w-4" /> {t("start.zeigen.recordDone")}
                 </Button>
               )}
-              {props.transcribing && <span className="flex items-center gap-2 text-sm text-black/60"><Loader2 className="h-4 w-4 animate-spin" /> Wird verschriftlicht …</span>}
+              {props.transcribing && <span className="flex items-center gap-2 text-sm text-black/60"><Loader2 className="h-4 w-4 animate-spin" /> {t("start.zeigen.transcribing")}</span>}
               <Button
                 type="button" variant="link" size="sm"
                 className="ml-auto h-auto p-0 text-[0.6rem] uppercase tracking-[0.22em] text-black/50 hover:text-black hover:no-underline"
                 onClick={() => props.setShowChips(true)}
               >
-                Lieber kurze Fragen
+                {t("start.zeigen.preferChips")}
               </Button>
             </div>
             {props.aboutText && (
@@ -602,17 +646,17 @@ function ZeigenStep(props: {
           </div>
         ) : (
           <div className="mt-3 space-y-5">
-            {CHIP_FRAGEN.map((f) => (
+            {chipFragen(t).map((f) => (
               <div key={f.key}>
                 <p className="text-sm text-black/70">{f.label}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {f.options.map((opt) => (
                     <Button
-                      key={opt} type="button" variant="outline" size="sm"
-                      onClick={() => props.pickChip(f.key, opt)}
-                      className={`h-auto border-[1.5px] border-black px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] ${props.chipAnswers[f.key] === opt ? "bg-black text-white" : "hover:bg-black hover:text-white"}`}
+                      key={opt.value} type="button" variant="outline" size="sm"
+                      onClick={() => props.pickChip(f.key, opt.value)}
+                      className={`h-auto border-[1.5px] border-black px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] ${props.chipAnswers[f.key] === opt.value ? "bg-black text-white" : "hover:bg-black hover:text-white"}`}
                     >
-                      {opt}
+                      {opt.label}
                     </Button>
                   ))}
                 </div>
@@ -630,6 +674,7 @@ function ZeigenStep(props: {
  * Eingänge, ein Bestätigungs-Tap. Übernommene Werke landen als ganz normale, wieder abwählbare
  * Einträge in props.works — die Künstlerin bleibt in jedem Fall die letzte Instanz. */
 function RochadeBlock(props: {
+  t: TFn;
   rochadeOpen: boolean; setRochadeOpen: (v: boolean) => void;
   rochadeMode: "url" | "screenshots" | "instagram"; setRochadeMode: (v: "url" | "screenshots" | "instagram") => void;
   rochadeConsent: boolean; setRochadeConsent: (v: boolean) => void;
@@ -640,6 +685,7 @@ function RochadeBlock(props: {
   rochadeBusy: boolean; onRochade: () => void;
   rochadeSource: { type: string; ref: string; at: string } | null;
 }) {
+  const { t } = props;
   if (!props.rochadeOpen) {
     return (
       <div>
@@ -648,21 +694,23 @@ function RochadeBlock(props: {
           className="h-auto p-0 text-[0.62rem] uppercase tracking-[0.24em] text-black/60 hover:text-black hover:no-underline"
           onClick={() => props.setRochadeOpen(true)}
         >
-          Hast du schon eine Website oder ein Instagram-Profil? Einlesen.
+          {t("start.rochade.trigger")}
         </Button>
         {props.rochadeSource && (
-          <p className="mt-1 text-[0.62rem] text-black/50">Übernommen aus {props.rochadeSource.ref}.</p>
+          <p className="mt-1 text-[0.62rem] text-black/50">{t("start.rochade.importedFrom", { ref: props.rochadeSource.ref })}</p>
         )}
       </div>
     );
   }
 
-  const modeLabel: Record<typeof props.rochadeMode, string> = { url: "Website", screenshots: "Screenshots", instagram: "Instagram" };
+  const modeLabel: Record<typeof props.rochadeMode, string> = {
+    url: t("start.rochade.mode.url"), screenshots: t("start.rochade.mode.screenshots"), instagram: t("start.rochade.mode.instagram"),
+  };
 
   return (
     <div className="border-[1.5px] border-black p-5">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[0.62rem] uppercase tracking-[0.28em] text-black/60">Die Rochade — bestehendes Material einlesen</p>
+        <p className="text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{t("start.rochade.title")}</p>
         <Button type="button" variant="ghost" size="sm" className="h-auto w-auto p-1 text-black/40 hover:bg-transparent hover:text-black" onClick={() => props.setRochadeOpen(false)}>
           <X className="h-4 w-4" />
         </Button>
@@ -681,10 +729,10 @@ function RochadeBlock(props: {
 
       <div className="mt-4">
         {props.rochadeMode === "url" && (
-          <Input placeholder="https://deine-website.de" value={props.rochadeUrl} onChange={(e) => props.setRochadeUrl(e.target.value)} />
+          <Input placeholder={t("start.rochade.urlPlaceholder")} value={props.rochadeUrl} onChange={(e) => props.setRochadeUrl(e.target.value)} />
         )}
         {props.rochadeMode === "instagram" && (
-          <Input placeholder="@dein.handle" value={props.rochadeHandle} onChange={(e) => props.setRochadeHandle(e.target.value)} />
+          <Input placeholder={t("start.rochade.handlePlaceholder")} value={props.rochadeHandle} onChange={(e) => props.setRochadeHandle(e.target.value)} />
         )}
         {props.rochadeMode === "screenshots" && (
           <div>
@@ -693,7 +741,7 @@ function RochadeBlock(props: {
               onChange={(e) => { props.setRochadeFiles(Array.from(e.target.files ?? []).slice(0, 6)); }}
             />
             <Button type="button" variant="outline" onClick={() => props.rochadeFileInputRef.current?.click()} className="h-auto w-full py-3 text-[0.62rem] uppercase tracking-[0.24em]">
-              {props.rochadeFiles.length > 0 ? `${props.rochadeFiles.length} ausgewählt` : "Screenshots auswählen"}
+              {props.rochadeFiles.length > 0 ? t("start.rochade.selectedCount", { n: props.rochadeFiles.length }) : t("start.rochade.selectScreenshots")}
             </Button>
           </div>
         )}
@@ -701,7 +749,7 @@ function RochadeBlock(props: {
 
       <label className="mt-4 flex items-start gap-3 text-sm">
         <Checkbox checked={props.rochadeConsent} onCheckedChange={(v) => props.setRochadeConsent(!!v)} className="mt-0.5" />
-        Das ist meine Website — das sind meine Inhalte.
+        {t("start.rochade.consent")}
       </label>
 
       <Button
@@ -710,31 +758,33 @@ function RochadeBlock(props: {
         onClick={props.onRochade}
         className="mt-4"
       >
-        Übernehmen
+        {t("start.rochade.submit")}
       </Button>
     </div>
   );
 }
 
 function BestaetigenStep(props: {
+  t: TFn;
   works: Work[]; updateWork: (id: string, p: Partial<Work>) => void;
   shippingDeEu: boolean; setShippingDeEu: (v: boolean) => void;
   billing: Billing; setBilling: (b: Billing) => void; brandName: string;
 }) {
+  const { t } = props;
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="font-serif text-2xl">Bestätigen.</h1>
-        <p className="mt-2 text-sm text-black/70">Alles hier ist ein Vorschlag — antippen, was du ändern willst.</p>
+        <h1 className="font-serif text-2xl">{t("start.bestaetigen.headline")}</h1>
+        <p className="mt-2 text-sm text-black/70">{t("start.bestaetigen.sub")}</p>
       </div>
 
       <div>
-        <h2 className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">Preise</h2>
+        <h2 className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{t("start.bestaetigen.pricesTitle")}</h2>
         <ul className="space-y-3">
           {props.works.map((w) => (
             <li key={w.id} className="flex items-center gap-3 border-[1.5px] border-black p-3">
               <img src={w.previewUrl} alt="" className="h-12 w-12 shrink-0 object-cover" />
-              <span className="min-w-0 flex-1 truncate text-sm">{w.title || "Ohne Titel"}</span>
+              <span className="min-w-0 flex-1 truncate text-sm">{w.title || t("start.bestaetigen.untitled")}</span>
               <div className="flex shrink-0 items-center gap-1">
                 <Input
                   type="number" min={0}
@@ -750,44 +800,49 @@ function BestaetigenStep(props: {
       </div>
 
       <div>
-        <h2 className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">Versand</h2>
+        <h2 className="mb-3 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{t("start.bestaetigen.shippingTitle")}</h2>
         <label className="flex items-center gap-3 text-sm">
           <Checkbox checked={props.shippingDeEu} onCheckedChange={(v) => props.setShippingDeEu(!!v)} />
-          Deutschland &amp; EU versenden (Standard-Sätze, später anpassbar)
+          {t("start.bestaetigen.shippingLabel")}
         </label>
       </div>
 
       <div>
-        <h2 className="mb-1 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">Rechtstexte</h2>
-        <p className="mb-3 text-sm text-black/60">Automatisch erstellt aus deinen Angaben — jederzeit unter /studio/versand anpassbar.</p>
+        <h2 className="mb-1 text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{t("start.bestaetigen.legalTitle")}</h2>
+        <p className="mb-3 text-sm text-black/60">{t("start.bestaetigen.legalHint")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input placeholder="Name (rechtlich)" value={props.billing.legal_name || props.brandName}
+          <Input placeholder={t("start.bestaetigen.legalNamePlaceholder")} value={props.billing.legal_name || props.brandName}
             onChange={(e) => props.setBilling({ ...props.billing, legal_name: e.target.value })} className="sm:col-span-2" />
-          <Input placeholder="Straße, Hausnummer" value={props.billing.address_line1}
+          <Input placeholder={t("start.bestaetigen.streetPlaceholder")} value={props.billing.address_line1}
             onChange={(e) => props.setBilling({ ...props.billing, address_line1: e.target.value })} className="sm:col-span-2" />
-          <Input placeholder="PLZ" value={props.billing.postal_code}
+          <Input placeholder={t("start.bestaetigen.postalPlaceholder")} value={props.billing.postal_code}
             onChange={(e) => props.setBilling({ ...props.billing, postal_code: e.target.value })} />
-          <Input placeholder="Ort" value={props.billing.city}
+          <Input placeholder={t("start.bestaetigen.cityPlaceholder")} value={props.billing.city}
             onChange={(e) => props.setBilling({ ...props.billing, city: e.target.value })} />
-          <Input placeholder="Steuernummer / USt-IdNr. (optional)" value={props.billing.tax_id}
+          <Input placeholder={t("start.bestaetigen.taxIdPlaceholder")} value={props.billing.tax_id}
             onChange={(e) => props.setBilling({ ...props.billing, tax_id: e.target.value })} className="sm:col-span-2" />
         </div>
         <label className="mt-3 flex items-center gap-3 text-sm">
           <Checkbox checked={props.billing.kleinunternehmer} onCheckedChange={(v) => props.setBilling({ ...props.billing, kleinunternehmer: !!v })} />
-          Kleinunternehmerregelung (§19 UStG)
+          {t("start.bestaetigen.kleinunternehmer")}
         </label>
       </div>
     </div>
   );
 }
 
-function ZiehenStep(props: { brandName: string; works: Work[]; publishing: boolean; onPublish: () => void }) {
+function ZiehenStep(props: { t: TFn; brandName: string; works: Work[]; publishing: boolean; onPublish: () => void }) {
+  const { t } = props;
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-serif text-2xl">Letzter Blick, dann geht's live.</h1>
+        <h1 className="font-serif text-2xl">{t("start.ziehen.headline")}</h1>
         <p className="mt-2 text-sm text-black/70">
-          <span className="font-serif italic">{props.brandName || "Dein Haus"}</span> mit {props.works.length} {props.works.length === 1 ? "Werk" : "Werken"}.
+          <span className="font-serif italic">{props.brandName || t("start.brandFallback")}</span>{" "}
+          {t("start.ziehen.summaryRest", {
+            count: props.works.length,
+            noun: t(props.works.length === 1 ? "start.ziehen.noun.one" : "start.ziehen.noun.many"),
+          })}
         </p>
       </div>
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
@@ -796,13 +851,13 @@ function ZiehenStep(props: { brandName: string; works: Work[]; publishing: boole
         ))}
       </div>
       <Button type="button" variant="editorial" size="chip" loading={props.publishing} onClick={props.onPublish} className="w-full">
-        Zug machen.
+        {t("start.ziehen.publish")}
       </Button>
     </div>
   );
 }
 
-function SuccessState({ slug, brandName, reducedMotion }: { slug: string; brandName: string; reducedMotion: boolean }) {
+function SuccessState({ slug, brandName, reducedMotion, t }: { slug: string; brandName: string; reducedMotion: boolean; t: TFn }) {
   return (
     <div className="flex flex-col items-center py-16 text-center">
       <svg
@@ -813,15 +868,15 @@ function SuccessState({ slug, brandName, reducedMotion }: { slug: string; brandN
         </g>
       </svg>
       <h1 className="mt-6 font-serif text-3xl">
-        <span className="italic">{brandName || "Dein Haus"}</span> ist live.
+        <span className="italic">{brandName || t("start.brandFallback")}</span> {t("start.success.titleRest")}
       </h1>
       <p className="mt-3 text-sm text-black/70">pawn.vision/designer/{slug}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button asChild variant="outline" size="chip">
-          <Link to={`/designer/${slug}`}>Haus ansehen</Link>
+          <Link to={`/designer/${slug}`}>{t("start.success.viewHouse")}</Link>
         </Button>
         <Button asChild variant="editorial" size="chip">
-          <Link to="/studio">Zum Studio</Link>
+          <Link to="/studio">{t("start.success.toStudio")}</Link>
         </Button>
       </div>
       <style>{`@keyframes first-move-step { from { transform: translateX(-24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
