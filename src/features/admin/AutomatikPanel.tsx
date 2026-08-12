@@ -59,7 +59,10 @@ export function AutomatikPanel() {
     if (!config) return;
     setSaving(true);
     const value = { ...config, ...patch };
-    const { error } = await supabase.from("ai_config").update({ value }).eq("key", "akquise_config");
+    const { error } = await supabase
+      .from("ai_config")
+      .update({ value: value as unknown as never })
+      .eq("key", "akquise_config");
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     setConfig(value);
