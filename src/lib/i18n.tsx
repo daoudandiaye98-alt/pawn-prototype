@@ -214,19 +214,21 @@ const de = {
   "einladung.foundingTitle": "Schon dabei",
 
   // PART 40 WP2 "Sprachheilung" — Bewerbungsformular (Apply.tsx) vollständig zweisprachig
-  "apply.zod.nameRequired": "Bitte gib deinen Namen an.",
-  "apply.zod.emailInvalid": "Bitte gib eine gültige E-Mail-Adresse an.",
-  "apply.zod.passwordShort": "Dein Passwort braucht mindestens 8 Zeichen.",
-  "apply.zod.brandNameRequired": "Wie heißt dein Haus?",
-  "apply.zod.locationRequired": "In welcher Stadt arbeitest du?",
-  "apply.zod.countryRequired": "In welchem Land arbeitest du?",
-  "apply.zod.storyShort": "Erzähl uns ein paar Sätze über deine Arbeit — mindestens 30 Zeichen.",
-  "apply.zod.tagsRequired": "Nenne mindestens ein Stichwort zu deinem Stil.",
-  "apply.zod.disciplineRequired": "Bitte wähle eine Welt.",
-  "apply.zod.portfolioMin": "Bitte lade mindestens drei Bilder deiner Arbeit hoch.",
-  "apply.zod.contractsRequired": "Bitte bestätige beide Vereinbarungen.",
+  // PART 50 WP3 "Die Aufnahme": von Befehlston auf Grund-Ton umgestellt — jede Zeile sagt, WOFÜR
+  // die Angabe gebraucht wird, statt nur "bitte tu X".
+  "apply.zod.nameRequired": "Damit wir wissen, wer hinter dem Haus steht.",
+  "apply.zod.emailInvalid": "Damit unsere Antwort dich erreicht — bitte eine gültige Adresse.",
+  "apply.zod.passwordShort": "Für dein Konto braucht es mindestens 8 Zeichen.",
+  "apply.zod.brandNameRequired": "Damit deine Seite einen Namen hat.",
+  "apply.zod.locationRequired": "Damit wir wissen, von wo aus du arbeitest.",
+  "apply.zod.countryRequired": "Das entscheidet über Versandwege und Steuersatz.",
+  "apply.zod.storyShort": "Das ist der Teil, den wir wirklich lesen — ein paar Sätze mehr, bitte (mindestens 30 Zeichen).",
+  "apply.zod.tagsRequired": "So finden dich Menschen mit passendem Geschmack.",
+  "apply.zod.disciplineRequired": "Deine Welt bestimmt, wie deine Seite aussieht.",
+  "apply.zod.portfolioMin": "Drei Bilder reichen, damit wir deine Arbeit wirklich sehen.",
+  "apply.zod.contractsRequired": "Ohne diese Zustimmung können wir dein Haus noch nicht eröffnen.",
 
-  "apply.step.konto": "Konto",
+  "apply.step.konto": "Dein Zugang",
   "apply.step.welt": "Welt",
   "apply.step.haus": "Dein Haus",
   "apply.step.arbeit": "Deine Arbeit",
@@ -239,6 +241,16 @@ const de = {
   "apply.stepWhy.3": "Das ist der Teil, den unsere Kuratoren wirklich lesen. Nimm dir hier Zeit.",
   "apply.stepWhy.4": "Zwei kurze Vereinbarungen. Du kannst jeden Text vorher vollständig lesen.",
   "apply.stepWhy.5": "Letzter Blick, dann geht sie raus.",
+
+  // PART 50 WP3: Bestärkung beim Ankommen auf einem neuen Schritt — ab "Dein Haus" wird die
+  // Person, sobald ihr Name bekannt ist, mit Namen angesprochen. {name} wird in Apply.tsx bereits
+  // fertig zu "Schön, Lina. " zusammengesetzt (oder bleibt leer, wenn kein Name bekannt ist).
+  "apply.arrival.greet": "Schön, {name}. ",
+  "apply.arrival.welt": "Wähle deine Welt.",
+  "apply.arrival.haus": "Jetzt zu deinem Haus.",
+  "apply.arrival.arbeit": "Jetzt zu deiner Arbeit.",
+  "apply.arrival.vertraege": "Fast geschafft — nur noch zwei kurze Vereinbarungen.",
+  "apply.arrival.absenden": "Letzter Blick, dann geht sie raus.",
 
   "apply.toast.uploadFailed": "Bilder konnten nicht hochgeladen werden: {error}",
   "apply.toast.uploadPartialFailed": "{failed} von {total} Bildern konnten nicht hochgeladen werden — der Rest wurde trotzdem gesendet.",
@@ -298,6 +310,7 @@ const de = {
   "apply.portfolio.hintFallback": "3–8 Bilder deiner Arbeit. Handyfotos sind völlig in Ordnung — Hauptsache ehrlich und gut belichtet.",
   "apply.portfolio.choose": "Bilder auswählen…",
   "apply.portfolio.remove": "Bild entfernen",
+  "apply.portfolio.enoughAlready": "Das genügt bereits. Mehr geht, muss aber nicht.",
 
   "apply.contracts.loading": "Vereinbarungen werden geladen…",
   "apply.contracts.version": "Fassung {version}",
@@ -324,6 +337,7 @@ const de = {
   "apply.nav.submitting": "Wird gesendet…",
 
   "apply.progress.minutesLeft": "noch ca. {min} Min.",
+  "apply.progress.mostBehind": "— der größte Teil liegt hinter dir",
 
   "apply.success.title": "Deine Bewerbung ist da.",
   "apply.success.body": "Wir sehen sie uns persönlich an und antworten innerhalb von 48 Stunden per E-Mail — auch bei einer Absage, mit Begründung.",
@@ -2233,19 +2247,21 @@ const en: Record<keyof typeof de, string> = {
   "einladung.foundingTitle": "Already here",
 
   // PART 40 WP2 "Sprachheilung" — application form (Apply.tsx) fully bilingual
-  "apply.zod.nameRequired": "Please tell us your name.",
-  "apply.zod.emailInvalid": "Please enter a valid email address.",
-  "apply.zod.passwordShort": "Your password needs at least 8 characters.",
-  "apply.zod.brandNameRequired": "What's your house called?",
-  "apply.zod.locationRequired": "Which city do you work in?",
-  "apply.zod.countryRequired": "Which country do you work in?",
-  "apply.zod.storyShort": "Tell us a few sentences about your work — at least 30 characters.",
-  "apply.zod.tagsRequired": "Name at least one keyword for your style.",
-  "apply.zod.disciplineRequired": "Please choose a world.",
-  "apply.zod.portfolioMin": "Please upload at least three images of your work.",
-  "apply.zod.contractsRequired": "Please confirm both agreements.",
+  // PART 50 WP3 "The First Touch": shifted from command tone to reason tone — every line says
+  // WHAT the information is needed for, not just "please do X".
+  "apply.zod.nameRequired": "So we know who's behind the house.",
+  "apply.zod.emailInvalid": "So our reply can reach you — please use a valid address.",
+  "apply.zod.passwordShort": "Your account needs at least 8 characters.",
+  "apply.zod.brandNameRequired": "So your page has a name.",
+  "apply.zod.locationRequired": "So we know where you're working from.",
+  "apply.zod.countryRequired": "This determines shipping routes and tax rate.",
+  "apply.zod.storyShort": "This is the part we actually read — a few more sentences, please (at least 30 characters).",
+  "apply.zod.tagsRequired": "This is how people with matching taste find you.",
+  "apply.zod.disciplineRequired": "Your world determines how your page looks.",
+  "apply.zod.portfolioMin": "Three images are enough for us to really see your work.",
+  "apply.zod.contractsRequired": "Without this agreement we can't open your house yet.",
 
-  "apply.step.konto": "Account",
+  "apply.step.konto": "Your access",
   "apply.step.welt": "World",
   "apply.step.haus": "Your House",
   "apply.step.arbeit": "Your Work",
@@ -2258,6 +2274,16 @@ const en: Record<keyof typeof de, string> = {
   "apply.stepWhy.3": "This is the part our curators actually read. Take your time here.",
   "apply.stepWhy.4": "Two short agreements. You can read each text in full beforehand.",
   "apply.stepWhy.5": "One last look, then it's sent.",
+
+  // PART 50 WP3: a small encouragement on arriving at a new step — from "Your House" onward, if
+  // the person's name is known, they're addressed by name. {name} arrives already assembled as
+  // "Nice to meet you, Lina. " (or empty if no name is known) from Apply.tsx.
+  "apply.arrival.greet": "Nice to meet you, {name}. ",
+  "apply.arrival.welt": "Choose your world.",
+  "apply.arrival.haus": "Now for your house.",
+  "apply.arrival.arbeit": "Now for your work.",
+  "apply.arrival.vertraege": "Almost there — just two short agreements.",
+  "apply.arrival.absenden": "One last look, then it's sent.",
 
   "apply.toast.uploadFailed": "Images could not be uploaded: {error}",
   "apply.toast.uploadPartialFailed": "{failed} of {total} images could not be uploaded — the rest was sent anyway.",
@@ -2317,6 +2343,7 @@ const en: Record<keyof typeof de, string> = {
   "apply.portfolio.hintFallback": "3–8 images of your work. Phone photos are completely fine — honest and well-lit matters most.",
   "apply.portfolio.choose": "Choose images…",
   "apply.portfolio.remove": "Remove image",
+  "apply.portfolio.enoughAlready": "That's already enough. More is fine, but not required.",
 
   "apply.contracts.loading": "Loading agreements…",
   "apply.contracts.version": "Version {version}",
@@ -2343,6 +2370,7 @@ const en: Record<keyof typeof de, string> = {
   "apply.nav.submitting": "Sending…",
 
   "apply.progress.minutesLeft": "about {min} min. left",
+  "apply.progress.mostBehind": "— the biggest part is behind you",
 
   "apply.success.title": "Your application is in.",
   "apply.success.body": "We'll look at it personally and reply within 48 hours by email — even a decline, with reasons.",
