@@ -159,8 +159,9 @@ function DmCard({
   useEffect(() => { setStep(0); setSkipOpen(false); setSkipReason(""); }, [lead.id]);
 
   async function copyText() {
-    await navigator.clipboard.writeText(text ?? "");
-    toast.success("Nachricht kopiert.");
+    const value = text ?? "";
+    await navigator.clipboard.writeText(value);
+    toast.success(`${value.length} Zeichen kopiert — passt in eine Instagram-Nachricht.`);
     setStep((s) => (s < 1 ? 1 : s));
   }
 
@@ -311,8 +312,9 @@ function FormularCard({
   useEffect(() => { setStep(0); setSkipOpen(false); setSkipReason(""); }, [lead.id]);
 
   async function copyText() {
-    await navigator.clipboard.writeText(lead.message_draft ?? "");
-    toast.success("Nachricht kopiert.");
+    const value = lead.message_draft ?? "";
+    await navigator.clipboard.writeText(value);
+    toast.success(`${value.length} Zeichen kopiert — passt in eine Instagram-Nachricht.`);
     setStep((s) => (s < 1 ? 1 : s));
   }
 
