@@ -142,6 +142,19 @@ export default function StudioSettings() {
           }
         />
       </div>
+
+      {/* Finale Form Teil F: Profil bündelt, was aus der Hauptnav gewandert ist — Verwaltung,
+          nicht Tagesgeschäft. */}
+      <section className="mt-6 border border-border bg-white p-8">
+        <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.settings.admin.eyebrow")}</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link to="/studio/versand" className="border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background">{t("studioShell.nav.versand")}</Link>
+          <Link to="/studio/vertraege" className="border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background">{t("studioShell.nav.vertraege")}</Link>
+          <Link to="/studio/automatik" className="border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background">{t("studioShell.nav.automatik")}</Link>
+          <Link to="/studio/empfehlungen" className="border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background">{t("studioShell.nav.empfehlungen")}</Link>
+          <Link to="/studio/beweis" className="border border-foreground px-4 py-2 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background">{t("studioShell.nav.beweis")}</Link>
+        </div>
+      </section>
     </StudioShell>
   );
 }
