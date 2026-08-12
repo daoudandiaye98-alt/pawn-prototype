@@ -3,6 +3,9 @@
  * ai_config.plans; die Beschreibungen der schalter-Features (sichtbarkeitszug, mini_pawn,
  * director_loop) sind nüchtern gehalten und beschreiben nur, was die jeweilige Edge Function
  * tatsächlich tut — keine erfundenen Versprechen.
+ *
+ * Finale Form Teil G — Vier-Boxen-Muster statt Feature-Matrix (s. Preise.tsx). Rang bleibt
+ * ausdrücklich unkäuflich (harte Regel #8).
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -11,7 +14,6 @@ import { Reveal } from "@/components/palace/Reveal";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ladePlanGate, preisFor, limitFor, canUse } from "@/lib/planGate";
-import { Check } from "lucide-react";
 
 function fmtCount(n: number, noun: string): string {
   return n < 0 ? `Unbegrenzt ${noun}` : `${n} ${noun}`;
@@ -32,18 +34,20 @@ export default function PreiseMaison() {
       });
   }, []);
 
-  const zeilen = gateReady ? [
-    fmtCount(limitFor("maison", "chat_nachricht"), "Nachrichten mit PAWN im Monat"),
-    fmtCount(limitFor("maison", "tuer_oeffnen"), "geöffnete Türen im Monat"),
-    "Alle Signaturen, plus eine Wunsch-Signatur nach deinen eigenen Vorgaben",
-    fmtCount(limitFor("maison", "welten"), "Welten gleichzeitig"),
-    canUse("maison", "chat_retrieval") ? "Katalog-Wissen im Gespräch mit PAWN" : null,
-    canUse("maison", "dashboard_metriken") ? "Kennzahlen im Cockpit" : null,
-    canUse("maison", "tuer_vorlauf") ? "Deine eigenen Türen sind sofort sichtbar — andere Pläne warten 48 Stunden" : null,
-    canUse("maison", "sichtbarkeitszug") ? "PAWN schreibt dir wöchentlich einen Presse-Entwurf, den du selbst an Redaktionen oder Blogs verschicken kannst" : null,
-    canUse("maison", "mini_pawn") ? "Eigene Automatiken, die PAWN nur mit deiner Freigabe für dich ausführt (Grün/Gelb/Rot-Zonen)" : null,
-    canUse("maison", "director_loop") ? "PAWN lernt wöchentlich aus deinen Video-Ergebnissen und schärft künftige Vorschläge" : null,
+  // Finale Form Teil G — vier Zeilen statt Häkchen-Liste. Die Schalter-Extras (Wunsch-Signatur,
+  // Türen-Vorlauf, Sichtbarkeitszug, Automatiken, Regisseur-Lernschleife) bleiben real und live
+  // aus canUse(), landen aber verdichtet in Zeile 3 statt als eigene Aufzählungspunkte.
+  const zuegeExtra = gateReady ? [
+    canUse("maison", "tuer_vorlauf") ? "deine eigenen Türen sofort sichtbar" : null,
+    canUse("maison", "sichtbarkeitszug") ? "ein wöchentlicher Presse-Entwurf zum Selbstverschicken" : null,
+    canUse("maison", "mini_pawn") ? "eigene Automatiken mit deiner Freigabe" : null,
   ].filter((x): x is string => !!x) : [];
+  const boxLines = gateReady ? [
+    "Dein Hauptwerkzeug: Maison, wenn PAWN dein Alltag wird.",
+    `Dieselbe Provision wie jeder andere Plan — ${commissionPct}%, nie mehr, nur weil du zahlst.`,
+    `Freigeschaltete Züge: ${fmtCount(limitFor("maison", "chat_nachricht"), "Nachrichten mit PAWN")}, ${fmtCount(limitFor("maison", "tuer_oeffnen"), "Türen")}, alle Signaturen plus eine Wunsch-Signatur${zuegeExtra.length ? `, ${zuegeExtra.join(", ")}` : ""}.`,
+    "Dein Rang wächst weiter nur durch das, was du baust und verkaufst — nie durch den Plan.",
+  ] : [];
 
   const ctaHref = isDesigner ? "/studio/plan" : "/apply";
   const ctaLabel = isDesigner ? "Zu deinem Plan" : "Bewerben";
@@ -70,13 +74,11 @@ export default function PreiseMaison() {
           </p>
 
           {gateReady ? (
-            <ul className="mt-8 space-y-3 text-sm text-black">
-              {zeilen.map((z) => (
-                <li key={z} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span>{z}</span>
-                </li>
+            <div className="mt-8 divide-y divide-black/10 border-t border-black/10 text-sm text-black">
+              {boxLines.map((line, i) => (
+                <p key={i} className="py-3 leading-snug">{line}</p>
               ))}
-            </ul>
+            </div>
           ) : (
             <p className="mt-8 text-sm text-black/50">Lädt …</p>
           )}
