@@ -7,6 +7,7 @@ import { Editable, useContentValue } from "@/components/palace/Editable";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { usePublicDesigners } from "@/lib/publicData";
+import { YOUR_MOVE_LINES } from "@/lib/yourMoveLines";
 
 const DesignersIndex = () => {
   // PART 51 Teil D — Sichtbarkeit ab Tag 1: "Alle Häuser" muss echte, veröffentlichte Häuser
@@ -47,7 +48,10 @@ const DesignersIndex = () => {
       <section className="border-b border-[rgba(0,0,0,.18)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
         <div className="mx-auto grid max-w-[1600px] gap-10 md:grid-cols-[2fr_1fr] md:items-end">
           <Reveal>
-            <Editable as="p" contentKey="dindex_eyebrow" className="palace-eyebrow">
+            {/* Teil H2 — Sprachsystem: diese Zeile lebt genau hier, nie auf der Landing. */}
+            <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/50">YOUR MOVE.</p>
+            <p className="mt-1 font-serif italic text-[1.05rem] text-black/70">{YOUR_MOVE_LINES.discover}</p>
+            <Editable as="p" contentKey="dindex_eyebrow" className="palace-eyebrow mt-4">
               Alle Häuser · A–Z
             </Editable>
             <h1
