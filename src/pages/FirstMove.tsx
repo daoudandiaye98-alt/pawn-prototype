@@ -103,6 +103,17 @@ export default function FirstMove() {
 
   const [works, setWorks] = useState<Work[]>([]);
 
+  const [rochadeOpen, setRochadeOpen] = useState(false);
+  const [rochadeMode, setRochadeMode] = useState<"url" | "screenshots" | "instagram">("url");
+  const [rochadeConsent, setRochadeConsent] = useState(false);
+  const [rochadeUrl, setRochadeUrl] = useState("");
+  const [rochadeHandle, setRochadeHandle] = useState("");
+  const [rochadeFiles, setRochadeFiles] = useState<File[]>([]);
+  const [rochadeBusy, setRochadeBusy] = useState(false);
+  const [rochadeDna, setRochadeDna] = useState<Record<string, unknown> | null>(null);
+  const [rochadeSource, setRochadeSource] = useState<{ type: string; ref: string; at: string } | null>(null);
+  const rochadeFileInputRef = useRef<HTMLInputElement>(null);
+
   const [aboutText, setAboutText] = useState("");
   const [aboutSource, setAboutSource] = useState<"voice" | "chips" | null>(null);
   const [recording, setRecording] = useState(false);
@@ -132,6 +143,7 @@ export default function FirstMove() {
         about_text: string | null; about_source: "voice" | "chips" | null;
         works: Array<{ id: string; kind: WorkKind; image_url: string; title: string; description: string; price_cents: number | null }>;
         shipping_de_eu: boolean; billing: Partial<Billing>;
+        rochade?: { source_type?: string; source_ref?: string; consent_at?: string; dna?: Record<string, unknown> };
       };
       if (sess) {
         setStep(sess.step ?? "zeigen");
@@ -142,6 +154,10 @@ export default function FirstMove() {
         setAboutSource(sess.about_source ?? null);
         setShippingDeEu(sess.shipping_de_eu ?? true);
         if (sess.billing) setBilling((b) => ({ ...b, ...sess.billing }));
+        if (sess.rochade?.dna && sess.rochade.source_type) {
+          setRochadeDna(sess.rochade.dna);
+          setRochadeSource({ type: sess.rochade.source_type, ref: sess.rochade.source_ref ?? "", at: sess.rochade.consent_at ?? new Date().toISOString() });
+        }
         if (Array.isArray(sess.works)) {
           setWorks(sess.works.map((w) => ({
             id: w.id, previewUrl: w.image_url, kind: w.kind, title: w.title ?? "", description: w.description ?? "",
@@ -172,8 +188,11 @@ export default function FirstMove() {
         id: w.id, kind: w.kind, image_url: w.imageUrl, title: w.title, description: w.description, price_cents: w.priceCents,
       })),
       shipping_de_eu: shippingDeEu, billing,
+      rochade: rochadeDna && rochadeSource
+        ? { source_type: rochadeSource.type, source_ref: rochadeSource.ref, consent_at: rochadeSource.at, dna: rochadeDna }
+        : {},
     });
-  }, [step, brandName, location, country, aboutText, aboutSource, works, shippingDeEu, billing, loadingSession, saveDraft]);
+  }, [step, brandName, location, country, aboutText, aboutSource, works, shippingDeEu, billing, loadingSession, saveDraft, rochadeDna, rochadeSource]);
 
   async function handleAccount() {
     if (!email.trim() || password.length < 8) { toast.error("E-Mail und mindestens 8 Zeichen fürs Passwort."); return; }
@@ -235,6 +254,62 @@ export default function FirstMove() {
 
   function updateWork(id: string, patch: Partial<Work>) {
     setWorks((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
+  }
+
+  /** Die Rochade: lädt vorhandenes Material (Website, Screenshots, Instagram-Profil) ein und
+   * befüllt Zug 1 vor — die Künstlerin bleibt frei, jedes übernommene Werk wieder abzuwählen. */
+  async function runRochade() {
+    if (!user || !rochadeConsent) return;
+    setRochadeBusy(true);
+    try {
+      let screenshotUrls: string[] = [];
+      if (rochadeMode === "screenshots") {
+        if (rochadeFiles.length === 0) { toast.error("Bitte mindestens einen Screenshot auswählen."); return; }
+        const uploaded = await Promise.all(rochadeFiles.slice(0, 6).map(async (file) => {
+          try {
+            const compressed = await compressImage(file).catch(() => file);
+            const ext = compressed.name.split(".").pop() || "jpg";
+            const path = `${user.id}/rochade-quelle/${uid()}.${ext}`;
+            const { error } = await supabase.storage.from("designer-media").upload(path, compressed, { upsert: true });
+            if (error) return null;
+            const { data: signed } = await supabase.storage.from("designer-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+            return signed?.signedUrl ?? null;
+          } catch { return null; }
+        }));
+        screenshotUrls = uploaded.filter((u): u is string => !!u);
+        if (screenshotUrls.length === 0) { toast.error("Die Screenshots ließen sich nicht hochladen."); return; }
+      }
+
+      const { data } = await supabase.functions.invoke("haus-rochade", {
+        body: {
+          mode: rochadeMode, consent: true,
+          url: rochadeMode === "url" ? rochadeUrl.trim() : undefined,
+          screenshot_urls: rochadeMode === "screenshots" ? screenshotUrls : undefined,
+          instagram_handle: rochadeMode === "instagram" ? rochadeHandle.trim() : undefined,
+        },
+      });
+      const r = data as {
+        ok?: boolean; message?: string; brand_name?: string | null; about_text?: string | null;
+        works?: { kind: WorkKind; title: string; description: string; image_url: string }[];
+        dna?: Record<string, unknown> | null; source_type?: string; source_ref?: string;
+      } | null;
+
+      if (!r?.ok) { toast.error(r?.message ?? "Das hat nicht geklappt — leg deine Werke lieber von Hand an."); return; }
+
+      const imported: Work[] = (r.works ?? []).map((w) => ({
+        id: uid(), previewUrl: w.image_url, kind: w.kind, title: w.title, description: w.description,
+        priceCents: null, uploading: false, uploaded: true, imageUrl: w.image_url, analyzing: false,
+      }));
+      setWorks((prev) => [...imported, ...prev]);
+      if (r.brand_name && !brandName.trim()) setBrandName(r.brand_name);
+      if (r.about_text && !aboutText.trim()) { setAboutText(r.about_text); setAboutSource("chips"); }
+      if (r.dna) setRochadeDna(r.dna);
+      if (r.source_type) setRochadeSource({ type: r.source_type, ref: r.source_ref ?? "", at: new Date().toISOString() });
+      setRochadeOpen(false);
+      toast.success(`${imported.length} Werk${imported.length === 1 ? "" : "e"} übernommen — schau sie dir an und passe an, was nicht passt.`);
+    } finally {
+      setRochadeBusy(false);
+    }
   }
 
   async function startRecording() {
@@ -347,6 +422,15 @@ export default function FirstMove() {
             startRecording={startRecording} stopRecording={stopRecording}
             showChips={showChips} setShowChips={setShowChips}
             chipAnswers={chipAnswers} pickChip={pickChip}
+            rochadeOpen={rochadeOpen} setRochadeOpen={setRochadeOpen}
+            rochadeMode={rochadeMode} setRochadeMode={setRochadeMode}
+            rochadeConsent={rochadeConsent} setRochadeConsent={setRochadeConsent}
+            rochadeUrl={rochadeUrl} setRochadeUrl={setRochadeUrl}
+            rochadeHandle={rochadeHandle} setRochadeHandle={setRochadeHandle}
+            rochadeFiles={rochadeFiles} setRochadeFiles={setRochadeFiles}
+            rochadeFileInputRef={rochadeFileInputRef}
+            rochadeBusy={rochadeBusy} onRochade={runRochade}
+            rochadeSource={rochadeSource}
           />
         ) : step === "bestaetigen" ? (
           <BestaetigenStep
@@ -400,6 +484,15 @@ function ZeigenStep(props: {
   showChips: boolean; setShowChips: (v: boolean) => void;
   chipAnswers: Partial<Record<"medium" | "haltung" | "wunsch", string>>;
   pickChip: (k: "medium" | "haltung" | "wunsch", v: string) => void;
+  rochadeOpen: boolean; setRochadeOpen: (v: boolean) => void;
+  rochadeMode: "url" | "screenshots" | "instagram"; setRochadeMode: (v: "url" | "screenshots" | "instagram") => void;
+  rochadeConsent: boolean; setRochadeConsent: (v: boolean) => void;
+  rochadeUrl: string; setRochadeUrl: (v: string) => void;
+  rochadeHandle: string; setRochadeHandle: (v: string) => void;
+  rochadeFiles: File[]; setRochadeFiles: (f: File[]) => void;
+  rochadeFileInputRef: React.RefObject<HTMLInputElement>;
+  rochadeBusy: boolean; onRochade: () => void;
+  rochadeSource: { type: string; ref: string; at: string } | null;
 }) {
   if (!props.user) {
     return (
@@ -436,6 +529,8 @@ function ZeigenStep(props: {
         <Input placeholder="Ort" value={props.location} onChange={(e) => props.setLocation(e.target.value)} className="sm:col-span-2" />
         <Input placeholder="Land" value={props.country} onChange={(e) => props.setCountry(e.target.value)} />
       </div>
+
+      <RochadeBlock {...props} />
 
       <div>
         <Input
@@ -536,6 +631,96 @@ function ZeigenStep(props: {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Die Rochade: bestehendes Material einlesen statt bei null anzufangen. Drei gleichwertige
+ * Eingänge, ein Bestätigungs-Tap. Übernommene Werke landen als ganz normale, wieder abwählbare
+ * Einträge in props.works — die Künstlerin bleibt in jedem Fall die letzte Instanz. */
+function RochadeBlock(props: {
+  rochadeOpen: boolean; setRochadeOpen: (v: boolean) => void;
+  rochadeMode: "url" | "screenshots" | "instagram"; setRochadeMode: (v: "url" | "screenshots" | "instagram") => void;
+  rochadeConsent: boolean; setRochadeConsent: (v: boolean) => void;
+  rochadeUrl: string; setRochadeUrl: (v: string) => void;
+  rochadeHandle: string; setRochadeHandle: (v: string) => void;
+  rochadeFiles: File[]; setRochadeFiles: (f: File[]) => void;
+  rochadeFileInputRef: React.RefObject<HTMLInputElement>;
+  rochadeBusy: boolean; onRochade: () => void;
+  rochadeSource: { type: string; ref: string; at: string } | null;
+}) {
+  if (!props.rochadeOpen) {
+    return (
+      <div>
+        <Button
+          type="button" variant="link" size="sm"
+          className="h-auto p-0 text-[0.62rem] uppercase tracking-[0.24em] text-black/60 hover:text-black hover:no-underline"
+          onClick={() => props.setRochadeOpen(true)}
+        >
+          Hast du schon eine Website oder ein Instagram-Profil? Einlesen.
+        </Button>
+        {props.rochadeSource && (
+          <p className="mt-1 text-[0.62rem] text-black/50">Übernommen aus {props.rochadeSource.ref}.</p>
+        )}
+      </div>
+    );
+  }
+
+  const modeLabel: Record<typeof props.rochadeMode, string> = { url: "Website", screenshots: "Screenshots", instagram: "Instagram" };
+
+  return (
+    <div className="border-[1.5px] border-black p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[0.62rem] uppercase tracking-[0.28em] text-black/60">Die Rochade — bestehendes Material einlesen</p>
+        <Button type="button" variant="ghost" size="sm" className="h-auto w-auto p-1 text-black/40 hover:bg-transparent hover:text-black" onClick={() => props.setRochadeOpen(false)}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {(Object.keys(modeLabel) as (typeof props.rochadeMode)[]).map((m) => (
+          <Button
+            key={m} type="button" variant="outline" size="sm"
+            onClick={() => props.setRochadeMode(m)}
+            className={`h-auto border-[1.5px] border-black px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] ${props.rochadeMode === m ? "bg-black text-white" : "hover:bg-black hover:text-white"}`}
+          >
+            {modeLabel[m]}
+          </Button>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        {props.rochadeMode === "url" && (
+          <Input placeholder="https://deine-website.de" value={props.rochadeUrl} onChange={(e) => props.setRochadeUrl(e.target.value)} />
+        )}
+        {props.rochadeMode === "instagram" && (
+          <Input placeholder="@dein.handle" value={props.rochadeHandle} onChange={(e) => props.setRochadeHandle(e.target.value)} />
+        )}
+        {props.rochadeMode === "screenshots" && (
+          <div>
+            <Input
+              ref={props.rochadeFileInputRef} type="file" accept="image/*" multiple hidden
+              onChange={(e) => { props.setRochadeFiles(Array.from(e.target.files ?? []).slice(0, 6)); }}
+            />
+            <Button type="button" variant="outline" onClick={() => props.rochadeFileInputRef.current?.click()} className="h-auto w-full py-3 text-[0.62rem] uppercase tracking-[0.24em]">
+              {props.rochadeFiles.length > 0 ? `${props.rochadeFiles.length} ausgewählt` : "Screenshots auswählen"}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <label className="mt-4 flex items-start gap-3 text-sm">
+        <Checkbox checked={props.rochadeConsent} onCheckedChange={(v) => props.setRochadeConsent(!!v)} className="mt-0.5" />
+        Das ist meine Website — das sind meine Inhalte.
+      </label>
+
+      <Button
+        type="button" variant="editorial" size="chip" loading={props.rochadeBusy}
+        disabled={!props.rochadeConsent}
+        onClick={props.onRochade}
+        className="mt-4"
+      >
+        Übernehmen
+      </Button>
     </div>
   );
 }
