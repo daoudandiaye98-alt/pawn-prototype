@@ -6,16 +6,18 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
  * braucht eine frische, kurzlebige signierte URL. Das ist die Server-Seite von
  * src/lib/media.ts.
  */
-const BUCKET = "designer-media";
+const BUCKETS = ["designer-media", "campaign-assets", "mediathek"];
 
-export function mediaPfad(value?: string | null): string | null {
+export function mediaPfad(value?: string | null): { bucket: string; pfad: string } | null {
   if (!value) return null;
-  const treffer = value.match(/\/storage\/v1\/object\/(?:sign|public|authenticated)\/designer-media\/([^?#]+)/);
+  const treffer = value.match(new RegExp(`/storage/v1/object/(?:sign|public|authenticated)/(${BUCKETS.join("|")})/([^?#]+)`));
   if (treffer) {
-    try { return decodeURIComponent(treffer[1]); } catch { return treffer[1]; }
+    let pfad = treffer[2];
+    try { pfad = decodeURIComponent(pfad); } catch { /* Pfad bleibt wie er ist */ }
+    return { bucket: treffer[1], pfad };
   }
   if (/^(https?:|data:|blob:|\/)/i.test(value)) return null;
-  return value;
+  return { bucket: "designer-media", pfad: value };
 }
 
 /** Gibt eine abrufbare URL zurück. Fremde URLs laufen unverändert durch. */
@@ -24,9 +26,9 @@ export async function signiereMedia(
   value?: string | null,
   sekunden = 60 * 60,
 ): Promise<string | null> {
-  const pfad = mediaPfad(value);
-  if (!pfad) return value ?? null;
-  const { data, error } = await admin.storage.from(BUCKET).createSignedUrl(pfad, sekunden);
+  const ort = mediaPfad(value);
+  if (!ort) return value ?? null;
+  const { data, error } = await admin.storage.from(ort.bucket).createSignedUrl(ort.pfad, sekunden);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
 }
