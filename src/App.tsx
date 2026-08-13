@@ -63,6 +63,8 @@ import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
 import StudioReferrals from "./pages/studio/StudioReferrals.tsx";
 import StudioBeweis from "./pages/studio/StudioBeweis.tsx";
 import StudioDNA from "./pages/studio/StudioDNA.tsx";
+import StudioPostfach from "./pages/studio/StudioPostfach.tsx";
+import StudioGeschaeft from "./pages/studio/StudioGeschaeft.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
@@ -222,6 +224,9 @@ const App = () => (
                 <Route path="/studio/kampagnen" element={<Navigate to="/studio/clips" replace />} />
                 <Route path="/studio/kampagnen/neu" element={<Navigate to="/studio/clips/neu" replace />} />
                 <Route path="/studio/videothek" element={<Navigate to="/studio/clips/fertig" replace />} />
+                {/* Teil N — die Räume Postfach und Geschäft (Abendlicht-System) */}
+                <Route path="/studio/postfach" element={<RoleGate role="designer"><StudioPostfach /></RoleGate>} />
+                <Route path="/studio/geschaeft" element={<RoleGate role="designer"><StudioGeschaeft /></RoleGate>} />
                 <Route path="/studio/bestellungen" element={<RoleGate role="designer"><StudioOrders /></RoleGate>} />
                 <Route path="/studio/versand" element={<RoleGate role="designer"><StudioVersand /></RoleGate>} />
                 <Route path="/studio/content-begleiter" element={<RoleGate role="designer"><StudioContentBegleiter /></RoleGate>} />
