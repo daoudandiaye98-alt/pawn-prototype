@@ -269,43 +269,55 @@ export default function StudioProducts() {
         />
       ) : (
         <>
-          <ul className="mt-6 divide-y divide-border border border-border bg-white">
+          {/* Teil N — die Wand: Werke hängen als beleuchtete Stücke auf dunklem Grund,
+              darunter weiche Etiketten. Am Ende der leere, sanft beleuchtete Rahmen. */}
+          <ul className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
             {items.map((p) => {
               const lowStock = p.inventory_mode === "stock" && p.stock_quantity > 0 && p.stock_quantity < 3;
               const soldOut = p.inventory_mode === "stock" && p.stock_quantity === 0;
               return (
-                <li key={p.id} className="flex items-center gap-4 px-5 py-4">
-                  <div className="h-14 w-14 shrink-0 overflow-hidden bg-muted">
-                    {p.image_url && <img src={p.image_url} alt="" className="h-full w-full object-cover" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-serif text-lg font-medium">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                <li key={p.id}>
+                  <button type="button" onClick={() => setEditing(p)} className="al-werk-bild block aspect-[4/5] w-full text-left">
+                    {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />}
+                  </button>
+                  <div className="mt-3 px-0.5">
+                    <p className="truncate font-serif text-base leading-snug">{p.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {p.world} · €{p.price} · <span className={p.status === "published" ? "text-foreground" : ""}>{p.status === "published" ? t("studio.products.status.live") : p.status === "draft" ? t("studio.products.status.draft") : t("studio.products.status.archived")}</span>
                       {p.inventory_mode === "made_to_order"
                         ? <> · <span className="text-foreground">{t("studio.products.madeToOrder")}{p.lead_time_days ? ` · ${t("studio.products.leadTimeDays", { n: p.lead_time_days })}` : ""}</span></>
                         : soldOut ? <> · <span className="text-destructive">{t("studio.products.soldOut")}</span></>
                         : lowStock ? <> · <span className="text-foreground">{t("studio.products.lowStock", { n: p.stock_quantity })}</span></>
+                        : p.stock_quantity === 1 ? <> · {t("studio.products.stockLabel", { n: 1 })}</>
                         : <> · {t("studio.products.stockLabel", { n: p.stock_quantity })}</>}
                     </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <button onClick={() => togglePublish(p)} className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
+                        {p.status === "published" ? t("studio.products.unpublish") : t("studio.products.publish")}
+                      </button>
+                      <button onClick={() => setEditing(p)} className="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">{t("studio.products.edit")}</button>
+                      <button onClick={async () => {
+                        const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", product_id: p.id, locale } });
+                        if (error) return toast.error(error.message);
+                        const d = data as { error?: string; message?: string; campaign_id?: string };
+                        if (d?.error === "consent_missing") return toast.error(d.message ?? t("studio.products.consentMissing"));
+                        if (d?.campaign_id) toast.success(t("studio.products.campaignDraftCreated"));
+                      }} className="flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
+                        <Megaphone className="h-3 w-3" /> {t("studio.products.campaign")}
+                      </button>
+                      <button onClick={() => remove(p)} className="text-[0.6rem] uppercase tracking-[0.22em] text-destructive hover:text-destructive/70">{t("common.delete")}</button>
+                    </div>
                   </div>
-                  <button onClick={() => togglePublish(p)} className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground">
-                    {p.status === "published" ? t("studio.products.unpublish") : t("studio.products.publish")}
-                  </button>
-                  <button onClick={() => setEditing(p)} className="text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">{t("studio.products.edit")}</button>
-                  <button onClick={async () => {
-                    const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "campaign_draft", product_id: p.id, locale } });
-                    if (error) return toast.error(error.message);
-                    const d = data as { error?: string; message?: string; campaign_id?: string };
-                    if (d?.error === "consent_missing") return toast.error(d.message ?? t("studio.products.consentMissing"));
-                    if (d?.campaign_id) toast.success(t("studio.products.campaignDraftCreated"));
-                  }} className="flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.28em] hover:text-foreground">
-                    <Megaphone className="h-3 w-3" /> {t("studio.products.campaign")}
-                  </button>
-                  <button onClick={() => remove(p)} className="text-[0.62rem] uppercase tracking-[0.28em] text-destructive hover:text-destructive/70">{t("common.delete")}</button>
                 </li>
               );
             })}
+            {/* Der leere Rahmen — das nächste Werk wartet schon auf seinen Platz. */}
+            <li>
+              <Link to="/studio/werke/neu" className="al-rahmen-leer aspect-[4/5] w-full">
+                <Plus className="h-5 w-5" aria-hidden="true" />
+                <span className="px-4 text-center font-serif text-base italic">{t("studio.wand.naechstesWerk")}</span>
+              </Link>
+            </li>
           </ul>
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between">

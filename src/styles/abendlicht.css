@@ -207,6 +207,43 @@
   animation: al-punkt 3.2s ease-in-out infinite;
 }
 
+/* ---- Die Wand: Werke als beleuchtete Stücke -------------------------------
+   Dunkler Grund, warmer Schein von unten, weiche Etiketten. Am Ende ein
+   leerer, sanft beleuchteter Rahmen: „Nächstes Werk hängen". */
+.al-werk-bild {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), 0 4px 30px rgba(244, 198, 103, 0.09);
+}
+.al-werk-bild::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 -34px 44px -26px rgba(244, 198, 103, 0.28);
+  pointer-events: none;
+}
+.al-rahmen-leer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border: 1.5px dashed rgba(244, 198, 103, 0.45);
+  border-radius: 14px;
+  background: rgba(244, 198, 103, 0.04);
+  box-shadow: 0 4px 30px rgba(244, 198, 103, 0.08);
+  color: var(--al-dim);
+  transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
+}
+.al-rahmen-leer:hover {
+  border-color: rgba(244, 198, 103, 0.8);
+  color: var(--al-text);
+  background: rgba(244, 198, 103, 0.07);
+}
+
 /* ---- Das Räume-Dock -------------------------------------------------------
    Unten auf Touch, links schwebend auf Desktop. Sechs Räume, immer Wort +
    Glyphe. Kein Badge, kein Zähler — höchstens der eine Lichtpunkt. */
