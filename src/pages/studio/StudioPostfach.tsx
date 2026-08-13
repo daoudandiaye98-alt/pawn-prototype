@@ -25,7 +25,7 @@ function inWorten(n: number, locale: Locale): string {
 }
 
 function StapelBild({ art }: { art: "bestellungen" | "nachrichten" | "tueren" }) {
-  const c = { fill: "none", stroke: "#f4c667", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const c = { fill: "none", stroke: "#e09a3a", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
     <svg viewBox="0 0 72 72" width="52" height="52" aria-hidden="true" style={{ opacity: 0.85 }}>
       {art === "bestellungen" && (
@@ -47,7 +47,7 @@ function StapelBild({ art }: { art: "bestellungen" | "nachrichten" | "tueren" })
         <g {...c} strokeWidth={1.5} opacity=".8">
           <path d="M26 58V16h20v42" />
           <path d="M22 58h28" />
-          <circle cx="41" cy="38" r="1.6" fill="#f4c667" stroke="none" />
+          <circle cx="41" cy="38" r="1.6" fill="#e09a3a" stroke="none" />
         </g>
       )}
     </svg>
@@ -110,10 +110,10 @@ export default function StudioPostfach() {
         <Link to="/studio/tueren" className="al-karte flex items-center gap-6 p-5 opacity-80 transition-opacity hover:opacity-100">
           <StapelBild art="tueren" />
           <div className="min-w-0 flex-1">
-            <p className="font-serif text-lg italic" style={{ color: "var(--al-dim)" }}>{locale === "de" ? "Türen" : "Doors"}</p>
-            <p className="mt-1 text-sm" style={{ color: "var(--al-leise)" }}>{satz(neueTueren, "tueren")}</p>
+            <p className="font-serif text-lg italic" style={{ color: "var(--al-ink-dim)" }}>{locale === "de" ? "Türen" : "Doors"}</p>
+            <p className="mt-1 text-sm" style={{ color: "var(--al-ink-leise)" }}>{satz(neueTueren, "tueren")}</p>
           </div>
-          <span className="text-[0.62rem] uppercase tracking-[0.24em]" style={{ color: "var(--al-leise)" }}>{t("studio.postfach.oeffnen")}</span>
+          <span className="text-[0.62rem] uppercase tracking-[0.24em]" style={{ color: "var(--al-ink-leise)" }}>{t("studio.postfach.oeffnen")}</span>
         </Link>
       </div>
     </StudioShell>

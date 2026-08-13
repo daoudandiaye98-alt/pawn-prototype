@@ -209,6 +209,25 @@ export default function StudioHausseite() {
       ]} />
       {/* Teil K6 — Erklärung in der Fläche, nie im Menü. */}
       <p className="mb-6 text-sm text-muted-foreground">{t("studio.doppelseite.explain")}</p>
+
+      {/* Teil O — die Rochade, sichtbar und erklärt: auch ein Haus, das längst
+          live ist, kann seine bestehende Website nachträglich einziehen lassen.
+          Der Import ergänzt, überschreibt nichts ohne Bestätigung. */}
+      <section className="al-karte mb-8 flex flex-wrap items-center gap-6 p-6">
+        <svg viewBox="0 0 64 64" width="48" height="48" aria-hidden="true" style={{ opacity: 0.85 }}>
+          <g fill="none" stroke="#e09a3a" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 52V26l8-6 8 6v26" />
+            <path d="M10 52h48" />
+            <path d="M38 24h14M52 24l-5-5M52 24l-5 5" />
+            <path d="M42 52V38h8v14" opacity=".7" />
+          </g>
+        </svg>
+        <div className="min-w-0 max-w-xl flex-1">
+          <h2 className="font-serif text-xl leading-tight">{t("studio.rochade.titel")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{t("studio.rochade.text")}</p>
+        </div>
+        <Link to="/start?rochade=1" className="al-knopf-primaer shrink-0">{t("studio.rochade.cta")}</Link>
+      </section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t("studio.hausseite.intro")}

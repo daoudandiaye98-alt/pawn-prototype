@@ -20,6 +20,8 @@ interface Props {
   onTap?: () => void;
   ariaLabel?: string;
   className?: string;
+  /** Teil O — Tooltip/Longpress-Hinweis („Tippe mich an …"), rein additiv. */
+  title?: string;
 }
 
 const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -28,7 +30,7 @@ const MUND_RUHIG = "M97 87 Q105 93 113 87";
 const MUND_FREUDE = "M95 85 Q105 97 115 85";
 
 export const BauerAbend = forwardRef<BauerAbendHandle, Props>(function BauerAbend(
-  { size = 105, onTap, ariaLabel, className },
+  { size = 105, onTap, ariaLabel, className, title },
   ref,
 ) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -86,6 +88,7 @@ export const BauerAbend = forwardRef<BauerAbendHandle, Props>(function BauerAben
       type="button"
       onClick={() => { delight(); onTap?.(); }}
       aria-label={ariaLabel ?? "Mit dem Bauern sprechen"}
+      title={title}
       className={`pawn-wrap ${className ?? ""}`}
     >
       <svg className="pawn" width={size} height={size * 1.2} viewBox="0 0 210 252" aria-hidden="true">

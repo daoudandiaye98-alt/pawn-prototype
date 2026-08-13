@@ -15,6 +15,8 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ladePlanGate, preisFor, limitFor, canUse } from "@/lib/planGate";
 import { useI18n } from "@/lib/i18n";
+// Teil O — das Kopfbild des Maison-Plans (lokal, WebP).
+import planMaisonBild from "@/assets/teil-o/plan-maison.webp";
 
 function fmtCount(n: number, noun: string, unlimitedPrefix: string): string {
   return n < 0 ? `${unlimitedPrefix} ${noun}` : `${n} ${noun}`;
@@ -78,6 +80,15 @@ export default function PreiseMaison() {
           <p className="mt-3 tabular-nums text-2xl text-black">
             {gateReady ? `${preisFor("maison")} €` : "…"}<span className="text-sm text-black/60"> {t("preise.card.perMonth")}</span>
           </p>
+
+          <img
+            src={planMaisonBild}
+            alt=""
+            width={1200}
+            height={896}
+            loading="lazy"
+            className="mt-6 aspect-[4/3] w-full border border-black/10 object-cover"
+          />
 
           {gateReady ? (
             <div className="mt-8 divide-y divide-black/10 border-t border-black/10 text-sm text-black">

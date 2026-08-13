@@ -10,13 +10,14 @@
    ========================================================================== */
 
 .abendlicht {
-  /* Nacht */
-  --al-nacht-1: #0b101c;
-  --al-nacht-2: #151d2e;
-  --al-nacht-3: #1e2740;
-  /* Warmer Lichtpool von unten */
+  /* Teil O — das Farbgesetz kehrt zurück: die Bühne ist Schwarz (mit warmem
+     Verlauf), die Flächen sind Weiß, das Abendlicht bleibt als Beleuchtung. */
+  --al-nacht-1: #000000;
+  --al-nacht-2: #070604;
+  --al-nacht-3: #0d0b08;
+  /* Warmer Lichtpool von unten — bleibt exakt wie in Teil N */
   --al-pool: rgba(244, 198, 103, 0.32);
-  /* Text */
+  /* Text auf der dunklen Bühne */
   --al-text: #f3ecdf;
   --al-dim: #b9b2a3;
   --al-leise: #8b8577;
@@ -24,11 +25,14 @@
   --al-amber-1: #f4c667;
   --al-amber-2: #e09a3a;
   --al-amber-grad: linear-gradient(135deg, var(--al-amber-1), var(--al-amber-2));
-  /* Glas */
-  --al-glas: rgba(255, 255, 255, 0.055);
-  --al-glas-hell: rgba(255, 255, 255, 0.09);
+  /* Weiße Flächen (Karten/Boxen) */
+  --al-karte-1: #ffffff;
+  --al-karte-2: #faf7f1;
+  --al-karte-grad: linear-gradient(180deg, var(--al-karte-1), var(--al-karte-2));
+  --al-karte-text: #14110b;
   --al-kante: rgba(255, 255, 255, 0.13);
   --al-schatten: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --al-schatten-karte: 0 14px 40px rgba(0, 0, 0, 0.4);
   --al-radius: 22px;
   --al-radius-gross: 26px;
   --al-radius-klein: 14px;
@@ -36,14 +40,37 @@
   --al-serif: "Fraunces", Georgia, serif;
   --al-sans: "Outfit", "Inter", system-ui, sans-serif;
 
+  /* Die Tinte wechselt mit dem Untergrund: auf der Bühne hell, auf weißen
+     Flächen dunkel. Alle Umschlag-Regeln lesen NUR diese Variablen. */
+  --al-ink: var(--al-text);
+  --al-ink-dim: var(--al-dim);
+  --al-ink-leise: var(--al-leise);
+  --al-linie: rgba(255, 255, 255, 0.13);
+  --al-feld: rgba(255, 255, 255, 0.06);
+  --al-fokus: var(--al-amber-1);
+
   background:
     radial-gradient(120% 90% at 50% 118%, var(--al-pool), transparent 60%),
     linear-gradient(180deg, var(--al-nacht-1) 0%, var(--al-nacht-2) 55%, var(--al-nacht-3) 100%);
   background-attachment: fixed;
-  color: var(--al-text);
+  color: var(--al-ink);
   font-family: var(--al-sans);
   font-weight: 400;
   color-scheme: dark;
+}
+
+/* Auf jeder weißen Fläche kippt die Tinte ins Dunkle — einmal definiert,
+   gilt für alles darin (auch den Umschlag). Fokusring dort dunkles Bernstein,
+   damit er auf Weiß sichtbar bleibt (≥ 3:1). */
+.abendlicht :is(.al-karte, .al-karte-hell, .al-chip, .al-dock, [role="dialog"], .bg-white, .bg-background, .bg-card, .bg-popover, .bg-white\/85, .bg-white\/90, .bg-white\/95) {
+  --al-ink: var(--al-karte-text);
+  --al-ink-dim: rgba(20, 17, 11, 0.64);
+  --al-ink-leise: rgba(20, 17, 11, 0.48);
+  --al-linie: rgba(20, 17, 11, 0.14);
+  --al-feld: rgba(20, 17, 11, 0.045);
+  --al-fokus: #8a5a00;
+  color: var(--al-ink);
+  color-scheme: light;
 }
 
 /* ---- Bewegung ------------------------------------------------------------ */
@@ -85,6 +112,19 @@
   .abendlicht .pawn-shadow,
   .abendlicht .eyes,
   .abendlicht .pawn-wrap.happy .pawn { animation: none !important; }
+}
+
+/* Teil O — nach dem ersten Besuch erinnert ein feiner, langsamer Puls
+   (~alle 20 Sekunden) daran, dass man den Bauern fragen kann.
+   Kein Badge, kein Punkt — nur ein kurzes warmes Aufleuchten. */
+@keyframes bauerpuls {
+  0%, 94%, 100% { filter: drop-shadow(0 0 0 rgba(244, 198, 103, 0)); }
+  96% { filter: drop-shadow(0 0 16px rgba(244, 198, 103, 0.55)); }
+  98% { filter: drop-shadow(0 0 6px rgba(244, 198, 103, 0.25)); }
+}
+.abendlicht .al-bauer-puls { animation: bauerpuls 20s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .abendlicht .al-bauer-puls { animation: none !important; }
 }
 @keyframes al-staub {
   0% { transform: translateY(0) translateX(0); opacity: 0; }
@@ -141,24 +181,15 @@
 }
 
 /* ---- Grundformen --------------------------------------------------------- */
+/* Teil O — Karten sind warmweiß; weiche große Radien und weiche Schatten bleiben. */
 .al-karte {
-  background: var(--al-glas);
-  border: 1px solid var(--al-kante);
+  background: var(--al-karte-grad);
+  border: 1px solid rgba(20, 17, 11, 0.08);
   border-radius: var(--al-radius);
-  box-shadow: var(--al-schatten);
-  -webkit-backdrop-filter: blur(15px);
-  backdrop-filter: blur(15px);
+  box-shadow: var(--al-schatten-karte);
 }
-/* Auf Mobilgeräten ist backdrop-filter teuer — dort höhere Flächen-Opazität. */
-@media (max-width: 767px) {
-  .al-karte {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background: rgba(30, 39, 64, 0.82);
-  }
-}
-/* Lesbarkeit in Formularen (Geschäft): eine Stufe heller. */
-.al-karte-hell { background: var(--al-glas-hell); }
+/* Historischer Alias aus Teil N — alle Karten sind jetzt gleich weiß. */
+.al-karte-hell { background: var(--al-karte-grad); }
 
 .al-knopf-primaer {
   display: inline-flex;
@@ -183,37 +214,39 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 1px solid var(--al-kante);
+  border: 1px solid var(--al-linie);
   border-radius: 999px;
   background: transparent;
-  color: var(--al-dim);
+  color: var(--al-ink-dim);
   font-family: var(--al-sans);
   font-size: 0.85rem;
   padding: 0.65rem 1.3rem;
   transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
-.al-knopf-leise:hover { color: var(--al-text); border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.04); }
+.al-knopf-leise:hover { color: var(--al-ink); border-color: rgba(244, 198, 103, 0.6); background: var(--al-feld); }
 
+/* Chips: weiße Flächen, Bernstein-Akzent beim Überfahren. */
 .al-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid var(--al-kante);
+  border: 1px solid rgba(20, 17, 11, 0.1);
   border-radius: 999px;
-  background: var(--al-glas);
-  color: var(--al-dim);
+  background: var(--al-karte-grad);
+  color: var(--al-ink-dim);
   font-size: 0.8rem;
   padding: 0.45rem 0.95rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   transition: color 0.25s ease, border-color 0.25s ease;
 }
-.al-chip:hover { color: var(--al-text); border-color: rgba(244, 198, 103, 0.5); }
+.al-chip:hover { color: var(--al-ink); border-color: rgba(224, 154, 58, 0.7); }
 
-/* Die Stimme des Bauern: Fraunces, kursiv, warm. */
+/* Die Stimme des Bauern: Fraunces, kursiv, warm — Tinte folgt dem Untergrund. */
 .al-stimme {
   font-family: var(--al-serif);
   font-style: italic;
   font-weight: 500;
-  color: var(--al-text);
+  color: var(--al-ink);
 }
 
 /* Der eine warme Lichtpunkt (Räume-Dock) — das einzige erlaubte Signal. */
@@ -273,11 +306,9 @@
   z-index: 45;
   display: flex;
   gap: 2px;
-  background: rgba(21, 29, 46, 0.88);
-  border: 1px solid var(--al-kante);
+  background: rgba(255, 253, 249, 0.96);
+  border: 1px solid rgba(20, 17, 11, 0.1);
   box-shadow: var(--al-schatten);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
   /* Touch/Mobil: unten, mittig, waagerecht */
   left: 50%;
   bottom: max(10px, env(safe-area-inset-bottom));
@@ -297,15 +328,15 @@
   min-width: 58px;
   padding: 8px 6px;
   border-radius: 16px;
-  color: var(--al-dim);
+  color: var(--al-ink-dim);
   transition: color 0.25s ease, background 0.25s ease;
 }
-.al-dock-raum:hover { color: var(--al-text); background: rgba(255, 255, 255, 0.05); }
+.al-dock-raum:hover { color: var(--al-ink); background: var(--al-feld); }
 .al-dock-raum-aktiv {
-  color: var(--al-nacht-1);
+  color: var(--al-karte-text);
   background: linear-gradient(135deg, var(--al-amber-1), var(--al-amber-2));
 }
-.al-dock-raum-aktiv:hover { color: var(--al-nacht-1); background: linear-gradient(135deg, var(--al-amber-1), var(--al-amber-2)); }
+.al-dock-raum-aktiv:hover { color: var(--al-karte-text); background: linear-gradient(135deg, var(--al-amber-1), var(--al-amber-2)); }
 .al-dock-wort {
   font-size: 0.62rem;
   letter-spacing: 0.04em;
@@ -329,9 +360,10 @@
   .al-dock-raum { min-width: 74px; padding: 10px 8px; }
 }
 
-/* Fokus: Bernstein-Ringe überall im Studio (BFSG). */
+/* Fokus: Bernstein-Ringe überall im Studio (BFSG) — auf weißen Flächen
+   dunkles Bernstein, damit der Ring sichtbar bleibt. */
 .abendlicht :focus-visible {
-  outline: 2px solid var(--al-amber-1) !important;
+  outline: 2px solid var(--al-fokus) !important;
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -360,13 +392,14 @@
 }
 .abendlicht :is(h1, h2, h3, .font-serif) { font-weight: 500; }
 
-/* Weiße Flächen → Glas-Karten */
+/* Weiße Flächen bleiben weiß — warmweiß, mit weichem Radius und Schatten (Teil O). */
 .abendlicht :is(.bg-white, .bg-background, .bg-card, .bg-popover) {
-  background: var(--al-glas) !important;
+  background: var(--al-karte-grad) !important;
   border-radius: var(--al-radius);
+  box-shadow: var(--al-schatten-karte);
 }
-.abendlicht :is(.bg-muted) { background: rgba(255, 255, 255, 0.07) !important; border-radius: var(--al-radius-klein); }
-.abendlicht :is(.bg-white\/85, .bg-white\/90, .bg-white\/95) { background: rgba(21, 29, 46, 0.85) !important; }
+.abendlicht :is(.bg-muted) { background: #f1ece2 !important; border-radius: var(--al-radius-klein); }
+.abendlicht :is(.bg-white\/85, .bg-white\/90, .bg-white\/95) { background: rgba(255, 253, 249, 0.92) !important; }
 
 /* Schwarze Flächen (alte Invertier-Knöpfe/Füllungen) → Bernstein.
    .bg-black bleibt außen vor: es dient im Studio als Video-Letterbox und
@@ -378,58 +411,59 @@
 }
 .abendlicht :is(.bg-foreground, .bg-primary) :is(p, span) { color: var(--al-nacht-1) !important; }
 
-/* Text */
-.abendlicht :is(.text-foreground, .text-black) { color: var(--al-text) !important; }
-.abendlicht .text-muted-foreground { color: var(--al-dim) !important; }
-.abendlicht :is(.text-foreground\/70, .text-foreground\/60, .text-foreground\/80) { color: var(--al-dim) !important; }
-.abendlicht [class*="text-black/"] { color: var(--al-dim) !important; }
-.abendlicht :is(.bg-foreground, .bg-black, .bg-primary) :is(.text-background, .text-white) { color: var(--al-nacht-1) !important; }
-.abendlicht .text-background { color: var(--al-nacht-1); }
-.abendlicht .text-white { color: var(--al-text) !important; }
+/* Text — liest immer die Tinte, die zum Untergrund passt. */
+.abendlicht :is(.text-foreground, .text-black) { color: var(--al-ink) !important; }
+.abendlicht .text-muted-foreground { color: var(--al-ink-dim) !important; }
+.abendlicht :is(.text-foreground\/70, .text-foreground\/60, .text-foreground\/80) { color: var(--al-ink-dim) !important; }
+.abendlicht [class*="text-black/"] { color: var(--al-ink-dim) !important; }
+.abendlicht :is(.bg-foreground, .bg-black, .bg-primary) :is(.text-background, .text-white) { color: var(--al-karte-text) !important; }
+.abendlicht .text-background { color: var(--al-karte-text); }
+.abendlicht .text-white { color: #fff !important; }
 
-/* Kanten: alle alten Schwarz-Ränder werden Glas-Kanten, 1px, weich. */
+/* Kanten: dunkle Hairlines auf Weiß, helle auf der Bühne (über --al-linie). */
 .abendlicht :is([class*="border-foreground"], [class*="border-black"]) {
-  border-color: var(--al-kante) !important;
+  border-color: var(--al-linie) !important;
   border-width: 1px !important;
 }
-.abendlicht :is(.border-border, .divide-border, [class*="border-border"]) { border-color: rgba(255, 255, 255, 0.1) !important; }
-.abendlicht .divide-border > * { border-color: rgba(255, 255, 255, 0.1) !important; }
-.abendlicht :is([class*="border-white"]) { border-color: var(--al-kante) !important; }
+.abendlicht :is(.border-border, .divide-border, [class*="border-border"]) { border-color: var(--al-linie) !important; }
+.abendlicht .divide-border > * { border-color: var(--al-linie) !important; }
+.abendlicht :is([class*="border-white"]) { border-color: var(--al-linie) !important; }
 
 /* Harte Offset-Schatten verschwinden; große Flächen tragen den weichen Schatten. */
-.abendlicht [class*="shadow-["] { box-shadow: var(--al-schatten) !important; }
+.abendlicht [class*="shadow-["] { box-shadow: var(--al-schatten-karte) !important; }
 
 /* Runde Ecken für den Bestand: Sektionen/Karten groß, Bedienelemente klein. */
 .abendlicht :is(section, article, aside) { border-radius: var(--al-radius); }
 .abendlicht :is(button, a[class*="border"], input, select, textarea) { border-radius: var(--al-radius-klein); }
 .abendlicht :is(input, select, textarea) {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--al-kante) !important;
-  color: var(--al-text);
+  background: var(--al-feld);
+  border-color: var(--al-linie) !important;
+  color: var(--al-ink);
 }
-.abendlicht ::placeholder { color: var(--al-leise); }
+.abendlicht ::placeholder { color: var(--al-ink-leise); }
 
-/* Invertier-Hover des Magazins → warmes Aufhellen statt schwarz/weiß. */
+/* Invertier-Hover des Magazins → warmes Bernstein-Aufhellen. */
 .abendlicht :is(.hover\:bg-foreground, .hover\:bg-black):hover {
-  background: rgba(244, 198, 103, 0.14) !important;
-  color: var(--al-text) !important;
+  background: rgba(244, 198, 103, 0.2) !important;
+  color: var(--al-ink) !important;
 }
-.abendlicht :is(.hover\:bg-foreground, .hover\:bg-black):hover :is(p, span) { color: var(--al-text) !important; }
-.abendlicht .hover\:text-background:hover { color: var(--al-text) !important; }
-.abendlicht .hover\:bg-muted:hover { background: rgba(255, 255, 255, 0.07) !important; }
-.abendlicht .hover\:bg-background:hover { background: rgba(255, 255, 255, 0.08) !important; }
-.abendlicht .hover\:text-foreground:hover { color: var(--al-text) !important; }
-.abendlicht .hover\:border-foreground:hover { border-color: rgba(244, 198, 103, 0.5) !important; }
+.abendlicht :is(.hover\:bg-foreground, .hover\:bg-black):hover :is(p, span) { color: var(--al-ink) !important; }
+.abendlicht .hover\:text-background:hover { color: var(--al-ink) !important; }
+.abendlicht .hover\:bg-muted:hover { background: var(--al-feld) !important; }
+.abendlicht .hover\:bg-background:hover { background: var(--al-feld) !important; }
+.abendlicht .hover\:bg-white\/5:hover { background: var(--al-feld) !important; }
+.abendlicht .hover\:text-foreground:hover { color: var(--al-ink) !important; }
+.abendlicht .hover\:border-foreground:hover { border-color: rgba(224, 154, 58, 0.7) !important; }
 
 /* Alte dunkle Seitenleisten-Flächen (bg-foreground als Fläche) sind im neuen
-   Shell nicht mehr im Einsatz; falls Reste auftauchen, werden sie Glas. */
-.abendlicht aside.bg-foreground { background: var(--al-glas) !important; }
+   Shell nicht mehr im Einsatz; falls Reste auftauchen, werden sie weiß. */
+.abendlicht aside.bg-foreground { background: var(--al-karte-grad) !important; }
 
-/* Dialoge/Schubladen (Gespräch, Overlays): solide Nacht statt durchscheinendem Glas,
-   damit Text über beliebigem Hintergrund lesbar bleibt (Kontrast ≥ 4,5:1). */
+/* Dialoge/Schubladen (Gespräch, Overlays): weiße Fläche über der dunklen Bühne —
+   dunkle Bühne, weiße Flächen, Bernstein-Akzent (Teil O). */
 .abendlicht [role="dialog"] {
-  background: linear-gradient(180deg, var(--al-nacht-2), var(--al-nacht-3)) !important;
-  border-color: var(--al-kante) !important;
+  background: var(--al-karte-grad) !important;
+  border-color: rgba(20, 17, 11, 0.1) !important;
   border-radius: var(--al-radius) 0 0 var(--al-radius);
   box-shadow: var(--al-schatten);
 }

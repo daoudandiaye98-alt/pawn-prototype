@@ -21,7 +21,7 @@ const KACHELN: { key: KachelKey; to: string }[] = [
 ];
 
 function KachelBild({ art }: { art: KachelKey }) {
-  const c = { fill: "none", stroke: "#f4c667", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const c = { fill: "none", stroke: "#e09a3a", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
     <svg viewBox="0 0 72 72" width="48" height="48" aria-hidden="true" style={{ opacity: 0.85 }}>
       {art === "plan" && (<g {...c}><path d="M20 12h24l8 8v40H20z" /><path d="M44 12v8h8" /><path d="M28 34h16M28 42h16M28 50h10" opacity=".6" /><path d="M33 24a5 5 0 1 0 5 5" /></g>)}

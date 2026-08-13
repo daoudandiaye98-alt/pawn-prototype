@@ -14,6 +14,12 @@ import { Reveal } from "@/components/palace/Reveal";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ladePlanGate, preisFor, limitFor, type Plan } from "@/lib/planGate";
+// Teil O — je Plan ein ruhiges Kopfbild: die Bilder erzählen die Größe des
+// Raums, den der Plan öffnet. Lokal als WebP, feste Maße gegen Layout-Springen.
+import planHausBild from "@/assets/teil-o/plan-haus.webp";
+import planAtelierBild from "@/assets/teil-o/plan-atelier.webp";
+
+const PLAN_BILD: Record<string, string> = { haus: planHausBild, atelier: planAtelierBild };
 import { useI18n } from "@/lib/i18n";
 
 function fmtCount(n: number, noun: string, unlimitedPrefix: string): string {
@@ -85,6 +91,15 @@ export default function Preise() {
               <p className="mt-3 max-w-xs text-sm text-black/70">
                 {key === "haus" ? t("preise.card.desc.haus") : t("preise.card.desc.atelier")}
               </p>
+
+              <img
+                src={PLAN_BILD[key]}
+                alt=""
+                width={1200}
+                height={896}
+                loading="lazy"
+                className="mt-6 aspect-[4/3] w-full border border-black/10 object-cover"
+              />
 
               {gateReady ? (
                 <div className="mt-8 divide-y divide-black/10 border-t border-black/10 text-sm text-black">
