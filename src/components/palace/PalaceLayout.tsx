@@ -8,6 +8,36 @@ import { Breadcrumbs } from "./Breadcrumbs";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import { Seo } from "./Seo";
 import { useI18n } from "@/lib/i18n";
+import { useConsent } from "@/lib/consent";
+
+/** Teil L1 — die Rechtszeile im Footer: auf jeder Seite dieselben sechs Einträge. */
+export function FooterLegalRow() {
+  const { t } = useI18n();
+  const { reopen } = useConsent();
+  const links = [
+    { label: t("footer.legal.agb"), to: "/agb" },
+    { label: t("footer.legal.impressum"), to: "/impressum" },
+    { label: t("footer.legal.datenschutz"), to: "/datenschutz" },
+    { label: t("footer.legal.widerruf"), to: "/widerruf" },
+    { label: t("footer.legal.barrierefreiheit"), to: "/barrierefreiheit" },
+  ];
+  return (
+    <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 border-t-[1.5px] border-black px-6 py-5 text-[0.6rem] uppercase tracking-[0.28em] text-black md:px-14">
+      {links.map((l) => (
+        <Link key={l.to} to={l.to} className="border-b border-transparent transition-colors hover:border-black">
+          {l.label}
+        </Link>
+      ))}
+      <button
+        type="button"
+        onClick={reopen}
+        className="border-b border-transparent uppercase tracking-[0.28em] transition-colors hover:border-black"
+      >
+        {t("footer.legal.cookies")}
+      </button>
+    </div>
+  );
+}
 
 const FOOTER_COLUMN_KEYS = ["footer_col_haeuser", "footer_col_fuer_sie", "footer_col_fuer_designer", "footer_col_haus"] as const;
 
@@ -102,6 +132,8 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
             </div>
           ))}
         </div>
+        {/* Teil L1 — Rechtszeile auf jeder Seite: vier Rechtstexte + Barrierefreiheit + Cookie-Einstellungen. */}
+        <FooterLegalRow />
         <div className="mx-auto flex max-w-[1600px] flex-col gap-3 border-t-[1.5px] border-black px-6 py-8 text-[0.6rem] uppercase tracking-[0.42em] text-black md:flex-row md:items-center md:justify-between md:px-14">
           <span>
             <Editable contentKey="footer_line_1">PAWN · Kuratierte Ausstellung</Editable> · Ausgabe {ausgabeNummer}

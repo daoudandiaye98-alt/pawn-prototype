@@ -6,29 +6,39 @@
     <title>PAWN — Mode, Interior und Kunst. Kuratiert.</title>
     <meta name="description" content="PAWN ist ein kuratierter Marktplatz für unabhängige Designer:innen aus Mode, Interior und Kunst. Kein Ranking, sondern Handschrift." />
     <meta name="author" content="PAWN" />
-    <link rel="canonical" href="/" />
+    <link rel="canonical" href="https://pawn.vision/" />
 
     <meta property="og:title" content="PAWN — Mode, Interior und Kunst. Kuratiert." />
     <meta property="og:description" content="Ein kuratierter Marktplatz für unabhängige Designer:innen. Kein Ranking, sondern Handschrift." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="/" />
+    <meta property="og:url" content="https://pawn.vision/" />
 
     <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Schriften laufen komplett lokal über @fontsource (main.tsx) — kein Google-Fonts-Request
+         mehr (DSGVO: keine IP-Übertragung an Google, und schneller, weil ein Request wegfällt). -->
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18366892645"></script>
+    <!-- Google Ads (gtag.js) mit Consent Mode v2: Standard ist ALLES verweigert.
+         Erst wenn der Nutzer im PAWN-Consent-Banner "Einverstanden" wählt, hebt
+         src/lib/consent.tsx die Einwilligung per gtag('consent','update',…) an. -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+      });
       gtag('js', new Date());
-
       gtag('config', 'AW-18366892645');
     </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18366892645"></script>
+
+    <!-- Plausible — cookieloses Analytics (keine Einwilligung nötig, keine personenbezogenen
+         Daten, kein Cookie). Domain muss im Plausible-Konto als pawn.vision angelegt sein. -->
+    <script defer data-domain="pawn.vision" src="https://plausible.io/js/script.js"></script>
   </head>
 
 

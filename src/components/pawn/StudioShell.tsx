@@ -349,6 +349,8 @@ function Inner({ children, title, eyebrow }: Props) {
           <Link to="/impressum" className="hover:text-foreground">{t("studioShell.legal.impressum")}</Link>
           <Link to="/datenschutz" className="hover:text-foreground">{t("studioShell.legal.datenschutz")}</Link>
           <Link to="/agb" className="hover:text-foreground">{t("studioShell.legal.agb")}</Link>
+          <Link to="/widerruf" className="hover:text-foreground">{t("studioShell.legal.widerruf")}</Link>
+          <Link to="/barrierefreiheit" className="hover:text-foreground">{t("studioShell.legal.barrierefreiheit")}</Link>
           <Link to="/vertrag-kuendigen" className="hover:text-foreground">{t("studioShell.legal.kuendigen")}</Link>
         </div>
       </div>
