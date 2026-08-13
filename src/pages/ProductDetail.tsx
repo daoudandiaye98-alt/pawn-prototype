@@ -32,6 +32,7 @@ import { ProductServiceSheet } from "@/components/palace/ProductServiceSheet";
 import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
 import { ProductDetailsAccordion } from "@/components/palace/ProductDetailsAccordion";
 import { ProductLightbox } from "@/components/palace/ProductLightbox";
+import { JsonLd, SITE_URL } from "@/components/palace/JsonLd";
 
 import {
   effectiveVatRate, vatNote, formatEuro,
@@ -293,6 +294,27 @@ const ProductDetail = () => {
     const dna = (dbProduct?.product_dna ?? {}) as { technik?: string; medium?: string };
     return [product.name, dna.technik || dna.medium, product.designer].filter(Boolean).join(" — ");
   }, [product.name, product.designer, dbProduct]);
+
+  // Teil L3 (L6) — "Mehr aus diesem Haus": maximal 3 weitere Werke desselben Hauses,
+  // bewusst NUR aus diesem Haus — keine hausübergreifenden Automatismen.
+  const [moreFromHouse, setMoreFromHouse] = useState<Array<{ id: string; slug: string; name: string; price: number; image_url: string | null }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const designerId = dbProduct?.designers?.id;
+    if (!designerId || !dbProduct?.id) { setMoreFromHouse([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("id, slug, name, price, image_url")
+        .eq("designer_id", designerId)
+        .eq("status", "published")
+        .neq("id", dbProduct.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (!cancelled) setMoreFromHouse((data as typeof moreFromHouse) ?? []);
+    })();
+    return () => { cancelled = true; };
+  }, [dbProduct?.id, dbProduct?.designers?.id]);
 
   if (productLoading) {
     return (
@@ -597,6 +619,56 @@ const ProductDetail = () => {
     </section>
   );
 
+  // Teil L3 — Product-Schema (schema.org): brand = Haus; bei Kunst zusätzlich Urheber-Angabe.
+  const productLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    url: `${SITE_URL}/product/${product.slug}`,
+    ...(allImages.length ? { image: allImages } : {}),
+    ...(dbProduct?.description ? { description: dbProduct.description } : {}),
+    ...(product.designer ? { brand: { "@type": "Brand", name: product.designer } } : {}),
+    ...(product.world === "Kunst" && product.designer
+      ? { creator: { "@type": "Person", name: product.designer } }
+      : {}),
+    offers: {
+      "@type": "Offer",
+      price: Number(dbProduct?.price ?? product.price),
+      priceCurrency: "EUR",
+      availability: soldOut && !isMto
+        ? "https://schema.org/OutOfStock"
+        : "https://schema.org/InStock",
+      url: `${SITE_URL}/product/${product.slug}`,
+    },
+  };
+
+  // Teil L3 (L6) — kleine kuratierte Reihe: bis zu 3 weitere Werke DESSELBEN Hauses.
+  const moreFromHouseBlock = moreFromHouse.length > 0 && (
+    <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24">
+      <div className="mx-auto max-w-[1600px]">
+        <p className="house-ink palace-eyebrow">{t("product.moreFromHouse.title")}</p>
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {moreFromHouse.map((p, i) => (
+            <Link key={p.id} to={`/product/${p.slug}`} className="group block">
+              <EditorialImage
+                src={p.image_url}
+                seed={`more-${p.slug}`}
+                ratio="4/5"
+                alt={`${p.name} — ${product.designer}`}
+                color
+                className="[&_.palace-image-inner]:transition-transform [&_.palace-image-inner]:duration-[900ms] [&:hover_.palace-image-inner]:scale-[1.03]"
+              />
+              <div className="mt-4 flex items-baseline justify-between gap-4">
+                <p className="house-serif house-ink italic text-[1.05rem] leading-tight">{p.name}</p>
+                <p className="house-ink palace-eyebrow tabular-nums">{formatPrice(Number(p.price), locale)}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+
   const bannerBlock = banner && (
     <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24">
       <Reveal className="mx-auto max-w-[1600px]">
@@ -777,7 +849,11 @@ const ProductDetail = () => {
       {/* GALERIE: unter der Doppelseite in voller Breite, große ungleiche Flächen (Teil 36) */}
       {galleryBlock}
 
+      {moreFromHouseBlock}
+
       {bannerBlock}
+
+      <JsonLd data={productLd} />
 
       {/* GESETZTE STRECKE (mobil/tablet): auf Desktop lebt derselbe Inhalt in der Textspalte oben */}
       <section className="house-hair border-t px-6 py-16 md:px-14 md:py-24 lg:hidden">
