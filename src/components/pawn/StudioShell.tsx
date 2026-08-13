@@ -198,13 +198,25 @@ function Inner({ children, title, eyebrow, ohneMiniBauer }: Props) {
     <div className="abendlicht flex min-h-screen flex-col">
       <LevelUpOverlay designerId={designer?.id} />
 
-      {/* Kopfzeile: Hausname leise links, Profil-Menü rechts. Keine Glocke, keine Zähler. */}
-      <header className="flex items-center justify-between px-5 pb-2 pt-5 md:px-10 lg:pl-[150px]">
+      {/* Kopfzeile: Hausname leise links, „Zur Ausstellung" + Profil-Menü rechts.
+          Keine Glocke, keine Zähler. Teil O: der Weg zurück zur öffentlichen
+          Seite ist auf JEDER Fläche als Wort sichtbar, öffnet in neuem Tab. */}
+      <header className="flex items-center justify-between gap-4 px-5 pb-2 pt-5 md:px-10 lg:pl-[150px]">
         <div className="min-w-0">
           <p className="text-[0.6rem] uppercase tracking-[0.24em]" style={{ color: "var(--al-leise)" }}>{brand}</p>
           <p className="mt-0.5 truncate font-serif text-lg leading-tight">{title}</p>
         </div>
-        <ProfilMenue />
+        <div className="flex shrink-0 items-center gap-4">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener"
+            className="text-[0.72rem] tracking-[0.06em] text-muted-foreground hover:text-foreground"
+          >
+            {t("studio.profil.ausstellung")} →
+          </a>
+          <ProfilMenue />
+        </div>
       </header>
 
       {/* Das Räume-Dock: links schwebend auf Desktop, unten auf Touch. */}
@@ -212,11 +224,18 @@ function Inner({ children, title, eyebrow, ohneMiniBauer }: Props) {
 
       <main className="flex-1 px-5 pb-32 pt-4 md:px-10 lg:pb-16 lg:pl-[150px]">{children}</main>
 
-      {/* Der Bauer — klein, atmend, auf jeder Fläche (die Ankunft zeigt ihn groß selbst). */}
+      {/* Der Bauer — klein, atmend, auf jeder Fläche (die Ankunft zeigt ihn groß selbst).
+          Teil O: nach dem ersten Besuch feiner ~20-s-Puls + Hinweis-Satz als Tooltip. */}
       {designer && !ohneMiniBauer && (
         <>
           <div className="fixed bottom-24 left-4 z-40 lg:bottom-6 lg:left-6">
-            <BauerAbend size={52} onTap={() => setGespraechOffen(true)} ariaLabel={t("studio.bauer.mini.aria")} />
+            <BauerAbend
+              size={52}
+              onTap={() => setGespraechOffen(true)}
+              ariaLabel={t("studio.bauer.mini.aria")}
+              className="al-bauer-puls"
+              title={t("studio.bauer.hinweis")}
+            />
           </div>
           <BauerGespraech open={gespraechOffen} onClose={() => setGespraechOffen(false)} plan={(designer.plan as Plan) ?? "haus"} />
         </>

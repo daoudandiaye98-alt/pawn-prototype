@@ -67,7 +67,7 @@ function useGetippt(text: string) {
 
 /** Kleine warme Vignetten je Zug — visuelle Vorschau auf der einen Sache. */
 function ZugVignette({ zug }: { zug: ZugKey }) {
-  const stroke = "#f4c667";
+  const stroke = "#e09a3a";
   const common = { fill: "none", stroke, strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
     <svg viewBox="0 0 64 64" width="56" height="56" aria-hidden="true" style={{ opacity: 0.9 }}>
@@ -121,7 +121,7 @@ function DesignerWelcome({ name, onSkip }: { name: string; onSkip: () => void })
       {"bullets" in current && current.bullets && (
         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
           {current.bullets.map((b) => (
-            <li key={b} className="flex items-start gap-2"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#f4c667]" />{b}</li>
+            <li key={b} className="flex items-start gap-2"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#e09a3a]" />{b}</li>
           ))}
         </ul>
       )}
@@ -339,6 +339,19 @@ export default function StudioOverview() {
   const gruss = designer ? t(grussKey, { name: brand }) : "";
   const { shown: grussGetippt, fertig: grussFertig } = useGetippt(gruss);
 
+  // Teil O — der Bauer sagt, dass man ihn fragen kann: beim ersten Besuch
+  // (pro Gerät gemerkt) als ausgeschriebene Zeile unter der Begrüßung,
+  // danach nur noch als feiner Puls + Tooltip an der Figur.
+  const [bauerHinweisZeile, setBauerHinweisZeile] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("pawn_bauer_hinweis") !== "1") {
+        setBauerHinweisZeile(true);
+        localStorage.setItem("pawn_bauer_hinweis", "1");
+      }
+    } catch { /* noop */ }
+  }, []);
+
   // „Zeig mir den Rest" — einmal pro Sitzung gemerkt, damit Rückkehr ruhig bleibt.
   const [restOffen, setRestOffen] = useState(false);
   useEffect(() => {
@@ -429,11 +442,21 @@ export default function StudioOverview() {
           ))}
         </div>
         <div className="relative flex items-end gap-6 pt-6">
-          <BauerAbend ref={bauerRef} size={104} onTap={() => oeffneGespraech()} ariaLabel={t("studio.bauer.talkAria")} className="shrink-0" />
+          <BauerAbend
+            ref={bauerRef}
+            size={104}
+            onTap={() => oeffneGespraech()}
+            ariaLabel={t("studio.bauer.talkAria")}
+            className={`shrink-0 ${bauerHinweisZeile ? "" : "al-bauer-puls"}`}
+            title={bauerHinweisZeile ? undefined : t("studio.bauer.hinweis")}
+          />
           <div className="min-w-0 flex-1 pb-2">
             <p className={`al-stimme text-2xl leading-snug md:text-3xl ${grussFertig ? "" : "al-caret"}`} aria-label={gruss}>
               {grussGetippt}
             </p>
+            {grussFertig && bauerHinweisZeile && (
+              <p className="al-auftauchen mt-1.5 text-sm text-muted-foreground">{t("studio.bauer.hinweis")}</p>
+            )}
             {grussFertig && spruch && (
               <button type="button" onClick={() => oeffneGespraech()} className="al-auftauchen mt-2 text-left">
                 <p className="text-sm text-muted-foreground">{spruch}</p>
@@ -448,7 +471,15 @@ export default function StudioOverview() {
         </div>
       </section>
 
-      {/* GENAU EINE Sache — als Glas-Karte mit visueller Vorschau. */}
+      {/* Teil O — stille Zeile unter der Ankunft: der Weg zurück zur Ausstellung. */}
+      <p className="mb-6 text-sm" style={{ color: "var(--al-leise)" }}>
+        {t("studio.ausstellung.zeile")}{" "}
+        <a href="/" target="_blank" rel="noopener" className="underline underline-offset-4 hover:text-foreground">
+          {t("studio.profil.ausstellung")} →
+        </a>
+      </p>
+
+      {/* GENAU EINE Sache — als weiße Karte mit visueller Vorschau. */}
       {aktuellerZug && (
         <section data-guide={t("studio.guide.nextMove")} className="al-karte al-auftauchen mb-6 scroll-mt-20 p-6 sm:p-8">
           <p className="text-[0.6rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.ankunft.eineSache")}</p>
@@ -461,7 +492,7 @@ export default function StudioOverview() {
                 <ul className="mt-4 space-y-1.5">
                   {aktuellerZug.checks.map((c) => (
                     <li key={c.key} className="flex items-center gap-2 text-sm">
-                      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[0.6rem] ${c.done ? "bg-[#f4c667] text-[#0b101c]" : "border border-white/25"}`} aria-hidden="true">{c.done ? "✓" : ""}</span>
+                      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[0.6rem] ${c.done ? "bg-[#e09a3a] text-[#14110b]" : "border border-[#14110b]/25"}`} aria-hidden="true">{c.done ? "✓" : ""}</span>
                       <span className={c.done ? "text-muted-foreground" : ""}>{c.label}</span>
                     </li>
                   ))}
@@ -523,7 +554,7 @@ export default function StudioOverview() {
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {raumKacheln.map((k) => (
               <Link key={k.raum} to={k.to} className="al-karte group p-4 transition-transform hover:-translate-y-0.5">
-                <span className="text-[#f4c667]"><RaumGlyphe raum={k.raum} /></span>
+                <span className="text-[#e09a3a]"><RaumGlyphe raum={k.raum} /></span>
                 <p className="mt-3 font-serif text-lg leading-none">{k.label}</p>
                 <p className="mt-1.5 text-xs text-muted-foreground">{k.line}</p>
               </Link>
