@@ -571,7 +571,7 @@ function ZeigenStep(props: {
     <div className="space-y-8">
       <div>
         {/* Teil H2 — Sprachsystem: diese Zeile lebt genau hier, nie auf der Landing. */}
-        <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/50">YOUR MOVE.</p>
+        <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/60">YOUR MOVE.</p>
         <p className="mt-1 font-serif italic text-[1.05rem] text-black/70">{YOUR_MOVE_LINES.zeigen}</p>
         <h1 className="mt-3 font-serif text-2xl">{t("start.zeigen.headline")}</h1>
         <p className="mt-2 text-sm text-black/70">{t("start.zeigen.sub")}</p>
@@ -619,8 +619,8 @@ function ZeigenStep(props: {
                     >
                       {t("start.zeigen.print")}
                     </Button>
-                    {(w.uploading || w.analyzing) && <Loader2 className="h-3.5 w-3.5 animate-spin text-black/50" />}
-                    <Button type="button" variant="ghost" size="icon" onClick={() => props.removeWork(w.id)} className="ml-auto h-auto w-auto p-1 text-black/40 hover:bg-transparent hover:text-black">
+                    {(w.uploading || w.analyzing) && <Loader2 className="h-3.5 w-3.5 animate-spin text-black/60" />}
+                    <Button type="button" variant="ghost" size="icon" onClick={() => props.removeWork(w.id)} className="ml-auto h-auto w-auto p-1 text-black/60 hover:bg-transparent hover:text-black">
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -652,7 +652,7 @@ function ZeigenStep(props: {
               {props.transcribing && <span className="flex items-center gap-2 text-sm text-black/60"><Loader2 className="h-4 w-4 animate-spin" /> {t("start.zeigen.transcribing")}</span>}
               <Button
                 type="button" variant="link" size="sm"
-                className="ml-auto h-auto p-0 text-[0.6rem] uppercase tracking-[0.22em] text-black/50 hover:text-black hover:no-underline"
+                className="ml-auto h-auto p-0 text-[0.6rem] uppercase tracking-[0.22em] text-black/60 hover:text-black hover:no-underline"
                 onClick={() => props.setShowChips(true)}
               >
                 {t("start.zeigen.preferChips")}
@@ -715,7 +715,7 @@ function RochadeBlock(props: {
           {t("start.rochade.trigger")}
         </Button>
         {props.rochadeSource && (
-          <p className="mt-1 text-[0.62rem] text-black/50">{t("start.rochade.importedFrom", { ref: props.rochadeSource.ref })}</p>
+          <p className="mt-1 text-[0.62rem] text-black/60">{t("start.rochade.importedFrom", { ref: props.rochadeSource.ref })}</p>
         )}
       </div>
     );
@@ -729,7 +729,7 @@ function RochadeBlock(props: {
     <div className="border-[1.5px] border-black p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[0.62rem] uppercase tracking-[0.28em] text-black/60">{t("start.rochade.title")}</p>
-        <Button type="button" variant="ghost" size="sm" className="h-auto w-auto p-1 text-black/40 hover:bg-transparent hover:text-black" onClick={() => props.setRochadeOpen(false)}>
+        <Button type="button" variant="ghost" size="sm" className="h-auto w-auto p-1 text-black/60 hover:bg-transparent hover:text-black" onClick={() => props.setRochadeOpen(false)}>
           <X className="h-4 w-4" />
         </Button>
       </div>

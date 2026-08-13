@@ -408,13 +408,13 @@ const DesignerPage = () => {
           <span
             key={label}
             className={`palace-eyebrow pointer-events-auto whitespace-nowrap transition-colors ${
-              activeChapter === i ? "text-[#FFFFFF] mix-blend-difference" : "text-black/50"
+              activeChapter === i ? "text-[#FFFFFF] mix-blend-difference" : "text-black/60"
             }`}
           >
             0{i + 1} · {label}
           </span>
         ))}
-        <span className="palace-eyebrow pointer-events-auto text-black/50">05 · Im Haus</span>
+        <span className="palace-eyebrow pointer-events-auto text-black/60">05 · Im Haus</span>
       </nav>
 
       <div ref={pageRef}>

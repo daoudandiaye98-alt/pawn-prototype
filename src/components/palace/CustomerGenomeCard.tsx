@@ -46,7 +46,7 @@ export function CustomerGenomeCard({ className }: { className?: string }) {
     >
       {preferredTags.length > 0 && (
         <div className="mt-6 border-t border-black/15 pt-4">
-          <p className="editorial-eyebrow text-black/50">Deine Signale</p>
+          <p className="editorial-eyebrow text-black/60">Deine Signale</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {preferredTags.slice(0, 8).map((t) => (
               <span key={t} className="border-[1.5px] border-black px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.16em] text-black">
@@ -58,7 +58,7 @@ export function CustomerGenomeCard({ className }: { className?: string }) {
       )}
       {houseMatches.length > 0 && (
         <div className="mt-6 border-t border-black/15 pt-4">
-          <p className="editorial-eyebrow text-black/50">Passende Häuser</p>
+          <p className="editorial-eyebrow text-black/60">Passende Häuser</p>
           <ul className="mt-2 space-y-3">
             {houseMatches.map(({ dna, text }) => (
               <li key={dna.slug}>

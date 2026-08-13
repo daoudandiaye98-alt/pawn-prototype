@@ -112,7 +112,7 @@ export function ProductServiceSheet({
               </div>
             ) : (
               <div className="border-[1.5px] border-black p-4" style={{ boxShadow: "6px 6px 0 0 #000" }}>
-                <p className="text-[0.6rem] uppercase tracking-[0.24em] text-black/50">{passtResult.passt ? t("product.passt.passt") : t("product.passt.passtNicht")}</p>
+                <p className="text-[0.6rem] uppercase tracking-[0.24em] text-black/60">{passtResult.passt ? t("product.passt.passt") : t("product.passt.passtNicht")}</p>
                 <p className="mt-2 text-sm text-black">{passtResult.urteil}</p>
                 {!passtResult.passt && passtResult.alternative_slug && (
                   <div className="mt-3 border-t border-black/15 pt-3">
@@ -134,7 +134,7 @@ export function ProductServiceSheet({
           {busy && (
             <div className="flex items-center gap-2">
               <PawnFigurSvg className="h-4 w-3 shrink-0" />
-              <span className="text-[0.6rem] uppercase tracking-[0.24em] text-black/50">{t("product.serviceSheet.thinking")}</span>
+              <span className="text-[0.6rem] uppercase tracking-[0.24em] text-black/60">{t("product.serviceSheet.thinking")}</span>
             </div>
           )}
         </div>

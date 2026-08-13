@@ -67,7 +67,7 @@ export function PasstDas({ productSlug, productName }: { productSlug: string; pr
 
   return (
     <div className="border-[1.5px] border-black bg-white p-5" style={{ boxShadow: "6px 6px 0 #000" }}>
-      <p className="editorial-eyebrow text-black/50">{result.passt ? "Passt" : "Passt nicht ganz"}</p>
+      <p className="editorial-eyebrow text-black/60">{result.passt ? "Passt" : "Passt nicht ganz"}</p>
       <p className="mt-2 text-sm text-black">{result.urteil}</p>
       {!result.passt && result.alternative_slug && (
         <div className="mt-4 border-t border-black/15 pt-3">
@@ -77,7 +77,7 @@ export function PasstDas({ productSlug, productName }: { productSlug: string; pr
           </Link>
         </div>
       )}
-      <button type="button" onClick={() => setResult(null)} className="mt-4 text-[0.62rem] uppercase tracking-[0.24em] text-black/40 hover:text-black">
+      <button type="button" onClick={() => setResult(null)} className="mt-4 text-[0.62rem] uppercase tracking-[0.24em] text-black/60 hover:text-black">
         Schließen
       </button>
     </div>

@@ -17,7 +17,7 @@ export function Stilberater({ className }: { className?: string }) {
   if (personalizationOff) {
     return (
       <div className={className ?? "border-[1.5px] border-black bg-white p-6 md:p-8"}>
-        <p className="editorial-eyebrow text-black/50">Stilberater</p>
+        <p className="editorial-eyebrow text-black/60">Stilberater</p>
         <p className="mt-3 text-sm text-black/60">
           Personalisierung ist aus — dein Stilberater zeigt sich wieder, sobald du sie in den{" "}
           <Link to="/account?tab=Einstellungen" className="underline decoration-1 underline-offset-4 hover:no-underline">Einstellungen</Link> anschaltest.
@@ -35,7 +35,7 @@ export function Stilberater({ className }: { className?: string }) {
     <div className={className ?? "border-[1.5px] border-black bg-white p-6 md:p-8"}>
       <div className="flex items-start gap-4">
         <PawnFigur size={56} interactive={false} showShadow={false} className="shrink-0" ariaLabel="PAWN" />
-        <p className="mt-2 editorial-eyebrow text-black/50">Dein Stilberater</p>
+        <p className="mt-2 editorial-eyebrow text-black/60">Dein Stilberater</p>
       </div>
 
       {!hasContent ? (
@@ -76,18 +76,18 @@ export function Stilberater({ className }: { className?: string }) {
           )}
           {!dismissed.includes("einordnung") && result?.einordnung && (
             <div className="group relative border-t border-black/15 pt-4">
-              {result.stilname && <p className="editorial-eyebrow text-black/50">{result.stilname}</p>}
+              {result.stilname && <p className="editorial-eyebrow text-black/60">{result.stilname}</p>}
               <p className="mt-2 max-w-2xl pr-8 text-[0.95rem] leading-relaxed text-black/85">{result.einordnung}</p>
               <DismissBtn onClick={() => void dismiss("einordnung")} />
             </div>
           )}
           {(result?.belege ?? []).some((_, i) => !dismissed.includes(`beleg-${i}`)) && (
             <div className="border-t border-black/15 pt-4">
-              <p className="editorial-eyebrow text-black/50">Woran ich das sehe</p>
+              <p className="editorial-eyebrow text-black/60">Woran ich das sehe</p>
               <ul className="mt-2 space-y-2">
                 {(result?.belege ?? []).map((b, i) => !dismissed.includes(`beleg-${i}`) && (
                   <li key={i} className="group relative pr-8 text-sm text-black/85">
-                    {b.text} <span className="text-black/50">— {b.beleg}</span>
+                    {b.text} <span className="text-black/60">— {b.beleg}</span>
                     <DismissBtn onClick={() => void dismiss(`beleg-${i}`)} />
                   </li>
                 ))}
@@ -96,14 +96,14 @@ export function Stilberater({ className }: { className?: string }) {
           )}
           {!dismissed.includes("blinder_fleck") && result?.blinder_fleck && (
             <div className="group relative border-t border-black/15 pt-4">
-              <p className="editorial-eyebrow text-black/50">Was du noch nicht siehst</p>
-              <p className="mt-2 pr-8 text-sm text-black/85">{result.blinder_fleck.text} <span className="text-black/50">— {result.blinder_fleck.beleg}</span></p>
+              <p className="editorial-eyebrow text-black/60">Was du noch nicht siehst</p>
+              <p className="mt-2 pr-8 text-sm text-black/85">{result.blinder_fleck.text} <span className="text-black/60">— {result.blinder_fleck.beleg}</span></p>
               <DismissBtn onClick={() => void dismiss("blinder_fleck")} />
             </div>
           )}
           {!dismissed.includes("naechster_schritt") && result?.naechster_schritt && (
             <div className="group relative border-t border-black/15 pt-4">
-              <p className="editorial-eyebrow text-black/50">Was ich dir zutraue</p>
+              <p className="editorial-eyebrow text-black/60">Was ich dir zutraue</p>
               <p className="mt-2 pr-8 text-sm text-black/85">{result.naechster_schritt.text}</p>
               <DismissBtn onClick={() => void dismiss("naechster_schritt")} />
             </div>

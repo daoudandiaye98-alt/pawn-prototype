@@ -51,7 +51,7 @@ const DEFAULT_SEO = {
  */
 export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true, title, description }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean; title?: string; description?: string }) {
   const headerVariant = transparentHeader && !showBreadcrumbs ? "transparent-on-hero" : "solid";
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
   const colTitleHaeuser = useContentValue(FOOTER_COLUMN_KEYS[0], "Häuser");
   const colTitleFuerSie = useContentValue(FOOTER_COLUMN_KEYS[1], "Für Sie");
@@ -61,10 +61,12 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
   return (
     <div className="palace min-h-screen bg-white text-black">
       <Seo title={title ?? DEFAULT_SEO[locale].title} description={description ?? DEFAULT_SEO[locale].description} />
+      {/* Teil L2 — Sprunglink: erstes fokussierbares Element, sichtbar nur per Tastatur. */}
+      <a href="#inhalt" className="skip-link">{t("a11y.skipToContent")}</a>
       <BuilderBar />
       <PalaceHeader variant={headerVariant} />
       {showBreadcrumbs && <div className="pt-[68px] md:pt-[76px]"><Breadcrumbs /></div>}
-      <main>{children}</main>
+      <main id="inhalt">{children}</main>
       <footer className="border-t-[1.5px] border-black bg-white">
         <div className="mx-auto max-w-[1600px] px-6 pt-16 md:px-14">
           <PawnWordmark

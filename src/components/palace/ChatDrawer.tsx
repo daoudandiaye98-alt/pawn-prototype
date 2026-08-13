@@ -121,7 +121,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </p>
               ) : (
                 <>
-                  <p className="flex items-center gap-1.5 text-[0.57rem] uppercase tracking-[0.42em] text-black/40">
+                  <p className="flex items-center gap-1.5 text-[0.57rem] uppercase tracking-[0.42em] text-black/60">
                     {m.role === "assistant" && <PawnFigurSvg className="h-3.5 w-[10px] shrink-0" />}
                     {m.role === "assistant" ? "Pawn" : "Du"}
                   </p>
@@ -161,7 +161,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           {busy && (
             <div className="flex items-center gap-2" aria-live="polite">
               <PawnFigurSvg className="h-5 w-[15px] shrink-0" />
-              <span className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{t("chat.thinking")}</span>
+              <span className="text-[0.57rem] uppercase tracking-[0.42em] text-black/60">{t("chat.thinking")}</span>
             </div>
           )}
         </div>
@@ -193,9 +193,9 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <textarea value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(input); } }}
               rows={1} placeholder={t("chat.placeholder")}
-              className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-[#000000] placeholder:text-black/40 focus:outline-none" />
+              className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-[#000000] placeholder:text-black/60 focus:outline-none" />
             <button type="submit" disabled={busy || (!input.trim() && !pendingImage)}
-              className="text-[0.6rem] uppercase tracking-[0.42em] text-[#000000] disabled:text-black/40">
+              className="text-[0.6rem] uppercase tracking-[0.42em] text-[#000000] disabled:text-black/60">
               {t("chat.send")}
             </button>
           </div>

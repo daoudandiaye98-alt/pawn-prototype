@@ -287,6 +287,13 @@ const ProductDetail = () => {
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  // Teil L2 — Barrierefreiheit: beschreibender Alt-Text aus Titel + Technik + Haus,
+  // statt nur des Produktnamens.
+  const imageAlt = useMemo(() => {
+    const dna = (dbProduct?.product_dna ?? {}) as { technik?: string; medium?: string };
+    return [product.name, dna.technik || dna.medium, product.designer].filter(Boolean).join(" — ");
+  }, [product.name, product.designer, dbProduct]);
+
   if (productLoading) {
     return (
       <PalaceLayout transparentHeader={false}>
@@ -580,7 +587,7 @@ const ProductDetail = () => {
                 seed={`prd-${product.slug}-gal-${i}`}
                 ratio={i === 2 ? "16/9" : "4/5"}
                 className="w-full [&_.palace-image-inner]:transition-transform [&_.palace-image-inner]:duration-[900ms] [&_.palace-image-inner]:ease-[cubic-bezier(.76,0,.18,1)] [&:hover_.palace-image-inner]:scale-[1.03]"
-                alt={product.name}
+                alt={imageAlt}
                 color
               />
             </button>
@@ -616,7 +623,7 @@ const ProductDetail = () => {
                 aria-label={t("product.lightbox.openAria")}
                 className="absolute inset-0 block h-full w-full"
               >
-                <img src={heroImage} alt={product.name} className="h-full w-full object-cover object-top md:object-contain md:object-center" />
+                <img src={heroImage} alt={imageAlt} className="h-full w-full object-cover object-top md:object-contain md:object-center" />
               </button>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black">
@@ -659,7 +666,7 @@ const ProductDetail = () => {
             >
               <img
                 src={heroImage}
-                alt={product.name}
+                alt={imageAlt}
                 className="h-full w-auto max-w-full object-contain"
                 style={{ aspectRatio: "4 / 5" }}
               />
@@ -826,7 +833,7 @@ const ProductDetail = () => {
 
       <ProductLightbox
         images={allImages}
-        alt={product.name}
+        alt={imageAlt}
         open={lightboxIndex !== null}
         initialIndex={lightboxIndex ?? 0}
         onClose={() => setLightboxIndex(null)}

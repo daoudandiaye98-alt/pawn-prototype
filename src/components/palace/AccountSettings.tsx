@@ -23,7 +23,7 @@ export function SettingsSection({
   return (
     <div className={cn("border-[1.5px] border-black bg-white p-6 md:p-8", className)}>
       <div>
-        {eyebrow && <p className="editorial-eyebrow text-black/50">{eyebrow}</p>}
+        {eyebrow && <p className="editorial-eyebrow text-black/60">{eyebrow}</p>}
         <h3 className="mt-1 font-serif text-xl leading-tight text-black">{title}</h3>
         {subtitle && <p className="mt-1 text-sm text-black/60">{subtitle}</p>}
       </div>

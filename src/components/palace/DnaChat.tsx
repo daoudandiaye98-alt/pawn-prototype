@@ -177,7 +177,7 @@ export function DnaChat() {
             <h3 className="palace-serif mt-1 text-[1.4rem] italic text-black">Erzähl mir, oder zeig mir etwas.</h3>
           </div>
         </div>
-        <p className="mt-3 text-[0.72rem] text-black/50">{t("dna.chat.herkunft")}</p>
+        <p className="mt-3 text-[0.72rem] text-black/60">{t("dna.chat.herkunft")}</p>
       </div>
 
       <div ref={listRef} className="max-h-[60vh] min-h-[180px] space-y-6 overflow-y-auto px-6 py-6 md:px-8">
@@ -190,7 +190,7 @@ export function DnaChat() {
           <div key={m.id} className={m.role === "assistant" ? "flex items-start gap-2" : "text-right"}>
             {m.role === "assistant" && <PawnFigurSvg className="mt-1 h-4 w-3 shrink-0" />}
             <div className="min-w-0 flex-1">
-              <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">{m.role === "assistant" ? "Pawn" : "Du"}</p>
+              <p className="text-[0.57rem] uppercase tracking-[0.42em] text-black/60">{m.role === "assistant" ? "Pawn" : "Du"}</p>
               {m.imageUrls && m.imageUrls.length > 0 && (
                 <div className={`mt-2 flex flex-wrap gap-2 ${m.role === "assistant" ? "" : "justify-end"}`}>
                   {m.imageUrls.map((u, i) => (
@@ -207,7 +207,7 @@ export function DnaChat() {
         {busy && (
           <div className="flex items-center gap-2">
             <PawnFigurSvg className="h-4 w-3 shrink-0" />
-            <span className="text-[0.57rem] uppercase tracking-[0.42em] text-black/40">Pawn denkt nach…</span>
+            <span className="text-[0.57rem] uppercase tracking-[0.42em] text-black/60">Pawn denkt nach…</span>
           </div>
         )}
       </div>
@@ -250,14 +250,14 @@ export function DnaChat() {
             onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
           />
         </div>
-        <p className="mb-3 text-[0.72rem] text-black/50">Bilder hochladen — Fotos von dir, Screenshots, alles was deinen Geschmack zeigt.</p>
+        <p className="mb-3 text-[0.72rem] text-black/60">Bilder hochladen — Fotos von dir, Screenshots, alles was deinen Geschmack zeigt.</p>
         <div className="flex items-end gap-3 border-b border-[rgba(0,0,0,.28)] pb-2">
           <textarea value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
             rows={1} placeholder="Erzähl mir von dir…"
-            className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-black placeholder:text-black/40 focus:outline-none" />
+            className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-black placeholder:text-black/60 focus:outline-none" />
           <button type="submit" disabled={busy || (!input.trim() && pendingImages.length === 0)}
-            className="text-[0.6rem] uppercase tracking-[0.42em] text-black disabled:text-black/40">
+            className="text-[0.6rem] uppercase tracking-[0.42em] text-black disabled:text-black/60">
             Senden
           </button>
         </div>

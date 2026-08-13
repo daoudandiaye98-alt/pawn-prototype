@@ -101,6 +101,32 @@
   }
   /* Kill lingering weight-300 declarations */
   .font-light { font-weight: 500 !important; }
+
+  /* Teil L2 — Barrierefreiheit: sichtbarer Fokus im PAWN-Stil auf JEDEM interaktiven
+     Element (2px, harter Rahmen, Offset). :focus-visible statt :focus, damit Maus-Klicks
+     keinen Rahmen hinterlassen, Tastatur-Nutzung aber immer sichtbar ist. currentColor,
+     damit der Rahmen auf schwarzen Flächen weiß und auf weißen Flächen schwarz ist. */
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+  textarea:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+
+  /* Teil L2 — Sprunglink "Zum Inhalt springen": unsichtbar, bis er per Tastatur
+     fokussiert wird — dann als erstes Element oben links sichtbar. */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+    background: #000;
+    color: #fff;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+  }
+  .skip-link:focus-visible { left: 0; }
 }
 
 @layer components {

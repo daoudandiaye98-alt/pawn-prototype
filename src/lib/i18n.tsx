@@ -520,6 +520,7 @@ const de = {
   "footer.legal.widerruf": "Widerruf",
   "footer.legal.barrierefreiheit": "Barrierefreiheit",
   "footer.legal.cookies": "Cookie-Einstellungen",
+  "a11y.skipToContent": "Zum Inhalt springen",
   "studioShell.highestRank": "Höchster Rang",
   "studioShell.nextRank": "Nächster Rang · {rank}",
 
@@ -2768,6 +2769,7 @@ const en: Record<keyof typeof de, string> = {
   "footer.legal.widerruf": "Right of withdrawal",
   "footer.legal.barrierefreiheit": "Accessibility",
   "footer.legal.cookies": "Cookie settings",
+  "a11y.skipToContent": "Skip to content",
   "studioShell.highestRank": "Highest rank",
   "studioShell.nextRank": "Next rank · {rank}",
 
