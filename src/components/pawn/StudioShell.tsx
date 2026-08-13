@@ -7,8 +7,6 @@ import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
-import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
-import { KasseBanner } from "@/features/studio/KasseBanner";
 import { PawnDeck } from "./PawnDeck";
 import { markRoomUsedOncePerSession, roomKeyForPath } from "@/lib/pawnSignal";
 
@@ -267,8 +265,6 @@ function Inner({ children, title, eyebrow }: Props) {
           <p className="ml-3 font-serif">{t("studioShell.studio")}</p>
         </div>
         <Topbar title={title} section={eyebrow ?? title} />
-        {designer && <KasseBanner />}
-        {designer && <ContractV2Banner />}
         <main className="flex-1 p-6 md:p-10">{children}</main>
         <div className="flex flex-wrap items-center gap-4 border-t border-border px-6 py-4 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground md:px-10">
           <Link to="/impressum" className="hover:text-foreground">{t("studioShell.legal.impressum")}</Link>
