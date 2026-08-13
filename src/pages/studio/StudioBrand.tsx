@@ -61,8 +61,9 @@ export default function StudioBrand() {
     const path = `${user.id}/brand/${kind}-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     const { error } = await supabase.storage.from("designer-media").upload(path, file);
     if (error) return toast.error(error.message);
-    const { data } = await supabase.storage.from("designer-media").createSignedUrl(path, 60 * 60 * 24 * 365);
-    setForm((f) => ({ ...f, [kind]: data?.signedUrl ?? "" }));
+    // Dauerhafte öffentliche URL statt 365-Tage-Signatur — Markenbilder dürfen nie ablaufen.
+    const { data } = supabase.storage.from("designer-media").getPublicUrl(path);
+    setForm((f) => ({ ...f, [kind]: data?.publicUrl ?? "" }));
   };
 
   if (loading) return <StudioShell title={t("studioShell.nav.doppelseite")}><PawnLoading /></StudioShell>;
