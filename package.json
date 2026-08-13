@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.2.11",
+    "@fontsource/fraunces": "^5.3.0",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/manrope": "^5.2.8",
+    "@fontsource/outfit": "^5.3.0",
     "@fontsource/playfair-display": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
