@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,11 +64,15 @@ export default function StudioBrand() {
     setForm((f) => ({ ...f, [kind]: data?.signedUrl ?? "" }));
   };
 
-  if (loading) return <StudioShell title={t("studio.brand.title")}><PawnLoading /></StudioShell>;
-  if (!designer) return <StudioShell title={t("studio.brand.title")}><p className="text-muted-foreground">{t("studio.brand.noAccess")}</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.doppelseite")}><PawnLoading /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.doppelseite")}><p className="text-muted-foreground">{t("studio.brand.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title={t("studio.brand.title")} eyebrow={t("studio.brand.publicUnder", { slug: designer.slug })}>
+    <StudioShell title={t("studioShell.nav.doppelseite")} eyebrow={t("studio.brand.publicUnder", { slug: designer.slug })}>
+      <FlaechenTabs tabs={[
+        { label: t("studio.tabs.seite"), to: "/studio/doppelseite" },
+        { label: t("studio.tabs.stil"), to: "/studio/doppelseite/stil" },
+      ]} />
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
           <p className="editorial-eyebrow">{t("studio.brand.section.portraitStory")}</p>

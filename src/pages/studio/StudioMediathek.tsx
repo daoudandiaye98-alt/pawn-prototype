@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
@@ -212,11 +213,15 @@ export default function StudioMediathek() {
     await supabase.from("media_assets" as never).update({ title } as never).eq("id", row.id);
   };
 
-  if (loading) return <StudioShell title={t("studio.mediathek.title")}><PawnLoading /></StudioShell>;
-  if (!designer) return <StudioShell title={t("studio.mediathek.title")}><p className="text-muted-foreground">{t("studio.mediathek.noAccess")}</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.werke")}><PawnLoading /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.werke")}><p className="text-muted-foreground">{t("studio.mediathek.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title={t("studio.mediathek.title")} eyebrow={t("studio.mediathek.eyebrow")}>
+    <StudioShell title={t("studioShell.nav.werke")} eyebrow={t("studio.mediathek.eyebrow")}>
+      <FlaechenTabs tabs={[
+        { label: t("studio.tabs.werke"), to: "/studio/werke" },
+        { label: t("studio.tabs.bilder"), to: "/studio/werke/bilder" },
+      ]} />
       <p className="max-w-2xl text-sm text-muted-foreground">
         {t("studio.mediathek.intro")}
       </p>

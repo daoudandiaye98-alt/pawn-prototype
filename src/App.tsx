@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { captureReferralCode } from "@/features/referral";
 import { captureLeadRef } from "@/features/acquisition/leadAttribution";
@@ -57,7 +57,6 @@ import StudioOffeneTueren from "./pages/studio/StudioOffeneTueren.tsx";
 import StudioCampaignNew from "./pages/studio/StudioCampaignNew.tsx";
 import StudioPlan from "./pages/studio/StudioPlan.tsx";
 import StudioVideothek from "./pages/studio/StudioVideothek.tsx";
-import StudioAufbau from "./pages/studio/StudioAufbau.tsx";
 import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
 import StudioContentBegleiter from "./pages/studio/StudioContentBegleiter.tsx";
 import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
@@ -205,22 +204,32 @@ const App = () => (
                 <Route path="/admin/aktionen" element={<RoleGate role="admin"><AdminAktionen /></RoleGate>} />
 
                 <Route path="/studio" element={<RoleGate role="designer"><StudioOverview /></RoleGate>} />
-                <Route path="/studio/aufbau" element={<RoleGate role="designer"><StudioAufbau /></RoleGate>} />
-                <Route path="/studio/produkte" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
-                <Route path="/studio/produkte/neu" element={<RoleGate role="designer"><StudioStueckNeu /></RoleGate>} />
+                {/* Teil K1 — Sidebar-Faltung: neue gefaltete Flächen. */}
+                <Route path="/studio/werke" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
+                <Route path="/studio/werke/neu" element={<RoleGate role="designer"><StudioStueckNeu /></RoleGate>} />
+                <Route path="/studio/werke/bilder" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
+                <Route path="/studio/doppelseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
+                <Route path="/studio/doppelseite/stil" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
+                <Route path="/studio/clips" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
+                <Route path="/studio/clips/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />
+                <Route path="/studio/clips/fertig" element={<RoleGate role="designer"><StudioVideothek /></RoleGate>} />
+                {/* Teil K1 — alte Routen leben als Redirects weiter, keine Funktion geht verloren. */}
+                <Route path="/studio/aufbau" element={<Navigate to="/studio" replace />} />
+                <Route path="/studio/produkte" element={<Navigate to="/studio/werke" replace />} />
+                <Route path="/studio/produkte/neu" element={<Navigate to="/studio/werke/neu" replace />} />
+                <Route path="/studio/mediathek" element={<Navigate to="/studio/werke/bilder" replace />} />
+                <Route path="/studio/hausseite" element={<Navigate to="/studio/doppelseite" replace />} />
+                <Route path="/studio/kampagnen" element={<Navigate to="/studio/clips" replace />} />
+                <Route path="/studio/kampagnen/neu" element={<Navigate to="/studio/clips/neu" replace />} />
+                <Route path="/studio/videothek" element={<Navigate to="/studio/clips/fertig" replace />} />
                 <Route path="/studio/bestellungen" element={<RoleGate role="designer"><StudioOrders /></RoleGate>} />
                 <Route path="/studio/versand" element={<RoleGate role="designer"><StudioVersand /></RoleGate>} />
-                <Route path="/studio/kampagnen" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
-                <Route path="/studio/kampagnen/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />
-                <Route path="/studio/videothek" element={<RoleGate role="designer"><StudioVideothek /></RoleGate>} />
-                <Route path="/studio/mediathek" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
                 <Route path="/studio/content-begleiter" element={<RoleGate role="designer"><StudioContentBegleiter /></RoleGate>} />
-                <Route path="/studio/hausseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
                 <Route path="/studio/empfehlungen" element={<RoleGate role="designer"><StudioReferrals /></RoleGate>} />
                 <Route path="/studio/beweis" element={<RoleGate role="designer"><StudioBeweis /></RoleGate>} />
                 <Route path="/studio/plan" element={<RoleGate role="designer"><StudioPlan /></RoleGate>} />
                 <Route path="/studio/dna" element={<RoleGate role="designer"><StudioDNA /></RoleGate>} />
-                <Route path="/studio/brand" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
+                <Route path="/studio/brand" element={<Navigate to="/studio/doppelseite/stil" replace />} />
                 <Route path="/studio/nachrichten" element={<RoleGate role="designer"><StudioMessages /></RoleGate>} />
                 <Route path="/studio/auszahlung" element={<RoleGate role="designer"><StudioPayout /></RoleGate>} />
                 <Route path="/studio/copilot" element={<RoleGate role="designer"><StudioCopilot /></RoleGate>} />

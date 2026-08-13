@@ -1,16 +1,14 @@
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { ReactNode, useEffect, useState } from "react";
-import { LogOut, Menu, Bell, ExternalLink } from "lucide-react";
+import { LogOut, Menu, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LanguageToggle } from "./LanguageToggle";
 import { useAuth } from "@/lib/auth";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
-import { useDesignerLevel } from "@/features/studio/useDesignerLevel";
 import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { ContractV2Banner } from "@/features/studio/ContractV2Banner";
 import { KasseBanner } from "@/features/studio/KasseBanner";
-import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota";
 import { PawnDeck } from "./PawnDeck";
 import { markRoomUsedOncePerSession, roomKeyForPath } from "@/lib/pawnSignal";
 
@@ -27,35 +25,17 @@ const ICollection = (p: React.SVGProps<SVGSVGElement>) => (
 const IOrders = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 4h12l-1 12H5L4 4zM7 8h6M7 11h6" /></svg>
 );
-const ICampaigns = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 8l10-4v12L4 12V8zM4 8v4M14 6v10" /></svg>
-);
 const IMessages = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M3 5h14v9H8l-5 3V5z" /></svg>
-);
-const IRetro = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M10 3l3 5 5 .8-3.6 3.6.9 5L10 15l-5.2 2.4.9-5L2 8.8 7 8l3-5z" /></svg>
 );
 const IVideothek = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="5" width="14" height="10" /><path d="M8.5 8l4 2-4 2V8z" /></svg>
 );
-const IMediathek = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="3" y="4" width="14" height="12" /><circle cx="7.5" cy="9" r="1.5" /><path d="M5 14l3.5-3.5L11 13l2-2 2 2.5" /></svg>
-);
 const IHausseite = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><rect x="2.5" y="3" width="15" height="14" /><path d="M10 3v14M5 7h2M5 11h2M13 7h2M13 11h2" /></svg>
 );
-const IContentBegleiter = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 4h9l3 3v9H4z" /><path d="M13 4v3h3" /><path d="M7 10h6M7 13h4" /></svg>
-);
-const IWerkbuch = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 3c3 1.5 3 12 0 14M16 3c-3 1.5-3 12 0 14M4 6c4 2 8 2 12 0M4 14c4-2 8-2 12 0" /></svg>
-);
 const IDoor = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M6 17V3.6L14 3v14" /><path d="M4 17h12" /><circle cx="11.3" cy="10" r="0.8" fill="currentColor" stroke="none" /></svg>
-);
-const IBeweis = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.25} {...p}><path d="M4 16V9M10 16V4M16 16v-6" /><path d="M3 16h14" /></svg>
 );
 
 type NavItem = { to: string; label: string; hint?: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; end?: boolean; badge?: number };
@@ -92,31 +72,6 @@ function firstNameOf(u: { displayName?: string | null }, brand?: string | null, 
 
 export { firstNameOf };
 
-function LevelPlaque({ designerId }: { designerId?: string }) {
-  const { level } = useDesignerLevel(designerId);
-  const { t } = useI18n();
-  if (!designerId) return null;
-  const pct = Math.max(0, Math.min(1, level.progress));
-  return (
-    <div className="mx-6 mb-6 border-[1.5px] border-white/25 p-4">
-      <div className="flex items-center gap-3">
-        <span className="font-serif text-2xl leading-none">{level.glyph}</span>
-        <div className="min-w-0">
-          <p className="font-serif text-sm leading-none">{level.label}</p>
-          <p className="mt-1 text-[0.58rem] uppercase tracking-[0.22em] text-white/45">
-            {level.level === "dame" ? t("studioShell.highestRank") : t("studioShell.nextRank", { rank: level.next })}
-          </p>
-        </div>
-      </div>
-      {level.level !== "dame" && (
-        <div className="mt-3 h-[3px] w-full bg-white/10">
-          <div className="h-full bg-white transition-all duration-500" style={{ width: `${Math.round(pct * 100)}%` }} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { designer } = useMyDesigner();
   const badges = useStudioBadges(designer?.id);
@@ -126,40 +81,33 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const brand = designer?.brand_name ?? t("studioShell.studioFallback");
   const initials = initialsOf(brand);
 
-  // Finale Form Teil F — Menü-Trinität: genau drei Flächen statt vier Gruppen mit 19 Einträgen.
-  // "Dein Zug" ist eine einzelne Karte (der Hub), "Dein Haus" bündelt alles, was am Werk/an der
-  // Doppelseite arbeitet, "Dein Postfach" alles, was auf eine Antwort wartet. Konto-/Verwaltungs-
-  // Kram (Plan, Auszahlung, Versand, Verträge, Automatik, Empfehlungen) liegt nicht mehr in der
-  // Hauptnav, sondern hinter dem Profil (Topbar-Avatar → /studio/einstellungen, s.u.) — dieselbe
-  // Regel wie "Insights werden Sätze auf Karten": Beweis lebt als Verweis auf dem Hub, nicht als
-  // eigene Fläche.
+  // Teil K1 — Sidebar-Faltung. Kernregel: Menüpunkte tragen KEINE Untertitel; braucht ein
+  // Punkt einen Erklärsatz, ist der Name falsch. Zweite Regel: Erstellen und Verwalten
+  // derselben Sache sind EINE Fläche (Tabs), nie zwei Menüpunkte. Gefaltet wurde:
+  // Kollektion+Bilder → Werke · Markenseite+Markenprofil → Doppelseite (Seite/Stil) ·
+  // Videos erstellen+Fertige Videos → Clips (Neu/Fertig). "Marke aufbauen", "Rückblick"
+  // und "Ideen-Begleiter" leben als Züge/Karten im Hub, nicht als Orte.
   const groups: { title: string; items: NavItem[] }[] = [
     {
       title: t("studioShell.group.zug"),
       items: [
-        { to: "/studio", label: t("studioShell.nav.start"), hint: t("studioShell.nav.start.hint"), icon: IStage, end: true },
+        { to: "/studio", label: t("studioShell.nav.start"), icon: IStage, end: true },
       ],
     },
     {
       title: t("studioShell.group.haus"),
       items: [
-        { to: "/studio/aufbau", label: t("studioShell.nav.aufbau"), hint: t("studioShell.nav.aufbau.hint"), icon: IWerkbuch },
-        { to: "/studio/produkte", label: t("studioShell.nav.produkte"), hint: t("studioShell.nav.produkte.hint"), icon: ICollection },
-        { to: "/studio/hausseite", label: t("studioShell.nav.hausseite"), hint: t("studioShell.nav.hausseite.hint"), icon: IHausseite },
-        { to: "/studio/mediathek", label: t("studioShell.nav.mediathek"), hint: t("studioShell.nav.mediathek.hint"), icon: IMediathek },
-        { to: "/studio/kampagnen", label: t("studioShell.nav.kampagnen"), hint: t("studioShell.nav.kampagnen.hint"), icon: ICampaigns, badge: badges.campaigns },
-        { to: "/studio/videothek", label: t("studioShell.nav.videothek"), hint: t("studioShell.nav.videothek.hint"), icon: IVideothek },
-        { to: "/studio/dna", label: t("studioShell.nav.dna"), hint: t("studioShell.nav.dna.hint"), icon: IWerkbuch },
-        { to: "/studio/brand", label: t("studioShell.nav.brand"), hint: t("studioShell.nav.brand.hint"), icon: IRetro },
-        { to: "/studio/content-begleiter", label: t("studioShell.nav.contentBegleiter"), hint: t("studioShell.nav.contentBegleiter.hint"), icon: IContentBegleiter },
+        { to: "/studio/werke", label: t("studioShell.nav.werke"), icon: ICollection },
+        { to: "/studio/doppelseite", label: t("studioShell.nav.doppelseite"), icon: IHausseite },
+        { to: "/studio/clips", label: t("studioShell.nav.clips"), icon: IVideothek, badge: badges.campaigns },
       ],
     },
     {
       title: t("studioShell.group.postfach"),
       items: [
-        { to: "/studio/bestellungen", label: t("studioShell.nav.bestellungen"), hint: t("studioShell.nav.bestellungen.hint"), icon: IOrders, badge: badges.orders },
-        { to: "/studio/nachrichten", label: t("studioShell.nav.nachrichten"), hint: t("studioShell.nav.nachrichten.hint"), icon: IMessages, badge: badges.messages },
-        { to: "/studio/tueren", label: t("studioShell.nav.tueren"), hint: t("studioShell.nav.tueren.hint"), icon: IDoor, badge: badges.tueren },
+        { to: "/studio/bestellungen", label: t("studioShell.nav.bestellungen"), icon: IOrders, badge: badges.orders },
+        { to: "/studio/nachrichten", label: t("studioShell.nav.nachrichten"), icon: IMessages, badge: badges.messages },
+        { to: "/studio/tueren", label: t("studioShell.nav.tueren"), icon: IDoor, badge: badges.tueren },
       ],
     },
   ];
@@ -190,10 +138,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   )}>
                   {active && <span className="absolute left-0 top-0 h-full w-px bg-white" />}
                   <item.icon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span className="flex-1">
-                    {item.label}
-                    {item.hint && <span className="mt-0.5 block text-[0.6rem] leading-snug tracking-normal text-white/35">{item.hint}</span>}
-                  </span>
+                  <span className="flex-1">{item.label}</span>
                   {item.badge && item.badge > 0 ? (
                     <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[0.62rem] font-medium text-foreground">{item.badge}</span>
                   ) : null}
@@ -208,26 +153,11 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/"
         onClick={onNavigate}
-        className="mx-6 mb-4 border border-white/25 px-3 py-2 text-center text-[0.62rem] uppercase tracking-[0.3em] text-white/80 transition-colors hover:bg-white hover:text-black"
+        className="mx-6 mb-6 border border-white/25 px-3 py-2 text-center text-[0.62rem] uppercase tracking-[0.3em] text-white/80 transition-colors hover:bg-white hover:text-black"
       >
         {t("studioShell.toExhibition")}
       </Link>
-
-      {designer && <LevelPlaque designerId={designer.id} />}
     </aside>
-  );
-}
-
-/** Limit dauerhaft sichtbar, egal auf welcher Studio-Seite — Details liegen auf /studio/plan. */
-function CreditsPill({ designerId, plan }: { designerId: string; plan: Plan }) {
-  const quota = usePlanQuota(designerId, plan);
-  const { t } = useI18n();
-  if (quota.loading) return null;
-  return (
-    <Link to="/studio/plan" title={t("studioShell.yourMonth")}
-      className="hidden items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tabular-nums tracking-wide hover:border-foreground sm:inline-flex">
-      {formatQuota(quota.used.videos, quota.unlimited ? -1 : quota.limits.videos, t("studioShell.videos"))}
-    </Link>
   );
 }
 
@@ -255,14 +185,9 @@ function Topbar({ title, section }: { title: string; section?: string }) {
         <p className="mt-0.5 truncate font-serif text-lg leading-none">{title}</p>
       </div>
 
+      {/* Teil K1 — Topbar aufgeräumt: das Video-Kontingent lebt jetzt in der Clips-Fläche,
+          der Seiten-Link auf dem Hub. Es bleiben Sprachumschalter, Glocke, Profil (+ Abmelden). */}
       <div className="flex items-center gap-3">
-        {designer && <CreditsPill designerId={designer.id} plan={((designer as unknown as { plan?: Plan }).plan) ?? "haus"} />}
-        {designer && (
-          <Link to={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
-            className="hidden md:inline-flex items-center gap-1.5 border border-border bg-white px-3 py-1.5 text-[0.68rem] tracking-wide hover:bg-muted">
-            {t("studioShell.viewMyRetro")} <ExternalLink className="h-3 w-3" />
-          </Link>
-        )}
         <LanguageToggle className="h-9" />
         <button aria-label={t("studioShell.notifications")} onClick={() => nav("/account")} className="relative flex h-9 w-9 items-center justify-center border border-border bg-white hover:bg-muted">
           <Bell className="h-4 w-4" />
