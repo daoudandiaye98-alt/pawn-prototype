@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
+import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -50,6 +52,8 @@ interface EditionCard {
 export default function StudioCampaigns() {
   const { t } = useI18n();
   const { designer, loading } = useMyDesigner();
+  // Teil K1 — das Video-Kontingent wandert aus der Topbar hierher: es gehört zur Clips-Fläche.
+  const quota = usePlanQuota(designer?.id, ((designer as unknown as { plan?: Plan })?.plan) ?? "haus");
   const { user } = useAuth();
   const [items, setItems] = useState<CampaignRow[]>([]);
   const [active, setActive] = useState<CampaignRow | null>(null);
@@ -135,14 +139,23 @@ export default function StudioCampaigns() {
     void refresh();
   };
 
-  if (loading) return <StudioShell title={t("studio.campaigns.title")}><PawnLoading /></StudioShell>;
-  if (!designer) return <StudioShell title={t("studio.campaigns.title")}><p className="text-muted-foreground">{t("studio.campaigns.noAccess")}</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.clips")}><PawnLoading /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.clips")}><p className="text-muted-foreground">{t("studio.campaigns.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title={t("studio.campaigns.title")} eyebrow={t("studio.campaigns.eyebrow")}>
+    <StudioShell title={t("studioShell.nav.clips")} eyebrow={t("studio.campaigns.eyebrow")}>
+      <FlaechenTabs tabs={[
+        { label: t("studio.tabs.neu"), to: "/studio/clips" },
+        { label: t("studio.tabs.fertig"), to: "/studio/clips/fertig" },
+      ]} />
+      {!quota.loading && (
+        <p className="mb-6 text-xs text-muted-foreground tabular-nums">
+          {formatQuota(quota.used.videos, quota.unlimited ? -1 : quota.limits.videos, t("studioShell.videos"))}
+        </p>
+      )}
       <HowItWorks
         storageKey="campaigns"
-        title={t("studio.campaigns.title")}
+        title={t("studioShell.nav.clips")}
         intro={t("studio.campaigns.howItWorks.intro")}
         steps={[
           t("studio.campaigns.howItWorks.step1"),

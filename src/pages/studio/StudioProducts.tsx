@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -237,13 +238,17 @@ export default function StudioProducts() {
     void refresh();
   };
 
-  if (loading) return <StudioShell title={t("studioShell.nav.produkte")}><PawnLoading /></StudioShell>;
-  if (!designer) return <StudioShell title={t("studioShell.nav.produkte")}><p className="text-muted-foreground">{t("studio.products.noStudioAccess")}</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.werke")}><PawnLoading /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.werke")}><p className="text-muted-foreground">{t("studio.products.noStudioAccess")}</p></StudioShell>;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE));
 
   return (
-    <StudioShell title={t("studioShell.nav.produkte")} eyebrow={t("studio.products.eyebrow")}>
+    <StudioShell title={t("studioShell.nav.werke")} eyebrow={t("studio.products.eyebrow")}>
+      <FlaechenTabs tabs={[
+        { label: t("studio.tabs.werke"), to: "/studio/werke" },
+        { label: t("studio.tabs.bilder"), to: "/studio/werke/bilder" },
+      ]} />
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{total} {total === 1 ? t("studio.products.pieceSingular") : t("studio.products.piecePlural")} · {t("studio.products.pageInfo", { page: page + 1, total: totalPages })}</p>
         <Link to="/studio/produkte/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">

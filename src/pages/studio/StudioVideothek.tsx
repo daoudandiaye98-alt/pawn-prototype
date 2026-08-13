@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -41,8 +42,8 @@ export default function StudioVideothek() {
     return signals.slice(0, 6).map((s) => `#${s.replace(/\s+/g, "").toLowerCase()}`);
   }, [designer]);
 
-  if (loading) return <StudioShell title={t("studio.videothek.title")}><PawnLoading /></StudioShell>;
-  if (!designer) return <StudioShell title={t("studio.videothek.title")}><p className="text-muted-foreground">{t("studio.videothek.noAccess")}</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.clips")}><PawnLoading /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.clips")}><p className="text-muted-foreground">{t("studio.videothek.noAccess")}</p></StudioShell>;
 
   const captionFor = (r: VideoRow) => r.campaigns?.content?.caption?.trim()
     || t("studio.videothek.captionFallback", { brand: designer.brand_name });
@@ -59,7 +60,11 @@ export default function StudioVideothek() {
   };
 
   return (
-    <StudioShell title={t("studio.videothek.title")} eyebrow={t("studio.videothek.eyebrow")}>
+    <StudioShell title={t("studioShell.nav.clips")} eyebrow={t("studio.videothek.eyebrow")}>
+      <FlaechenTabs tabs={[
+        { label: t("studio.tabs.neu"), to: "/studio/clips" },
+        { label: t("studio.tabs.fertig"), to: "/studio/clips/fertig" },
+      ]} />
       <p className="max-w-2xl text-sm text-muted-foreground">
         {t("studio.videothek.description")}
       </p>

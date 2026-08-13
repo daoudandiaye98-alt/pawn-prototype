@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -197,11 +198,17 @@ export default function StudioHausseite() {
   ];
   const readyToPublish = checklist.every((c) => c.ok);
 
-  if (loading) return <StudioShell title={t("studio.hausseite.title")}><PawnLoading /></StudioShell>;
-  if (!designer) return <StudioShell title={t("studio.hausseite.title")}><p className="text-muted-foreground">{t("studio.hausseite.noAccess")}</p></StudioShell>;
+  if (loading) return <StudioShell title={t("studioShell.nav.doppelseite")}><PawnLoading /></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.doppelseite")}><p className="text-muted-foreground">{t("studio.hausseite.noAccess")}</p></StudioShell>;
 
   return (
-    <StudioShell title={t("studio.hausseite.title")} eyebrow={t("studio.hausseite.eyebrow")}>
+    <StudioShell title={t("studioShell.nav.doppelseite")} eyebrow={t("studio.hausseite.eyebrow")}>
+      <FlaechenTabs tabs={[
+        { label: t("studio.tabs.seite"), to: "/studio/doppelseite" },
+        { label: t("studio.tabs.stil"), to: "/studio/doppelseite/stil" },
+      ]} />
+      {/* Teil K6 — Erklärung in der Fläche, nie im Menü. */}
+      <p className="mb-6 text-sm text-muted-foreground">{t("studio.doppelseite.explain")}</p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t("studio.hausseite.intro")}
