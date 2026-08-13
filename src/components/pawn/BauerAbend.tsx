@@ -1,15 +1,14 @@
-import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
 
 /**
  * Teil N — der Bauer im Abendlicht: Systemfigur und einziges Aufmerksamkeitssystem
- * des Studios. Struktur und Verhalten folgen dem freigegebenen Ankunft-Design
- * (pawn-ankunft.html): Gradients body/rim/cheek, Augen-Gruppen eyeL/eyeR,
- * mouth-Pfad; er atmet (4,2 s), blinzelt (~5,5 s), die Augen folgen dem Zeiger,
- * und beim Antippen freut er sich (Squish + breiteres Lächeln).
- *
- * Hinweis: Die Pfad-Geometrie ist aus der Teil-N-Spezifikation rekonstruiert,
- * da die Referenzdatei nicht im Repo liegt — sobald pawn-ankunft.html eintrifft,
- * wird die SVG hier 1:1 ausgetauscht (nur dieser eine Block).
+ * des Studios. Darstellung und Bewegung sind 1:1 aus der freigegebenen
+ * Referenzdatei pawn-ankunft.html übernommen (Kopf r=46, Blinzeln 5,5 s,
+ * Squish 0,5 s, Augen-Clamp /320, Pupillen-Versatz 3.4/2.6) — die Keyframes
+ * bob/arrive/squish/shbob/blink liegen in src/styles/abendlicht.css.
+ * Einzige technische Abweichung: die Gradient-IDs body/rim/cheek tragen einen
+ * Instanz-Suffix, weil dieselbe Komponente mehrfach auf einer Seite stehen kann
+ * und SVG-IDs im Dokument eindeutig sein müssen. Alle Werte sind unverändert.
  */
 
 export interface BauerAbendHandle {
@@ -25,152 +24,122 @@ interface Props {
 
 const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+const MUND_RUHIG = "M97 87 Q105 93 113 87";
+const MUND_FREUDE = "M95 85 Q105 97 115 85";
+
 export const BauerAbend = forwardRef<BauerAbendHandle, Props>(function BauerAbend(
-  { size = 96, onTap, ariaLabel, className },
+  { size = 105, onTap, ariaLabel, className },
   ref,
 ) {
-  const uid = useId().replace(/:/g, "");
-  const rootRef = useRef<HTMLButtonElement>(null);
-  const eyesRef = useRef<SVGGElement>(null);
-  const [happy, setHappy] = useState(false);
-  const [squish, setSquish] = useState(false);
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const wrapRef = useRef<HTMLButtonElement>(null);
+  const eyeLRef = useRef<SVGGElement>(null);
+  const eyeRRef = useRef<SVGGElement>(null);
+  const mouthRef = useRef<SVGPathElement>(null);
+  const mouthTimer = useRef<number | undefined>(undefined);
 
-  // Augen folgen dem Zeiger — sanft, wenige Pixel, nie hektisch.
+  // Augen folgen dem Zeiger (nur ohne prefers-reduced-motion) — exakte Referenz-Logik.
   useEffect(() => {
     if (REDUCED) return;
     const onMove = (e: PointerEvent) => {
-      const root = rootRef.current;
-      const eyes = eyesRef.current;
-      if (!root || !eyes) return;
-      const r = root.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height * 0.3;
-      const dx = Math.max(-1, Math.min(1, (e.clientX - cx) / (window.innerWidth / 2)));
-      const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / (window.innerHeight / 2)));
-      eyes.style.transform = `translate(${(dx * 2.4).toFixed(2)}px, ${(dy * 1.6).toFixed(2)}px)`;
+      const wrap = wrapRef.current;
+      const eyeL = eyeLRef.current;
+      const eyeR = eyeRRef.current;
+      if (!wrap || !eyeL || !eyeR) return;
+      const r = wrap.getBoundingClientRect();
+      const dx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / 320));
+      const dy = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height * 0.3)) / 320));
+      const tx = dx * 3.4, ty = dy * 2.6;
+      eyeL.style.transform = `translate(${tx}px, ${ty}px)`;
+      eyeR.style.transform = `translate(${tx}px, ${ty}px)`;
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => window.removeEventListener("pointermove", onMove);
   }, []);
 
-  const freuen = () => {
-    setHappy(true);
-    setSquish(true);
-    window.setTimeout(() => setSquish(false), 650);
-    window.setTimeout(() => setHappy(false), 1800);
-  };
-  useImperativeHandle(ref, () => ({ freuen }));
+  useEffect(() => () => window.clearTimeout(mouthTimer.current), []);
 
-  const tap = () => {
-    freuen();
-    onTap?.();
+  // Antippen: er freut sich — Squish neu anstoßen + breiteres Lächeln für 900 ms.
+  const delight = () => {
+    const wrap = wrapRef.current;
+    const mouth = mouthRef.current;
+    if (wrap) {
+      wrap.classList.remove("happy");
+      void wrap.offsetWidth;
+      wrap.classList.add("happy");
+    }
+    if (mouth) {
+      mouth.setAttribute("d", MUND_FREUDE);
+      window.clearTimeout(mouthTimer.current);
+      mouthTimer.current = window.setTimeout(() => mouth.setAttribute("d", MUND_RUHIG), 900);
+    }
   };
+  useImperativeHandle(ref, () => ({ freuen: delight }));
+
+  // Kleinere Größenvarianten skalieren die gesamte SVG proportional (210×252),
+  // der Schatten skaliert mit; die Keyframe-Werte bleiben unverändert.
+  const k = size / 210;
 
   return (
     <button
-      ref={rootRef}
+      ref={wrapRef}
       type="button"
-      onClick={tap}
+      onClick={() => { delight(); onTap?.(); }}
       aria-label={ariaLabel ?? "Mit dem Bauern sprechen"}
-      className={className}
-      style={{
-        display: "inline-block",
-        border: "none",
-        background: "transparent",
-        padding: 0,
-        cursor: "pointer",
-        lineHeight: 0,
-        animation: squish ? "al-squish 0.65s cubic-bezier(0.34, 1.4, 0.5, 1)" : undefined,
-        transformOrigin: "50% 100%",
-      }}
+      className={`pawn-wrap ${className ?? ""}`}
     >
-      <span
-        style={{
-          display: "inline-block",
-          animation: REDUCED ? undefined : "al-atmen 4.2s ease-in-out infinite",
-          transformOrigin: "50% 100%",
-        }}
-      >
-        <svg width={size} height={size * 1.3} viewBox="0 0 100 130" role="img" aria-hidden="true">
-          <defs>
-            {/* Körper: warmes Elfenbein, vom Lichtpool unten bernstein angeleuchtet */}
-            <linearGradient id={`body-${uid}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#f7efdd" />
-              <stop offset="0.62" stopColor="#eddcb4" />
-              <stop offset="1" stopColor="#e8c284" />
-            </linearGradient>
-            {/* Randlicht von unten */}
-            <radialGradient id={`rim-${uid}`} cx="0.5" cy="1.1" r="0.9">
-              <stop offset="0" stopColor="rgba(244,198,103,0.85)" />
-              <stop offset="0.55" stopColor="rgba(244,198,103,0.18)" />
-              <stop offset="1" stopColor="rgba(244,198,103,0)" />
-            </radialGradient>
-            {/* Wangen */}
-            <radialGradient id={`cheek-${uid}`} cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stopColor="rgba(224,154,58,0.5)" />
-              <stop offset="1" stopColor="rgba(224,154,58,0)" />
-            </radialGradient>
-          </defs>
+      <svg className="pawn" width={size} height={size * 1.2} viewBox="0 0 210 252" aria-hidden="true">
+        <defs>
+          <radialGradient id={`body-${uid}`} cx="38%" cy="26%" r="85%">
+            <stop offset="0%" stopColor="#fbf5e8" />
+            <stop offset="45%" stopColor="#efe4cd" />
+            <stop offset="78%" stopColor="#d3c3a3" />
+            <stop offset="100%" stopColor="#b3a184" />
+          </radialGradient>
+          <radialGradient id={`rim-${uid}`} cx="50%" cy="115%" r="80%">
+            <stop offset="0%" stopColor="rgba(244,198,103,.55)" />
+            <stop offset="55%" stopColor="rgba(244,198,103,0)" />
+          </radialGradient>
+          <linearGradient id={`cheek-${uid}`} x1="0" x2="1">
+            <stop offset="0%" stopColor="rgba(224,144,110,.5)" />
+            <stop offset="100%" stopColor="rgba(224,144,110,.15)" />
+          </linearGradient>
+        </defs>
 
-          {/* Weicher Bodenschein */}
-          <ellipse cx="50" cy="124" rx="34" ry="5" fill="rgba(244,198,103,0.16)" />
+        {/* Körper */}
+        <g>
+          <circle cx="105" cy="64" r="46" fill={`url(#body-${uid})`} />
+          <ellipse cx="105" cy="118" rx="38" ry="13" fill={`url(#body-${uid})`} />
+          <path d="M83 128 C83 170 70 196 62 210 L148 210 C140 196 127 170 127 128 Z" fill={`url(#body-${uid})`} />
+          <path d="M52 224 C52 213 76 206 105 206 C134 206 158 213 158 224 C158 235 134 242 105 242 C76 242 52 235 52 224 Z" fill={`url(#body-${uid})`} />
+          {/* warmes Bühnenlicht von unten */}
+          <path d="M52 224 C52 213 76 206 105 206 C134 206 158 213 158 224 C158 235 134 242 105 242 C76 242 52 235 52 224 Z" fill={`url(#rim-${uid})`} />
+          <path d="M83 128 C83 170 70 196 62 210 L148 210 C140 196 127 170 127 128 Z" fill={`url(#rim-${uid})`} opacity=".7" />
+          {/* Glanzlicht */}
+          <ellipse cx="86" cy="42" rx="16" ry="10" fill="rgba(255,255,255,.8)" transform="rotate(-24 86 42)" />
+          <ellipse cx="76" cy="58" rx="5" ry="3.4" fill="rgba(255,255,255,.55)" />
+        </g>
 
-          {/* Körper — Kopf, Kragen, Rock, Sockel; weiche, runde Silhouette */}
-          <g fill={`url(#body-${uid})`}>
-            <circle cx="50" cy="32" r="26" />
-            <path d="M29 60 q21 10 42 0 l-5 12 q-16 7 -32 0 Z" />
-            <path d="M35 73 q15 6 30 0 l7 30 q-22 9 -44 0 Z" />
-            <path d="M22 105 q28 -8 56 0 l0 10 q-28 8 -56 0 Z" />
+        {/* Gesicht */}
+        <g className="eyes">
+          <g ref={eyeLRef}>
+            <ellipse cx="88" cy="66" rx="6.5" ry="9" fill="#241c12" />
+            <circle cx="90.4" cy="62.5" r="2.1" fill="#fff" opacity=".9" />
           </g>
-          {/* Randlicht liegt über dem Körper */}
-          <g fill={`url(#rim-${uid})`}>
-            <circle cx="50" cy="32" r="26" />
-            <path d="M35 73 q15 6 30 0 l7 30 q-22 9 -44 0 Z" />
-            <path d="M22 105 q28 -8 56 0 l0 10 q-28 8 -56 0 Z" />
+          <g ref={eyeRRef}>
+            <ellipse cx="124" cy="66" rx="6.5" ry="9" fill="#241c12" />
+            <circle cx="126.4" cy="62.5" r="2.1" fill="#fff" opacity=".9" />
           </g>
-
-          {/* Wangen */}
-          <ellipse cx="33" cy="38" rx="6.5" ry="4.5" fill={`url(#cheek-${uid})`} />
-          <ellipse cx="67" cy="38" rx="6.5" ry="4.5" fill={`url(#cheek-${uid})`} />
-
-          {/* Augen — folgen dem Zeiger (Gruppe), blinzeln einzeln */}
-          <g ref={eyesRef} style={{ transition: "transform 0.35s ease" }}>
-            {happy ? (
-              <g stroke="#2a2116" strokeWidth={3} fill="none" strokeLinecap="round">
-                <path d="M34 30 q6 -6 12 0" />
-                <path d="M54 30 q6 -6 12 0" />
-              </g>
-            ) : (
-              <>
-                <g
-                  className="al-eye"
-                  style={{ transformOrigin: "40px 30px", animation: REDUCED ? undefined : "al-blinzeln 5.5s ease-in-out infinite" }}
-                >
-                  <ellipse cx="40" cy="30" rx="5.4" ry="7" fill="#2a2116" />
-                  <circle cx="42" cy="27.5" r="1.8" fill="#fdf6e6" />
-                </g>
-                <g
-                  className="al-eye"
-                  style={{ transformOrigin: "60px 30px", animation: REDUCED ? undefined : "al-blinzeln 5.5s ease-in-out 0.07s infinite" }}
-                >
-                  <ellipse cx="60" cy="30" rx="5.4" ry="7" fill="#2a2116" />
-                  <circle cx="62" cy="27.5" r="1.8" fill="#fdf6e6" />
-                </g>
-              </>
-            )}
-          </g>
-
-          {/* Mund — ruhiges Lächeln; beim Freuen breiter und offener */}
-          <path
-            d={happy ? "M40 43 q10 9 20 0" : "M43 43 q7 5 14 0"}
-            stroke="#2a2116"
-            strokeWidth={2.6}
-            strokeLinecap="round"
-            fill="none"
-            style={{ transition: "d 0.3s ease" }}
-          />
-        </svg>
-      </span>
+        </g>
+        <ellipse cx="76" cy="80" rx="8" ry="4.4" fill={`url(#cheek-${uid})`} />
+        <ellipse cx="136" cy="80" rx="8" ry="4.4" fill={`url(#cheek-${uid})`} />
+        <path ref={mouthRef} d={MUND_RUHIG} stroke="#241c12" strokeWidth="3.4" strokeLinecap="round" fill="none" />
+      </svg>
+      <div
+        className="pawn-shadow"
+        aria-hidden="true"
+        style={{ width: 150 * k, height: 26 * k, margin: `${-8 * k}px auto 0` }}
+      />
     </button>
   );
 });
