@@ -9,6 +9,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { pickByLang } from "../_shared/locale.ts";
+import { signiereMedia } from "../_shared/media.ts";
 
 function jwtSub(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
@@ -70,7 +71,9 @@ async function processParticipant(
     const { data: products } = await admin.from("products")
       .select("image_url").eq("designer_id", participant.designer_id).eq("status", "published")
       .order("created_at", { ascending: false }).limit(1);
-    const imageUrl = (products?.[0] as { image_url?: string } | undefined)?.image_url;
+    const gespeichertesBild = (products?.[0] as { image_url?: string } | undefined)?.image_url;
+    if (!gespeichertesBild) throw new Error("no_product_image");
+    const imageUrl = await signiereMedia(admin, gespeichertesBild);
     if (!imageUrl) throw new Error("no_product_image");
 
     const { data: sigs } = await admin.from("house_signatures")
