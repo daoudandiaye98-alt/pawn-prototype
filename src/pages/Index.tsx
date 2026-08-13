@@ -13,6 +13,10 @@ import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import heroImage1400 from "@/assets/landing-hero-1400.webp";
 import heroImage2400 from "@/assets/landing-hero-2400.webp";
+// Teil O — feste Bilder für die drei Welten (lokal, WebP).
+import weltModeBild from "@/assets/teil-o/welt-mode.webp";
+import weltInteriorBild from "@/assets/teil-o/welt-interior.webp";
+import weltKunstBild from "@/assets/teil-o/welt-kunst.webp";
 
 /**
  * Teil 27a — Die Bühne: Landing 1:1 nach docs/design-referenz/landing.html.
@@ -62,9 +66,11 @@ const Index = () => {
     return [...featured, ...rest].slice(0, 6);
   }, [products, designers]);
 
-  // Drei Welten: das jüngste veröffentlichte Stück je Welt (products ist bereits nach
-  // created_at absteigend sortiert) — ein echtes Werk statt eines Farbverlaufs.
-  const worldImage = (world: "Mode" | "Interior" | "Kunst") => products.find((p) => p.world === world)?.image_url ?? null;
+  // Teil O — Drei Welten mit festen Bildern: jede Welt hat ihr eigenes, kuratiertes
+  // Kopfbild (lokal, WebP) statt des zufällig jüngsten Werks. Die Kacheln verlinken
+  // weiter in die jeweilige Kategorie; „Aus den Häusern" zeigt weiterhin echte Werke.
+  const worldImage = (world: "Mode" | "Interior" | "Kunst") =>
+    ({ Mode: weltModeBild, Interior: weltInteriorBild, Kunst: weltKunstBild })[world];
 
   // Ausgabe: die aktive Kollektion, sonst die fünf jüngsten veröffentlichten Stücke.
   const productBySlug = useMemo(() => new Map(products.map((p) => [p.slug, p])), [products]);
@@ -206,11 +212,7 @@ const Index = () => {
                     to={`/${w.key.toLowerCase()}`}
                     className="group relative flex h-full min-h-[52vh] items-end overflow-hidden text-white no-underline md:min-h-0"
                   >
-                    {img ? (
-                      <img src={img} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(.76,0,.18,1)] group-hover:scale-[1.03]" />
-                    ) : (
-                      <div className="absolute inset-0 bg-black" />
-                    )}
+                    <img src={img} alt="" width={896} height={1200} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(.76,0,.18,1)] group-hover:scale-[1.03]" />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />
                     <div className="relative z-[2] p-[1.6rem]">
                       <div className="font-serif text-[clamp(1.8rem,3.4vw,2.7rem)] font-medium italic tracking-[-0.02em]">

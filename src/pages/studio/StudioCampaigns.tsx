@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/pawn/StudioShell";
+// Teil O — das Beispielbild des Produktbild-Versprechens, lokal als WebP.
+import beispielProduktbild from "@/assets/teil-o/beispiel-produktbild.webp";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
@@ -44,6 +46,8 @@ export default function StudioCampaigns() {
   const { designer, loading } = useMyDesigner();
   // Teil K1 — das Video-Kontingent wandert aus der Topbar hierher: es gehört zur Clips-Fläche.
   const quota = usePlanQuota(designer?.id, ((designer as unknown as { plan?: Plan })?.plan) ?? "haus");
+  // Teil O — das ausklappbare Beispielbild des Produktbild-Versprechens.
+  const [beispielOffen, setBeispielOffen] = useState(false);
   const { user } = useAuth();
   const [items, setItems] = useState<CampaignRow[]>([]);
   const [active, setActive] = useState<CampaignRow | null>(null);
@@ -138,6 +142,38 @@ export default function StudioCampaigns() {
         { label: t("studio.tabs.neu"), to: "/studio/clips" },
         { label: t("studio.tabs.fertig"), to: "/studio/clips/fertig" },
       ]} />
+      {/* Teil O — das erste Versprechen der Fläche: professionelle Produktbilder
+          aus Handyfotos. Die bestehende Produktbild-Funktion ist die erste
+          Handlung; Videos folgen darunter als zweiter Abschnitt. */}
+      <section className="al-karte mb-8 p-6 sm:p-8">
+        <h2 className="max-w-2xl font-serif text-2xl leading-tight md:text-3xl">{t("studio.clips.versprechen")}</h2>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <a href="/studio/clips/neu" className="al-knopf-primaer">{t("studio.clips.produktbild.cta")}</a>
+          <button
+            type="button"
+            onClick={() => setBeispielOffen((v) => !v)}
+            aria-expanded={beispielOffen}
+            className="al-knopf-leise text-xs"
+          >
+            {beispielOffen ? t("studio.clips.beispiel.verbergen") : t("studio.clips.beispiel.zeigen")}
+          </button>
+        </div>
+        {beispielOffen && (
+          <figure className="al-auftauchen mt-5 max-w-sm">
+            <img
+              src={beispielProduktbild}
+              alt={t("studio.clips.beispiel.caption")}
+              width={896}
+              height={1200}
+              loading="lazy"
+              className="w-full rounded-[14px]"
+            />
+            <figcaption className="mt-2 text-xs text-muted-foreground">{t("studio.clips.beispiel.caption")}</figcaption>
+          </figure>
+        )}
+      </section>
+
+      <p className="mb-2 text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.clips.videos.titel")}</p>
       {!quota.loading && (
         <p className="mb-6 text-xs text-muted-foreground tabular-nums">
           {formatQuota(quota.used.videos, quota.unlimited ? -1 : quota.limits.videos, t("studioShell.videos"))}

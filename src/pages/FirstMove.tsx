@@ -142,6 +142,12 @@ export default function FirstMove() {
   const [works, setWorks] = useState<Work[]>([]);
 
   const [rochadeOpen, setRochadeOpen] = useState(false);
+  // Teil O — die Rochade-Karte im Raum Auftritt verlinkt mit /start?rochade=1
+  // direkt hierher: die Schublade öffnet sich von selbst (nachträglicher Import
+  // ergänzt das Haus, überschreibt nichts ohne Bestätigung — wie bisher).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("rochade") === "1") setRochadeOpen(true);
+  }, []);
   const [rochadeMode, setRochadeMode] = useState<"url" | "screenshots" | "instagram">("url");
   const [rochadeConsent, setRochadeConsent] = useState(false);
   const [rochadeUrl, setRochadeUrl] = useState("");
