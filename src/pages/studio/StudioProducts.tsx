@@ -548,9 +548,10 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
     window.clearInterval(ramp);
     if (error) { setUploadPct(null); toast.error(error.message); return; }
     setUploadPct(95);
-    const { data } = await supabase.storage.from("designer-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+    // Dauerhafte öffentliche URL statt 365-Tage-Signatur — Werkbilder dürfen nie ablaufen.
+    const { data } = supabase.storage.from("designer-media").getPublicUrl(path);
     setUploadPct(100);
-    patch({ image_url: data?.signedUrl ?? null });
+    patch({ image_url: data?.publicUrl ?? null });
     window.setTimeout(() => setUploadPct(null), 400);
   };
 

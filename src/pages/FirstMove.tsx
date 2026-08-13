@@ -253,8 +253,9 @@ export default function FirstMove() {
       const path = `${user.id}/first-move/${work.id}.${ext}`;
       const { error } = await supabase.storage.from("designer-media").upload(path, compressed, { upsert: true });
       if (error) throw error;
-      const { data: signed } = await supabase.storage.from("designer-media").createSignedUrl(path, 60 * 60 * 24 * 365);
-      const imageUrl = signed?.signedUrl ?? null;
+      // Dauerhafte öffentliche URL statt 365-Tage-Signatur — Werkbilder dürfen nie ablaufen.
+      const { data: pub } = supabase.storage.from("designer-media").getPublicUrl(path);
+      const imageUrl = pub?.publicUrl ?? null;
       setWorks((prev) => prev.map((w) => (w.id === work.id ? { ...w, uploading: false, uploaded: true, imageUrl, analyzing: !!imageUrl } : w)));
       if (!imageUrl) return;
       const { data: analysis } = await supabase.functions.invoke("analyze-artwork", { body: { source_url: imageUrl } });
@@ -310,8 +311,8 @@ export default function FirstMove() {
             const path = `${user.id}/rochade-quelle/${uid()}.${ext}`;
             const { error } = await supabase.storage.from("designer-media").upload(path, compressed, { upsert: true });
             if (error) return null;
-            const { data: signed } = await supabase.storage.from("designer-media").createSignedUrl(path, 60 * 60 * 24 * 365);
-            return signed?.signedUrl ?? null;
+            const { data: pub } = supabase.storage.from("designer-media").getPublicUrl(path);
+            return pub?.publicUrl ?? null;
           } catch { return null; }
         }));
         screenshotUrls = uploaded.filter((u): u is string => !!u);

@@ -57,7 +57,10 @@ async function fetchImageAsBase64(url: string): Promise<FetchedImage | null> {
 }
 
 /** Lädt ein extern gefundenes Bild herunter und hostet es dauerhaft im eigenen designer-media-
- * Bucket neu (signierte URL, 1 Jahr) — die Quellseite kann verschwinden, das Werk bleibt. */
+ * Bucket neu — die Quellseite kann verschwinden, das Werk bleibt. Gespeichert wird die
+ * DAUERHAFTE öffentliche URL (Bucket ist öffentlich lesbar, s. Migration
+ * designer_media_dauerhafte_urls): signierte URLs liefen nach 365 Tagen ab und hätten
+ * alle importierten Werkbilder nach einem Jahr brechen lassen. */
 async function rehost(admin: ReturnType<typeof createClient>, userId: string, img: FetchedImage): Promise<string | null> {
   try {
     const ext = img.media_type.includes("png") ? "png" : img.media_type.includes("webp") ? "webp" : "jpg";
@@ -65,8 +68,8 @@ async function rehost(admin: ReturnType<typeof createClient>, userId: string, im
     const bytes = Uint8Array.from(atob(img.data), (c) => c.charCodeAt(0));
     const { error } = await admin.storage.from("designer-media").upload(path, bytes, { contentType: img.media_type, upsert: false });
     if (error) return null;
-    const { data: signed } = await admin.storage.from("designer-media").createSignedUrl(path, 60 * 60 * 24 * 365);
-    return signed?.signedUrl ?? null;
+    const { data } = admin.storage.from("designer-media").getPublicUrl(path);
+    return data?.publicUrl ?? null;
   } catch {
     return null;
   }
@@ -77,6 +80,22 @@ function absoluteUrl(base: string, src: string): string | null {
 }
 
 const IGNORE_IMG_PATTERN = /logo|icon|favicon|sprite|pixel|avatar|badge|button/i;
+
+/** Aus einem srcset ("a.jpg 800w, b.jpg 1600w" oder "a.jpg 1x, b.jpg 2x") die
+ * größte Kandidaten-URL wählen; ohne Größenangabe zählt die letzte Nennung. */
+function biggestFromSrcset(srcset: string | null): string | null {
+  if (!srcset) return null;
+  let best: { url: string; w: number } | null = null;
+  for (const part of srcset.split(",")) {
+    const bits = part.trim().split(/\s+/);
+    const url = bits[0];
+    if (!url) continue;
+    const desc = bits[1] ?? "";
+    const w = desc.endsWith("w") ? parseInt(desc, 10) || 0 : desc.endsWith("x") ? (parseFloat(desc) || 0) * 1000 : 1;
+    if (!best || w >= best.w) best = { url, w };
+  }
+  return best?.url ?? null;
+}
 
 async function extractFromHtml(pageUrl: string): Promise<{ images: string[]; text: string } | null> {
   let html: string;
@@ -96,10 +115,23 @@ async function extractFromHtml(pageUrl: string): Promise<{ images: string[]; tex
   const imgSrcs = new Set<string>();
   const ogImage = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1];
   if (ogImage) { const u = absoluteUrl(pageUrl, ogImage); if (u) imgSrcs.add(u); }
-  for (const m of html.matchAll(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi)) {
+  // Rochade-Fund: moderne Portfolio-Baukästen laden Bilder lazy über srcset,
+  // data-src oder data-srcset — ein reines src-Lesen fand dort nichts und schickte
+  // die Nutzerin unnötig auf den Screenshot-Weg. Deshalb: pro <img>-Tag alle vier
+  // Attribute lesen, bei srcset die größte Kandidaten-URL nehmen. Filter
+  // (Logo/Icon/Sprite/Avatar, data:-URIs) und das Bilder-Limit bleiben unverändert.
+  for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
     if (imgSrcs.size >= MAX_IMAGES * 2) break;
-    const raw = m[1];
-    if (IGNORE_IMG_PATTERN.test(raw) || raw.startsWith("data:")) continue;
+    const tag = m[0];
+    const attr = (name: string) => tag.match(new RegExp(`(?:^|\\s)${name}\\s*=\\s*["']([^"']+)["']`, "i"))?.[1] ?? null;
+    const candidates = [
+      biggestFromSrcset(attr("srcset")),
+      biggestFromSrcset(attr("data-srcset")),
+      attr("data-src"),
+      attr("src"),
+    ];
+    const raw = candidates.find((c): c is string => !!c && !c.startsWith("data:") && !IGNORE_IMG_PATTERN.test(c));
+    if (!raw) continue;
     const abs = absoluteUrl(pageUrl, raw);
     if (abs) imgSrcs.add(abs);
   }
