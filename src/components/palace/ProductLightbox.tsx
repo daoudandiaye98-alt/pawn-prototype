@@ -26,6 +26,12 @@ interface ProductLightboxProps {
 export function ProductLightbox({ images, alt, open, initialIndex, onClose }: ProductLightboxProps) {
   const { t } = useI18n();
   const zoomedRef = useRef(false);
+  // Teil L2 — Barrierefreiheit: beim Öffnen wandert der Fokus auf den Schließen-Knopf,
+  // damit Tastatur-Nutzer direkt im Dialog sind (Esc/Pfeile wirken sofort).
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (open) closeBtnRef.current?.focus();
+  }, [open]);
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: false,
     startIndex: initialIndex,
@@ -72,6 +78,7 @@ export function ProductLightbox({ images, alt, open, initialIndex, onClose }: Pr
           {index + 1} / {images.length}
         </span>
         <button
+          ref={closeBtnRef}
           type="button"
           onClick={onClose}
           aria-label={t("product.lightbox.close")}

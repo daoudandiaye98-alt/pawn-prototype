@@ -69,7 +69,7 @@ export function DnaKompass() {
 
   return (
     <div className="border-[1.5px] border-black bg-white p-6 md:p-8">
-      <p className="editorial-eyebrow text-black/50">Dein Ziel</p>
+      <p className="editorial-eyebrow text-black/60">Dein Ziel</p>
 
       {!ziel && !editing ? (
         <div className="mt-4">
@@ -92,7 +92,7 @@ export function DnaKompass() {
               {busy ? "…" : "Speichern"}
             </button>
             <button type="button" onClick={() => { setEditing(false); setDraft(""); }}
-              className="text-[0.65rem] uppercase tracking-[0.24em] text-black/50 hover:text-black">
+              className="text-[0.65rem] uppercase tracking-[0.24em] text-black/60 hover:text-black">
               Abbrechen
             </button>
           </div>
@@ -109,7 +109,7 @@ export function DnaKompass() {
 
       {ziel && (
         <div className="mt-8 border-t border-black/15 pt-6">
-          <p className="editorial-eyebrow text-black/50">Der Weg</p>
+          <p className="editorial-eyebrow text-black/60">Der Weg</p>
           <p className="mt-2 text-sm text-black/70">Ein Teil ersetzt, nicht der ganze Schrank.</p>
 
           {!weg?.schritte?.length ? (
@@ -123,7 +123,7 @@ export function DnaKompass() {
                 {weg.schritte.map((s, i) => (
                   <li key={i} className="border-l-[1.5px] border-black/20 pl-4">
                     <p className="text-sm text-black">{s.text}</p>
-                    <p className="mt-1 text-xs text-black/50">{s.begruendung}</p>
+                    <p className="mt-1 text-xs text-black/60">{s.begruendung}</p>
                     {s.produkt_slug && (
                       <Link to={`/product/${s.produkt_slug}`} className="mt-1 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
                         Zum Stück →
@@ -134,7 +134,7 @@ export function DnaKompass() {
               </ol>
               {weg.fortschritt && (
                 <div className="mt-6 border-t border-black/15 pt-4">
-                  <p className="editorial-eyebrow text-black/50">Seit dem letzten Mal</p>
+                  <p className="editorial-eyebrow text-black/60">Seit dem letzten Mal</p>
                   <p className="mt-2 text-sm text-black/85">{weg.fortschritt}</p>
                 </div>
               )}

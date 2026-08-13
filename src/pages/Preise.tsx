@@ -93,7 +93,7 @@ export default function Preise() {
                   ))}
                 </div>
               ) : (
-                <p className="mt-8 text-sm text-black/50">{t("preise.card.loading")}</p>
+                <p className="mt-8 text-sm text-black/60">{t("preise.card.loading")}</p>
               )}
 
               {key === "atelier" && (

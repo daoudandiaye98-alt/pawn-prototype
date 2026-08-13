@@ -102,7 +102,7 @@ export default function ApplyLanding() {
         <div className="mx-auto max-w-[1600px]">
           <Reveal>
             {/* Teil H2 — Sprachsystem: diese Zeile lebt genau hier (Designer-Einstiegsfläche), nie auf der Landing. */}
-            <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/50">YOUR MOVE.</p>
+            <p className="text-[0.58rem] uppercase tracking-[0.34em] text-black/60">YOUR MOVE.</p>
             <p className="mt-1 font-serif italic text-[1.05rem] text-black/70">{YOUR_MOVE_LINES.designer}</p>
             <Editable as="p" contentKey="apply_hero_eyebrow" className="palace-eyebrow mt-4">
               PAWN · Bewerbung
@@ -252,7 +252,7 @@ export default function ApplyLanding() {
               <ul className="mt-8 space-y-5">
                 {LOOKING_FOR.map((line, i) => (
                   <li key={i} className="flex gap-4 border-t border-[rgba(0,0,0,.18)] pt-5 text-[1rem] leading-relaxed text-[#000000]/85">
-                    <span aria-hidden className="palace-serif italic text-black/40">{String(i + 1).padStart(2, "0")}</span>
+                    <span aria-hidden className="palace-serif italic text-black/60">{String(i + 1).padStart(2, "0")}</span>
                     <Editable as="span" contentKey={`apply_fit_yes_${i}`} multiline>{line}</Editable>
                   </li>
                 ))}

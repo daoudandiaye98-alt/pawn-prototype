@@ -86,7 +86,7 @@ export function DnaBelege() {
                 <img src={r.image_url} alt={r.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
               </div>
               <p className="flex-1 palace-serif text-[1.05rem] leading-snug text-black">{r.sentence}</p>
-              <span className="shrink-0 text-[0.62rem] uppercase tracking-[0.22em] tabular-nums text-black/50">{r.metric}</span>
+              <span className="shrink-0 text-[0.62rem] uppercase tracking-[0.22em] tabular-nums text-black/60">{r.metric}</span>
             </Link>
           ))}
         </div>
