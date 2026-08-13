@@ -15,7 +15,7 @@ import type { Plan } from "@/lib/planGate";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-export function BauerGespraech({ open, onClose, plan }: { open: boolean; onClose: () => void; plan: Plan }) {
+export function BauerGespraech({ open, onClose, plan, seed }: { open: boolean; onClose: () => void; plan: Plan; seed?: string }) {
   const { t, locale } = useI18n();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -25,6 +25,19 @@ export function BauerGespraech({ open, onClose, plan }: { open: boolean; onClose
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
+  // Teil N — die Chips der Ankunft: öffnet sich das Gespräch mit einer Startfrage,
+  // wird sie sofort gestellt (einmal pro Öffnen, nicht doppelt).
+  const seededRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (open && seed && seededRef.current !== seed && !busy) {
+      seededRef.current = seed;
+      setInput(seed);
+      // Absenden im nächsten Tick, damit der Zustand steht.
+      window.setTimeout(() => { void sendText(seed); }, 0);
+    }
+    if (!open) seededRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, seed]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
   useEffect(() => {
     if (!open) return;
@@ -33,22 +46,33 @@ export function BauerGespraech({ open, onClose, plan }: { open: boolean; onClose
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
-
-  const send = async () => {
-    const q = input.trim();
-    if (!q || busy) return;
-    const next = [...messages, { role: "user", content: q } as Msg];
-    setMessages(next);
+  async function sendText(text: string) {
+    const q = text.trim();
+    if (!q) return;
+    setBusy((b) => {
+      if (b) return b;
+      return true;
+    });
+    let next: Msg[] = [];
+    setMessages((prev) => {
+      next = [...prev, { role: "user", content: q } as Msg];
+      return next;
+    });
     setInput("");
     setGesperrtGrund(undefined);
-    setBusy(true);
     const { data, error } = await supabase.functions.invoke("studio-ai", { body: { mode: "chat", messages: next, locale } });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     const res = data as { reply?: string; gesperrt?: boolean; grund?: "plan" | "kontingent" | "budget" };
     if (res.gesperrt) { setGesperrtGrund(res.grund ?? "kontingent"); return; }
     setMessages([...next, { role: "assistant", content: res.reply ?? "…" }]);
+  }
+
+  if (!open) return null;
+
+  const send = () => {
+    if (busy) return;
+    void sendText(input);
   };
 
   return (

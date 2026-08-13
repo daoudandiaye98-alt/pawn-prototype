@@ -351,13 +351,18 @@ export default function StudioHausseite() {
               </button>
             </div>
           </div>
-          <div className={`mx-auto max-h-[80vh] overflow-y-auto border border-border ${previewDevice === "telefon" ? "max-w-[390px]" : ""}`}>
-            {blocks.length === 0 ? (
-              <p className="p-8 text-center text-sm text-muted-foreground">{t("studio.hausseite.previewEmpty")}</p>
-            ) : (
-              <HausseiteBlocks blocks={blocks} mediaById={mediaById} products={products} theme={currentTheme ? resolveTheme(currentTheme) : DEFAULT_HOUSE_THEME} />
-            )}
+          {/* Teil N — die Miniatur bleibt Schwarz-Weiß (sie zeigt die Bühne),
+              eingefasst in einen warmen Abendlicht-Rahmen. */}
+          <div className={`al-karte mx-auto p-2.5 ${previewDevice === "telefon" ? "max-w-[406px]" : ""}`}>
+            <div className="al-magazin max-h-[80vh] overflow-y-auto">
+              {blocks.length === 0 ? (
+                <p className="p-8 text-center text-sm text-muted-foreground">{t("studio.hausseite.previewEmpty")}</p>
+              ) : (
+                <HausseiteBlocks blocks={blocks} mediaById={mediaById} products={products} theme={currentTheme ? resolveTheme(currentTheme) : DEFAULT_HOUSE_THEME} />
+              )}
+            </div>
           </div>
+          <p className="mt-3 text-xs text-muted-foreground">{t("studio.auftritt.erklaer")}</p>
         </div>
       </div>
       {coverMoment && (

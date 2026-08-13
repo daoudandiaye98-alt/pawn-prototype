@@ -33,16 +33,6 @@ const STATUS_LABEL_KEY: Record<Status, string> = {
   published: "studio.campaigns.status.published", declined: "studio.campaigns.status.declined",
 };
 
-const STATUS_TONE: Record<Status, string> = {
-  draft: "bg-muted text-foreground",
-  proposed: "bg-accent/20 text-foreground border border-accent",
-  in_review: "bg-muted text-foreground",
-  changes_requested: "bg-destructive/20 text-destructive border border-destructive",
-  approved: "bg-transparent text-foreground border border-foreground",
-  published: "bg-foreground text-background",
-  declined: "bg-muted text-muted-foreground line-through",
-};
-
 interface EditionCard {
   id: string; status: "pending" | "ready" | "approved" | "declined" | "failed";
   video_url: string | null; campaign_id: string | null;
@@ -209,19 +199,33 @@ export default function StudioCampaigns() {
       {items.length === 0 ? (
         <PawnEmptyState className="mt-8 p-12" title={t("studio.campaigns.empty.title")} description={t("studio.campaigns.empty.body")} />
       ) : (
-        <ul className="mt-8 divide-y divide-border border border-border bg-card">
+        /* Teil N — das Regal: Clips liegen als visuelle Stücke mit Vorschaubild da,
+           nicht als Aktenzeilen. Ein Tipp öffnet die Detailkarte wie zuvor. */
+        <ul className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((c) => (
-            <li key={c.id} className="flex cursor-pointer items-center gap-4 px-5 py-4 hover:bg-muted/40" onClick={() => setActive(c)}>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3">
-                  <p className="font-serif text-lg">{c.title}</p>
-                  <span className={`px-2 py-0.5 text-[0.55rem] uppercase tracking-[0.28em] ${STATUS_TONE[c.status]}`}>
-                    {t(STATUS_LABEL_KEY[c.status])}
-                  </span>
+            <li key={c.id}>
+              <button type="button" onClick={() => setActive(c)} className="block w-full text-left">
+                <div className="al-werk-bild aspect-[9/12] w-full">
+                  {c.content.asset_url ? (
+                    c.kind === "video" ? (
+                      <video src={c.content.asset_url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={c.content.asset_url} alt="" className="h-full w-full object-cover" />
+                    )
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" style={{ opacity: 0.5 }}>
+                        <g fill="none" stroke="#f4c667" strokeWidth={1.7}><rect x="8" y="12" width="32" height="24" rx="3" /><path d="M20 20l10 4-10 4z" fill="#f4c667" stroke="none" /></g>
+                      </svg>
+                    </div>
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{c.kind} · {new Date(c.created_at).toLocaleDateString("de-DE")}</p>
-              </div>
-              {c.status === "proposed" && <span className="text-[0.62rem] uppercase tracking-[0.28em] text-accent">{t("studio.campaigns.reviewOpen")}</span>}
+                <p className="mt-2 truncate font-serif text-base leading-snug">{c.title}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {t(STATUS_LABEL_KEY[c.status])} · {new Date(c.created_at).toLocaleDateString("de-DE")}
+                  {c.status === "proposed" && <> · {t("studio.campaigns.reviewOpen")}</>}
+                </p>
+              </button>
             </li>
           ))}
         </ul>

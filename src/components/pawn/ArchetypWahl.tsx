@@ -86,7 +86,9 @@ export function ArchetypWahl({ designerId, brandDna, onSaved }: {
           })}
         </div>
 
-        <div className="border border-border p-4">
+        {/* Teil N — die Vorschau zeigt die öffentliche Erzählung und bleibt deshalb
+            Schwarz-Weiß (Magazin-Ausnahme), im warmen Studio-Rahmen. */}
+        <div className="al-magazin border border-border p-4">
           <p className="text-[0.6rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.archetyp.preview")}</p>
           <div className="mt-3">
             {werke.length === 0 ? (
