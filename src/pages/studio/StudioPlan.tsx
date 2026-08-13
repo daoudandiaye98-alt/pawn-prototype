@@ -17,6 +17,13 @@ import { isPaidPlan, ladePlanGate, preisFor, stripePriceFor, limitFor, canUse } 
 import { useContentValue } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
 import { Check, Sparkles } from "lucide-react";
+// Teil O Fix — die Plan-Bilder aus Teil O: sie füllen die Beispiel-Fläche, solange
+// kein echtes Beispiel existiert. Nie ein leeres schwarzes Loch.
+import planHausBild from "@/assets/teil-o/plan-haus.webp";
+import planAtelierBild from "@/assets/teil-o/plan-atelier.webp";
+import planMaisonBild from "@/assets/teil-o/plan-maison.webp";
+
+const PLAN_BILD: Record<Plan, string> = { haus: planHausBild, atelier: planAtelierBild, maison: planMaisonBild };
 
 // PART 38 WP7: drei kaufbare Pläne, alle drei als eigene Karte sichtbar — Atelier ist wieder
 // ein regulärer, neu abschließbarer Plan (nicht mehr nur ein auslaufendes Bestandsabo).
@@ -269,9 +276,19 @@ export default function StudioPlan() {
                     <span className="absolute right-2 top-2 border border-white/70 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-white/90">{t("studio.plan.videoBeta")}</span>
                   </div>
                 ) : (
-                  <div className="flex aspect-[9/16] items-center justify-center p-4 text-center text-xs text-white/50">
-                    {t("studio.plan.exampleComingSoon")}
-                  </div>
+                  /* Teil O Fix — Zukunftsregel: echte Beispiele sind besser als diese
+                     Bilder. Sobald ein echtes Haus-Beispiel einer Stufe existiert
+                     (media_assets mit Rechten bzw. Première-Video, s. oben), greift es
+                     automatisch zuerst und ersetzt dieses Bild. Bis dahin steht hier
+                     nie ein leeres schwarzes Loch, sondern das Plan-Bild. */
+                  <img
+                    src={PLAN_BILD[key]}
+                    alt=""
+                    width={1200}
+                    height={896}
+                    loading="lazy"
+                    className="aspect-[9/16] w-full object-cover"
+                  />
                 )}
               </div>
 
