@@ -2402,6 +2402,11 @@ const de = {
   "studio.geschaeft.einstellungenHinweis": "Und für alles rund um dein Konto: die Einstellungen.",
   "studio.wand.naechstesWerk": "Nächstes Werk hängen",
   "studio.auftritt.erklaer": "Das ist deine Seite. Ein Tipp ändert, wie sie erzählt.",
+  "studio.ankunft.mehr": "Außerdem da, wenn du sie brauchst:",
+  "studio.ankunft.mehr.rueckblick": "Rückblick",
+  "studio.ankunft.mehr.idee": "Ideen-Begleiter",
+  "studio.ankunft.mehr.aussenauge": "Außenauge",
+  "studio.ankunft.mehr.beweis": "Beweis",
 };
 
 const en: Record<keyof typeof de, string> = {
@@ -4768,6 +4773,11 @@ const en: Record<keyof typeof de, string> = {
   "studio.geschaeft.einstellungenHinweis": "And for everything about your account: settings.",
   "studio.wand.naechstesWerk": "Hang the next piece",
   "studio.auftritt.erklaer": "This is your page. One tap changes how it tells your story.",
+  "studio.ankunft.mehr": "Also here when you need them:",
+  "studio.ankunft.mehr.rueckblick": "Review",
+  "studio.ankunft.mehr.idee": "Idea companion",
+  "studio.ankunft.mehr.aussenauge": "Outside eye",
+  "studio.ankunft.mehr.beweis": "Proof",
 };
 
 type Dict = typeof de;

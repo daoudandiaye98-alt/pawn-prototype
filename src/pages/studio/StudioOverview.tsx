@@ -530,6 +530,15 @@ export default function StudioOverview() {
             ))}
           </div>
 
+          {/* Zwei-Tipps-Regel: auch die stillen Werkzeuge bleiben mit Wort erreichbar. */}
+          <p className="mb-6 text-xs text-muted-foreground">
+            {t("studio.ankunft.mehr")}{" "}
+            <Link to="/studio/copilot" className="underline underline-offset-4 hover:text-foreground">{t("studio.ankunft.mehr.rueckblick")}</Link>{" · "}
+            <Link to="/studio/content-begleiter" className="underline underline-offset-4 hover:text-foreground">{t("studio.ankunft.mehr.idee")}</Link>{" · "}
+            <Link to="/studio/dna" className="underline underline-offset-4 hover:text-foreground">{t("studio.ankunft.mehr.aussenauge")}</Link>{" · "}
+            <Link to="/studio/beweis" className="underline underline-offset-4 hover:text-foreground">{t("studio.ankunft.mehr.beweis")}</Link>
+          </p>
+
           {/* Türen — bewusst die leiseste Zeile der Seite. */}
           {(newDoorsCount ?? 0) > 0 && (
             <p className="mb-6 text-sm italic" style={{ color: "var(--al-leise)" }}>
