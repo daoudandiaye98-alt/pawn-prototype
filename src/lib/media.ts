@@ -47,10 +47,13 @@ export async function signiereMedia(value?: string | null): Promise<string | nul
 
   const anfrage = (async () => {
     const { data, error } = await supabase.storage.from(ort.bucket).createSignedUrl(ort.pfad, GUELTIG_SEKUNDEN);
-    if (error || !data?.signedUrl) return null;
+    // Rückfall: lässt sich nicht signieren (z. B. fehlende Leseerlaubnis), bleibt
+    // der gespeicherte Wert stehen — nie ein leeres Bild wegen unserer Mechanik.
+    if (error || !data?.signedUrl) return value && /^https?:/i.test(value) ? value : null;
     cache.set(pfad, { url: data.signedUrl, erzeugtMs: Date.now() });
     return data.signedUrl;
   })().finally(() => laufend.delete(pfad));
+
 
   laufend.set(pfad, anfrage);
   return anfrage;
