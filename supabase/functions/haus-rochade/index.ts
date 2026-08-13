@@ -58,9 +58,9 @@ async function fetchImageAsBase64(url: string): Promise<FetchedImage | null> {
 
 /** Lädt ein extern gefundenes Bild herunter und hostet es dauerhaft im eigenen designer-media-
  * Bucket neu — die Quellseite kann verschwinden, das Werk bleibt. Gespeichert wird die
- * DAUERHAFTE öffentliche URL (Bucket ist öffentlich lesbar, s. Migration
- * designer_media_dauerhafte_urls): signierte URLs liefen nach 365 Tagen ab und hätten
- * alle importierten Werkbilder nach einem Jahr brechen lassen. */
+ * Ort im Bucket (Pfad), nicht die URL: signierte URLs liefen nach 365 Tagen ab und hätten
+ * alle importierten Werkbilder nach einem Jahr brechen lassen. Beim Anzeigen wird frisch
+ * signiert (src/lib/media.ts bzw. _shared/media.ts). */
 async function rehost(admin: ReturnType<typeof createClient>, userId: string, img: FetchedImage): Promise<string | null> {
   try {
     const ext = img.media_type.includes("png") ? "png" : img.media_type.includes("webp") ? "webp" : "jpg";
@@ -68,8 +68,7 @@ async function rehost(admin: ReturnType<typeof createClient>, userId: string, im
     const bytes = Uint8Array.from(atob(img.data), (c) => c.charCodeAt(0));
     const { error } = await admin.storage.from("designer-media").upload(path, bytes, { contentType: img.media_type, upsert: false });
     if (error) return null;
-    const { data } = admin.storage.from("designer-media").getPublicUrl(path);
-    return data?.publicUrl ?? null;
+    return path; // Ort statt URL: die Anzeige signiert beim Laden frisch (s. src/lib/media.ts)
   } catch {
     return null;
   }

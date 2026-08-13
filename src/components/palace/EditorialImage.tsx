@@ -1,3 +1,5 @@
+import { useMediaUrl } from "@/lib/media";
+
 interface Props {
   src?: string | null;
   seed: string;
@@ -18,7 +20,8 @@ export function EditorialImage({
   priority,
 color = false,
 }: Props) {
-  const hasSrc = typeof src === "string" && src.trim().length > 0;
+  const aufgeloest = useMediaUrl(src);
+  const hasSrc = typeof aufgeloest === "string" && aufgeloest.trim().length > 0;
 
   return (
     <div
@@ -27,7 +30,7 @@ color = false,
     >
       {hasSrc ? (
         <img
-          src={src}
+          src={aufgeloest}
           alt={alt}
           loading={priority ? "eager" : "lazy"}
           className="palace-image-inner absolute inset-0 h-full w-full object-cover"

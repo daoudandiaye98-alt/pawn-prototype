@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { renderCoverShareKit, downloadBlob } from "@/features/share/shareKit";
 import { toast } from "sonner";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 interface CoverMomentProps {
   imageUrl: string;
@@ -36,7 +37,7 @@ export function CoverMoment({ imageUrl, brandName, houseNumber, variant, onDone 
 
   return (
     <div className="fixed inset-0 z-[100] bg-black" role="dialog" aria-modal="true">
-      <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <MediaImg src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
       <div className="relative flex h-full flex-col justify-end p-8 text-white md:p-16">
         <h1

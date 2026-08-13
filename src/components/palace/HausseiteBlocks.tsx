@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_HOUSE_THEME, themeCssVars, type Flaechenrhythmus, type HouseTheme } from "@/features/houseTheme/theme";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 export type PageBlockKind =
   | "auftakt" | "editorial_text" | "zitat" | "produktreihe" | "lookbook_streifen"
@@ -83,7 +84,7 @@ function Media({ asset, className, allowTon, style }: {
       </div>
     );
   }
-  return <img src={asset.url} alt="" className={className} loading="lazy" style={style} />;
+  return <MediaImg src={asset.url} alt="" className={className} loading="lazy" style={style} />;
 }
 
 /** Teil 16c: ein kurzer, sichtbarer Weg zum Kauf — überall, wo ein Medium ein Stück zeigt.
@@ -177,7 +178,7 @@ export function HausseiteBlocks({
                 <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
                   {items.map((p, i) => (
                     <Link key={p.id} to={`/product/${p.slug}`} className="group block" style={gestaffelt ? { transitionDelay: `${i * 60}ms` } : undefined}>
-                      {p.image_url && <img src={p.image_url} alt={p.name} className="house-media aspect-[4/5] w-full object-cover" loading="lazy" />}
+                      {p.image_url && <MediaImg src={p.image_url} alt={p.name} className="house-media aspect-[4/5] w-full object-cover" loading="lazy" />}
                       <p className="house-serif mt-3 text-[1rem]">{p.name}</p>
                       <p className="house-accent palace-eyebrow mt-1">€{p.price.toLocaleString("de-DE")}</p>
                     </Link>

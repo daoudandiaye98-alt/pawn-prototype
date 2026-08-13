@@ -21,7 +21,7 @@ export function useDbProductBySlug(slug: string | undefined) {
         .eq("status", "published")
         .maybeSingle();
       if (!alive) return;
-      setProduct((data as DbProduct | null) ?? null);
+      setProduct((data as unknown as DbProduct | null) ?? null);
       setLoading(false);
     })();
     return () => { alive = false; };

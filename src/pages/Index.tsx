@@ -17,6 +17,7 @@ import heroImage2400 from "@/assets/landing-hero-2400.webp";
 import weltModeBild from "@/assets/teil-o/welt-mode.webp";
 import weltInteriorBild from "@/assets/teil-o/welt-interior.webp";
 import weltKunstBild from "@/assets/teil-o/welt-kunst.webp";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 /**
  * Teil 27a — Die Bühne: Landing 1:1 nach docs/design-referenz/landing.html.
@@ -212,7 +213,7 @@ const Index = () => {
                     to={`/${w.key.toLowerCase()}`}
                     className="group relative flex h-full min-h-[52vh] items-end overflow-hidden text-white no-underline md:min-h-0"
                   >
-                    <img src={img} alt="" width={896} height={1200} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(.76,0,.18,1)] group-hover:scale-[1.03]" />
+                    <MediaImg src={img} alt="" width={896} height={1200} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(.76,0,.18,1)] group-hover:scale-[1.03]" />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />
                     <div className="relative z-[2] p-[1.6rem]">
                       <div className="font-serif text-[clamp(1.8rem,3.4vw,2.7rem)] font-medium italic tracking-[-0.02em]">

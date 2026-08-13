@@ -15,6 +15,7 @@ import { Schwelle } from "@/components/palace/Schwelle";
 import { aktiverArchetyp, ARCHETYP_PLATES, type Archetyp } from "@/features/houseTheme/archetyp";
 import { currentVerwandlungGlyph, type HouseMilestones } from "@/features/verwandlung";
 import { usePageVisit } from "@/features/personalization/usePageVisit";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 interface DbDesigner {
   id: string;
@@ -864,7 +865,7 @@ function HouseHero({ brandName, houseNumber, image }: { brandName: string; house
   return (
     <section className="relative h-[100svh] min-h-[520px] w-full overflow-hidden bg-black">
       {image ? (
-        <img src={image} alt={brandName} className="absolute inset-0 h-full w-full object-cover" />
+        <MediaImg src={image} alt={brandName} className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-black">
           <span className="palace-eyebrow text-white/50">Ohne Bild</span>
@@ -935,7 +936,7 @@ function KollektionArchetyp({ archetyp, products, collectionTitle, sectionRef }:
   const plate = ARCHETYP_PLATES[archetyp];
   const Trenner = ({ h = "h-20 md:h-32" }: { h?: string }) => (
     <div aria-hidden className={`${h} w-full overflow-hidden`}>
-      <img src={plate} alt="" className="h-full w-full object-cover opacity-30 grayscale" loading="lazy" />
+      <MediaImg src={plate} alt="" className="h-full w-full object-cover opacity-30 grayscale" loading="lazy" />
     </div>
   );
   const kopf = (
