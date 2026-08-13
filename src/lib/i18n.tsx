@@ -511,6 +511,15 @@ const de = {
   "studioShell.legal.datenschutz": "Datenschutz",
   "studioShell.legal.agb": "AGB",
   "studioShell.legal.kuendigen": "Verträge hier kündigen",
+  "studioShell.legal.widerruf": "Widerruf",
+  "studioShell.legal.barrierefreiheit": "Barrierefreiheit",
+  // Teil L1 — Rechtszeile im Footer, auf jeder Seite.
+  "footer.legal.agb": "AGB",
+  "footer.legal.impressum": "Impressum",
+  "footer.legal.datenschutz": "Datenschutz",
+  "footer.legal.widerruf": "Widerruf",
+  "footer.legal.barrierefreiheit": "Barrierefreiheit",
+  "footer.legal.cookies": "Cookie-Einstellungen",
   "studioShell.highestRank": "Höchster Rang",
   "studioShell.nextRank": "Nächster Rang · {rank}",
 
@@ -2750,6 +2759,15 @@ const en: Record<keyof typeof de, string> = {
   "studioShell.legal.datenschutz": "Privacy",
   "studioShell.legal.agb": "Terms",
   "studioShell.legal.kuendigen": "Cancel contracts here",
+  "studioShell.legal.widerruf": "Right of withdrawal",
+  "studioShell.legal.barrierefreiheit": "Accessibility",
+  // Teil L1 — legal row in the footer, on every page.
+  "footer.legal.agb": "Terms",
+  "footer.legal.impressum": "Legal notice",
+  "footer.legal.datenschutz": "Privacy",
+  "footer.legal.widerruf": "Right of withdrawal",
+  "footer.legal.barrierefreiheit": "Accessibility",
+  "footer.legal.cookies": "Cookie settings",
   "studioShell.highestRank": "Highest rank",
   "studioShell.nextRank": "Next rank · {rank}",
 

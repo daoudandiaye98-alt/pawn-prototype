@@ -30,6 +30,24 @@ function clearCookie(name: string) {
   document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
 }
 
+/**
+ * Teil L1 — Google Consent Mode v2: index.html startet gtag mit ALLEM auf "denied".
+ * Diese Funktion hebt (oder senkt) die Einwilligung, sobald der Nutzer im Banner
+ * entscheidet bzw. seine frühere Entscheidung beim Laden wiederhergestellt wird.
+ */
+function syncGoogleConsent(v: ConsentValue) {
+  if (typeof window === "undefined") return;
+  const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
+  if (!gtag) return;
+  const granted = v === "accepted" ? "granted" : "denied";
+  gtag("consent", "update", {
+    ad_storage: granted,
+    ad_user_data: granted,
+    ad_personalization: granted,
+    analytics_storage: granted,
+  });
+}
+
 function readInitial(): ConsentValue {
   if (typeof window === "undefined") return null;
   const c = readCookie(COOKIE);
@@ -58,8 +76,13 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<ConsentValue>(() => readInitial());
   const [openSettings, setOpenSettings] = useState(false);
 
+  // Frühere Entscheidung beim Laden an Google Consent Mode weiterreichen
+  // (und bei jedem Wechsel — setConsent ruft syncGoogleConsent selbst auf).
+  useEffect(() => { syncGoogleConsent(value); }, [value]);
+
   const setConsent = useCallback((v: Exclude<ConsentValue, null>) => {
     setValue(v);
+    syncGoogleConsent(v);
     writeCookie(COOKIE, v);
     try { localStorage.setItem(STORAGE, v); } catch { /* noop */ }
     // On decline: purge cached personalization/session data.

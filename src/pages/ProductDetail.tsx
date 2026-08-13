@@ -19,6 +19,7 @@ import { useWishlist } from "@/features/wishlist/useWishlist";
 import { createCustomRequestThread } from "@/features/messages/customRequest";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { track } from "@/lib/analytics";
 import { formatPrice, formatCreditLine } from "@/lib/format";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -247,6 +248,7 @@ const ProductDetail = () => {
         name: reqName.trim() || undefined,
       });
       toast.success(t("product.toast.requestSent"));
+      track("anfrage_gesendet");
       setReqOpen(false); setReqName(""); setReqBody(""); setReqBudget("");
     } catch (e) {
       toast.error((e as Error)?.message ?? t("product.toast.sendError"));

@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompress";
 import { YOUR_MOVE_LINES } from "@/lib/yourMoveLines";
+import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 
 /**
@@ -170,6 +171,9 @@ export default function FirstMove() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const skipNextSave = useRef(true);
+
+  // Teil L1 — Zählung (cookielos, Plausible): /start begonnen, einmal je Aufruf.
+  useEffect(() => { track("start_begonnen"); }, []);
 
   useEffect(() => {
     // Erst wenn useAuth mit dem Prüfen einer bestehenden Session fertig ist, gilt "kein User"
@@ -407,6 +411,8 @@ export default function FirstMove() {
         return;
       }
       setPublished({ slug: r.slug! });
+      track("zug3_abgeschlossen");
+      track("live_gegangen");
       window.setTimeout(() => navigate("/studio"), reducedMotion ? 300 : 2200);
     } catch {
       toast.error(t("start.publish.err"));
@@ -486,7 +492,10 @@ export default function FirstMove() {
               <Button
                 type="button" variant="editorial" size="chip"
                 disabled={step === "zeigen" ? !canProceedZeigen : false}
-                onClick={() => setStep(STEP_ORDER[Math.min(STEP_ORDER.length - 1, stepIndex + 1)])}
+                onClick={() => {
+                  track(step === "zeigen" ? "zug1_abgeschlossen" : "zug2_abgeschlossen");
+                  setStep(STEP_ORDER[Math.min(STEP_ORDER.length - 1, stepIndex + 1)]);
+                }}
               >
                 {t("start.continue")}
               </Button>
@@ -494,6 +503,15 @@ export default function FirstMove() {
           </div>
         )}
       </div>
+
+      {/* Teil L1 — Rechtszeile auch auf /start (die Seite hat keinen Palace-Footer). */}
+      <footer className="mx-auto flex max-w-[720px] flex-wrap gap-x-5 gap-y-2 px-6 pb-10 pt-6 text-[0.56rem] uppercase tracking-[0.24em] text-black/60 md:px-10">
+        <Link to="/agb" className="hover:text-black">{t("footer.legal.agb")}</Link>
+        <Link to="/impressum" className="hover:text-black">{t("footer.legal.impressum")}</Link>
+        <Link to="/datenschutz" className="hover:text-black">{t("footer.legal.datenschutz")}</Link>
+        <Link to="/widerruf" className="hover:text-black">{t("footer.legal.widerruf")}</Link>
+        <Link to="/barrierefreiheit" className="hover:text-black">{t("footer.legal.barrierefreiheit")}</Link>
+      </footer>
     </div>
   );
 }
