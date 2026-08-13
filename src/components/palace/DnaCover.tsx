@@ -5,6 +5,7 @@ import { PawnFigur } from "@/components/pawn/PawnFigur";
 import { usePawnMood, type PawnMoodSignals } from "@/features/studio/usePawnMood";
 import { useStilberater } from "@/features/personalization/useStilberater";
 import { useI18n } from "@/lib/i18n";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 /**
  * Teil 29 — die DNA-Seite als Cover. Reicht die Datenlage nicht, ersetzt ein schwarzer
@@ -94,7 +95,7 @@ export function DnaCover() {
 
   return (
     <section id="dna-cover" className="relative flex min-h-[92svh] items-end overflow-hidden bg-black text-white">
-      {coverImage && <img src={coverImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />}
+      {coverImage && <MediaImg src={coverImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
 
       <div className="relative z-[2] mx-auto w-full max-w-[1100px] px-6 pb-16 pt-32 md:px-14">

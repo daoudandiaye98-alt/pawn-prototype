@@ -5,6 +5,7 @@ import { Reveal } from "@/components/palace/Reveal";
 import { Button } from "@/components/ui/button";
 import { usePublicDesigners } from "@/lib/publicData";
 import { useStore, marketplaceSelectors } from "@/core";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 const WORLDS = ["Alle", "Mode", "Interior", "Kunst"] as const;
 type WorldFilter = typeof WORLDS[number];
@@ -99,7 +100,7 @@ export default function Designers() {
           <div className="pointer-events-none absolute z-30 hidden overflow-hidden border border-[rgba(0,0,0,.28)] bg-[#FFFFFF] shadow-hard transition-opacity duration-300 md:block"
             style={{ left: pos.x + 20, top: pos.y - 90, width: 200, height: 260, opacity: hover.src ? 1 : 0.5 }}>
             {hover.src ? (
-              <img src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover" />
+              <MediaImg src={hover.src} alt="" loading="lazy" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-white palace-serif italic text-black/50">{hover.brand}</div>
             )}

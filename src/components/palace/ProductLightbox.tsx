@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 /**
  * Teil J1 — Vollbild-Lightbox für Werkbilder: Pinch-Zoom, Doppeltipp-Zoom, Swipe zwischen
@@ -114,7 +115,7 @@ export function ProductLightbox({ images, alt, open, initialIndex, onClose }: Pr
               aria-label={t("product.lightbox.thumbAria", { n: i + 1 })}
               className={`h-14 w-14 shrink-0 overflow-hidden border-[1.5px] ${i === index ? "border-white" : "border-white/25"}`}
             >
-              <img src={src} alt="" className="h-full w-full object-cover" />
+              <MediaImg src={src} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -227,7 +228,7 @@ function ZoomableImage({ src, alt, active, onZoomChange, onSwipeDownClose }: Zoo
         else setScale(DOUBLE_TAP_ZOOM);
       }}
     >
-      <img
+      <MediaImg
         src={src}
         alt={alt}
         draggable={false}

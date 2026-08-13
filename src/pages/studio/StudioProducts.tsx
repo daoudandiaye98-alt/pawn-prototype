@@ -17,6 +17,7 @@ import { buildCreatorPackage } from "@/features/share/creatorPackage";
 import { CoverMoment } from "@/features/studio/CoverMoment";
 import { ladePlanGate, weltenErlaubt, naechsterPlanFuerMehrWelten, planLabel, type Plan } from "@/lib/planGate";
 import {
+import { MediaImg } from "@/components/palace/MediaImg";
   effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
   materialSum, splitVat, vatNote, worldProfile,
   type MaterialPart, type Measurements, type SizeVariant,
@@ -278,7 +279,7 @@ export default function StudioProducts() {
               return (
                 <li key={p.id}>
                   <button type="button" onClick={() => setEditing(p)} className="al-werk-bild block aspect-[4/5] w-full text-left">
-                    {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />}
+                    {p.image_url && <MediaImg src={p.image_url} alt={p.name} className="h-full w-full object-cover" />}
                   </button>
                   <div className="mt-3 px-0.5">
                     <p className="truncate font-serif text-base leading-snug">{p.name}</p>
@@ -692,7 +693,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
               className={`relative flex flex-col items-center justify-center gap-3 border-2 border-dashed p-8 text-center transition-colors ${dragOver ? "border-foreground bg-muted" : "border-border bg-white"}`}>
               {local.image_url && (
                 <>
-                  <img src={local.image_url} alt="" className="max-h-64 w-auto object-contain" />
+                  <MediaImg src={local.image_url} alt="" className="max-h-64 w-auto object-contain" />
                   <div className="flex flex-wrap justify-center gap-2">
                     <label className="cursor-pointer border border-border bg-white px-3 py-1.5 text-[0.68rem] hover:bg-muted">
                       {t("studio.products.replaceImage")}
@@ -787,7 +788,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
                       className={`relative aspect-[3/4] overflow-hidden border ${active ? "border-foreground" : "border-border hover:border-foreground"}`}>
                       {m.kind === "video"
                         ? <video src={m.url} className="h-full w-full object-cover" muted playsInline />
-                        : <img src={m.url} alt="" className="h-full w-full object-cover" loading="lazy" />}
+                        : <MediaImg src={m.url} alt="" className="h-full w-full object-cover" loading="lazy" />}
                       {active && <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center bg-foreground text-background"><Check className="h-3 w-3" /></span>}
                     </button>
                   );
@@ -936,11 +937,11 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <figure>
-                <img src={shotResult.source} alt={t("studio.products.original")} className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <MediaImg src={shotResult.source} alt={t("studio.products.original")} className="w-full border border-border bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
                 <figcaption className="mt-2 text-[0.68rem] uppercase tracking-widest text-muted-foreground">{t("studio.products.original")}</figcaption>
               </figure>
               <figure className="relative">
-                <img src={shotResult.result} alt={shotResult.isTryon ? t("studio.products.aiModelShotAlt") : t("studio.products.studioPhotoAlt")} className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
+                <MediaImg src={shotResult.result} alt={shotResult.isTryon ? t("studio.products.aiModelShotAlt") : t("studio.products.studioPhotoAlt")} className="w-full border border-foreground bg-muted object-contain" style={{ aspectRatio: "1 / 1" }} />
                 {shotResult.isTryon && (
                   <span className="absolute right-2 top-2 border border-foreground bg-white px-2 py-0.5 text-[0.55rem] uppercase tracking-widest">{t("studio.products.aiModelBadge")}</span>
                 )}

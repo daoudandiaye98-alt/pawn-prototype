@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 export default function StudioBrand() {
   const { t } = useI18n();
@@ -151,7 +152,7 @@ function ImageField({ label, url, onUpload }: { label: string; url: string; onUp
     <div>
       <p className="editorial-eyebrow">{label}</p>
       <div className="mt-2 aspect-[16/9] w-full border border-border bg-muted">
-        {url && <img src={url} alt="" className="h-full w-full object-cover grayscale" />}
+        {url && <MediaImg src={url} alt="" className="h-full w-full object-cover grayscale" />}
       </div>
       <label className="mt-2 inline-flex cursor-pointer items-center gap-2 border border-dashed border-border px-4 py-2 text-xs">
         <Upload className="h-3 w-3" /> {t("studio.brand.image.uploadNew")}

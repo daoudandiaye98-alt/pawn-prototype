@@ -35,6 +35,7 @@ import { ProductLightbox } from "@/components/palace/ProductLightbox";
 import { JsonLd, SITE_URL } from "@/components/palace/JsonLd";
 
 import {
+import { MediaImg } from "@/components/palace/MediaImg";
   effectiveVatRate, vatNote, formatEuro,
   type SizeVariant,
 } from "@/features/studio/productDetails";
@@ -675,7 +676,7 @@ const ProductDetail = () => {
         <p className="house-accent palace-eyebrow">{t("product.banner.fromHouse")}</p>
         {banner.kind === "video"
           ? <video src={banner.url} className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" muted autoPlay loop playsInline />
-          : <img src={banner.url} alt="" className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" loading="lazy" />}
+          : <MediaImg src={banner.url} alt="" className="house-media mt-6 aspect-[16/9] w-full max-w-2xl object-cover" loading="lazy" />}
       </Reveal>
     </section>
   );
@@ -695,7 +696,7 @@ const ProductDetail = () => {
                 aria-label={t("product.lightbox.openAria")}
                 className="absolute inset-0 block h-full w-full"
               >
-                <img src={heroImage} alt={imageAlt} className="h-full w-full object-cover object-top md:object-contain md:object-center" />
+                <MediaImg src={heroImage} alt={imageAlt} className="h-full w-full object-cover object-top md:object-contain md:object-center" />
               </button>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black">
@@ -736,7 +737,7 @@ const ProductDetail = () => {
               aria-label={t("product.lightbox.openAria")}
               className="flex h-full w-full items-center justify-center"
             >
-              <img
+              <MediaImg
                 src={heroImage}
                 alt={imageAlt}
                 className="h-full w-auto max-w-full object-contain"

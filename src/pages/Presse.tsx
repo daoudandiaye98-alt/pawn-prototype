@@ -9,6 +9,7 @@ import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice, buildCaption, fetchShareKitTexts } from "@/features/share/shareKit";
 import { toast } from "sonner";
+import { MediaImg } from "@/components/palace/MediaImg";
 
 interface PresseData {
   name: string;
@@ -68,12 +69,12 @@ export default function Presse() {
         <p className="mt-1 text-sm text-muted-foreground">{data.designer.brand_name} · {formatPrice(data.price)}</p>
 
         {data.image_url && (
-          <img src={data.image_url} alt={data.name} className="mt-8 w-full border border-border object-cover" style={{ aspectRatio: "4 / 5" }} />
+          <MediaImg src={data.image_url} alt={data.name} className="mt-8 w-full border border-border object-cover" style={{ aspectRatio: "4 / 5" }} />
         )}
 
         <div className="mt-8 flex items-center gap-4">
           {data.designer.avatar_url && (
-            <img src={data.designer.avatar_url} alt="" className="h-12 w-12 shrink-0 border border-border object-cover" />
+            <MediaImg src={data.designer.avatar_url} alt="" className="h-12 w-12 shrink-0 border border-border object-cover" />
           )}
           <div>
             <p className="font-serif text-lg">{data.designer.brand_name}</p>
