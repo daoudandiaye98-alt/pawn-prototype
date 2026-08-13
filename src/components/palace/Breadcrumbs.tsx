@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { JsonLd, SITE_URL } from "./JsonLd";
 
 const LABELS: Record<string, string> = {
   mode: "Mode",
@@ -36,11 +37,25 @@ export function Breadcrumbs({ trail }: { trail?: { label: string; to?: string }[
   if (pathname === "/") return null;
   const items = trail ?? autoTrail(pathname);
   if (!items.length) return null;
+  // Teil L3 — BreadcrumbList als strukturierte Daten, gespiegelt aus der sichtbaren Spur.
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Start", item: SITE_URL },
+      ...items.map((item, i) => ({
+        "@type": "ListItem",
+        position: i + 2,
+        name: item.label,
+        ...(item.to ? { item: `${SITE_URL}${item.to}` } : {}),
+      })),
+    ],
+  };
   return (
     <nav
       aria-label="Breadcrumb"
       className="border-b-[1.5px] border-black bg-white"
-    >
+    ><JsonLd data={breadcrumbLd} />
       <ol className="mx-auto flex max-w-[1600px] items-stretch overflow-x-auto px-6 md:px-14">
         <li className="flex">
           <Link

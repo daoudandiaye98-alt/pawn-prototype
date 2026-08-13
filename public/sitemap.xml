@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Teil L3 — statische Sitemap der festen Seiten. Werk- und Hausseiten entstehen dynamisch
+     aus der Datenbank; eine dynamische Sitemap dafür braucht eine Edge Function und ist als
+     Folgearbeit notiert. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>https://pawn.vision/</loc><xhtml:link rel="alternate" hreflang="de" href="https://pawn.vision/"/><xhtml:link rel="alternate" hreflang="en" href="https://pawn.vision/"/></url>
+  <url><loc>https://pawn.vision/mode</loc></url>
+  <url><loc>https://pawn.vision/interior</loc></url>
+  <url><loc>https://pawn.vision/kunst</loc></url>
+  <url><loc>https://pawn.vision/shop</loc></url>
+  <url><loc>https://pawn.vision/neu</loc></url>
+  <url><loc>https://pawn.vision/designers</loc></url>
+  <url><loc>https://pawn.vision/ausgabe</loc></url>
+  <url><loc>https://pawn.vision/vision</loc></url>
+  <url><loc>https://pawn.vision/dna</loc></url>
+  <url><loc>https://pawn.vision/preise</loc></url>
+  <url><loc>https://pawn.vision/preise/maison</loc></url>
+  <url><loc>https://pawn.vision/apply</loc></url>
+  <url><loc>https://pawn.vision/start</loc></url>
+  <url><loc>https://pawn.vision/kontakt</loc></url>
+  <url><loc>https://pawn.vision/versand</loc></url>
+  <url><loc>https://pawn.vision/agb</loc></url>
+  <url><loc>https://pawn.vision/impressum</loc></url>
+  <url><loc>https://pawn.vision/datenschutz</loc></url>
+  <url><loc>https://pawn.vision/widerruf</loc></url>
+  <url><loc>https://pawn.vision/barrierefreiheit</loc></url>
+</urlset>

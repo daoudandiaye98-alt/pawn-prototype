@@ -7,6 +7,7 @@ import { useSiteContent } from "@/lib/siteContent";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import { Seo } from "./Seo";
+import { JsonLd, organizationLd } from "./JsonLd";
 import { useI18n } from "@/lib/i18n";
 import { useConsent } from "@/lib/consent";
 
@@ -61,6 +62,7 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
   return (
     <div className="palace min-h-screen bg-white text-black">
       <Seo title={title ?? DEFAULT_SEO[locale].title} description={description ?? DEFAULT_SEO[locale].description} />
+      <JsonLd data={organizationLd()} />
       {/* Teil L2 — Sprunglink: erstes fokussierbares Element, sichtbar nur per Tastatur. */}
       <a href="#inhalt" className="skip-link">{t("a11y.skipToContent")}</a>
       <BuilderBar />
