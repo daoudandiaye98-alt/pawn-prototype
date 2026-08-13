@@ -12,6 +12,7 @@ import { Languages } from "lucide-react";
 import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
 import { resolveTheme, type HouseTheme } from "@/features/houseTheme/theme";
 import { Schwelle } from "@/components/palace/Schwelle";
+import { aktiverArchetyp, ARCHETYP_PLATES, type Archetyp } from "@/features/houseTheme/archetyp";
 import { currentVerwandlungGlyph, type HouseMilestones } from "@/features/verwandlung";
 import { usePageVisit } from "@/features/personalization/usePageVisit";
 
@@ -38,6 +39,7 @@ interface DbDesigner {
   house_number: number | null;
   created_at: string | null;
   page_published_at: string | null;
+  brand_dna: Record<string, unknown> | null;
 }
 
 /* prefers-reduced-motion */
@@ -139,7 +141,7 @@ const DesignerPage = () => {
     (async () => {
       const { data } = await supabase
         .from("designers")
-        .select("id, slug, brand_name, location, country, story, quote, quote_role, tags, avatar_url, banner_url, hero_image_url, website, instagram, portrait_url, manifesto, atelier_image_url, atelier_caption, collection_title, house_number, created_at, page_published_at")
+        .select("id, slug, brand_name, location, country, story, quote, quote_role, tags, avatar_url, banner_url, hero_image_url, website, instagram, portrait_url, manifesto, atelier_image_url, atelier_caption, collection_title, house_number, created_at, page_published_at, brand_dna")
         .eq("slug", activeSlug)
         .eq("status", "active")
         .maybeSingle();
@@ -355,6 +357,10 @@ const DesignerPage = () => {
   const portraitScale = reduced ? 1 : 0.96 + pAct1 * 0.08;
   const portraitTranslate = reduced ? 0 : -pAct1 * 4;
 
+
+  // Teil K — der Archetyp bestimmt, WIE die Kollektion erzählt: ausdrückliche Wahl aus
+  // Tab Stil, sonst der Vorschlag aus der Rochade-DNA, sonst Editorial (das bisherige Kino).
+  const archetyp: Archetyp = aktiverArchetyp(dbDesigner?.brand_dna);
 
   const houseLabel = designer.houseNumber ?? "—";
   const totalLabel = totalCount || "—";
@@ -588,7 +594,17 @@ const DesignerPage = () => {
           </div>
         </section>
 
-        {/* AKT III — KOLLEKTION (Cinema horizontal) */}
+        {/* AKT III — KOLLEKTION. Der Archetyp (Teil K) bestimmt die Erzählweise:
+            Editorial = das bisherige horizontale Kino; Galerie/Atelier/Archiv rendern
+            eigene Rhythmen, die Basis-Platte nur als leiser Trenner davor. */}
+        {archetyp !== "editorial" ? (
+          <KollektionArchetyp
+            archetyp={archetyp}
+            products={designerProducts}
+            collectionTitle={designer.collectionTitle}
+            sectionRef={actIIIRef as React.RefObject<HTMLElement>}
+          />
+        ) : (
         <section
           ref={actIIIRef as React.RefObject<HTMLElement>}
           className="relative bg-[#FFFFFF]"
@@ -661,6 +677,7 @@ const DesignerPage = () => {
             </div>
           </div>
         </section>
+        )}
 
         {/* AKT III.5 — KAMPAGNEN (Videos, nur wenn vorhanden) */}
         {campaignVideos.length > 0 && (
@@ -900,6 +917,93 @@ function PlaqueRow({ label, labelNode, value }: { label?: string; labelNode?: Re
       <dt className="palace-eyebrow" style={{ color: "rgba(255,255,255,0.55)" }}>{labelNode ?? label}</dt>
       <dd className="palace-serif italic">{value}</dd>
     </div>
+  );
+}
+
+/**
+ * Teil K — die drei Archetyp-Erzählweisen der Kollektion (Galerie/Atelier/Archiv).
+ * Die Basis-Platte erscheint nur als leiser, niedrig-kontrastiger Trenner VOR der
+ * Sektion — nie hinter Text. Farbe kommt ausschließlich aus den Werken (EditorialImage
+ * mit color-Prop), das PAWN-Gesetz (#000/#FFF, Hairlines) bleibt unangetastet.
+ */
+function KollektionArchetyp({ archetyp, products, collectionTitle, sectionRef }: {
+  archetyp: Archetyp;
+  products: Array<{ id: string; slug: string; name: string; price: number; image_url: string | null }>;
+  collectionTitle: string | null;
+  sectionRef: React.RefObject<HTMLElement>;
+}) {
+  const plate = ARCHETYP_PLATES[archetyp];
+  const Trenner = ({ h = "h-20 md:h-32" }: { h?: string }) => (
+    <div aria-hidden className={`${h} w-full overflow-hidden`}>
+      <img src={plate} alt="" className="h-full w-full object-cover opacity-30 grayscale" loading="lazy" />
+    </div>
+  );
+  const kopf = (
+    <div className="mb-14">
+      <p className="palace-eyebrow">Akt III · Kollektion</p>
+      <h3
+        className="palace-serif mt-3 font-light text-[#000000]"
+        style={{ fontSize: "clamp(1.6rem, 3vw, 2.6rem)", lineHeight: 1.05 }}
+      >
+        {collectionTitle ?? "Was gerade das Atelier verlässt"}
+      </h3>
+    </div>
+  );
+  const leer = products.length === 0 && (
+    <p className="palace-serif italic text-[1.4rem] text-[#000000]/50">Kollektion in Vorbereitung.</p>
+  );
+  const zeile = (p: { slug: string; name: string; price: number }) => (
+    <div className="mt-4 flex items-baseline justify-between gap-4">
+      <p className="palace-serif italic text-[1.15rem] text-[#000000]">{p.name}</p>
+      <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
+    </div>
+  );
+
+  return (
+    <section ref={sectionRef} className="relative bg-[#FFFFFF]">
+      <Trenner />
+      <div className="px-6 py-24 md:px-14 md:py-32">
+        {kopf}
+        {leer}
+
+        {archetyp === "galerie" && (
+          <div className="mx-auto max-w-[880px] space-y-28 md:space-y-40">
+            {products.map((p) => (
+              <Link key={p.id} to={`/product/${p.slug}`} className="block">
+                <EditorialImage src={p.image_url} alt={p.name} color seed={`d-${p.slug}`} ratio="3/4" />
+                {zeile(p)}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {archetyp === "atelier" && (
+          <div className="grid gap-8 md:grid-cols-2 md:gap-14">
+            {products.map((p, i) => (
+              <Link key={p.id} to={`/product/${p.slug}`} className={`block ${i % 2 === 1 ? "md:mt-16" : ""}`}>
+                <EditorialImage src={p.image_url} alt={p.name} color seed={`d-${p.slug}`} ratio="4/5" />
+                {zeile(p)}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {archetyp === "archiv" && (
+          <ol className="grid gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((p, i) => (
+              <li key={p.id}>
+                <Link to={`/product/${p.slug}`} className="block border-t border-[rgba(0,0,0,.18)] pt-4">
+                  <p className="palace-serif mb-3 text-sm tabular-nums text-[#000000]/50">{String(i + 1).padStart(2, "0")}</p>
+                  <EditorialImage src={p.image_url} alt={p.name} color seed={`d-${p.slug}`} ratio="1/1" />
+                  {zeile(p)}
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+      {archetyp === "atelier" && products.length > 0 && <Trenner h="h-12 md:h-20" />}
+    </section>
   );
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+import { ArchetypWahl } from "@/components/pawn/ArchetypWahl";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,6 +74,12 @@ export default function StudioBrand() {
         { label: t("studio.tabs.seite"), to: "/studio/doppelseite" },
         { label: t("studio.tabs.stil"), to: "/studio/doppelseite/stil" },
       ]} />
+      {/* Teil K — Archetyp-Wahl: ein Tipp ändert, wie die Doppelseite erzählt. */}
+      <ArchetypWahl
+        designerId={designer.id}
+        brandDna={(designer as { brand_dna?: Record<string, unknown> | null }).brand_dna ?? null}
+        onSaved={() => void refresh()}
+      />
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
           <p className="editorial-eyebrow">{t("studio.brand.section.portraitStory")}</p>
