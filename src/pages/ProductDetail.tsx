@@ -34,8 +34,8 @@ import { ProductDetailsAccordion } from "@/components/palace/ProductDetailsAccor
 import { ProductLightbox } from "@/components/palace/ProductLightbox";
 import { JsonLd, SITE_URL } from "@/components/palace/JsonLd";
 
-import {
 import { MediaImg } from "@/components/palace/MediaImg";
+import {
   effectiveVatRate, vatNote, formatEuro,
   type SizeVariant,
 } from "@/features/studio/productDetails";

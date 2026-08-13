@@ -16,8 +16,8 @@ import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } fr
 import { buildCreatorPackage } from "@/features/share/creatorPackage";
 import { CoverMoment } from "@/features/studio/CoverMoment";
 import { ladePlanGate, weltenErlaubt, naechsterPlanFuerMehrWelten, planLabel, type Plan } from "@/lib/planGate";
-import {
 import { MediaImg } from "@/components/palace/MediaImg";
+import {
   effectiveVatRate, emptyMeasurements, formatEuro, formatRate,
   materialSum, splitVat, vatNote, worldProfile,
   type MaterialPart, type Measurements, type SizeVariant,
