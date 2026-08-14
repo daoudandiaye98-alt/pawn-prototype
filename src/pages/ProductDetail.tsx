@@ -35,6 +35,9 @@ import { ProductLightbox } from "@/components/palace/ProductLightbox";
 import { JsonLd, SITE_URL } from "@/components/palace/JsonLd";
 
 import { MediaImg } from "@/components/palace/MediaImg";
+import { gefuellteFelder, type Welt as WeltName } from "@/lib/weltFelder";
+import { ladeWerkzertifikat, zertifikatSinnvoll } from "@/features/share/werkzertifikat";
+import { useMediaUrl } from "@/lib/media";
 import {
   effectiveVatRate, vatNote, formatEuro,
   type SizeVariant,
@@ -288,6 +291,8 @@ const ProductDetail = () => {
     [heroImage, gallery],
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  // Für das Werkzertifikat: eine frisch signierte Adresse des Titelbilds.
+  const zertifikatBild = useMediaUrl(heroImage ?? null);
 
   // Teil L2 — Barrierefreiheit: beschreibender Alt-Text aus Titel + Technik + Haus,
   // statt nur des Produktnamens.
@@ -544,6 +549,50 @@ const ProductDetail = () => {
           <ProductDetailsAccordion dbProduct={dbProduct} onPickSize={(s) => setSize(s)} />
         </ErrorBoundary>
       </Reveal>
+
+      {/* Welten-Gleichstand: die Angaben dieser Welt. Was leer ist, steht hier
+          gar nicht — kein Strich, kein „k. A.", keine erfundene Zeile. */}
+      {(() => {
+        const angaben = gefuellteFelder(
+          (product.world ?? "Mode") as WeltName,
+          (dbProduct?.product_dna ?? null) as Record<string, unknown> | null,
+        );
+        if (angaben.length === 0) return null;
+        return (
+          <Reveal className="house-hair mt-10 border-t pt-6">
+            <p className="house-ink palace-eyebrow opacity-60">{t("product.angaben.title")}</p>
+            <dl className="mt-4 grid gap-x-10 gap-y-2 sm:grid-cols-2">
+              {angaben.map(({ feld, wert }) => (
+                <div key={feld.schluessel} className="flex flex-wrap items-baseline justify-between gap-3 border-b border-current/10 py-1.5">
+                  <dt className="house-ink text-[0.62rem] uppercase tracking-[0.18em] opacity-60">{feld.label}</dt>
+                  <dd className="house-ink text-sm">{wert}</dd>
+                </div>
+              ))}
+            </dl>
+          </Reveal>
+        );
+      })()}
+
+      {/* Das Werkzertifikat ergibt nur bei Kunst und Interior Sinn — ein Kleid
+          braucht keins, ein Unikat schon. Wird im Browser gebaut, ohne Deploy. */}
+      {zertifikatSinnvoll((product.world ?? "Mode") as WeltName) && dbProduct?.designers && (
+        <Reveal className="mt-6">
+          <button type="button"
+            onClick={() => void ladeWerkzertifikat({
+              welt: (product.world ?? "Kunst") as WeltName,
+              werk: product.name,
+              haus: dbProduct.designers!.brand_name,
+              hausOrt: dbProduct.designers!.location ?? null,
+              hausNummer: (dbProduct.designers as { house_number?: number }).house_number ?? null,
+              dna: (dbProduct.product_dna ?? null) as Record<string, unknown> | null,
+              bildUrl: zertifikatBild,
+              datum: new Date(),
+            })}
+            className="house-ink text-[0.6rem] uppercase tracking-[0.24em] underline underline-offset-4 hover:opacity-70">
+            {t("product.zertifikat.link")}
+          </button>
+        </Reveal>
+      )}
 
       {/* Werkstatt-Zeile (Teil 35): echte Haus-Daten, "Zum Haus" führt zur Hausseite. */}
       {dbProduct?.designers && (

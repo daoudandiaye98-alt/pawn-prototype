@@ -25,18 +25,10 @@ import { useI18n } from "@/lib/i18n";
 type World = "Mode" | "Interior" | "Kunst";
 const WORLD_LABEL_KEY: Record<World, string> = { Mode: "studio.stueckNeu.world.mode", Interior: "studio.stueckNeu.world.interior", Kunst: "studio.stueckNeu.world.kunst" };
 
-// PART 51 Teil C — Kunst-Angebotstypen. `products` hat keine eigene Typ-Spalte, deshalb landet
-// die Werkart in product_dna.kind (Konvention aus First Move/Rochade). Original ist immer ein
-// Unikat (Bestand fest 1), Auftragsarbeit/Live-Porträt haben nie einen Warenkorb — "Anfragen"
-// ist dort der einzige Weg (siehe ProductDetail.tsx).
-type KunstKind = "original" | "print" | "auftragsarbeit" | "live_portrait";
-const KUNST_KIND_ORDER: KunstKind[] = ["original", "print", "auftragsarbeit", "live_portrait"];
-const KUNST_KIND_LABEL_KEY: Record<KunstKind, string> = {
-  original: "studio.stueckNeu.kunstArt.original",
-  print: "studio.stueckNeu.kunstArt.print",
-  auftragsarbeit: "studio.stueckNeu.kunstArt.auftragsarbeit",
-  live_portrait: "studio.stueckNeu.kunstArt.live_portrait",
-};
+// Die Werkart liegt in product_dna.kind (Konvention seit PART 51 Teil C / First Move) —
+// `products` hat dafür keine eigene Spalte, und braucht auch keine. Welche Typen es je
+// Welt gibt und welcher davon Unikat bzw. ohne Warenkorb ist, steht seit dem
+// Welten-Gleichstand an einer Stelle: src/lib/weltFelder.ts.
 
 interface StagingTemplate {
   id: string; label: string; description?: string; prompt: string;
@@ -81,18 +73,23 @@ export default function StudioStueckNeu() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [world, setWorld] = useState<World>("Mode");
-  const [size, setSize] = useState("");
   const [story, setStory] = useState("");
   const [madeToOrder, setMadeToOrder] = useState(false);
   const [stock, setStock] = useState("1");
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // PART 51 Teil C — Kunst-Ontologie, nur relevant wenn world === "Kunst".
-  const [kunstKind, setKunstKind] = useState<KunstKind>("original");
-  const [technik, setTechnik] = useState("");
-  const [medium, setMedium] = useState("");
-  const [jahr, setJahr] = useState("");
+  // Welten-Gleichstand: der Angebotstyp und die Felder kommen aus src/lib/weltFelder.ts
+  // — eine Quelle für alle drei Welten statt einer Sonderbehandlung für Kunst.
+  const [typ, setTyp] = useState<string>(ANGEBOTSTYPEN.Mode[0].schluessel);
+  const [weltWerte, setWeltWerte] = useState<Record<string, string>>({});
+
+  // Welt gewechselt: Typ und Felder gehören zur alten Welt und werden geleert,
+  // statt als Rest stehen zu bleiben.
+  useEffect(() => {
+    setTyp(ANGEBOTSTYPEN[world as WeltName][0].schluessel);
+    setWeltWerte({});
+  }, [world]);
 
   const [product, setProduct] = useState<LiveProduct | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(!!existingProductId);
@@ -109,9 +106,9 @@ export default function StudioStueckNeu() {
       .then(({ data }) => setExistingWorlds(Array.from(new Set((data ?? []).map((r) => r.world as World)))));
   }, [designer]);
   const weltGesperrt = gateReady && !weltenErlaubt(plan, existingWorlds, world);
-  const isKunst = world === "Kunst";
-  const isUnikat = isKunst && kunstKind === "original";
-  const isNoCheckoutKind = isKunst && (kunstKind === "auftragsarbeit" || kunstKind === "live_portrait");
+  const gewaehlterTyp = findeAngebotstyp(world as WeltName, typ);
+  const isUnikat = gewaehlterTyp?.unikat === true;
+  const isNoCheckoutKind = gewaehlterTyp?.ohneKauf === true;
 
   // Teil 27b: Der Cover-Moment — einmalig pro Stück, wenn es zum ersten Mal live geht.
   const maybeShowCover = async (productId: string, imageUrl: string | null) => {
@@ -234,10 +231,15 @@ export default function StudioStueckNeu() {
     }
     setBusy(true);
     try {
-      const description = [story.trim(), size.trim() ? `Größe: ${size.trim()}` : null].filter(Boolean).join("\n\n") || null;
+      const description = story.trim() || null;
       const slug = `${slugify(designer.brand_name)}-${slugify(name)}-${Date.now().toString(36)}`;
-      const productDna = isKunst
-        ? { kind: kunstKind, ...(technik.trim() ? { technik: technik.trim() } : {}), ...(medium.trim() ? { medium: medium.trim() } : {}), ...(jahr.trim() ? { jahr: jahr.trim() } : {}) }
+      // Nur gefüllte Felder wandern in product_dna. Ein leeres Feld bleibt leer —
+      // es wird nie mit einem Strich oder einem geratenen Wert aufgefüllt.
+      const gefuellt = Object.fromEntries(
+        Object.entries(weltWerte).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v.length > 0),
+      );
+      const productDna = (typ || Object.keys(gefuellt).length)
+        ? { kind: typ, ...gefuellt }
         : null;
       const { data, error } = await supabase.from("products").insert({
         designer_id: designer.id, name: name.trim(), slug, price: priceNum, world, description,
@@ -298,60 +300,81 @@ export default function StudioStueckNeu() {
             <p className="editorial-eyebrow">{t("studio.stueckNeu.section.photo")}</p>
             <div className="mt-2">{photoUploader}</div>
 
+            {/* Welten-Gleichstand: Die Welt steht zuerst. Erst wenn sie feststeht,
+                weiß das Formular, welche Felder überhaupt zu diesem Werk gehören. */}
+            <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.world")}</p>
+            <div className="mt-2 flex gap-2">
+              {(["Mode", "Interior", "Kunst"] as World[]).map((w) => {
+                const gesperrt = gateReady && !weltenErlaubt(plan, existingWorlds, w);
+                return (
+                  <button key={w} type="button" onClick={() => setWorld(w)}
+                    className={`flex-1 border p-2 text-sm ${world === w ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"} ${gesperrt ? "opacity-40" : ""}`}>
+                    {t(WORLD_LABEL_KEY[w])}
+                  </button>
+                );
+              })}
+            </div>
+            {weltGesperrt && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Diese Welt ist in deinem Plan noch nicht frei — {naechsterPlanFuerMehrWelten(plan) === "maison" ? "Maison" : "Atelier"} erlaubt mehr Welten gleichzeitig.
+              </p>
+            )}
+
             <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.piece")}</p>
             <div className="mt-2 space-y-4">
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("studio.stueckNeu.form.namePlaceholder")}
                 className="w-full border border-border bg-white p-3 text-sm" />
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="1" placeholder={t("studio.stueckNeu.form.pricePlaceholder")}
-                    className="w-full border border-border bg-white p-3 text-sm" />
-                  <p className="mt-1 text-[0.62rem] uppercase tracking-[0.14em] opacity-50">{t("studio.stueckNeu.form.priceHint")}</p>
-                </div>
-                <input value={size} onChange={(e) => setSize(e.target.value)} placeholder={t("studio.stueckNeu.form.sizePlaceholder")}
-                  className="border border-border bg-white p-3 text-sm" />
+              <div>
+                <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="1" placeholder={t("studio.stueckNeu.form.pricePlaceholder")}
+                  className="w-full border border-border bg-white p-3 text-sm" />
+                <p className="mt-1 text-[0.62rem] uppercase tracking-[0.14em] opacity-50">{t("studio.stueckNeu.form.priceHint")}</p>
               </div>
-              <div className="flex gap-2">
-                {(["Mode", "Interior", "Kunst"] as World[]).map((w) => {
-                  const gesperrt = gateReady && !weltenErlaubt(plan, existingWorlds, w);
-                  return (
-                    <button key={w} type="button" onClick={() => setWorld(w)}
-                      className={`flex-1 border p-2 text-sm ${world === w ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"} ${gesperrt ? "opacity-40" : ""}`}>
-                      {t(WORLD_LABEL_KEY[w])}
-                    </button>
-                  );
-                })}
-              </div>
-              {weltGesperrt && (
-                <p className="text-xs text-muted-foreground">
-                  Diese Welt ist in deinem Plan noch nicht frei — {naechsterPlanFuerMehrWelten(plan) === "maison" ? "Maison" : "Atelier"} erlaubt mehr Welten gleichzeitig.
-                </p>
-              )}
               <textarea value={story} onChange={(e) => setStory(e.target.value)} placeholder={t("studio.stueckNeu.form.storyPlaceholder")} rows={2}
                 className="w-full border border-border bg-white p-3 text-sm" />
             </div>
 
-            {isKunst && (
-              <>
-                <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.kunstArt")}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {KUNST_KIND_ORDER.map((k) => (
-                    <button key={k} type="button" onClick={() => setKunstKind(k)}
-                      className={`min-h-[36px] flex-1 border px-3 py-2 text-sm ${kunstKind === k ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
-                      {t(KUNST_KIND_LABEL_KEY[k])}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  <input value={technik} onChange={(e) => setTechnik(e.target.value)} placeholder={t("studio.stueckNeu.form.technikPlaceholder")}
-                    className="border border-border bg-white p-3 text-sm" />
-                  <input value={medium} onChange={(e) => setMedium(e.target.value)} placeholder={t("studio.stueckNeu.form.mediumPlaceholder")}
-                    className="border border-border bg-white p-3 text-sm" />
-                  <input value={jahr} onChange={(e) => setJahr(e.target.value)} placeholder={t("studio.stueckNeu.form.jahrPlaceholder")}
-                    className="border border-border bg-white p-3 text-sm" />
-                </div>
-              </>
-            )}
+            {/* Angebotstyp — jede Welt hat ihre eigenen. Interior kennt jetzt
+                Maßanfertigung und Materialmuster, nicht nur Kunst hat Typen. */}
+            <p className="editorial-eyebrow mt-8">Art des Angebots</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {ANGEBOTSTYPEN[world as WeltName].map((a) => (
+                <button key={a.schluessel} type="button" onClick={() => setTyp(a.schluessel)}
+                  className={`min-h-[36px] flex-1 border px-3 py-2 text-sm ${typ === a.schluessel ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"}`}>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            {gewaehlterTyp && <p className="mt-2 text-xs text-muted-foreground">{gewaehlterTyp.satz}</p>}
+
+            {/* Die Felder dieser Welt. Keines ist Pflicht — was leer bleibt,
+                bleibt auf der Werkseite unsichtbar, statt als Strich zu stehen. */}
+            <p className="editorial-eyebrow mt-8">Angaben zum Werk</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Nichts davon ist Pflicht. Was du leer lässt, taucht auf der Werkseite gar nicht auf.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {WELT_FELDER[world as WeltName].map((f) => (
+                <label key={f.schluessel} className={f.art === "mehrzeilig" ? "sm:col-span-2" : ""}>
+                  <span className="text-[0.62rem] uppercase tracking-[0.14em] opacity-60">{f.label}</span>
+                  {f.art === "auswahl" ? (
+                    <select value={weltWerte[f.schluessel] ?? ""}
+                      onChange={(e) => setWeltWerte((alt) => ({ ...alt, [f.schluessel]: e.target.value }))}
+                      className="mt-1 w-full border border-border bg-white p-3 text-sm">
+                      <option value="">—</option>
+                      {(f.optionen ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : f.art === "mehrzeilig" ? (
+                    <textarea value={weltWerte[f.schluessel] ?? ""} rows={2} placeholder={f.platzhalter}
+                      onChange={(e) => setWeltWerte((alt) => ({ ...alt, [f.schluessel]: e.target.value }))}
+                      className="mt-1 w-full border border-border bg-white p-3 text-sm" />
+                  ) : (
+                    <input value={weltWerte[f.schluessel] ?? ""} placeholder={f.platzhalter}
+                      onChange={(e) => setWeltWerte((alt) => ({ ...alt, [f.schluessel]: e.target.value }))}
+                      className="mt-1 w-full border border-border bg-white p-3 text-sm" />
+                  )}
+                </label>
+              ))}
+            </div>
 
             <p className="editorial-eyebrow mt-8">{t("studio.stueckNeu.section.availability")}</p>
             <div className="mt-2 space-y-3">

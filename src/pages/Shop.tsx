@@ -9,6 +9,7 @@ import { Heart } from "lucide-react";
 import { useWishlist } from "@/features/wishlist/useWishlist";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useI18n } from "@/lib/i18n";
+import { filterFelder, type Welt as WeltName } from "@/lib/weltFelder";
 
 type World = "Mode" | "Interior" | "Kunst";
 
@@ -23,6 +24,7 @@ interface ShopProduct {
   inventory_mode: "stock" | "made_to_order";
   stock_quantity: number | null;
   size_variants: unknown;
+  product_dna: unknown;
   designers: { slug: string; brand_name: string } | null;
 }
 
@@ -58,7 +60,7 @@ function useShopProducts() {
     (async () => {
       const { data, error: err } = await supabase
         .from("products")
-        .select("id, slug, name, price, world, image_url, created_at, inventory_mode, stock_quantity, size_variants, designers ( slug, brand_name )")
+        .select("id, slug, name, price, world, image_url, created_at, inventory_mode, stock_quantity, size_variants, product_dna, designers ( slug, brand_name )")
         .eq("status", "published")
         .order("created_at", { ascending: false })
         .limit(200);
@@ -102,6 +104,9 @@ const Shop = () => {
   };
   const [designer, setDesigner] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
+  // Welten-Gleichstand: Verfeinerungen hängen an der gewählten Welt, nicht global.
+  // „Größe" ist ein Mode-Begriff und stand vorher auch bei Kunst und Interior.
+  const [weltFilter, setWeltFilter] = useState<Record<string, string>>({});
   // Teil P — Preis als Spanne [von, bis]. null = volle Spanne, blendet nichts aus.
   const [preisSpanne, setPreisSpanne] = useState<[number, number] | null>(null);
   const [sort, setSort] = useState<SortKey>("curated");
@@ -126,6 +131,30 @@ const Shop = () => {
     return Array.from(set).sort();
   }, [products]);
 
+  /** Wert eines Welt-Feldes aus product_dna, sonst leer. */
+  const dnaWert = (p: ShopProduct, schluessel: string): string => {
+    const dna = (p.product_dna ?? {}) as Record<string, unknown>;
+    return typeof dna[schluessel] === "string" ? String(dna[schluessel]).trim() : "";
+  };
+
+  // Die Verfeinerungen dieser Welt — und nur die, für die es im Regal wirklich
+  // mehr als einen Wert gibt. Eine Reihe mit einem einzigen Knopf hilft niemandem.
+  const weltReihen = useMemo(() => {
+    if (!world) return [];
+    return filterFelder(world as WeltName).map((f) => {
+      const werte = new Set<string>();
+      for (const p of products) {
+        if (p.world !== world) continue;
+        const w = dnaWert(p, f.schluessel);
+        if (w) werte.add(w);
+      }
+      return { feld: f, werte: Array.from(werte).sort() };
+    }).filter((r) => r.werte.length > 1);
+  }, [products, world]);
+
+  // Welt gewechselt: die Verfeinerungen der alten Welt gelten hier nicht mehr.
+  useEffect(() => { setWeltFilter({}); if (world !== "Mode") setSize(null); }, [world]);
+
   // Alles außer dem Preis — daraus entstehen die Grenzen des Schiebers. So passt die
   // Spanne immer zu dem, was gerade wirklich im Regal liegt (nicht zu festen 0–100).
   const ohnePreis = useMemo(
@@ -133,10 +162,13 @@ const Shop = () => {
       if (world && p.world !== world) return false;
       if (designer && p.designers?.slug !== designer) return false;
       if (size && !sizesOf(p).includes(size)) return false;
+      for (const [schluessel, wert] of Object.entries(weltFilter)) {
+        if (wert && dnaWert(p, schluessel) !== wert) return false;
+      }
       if (search && !`${p.name} ${p.designers?.brand_name ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     }),
-    [products, world, designer, size, search],
+    [products, world, designer, size, weltFilter, search],
   );
 
   // Feste Spanne, unabhängig vom Bestand — kein Springen mehr auf absurde
@@ -174,7 +206,7 @@ const Shop = () => {
 
   // Der Zähler zeigt beim Ziehen die Zahl der wirksamen (kurz verzögerten) Spanne —
   // das ist genau `filtered.length`, also die Zahl, die auch das Raster zeigt.
-  const hasFilters = !!(world || designer || size || search || preisGewaehlt);
+  const hasFilters = !!(world || designer || size || search || preisGewaehlt || Object.values(weltFilter).some(Boolean));
 
   return (
     <PalaceLayout transparentHeader={false}>
@@ -230,7 +262,9 @@ const Shop = () => {
             </FilterGroup>
           )}
 
-          {sizes.length > 0 && (
+          {/* Größe ist ein Mode-Begriff. Bei Kunst und Interior stand sie vorher
+              mit, obwohl sie dort nichts bedeutet. */}
+          {world === "Mode" && sizes.length > 0 && (
             <FilterGroup title="Größe">
               <div className="flex flex-wrap gap-2">
                 {sizes.map((s) => (
@@ -239,6 +273,22 @@ const Shop = () => {
               </div>
             </FilterGroup>
           )}
+
+          {weltReihen.map(({ feld, werte }) => (
+            <FilterGroup key={feld.schluessel} title={feld.label}>
+              <div className="flex flex-wrap gap-2">
+                {werte.map((w) => (
+                  <FilterPill key={w} active={weltFilter[feld.schluessel] === w}
+                    onClick={() => setWeltFilter((alt) => ({
+                      ...alt,
+                      [feld.schluessel]: alt[feld.schluessel] === w ? "" : w,
+                    }))}>
+                    {w}
+                  </FilterPill>
+                ))}
+              </div>
+            </FilterGroup>
+          ))}
 
           {(
             <FilterGroup title={`Preis · ${eur(spanne[0])} – ${preisLabel(spanne[1], obenOffen)}`}>
@@ -254,7 +304,7 @@ const Shop = () => {
           {hasFilters && (
             <button
               type="button"
-              onClick={() => { waehleWelt(null); setDesigner(null); setSize(null); setSearch(""); setPreisSpanne(null); }}
+              onClick={() => { waehleWelt(null); setDesigner(null); setSize(null); setWeltFilter({}); setSearch(""); setPreisSpanne(null); }}
               className="palace-eyebrow uline text-black/60 hover:text-[#000000]"
             >
               Filter zurücksetzen

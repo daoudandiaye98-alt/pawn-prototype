@@ -121,3 +121,45 @@ Kuratierungs-Prompts.
 hinausgehen sollen (neue Form in `shipping_rates`), sowie ggf. ein Feld für
 den Angebotstyp bei Interior — sofern man ihn nicht wie bei Kunst in
 `product_dna.kind` legt (empfohlen: legen, dann keine Migration nötig).
+
+---
+
+# Stand nach dem Bau (Teil Q, Aufgabe 4b)
+
+Die Lückenliste oben bleibt stehen, wie sie war — sie ist der Befund. Hier steht,
+was davon geschlossen ist und was nicht.
+
+## Geschlossen
+
+| Lücke | Wo |
+|---|---|
+| Eine Quelle für alles, was eine Welt kennt | `src/lib/weltFelder.ts` (neu) |
+| Welt wird zuerst gefragt | `StudioStueckNeu.tsx` — eigener Abschnitt vor „Das Stück" |
+| „Größe" verschwindet bei Kunst und Interior | dieselbe Datei: die Felder kommen aus der Welt |
+| Kunst-Felder vollständig | Technik, Medium, Maße, Jahr, Auflage, Signatur, Rahmung, Träger, Zustand |
+| Interior-Felder überhaupt | Maße, Gewicht, Material, Oberfläche, Farbe, Fertigung, Lieferzeit, Montage, Pflege, Belastbarkeit |
+| Angebotstypen für Interior | Maßanfertigung + Materialmuster, beide über denselben Anfrage-Weg wie bei Kunst |
+| Metadaten-Sektion auf der Werkseite | `ProductDetail.tsx` — „Angaben zum Werk", leere Felder bleiben unsichtbar |
+| Boutique-Verfeinerungen je Welt | `Shop.tsx` — Verfeinerungen hängen an der Welt, „Größe" nur bei Mode |
+| Versandprofile | `StudioPayout.tsx` + `weltFelder.ts`: Paket, Sperrgut, Spedition (Bordstein/Verwendungsstelle), Rolle, Flach, Kunstspedition, Selbstabholung, „nur nach Absprache" |
+| Werkzertifikat als PDF | `src/features/share/werkzertifikat.ts`, verlinkt auf der Werkseite bei Kunst und Interior |
+
+Zur Versand-Form: die alten drei Pauschalen (`inland`/`eu`/`world`) werden weiter
+gelesen **und weiter mitgeschrieben** — sie sind jetzt das Profil „paket". Kein
+Haus muss etwas umstellen, und der Checkout liest weiter, was er kennt.
+
+## Nicht geschlossen — und warum
+
+**Braucht einen Lovable-Deploy (Edge Functions):**
+- Kunst-/Möbel-Duktus und Preisorientierung in `studio-ai` / `pawn-chat`.
+  Die Felder sind jetzt da; die KI kennt sie noch nicht.
+- Neue Inszenierungen („Werk im Raum", „Möbel im Raum", Detail/Textur) in
+  `generate-staging-shot` und `ai_config.staging_templates`.
+- Kunst- und Interior-Vokabular in `classify-term` und den Kuratierungs-Prompts.
+
+**Bewusst nicht gebaut:**
+- Eigene Bildslots für Signatur/Rückseite und Maßskizze. Die Mediathek kann
+  heute schon mehrere Bilder je Werk — ein eigener Slot wäre eine zweite
+  Ablage neben der bestehenden. Das gehört entschieden, nicht nebenbei gebaut.
+- Urhebernennung im Kaufbeleg. Der Beleg wird serverseitig erzeugt
+  (`_shared/rechnung.ts`) und braucht denselben Deploy.
