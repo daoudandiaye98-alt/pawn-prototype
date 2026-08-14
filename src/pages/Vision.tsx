@@ -1,42 +1,82 @@
 /**
- * PAWNs Vision — die Seite, die erklärt, was für ein Ort PAWN ist.
- * PART 51 Teil A2: Erzählung statt Feature-Katalog. Teil I: eine Erzählung in einer Bewegung —
- * kein zweites Landing, keine Navigation, kein Dashboard. Die Kette ist eine stille
- * Hairline-Zeile, es gibt genau einen CTA ("Mach deinen Zug" → /start), keine Kacheln,
- * keine Zähler. Die Seite endet allein stehend mit "PLAY YOUR OWN GAME."
+ * PAWNs Vision — TEIL R: vollständig neuer Text.
  *
- * Teil P — V2: drei neue Passagen tragen die Erzählung (Was wir sehen · Was wir glauben ·
- * Die Halle wächst), die Haltung ist positiv gedreht. Diese Texte sind wörtlich vorgegeben
- * und hängen deshalb an i18n (DE/EN exakt), nicht an site_content — sie sollen nicht
- * versehentlich überschrieben werden. Kicker, Öffnung, Kette und "Was PAWN tut" bleiben
- * wie gehabt an site_content (Editable).
+ * Der Wortlaut ist verbindlich und ersetzt alles, was vorher auf dieser Seite
+ * stand (auch die Passagen aus Teil P). Deshalb hängt der gesamte Fließtext an
+ * i18n und nicht mehr an `site_content`: was wörtlich vorgegeben ist, soll nicht
+ * versehentlich im Admin überschrieben werden. Die alten `vision_*`-Schlüssel
+ * werden von dieser Seite nicht mehr gelesen.
+ *
+ * Rhythmus: die Absätze sind kurz, das ist Absicht. Im i18n-Text bedeutet eine
+ * Leerzeile einen neuen Absatz, ein einfacher Zeilenumbruch eine eigene Zeile
+ * innerhalb desselben Blocks. `Fliesstext` rendert genau das — nichts wird zu
+ * Blöcken zusammengezogen.
+ *
+ * Englische Zeilen (Epigraphe, PLAY YOUR OWN GAME, MAKE YOUR MOVE) stehen als
+ * Konstanten im Code und NICHT im Wörterbuch. Sie sollen in beiden Sprach-
+ * fassungen englisch bleiben; läge je Sprache ein eigener Eintrag vor, könnte
+ * die englische Fassung eines Tages übersetzt werden. Eine Konstante kann das
+ * nicht.
+ *
+ * Genau ein CTA auf der ganzen Seite, ganz am Ende.
  */
 import { Link } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
-import { Editable } from "@/components/palace/Editable";
 import { Reveal } from "@/components/palace/Reveal";
 import { useI18n } from "@/lib/i18n";
 
-const KETTE = [
-  { key: "talent", de: "Talent" },
-  { key: "ausdruck", de: "Ausdruck" },
-  { key: "sichtbarkeit", de: "Sichtbarkeit" },
-  { key: "bewegung", de: "Bewegung" },
-  { key: "identitaet", de: "Identität" },
-  { key: "transformation", de: "Transformation" },
-];
+/** Nie übersetzt — in beiden Sprachfassungen englisch. */
+const EPIGRAPH = {
+  vision_1: "Culture moves fast.",
+  vision_2: "PAWN gives what matters a place to grow.",
+  tut: "PAWN turns creative potential into cultural presence.",
+  spielfeld: "PAWN is where independent creativity meets opportunity.",
+  halle: "Every number tells a story.",
+} as const;
+const SCHLUSSZEILE = "PLAY YOUR OWN GAME.";
+const CTA = "MAKE YOUR MOVE";
 
-/** Eine ruhige Passage im Kapitel-Rhythmus: kleine Marke links, Lesetext rechts. */
-function Passage({ label, text }: { label: string; text: string }) {
+/**
+ * Der Fließtext. Leerzeile = neuer Absatz (großer Abstand),
+ * einfacher Umbruch = eigene Zeile im selben Absatz (kleiner Abstand).
+ * Zeilenlänge höchstens ~62 Zeichen.
+ */
+function Fliesstext({ text }: { text: string }) {
+  const absaetze = text.split("\n\n");
+  return (
+    <div className="max-w-[62ch] space-y-6">
+      {absaetze.map((absatz, i) => (
+        <p key={i} className="text-[1rem] leading-[1.75] text-black md:text-[1.1rem]">
+          {absatz.split("\n").map((zeile, j, alle) => (
+            <span key={j}>
+              {zeile}
+              {j < alle.length - 1 && <br />}
+            </span>
+          ))}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** Ein Epigraph: groß, Playfair kursiv, allein stehend, viel Luft darum. */
+function Epigraph({ children }: { children: string }) {
+  return (
+    <p className="my-10 max-w-[24ch] font-serif text-[clamp(1.5rem,3.4vw,2.4rem)] italic leading-[1.3] text-black md:my-14">
+      {children}
+    </p>
+  );
+}
+
+/** Eine Sektion im Kapitel-Rhythmus: kleines Label links, Text rechts. */
+function Sektion({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <section className="grid border-b-[1.5px] border-black md:grid-cols-[minmax(0,22ch)_1fr]">
       <div className="border-b-[1.5px] border-black px-6 py-8 md:border-b-0 md:border-r-[1.5px] md:px-14 md:py-16">
         <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">{label}</p>
       </div>
       <div className="px-6 py-10 md:px-14 md:py-16">
-        <Reveal>
-          <p className="max-w-[62ch] text-[1rem] leading-relaxed text-black md:text-[1.1rem]">{text}</p>
-        </Reveal>
+        <Reveal>{children}</Reveal>
       </div>
     </section>
   );
@@ -44,96 +84,88 @@ function Passage({ label, text }: { label: string; text: string }) {
 
 export default function Vision() {
   const { t } = useI18n();
+
   return (
     <PalaceLayout
       title="PAWNs Vision — der Bauer, der sich verwandeln kann"
-      description="Wofür PAWN steht: ein kuratiertes Haus, in dem sich unabhängige Gestalter aus Mode, Interior und Kunst versammeln — und Menschen sie finden."
+      description="Wofür PAWN steht: ein kuratierter Ort für unabhängige Kreative aus Fashion, Art und Interior — und für die Menschen, die sie suchen."
     >
-      {/* 01 ÖFFNUNG — der Bauer */}
-      <section className="border-b-[1.5px] border-black px-6 pb-20 pt-24 md:px-14 md:pb-28 md:pt-32">
-        <Reveal>
-          <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">
-            <Editable contentKey="vision_kicker">Die Vision</Editable>
-          </p>
-          <h1 className="mt-8 max-w-[22ch] font-serif text-[clamp(2.4rem,7vw,6.4rem)] font-semibold leading-[1.02] text-black">
-            <Editable contentKey="vision_headline" multiline>
-              Der Bauer ist die kleinste Figur auf dem Brett — und die einzige, die sich verwandeln kann.
-            </Editable>
-          </h1>
-        </Reveal>
-      </section>
+      {/* 01 DIE VISION */}
+      <Sektion label={t("vision.vision.label")}>
+        <Epigraph>{EPIGRAPH.vision_1}</Epigraph>
+        <Epigraph>{EPIGRAPH.vision_2}</Epigraph>
+        <Fliesstext text={t("vision.vision.body")} />
+      </Sektion>
 
-      {/* 02 DIE KETTE — ein Flüstern zwischen den Kapiteln, kein zweiter Hero */}
-      <section className="border-b-[1.5px] border-black px-6 py-6 md:px-14 md:py-8">
+      {/* 02 WAS WIR SEHEN — mit Pfeilzeile und Zitat */}
+      <Sektion label={t("vision.sehen.label")}>
+        <Fliesstext text={t("vision.sehen.body1")} />
+
+        {/* Die Pfeilzeile: stille Hairline-Zeile, kein zweiter Hero. */}
+        <div className="my-10 max-w-[62ch] border-y-[1.5px] border-black/15 py-4">
+          <p className="font-serif text-[0.85rem] italic leading-relaxed text-black/55 md:text-[0.9rem]">
+            {t("vision.sehen.kette")}
+          </p>
+        </div>
+
+        <Fliesstext text={t("vision.sehen.body2")} />
+
+        <blockquote className="my-12 border-y-[1.5px] border-black px-2 py-10 text-center md:my-16 md:py-14">
+          <p className="mx-auto max-w-[40ch] font-serif text-[clamp(1.25rem,2.8vw,1.9rem)] italic leading-[1.4] text-black">
+            {t("vision.sehen.zitat")}
+          </p>
+        </blockquote>
+
+        <Fliesstext text={t("vision.sehen.body3")} />
+      </Sektion>
+
+      {/* 03 WAS WIR GLAUBEN */}
+      <Sektion label={t("vision.glauben.label")}>
+        <Fliesstext text={t("vision.glauben.body")} />
+      </Sektion>
+
+      {/* 04 WAS PAWN TUT */}
+      <Sektion label={t("vision.tut.label")}>
+        <Epigraph>{EPIGRAPH.tut}</Epigraph>
+        <Fliesstext text={t("vision.tut.body")} />
+      </Sektion>
+
+      {/* 05 DAS NEUE SPIELFELD */}
+      <Sektion label={t("vision.spielfeld.label")}>
+        <Epigraph>{EPIGRAPH.spielfeld}</Epigraph>
+        <Fliesstext text={t("vision.spielfeld.body")} />
+      </Sektion>
+
+      {/* 06 DIE HALLE WÄCHST */}
+      <Sektion label={t("vision.halle.label")}>
+        <Epigraph>{EPIGRAPH.halle}</Epigraph>
+        <Fliesstext text={t("vision.halle.body")} />
+      </Sektion>
+
+      {/* 07 SCHLUSS — zwei allein stehende Zeilen, drei kurze Sätze, ein CTA */}
+      <section className="px-6 py-24 text-center md:px-14 md:py-36">
         <Reveal>
-          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-center gap-x-3 gap-y-1 border-y-[1.5px] border-black/15 py-4 text-center">
-            {KETTE.map((glied, i) => (
-              <span key={glied.key} className="flex items-center gap-3">
-                <span className="font-serif text-[0.8rem] italic leading-tight text-black/55 md:text-[0.85rem]">
-                  <Editable as="span" contentKey={`vision_kette_${glied.key}`}>{glied.de}</Editable>
-                </span>
-                {i < KETTE.length - 1 && (
-                  <span aria-hidden className="text-[0.7rem] text-black/25">→</span>
-                )}
-              </span>
+          <p className="mx-auto max-w-[26ch] font-serif text-[clamp(1.6rem,4.4vw,3.2rem)] font-semibold leading-[1.15] text-black">
+            {t("vision.schluss.bauer")}
+          </p>
+
+          <p className="mx-auto mt-20 font-serif text-[clamp(1.8rem,5.5vw,4rem)] font-semibold italic tracking-[-0.02em] text-black md:mt-28">
+            {SCHLUSSZEILE}
+          </p>
+
+          <div className="mx-auto mt-20 flex max-w-[62ch] flex-col items-center gap-6 md:mt-28">
+            {t("vision.schluss.body").split("\n\n").map((zeile, i) => (
+              <p key={i} className="text-[1rem] leading-[1.75] text-black md:text-[1.1rem]">{zeile}</p>
             ))}
           </div>
-        </Reveal>
-      </section>
 
-      {/* 03 WAS WIR SEHEN (Teil P) */}
-      <Passage label={t("vision.sehen.label")} text={t("vision.sehen.text")} />
-
-      {/* 04 WAS WIR GLAUBEN (Teil P) */}
-      <Passage label={t("vision.glauben.label")} text={t("vision.glauben.text")} />
-
-      {/* 05 WAS PAWN TUT */}
-      <section className="grid border-b-[1.5px] border-black md:grid-cols-[minmax(0,22ch)_1fr]">
-        <div className="border-b-[1.5px] border-black px-6 py-8 md:border-b-0 md:border-r-[1.5px] md:px-14 md:py-16">
-          <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">
-            <Editable contentKey="vision_tut_label">Was PAWN tut</Editable>
-          </p>
-        </div>
-        <div className="px-6 py-10 md:px-14 md:py-16">
-          <Reveal>
-            <p className="max-w-[52ch] font-serif text-[clamp(1.15rem,2.2vw,1.5rem)] italic leading-[1.4] text-black">
-              PAWN turns creative potential into real-world opportunity.
-            </p>
-            <p className="mt-6 max-w-[62ch] text-[1rem] leading-relaxed text-black md:text-[1.1rem]">
-              <Editable contentKey="vision_tut_text" multiline>
-                PAWN erkennt, was in einer Arbeit steckt, kuratiert die stärksten Stimmen aus Mode,
-                Interior und Kunst und entwickelt ihre Sichtbarkeit über Zeit — statt sie für einen
-                Moment im Feed verschwinden zu lassen. Am Ende verbindet PAWN sie mit den Menschen,
-                die genau danach gesucht haben.
-              </Editable>
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* 06 DIE HALLE WÄCHST (Teil P) */}
-      <Passage label={t("vision.halle.label")} text={t("vision.halle.text")} />
-
-      {/* 07 HALTUNG (positiv gedreht, Teil P) + der eine CTA */}
-      <section className="border-b-[1.5px] border-black px-6 py-16 text-center md:px-14 md:py-24">
-        <Reveal>
-          <p className="mx-auto max-w-[36ch] font-serif text-[clamp(1.5rem,3.6vw,2.6rem)] italic leading-[1.4] text-black">
-            {t("vision.haltung.text")}
-          </p>
           <Link
             to="/start"
-            className="mt-10 inline-block border-[1.5px] border-black px-8 py-4 text-[0.68rem] uppercase tracking-[0.32em] text-black transition-colors hover:bg-black hover:text-white"
+            className="mt-16 inline-block border-[1.5px] border-black px-8 py-4 text-[0.68rem] uppercase tracking-[0.32em] text-black transition-colors hover:bg-black hover:text-white md:mt-20"
           >
-            {t("vision.cta")}
+            {CTA}
           </Link>
         </Reveal>
-      </section>
-
-      {/* 08 SCHLUSSSATZ — steht allein, nie als CTA */}
-      <section className="px-6 py-24 text-center md:px-14 md:py-36">
-        <p className="font-serif text-[clamp(1.8rem,5.5vw,4rem)] font-semibold italic tracking-[-0.02em] text-black">
-          PLAY YOUR OWN GAME.
-        </p>
       </section>
     </PalaceLayout>
   );
