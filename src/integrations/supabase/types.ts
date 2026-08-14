@@ -1422,6 +1422,7 @@ export type Database = {
           image_usage_consent: boolean
           image_usage_consent_at: string | null
           instagram: string | null
+          intern: boolean
           is_featured: boolean
           location: string | null
           manifesto: string | null
@@ -1482,6 +1483,7 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
+          intern?: boolean
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
@@ -1542,6 +1544,7 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
+          intern?: boolean
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
@@ -2438,6 +2441,7 @@ export type Database = {
           performance: Json
           product_id: string | null
           review_note: string | null
+          plan_beispiel: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
           rights_granted: boolean
           shows_synthetic_person: boolean
@@ -2460,6 +2464,7 @@ export type Database = {
           performance?: Json
           product_id?: string | null
           review_note?: string | null
+          plan_beispiel?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
           shows_synthetic_person?: boolean
@@ -2482,6 +2487,7 @@ export type Database = {
           performance?: Json
           product_id?: string | null
           review_note?: string | null
+          plan_beispiel?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
           shows_synthetic_person?: boolean
@@ -3531,6 +3537,7 @@ export type Database = {
           designer_id: string
           id: string
           performance: Json
+          plan_beispiel: string | null
           premiere: boolean
           regisseur_verdict: Json | null
           rights_granted: boolean
@@ -3546,6 +3553,7 @@ export type Database = {
           designer_id: string
           id?: string
           performance?: Json
+          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
@@ -3561,6 +3569,7 @@ export type Database = {
           designer_id?: string
           id?: string
           performance?: Json
+          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean

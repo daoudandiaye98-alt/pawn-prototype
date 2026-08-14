@@ -14,6 +14,11 @@ type Source = "designer" | "edition" | "jarvis";
 type MediaKind = "bild" | "video";
 type MediaOrigin = "upload" | "erzeugt" | "edition";
 
+/** Die drei Stufen, für die ein Werk als Plan-Beispiel freigegeben werden kann. */
+type Stufe = "haus" | "atelier" | "maison";
+const STUFEN: Stufe[] = ["haus", "atelier", "maison"];
+const STUFE_LABEL: Record<Stufe, string> = { haus: "Haus", atelier: "Atelier", maison: "Maison" };
+
 interface SubmittedRow {
   id: string;
   kind: MediaKind;
@@ -22,6 +27,16 @@ interface SubmittedRow {
   title: string | null;
   created_at: string;
   designers?: { brand_name: string; house_number: number | null } | null;
+}
+
+/** Ein Bild aus einer Mediathek, das angenommen wurde — Kandidat für ein Plan-Beispiel. */
+interface BildRow {
+  id: string;
+  url: string;
+  title: string | null;
+  rights_granted: boolean;
+  plan_beispiel: Stufe | null;
+  designers?: { brand_name: string; intern: boolean } | null;
 }
 
 const MEDIA_ORIGIN_LABEL: Record<MediaOrigin, string> = { upload: "Eigener Upload", erzeugt: "KI erzeugt", edition: "Gemeinsame Kampagne" };
@@ -48,6 +63,11 @@ export default function AdminArchiv() {
   const { user, roles, loading } = useAuth();
   const [rows, setRows] = useState<AssetRow[]>([]);
   const [submitted, setSubmitted] = useState<SubmittedRow[]>([]);
+  const [bilder, setBilder] = useState<BildRow[]>([]);
+  // Freigaben je Video (Werk-ID -> Stufe). Getrennt geladen, damit das Archiv auch
+  // dann vollständig steht, wenn das Freigabe-Feld noch nicht in der Datenbank ist.
+  const [videoFreigaben, setVideoFreigaben] = useState<Record<string, Stufe>>({});
+  const [freigabeBereit, setFreigabeBereit] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [filterHouse, setFilterHouse] = useState("");
   const [filterWorld, setFilterWorld] = useState("");
@@ -70,10 +90,33 @@ export default function AdminArchiv() {
     setSubmitted((data ?? []) as unknown as SubmittedRow[]);
   };
 
+  /** Angenommene Bilder + die aktuellen Plan-Freigaben. Bewusst eine eigene Abfrage:
+   *  solange das Feld `plan_beispiel` noch nicht in der Datenbank steht, schlägt nur
+   *  dieser Teil fehl — das Archiv selbst bleibt vollständig bedienbar. */
+  const refreshFreigaben = async () => {
+    const bild = await supabase.from("media_assets" as never)
+      .select("id, url, title, rights_granted, plan_beispiel, designers:designer_id(brand_name, intern)")
+      .eq("kind", "bild")
+      .eq("review_status", "angenommen")
+      .order("created_at", { ascending: false })
+      .limit(60);
+    const video = await supabase.from("video_assets" as never)
+      .select("id, plan_beispiel")
+      .not("plan_beispiel", "is", null);
+
+    if (bild.error || video.error) { setFreigabeBereit(false); return; }
+    setFreigabeBereit(true);
+    setBilder((bild.data ?? []) as unknown as BildRow[]);
+    const map: Record<string, Stufe> = {};
+    for (const v of (video.data ?? []) as unknown as Array<{ id: string; plan_beispiel: Stufe }>) map[v.id] = v.plan_beispiel;
+    setVideoFreigaben(map);
+  };
+
   useEffect(() => {
     if (!user || !roles.includes("admin")) return;
     void refresh();
     void refreshSubmitted();
+    void refreshFreigaben();
   }, [user, roles]);
 
   const houses = useMemo(() => Array.from(new Set(rows.map((r) => r.designers?.brand_name).filter(Boolean))) as string[], [rows]);
@@ -116,6 +159,22 @@ export default function AdminArchiv() {
     if (error) return toast.error(error.message);
     toast.success(approve ? "Angenommen." : "Abgelehnt.");
     void refreshSubmitted();
+  };
+
+  /** Gibt ein Werk als Plan-Beispiel einer Stufe frei — oder nimmt die Freigabe zurück.
+   *  Je Stufe steht höchstens ein Werk: eine neue Freigabe löst die alte ab. */
+  const setzePlanBeispiel = async (tabelle: "media_assets" | "video_assets", id: string, stufe: Stufe | null) => {
+    setBusy(id);
+    if (stufe) {
+      // Erst die bisherige Freigabe dieser Stufe lösen — in beiden Ablagen.
+      await supabase.from("media_assets" as never).update({ plan_beispiel: null } as never).eq("plan_beispiel", stufe);
+      await supabase.from("video_assets" as never).update({ plan_beispiel: null } as never).eq("plan_beispiel", stufe);
+    }
+    const { error } = await supabase.from(tabelle as never).update({ plan_beispiel: stufe } as never).eq("id", id);
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(stufe ? `Als Plan-Beispiel für ${STUFE_LABEL[stufe]} freigegeben.` : "Freigabe zurückgenommen.");
+    void refreshFreigaben();
   };
 
   const sendToQueue = async (row: AssetRow) => {
@@ -175,6 +234,95 @@ export default function AdminArchiv() {
         </section>
       )}
 
+      {/* Plan-Beispiele: nur was hier ausdrücklich freigegeben ist, erscheint auf der
+          Plan-Seite. Ohne Freigabe steht dort das hinterlegte Plan-Bild — nie ein
+          Werk, das sich das System selbst aus dem Bestand gesucht hat. */}
+      <section className="mt-8 border border-foreground bg-white">
+        <header className="border-b border-border px-5 py-3">
+          <p className="editorial-eyebrow">Plan-Beispiele</p>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            Je Stufe steht höchstens ein Werk auf der Plan-Seite — und nur, wenn du es hier freigibst.
+            Ohne Freigabe zeigt die Stufe ihr hinterlegtes Bild. Interne Häuser (Test, Demo, PAWN-eigen)
+            sind grundsätzlich ausgenommen.
+          </p>
+        </header>
+
+        {!freigabeBereit ? (
+          <p className="px-5 py-4 text-sm text-muted-foreground">
+            Die Freigabe steht bereit, sobald die zugehörige Datenbank-Änderung eingespielt ist.
+            Bis dahin zeigen alle drei Stufen ihr hinterlegtes Bild.
+          </p>
+        ) : (
+          <div className="p-5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {STUFEN.map((stufe) => {
+                const bild = bilder.find((b) => b.plan_beispiel === stufe);
+                const videoId = Object.keys(videoFreigaben).find((id) => videoFreigaben[id] === stufe);
+                const video = videoId ? rows.find((r) => r.id === videoId) : undefined;
+                const belegt = bild ?? video;
+                return (
+                  <div key={stufe} className="border border-border p-4">
+                    <p className="editorial-eyebrow">{STUFE_LABEL[stufe]}</p>
+                    {belegt ? (
+                      <>
+                        <p className="mt-2 truncate text-sm">
+                          {bild ? (bild.title ?? "Bild ohne Titel") : "Video"} · {(bild?.designers?.brand_name ?? video?.designers?.brand_name) ?? "—"}
+                        </p>
+                        <button
+                          onClick={() => void setzePlanBeispiel(bild ? "media_assets" : "video_assets", bild ? bild.id : (videoId as string), null)}
+                          disabled={busy === (bild ? bild.id : videoId)}
+                          className="mt-3 border border-border px-3 py-2 text-[0.6rem] uppercase tracking-[0.2em] hover:border-foreground disabled:opacity-40"
+                        >
+                          Freigabe zurücknehmen
+                        </button>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">Keine Freigabe — es steht das hinterlegte Bild.</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {bilder.length > 0 && (
+              <>
+                <p className="mt-6 editorial-eyebrow">Angenommene Bilder · zur Freigabe</p>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {bilder.map((b) => {
+                    const gesperrt = !!b.designers?.intern || !b.rights_granted;
+                    return (
+                      <div key={b.id} className="border border-border">
+                        <img src={b.url} alt={b.title ?? ""} loading="lazy" className="aspect-square w-full border-b border-border object-cover" />
+                        <div className="p-3">
+                          <p className="truncate text-sm">{b.title ?? "Ohne Titel"}</p>
+                          <p className="mt-1 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">{b.designers?.brand_name ?? "—"}</p>
+                          {gesperrt ? (
+                            <p className="mt-2 text-[0.62rem] text-muted-foreground">
+                              {b.designers?.intern ? "Internes Haus — kann kein Plan-Beispiel stellen." : "Rechte-Haken fehlt."}
+                            </p>
+                          ) : (
+                            <select
+                              value={b.plan_beispiel ?? ""}
+                              onChange={(e) => void setzePlanBeispiel("media_assets", b.id, (e.target.value || null) as Stufe | null)}
+                              disabled={busy === b.id}
+                              aria-label="Als Plan-Beispiel freigeben"
+                              className="mt-2 w-full border border-border bg-white px-2 py-2 text-sm"
+                            >
+                              <option value="">Kein Plan-Beispiel</option>
+                              {STUFEN.map((s) => <option key={s} value={s}>Beispiel für {STUFE_LABEL[s]}</option>)}
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
       <div className="mt-6 flex flex-wrap gap-3">
         <select value={filterHouse} onChange={(e) => setFilterHouse(e.target.value)} className="border border-border bg-white px-3 py-2 text-sm">
           <option value="">Alle Häuser</option>
@@ -219,6 +367,18 @@ export default function AdminArchiv() {
               </p>
               {!r.rights_granted && (
                 <p className="mt-2 text-[0.62rem] text-muted-foreground">Rechte-Haken fehlt — nicht für Startseiten-Video geeignet.</p>
+              )}
+              {freigabeBereit && r.rights_granted && (
+                <select
+                  value={videoFreigaben[r.id] ?? ""}
+                  onChange={(e) => void setzePlanBeispiel("video_assets", r.id, (e.target.value || null) as Stufe | null)}
+                  disabled={busy === r.id}
+                  aria-label="Als Plan-Beispiel freigeben"
+                  className="mt-3 w-full border border-border bg-white px-2 py-2 text-sm"
+                >
+                  <option value="">Kein Plan-Beispiel</option>
+                  {STUFEN.map((s) => <option key={s} value={s}>Beispiel für {STUFE_LABEL[s]}</option>)}
+                </select>
               )}
               <button
                 onClick={() => sendToQueue(r)}
