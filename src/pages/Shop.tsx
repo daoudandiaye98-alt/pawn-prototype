@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
-import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable } from "@/components/palace/Editable";
 import { supabase } from "@/integrations/supabase/client";
-import { Heart } from "lucide-react";
 import { useWishlist } from "@/features/wishlist/useWishlist";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
 import { useI18n } from "@/lib/i18n";
 import { filterFelder, type Welt as WeltName } from "@/lib/weltFelder";
+import { WerkKarte } from "@/components/palace/WerkKarte";
 
 type World = "Mode" | "Interior" | "Kunst";
 
@@ -344,46 +343,22 @@ const Shop = () => {
 
           {!loading && !error && (
             <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((p, i) => {
-                const soldOut = p.inventory_mode === "stock" && Number(p.stock_quantity ?? 0) <= 0;
-                const gemerkt = wishlist.has(p.id);
-                return (
-                  <Reveal key={p.id} delay={Math.min(400, i * 40)}>
-                    <Link to={`/product/${p.slug}`} className="group block">
-                      <div className="relative">
-                        <EditorialImage src={p.image_url} alt={`${p.name} — ${p.designers?.brand_name ?? "PAWN"}`} color seed={`shop-${p.slug}`} ratio="4/5" />
-                        {soldOut && (
-                          <span className="absolute left-0 top-0 bg-[#000000] px-3 py-1 text-[0.58rem] uppercase tracking-[0.32em] text-[#FFFFFF]">
-                            Ausverkauft
-                          </span>
-                        )}
-                        {/* Teil L3 (L5) — stilles Merken: Herz auf der Karte, kein Zähler. */}
-                        <button
-                          type="button"
-                          aria-label={gemerkt ? t("shop.merken.gemerktAria", { name: p.name }) : t("shop.merken.aria", { name: p.name })}
-                          aria-pressed={gemerkt}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            void wishlist.toggle(p.id);
-                            if (!gemerkt) saveProduct(p.id);
-                          }}
-                          className={`absolute right-2 top-2 flex h-11 w-11 items-center justify-center border-[1.5px] border-black transition-colors ${gemerkt ? "bg-black text-white" : "bg-white text-black hover:bg-black hover:text-white"}`}
-                        >
-                          <Heart className={`h-4 w-4 ${gemerkt ? "fill-current" : ""}`} strokeWidth={1.4} />
-                        </button>
-                      </div>
-                      <div className="mt-4 flex items-baseline justify-between gap-4">
-                        <div>
-                          <p className="palace-serif italic text-[1.1rem] leading-tight text-[#000000]">{p.name}</p>
-                          <p className="palace-eyebrow mt-2">{p.designers?.brand_name ?? "PAWN"}</p>
-                        </div>
-                        <p className="palace-eyebrow text-[#000000]">€{Number(p.price).toLocaleString("de-DE")}</p>
-                      </div>
-                    </Link>
-                  </Reveal>
-                );
-              })}
+              {filtered.map((p, i) => (
+                <Reveal key={p.id} delay={Math.min(400, i * 40)}>
+                  {/* Teil S — dieselbe Werkkarte wie in "Deine Boutique" und auf
+                      den Welt-Seiten. Nur die Auswahl unterscheidet sich. */}
+                  <WerkKarte
+                    werk={p}
+                    seedPrefix="shop"
+                    gemerkt={wishlist.has(p.id)}
+                    onMerken={(id) => {
+                      const warGemerkt = wishlist.has(id);
+                      void wishlist.toggle(id);
+                      if (!warGemerkt) saveProduct(id);
+                    }}
+                  />
+                </Reveal>
+              ))}
             </div>
           )}
 

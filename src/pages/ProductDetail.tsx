@@ -9,6 +9,8 @@ import { toast } from "@/components/ui/sonner";
 import type { ProductView } from "@/core";
 import { usePersonalization, explainMatchWithBeleg } from "@/features/personalization";
 import { usePageVisit } from "@/features/personalization/usePageVisit";
+import { merkeAngesehen } from "@/features/personalization/sitzungsspur";
+import { useConsent } from "@/lib/consent";
 import { useSiteContent } from "@/lib/siteContent";
 
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
@@ -165,6 +167,19 @@ const ProductDetail = () => {
   }, [dbProduct?.id]);
 
   usePageVisit("product", dbProduct?.id);
+  // Teil S — für Gäste: eine flüchtige Spur im sessionStorage, damit
+  // "Deine Boutique" auch ohne Konto etwas Belegtes zeigen kann. Sie stirbt mit
+  // dem Fenster und braucht die erteilte Einwilligung. Eingeloggte brauchen sie
+  // nicht — die haben ihr Geschmacksprofil.
+  const { allowsPersistence } = useConsent();
+  useEffect(() => {
+    if (user || !dbProduct?.slug) return;
+    merkeAngesehen(allowsPersistence, {
+      slug: dbProduct.slug,
+      welt: dbProduct.world ?? null,
+      haus: dbProduct.designers?.slug ?? null,
+    });
+  }, [user, allowsPersistence, dbProduct?.slug, dbProduct?.world, dbProduct?.designers?.slug]);
 
   useEffect(() => {
     setSize(product.sizes[0]);

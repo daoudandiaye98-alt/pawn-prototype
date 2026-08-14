@@ -66,6 +66,7 @@ import StudioDNA from "./pages/studio/StudioDNA.tsx";
 import StudioPostfach from "./pages/studio/StudioPostfach.tsx";
 import StudioGeschaeft from "./pages/studio/StudioGeschaeft.tsx";
 import StudioRochade from "./pages/studio/StudioRochade.tsx";
+import DeineBoutique from "./pages/DeineBoutique.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
@@ -177,6 +178,8 @@ const App = () => (
                 <Route path="/vertrag-kuendigen" element={<VertragKuendigen />} />
                 <Route path="/kontakt" element={<Kontakt />} />
                 <Route path="/shop" element={<Shop />} />
+                {/* Teil S — die persönliche Ausgabe der Boutique. */}
+                <Route path="/boutique" element={<DeineBoutique />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/presse/:slug" element={<Presse />} />
                 <Route path="/cart" element={<Cart />} />
