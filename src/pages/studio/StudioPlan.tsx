@@ -14,6 +14,7 @@ import {
   type Plan, type PlanQuota,
 } from "@/features/campaign/quota";
 import { isPaidPlan, ladePlanGate, preisFor, stripePriceFor, limitFor, canUse } from "@/lib/planGate";
+import { useMediaUrl } from "@/lib/media";
 import { useContentValue } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
 import { Check, Sparkles } from "lucide-react";
@@ -62,6 +63,49 @@ const BADGES: Record<Plan, string | undefined> = { haus: undefined, atelier: "PA
 function fmt(t: (key: string, vars?: Record<string, string | number>) => string, n: number): string { return n < 0 ? t("studio.plan.all") : String(n); }
 function fmtCount(t: (key: string, vars?: Record<string, string | number>) => string, n: number, noun: string): string {
   return n < 0 ? t("studio.plan.unlimitedNoun", { noun }) : `${n} ${noun}`;
+}
+
+/** Teil P — die Beispiel-Fläche eines Plans. Drei Stufen, nie ein schwarzes Loch:
+ *  1. echtes Bild-Beispiel (media_assets), 2. Première-Video, 3. das Plan-Bild aus Teil O.
+ *  Gespeicherte Beispiel-Werte können bloße Storage-Orte sein (s. src/lib/media.ts) —
+ *  sie werden hier beim Anzeigen frisch signiert. Lädt ein Beispiel trotzdem nicht
+ *  (kaputte oder abgelaufene URL), fällt die Fläche auf das Plan-Bild zurück,
+ *  statt schwarz zu bleiben. */
+function PlanBeispiel({ plan, imageExample, videoExample }: { plan: Plan; imageExample?: string; videoExample?: string }) {
+  const { t } = useI18n();
+  const bildUrl = useMediaUrl(imageExample ?? null);
+  const videoUrl = useMediaUrl(videoExample ?? null);
+  const [bildKaputt, setBildKaputt] = useState(false);
+  const [videoKaputt, setVideoKaputt] = useState(false);
+  useEffect(() => { setBildKaputt(false); }, [bildUrl]);
+  useEffect(() => { setVideoKaputt(false); }, [videoUrl]);
+
+  return (
+    <div className="mt-4 border border-border bg-black">
+      {bildUrl && !bildKaputt ? (
+        <img src={bildUrl} alt="" onError={() => setBildKaputt(true)} className="aspect-[9/16] w-full bg-black object-contain" />
+      ) : videoUrl && !videoKaputt ? (
+        <div className="relative">
+          <video src={videoUrl} muted playsInline loop autoPlay onError={() => setVideoKaputt(true)} className="aspect-[9/16] w-full bg-black object-contain" />
+          <span className="absolute right-2 top-2 border border-white/70 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-white/90">{t("studio.plan.videoBeta")}</span>
+        </div>
+      ) : (
+        /* Teil O Fix — Zukunftsregel: echte Beispiele sind besser als diese
+           Bilder. Sobald ein echtes Haus-Beispiel einer Stufe existiert
+           (media_assets mit Rechten bzw. Première-Video, s. oben), greift es
+           automatisch zuerst und ersetzt dieses Bild. Bis dahin steht hier
+           nie ein leeres schwarzes Loch, sondern das Plan-Bild. */
+        <img
+          src={PLAN_BILD[plan]}
+          alt=""
+          width={1200}
+          height={896}
+          loading="lazy"
+          className="aspect-[9/16] w-full object-cover"
+        />
+      )}
+    </div>
+  );
 }
 
 /** Dein Monat — eine ruhige Zeile, kein Guthabenstand. */
@@ -267,30 +311,7 @@ export default function StudioPlan() {
               <p className="mt-2 tabular-nums text-xl">{priceFor(key)}<span className="text-sm text-muted-foreground"> {t("studio.plan.perMonth")}</span></p>
               <p className="mt-4 font-serif text-sm italic text-muted-foreground">{resolvedHeadlines[key]}</p>
 
-              <div className="mt-4 border border-border bg-black">
-                {imageExample ? (
-                  <img src={imageExample} alt="" className="aspect-[9/16] w-full bg-black object-contain" />
-                ) : example ? (
-                  <div className="relative">
-                    <video src={example} muted playsInline loop autoPlay className="aspect-[9/16] w-full bg-black object-contain" />
-                    <span className="absolute right-2 top-2 border border-white/70 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-white/90">{t("studio.plan.videoBeta")}</span>
-                  </div>
-                ) : (
-                  /* Teil O Fix — Zukunftsregel: echte Beispiele sind besser als diese
-                     Bilder. Sobald ein echtes Haus-Beispiel einer Stufe existiert
-                     (media_assets mit Rechten bzw. Première-Video, s. oben), greift es
-                     automatisch zuerst und ersetzt dieses Bild. Bis dahin steht hier
-                     nie ein leeres schwarzes Loch, sondern das Plan-Bild. */
-                  <img
-                    src={PLAN_BILD[key]}
-                    alt=""
-                    width={1200}
-                    height={896}
-                    loading="lazy"
-                    className="aspect-[9/16] w-full object-cover"
-                  />
-                )}
-              </div>
+              <PlanBeispiel plan={key} imageExample={imageExample} videoExample={example} />
 
               <ul className="mt-6 space-y-2 text-sm">
                 {benefitsFor(key).map((b) => (

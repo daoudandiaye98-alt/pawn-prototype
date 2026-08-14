@@ -30,6 +30,11 @@ type SortKey = "curated" | "price_asc" | "price_desc" | "newest";
 
 const WORLDS: World[] = ["Mode", "Interior", "Kunst"];
 
+/** Teil P — der Preis-Schieber bewegt sich in 5-€-Schritten (Ladenstandard). */
+const PREIS_SCHRITT = 5;
+
+const eur = (n: number) => `${n.toLocaleString("de-DE")} €`;
+
 function sizesOf(product: ShopProduct): string[] {
   const list = Array.isArray(product.size_variants) ? (product.size_variants as Array<{ size?: string }>) : [];
   return list.map((v) => (typeof v?.size === "string" ? v.size.trim() : "")).filter(Boolean);
@@ -72,8 +77,17 @@ const Shop = () => {
   const [world, setWorld] = useState<World | null>(null);
   const [designer, setDesigner] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  // Teil P — Preis als Spanne [von, bis]. null = volle Spanne, blendet nichts aus.
+  const [preisSpanne, setPreisSpanne] = useState<[number, number] | null>(null);
   const [sort, setSort] = useState<SortKey>("curated");
+
+  // Der Zähler und das Raster folgen dem Ziehen leicht verzögert, damit das
+  // Schieben flüssig bleibt (die Beschriftung reagiert sofort).
+  const [preisSpanneWirksam, setPreisSpanneWirksam] = useState<[number, number] | null>(null);
+  useEffect(() => {
+    const id = setTimeout(() => setPreisSpanneWirksam(preisSpanne), 150);
+    return () => clearTimeout(id);
+  }, [preisSpanne]);
 
   const houses = useMemo(() => {
     const map = new Map<string, string>();
@@ -87,29 +101,56 @@ const Shop = () => {
     return Array.from(set).sort();
   }, [products]);
 
-  const priceCeiling = useMemo(
-    () => (products.length ? Math.ceil(Math.max(...products.map((p) => Number(p.price))) / 50) * 50 : 1000),
-    [products],
-  );
-  const activeMax = maxPrice ?? priceCeiling;
-
-  const filtered = useMemo(() => {
-    const list = products.filter((p) => {
+  // Alles außer dem Preis — daraus entstehen die Grenzen des Schiebers. So passt die
+  // Spanne immer zu dem, was gerade wirklich im Regal liegt (nicht zu festen 0–100).
+  const ohnePreis = useMemo(
+    () => products.filter((p) => {
       if (world && p.world !== world) return false;
       if (designer && p.designers?.slug !== designer) return false;
       if (size && !sizesOf(p).includes(size)) return false;
-      if (Number(p.price) > activeMax) return false;
       if (search && !`${p.name} ${p.designers?.brand_name ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
+    }),
+    [products, world, designer, size, search],
+  );
+
+  const [preisVon, preisBis] = useMemo(() => {
+    if (!ohnePreis.length) return [0, 0] as const;
+    const preise = ohnePreis.map((p) => Number(p.price));
+    const von = Math.floor(Math.min(...preise) / PREIS_SCHRITT) * PREIS_SCHRITT;
+    const bis = Math.ceil(Math.max(...preise) / PREIS_SCHRITT) * PREIS_SCHRITT;
+    // Mindestens ein Schritt Spielraum, sonst hätten beide Griffe denselben Platz.
+    return [von, bis > von ? bis : von + PREIS_SCHRITT] as const;
+  }, [ohnePreis]);
+
+  // Die gewählte Spanne bleibt immer innerhalb der Grenzen; ohne Wahl gilt die volle
+  // Spanne — der Standard blendet also nichts aus.
+  const spanne: [number, number] = preisSpanne
+    ? [Math.max(preisVon, Math.min(preisSpanne[0], preisBis)), Math.min(preisBis, Math.max(preisSpanne[1], preisVon))]
+    : [preisVon, preisBis];
+  const spanneWirksam = useMemo<[number, number]>(
+    () => (preisSpanneWirksam
+      ? [Math.max(preisVon, Math.min(preisSpanneWirksam[0], preisBis)), Math.min(preisBis, Math.max(preisSpanneWirksam[1], preisVon))]
+      : [preisVon, preisBis]),
+    [preisSpanneWirksam, preisVon, preisBis],
+  );
+  const preisGewaehlt = preisSpanne !== null && (spanne[0] > preisVon || spanne[1] < preisBis);
+
+  const filtered = useMemo(() => {
+    const list = ohnePreis.filter((p) => {
+      const preis = Number(p.price);
+      return preis >= spanneWirksam[0] && preis <= spanneWirksam[1];
     });
     const sorted = [...list];
     if (sort === "price_asc") sorted.sort((a, b) => Number(a.price) - Number(b.price));
     if (sort === "price_desc") sorted.sort((a, b) => Number(b.price) - Number(a.price));
     if (sort === "newest" || sort === "curated") sorted.sort((a, b) => b.created_at.localeCompare(a.created_at));
     return sorted;
-  }, [products, world, designer, size, activeMax, search, sort]);
+  }, [ohnePreis, spanneWirksam, sort]);
 
-  const hasFilters = !!(world || designer || size || search || maxPrice !== null);
+  // Der Zähler zeigt beim Ziehen die Zahl der wirksamen (kurz verzögerten) Spanne —
+  // das ist genau `filtered.length`, also die Zahl, die auch das Raster zeigt.
+  const hasFilters = !!(world || designer || size || search || preisGewaehlt);
 
   return (
     <PalaceLayout transparentHeader={false}>
@@ -175,22 +216,21 @@ const Shop = () => {
             </FilterGroup>
           )}
 
-          <FilterGroup title={`Preis · bis €${activeMax.toLocaleString("de-DE")}`}>
-            <input
-              type="range"
-              min={0}
-              max={priceCeiling}
-              step={50}
-              value={activeMax}
-              onChange={(e) => setMaxPrice(Number(e.target.value))}
-              className="w-full accent-[#000000]"
-            />
-          </FilterGroup>
+          {preisBis > preisVon && (
+            <FilterGroup title={`Preis · ${eur(spanne[0])} – ${eur(spanne[1])}`}>
+              <PreisSchieber
+                von={preisVon}
+                bis={preisBis}
+                wert={spanne}
+                onChange={(neu) => setPreisSpanne(neu)}
+              />
+            </FilterGroup>
+          )}
 
           {hasFilters && (
             <button
               type="button"
-              onClick={() => { setWorld(null); setDesigner(null); setSize(null); setSearch(""); setMaxPrice(null); }}
+              onClick={() => { setWorld(null); setDesigner(null); setSize(null); setSearch(""); setPreisSpanne(null); }}
               className="palace-eyebrow uline text-black/60 hover:text-[#000000]"
             >
               Filter zurücksetzen
@@ -308,6 +348,148 @@ function FilterPill({ children, active, onClick }: { children: React.ReactNode; 
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Teil P — der Preis-Schieber im Ladenstandard: zwei Griffe (von/bis), 5-€-Schritte,
+ * Zahlenfelder daneben (in beide Richtungen verbunden), mit der Tastatur bedienbar
+ * (die Griffe sind echte Bereichsregler, also gehen Pfeiltasten, Bild-auf/ab, Pos1/Ende).
+ * Die Griffe haben eine 44 px große Trefferfläche, sichtbar bleibt ein kleines
+ * schwarzes Quadrat — Farbgesetz und harte Kanten bleiben unangetastet.
+ */
+function PreisSchieber({
+  von, bis, wert, onChange,
+}: {
+  von: number;
+  bis: number;
+  wert: [number, number];
+  onChange: (wert: [number, number]) => void;
+}) {
+  const [minWert, maxWert] = wert;
+  const breite = bis - von || 1;
+  const anteil = (n: number) => ((n - von) / breite) * 100;
+
+  // Die Zahlenfelder dürfen beim Tippen kurz „unfertig" sein (leer, halbe Zahl);
+  // erst beim Verlassen oder mit Enter wird der Wert übernommen und eingepasst.
+  const [minText, setMinText] = useState(String(minWert));
+  const [maxText, setMaxText] = useState(String(maxWert));
+  useEffect(() => { setMinText(String(minWert)); }, [minWert]);
+  useEffect(() => { setMaxText(String(maxWert)); }, [maxWert]);
+
+  const einpassen = (n: number) => {
+    const gerundet = Math.round(n / PREIS_SCHRITT) * PREIS_SCHRITT;
+    return Math.min(bis, Math.max(von, gerundet));
+  };
+  const setzeMin = (n: number) => onChange([Math.min(einpassen(n), maxWert), maxWert]);
+  const setzeMax = (n: number) => onChange([minWert, Math.max(einpassen(n), minWert)]);
+
+  const uebernehmeMinText = () => {
+    const n = Number(minText.replace(/[^\d.,-]/g, "").replace(",", "."));
+    if (Number.isFinite(n)) setzeMin(n); else setMinText(String(minWert));
+  };
+  const uebernehmeMaxText = () => {
+    const n = Number(maxText.replace(/[^\d.,-]/g, "").replace(",", "."));
+    if (Number.isFinite(n)) setzeMax(n); else setMaxText(String(maxWert));
+  };
+
+  // Liegen beide Griffe übereinander, muss der greifbar sein, der noch Weg hat:
+  // oben am Ende der „von"-Griff (er kann nur nach unten), sonst der „bis"-Griff.
+  const minZuOberst = minWert > von + breite / 2;
+
+  return (
+    <div className="pawn-preis">
+      <style>{`
+        .pawn-preis .pawn-preis-regler {
+          position: absolute; left: 0; right: 0; top: 0; height: 44px; width: 100%;
+          margin: 0; padding: 0; background: transparent; -webkit-appearance: none; appearance: none;
+          pointer-events: none;
+        }
+        .pawn-preis .pawn-preis-regler:focus { outline: none; }
+        .pawn-preis .pawn-preis-regler::-webkit-slider-runnable-track { height: 44px; background: transparent; border: 0; }
+        .pawn-preis .pawn-preis-regler::-moz-range-track { height: 44px; background: transparent; border: 0; }
+        .pawn-preis .pawn-preis-regler::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          height: 44px; width: 44px; border: 0; border-radius: 0; background: transparent;
+          background-image: linear-gradient(#000000, #000000);
+          background-size: 16px 16px; background-position: center; background-repeat: no-repeat;
+          cursor: pointer; pointer-events: auto;
+        }
+        .pawn-preis .pawn-preis-regler::-moz-range-thumb {
+          height: 44px; width: 44px; border: 0; border-radius: 0; background: transparent;
+          background-image: linear-gradient(#000000, #000000);
+          background-size: 16px 16px; background-position: center; background-repeat: no-repeat;
+          cursor: pointer; pointer-events: auto;
+        }
+        .pawn-preis .pawn-preis-regler:focus-visible::-webkit-slider-thumb { background-size: 22px 22px; }
+        .pawn-preis .pawn-preis-regler:focus-visible::-moz-range-thumb { background-size: 22px 22px; }
+      `}</style>
+
+      {/* Die Bahn liegt um eine halbe Griffbreite eingerückt, damit die gefüllte
+          Strecke genau unter den Griffen sitzt. */}
+      <div className="relative h-11">
+        <div className="pointer-events-none absolute left-[22px] right-[22px] top-1/2 h-[1.5px] -translate-y-1/2 bg-[rgba(0,0,0,.22)]">
+          <div
+            className="absolute top-0 h-full bg-[#000000]"
+            style={{ left: `${anteil(minWert)}%`, right: `${100 - anteil(maxWert)}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          className="pawn-preis-regler"
+          style={{ zIndex: minZuOberst ? 4 : 3 }}
+          min={von}
+          max={bis}
+          step={PREIS_SCHRITT}
+          value={minWert}
+          onChange={(e) => setzeMin(Number(e.target.value))}
+          aria-label="Preis von"
+          aria-valuetext={eur(minWert)}
+        />
+        <input
+          type="range"
+          className="pawn-preis-regler"
+          style={{ zIndex: minZuOberst ? 3 : 4 }}
+          min={von}
+          max={bis}
+          step={PREIS_SCHRITT}
+          value={maxWert}
+          onChange={(e) => setzeMax(Number(e.target.value))}
+          aria-label="Preis bis"
+          aria-valuetext={eur(maxWert)}
+        />
+      </div>
+
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={von}
+          max={bis}
+          step={PREIS_SCHRITT}
+          value={minText}
+          onChange={(e) => setMinText(e.target.value)}
+          onBlur={uebernehmeMinText}
+          onKeyDown={(e) => { if (e.key === "Enter") uebernehmeMinText(); }}
+          aria-label="Preis von, in Euro"
+          className="h-11 w-full min-w-0 border border-[rgba(0,0,0,.28)] bg-transparent px-2 text-sm tabular-nums text-[#000000] focus:border-[#000000] focus:outline-none"
+        />
+        <span aria-hidden className="text-black/40">–</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={von}
+          max={bis}
+          step={PREIS_SCHRITT}
+          value={maxText}
+          onChange={(e) => setMaxText(e.target.value)}
+          onBlur={uebernehmeMaxText}
+          onKeyDown={(e) => { if (e.key === "Enter") uebernehmeMaxText(); }}
+          aria-label="Preis bis, in Euro"
+          className="h-11 w-full min-w-0 border border-[rgba(0,0,0,.28)] bg-transparent px-2 text-sm tabular-nums text-[#000000] focus:border-[#000000] focus:outline-none"
+        />
+      </div>
+    </div>
   );
 }
 

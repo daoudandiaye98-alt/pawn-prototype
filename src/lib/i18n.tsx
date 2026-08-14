@@ -2418,6 +2418,15 @@ const de = {
   "studio.ankunft.mehr.idee": "Ideen-Begleiter",
   "studio.ankunft.mehr.aussenauge": "Außenauge",
   "studio.ankunft.mehr.beweis": "Beweis",
+  // Teil P — Visionsseite V2: die vier Passagen sind wörtlich vorgegeben.
+  "vision.sehen.label": "Was wir sehen",
+  "vision.sehen.text": "Überall entsteht gerade Außergewöhnliches. In Ateliers, Hinterhöfen, auf Küchentischen — Menschen machen Dinge, die es verdienen, gesehen zu werden. Und dann verschwinden sie: drei Sekunden im Feed, weitergescrollt, weg. Sichtbarkeit gehört heute den Lautesten. Wir finden, sie gehört den Besten.",
+  "vision.glauben.label": "Was wir glauben",
+  "vision.glauben.text": "Wir glauben, dass Talent keine Reichweite braucht, sondern einen Raum. Dass jedes Werk seine Menschen hat — sie sind sich nur noch nicht begegnet. Und dass der kleinste Anfang reicht, wenn der Weg stimmt.",
+  "vision.halle.label": "Die Halle wächst",
+  "vision.halle.text": "Diese Halle wird von denen gebaut, die sie betreten. Haus № 001 hängt schon. Jede Nummer danach ist ein Mensch, der sich entschieden hat, sichtbar zu sein. Eine davon kann deine sein.",
+  "vision.haltung.text": "Niemand hier macht dich zum Künstler. Das bist du längst. Unser Zug ist, dass die Welt es sieht — deiner ist der nächste.",
+  "vision.cta": "Mach deinen Zug",
 };
 
 const en: Record<keyof typeof de, string> = {
@@ -4800,6 +4809,14 @@ const en: Record<keyof typeof de, string> = {
   "studio.ankunft.mehr.idee": "Idea companion",
   "studio.ankunft.mehr.aussenauge": "Outside eye",
   "studio.ankunft.mehr.beweis": "Proof",
+  "vision.sehen.label": "What we see",
+  "vision.sehen.text": "Something extraordinary is being made everywhere right now. In studios, backyards, on kitchen tables — people are making things that deserve to be seen. And then they vanish: three seconds in a feed, scrolled past, gone. Visibility belongs to the loudest today. We think it belongs to the best.",
+  "vision.glauben.label": "What we believe",
+  "vision.glauben.text": "We believe talent doesn't need reach — it needs a room. That every piece of work has its people; they just haven't met yet. And that the smallest beginning is enough, if the path is right.",
+  "vision.halle.label": "The hall is growing",
+  "vision.halle.text": "This hall is built by the people who enter it. House № 001 is already hanging. Every number after that is a person who decided to be seen. One of them can be yours.",
+  "vision.haltung.text": "No one here makes you an artist. You already are one. Our move is making the world see it — yours is next.",
+  "vision.cta": "Make your move",
 };
 
 type Dict = typeof de;
