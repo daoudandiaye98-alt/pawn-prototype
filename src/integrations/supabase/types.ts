@@ -3305,6 +3305,317 @@ export type Database = {
           },
         ]
       }
+      rochade_auftraege: {
+        Row: {
+          befund: Json
+          created_at: string
+          designer_id: string
+          einwilligung_at: string
+          einwilligung_quelle: string
+          einwilligung_user: string
+          fehler: string | null
+          id: string
+          kontingent: Json
+          kontingent_erreicht: string | null
+          letzter_schritt_at: string
+          meldung: string | null
+          phase: string
+          plattform: string
+          quell_host: string
+          quell_url: string
+          status: string
+          updated_at: string
+          user_id: string
+          verbrauch: Json
+        }
+        Insert: {
+          befund?: Json
+          created_at?: string
+          designer_id: string
+          einwilligung_at: string
+          einwilligung_quelle?: string
+          einwilligung_user: string
+          fehler?: string | null
+          id?: string
+          kontingent?: Json
+          kontingent_erreicht?: string | null
+          letzter_schritt_at?: string
+          meldung?: string | null
+          phase?: string
+          plattform?: string
+          quell_host: string
+          quell_url: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          verbrauch?: Json
+        }
+        Update: {
+          befund?: Json
+          created_at?: string
+          designer_id?: string
+          einwilligung_at?: string
+          einwilligung_quelle?: string
+          einwilligung_user?: string
+          fehler?: string | null
+          id?: string
+          kontingent?: Json
+          kontingent_erreicht?: string | null
+          letzter_schritt_at?: string
+          meldung?: string | null
+          phase?: string
+          plattform?: string
+          quell_host?: string
+          quell_url?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verbrauch?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_auftraege_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rochade_bilder: {
+        Row: {
+          auftrag_id: string
+          begonnen_at: string | null
+          breite: number | null
+          bytes: number | null
+          created_at: string
+          fehler: string | null
+          hoehe: number | null
+          id: string
+          inhalt_hash: string | null
+          kandidat_id: string
+          pfad: string | null
+          pfad_klein: string | null
+          quell_url: string
+          reihenfolge: number
+          status: string
+          updated_at: string
+          versuche: number
+        }
+        Insert: {
+          auftrag_id: string
+          begonnen_at?: string | null
+          breite?: number | null
+          bytes?: number | null
+          created_at?: string
+          fehler?: string | null
+          hoehe?: number | null
+          id?: string
+          inhalt_hash?: string | null
+          kandidat_id: string
+          pfad?: string | null
+          pfad_klein?: string | null
+          quell_url: string
+          reihenfolge?: number
+          status?: string
+          updated_at?: string
+          versuche?: number
+        }
+        Update: {
+          auftrag_id?: string
+          begonnen_at?: string | null
+          breite?: number | null
+          bytes?: number | null
+          created_at?: string
+          fehler?: string | null
+          hoehe?: number | null
+          id?: string
+          inhalt_hash?: string | null
+          kandidat_id?: string
+          pfad?: string | null
+          pfad_klein?: string | null
+          quell_url?: string
+          reihenfolge?: number
+          status?: string
+          updated_at?: string
+          versuche?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_bilder_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_auftraege"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_bilder_kandidat_id_fkey"
+            columns: ["kandidat_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_kandidaten"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rochade_kandidaten: {
+        Row: {
+          angebotstyp: string | null
+          auftrag_id: string
+          beschreibung_text: string | null
+          created_at: string
+          designer_id: string
+          deutung: Json
+          fehler: string | null
+          gewaehlt: boolean
+          id: string
+          preis_cent: number | null
+          product_id: string | null
+          quell_url: string | null
+          roh: Json
+          schluessel: string
+          seite_id: string | null
+          sortierung: number
+          status: string
+          titel: string | null
+          updated_at: string
+          varianten: Json
+          verfuegbar: boolean | null
+          waehrung: string | null
+          welt: string | null
+          welt_felder: Json
+        }
+        Insert: {
+          angebotstyp?: string | null
+          auftrag_id: string
+          beschreibung_text?: string | null
+          created_at?: string
+          designer_id: string
+          deutung?: Json
+          fehler?: string | null
+          gewaehlt?: boolean
+          id?: string
+          preis_cent?: number | null
+          product_id?: string | null
+          quell_url?: string | null
+          roh?: Json
+          schluessel: string
+          seite_id?: string | null
+          sortierung?: number
+          status?: string
+          titel?: string | null
+          updated_at?: string
+          varianten?: Json
+          verfuegbar?: boolean | null
+          waehrung?: string | null
+          welt?: string | null
+          welt_felder?: Json
+        }
+        Update: {
+          angebotstyp?: string | null
+          auftrag_id?: string
+          beschreibung_text?: string | null
+          created_at?: string
+          designer_id?: string
+          deutung?: Json
+          fehler?: string | null
+          gewaehlt?: boolean
+          id?: string
+          preis_cent?: number | null
+          product_id?: string | null
+          quell_url?: string | null
+          roh?: Json
+          schluessel?: string
+          seite_id?: string | null
+          sortierung?: number
+          status?: string
+          titel?: string | null
+          updated_at?: string
+          varianten?: Json
+          verfuegbar?: boolean | null
+          waehrung?: string | null
+          welt?: string | null
+          welt_felder?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_kandidaten_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_auftraege"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_kandidaten_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_kandidaten_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rochade_seiten: {
+        Row: {
+          art: string
+          auftrag_id: string
+          begonnen_at: string | null
+          created_at: string
+          fehler: string | null
+          gefunden: number
+          http_status: number | null
+          id: string
+          status: string
+          updated_at: string
+          url: string
+          url_schluessel: string
+          versuche: number
+        }
+        Insert: {
+          art?: string
+          auftrag_id: string
+          begonnen_at?: string | null
+          created_at?: string
+          fehler?: string | null
+          gefunden?: number
+          http_status?: number | null
+          id?: string
+          status?: string
+          updated_at?: string
+          url: string
+          url_schluessel: string
+          versuche?: number
+        }
+        Update: {
+          art?: string
+          auftrag_id?: string
+          begonnen_at?: string | null
+          created_at?: string
+          fehler?: string | null
+          gefunden?: number
+          http_status?: number | null
+          id?: string
+          status?: string
+          updated_at?: string
+          url?: string
+          url_schluessel?: string
+          versuche?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_seiten_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_auftraege"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_content: {
         Row: {
           key: string
@@ -3815,6 +4126,10 @@ export type Database = {
           ok: boolean
           previous_status: string
         }[]
+      }
+      rochade_stand: {
+        Args: { p_auftrag: string }
+        Returns: Json
       }
       slugify: { Args: { txt: string }; Returns: string }
       trend_momentum: {

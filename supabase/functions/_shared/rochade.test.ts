@@ -18,6 +18,14 @@ import {
   sitemapAdressen,
   wooLesen,
 } from "./rochadeAdapter.ts";
+import {
+  exifOrientierung,
+  formatErkennen,
+  istZierbild,
+  raenderFinden,
+  zielMass,
+  ablageOrt,
+} from "./rochadeBild.ts";
 
 /* ------------------------------------------------------------ Sicherheit */
 
@@ -240,4 +248,68 @@ Deno.test("Sitemap: Index und Seitenliste werden unterschieden", () => {
 
   const liste = sitemapAdressen("<urlset><url><loc>https://x.de/a</loc></url><url><loc>https://x.de/b</loc></url></urlset>");
   assertEquals(liste.seiten.length, 2);
+});
+
+
+/* --------------------------------------------------------- Bildstrecke */
+// Die volle Bildstrecke (Laden, Zuschnitt, WebP) läuft im Trockenlauf gegen
+// selbst gebaute Bilder — hier stehen die reinen Byte- und Rechenfunktionen.
+
+Deno.test("Bild: Format kommt aus den Bytes, nicht aus der Endung", () => {
+  assertEquals(formatErkennen(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])), "jpeg");
+  assertEquals(formatErkennen(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0])), "png");
+  assertEquals(formatErkennen(new TextEncoder().encode("<svg xmlns='x'></svg>")), "svg");
+  assertEquals(formatErkennen(new Uint8Array([1, 2, 3])), "unbekannt");
+});
+
+Deno.test("Bild: EXIF-Orientierung wird gelesen, sonst null", () => {
+  const bauen = (wert: number) => {
+    const tiff = [0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, wert, 0x00, 0x00, 0x00];
+    const app1 = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00, ...tiff];
+    const laenge = app1.length + 2;
+    return new Uint8Array([0xff, 0xd8, 0xff, 0xe1, (laenge >> 8) & 0xff, laenge & 0xff, ...app1, 0xff, 0xda]);
+  };
+  assertEquals(exifOrientierung(bauen(6)), 6);
+  assertEquals(exifOrientierung(bauen(8)), 8);
+  assertEquals(exifOrientierung(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0])), null);
+});
+
+Deno.test("Bild: gleichmäßiger Rand wird gefunden, einfarbige Fläche nicht beschnitten", () => {
+  // 10x10, weiß, mit einem schwarzen 4x4-Kern in der Mitte (Rand also je 3 px).
+  const b = 10, h = 10;
+  const pix = new Uint8Array(b * h * 4).fill(255);
+  for (let y = 3; y < 7; y++) {
+    for (let x = 3; x < 7; x++) {
+      const p = (y * b + x) * 4;
+      pix[p] = 0; pix[p + 1] = 0; pix[p + 2] = 0; pix[p + 3] = 255;
+    }
+  }
+  assertEquals(raenderFinden(pix, b, h, 0), { links: 3, oben: 3, rechts: 3, unten: 3 });
+
+  // Diese Frage hat der Trockenlauf aufgeworfen: eine einfarbige Fläche darf
+  // nicht als „lauter Rand" gelesen und um 35 % je Seite gekürzt werden.
+  const voll = new Uint8Array(b * h * 4).fill(200);
+  assertEquals(raenderFinden(voll, b, h, 0), { links: 0, oben: 0, rechts: 0, unten: 0 });
+});
+
+Deno.test("Bild: verkleinert auf die lange Kante, vergrößert nie", () => {
+  assertEquals(zielMass(4000, 2000, 2000), { breite: 2000, hoehe: 1000 });
+  assertEquals(zielMass(2000, 4000, 2000), { breite: 1000, hoehe: 2000 });
+  assertEquals(zielMass(300, 200, 2000), { breite: 300, hoehe: 200 });
+});
+
+Deno.test("Bild: Zierat wird aussortiert, Werkbilder bleiben", () => {
+  assertEquals(istZierbild("https://x.de/assets/logo-header.png"), true);
+  assertEquals(istZierbild("https://x.de/i/paypal.svg"), true);
+  assertEquals(istZierbild("https://x.de/cdn/vase_1200x.jpg", 1200, 1600), false);
+  assertEquals(istZierbild("https://x.de/cdn/vase.jpg", 80, 80), true);
+  assertEquals(istZierbild("https://x.de/cdn/streifen.jpg", 1800, 200), true);
+});
+
+Deno.test("Bild: gespeichert wird ein Pfad, nie eine ablaufende URL", () => {
+  const ort = ablageOrt("nutzer-1", "auftrag-1", "abcdef", "jpeg");
+  assertEquals(ort, "nutzer-1/rochade/auftrag-1/abcdef.webp");
+  assertEquals(ort.startsWith("http"), false);
+  assertEquals(ablageOrt("nutzer-1", "auftrag-1", "abcdef", "jpeg", true).endsWith("-klein.webp"), true);
 });
