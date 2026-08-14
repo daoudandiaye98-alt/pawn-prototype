@@ -59,6 +59,25 @@
   color-scheme: dark;
 }
 
+/* ---- Kontrast-Stichproben (gemessen, WCAG-Verhältnis) ---------------------
+   Gilt für Studio UND Admin-Cockpit (Teil P: beide tragen denselben Umschlag).
+   Alle Textproben liegen über 4,5:1.
+
+     21,00:1  Seitenleiste: aktives Wort (#fff) auf Schwarz
+     10,02:1  Seitenleiste: ruhendes Wort (weiß 70 %) auf Schwarz
+      7,37:1  Seitenleiste: Kopfzeile „Admin" (weiß 60 %) auf Schwarz
+     16,73:1  Bühne: Fließtext #f3ecdf auf #0d0b08
+      9,32:1  Bühne: leiser Text #b9b2a3 auf #0d0b08
+      5,35:1  Bühne: sehr leiser Text #8b8577 auf #0d0b08
+     18,84:1  Karte: Tinte #14110b auf #ffffff
+     17,62:1  Karte: Tinte #14110b auf #faf7f1
+      5,51:1  Karte: gedämpfte Tinte (64 %) auf #faf7f1
+     13,12:1  Bernstein-Knopf: schwarze Schrift auf #f4c667
+      8,85:1  Bernstein-Knopf: schwarze Schrift auf #e09a3a
+     12,28:1  Bernstein-Akzent #f4c667 auf der Bühne
+      5,54:1  Fokusring #8a5a00 auf warmweißer Karte
+   ------------------------------------------------------------------------ */
+
 /* Auf jeder weißen Fläche kippt die Tinte ins Dunkle — einmal definiert,
    gilt für alles darin (auch den Umschlag). Fokusring dort dunkles Bernstein,
    damit er auf Weiß sichtbar bleibt (≥ 3:1). */
