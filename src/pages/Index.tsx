@@ -115,8 +115,10 @@ const Index = () => {
             <Button asChild variant="editorial" size="chip" className="border-white bg-white text-black hover:bg-transparent hover:text-white">
               <Link to="/start">Mach deinen Zug</Link>
             </Button>
+            {/* Teil Q — der zweite Weg führt in die Boutique: von der Landing ist
+                alles Kaufbare jetzt einen Tipp entfernt. */}
             <Button asChild variant="editorial" size="chip" className="border-white bg-transparent text-white hover:bg-white hover:text-black">
-              <Link to="/designers">Häuser entdecken</Link>
+              <Link to="/shop">Häuser entdecken</Link>
             </Button>
           </div>
         </div>
@@ -209,8 +211,10 @@ const Index = () => {
                   className="md:min-h-0"
                   style={{ gridColumn: WORLD_TILE_STYLE[i].gridColumn, minHeight: WORLD_TILE_STYLE[i].minHeight, marginTop: WORLD_TILE_STYLE[i].marginTop }}
                 >
+                  {/* Teil Q — die Welt-Kachel führt in die Boutique mit vorgewählter
+                      Welt, statt auf eine eigene Weltseite. Ein Weg, ein Regal. */}
                   <Link
-                    to={`/${w.key.toLowerCase()}`}
+                    to={`/shop?welt=${w.key}`}
                     className="group relative flex h-full min-h-[52vh] items-end overflow-hidden text-white no-underline md:min-h-0"
                   >
                     <MediaImg src={img} alt="" width={896} height={1200} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(.76,0,.18,1)] group-hover:scale-[1.03]" />

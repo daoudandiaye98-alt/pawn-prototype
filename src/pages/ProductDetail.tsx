@@ -696,7 +696,11 @@ const ProductDetail = () => {
                 aria-label={t("product.lightbox.openAria")}
                 className="absolute inset-0 block h-full w-full"
               >
-                <MediaImg src={heroImage} alt={imageAlt} className="h-full w-full object-cover object-top md:object-contain md:object-center" />
+                {/* Teil Q — formatfüllend statt eingepasst. Vorher stand hier ab md
+                    `object-contain` auf schwarzem Grund: ein quadratisches Werkfoto in
+                    diesem hohen Rahmen bekam dadurch schwarze Balken über und unter dem
+                    Bild. Das vollständige Bild zeigt die Lightbox (ein Tipp darauf). */}
+                <MediaImg src={heroImage} alt={imageAlt} className="h-full w-full object-cover object-center" />
               </button>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black">
@@ -737,11 +741,12 @@ const ProductDetail = () => {
               aria-label={t("product.lightbox.openAria")}
               className="flex h-full w-full items-center justify-center"
             >
+              {/* Teil Q — dieselbe Korrektur auf der Doppelseite: festes 4:5, füllend
+                  und mittig beschnitten. Vollständig sehen: Lightbox. */}
               <MediaImg
                 src={heroImage}
                 alt={imageAlt}
-                className="h-full w-auto max-w-full object-contain"
-                style={{ aspectRatio: "4 / 5" }}
+                className="h-full w-full object-cover object-center"
               />
             </button>
           ) : (

@@ -58,6 +58,9 @@ export function PublicFooter() {
         <div className="editorial-container flex flex-col items-start justify-between gap-3 py-6 text-xs text-muted-foreground md:flex-row md:items-center">
           <span>© {new Date().getFullYear()} PAWN.</span>
           <div className="flex flex-wrap items-center gap-5 text-[0.62rem] uppercase tracking-[0.32em]">
+            {/* Teil Q — die Boutique gehört auch in den Fuß: von jeder Seite ein Weg dorthin. */}
+            <Link to="/shop" className="hover:text-foreground">Boutique</Link>
+            <span className="opacity-30">·</span>
             <Link to="/auth" className="hover:text-foreground">Login</Link>
             <span className="opacity-30">·</span>
             <Link to="/apply" className="hover:text-foreground">Für Designer</Link>

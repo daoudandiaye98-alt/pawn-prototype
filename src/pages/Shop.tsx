@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
@@ -30,10 +30,18 @@ type SortKey = "curated" | "price_asc" | "price_desc" | "newest";
 
 const WORLDS: World[] = ["Mode", "Interior", "Kunst"];
 
-/** Teil P — der Preis-Schieber bewegt sich in 5-€-Schritten (Ladenstandard). */
-const PREIS_SCHRITT = 5;
+/**
+ * Teil Q — der Preis-Schieber hat eine feste, verlässliche Spanne statt einer, die
+ * mit dem Bestand springt: 0 bis 1000 €, Schritt 10 €. Das obere Ende ist offen —
+ * steht der rechte Griff am Anschlag, heißt das „1000 €+" und es wird nach oben
+ * NICHT gefiltert. Teure Kunst darf nie unsichtbar werden.
+ */
+const PREIS_MIN = 0;
+const PREIS_MAX = 1000;
+const PREIS_SCHRITT = 10;
 
 const eur = (n: number) => `${n.toLocaleString("de-DE")} €`;
+const preisLabel = (n: number, obenOffen: boolean) => (obenOffen ? `${eur(n)}+` : eur(n));
 
 function sizesOf(product: ShopProduct): string[] {
   const list = Array.isArray(product.size_variants) ? (product.size_variants as Array<{ size?: string }>) : [];
@@ -73,8 +81,25 @@ const Shop = () => {
   const { saveProduct } = useCustomerEvents();
   const { t } = useI18n();
 
+  // Teil Q — die Welt kann von der Landing vorgewählt kommen (/shop?welt=Kunst).
+  const [params, setParams] = useSearchParams();
+  const weltAusUrl = params.get("welt");
   const [search, setSearch] = useState("");
-  const [world, setWorld] = useState<World | null>(null);
+  const [world, setWorld] = useState<World | null>(
+    WORLDS.includes(weltAusUrl as World) ? (weltAusUrl as World) : null,
+  );
+  useEffect(() => {
+    const w = params.get("welt");
+    setWorld(WORLDS.includes(w as World) ? (w as World) : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weltAusUrl]);
+  /** Welt wechseln heißt auch: die Adresse zeigt sie, damit der Stand teilbar bleibt. */
+  const waehleWelt = (w: World | null) => {
+    setWorld(w);
+    const next = new URLSearchParams(params);
+    if (w) next.set("welt", w); else next.delete("welt");
+    setParams(next, { replace: true });
+  };
   const [designer, setDesigner] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
   // Teil P — Preis als Spanne [von, bis]. null = volle Spanne, blendet nichts aus.
@@ -114,17 +139,12 @@ const Shop = () => {
     [products, world, designer, size, search],
   );
 
-  const [preisVon, preisBis] = useMemo(() => {
-    if (!ohnePreis.length) return [0, 0] as const;
-    const preise = ohnePreis.map((p) => Number(p.price));
-    const von = Math.floor(Math.min(...preise) / PREIS_SCHRITT) * PREIS_SCHRITT;
-    const bis = Math.ceil(Math.max(...preise) / PREIS_SCHRITT) * PREIS_SCHRITT;
-    // Mindestens ein Schritt Spielraum, sonst hätten beide Griffe denselben Platz.
-    return [von, bis > von ? bis : von + PREIS_SCHRITT] as const;
-  }, [ohnePreis]);
+  // Feste Spanne, unabhängig vom Bestand — kein Springen mehr auf absurde
+  // Ausschnitte wie 100 € – 105 €, wenn gerade nur ein Werk gelistet ist.
+  const preisVon = PREIS_MIN;
+  const preisBis = PREIS_MAX;
 
-  // Die gewählte Spanne bleibt immer innerhalb der Grenzen; ohne Wahl gilt die volle
-  // Spanne — der Standard blendet also nichts aus.
+  // Ohne Wahl gilt die volle Spanne — der Standard blendet nichts aus.
   const spanne: [number, number] = preisSpanne
     ? [Math.max(preisVon, Math.min(preisSpanne[0], preisBis)), Math.min(preisBis, Math.max(preisSpanne[1], preisVon))]
     : [preisVon, preisBis];
@@ -134,12 +154,16 @@ const Shop = () => {
       : [preisVon, preisBis]),
     [preisSpanneWirksam, preisVon, preisBis],
   );
+  // Rechter Griff am Anschlag = offenes Ende: nach oben wird nicht gefiltert.
+  const obenOffen = spanne[1] >= preisBis;
   const preisGewaehlt = preisSpanne !== null && (spanne[0] > preisVon || spanne[1] < preisBis);
 
   const filtered = useMemo(() => {
+    const obenOffenWirksam = spanneWirksam[1] >= preisBis;
     const list = ohnePreis.filter((p) => {
       const preis = Number(p.price);
-      return preis >= spanneWirksam[0] && preis <= spanneWirksam[1];
+      if (preis < spanneWirksam[0]) return false;
+      return obenOffenWirksam || preis <= spanneWirksam[1];
     });
     const sorted = [...list];
     if (sort === "price_asc") sorted.sort((a, b) => Number(a.price) - Number(b.price));
@@ -192,7 +216,7 @@ const Shop = () => {
 
           <FilterGroup title="Welt">
             {WORLDS.map((w) => (
-              <FilterPill key={w} active={world === w} onClick={() => setWorld(world === w ? null : w)}>{w}</FilterPill>
+              <FilterPill key={w} active={world === w} onClick={() => waehleWelt(world === w ? null : w)}>{w}</FilterPill>
             ))}
           </FilterGroup>
 
@@ -216,8 +240,8 @@ const Shop = () => {
             </FilterGroup>
           )}
 
-          {preisBis > preisVon && (
-            <FilterGroup title={`Preis · ${eur(spanne[0])} – ${eur(spanne[1])}`}>
+          {(
+            <FilterGroup title={`Preis · ${eur(spanne[0])} – ${preisLabel(spanne[1], obenOffen)}`}>
               <PreisSchieber
                 von={preisVon}
                 bis={preisBis}
@@ -230,7 +254,7 @@ const Shop = () => {
           {hasFilters && (
             <button
               type="button"
-              onClick={() => { setWorld(null); setDesigner(null); setSize(null); setSearch(""); setPreisSpanne(null); }}
+              onClick={() => { waehleWelt(null); setDesigner(null); setSize(null); setSearch(""); setPreisSpanne(null); }}
               className="palace-eyebrow uline text-black/60 hover:text-[#000000]"
             >
               Filter zurücksetzen

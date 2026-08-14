@@ -19,6 +19,9 @@ function detectBrowserLocale(): Locale {
 
 const de = {
   // Navigation
+  "nav.start": "Start",
+  "nav.boutique": "Boutique",
+  "nav.vision": "Vision",
   "nav.mode": "Mode",
   "nav.interior": "Interior",
   "nav.kunst": "Kunst",
@@ -2430,6 +2433,9 @@ const de = {
 };
 
 const en: Record<keyof typeof de, string> = {
+  "nav.start": "Home",
+  "nav.boutique": "Boutique",
+  "nav.vision": "Vision",
   "nav.mode": "Fashion",
   "nav.interior": "Interior",
   "nav.kunst": "Art",
