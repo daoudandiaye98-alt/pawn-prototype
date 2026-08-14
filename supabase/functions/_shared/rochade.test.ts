@@ -1,0 +1,207 @@
+// Die lange Rochade — Regressionstests für Sicherheit und Adapter.
+// Ausführen mit: deno test supabase/functions/_shared/rochade.test.ts
+//
+// Diese beiden Module sind bewusst ohne Netz- und Datenbankzugriff geschrieben,
+// damit genau das hier möglich ist: die Kaskade und der SSRF-Schutz sind prüfbar,
+// nicht nur behauptet.
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { istPrivateAdresse, pruefeZiel } from "./rochadeSicherheit.ts";
+import {
+  entdopple,
+  erkennePlattform,
+  groessteAusSrcset,
+  bilderAusHtml,
+  jsonLdLesen,
+  preisZuCent,
+  produktEndpunkt,
+  shopifyLesen,
+  sitemapAdressen,
+  wooLesen,
+} from "./rochadeAdapter.ts";
+
+/* ------------------------------------------------------------ Sicherheit */
+
+Deno.test("SSRF: private und reservierte Bereiche gelten als privat", () => {
+  for (const ip of [
+    "127.0.0.1", "10.1.2.3", "172.16.5.5", "172.31.255.255", "192.168.1.1",
+    "169.254.169.254", "0.0.0.0", "::1", "fc00::1", "fe80::1", "::ffff:10.0.0.1",
+  ]) {
+    assertEquals(istPrivateAdresse(ip), true, `${ip} müsste privat sein`);
+  }
+});
+
+Deno.test("SSRF: öffentliche Adressen bleiben erlaubt", () => {
+  for (const ip of ["8.8.8.8", "1.1.1.1", "172.32.0.1", "93.184.216.34", "2606:2800::1"]) {
+    assertEquals(istPrivateAdresse(ip), false, `${ip} müsste öffentlich sein`);
+  }
+});
+
+Deno.test("SSRF: pruefeZiel lehnt die klassischen Angriffsziele ab", async () => {
+  const faelle: [string, string][] = [
+    ["http://example.com", "kein_https"],
+    ["https://127.0.0.1/x", "private_adresse"],
+    ["https://192.168.0.5/", "private_adresse"],
+    ["https://169.254.169.254/latest/meta-data/", "private_adresse"], // Cloud-Metadaten
+    ["https://localhost/", "unerlaubter_host"],
+    ["https://dienst.internal/", "unerlaubter_host"],
+    ["https://[::1]/", "private_adresse"],
+  ];
+  for (const [url, grund] of faelle) {
+    const r = await pruefeZiel(url);
+    assertEquals(r.ok, false, `${url} hätte abgelehnt werden müssen`);
+    assertEquals(r.grund, grund, url);
+  }
+});
+
+/* ------------------------------------------------------ Nichts erfinden */
+
+Deno.test("Preis: fehlende Angabe bleibt leer, wird nie zu 0", () => {
+  assertEquals(preisZuCent(""), null);
+  assertEquals(preisZuCent(null), null);
+  assertEquals(preisZuCent("auf Anfrage"), null);
+  assertEquals(preisZuCent("Preis auf Nachfrage"), null);
+});
+
+Deno.test("Preis: deutsche und englische Schreibweise", () => {
+  assertEquals(preisZuCent("19.90"), 1990);
+  assertEquals(preisZuCent("19,90"), 1990);
+  assertEquals(preisZuCent("1.234,56"), 123456);
+  assertEquals(preisZuCent("1,234.56"), 123456);
+});
+
+/* --------------------------------------------------------------- Bilder */
+
+Deno.test("Bilder: größte Variante, data-src, und Logos fliegen raus", () => {
+  assertEquals(groessteAusSrcset("a.jpg 400w, b.jpg 1600w, c.jpg 800w"), "b.jpg");
+  const html = `<img src="/logo.svg"><img data-src="/werk-1.jpg">` +
+    `<img srcset="/klein.jpg 400w, /gross.jpg 2000w"><img src="data:image/png;base64,xx">`;
+  const bilder = bilderAusHtml(html, "https://beispiel.de/shop");
+  assertEquals(bilder.length, 2);
+  assertEquals(bilder[0], "https://beispiel.de/werk-1.jpg");
+  assertEquals(bilder[1], "https://beispiel.de/gross.jpg");
+});
+
+/* -------------------------------------------------- Plattform erkennen */
+
+Deno.test("Erkennung: Signaturen der gängigen Baukästen", () => {
+  assertEquals(erkennePlattform({ header: { "x-shopify-stage": "production" } }), "shopify");
+  assertEquals(erkennePlattform({ html: '<img src="https://cdn.shopify.com/x.jpg">' }), "shopify");
+  assertEquals(erkennePlattform({ html: '<body class="woocommerce-page">' }), "woocommerce");
+  assertEquals(erkennePlattform({ html: '<link href="https://static1.squarespace.com/a.css">' }), "squarespace");
+  assertEquals(erkennePlattform({ html: "<html><body>Nur Text</body></html>" }), "unbekannt");
+});
+
+Deno.test("Erkennung: Shopify-Endpunkt ist paginierbar", () => {
+  assertEquals(
+    produktEndpunkt("shopify", "https://x.de/eine/seite", 2),
+    "https://x.de/products.json?limit=250&page=2",
+  );
+  assertEquals(produktEndpunkt("unbekannt", "https://x.de/", 1), null);
+});
+
+/* ------------------------------------------------------ Shopify-Adapter */
+
+Deno.test("Shopify: liest Titel, Preis, Bilder und Varianten — erfindet keine Währung", () => {
+  const antwort = {
+    products: [{
+      id: 111, handle: "vase-drei", title: "Vase Nr. 3",
+      body_html: "<p>Steinzeug, <b>gedreht</b></p>",
+      product_type: "Keramik", tags: "unikat, steinzeug",
+      variants: [{ title: "Standard", price: "240.00", available: true }],
+      images: [{ src: "https://cdn.shopify.com/v3-a.jpg" }, { src: "https://cdn.shopify.com/logo.png" }],
+    }],
+  };
+  const erg = shopifyLesen(antwort, "https://atelier.de/", 1);
+  assertEquals(erg.stufe, "adapter");
+  assertEquals(erg.kandidaten.length, 1);
+  const k = erg.kandidaten[0];
+  assertEquals(k.titel, "Vase Nr. 3");
+  assertEquals(k.preis_cent, 24000);
+  assertEquals(k.waehrung, null); // products.json nennt die Währung nicht — also nicht raten
+  assertEquals(k.beschreibung_text, "Steinzeug, gedreht");
+  assertEquals(k.bilder.length, 1); // Logo gefiltert
+  assertEquals(k.quell_url, "https://atelier.de/products/vase-drei");
+  assertEquals(k.kategorien, ["Keramik", "unikat", "steinzeug"]);
+  assertEquals(erg.weitere_seite, null); // nur ein Produkt = keine volle Seite
+});
+
+/* -------------------------------------------------- WooCommerce-Adapter */
+
+Deno.test("WooCommerce: rechnet Minor-Units korrekt um", () => {
+  // Die Store-API liefert den Preis in der kleinsten Einheit plus die Stellenzahl.
+  const antwort = [{
+    id: 42, name: "Eichenhocker", permalink: "https://moebel.de/hocker",
+    description: "<p>Massive Eiche, geölt</p>",
+    prices: { price: "24000", currency_code: "EUR", currency_minor_unit: 2 },
+    images: [{ src: "https://moebel.de/hocker.jpg" }],
+    categories: [{ name: "Sitzmöbel" }],
+    is_in_stock: true,
+  }];
+  const erg = wooLesen(antwort, "https://moebel.de/", 1);
+  assertEquals(erg.kandidaten.length, 1);
+  const k = erg.kandidaten[0];
+  assertEquals(k.preis_cent, 24000);
+  assertEquals(k.waehrung, "EUR");
+  assertEquals(k.verfuegbar, true);
+  assertEquals(k.kategorien, ["Sitzmöbel"]);
+});
+
+Deno.test("WooCommerce: Shops mit drei Nachkommastellen rechnen ebenfalls richtig", () => {
+  const antwort = [{
+    id: 7, name: "Test", prices: { price: "240000", currency_code: "TND", currency_minor_unit: 3 },
+  }];
+  const k = wooLesen(antwort, "https://x.tn/", 1).kandidaten[0];
+  assertEquals(k.preis_cent, 24000); // 240,000 Millimes = 240,00 → 24000 Cent
+});
+
+/* --------------------------------------------------------------- JSON-LD */
+
+Deno.test("JSON-LD: findet Product auch im @graph und übersteht kaputte Blöcke", () => {
+  const html = `<html><head>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+ {"@type":"Organization","name":"Atelier"},
+ {"@type":"Product","name":"Vase Nr. 3","sku":"V3","description":"Steinzeug, gedreht",
+  "image":["https://beispiel.de/v3-a.jpg","https://beispiel.de/logo.png"],
+  "offers":{"@type":"Offer","price":"240.00","priceCurrency":"EUR",
+            "availability":"https://schema.org/InStock"}}]}</script>
+<script type="application/ld+json">{das ist kaputt</script>
+</head></html>`;
+  const erg = jsonLdLesen(html, "https://beispiel.de/vase-3");
+  assertEquals(erg.stufe, "jsonld");
+  assertEquals(erg.kandidaten.length, 1);
+  const k = erg.kandidaten[0];
+  assertEquals(k.preis_cent, 24000);
+  assertEquals(k.waehrung, "EUR"); // hier steht sie in der Quelle — also übernehmen
+  assertEquals(k.verfuegbar, true);
+  assertEquals(k.bilder.length, 1);
+});
+
+Deno.test("JSON-LD: ohne Produkt bleibt die Stufe leer (dann greift HTML+KI)", () => {
+  const erg = jsonLdLesen("<html><body>Hallo</body></html>", "https://x.de/");
+  assertEquals(erg.stufe, "keine");
+  assertEquals(erg.kandidaten.length, 0);
+});
+
+/* ------------------------------------------------------------- Dubletten */
+
+Deno.test("Zweiter Lauf derselben Quelle erzeugt keine Dubletten", () => {
+  const erg = jsonLdLesen(
+    `<script type="application/ld+json">{"@type":"Product","name":"A","sku":"S1",
+      "offers":{"price":"10","priceCurrency":"EUR"}}</script>`,
+    "https://x.de/a",
+  );
+  const dreimal = [...erg.kandidaten, ...erg.kandidaten, ...erg.kandidaten];
+  assertEquals(dreimal.length, 3);
+  assertEquals(entdopple(dreimal).length, 1);
+});
+
+/* --------------------------------------------------------------- Sitemap */
+
+Deno.test("Sitemap: Index und Seitenliste werden unterschieden", () => {
+  const index = sitemapAdressen("<sitemapindex><sitemap><loc>https://x.de/s1.xml</loc></sitemap></sitemapindex>");
+  assertEquals(index.weitereSitemaps.length, 1);
+  assertEquals(index.seiten.length, 0);
+
+  const liste = sitemapAdressen("<urlset><url><loc>https://x.de/a</loc></url><url><loc>https://x.de/b</loc></url></urlset>");
+  assertEquals(liste.seiten.length, 2);
+});
