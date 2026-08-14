@@ -72,9 +72,12 @@ export function ProductLightbox({ images, alt, open, initialIndex, onClose }: Pr
 
   if (!open || images.length === 0) return null;
 
+  // Teil Q — die Lightbox ist die eine Stelle, an der das Werk VOLLSTÄNDIG zu sehen
+  // ist: eingepasst statt beschnitten. Damit dabei keine schwarzen Ränder entstehen,
+  // liegt sie auf hellem Grund.
   return (
-    <div className="fixed inset-0 z-[95] flex flex-col bg-black" role="dialog" aria-modal="true" aria-label={alt}>
-      <div className="flex items-center justify-between px-4 py-4 text-white md:px-8">
+    <div className="fixed inset-0 z-[95] flex flex-col bg-white" role="dialog" aria-modal="true" aria-label={alt}>
+      <div className="flex items-center justify-between px-4 py-4 text-black md:px-8">
         <span className="text-[0.7rem] uppercase tracking-[0.24em] tabular-nums">
           {index + 1} / {images.length}
         </span>
@@ -83,7 +86,7 @@ export function ProductLightbox({ images, alt, open, initialIndex, onClose }: Pr
           type="button"
           onClick={onClose}
           aria-label={t("product.lightbox.close")}
-          className="flex h-11 w-11 items-center justify-center text-white hover:opacity-70"
+          className="flex h-11 w-11 items-center justify-center text-black hover:opacity-70"
         >
           <X className="h-6 w-6" />
         </button>
@@ -113,7 +116,7 @@ export function ProductLightbox({ images, alt, open, initialIndex, onClose }: Pr
               type="button"
               onClick={() => emblaApi?.scrollTo(i)}
               aria-label={t("product.lightbox.thumbAria", { n: i + 1 })}
-              className={`h-14 w-14 shrink-0 overflow-hidden border-[1.5px] ${i === index ? "border-white" : "border-white/25"}`}
+              className={`h-14 w-14 shrink-0 overflow-hidden border-[1.5px] ${i === index ? "border-black" : "border-black/25"}`}
             >
               <MediaImg src={src} alt="" className="h-full w-full object-cover" />
             </button>

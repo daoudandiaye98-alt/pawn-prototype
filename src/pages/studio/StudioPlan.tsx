@@ -65,12 +65,20 @@ function fmtCount(t: (key: string, vars?: Record<string, string | number>) => st
   return n < 0 ? t("studio.plan.unlimitedNoun", { noun }) : `${n} ${noun}`;
 }
 
-/** Teil P — die Beispiel-Fläche eines Plans. Drei Stufen, nie ein schwarzes Loch:
- *  1. echtes Bild-Beispiel (media_assets), 2. Première-Video, 3. das Plan-Bild aus Teil O.
- *  Gespeicherte Beispiel-Werte können bloße Storage-Orte sein (s. src/lib/media.ts) —
- *  sie werden hier beim Anzeigen frisch signiert. Lädt ein Beispiel trotzdem nicht
- *  (kaputte oder abgelaufene URL), fällt die Fläche auf das Plan-Bild zurück,
- *  statt schwarz zu bleiben. */
+/** Die Beispiel-Fläche eines Plans. Drei Stufen, nie ein schwarzes Loch:
+ *  1. ein ausdrücklich freigegebenes Bild, 2. ein ausdrücklich freigegebenes Video,
+ *  3. das hinterlegte Plan-Bild.
+ *
+ *  Wichtig: Stufe 1 und 2 kommen NICHT aus dem Bestand. Ein Werk steht hier nur,
+ *  wenn ein Admin es im Cockpit ausdrücklich für diese Stufe freigegeben hat.
+ *  Gibt es keine Freigabe — heute bei allen drei Stufen —, steht das Plan-Bild da.
+ *
+ *  Gespeicherte Werte können bloße Storage-Orte sein (s. src/lib/media.ts) und
+ *  werden beim Anzeigen frisch signiert; lädt ein Beispiel trotzdem nicht, fällt
+ *  die Fläche auf das Plan-Bild zurück statt schwarz zu bleiben.
+ *
+ *  Darstellung: festes Seitenverhältnis, formatfüllend und mittig beschnitten —
+ *  keine Letterbox-Balken, egal welches Format das Werk mitbringt. */
 function PlanBeispiel({ plan, imageExample, videoExample }: { plan: Plan; imageExample?: string; videoExample?: string }) {
   const { t } = useI18n();
   const bildUrl = useMediaUrl(imageExample ?? null);
@@ -80,29 +88,19 @@ function PlanBeispiel({ plan, imageExample, videoExample }: { plan: Plan; imageE
   useEffect(() => { setBildKaputt(false); }, [bildUrl]);
   useEffect(() => { setVideoKaputt(false); }, [videoUrl]);
 
+  const fuellend = "aspect-[9/16] w-full object-cover [object-position:center]";
+
   return (
-    <div className="mt-4 border border-border bg-black">
+    <div className="mt-4 overflow-hidden border border-border">
       {bildUrl && !bildKaputt ? (
-        <img src={bildUrl} alt="" onError={() => setBildKaputt(true)} className="aspect-[9/16] w-full bg-black object-contain" />
+        <img src={bildUrl} alt="" onError={() => setBildKaputt(true)} className={fuellend} />
       ) : videoUrl && !videoKaputt ? (
         <div className="relative">
-          <video src={videoUrl} muted playsInline loop autoPlay onError={() => setVideoKaputt(true)} className="aspect-[9/16] w-full bg-black object-contain" />
+          <video src={videoUrl} muted playsInline loop autoPlay onError={() => setVideoKaputt(true)} className={fuellend} />
           <span className="absolute right-2 top-2 border border-white/70 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-white/90">{t("studio.plan.videoBeta")}</span>
         </div>
       ) : (
-        /* Teil O Fix — Zukunftsregel: echte Beispiele sind besser als diese
-           Bilder. Sobald ein echtes Haus-Beispiel einer Stufe existiert
-           (media_assets mit Rechten bzw. Première-Video, s. oben), greift es
-           automatisch zuerst und ersetzt dieses Bild. Bis dahin steht hier
-           nie ein leeres schwarzes Loch, sondern das Plan-Bild. */
-        <img
-          src={PLAN_BILD[plan]}
-          alt=""
-          width={1200}
-          height={896}
-          loading="lazy"
-          className="aspect-[9/16] w-full object-cover"
-        />
+        <img src={PLAN_BILD[plan]} alt="" width={1200} height={896} loading="lazy" className={fuellend} />
       )}
     </div>
   );
@@ -137,35 +135,35 @@ export default function StudioPlan() {
 
   useEffect(() => { void ladePlanGate().then(() => setGateReady(true)); }, []);
 
+  // FIX Plan-Beispiele — HIER stand die automatische Auswahl: beide Abfragen holten
+  // sich das jeweils neueste Werk irgendeines Hauses, dessen PLAN zur Stufe passte
+  // (`designers:designer_id(plan)` + „erster Treffer je Plan"). Beim einzigen heute
+  // existierenden Haus landete so ein Testartikel als Maison-Beispiel auf der Seite.
+  // Diese Ableitung ist ersatzlos weg. Ein Werk erscheint jetzt ausschließlich, wenn
+  // ein Admin es ausdrücklich für eine Stufe freigegeben hat (`plan_beispiel`); die
+  // Stufe steht damit am Werk selbst und wird nicht mehr aus dem Haus erraten.
+  // Interne Häuser (Test/Demo/PAWN-eigen) sind zusätzlich in der Datenbank gesperrt.
   useEffect(() => {
     void supabase.from("video_assets" as never)
-      .select("url, designers:designer_id(plan)")
-      .eq("premiere", true)
-      .order("created_at", { ascending: false })
-      .limit(30)
+      .select("url, plan_beispiel")
+      .not("plan_beispiel", "is", null)
+      .eq("rights_granted", true)
       .then(({ data }) => {
-        const rows = (data ?? []) as unknown as Array<{ url: string; designers: { plan: Plan } | null }>;
+        const rows = (data ?? []) as unknown as Array<{ url: string; plan_beispiel: Plan | null }>;
         const byPlan: Partial<Record<Plan, string>> = {};
-        for (const r of rows) {
-          const p = r.designers?.plan;
-          if (p && !byPlan[p]) byPlan[p] = r.url;
-        }
+        for (const r of rows) if (r.plan_beispiel) byPlan[r.plan_beispiel] = r.url;
         setExamples(byPlan);
       });
     // Bild-Beispiele haben Vorrang (Teil 16a: Bild ist das Herz, Video bleibt Beta).
     void supabase.from("media_assets" as never)
-      .select("url, kind, rights_granted, designers:designer_id(plan)")
+      .select("url, plan_beispiel")
       .eq("kind", "bild")
       .eq("rights_granted", true)
-      .order("created_at", { ascending: false })
-      .limit(30)
+      .not("plan_beispiel", "is", null)
       .then(({ data }) => {
-        const rows = (data ?? []) as unknown as Array<{ url: string; designers: { plan: Plan } | null }>;
+        const rows = (data ?? []) as unknown as Array<{ url: string; plan_beispiel: Plan | null }>;
         const byPlan: Partial<Record<Plan, string>> = {};
-        for (const r of rows) {
-          const p = r.designers?.plan;
-          if (p && !byPlan[p]) byPlan[p] = r.url;
-        }
+        for (const r of rows) if (r.plan_beispiel) byPlan[r.plan_beispiel] = r.url;
         setImageExamples(byPlan);
       });
   }, []);

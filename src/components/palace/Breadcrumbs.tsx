@@ -13,7 +13,7 @@ const LABELS: Record<string, string> = {
   all: "Alle",
   apply: "Für Designer",
   form: "Bewerbung",
-  shop: "Shop",
+  shop: "Boutique",
   product: "Produkt",
   cart: "Warenkorb",
   checkout: "Kasse",

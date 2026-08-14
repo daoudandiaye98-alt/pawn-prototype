@@ -19,14 +19,25 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
   const { user, roles, signOut } = useAuth();
   const { count: cartCount } = useCart();
   const { locale, setLocale, t } = useI18n();
-  const NAV = [
+  /**
+   * Teil Q — eine Hauptnavigation, überall dieselbe: Start · Boutique · Vision.
+   * Gleiche Reihenfolge, gleiche Stelle, aktiver Zustand markiert. Die Welten
+   * erreicht man jetzt über die Boutique (mit vorgewählter Welt), deshalb steht
+   * hier nicht mehr jede Welt einzeln. Verloren geht nichts: alles Weitere liegt
+   * im Menü, das dafür auf JEDER Breite sichtbar ist (vorher nur auf Touch).
+   */
+  const NAV_HAUPT = [
+    { label: t("nav.start"), to: "/", end: true },
+    { label: t("nav.boutique"), to: "/shop" },
+    { label: t("nav.vision"), to: "/vision" },
+  ];
+  const NAV_MEHR = [
     { label: t("nav.mode"), to: "/mode" },
     { label: t("nav.interior"), to: "/interior" },
     { label: t("nav.kunst"), to: "/kunst" },
     { label: t("nav.designer"), to: "/designers" },
     { label: t("nav.dna"), to: "/dna" },
     { label: t("nav.forDesigners"), to: "/apply" },
-    { label: "Vision", to: "/vision" },
   ];
 
   const navigate = useNavigate();
@@ -97,11 +108,12 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
           </Link>
 
           {/* Nav cells */}
-          <nav className="hidden min-w-0 flex-1 items-stretch xl:flex">
-            {NAV.map((item) => (
+          <nav className="hidden min-w-0 flex-1 items-stretch md:flex">
+            {NAV_HAUPT.map((item) => (
               <NavLink
                 key={item.label}
                 to={item.to}
+                end={item.end}
                 className={({ isActive }) =>
                   `flex items-center whitespace-nowrap border-r px-5 text-[0.66rem] uppercase tracking-[0.3em] transition-colors duration-200 hover:bg-black hover:text-white ${borderSoft} ${
                     isActive ? "bg-black text-white" : text
@@ -201,7 +213,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
               type="button"
               aria-label="Menü öffnen"
               onClick={() => setMenuOpen(true)}
-              className={`flex items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white xl:hidden ${border} ${text}`}
+              className={`flex items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white ${border} ${text}`}
             >
               <PawnMenuIcon className="h-5 w-5" />
             </button>
@@ -213,7 +225,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
 
       {/* Mobile / tablet fullscreen menu */}
       <div
-        className={`fixed inset-0 z-[90] flex flex-col bg-white transition-opacity duration-500 xl:hidden ${
+        className={`fixed inset-0 z-[90] flex flex-col bg-white transition-opacity duration-500 ${
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
@@ -228,11 +240,12 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
             <PawnCloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex flex-1 flex-col justify-center gap-6 px-8">
-          {NAV.map((item) => (
+        <nav className="flex flex-1 flex-col justify-center gap-5 overflow-y-auto px-8 py-8">
+          {NAV_HAUPT.map((item) => (
             <NavLink
               key={item.label}
               to={item.to}
+              end={item.end}
               onClick={() => setMenuOpen(false)}
               className="whitespace-nowrap font-serif text-[2.4rem] leading-[0.98] text-[#000000]"
               style={{ fontWeight: 500 }}
@@ -240,6 +253,18 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
               {item.label}
             </NavLink>
           ))}
+          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-3 border-t border-[rgba(0,0,0,.18)] pt-5">
+            {NAV_MEHR.map((item) => (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                onClick={() => setMenuOpen(false)}
+                className="whitespace-nowrap text-[0.7rem] uppercase tracking-[0.3em] text-[#000000]"
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
           <button
             type="button"
             onClick={() => { setMenuOpen(false); setChatOpen(true); }}
