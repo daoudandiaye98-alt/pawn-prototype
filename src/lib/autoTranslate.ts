@@ -52,6 +52,19 @@ function skipNode(node: Node): boolean {
 const originalText = new WeakMap<Text, string>();
 const originalAttr = new WeakMap<Element, Map<string, string>>();
 const memory = new Map<string, string>(); // hash → englischer Text
+/**
+ * Hashes aller fertigen englischen Ausgaben aus dem Wörterbuch.
+ *
+ * Warum es das braucht: `t()` liefert auf Englisch bereits Englisch — im DOM
+ * steht dann z. B. „Art" (für die Welt Kunst). Diese Schicht sieht davon nichts
+ * und hält jeden Text für Deutsch. Und „Art" IST auch ein deutsches Wort, das
+ * im Wörterbuch als „Type" übersetzt ist. Ohne diese Sperre würde aus dem
+ * fertigen „Art" also „Type" — im Menü stand deshalb „Type" statt „Art".
+ *
+ * Regel ab hier: Was schon als englische Ausgabe im Wörterbuch steht, wird
+ * nicht ein zweites Mal übersetzt.
+ */
+const fertigeAusgaben = new Set<string>();
 const unknown = new Set<string>(); // deutsche Sätze ohne Übersetzung
 const requested = new Set<string>(); // schon angefragt (kein Doppelversuch)
 
@@ -93,6 +106,7 @@ function apply(root: Node): void {
     const key = norm(base);
     const en = memory.get(textHash(key));
     if (!originalText.has(node)) originalText.set(node, base);
+    if (fertigeAusgaben.has(textHash(key))) continue; // steht schon auf Englisch
     if (en) {
       // Führende/abschließende Leerzeichen des Originals erhalten (Inline-Layout).
       const lead = base.match(/^\s*/)?.[0] ?? "";
@@ -107,6 +121,7 @@ function apply(root: Node): void {
     let store = originalAttr.get(el);
     if (!store) { store = new Map(); originalAttr.set(el, store); }
     if (!store.has(attr)) store.set(attr, base);
+    if (fertigeAusgaben.has(textHash(key))) continue; // steht schon auf Englisch
     const en = memory.get(textHash(key));
     if (en) { if (el.getAttribute(attr) !== en) el.setAttribute(attr, en); }
     else if (!requested.has(key)) unknown.add(key);
@@ -167,7 +182,10 @@ function restore(): void {
 export function seedMemory(pairs: Array<[string, string]>): void {
   for (const [de, en] of pairs) {
     const key = norm(de);
-    if (key && en) memory.set(textHash(key), en);
+    if (key && en) {
+      memory.set(textHash(key), en);
+      fertigeAusgaben.add(textHash(norm(en)));
+    }
   }
 }
 
