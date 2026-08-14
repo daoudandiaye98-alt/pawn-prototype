@@ -48,7 +48,8 @@ function labelForSignal(s: Signal): { title: string; because: string } {
     case "tag":
       return { title: `Interesse: ${s.value}`, because: `Weil du „${s.value}" im Gespräch erwähnt hast.` };
     case "designer":
-      return { title: `Designer: ${s.value}`, because: `Weil du ${s.value} gemerkt oder besucht hast.` };
+      // Teil S — hier steht ein bestehendes Haus, nicht die Rolle.
+      return { title: `Haus: ${s.value}`, because: `Weil du ${s.value} gemerkt oder besucht hast.` };
     case "message":
     default:
       return { title: "Ein Fragment deiner Sprache", because: `Weil du geschrieben hast: „${s.value}…"` };

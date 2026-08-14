@@ -11,6 +11,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import {
+  LEERES_PROFIL, VERSANDARTEN, VERSANDZONEN, WELTEN,
+  versandProfile, versandSpeicherform,
+  type VersandProfil, type Welt as WeltName,
+} from "@/lib/weltFelder";
 
 // Stripe nennt fehlende Angaben in Fachbegriffen — hier in Klartext übersetzt.
 const REQUIREMENT_LABEL_KEYS: Record<string, string> = {
@@ -46,14 +51,6 @@ const EMPTY_BILLING: BillingProfile = {
   return_address_line1: "", return_address_line2: "", return_postal_code: "", return_city: "", return_country: "",
 };
 
-interface ShippingZone { flat_cents: number; free_from_cents: number | null }
-interface ShippingRates { inland: ShippingZone; eu: ShippingZone; world: ShippingZone }
-const EMPTY_SHIPPING: ShippingRates = {
-  inland: { flat_cents: 0, free_from_cents: null },
-  eu: { flat_cents: 0, free_from_cents: null },
-  world: { flat_cents: 0, free_from_cents: null },
-};
-
 export default function StudioPayout() {
   const { t } = useI18n();
   const { designer, refresh } = useMyDesigner();
@@ -79,7 +76,10 @@ export default function StudioPayout() {
 
   const [billing, setBilling] = useState<BillingProfile>(EMPTY_BILLING);
   const [billingSaving, setBillingSaving] = useState(false);
-  const [shipping, setShipping] = useState<ShippingRates>(EMPTY_SHIPPING);
+  // Welten-Gleichstand: Versandsätze je Profil (Paket, Sperrgut, Rolle, Spedition …)
+  // statt einer einzigen Pauschale für alles. Die alte Form wird weiter gelesen
+  // und weiter mitgeschrieben — kein Haus muss etwas tun.
+  const [profile, setProfile] = useState<Record<string, VersandProfil>>({});
   const [shippingSaving, setShippingSaving] = useState(false);
   const [vatRate, setVatRate] = useState<number>(19);
   const [returnDays, setReturnDays] = useState<number>(14);
@@ -89,8 +89,9 @@ export default function StudioPayout() {
     if (!designer) return;
     void supabase.from("designer_billing_profiles").select("*").eq("designer_id", designer.id).maybeSingle()
       .then(({ data }) => { if (data) setBilling({ ...EMPTY_BILLING, ...(data as Partial<BillingProfile>) }); });
-    const rates = designer.shipping_rates as Partial<ShippingRates> | null;
-    if (rates) setShipping({ ...EMPTY_SHIPPING, ...rates, inland: { ...EMPTY_SHIPPING.inland, ...rates.inland }, eu: { ...EMPTY_SHIPPING.eu, ...rates.eu }, world: { ...EMPTY_SHIPPING.world, ...rates.world } });
+    // versandProfile() liest beide Formen — die alten drei Pauschalen kommen als
+    // Profil „paket" zurück, ohne dass jemand etwas umstellen muss.
+    setProfile(versandProfile(designer.shipping_rates as never));
     setVatRate(Number(designer.vat_rate ?? 19));
     setReturnDays(Number(designer.return_window_days ?? 14));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,7 +121,9 @@ export default function StudioPayout() {
   async function saveShipping() {
     if (!designer) return;
     setShippingSaving(true);
-    const { error } = await supabase.from("designers").update({ shipping_rates: JSON.parse(JSON.stringify(shipping)) }).eq("id", designer.id);
+    const { error } = await supabase.from("designers")
+      .update({ shipping_rates: JSON.parse(JSON.stringify(versandSpeicherform(profile))) })
+      .eq("id", designer.id);
     setShippingSaving(false);
     if (error) { toast.error("Die Versandkosten konnten nicht gespeichert werden. Versuch es gleich noch einmal."); return; }
     toast.success(t("studio.payout.shipping.saved"));
@@ -429,29 +432,87 @@ export default function StudioPayout() {
             {t("studio.payout.shipping.description")}
           </p>
           <div className="mt-4 space-y-3">
-            {(["inland", "eu", "world"] as const).map((zone) => (
-              <div key={zone} className="grid grid-cols-1 items-end gap-3 border-b border-border pb-3 sm:grid-cols-3">
-                <p className="text-sm font-medium sm:col-span-1">{zone === "inland" ? t("studio.payout.shipping.zone.inland") : zone === "eu" ? t("studio.payout.shipping.zone.eu") : t("studio.payout.shipping.zone.world")}</p>
-                <label className="block">
-                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.shipping.flatRate")}</span>
-                  <input
-                    type="number" min={0} step={0.5}
-                    value={shipping[zone].flat_cents / 100}
-                    onChange={(e) => setShipping((s) => ({ ...s, [zone]: { ...s[zone], flat_cents: Math.round(Number(e.target.value || 0) * 100) } }))}
-                    className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.shipping.freeFrom")}</span>
-                  <input
-                    type="number" min={0} step={1}
-                    value={shipping[zone].free_from_cents != null ? shipping[zone].free_from_cents! / 100 : ""}
-                    onChange={(e) => setShipping((s) => ({ ...s, [zone]: { ...s[zone], free_from_cents: e.target.value === "" ? null : Math.round(Number(e.target.value) * 100) } }))}
-                    className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm"
-                  />
-                </label>
-              </div>
-            ))}
+            {/* Ein Profil je Versandweg. Ein Kleid ist ein Paket, ein Schrank
+                eine Spedition mit Termin, ein Großformat eine Kunstspedition —
+                mit einer einzigen Pauschale ließ sich das nicht ehrlich abbilden. */}
+            {WELTEN.map((w) => {
+              const arten = VERSANDARTEN[w as WeltName];
+              const offen = arten.filter((a) => a.nurAbsprache !== true);
+              return (
+                <div key={w} className="border-b border-border pb-5 last:border-b-0">
+                  <p className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{w}</p>
+                  <div className="mt-3 space-y-4">
+                    {offen.map((art) => {
+                      const p = profile[art.schluessel] ?? LEERES_PROFIL;
+                      const aktiv = !!profile[art.schluessel];
+                      return (
+                        <div key={`${w}-${art.schluessel}`} className="border border-border p-3">
+                          <label className="flex items-start gap-3">
+                            <input type="checkbox" checked={aktiv} className="mt-1 h-4 w-4 shrink-0 accent-black"
+                              onChange={(e) => setProfile((alt) => {
+                                const neu = { ...alt };
+                                if (e.target.checked) neu[art.schluessel] = { ...LEERES_PROFIL };
+                                else delete neu[art.schluessel];
+                                return neu;
+                              })} />
+                            <span>
+                              <span className="text-sm font-medium">{art.label}</span>
+                              <span className="mt-0.5 block text-xs text-muted-foreground">{art.satz}</span>
+                            </span>
+                          </label>
+                          {aktiv && (
+                            <div className="mt-3 space-y-3">
+                              {VERSANDZONEN.map((zone) => (
+                                <div key={zone.schluessel} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-3">
+                                  <p className="text-sm">{zone.label}</p>
+                                  <label className="block">
+                                    <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.shipping.flatRate")}</span>
+                                    <input type="number" min={0} step={0.5}
+                                      value={p[zone.schluessel].flat_cents / 100}
+                                      onChange={(e) => setProfile((alt) => ({
+                                        ...alt,
+                                        [art.schluessel]: {
+                                          ...(alt[art.schluessel] ?? LEERES_PROFIL),
+                                          [zone.schluessel]: {
+                                            ...(alt[art.schluessel] ?? LEERES_PROFIL)[zone.schluessel],
+                                            flat_cents: Math.round(Number(e.target.value || 0) * 100),
+                                          },
+                                        },
+                                      }))}
+                                      className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
+                                  </label>
+                                  <label className="block">
+                                    <span className="text-[0.62rem] uppercase tracking-[0.24em] text-muted-foreground">{t("studio.payout.shipping.freeFrom")}</span>
+                                    <input type="number" min={0} step={1}
+                                      value={p[zone.schluessel].free_from_cents != null ? p[zone.schluessel].free_from_cents! / 100 : ""}
+                                      onChange={(e) => setProfile((alt) => ({
+                                        ...alt,
+                                        [art.schluessel]: {
+                                          ...(alt[art.schluessel] ?? LEERES_PROFIL),
+                                          [zone.schluessel]: {
+                                            ...(alt[art.schluessel] ?? LEERES_PROFIL)[zone.schluessel],
+                                            free_from_cents: e.target.value === "" ? null : Math.round(Number(e.target.value) * 100),
+                                          },
+                                        },
+                                      }))}
+                                      className="mt-1 w-full border-[1.5px] border-foreground bg-white px-3 py-2 text-sm" />
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {arten.filter((a) => a.nurAbsprache).map((art) => (
+                      <p key={art.schluessel} className="text-xs text-muted-foreground">
+                        {art.label}: {art.satz} Dafür braucht es keinen Satz — der Weg wird im Postfach besprochen.
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <button onClick={saveShipping} disabled={shippingSaving} className="mt-5 border border-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.22em] hover:bg-foreground hover:text-background disabled:opacity-40">
             {shippingSaving ? t("common.saving") : t("studio.payout.shipping.save")}

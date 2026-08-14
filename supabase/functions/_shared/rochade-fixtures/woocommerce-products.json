@@ -1,0 +1,9 @@
+[
+ {"id":42,"name":"Eichenhocker","permalink":"https://moebel.de/hocker","description":"<p>Massive Eiche, geölt, 45 cm Sitzhöhe</p>",
+  "prices":{"price":"24000","currency_code":"EUR","currency_minor_unit":2},
+  "images":[{"src":"https://moebel.de/hocker-a.jpg"},{"src":"https://moebel.de/icon-cart.svg"}],
+  "categories":[{"name":"Sitzmöbel"}],"is_in_stock":true},
+ {"id":43,"name":"Regal Esche","permalink":"https://moebel.de/regal","description":"<p>Esche, gewachst</p>",
+  "prices":{"price":"89000","currency_code":"EUR","currency_minor_unit":2},
+  "images":[{"src":"https://moebel.de/regal-a.jpg"}],"categories":[{"name":"Aufbewahrung"}],"is_in_stock":false}
+]

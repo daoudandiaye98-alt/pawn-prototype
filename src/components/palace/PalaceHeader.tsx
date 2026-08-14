@@ -31,11 +31,19 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
     { label: t("nav.boutique"), to: "/shop" },
     { label: t("nav.vision"), to: "/vision" },
   ];
+  /**
+   * Teil S — Ebene 2 in fester Reihenfolge. "Deine Boutique" steht vorn: die
+   * kuratierte Fläche ist der persönlichste Weg ins Haus. "Unsere Häuser"
+   * ersetzt "Designer" — der Begriff schloss Künstlerinnen und Interior-
+   * Gestalter aus. "Für Designer" bleibt: das ist der Einstieg für Neue, also
+   * die Rolle, nicht die Bezeichnung der Bestehenden.
+   */
   const NAV_MEHR = [
+    { label: t("nav.deineBoutique"), to: "/boutique" },
     { label: t("nav.mode"), to: "/mode" },
     { label: t("nav.interior"), to: "/interior" },
     { label: t("nav.kunst"), to: "/kunst" },
-    { label: t("nav.designer"), to: "/designers" },
+    { label: t("nav.haeuser"), to: "/designers" },
     { label: t("nav.dna"), to: "/dna" },
     { label: t("nav.forDesigners"), to: "/apply" },
   ];

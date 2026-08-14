@@ -8,8 +8,10 @@ const LABELS: Record<string, string> = {
   neu: "Neu",
   style: "Style",
   dna: "Deine DNA",
-  designers: "Designer",
-  designer: "Designer",
+  // Teil S — "Häuser" statt "Designer": der alte Begriff schloss Künstlerinnen
+  // und Interior-Gestalter aus. Als Rolle (apply) bleibt "Designer" richtig.
+  designers: "Häuser",
+  designer: "Haus",
   all: "Alle",
   apply: "Für Designer",
   form: "Bewerbung",

@@ -1,0 +1,11 @@
+{"products":[
+ {"id":7001,"handle":"vase-drei","title":"Vase Nr. 3","body_html":"<p>Steinzeug, <b>gedreht</b>, 24 cm hoch</p>","product_type":"Keramik","tags":"unikat, steinzeug",
+  "variants":[{"title":"Standard","price":"240.00","available":true}],
+  "images":[{"src":"https://cdn.shopify.com/s/files/vase3-a.jpg"},{"src":"https://cdn.shopify.com/s/files/vase3-b.jpg"},{"src":"https://cdn.shopify.com/s/files/logo.png"}]},
+ {"id":7002,"handle":"schale-leinen","title":"Schale Leinen","body_html":"<p>Porzellan, matt glasiert</p>","product_type":"Keramik","tags":"kleinserie",
+  "variants":[{"title":"klein","price":"85.00","available":true},{"title":"gross","price":"120.00","available":false}],
+  "images":[{"src":"https://cdn.shopify.com/s/files/schale-a.jpg"}]},
+ {"id":7003,"handle":"studie-ohne-preis","title":"Studie ohne Preis","body_html":"<p>Kohle auf Papier</p>","product_type":"Zeichnung","tags":"",
+  "variants":[{"title":"Standard","price":"","available":true}],
+  "images":[{"src":"https://cdn.shopify.com/s/files/studie.jpg"}]}
+]}
