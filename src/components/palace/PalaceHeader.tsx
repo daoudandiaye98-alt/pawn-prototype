@@ -6,6 +6,10 @@ import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
 import { useCart } from "@/store/cart";
 import { PawnBagIcon, PawnCloseIcon, PawnMenuIcon, PawnProfileIcon, PawnSearchIcon } from "@/components/pawn/icons/PawnIcons";
+import {
+  IkoneStart, IkoneBoutique, IkoneVision, IkoneDeineBoutique, IkoneMode,
+  IkoneInterior, IkoneKunst, IkoneHaeuser, IkoneDna, IkoneFuerDesigner, IkoneFragPawn,
+} from "@/components/pawn/icons/MenueIcons";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 
 /**
@@ -27,9 +31,9 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
    * im Menü, das dafür auf JEDER Breite sichtbar ist (vorher nur auf Touch).
    */
   const NAV_HAUPT = [
-    { label: t("nav.start"), to: "/", end: true },
-    { label: t("nav.boutique"), to: "/shop" },
-    { label: t("nav.vision"), to: "/vision" },
+    { label: t("nav.start"), to: "/", end: true, Ikone: IkoneStart },
+    { label: t("nav.boutique"), to: "/shop", Ikone: IkoneBoutique },
+    { label: t("nav.vision"), to: "/vision", Ikone: IkoneVision },
   ];
   /**
    * Teil S — Ebene 2 in fester Reihenfolge. "Deine Boutique" steht vorn: die
@@ -39,13 +43,13 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
    * die Rolle, nicht die Bezeichnung der Bestehenden.
    */
   const NAV_MEHR = [
-    { label: t("nav.deineBoutique"), to: "/boutique" },
-    { label: t("nav.mode"), to: "/mode" },
-    { label: t("nav.interior"), to: "/interior" },
-    { label: t("nav.kunst"), to: "/kunst" },
-    { label: t("nav.haeuser"), to: "/designers" },
-    { label: t("nav.dna"), to: "/dna" },
-    { label: t("nav.forDesigners"), to: "/apply" },
+    { label: t("nav.deineBoutique"), to: "/boutique", Ikone: IkoneDeineBoutique },
+    { label: t("nav.mode"), to: "/mode", Ikone: IkoneMode },
+    { label: t("nav.interior"), to: "/interior", Ikone: IkoneInterior },
+    { label: t("nav.kunst"), to: "/kunst", Ikone: IkoneKunst },
+    { label: t("nav.haeuser"), to: "/designers", Ikone: IkoneHaeuser },
+    { label: t("nav.dna"), to: "/dna", Ikone: IkoneDna },
+    { label: t("nav.forDesigners"), to: "/apply", Ikone: IkoneFuerDesigner },
   ];
 
   const navigate = useNavigate();
@@ -72,6 +76,14 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
     if (menuOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
+  }, [menuOpen]);
+
+  // Esc schließt das Menü — Teil T: es ist vollständig mit der Tastatur bedienbar.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
   useEffect(() => {
@@ -248,39 +260,49 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
             <PawnCloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex flex-1 flex-col justify-center gap-5 overflow-y-auto px-8 py-8">
+        {/*
+          Teil T — eine einzige Liste in einheitlicher Größe. Die frühere
+          Zweiteilung (große Serifen-Punkte oben, kleine Versalien unten) ist
+          aufgehoben: Start, Boutique und Vision stehen in derselben Größe wie
+          alles Übrige. Jede Zeile trägt links ein Zeichen in einer Spalte
+          fester Breite — deshalb beginnen alle Beschriftungen exakt auf einer
+          Fluchtlinie, egal wie breit das Zeichen zeichnet.
+        */}
+        {/*
+          Elf Zeilen à 44 px plus 18 px Abstand ergeben mehr, als auf ein
+          Telefon passt — deshalb ist die Liste rollbar und das Polster knapp:
+          die letzte Zeile schaut hervor und zeigt, dass es weitergeht.
+        */}
+        <nav className="flex flex-1 flex-col gap-[18px] overflow-y-auto px-8 py-4">
           {NAV_HAUPT.map((item) => (
-            <NavLink
+            <MenueZeile
               key={item.label}
               to={item.to}
               end={item.end}
+              Ikone={item.Ikone}
               onClick={() => setMenuOpen(false)}
-              className="whitespace-nowrap font-serif text-[2.4rem] leading-[0.98] text-[#000000]"
-              style={{ fontWeight: 500 }}
             >
               {item.label}
-            </NavLink>
+            </MenueZeile>
           ))}
-          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-3 border-t border-[rgba(0,0,0,.18)] pt-5">
-            {NAV_MEHR.map((item) => (
-              <NavLink
-                key={item.label}
-                to={item.to}
-                onClick={() => setMenuOpen(false)}
-                className="whitespace-nowrap text-[0.7rem] uppercase tracking-[0.3em] text-[#000000]"
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </div>
-          <button
-            type="button"
+          {/* Eine Haarlinie trennt den festen Dreiklang vom Rest. Mehr Gliederung gibt es nicht. */}
+          <span aria-hidden="true" className="block border-t border-[rgba(0,0,0,.18)]" />
+          {NAV_MEHR.map((item) => (
+            <MenueZeile
+              key={item.label}
+              to={item.to}
+              Ikone={item.Ikone}
+              onClick={() => setMenuOpen(false)}
+            >
+              {item.label}
+            </MenueZeile>
+          ))}
+          <MenueZeile
+            Ikone={IkoneFragPawn}
             onClick={() => { setMenuOpen(false); setChatOpen(true); }}
-            className="mt-6 text-left font-serif italic text-[1.4rem] leading-tight text-[#000000]/80"
-            style={{ fontWeight: 500 }}
           >
             {t("nav.frag")} →
-          </button>
+          </MenueZeile>
         </nav>
         <div className="space-y-2 border-t border-[rgba(0,0,0,.18)] px-8 py-6">
           {user ? (
@@ -312,6 +334,60 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
   );
 }
 
+
+/**
+ * Eine Zeile des aufgeklappten Menüs (Teil T).
+ *
+ * Alle Zeilen sind gleich gebaut: Zeichen links in einer Spalte fester Breite,
+ * dann die Beschriftung. Weil die Spalte immer 22 px breit ist — unabhängig
+ * davon, wie breit das einzelne Zeichen tatsächlich zeichnet — beginnen alle
+ * Beschriftungen auf derselben Fluchtlinie.
+ *
+ * Der aktive Punkt ist ganz schwarz, die übrigen leicht zurückgenommen. Kein
+ * Kasten, kein Balken: nur die Farbe unterscheidet. Zeichen und Schrift teilen
+ * sich dieselbe Farbe (`currentColor`), also dunkeln sie beim Überfahren
+ * gemeinsam nach.
+ *
+ * Ohne `to` wird daraus ein Knopf — für „Frag PAWN", das keine Seite ist.
+ */
+function MenueZeile({
+  to, end, Ikone, onClick, children,
+}: {
+  to?: string;
+  end?: boolean;
+  Ikone: (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
+  onClick?: () => void;
+  children: React.ReactNode;
+}) {
+  const zeile = "flex min-h-[44px] w-full items-center gap-4 text-left font-serif text-[1.15rem] leading-tight transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current sm:text-[1.3rem]";
+  const inhalt = (
+    <>
+      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
+        <Ikone className="h-[22px] w-[22px]" aria-hidden="true" />
+      </span>
+      <span className="whitespace-nowrap">{children}</span>
+    </>
+  );
+
+  if (!to) {
+    return (
+      <button type="button" onClick={onClick} className={`${zeile} text-[#000000]/55 hover:text-[#000000]`} style={{ fontWeight: 500 }}>
+        {inhalt}
+      </button>
+    );
+  }
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onClick}
+      className={({ isActive }) => `${zeile} ${isActive ? "text-[#000000]" : "text-[#000000]/55 hover:text-[#000000]"}`}
+      style={{ fontWeight: 500 }}
+    >
+      {inhalt}
+    </NavLink>
+  );
+}
 
 function MenuItem({ to, onClick, children }: { to: string; onClick?: () => void; children: React.ReactNode }) {
   return (
