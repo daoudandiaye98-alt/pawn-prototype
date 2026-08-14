@@ -34,6 +34,13 @@ import {
   zielMass,
   ablageOrt,
 } from "./rochadeBild.ts";
+import {
+  buendeln,
+  deutungLesen,
+  nutzerPrompt,
+  ohneGestaltung,
+  systemPrompt,
+} from "./rochadeDeutung.ts";
 
 /** Liest eine Beispieldatei — funktioniert unter Deno wie unter Node. */
 async function lies(datei: string): Promise<string> {
@@ -143,7 +150,84 @@ export async function trockenlauf(): Promise<{ befunde: Befund[]; fehler: string
   /* --- 7. Die Bildstrecke (Schritt 4) ---------------------------------- */
   await bildstrecke(pruef);
 
+  /* --- 8. Die Deutung (Schritt 5) -------------------------------------- */
+  deutung(pruef, shopify.kandidaten);
+
   return { befunde, fehler };
+}
+
+/**
+ * Die Deutung wird gegen eine erfundene Modellantwort geprüft — genau die
+ * Fälle, in denen ein Modell danebenliegt: erfundene Maße, unbekannte Felder,
+ * fremde Schlüssel, eine Welt, die es nicht gibt, und CSS im Text.
+ */
+function deutung(pruef: (name: string, ok: boolean, zusatz?: string) => void, kandidaten: KandidatRoh[]): void {
+  const zaehl = (n: number) => Array.from({ length: n }, (_, i) => i);
+  pruef("Deutung: 25 Werke werden 13 + 12, nicht 20 + 5",
+    JSON.stringify(buendeln(zaehl(25)).map((b) => b.length)) === "[13,12]",
+    JSON.stringify(buendeln(zaehl(25)).map((b) => b.length)));
+  pruef("Deutung: 8 Werke bleiben ein Bündel", buendeln(zaehl(8)).length === 1);
+  pruef("Deutung: 40 Werke werden zwei volle Bündel",
+    JSON.stringify(buendeln(zaehl(40)).map((b) => b.length)) === "[20,20]");
+  pruef("Deutung: nichts rein, nichts raus", buendeln([]).length === 0);
+
+  pruef("Deutung: Farbwerte werden entfernt",
+    ohneGestaltung("Steinzeug #ff8800 gedreht") === "Steinzeug gedreht",
+    JSON.stringify(ohneGestaltung("Steinzeug #ff8800 gedreht")));
+  pruef("Deutung: Schriftangaben werden entfernt",
+    !ohneGestaltung("Vase; font-family: Helvetica; schlicht").includes("Helvetica"));
+  pruef("Deutung: rgb() wird entfernt",
+    !ohneGestaltung("Ton in rgb(20, 20, 20) gebrannt").includes("rgb("));
+
+  pruef("Deutung: Systemtext nennt alle drei Welten und verbietet das Erfinden",
+    systemPrompt().includes("Mode") && systemPrompt().includes("Interior") &&
+    systemPrompt().includes("Kunst") && systemPrompt().includes("erfindest nichts"));
+  const auftrag = nutzerPrompt(kandidaten.slice(0, 2), { haus_name: "Haus Beispiel" });
+  pruef("Deutung: der Auftrag enthält nur Quelldaten, keine Bilder",
+    auftrag.includes("Haus Beispiel") && !auftrag.includes("http"), auftrag.slice(0, 40));
+
+  // Eine Antwort, in der bewusst fast alles falsch ist.
+  const erster = kandidaten[0];
+  const schluessel = erster.quell_id || erster.quell_url || erster.titel;
+  const antwort = JSON.stringify({
+    werke: [
+      {
+        schluessel,
+        welt: "Kunst",
+        angebotstyp: "original",
+        welt_felder: {
+          technik: "Steinzeug",           // steht in der Quelle → bleibt
+          masse: "42 x 17 cm",            // steht NICHT in der Quelle → raus
+          holzart: "Eiche",               // Feld gibt es bei Kunst nicht → raus
+          jahr: 1998,                     // kein Text → raus
+        },
+        beschreibung: "Steinzeug, gedreht. #a1b2c3",
+        wort_dna: ["ruhig", "gedreht", 42],
+      },
+      { schluessel: "fremder-schluessel", welt: "Mode", welt_felder: {} },
+      { schluessel, welt: "Schmuck" },
+    ],
+    ueber_text: "Ein kleines Atelier.",
+  });
+  const gelesen = deutungLesen(antwort, kandidaten.slice(0, 1));
+  const d = gelesen.deutungen[0];
+  pruef("Deutung: fremder Schlüssel wird nicht übernommen", gelesen.deutungen.length === 2,
+    `${gelesen.deutungen.length}`);
+  pruef("Deutung: belegtes Feld bleibt", d?.welt_felder.technik === "Steinzeug");
+  pruef("Deutung: erfundenes Maß fällt durch", d?.welt_felder.masse === undefined);
+  pruef("Deutung: unbekanntes Feld fällt durch", d?.welt_felder.holzart === undefined);
+  pruef("Deutung: Zahl statt Text fällt durch", d?.welt_felder.jahr === undefined);
+  pruef("Deutung: das Verworfene wird benannt, nicht verschwiegen",
+    (d?.verworfen.length ?? 0) >= 3, JSON.stringify(d?.verworfen));
+  pruef("Deutung: Farbwert aus der Beschreibung entfernt",
+    !!d && !d.beschreibung?.includes("#a1b2c3"), d?.beschreibung ?? "");
+  pruef("Deutung: Nicht-Text in der Wort-DNA fällt weg",
+    JSON.stringify(d?.wort_dna) === JSON.stringify(["ruhig", "gedreht"]), JSON.stringify(d?.wort_dna));
+  pruef("Deutung: erfundene Welt wird verworfen",
+    gelesen.deutungen[1]?.welt === null && (gelesen.deutungen[1]?.verworfen.length ?? 0) > 0);
+  pruef("Deutung: Über-Text kommt durch", gelesen.ueber_text === "Ein kleines Atelier.");
+  pruef("Deutung: unlesbare Antwort bricht nicht, sie sagt es",
+    deutungLesen("kein JSON", kandidaten).fehler !== null);
 }
 
 /**

@@ -445,11 +445,17 @@ export function bilderAusHtml(html: string, basis: string, maximal = 12): string
  * Gleicher Schlüssel = gleiches Werk. Beim zweiten Lauf derselben Quelle darf
  * nichts doppelt entstehen — deshalb hängt alles an quell_id, nicht am Titel.
  */
+/** Der Dubletten-Schlüssel eines Kandidaten. Eine Stelle, damit Entdopplung,
+ * Datenbank-Zeile und Deutung denselben Schlüssel meinen. */
+export function schluesselVon(k: KandidatRoh): string {
+  return k.quell_id || k.quell_url || k.titel;
+}
+
 export function entdopple(kandidaten: KandidatRoh[]): KandidatRoh[] {
   const gesehen = new Set<string>();
   const raus: KandidatRoh[] = [];
   for (const k of kandidaten) {
-    const schluessel = k.quell_id || k.quell_url || k.titel;
+    const schluessel = schluesselVon(k);
     if (gesehen.has(schluessel)) continue;
     gesehen.add(schluessel);
     raus.push(k);

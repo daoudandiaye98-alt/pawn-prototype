@@ -249,6 +249,7 @@ export default function StudioProducts() {
       <FlaechenTabs tabs={[
         { label: t("studio.tabs.werke"), to: "/studio/werke" },
         { label: t("studio.tabs.bilder"), to: "/studio/werke/bilder" },
+        { label: "Rochade", to: "/studio/werke/rochade" },
       ]} />
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{total} {total === 1 ? t("studio.products.pieceSingular") : t("studio.products.piecePlural")} · {t("studio.products.pageInfo", { page: page + 1, total: totalPages })}</p>
@@ -263,9 +264,15 @@ export default function StudioProducts() {
           title={t("studio.products.emptyTitle")}
           description={t("studio.products.emptyBody")}
           action={
-            <Link to="/studio/produkte/neu" className="inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
-              <Plus className="h-3 w-3" /> {t("studio.products.firstPieceCta")}
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link to="/studio/produkte/neu" className="inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
+                <Plus className="h-3 w-3" /> {t("studio.products.firstPieceCta")}
+              </Link>
+              {/* Wer schon eine Seite hat, soll sie nicht abtippen müssen. */}
+              <Link to="/studio/werke/rochade" className="inline-flex items-center gap-2 border border-border px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:border-foreground">
+                <Link2 className="h-3 w-3" /> Ich habe schon eine Seite
+              </Link>
+            </div>
           }
         />
       ) : (

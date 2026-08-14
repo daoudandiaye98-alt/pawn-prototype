@@ -65,6 +65,7 @@ import StudioBeweis from "./pages/studio/StudioBeweis.tsx";
 import StudioDNA from "./pages/studio/StudioDNA.tsx";
 import StudioPostfach from "./pages/studio/StudioPostfach.tsx";
 import StudioGeschaeft from "./pages/studio/StudioGeschaeft.tsx";
+import StudioRochade from "./pages/studio/StudioRochade.tsx";
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
@@ -210,6 +211,7 @@ const App = () => (
                 <Route path="/studio/werke" element={<RoleGate role="designer"><StudioProducts /></RoleGate>} />
                 <Route path="/studio/werke/neu" element={<RoleGate role="designer"><StudioStueckNeu /></RoleGate>} />
                 <Route path="/studio/werke/bilder" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
+                <Route path="/studio/werke/rochade" element={<RoleGate role="designer"><StudioRochade /></RoleGate>} />
                 <Route path="/studio/doppelseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
                 <Route path="/studio/doppelseite/stil" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/clips" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
