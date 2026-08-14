@@ -154,12 +154,15 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     <CopilotCtx.Provider value={ctx}>
       {children}
       {isOpen && (
-        <>
+        /* Teil P — der Copilot hängt auf App-Ebene, also außerhalb der
+           AdminShell-Wurzel. Der display:contents-Umschlag gibt ihm dieselbe
+           Abendlicht-Übersetzung, ohne eine eigene Bühne zu malen. */
+        <div className="abendlicht" style={{ display: "contents" }}>
           <div onClick={ctx.close} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" />
-          <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border bg-white text-foreground shadow-hard">
+          <aside role="dialog" aria-modal="true" className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border bg-white text-foreground shadow-hard">
             <header className="flex h-16 items-center justify-between border-b border-border px-6">
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-white">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground">
                   <Sparkles className="h-3.5 w-3.5" />
                 </span>
                 <div>
@@ -241,12 +244,12 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
                 placeholder={isAdmin ? t("copilotDrawer.placeholderAdmin") : t("copilotDrawer.placeholderUser")}
                 className="flex-1 border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent" />
               <button onClick={() => send()} disabled={busy || !input.trim()}
-                className="flex h-10 w-10 items-center justify-center bg-foreground text-white disabled:opacity-40">
+                className="flex h-10 w-10 items-center justify-center bg-foreground disabled:opacity-40">
                 <Send className="h-4 w-4" />
               </button>
             </div>
           </aside>
-        </>
+        </div>
       )}
     </CopilotCtx.Provider>
   );
