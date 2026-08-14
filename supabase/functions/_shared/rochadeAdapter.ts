@@ -70,6 +70,10 @@ export function htmlZuText(html: string | null | undefined): string | null {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/[ \t]+/g, " ")
+    // Inline-Tags (<b>, <em> …) hinterlassen sonst ein Leerzeichen vor dem
+    // Satzzeichen: "gedreht , 24 cm". Vom Trockenlauf gefunden.
+    .replace(/[ \t]+([,.;:!?])/g, "$1")
+    .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   return text || null;

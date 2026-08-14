@@ -25,13 +25,33 @@ export const GRENZEN = {
 
 export type ZielFehler =
   | "kein_https"
+  | "falscher_port"
   | "private_adresse"
   | "unerlaubter_host"
+  | "namen_nicht_aufloesbar"
   | "zu_viele_weiterleitungen"
   | "zu_gross"
   | "falscher_typ"
   | "robots_verbietet"
   | "nicht_erreichbar";
+
+/**
+ * Warme Sätze für die Oberfläche. Eine Störung ist nie ein Fehlercode für die
+ * Designerin, sondern ein Satz mit Ausweg.
+ */
+export const FEHLER_SATZ: Record<ZielFehler, string> = {
+  kein_https: "Diese Adresse ist nicht gesichert (kein https). Mit https:// davor versuche ich es gern noch einmal.",
+  falscher_port: "Diese Adresse zeigt auf einen ungewöhnlichen Anschluss. Ich hole nur von normalen Webadressen.",
+  private_adresse: "Diese Adresse zeigt in ein internes Netz, nicht ins offene Web — da gehe ich nicht hin.",
+  unerlaubter_host: "Diese Adresse kann ich nicht aufrufen. Prüf sie einmal, oder nimm den Weg über Screenshots.",
+  namen_nicht_aufloesbar:
+    "Ich konnte nicht sicher feststellen, wohin diese Adresse zeigt — deshalb lasse ich sie lieber stehen. Versuch es gleich noch einmal oder nimm den Weg über Screenshots.",
+  zu_viele_weiterleitungen: "Diese Adresse leitet immer weiter. Gib mir die Zieladresse direkt, dann klappt es.",
+  zu_gross: "Diese Datei ist größer, als ich am Stück holen kann. Sie überspringe ich und mache weiter.",
+  falscher_typ: "Dahinter lag nicht das, was ich erwartet habe. Ich mache mit dem Rest weiter.",
+  robots_verbietet: "Diese Seite bittet Maschinen ausdrücklich, sie nicht zu lesen. Das respektiere ich — nimm den Weg über Screenshots.",
+  nicht_erreichbar: "Die Seite hat gerade nicht geantwortet. Ich versuche es später noch einmal.",
+};
 
 export interface ZielPruefung {
   ok: boolean;
@@ -110,6 +130,68 @@ function istIpLiteral(host: string): boolean {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":");
 }
 
+/* ------------------------------------------------------ Namensauflösung */
+
+/**
+ * Zwei DoH-Anbieter. Der erste, der antwortet, entscheidet — beide werden
+ * gegen dieselbe Sperrliste geprüft. Diese Adressen gehen bewusst NICHT durch
+ * pruefeZiel (das wäre eine Endlosschleife); sie sind fest verdrahtet.
+ */
+const DOH_ANBIETER = [
+  (host: string, typ: string) => `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=${typ}`,
+  (host: string, typ: string) => `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=${typ}`,
+];
+
+/** DNS-Antworttypen, die eine Adresse tragen. */
+const A = 1, AAAA = 28;
+
+async function ueberDoh(host: string): Promise<string[] | null> {
+  for (const bau of DOH_ANBIETER) {
+    const adressen: string[] = [];
+    let geantwortet = false;
+    for (const typ of ["A", "AAAA"]) {
+      try {
+        const res = await fetch(bau(host, typ), {
+          headers: { Accept: "application/dns-json" },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) continue;
+        const daten = await res.json() as { Status?: number; Answer?: { type?: number; data?: string }[] };
+        geantwortet = true;
+        // Status 3 = NXDOMAIN: der Name existiert nicht. Das ist eine gültige Antwort.
+        if (daten.Status === 3) return [];
+        for (const a of daten.Answer ?? []) {
+          if ((a.type === A || a.type === AAAA) && typeof a.data === "string") adressen.push(a.data);
+        }
+      } catch { /* nächster Typ, dann nächster Anbieter */ }
+    }
+    if (geantwortet) return adressen;
+  }
+  return null; // kein Anbieter erreichbar
+}
+
+/**
+ * Löst einen Namen auf und gibt ALLE gefundenen Adressen zurück.
+ * `null` heißt: konnte nicht aufgelöst werden — der Aufrufer bricht dann ab.
+ * Deno.resolveDns wird bevorzugt, DoH ist der Rückfall.
+ */
+export async function aufloesen(host: string): Promise<string[] | null> {
+  const resolver = (globalThis as { Deno?: { resolveDns?: (h: string, t: string) => Promise<string[]> } }).Deno?.resolveDns;
+  if (typeof resolver === "function") {
+    const adressen: string[] = [];
+    let ging = false;
+    for (const typ of ["A", "AAAA"]) {
+      try { adressen.push(...(await resolver(host, typ))); ging = true; }
+      catch (e) {
+        // "NotFound" heißt: dieser Typ fehlt — kein Grund zur Sorge.
+        if ((e as Error)?.name === "NotFound") ging = true;
+      }
+    }
+    if (ging) return adressen;
+  }
+  return await ueberDoh(host);
+}
+
 /**
  * Prüft eine einzelne URL, bevor sie abgerufen wird. Wird bei Weiterleitungen
  * für JEDES Ziel erneut aufgerufen — genau da liegt die Lücke, die man sonst
@@ -127,6 +209,12 @@ export async function pruefeZiel(rohUrl: string): Promise<ZielPruefung> {
     return { ok: false, grund: "kein_https", detail: url.protocol };
   }
 
+  // Nur der Standard-Anschluss. Ein abweichender Port ist im offenen Web die
+  // Ausnahme und im Angriffsfall die Regel (interne Dienste hören selten auf 443).
+  if (url.port !== "" && url.port !== "443") {
+    return { ok: false, grund: "falscher_port", detail: url.port };
+  }
+
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
   if (GESPERRTE_HOSTS.has(host) || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) {
     return { ok: false, grund: "unerlaubter_host", detail: host };
@@ -137,23 +225,18 @@ export async function pruefeZiel(rohUrl: string): Promise<ZielPruefung> {
     return { ok: true };
   }
 
-  // Namen auflösen, wo die Laufzeit es erlaubt. In manchen Edge-Umgebungen ist
-  // Deno.resolveDns gesperrt — dann greifen die Prüfungen oben plus die erneute
-  // Prüfung nach jeder Weiterleitung. Das ist die ehrliche Grenze dieses Schutzes.
-  const resolver = (globalThis as { Deno?: { resolveDns?: (h: string, t: string) => Promise<string[]> } }).Deno?.resolveDns;
-  if (typeof resolver === "function") {
-    try {
-      const adressen: string[] = [];
-      for (const typ of ["A", "AAAA"]) {
-        try { adressen.push(...(await resolver(host, typ))); } catch { /* Typ fehlt, kein Fehler */ }
-      }
-      if (adressen.length === 0) return { ok: false, grund: "nicht_erreichbar", detail: host };
-      const schlimm = adressen.find((a) => istPrivateAdresse(a));
-      if (schlimm) return { ok: false, grund: "private_adresse", detail: `${host} → ${schlimm}` };
-    } catch {
-      return { ok: false, grund: "nicht_erreichbar", detail: host };
-    }
+  // Namen auflösen — bevorzugt über die Laufzeit, sonst über DNS-over-HTTPS.
+  // FAIL CLOSED: lässt sich der Name nicht auflösen, wird NICHT geladen. Lieber
+  // ein warmer Satz als ein Abruf, dessen Ziel wir nicht kennen.
+  const adressen = await aufloesen(host);
+  if (adressen === null) {
+    return { ok: false, grund: "namen_nicht_aufloesbar", detail: host };
   }
+  if (adressen.length === 0) {
+    return { ok: false, grund: "nicht_erreichbar", detail: `${host} existiert nicht` };
+  }
+  const schlimm = adressen.find((a) => istPrivateAdresse(a));
+  if (schlimm) return { ok: false, grund: "private_adresse", detail: `${host} → ${schlimm}` };
 
   return { ok: true };
 }
@@ -248,6 +331,16 @@ const ERLAUBTE_TYPEN: Record<AbrufOptionen["art"], RegExp> = {
  * Der einzige erlaubte Weg nach draußen. Folgt Weiterleitungen von Hand, damit
  * jedes Zwischenziel erneut geprüft wird, und bricht ab, sobald das Größenlimit
  * gerissen wird — statt erst die ganze Antwort in den Speicher zu ziehen.
+ *
+ * Zwei Regeln, die den Schaden auch im Restrisiko-Fall klein halten:
+ *
+ * 1. NIEMALS Anmelde- oder Sitzungsdaten mitschicken. Diese Funktion nimmt
+ *    bewusst keine Header vom Aufrufer entgegen — sie setzt nur User-Agent und
+ *    Accept. Cookies werden weder gesendet noch aus Antworten übernommen
+ *    (`credentials: "omit"`), auch nicht über Weiterleitungen hinweg.
+ * 2. Das Ergebnis ist ROHMATERIAL für den Arbeiter, nie eine Antwort an den
+ *    Browser. Zum Client gehen ausschließlich die extrahierten Felder
+ *    (Titel, Preis, Bild-Adresse …) — nie `text` oder `bytes` von hier.
  */
 export async function sicherAbrufen(rohUrl: string, opt: AbrufOptionen): Promise<AbrufErgebnis> {
   const limit = opt.art === "bild" ? GRENZEN.bild_bytes : opt.art === "json" ? GRENZEN.json_bytes : GRENZEN.html_bytes;
@@ -268,7 +361,9 @@ export async function sicherAbrufen(rohUrl: string, opt: AbrufOptionen): Promise
     try {
       res = await fetch(aktuell, {
         redirect: "manual",
+        // Nur diese zwei Header. Keine Authorization, kein Cookie, nichts vom Aufrufer.
         headers: { "User-Agent": USER_AGENT, Accept: opt.art === "json" ? "application/json" : "*/*" },
+        credentials: "omit",
         signal: AbortSignal.timeout(GRENZEN.timeout_ms),
       });
     } catch (e) {

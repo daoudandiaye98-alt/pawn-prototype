@@ -1,0 +1,9 @@
+{"items":[
+ {"id":"a1","urlId":"kette-messing","fullUrl":"/shop/kette-messing","title":"Kette Messing","body":"<p>Handgeschmiedet</p>",
+  "assetUrl":"https://static1.squarespace.com/kette.jpg",
+  "structuredContent":{"variants":[{"optionValues":"45 cm","price":{"value":16500},"unlimited":true}]},
+  "categories":["Schmuck"]},
+ {"id":"a2","urlId":"ring","fullUrl":"/shop/ring","title":"Ring Silber","excerpt":"Schlicht",
+  "assetUrl":"https://static1.squarespace.com/ring.jpg",
+  "structuredContent":{"variants":[{"optionValues":"54","price":{"value":9000},"qtyInStock":0}]},"categories":["Schmuck"]}
+]}

@@ -5,7 +5,7 @@
 // damit genau das hier möglich ist: die Kaskade und der SSRF-Schutz sind prüfbar,
 // nicht nur behauptet.
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { istPrivateAdresse, pruefeZiel } from "./rochadeSicherheit.ts";
+import { aufloesen, istPrivateAdresse, pruefeZiel } from "./rochadeSicherheit.ts";
 import {
   entdopple,
   erkennePlattform,
@@ -53,6 +53,33 @@ Deno.test("SSRF: pruefeZiel lehnt die klassischen Angriffsziele ab", async () =>
   }
 });
 
+Deno.test("SSRF: nur Port 443", async () => {
+  assertEquals((await pruefeZiel("https://example.com:8080/")).grund, "falscher_port");
+  assertEquals((await pruefeZiel("https://example.com:443/")).ok, true);
+  assertEquals((await pruefeZiel("https://example.com/")).ok, true);
+});
+
+// Diese beiden Dienste sind echte, öffentlich auflösbare Domains, die absichtlich
+// auf private Adressen zeigen — der klassische Weg, eine reine Namensprüfung zu
+// umgehen. Sie sind hier der Beleg, dass wirklich aufgelöst wird.
+Deno.test("SSRF: Name mit privatem A-Record wird geblockt (Netz nötig)", async () => {
+  for (const url of ["https://localtest.me/", "https://127-0-0-1.nip.io/", "https://192-168-1-1.nip.io/"]) {
+    const r = await pruefeZiel(url);
+    assertEquals(r.ok, false, `${url} hätte geblockt werden müssen`);
+    assertEquals(r.grund, "private_adresse", url);
+  }
+});
+
+Deno.test("SSRF: nicht auflösbarer Name lädt nicht (fail closed)", async () => {
+  const r = await pruefeZiel("https://gibt-es-garantiert-nicht-xyz123abc.example/");
+  assertEquals(r.ok, false);
+});
+
+Deno.test("Auflösung: liefert Adressen für einen echten Namen (Netz nötig)", async () => {
+  const a = await aufloesen("example.com");
+  assertEquals(Array.isArray(a) && a.length > 0, true);
+});
+
 /* ------------------------------------------------------ Nichts erfinden */
 
 Deno.test("Preis: fehlende Angabe bleibt leer, wird nie zu 0", () => {
@@ -67,6 +94,15 @@ Deno.test("Preis: deutsche und englische Schreibweise", () => {
   assertEquals(preisZuCent("19,90"), 1990);
   assertEquals(preisZuCent("1.234,56"), 123456);
   assertEquals(preisZuCent("1,234.56"), 123456);
+});
+
+Deno.test("Text: Inline-Tags hinterlassen kein Leerzeichen vor dem Komma", () => {
+  // Vom Trockenlauf gefunden: "<b>gedreht</b>, 24 cm" wurde zu "gedreht , 24 cm".
+  const erg = shopifyLesen(
+    { products: [{ id: 1, handle: "x", title: "X", body_html: "<p>Steinzeug, <b>gedreht</b>, 24 cm hoch</p>", variants: [], images: [] }] },
+    "https://a.de/", 1,
+  );
+  assertEquals(erg.kandidaten[0].beschreibung_text, "Steinzeug, gedreht, 24 cm hoch");
 });
 
 /* --------------------------------------------------------------- Bilder */
