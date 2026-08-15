@@ -13,7 +13,7 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { Heart } from "lucide-react";
 import { EditorialImage } from "@/components/palace/EditorialImage";
-import { merkeAbflug, useAnkunft, werkSchluessel } from "@/hooks/useFlug";
+import { merkeAbflug, merkeHallenstand, useAnkunft, werkSchluessel } from "@/hooks/useFlug";
 import { useI18n } from "@/lib/i18n";
 
 export interface WerkKartenDaten {
@@ -51,7 +51,7 @@ export function WerkKarte({
     <Link
       to={`/product/${werk.slug}`}
       data-werk-id={schluessel}
-      onClick={() => merkeAbflug(schluessel, bildFeld.current)}
+      onClick={() => { merkeHallenstand(); merkeAbflug(schluessel, bildFeld.current); }}
       className="group block"
     >
       <div className="relative" ref={bildFeld}>

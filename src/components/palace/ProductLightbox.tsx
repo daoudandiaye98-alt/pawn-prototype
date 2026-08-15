@@ -3,6 +3,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import { X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { MediaImg } from "@/components/palace/MediaImg";
+import { useAnkunft } from "@/hooks/useFlug";
 
 /**
  * Teil J1 — Vollbild-Lightbox für Werkbilder: Pinch-Zoom, Doppeltipp-Zoom, Swipe zwischen
@@ -22,10 +23,16 @@ interface ProductLightboxProps {
   open: boolean;
   initialIndex: number;
   onClose: () => void;
+  /** Teil S: unter diesem Namen fliegt das Werkbild auf den Lichttisch. */
+  flugSchluessel?: string | null;
 }
 
-export function ProductLightbox({ images, alt, open, initialIndex, onClose }: ProductLightboxProps) {
+export function ProductLightbox({ images, alt, open, initialIndex, onClose, flugSchluessel }: ProductLightboxProps) {
   const { t } = useI18n();
+  /* Teil S — das Bild wächst aus der Werkseite hierher. Ziel ist das BILD,
+     nicht sein Kasten: bei `object-contain` sind das zwei Rechtecke. */
+  const ersteFlaeche = useRef<HTMLImageElement>(null);
+  useAnkunft(open ? flugSchluessel : null, ersteFlaeche);
   const zoomedRef = useRef(false);
   // Teil L2 — Barrierefreiheit: beim Öffnen wandert der Fokus auf den Schließen-Knopf,
   // damit Tastatur-Nutzer direkt im Dialog sind (Esc/Pfeile wirken sofort).
@@ -99,6 +106,7 @@ export function ProductLightbox({ images, alt, open, initialIndex, onClose }: Pr
               <ZoomableImage
                 src={src}
                 alt={alt}
+                bildRef={i === initialIndex ? ersteFlaeche : undefined}
                 active={i === index}
                 onZoomChange={(zoomed) => { if (i === index) zoomedRef.current = zoomed; }}
                 onSwipeDownClose={onClose}
@@ -130,12 +138,13 @@ export function ProductLightbox({ images, alt, open, initialIndex, onClose }: Pr
 interface ZoomableImageProps {
   src: string;
   alt: string;
+  bildRef?: React.Ref<HTMLImageElement>;
   active: boolean;
   onZoomChange: (zoomed: boolean) => void;
   onSwipeDownClose: () => void;
 }
 
-function ZoomableImage({ src, alt, active, onZoomChange, onSwipeDownClose }: ZoomableImageProps) {
+function ZoomableImage({ src, alt, bildRef, active, onZoomChange, onSwipeDownClose }: ZoomableImageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
@@ -232,6 +241,7 @@ function ZoomableImage({ src, alt, active, onZoomChange, onSwipeDownClose }: Zoo
       }}
     >
       <MediaImg
+        ref={bildRef}
         src={src}
         alt={alt}
         draggable={false}

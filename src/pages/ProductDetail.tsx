@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { EditorialImage } from "@/components/palace/EditorialImage";
-import { useAnkunft, werkSchluessel } from "@/hooks/useFlug";
+import { merkeAbflug, useAnkunft, werkSchluessel } from "@/hooks/useFlug";
 import { Reveal } from "@/components/palace/Reveal";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -315,6 +315,36 @@ const ProductDetail = () => {
   const flugSchluessel = dbProduct?.slug ? werkSchluessel(dbProduct.slug) : null;
   useAnkunft(flugSchluessel, heldMobil);
   useAnkunft(flugSchluessel, heldDesktop);
+  const lichttischSchluessel = dbProduct?.slug ? `lichttisch:${dbProduct.slug}` : null;
+
+  /* Teil S3 — der Rückweg. Beim Zurückgehen (Browser-Pfeil oder Wischgeste)
+     hält die Werkseite ihr Kopfbild durchgehend abflugbereit; die Kachel in
+     der Halle fängt es wieder auf. Beim Rollen wird die Messung nachgeführt,
+     höchstens einmal je Bild. Es fliegt die Fassung, die gerade sichtbar ist. */
+  useEffect(() => {
+    if (!flugSchluessel || lightboxIndex !== null) return;
+    let angemeldet = 0;
+    const bereit = () => {
+      angemeldet = 0;
+      const held = [heldMobil.current, heldDesktop.current]
+        .find((el) => el && el.getBoundingClientRect().width >= 1) ?? null;
+      merkeAbflug(flugSchluessel, held, true);
+    };
+    const spaeter = () => { if (!angemeldet) angemeldet = requestAnimationFrame(bereit); };
+    bereit();
+    window.addEventListener("scroll", spaeter, { passive: true });
+    window.addEventListener("resize", spaeter);
+    return () => {
+      if (angemeldet) cancelAnimationFrame(angemeldet);
+      window.removeEventListener("scroll", spaeter);
+      window.removeEventListener("resize", spaeter);
+    };
+  }, [flugSchluessel, lightboxIndex]);
+  /* Teil S4 — von hier wächst das Werk weiter auf den Lichttisch. */
+  const oeffneLichttisch = (von: HTMLElement | null, index = 0) => {
+    if (lichttischSchluessel && index === 0) merkeAbflug(lichttischSchluessel, von);
+    setLightboxIndex(index);
+  };
   // Für das Werkzertifikat: eine frisch signierte Adresse des Titelbilds.
   const zertifikatBild = useMediaUrl(heroImage ?? null);
 
@@ -471,7 +501,10 @@ const ProductDetail = () => {
       >
         <Heart className={cn("h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
       </Button>
-      <PawnBlinkButton onClick={() => setServiceSheetOpen((v) => !v)} ariaLabel={t("product.pawnButtonAria")} />
+      {/* Teil S4 — auf dem Lichttisch ist nur das Werk. Der Bauer tritt ab. */}
+      {lightboxIndex === null && (
+        <PawnBlinkButton onClick={() => setServiceSheetOpen((v) => !v)} ariaLabel={t("product.pawnButtonAria")} />
+      )}
     </>
   );
 
@@ -674,7 +707,7 @@ const ProductDetail = () => {
           >
             <button
               type="button"
-              onClick={() => setLightboxIndex(Math.max(0, allImages.indexOf(url)))}
+              onClick={() => oeffneLichttisch(null, Math.max(0, allImages.indexOf(url)))}
               aria-label={t("product.gallery.moreView", { name: product.name })}
               className="block w-full text-left"
             >
@@ -765,9 +798,9 @@ const ProductDetail = () => {
             {heroImage ? (
               <button
                 type="button"
-                onClick={() => setLightboxIndex(0)}
+                onClick={() => oeffneLichttisch(heldMobil.current)}
                 aria-label={t("product.lightbox.openAria")}
-                className="absolute inset-0 block h-full w-full"
+                className="group/held absolute inset-0 block h-full w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
               >
                 {/* Teil Q — formatfüllend statt eingepasst. Vorher stand hier ab md
                     `object-contain` auf schwarzem Grund: ein quadratisches Werkfoto in
@@ -810,9 +843,9 @@ const ProductDetail = () => {
           {heroImage ? (
             <button
               type="button"
-              onClick={() => setLightboxIndex(0)}
+              onClick={() => oeffneLichttisch(heldDesktop.current)}
               aria-label={t("product.lightbox.openAria")}
-              className="flex h-full w-full items-center justify-center"
+              className="group/held flex h-full w-full cursor-zoom-in items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
             >
               {/* Teil Q — dieselbe Korrektur auf der Doppelseite: festes 4:5, füllend
                   und mittig beschnitten. Vollständig sehen: Lightbox. */}
@@ -821,6 +854,11 @@ const ProductDetail = () => {
                 alt={imageAlt}
                 className="h-full w-full object-cover object-center"
               />
+              {/* Erscheint beim Darüberfahren — auf Touch gibt es kein Hover,
+                  dort führt der Tipp aufs Bild direkt zum Lichttisch. */}
+              <span className="pointer-events-none absolute bottom-6 right-6 border-[1.5px] border-white/70 px-3 py-1.5 text-[0.56rem] uppercase tracking-[0.28em] text-white opacity-0 transition-opacity duration-200 group-hover/held:opacity-100 group-focus-visible/held:opacity-100">
+                {t("product.lichttisch.hinweis")}
+              </span>
             </button>
           ) : (
             <span className="palace-eyebrow text-white/50">{t("product.gallery.noImage")}</span>
@@ -989,6 +1027,7 @@ const ProductDetail = () => {
       <ProductLightbox
         images={allImages}
         alt={imageAlt}
+        flugSchluessel={lichttischSchluessel}
         open={lightboxIndex !== null}
         initialIndex={lightboxIndex ?? 0}
         onClose={() => setLightboxIndex(null)}

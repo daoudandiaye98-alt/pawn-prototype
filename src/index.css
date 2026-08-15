@@ -256,6 +256,8 @@
     transition: opacity var(--palace-reveal-dur, .6s) var(--ease-pawn),
                 transform var(--palace-reveal-dur, .6s) var(--ease-pawn);
   }
+  /* Teil S3 — Kacheln der Halle kommen flacher herein als Fließtext: 18 px. */
+  .palace-reveal--kachel { transform: translateY(18px); }
   .palace-reveal.is-visible { opacity: 1; transform: none; }
 
   /* Grain removed */

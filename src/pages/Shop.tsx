@@ -344,7 +344,7 @@ const Shop = () => {
           {!loading && !error && (
             <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p, i) => (
-                <Reveal key={p.id} delay={Math.min(400, i * 40)}>
+                <Reveal key={p.id} className="palace-reveal--kachel" delay={i < 12 ? i * 65 : 0}>
                   {/* Teil S — dieselbe Werkkarte wie in "Deine Boutique" und auf
                       den Welt-Seiten. Nur die Auswahl unterscheidet sich. */}
                   <WerkKarte

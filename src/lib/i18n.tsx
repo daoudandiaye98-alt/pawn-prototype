@@ -2178,6 +2178,7 @@ const de = {
   "product.werkstatt.link": "Zum Haus →",
 
   // Teil J1 — Artikelseiten-Pass: Lightbox, Preise, Kaufweg, Ontologie-Labels, vollständig zweisprachig.
+  "product.lichttisch.hinweis": "Größer ansehen",
   "product.lightbox.close": "Schließen",
   "product.lightbox.thumbAria": "Bild {n} anzeigen",
   "product.lightbox.openAria": "Bild vergrößern",
@@ -4609,6 +4610,7 @@ const en: Record<keyof typeof de, string> = {
   "product.werkstatt.link": "To the house →",
 
   // Teil J1 — article page pass: lightbox, prices, buy path, ontology labels, fully bilingual.
+  "product.lichttisch.hinweis": "View larger",
   "product.lightbox.close": "Close",
   "product.lightbox.thumbAria": "Show image {n}",
   "product.lightbox.openAria": "Enlarge image",

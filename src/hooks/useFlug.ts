@@ -37,11 +37,42 @@ interface Abflug {
   /** Natürliche Bildmaße; 0 heißt „unbekannt" (dann ohne Gegenskalierung). */
   natur: { breite: number; hoehe: number };
   zeit: number;
+  /** Läuft nicht ab — für Flächen, die dauerhaft „abflugbereit" stehen. */
+  dauerhaft: boolean;
 }
 
 /** Nach dieser Frist ist ein gemerkter Abflug alt und wird verworfen. */
 const FRIST_MS = 1600;
 let abflug: Abflug | null = null;
+
+/**
+ * Wo die Halle stand, als man sie verlassen hat.
+ *
+ * Beim Zurückkommen soll sie exakt so aussehen wie vorher — nicht ungefähr.
+ * `scrollIntoView` würde die Kachel mittig stellen und damit die ganze Reihe
+ * verschieben; deshalb merken wir die Höhe selbst.
+ */
+let hallenStand: { pfad: string; y: number } | null = null;
+
+/** Vor dem Verlassen der Halle aufrufen. */
+export function merkeHallenstand(): void {
+  if (typeof window === "undefined") return;
+  hallenStand = { pfad: window.location.pathname, y: window.scrollY };
+}
+
+/** Beim Zurückkommen: dieselbe Höhe wiederherstellen. Gibt true, wenn passiert. */
+function stelleHalleWiederHer(): boolean {
+  if (!hallenStand || typeof window === "undefined") return false;
+  if (hallenStand.pfad !== window.location.pathname) return false;
+  const y = hallenStand.y;
+  window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+  // Der Browser stellt beim Zurückgehen selbst noch eine Höhe her, kurz nach
+  // uns — gemessen 6 px daneben. Ein zweiter Griff im nächsten Bild behält das
+  // letzte Wort, ohne dass jemand etwas davon sieht.
+  requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior }));
+  hallenStand = null;
+  return true;
+}
 
 /** Der Name, unter dem Kachel und Werkseite dasselbe Werk meinen. */
 export const werkSchluessel = (slug: string) => `werk:${slug}`;
@@ -99,9 +130,20 @@ function deckmass(feld: Feld, natur: { breite: number; hoehe: number }) {
     : { breite: feld.hoehe * rBild, hoehe: feld.hoehe };
 }
 
-/** Merkt sich das Startbild. Der nächste passende Ankunftsort fliegt es ein. */
-export function merkeAbflug(schluessel: string, el: HTMLElement | null): void {
-  if (!el || ruhigeBewegung()) { abflug = null; return; }
+/**
+ * Merkt sich das Startbild. Der nächste passende Ankunftsort fliegt es ein.
+ *
+ * `dauerhaft` für Flächen, die die ganze Zeit abflugbereit stehen — etwa das
+ * Kopfbild der Werkseite, das jederzeit in seine Kachel zurückfliegen können
+ * muss. Der Rückweg lässt sich nämlich NICHT beim Zurückgehen abfangen: React
+ * Router hängt die Werkseite im `popstate` synchron ab, ein dort registrierter
+ * Hörer wird entfernt, bevor er an die Reihe kommt (im Browser gemessen).
+ */
+export function merkeAbflug(schluessel: string, el: HTMLElement | null, dauerhaft = false): void {
+  // Auch bei „Bewegung reduzieren" wird gemerkt. Geflogen wird dann nicht —
+  // aber die Ankunft muss ihr Ziel trotzdem in den sichtbaren Bereich holen,
+  // sonst landet man auf der Werkseite unterhalb des Kopfbilds (gemessen: −696 px).
+  if (!el) { abflug = null; return; }
   const img = bildIn(el);
   const quelle = img?.currentSrc || img?.src || "";
   if (!quelle) { abflug = null; return; }
@@ -111,6 +153,7 @@ export function merkeAbflug(schluessel: string, el: HTMLElement | null): void {
     quelle,
     natur: { breite: img?.naturalWidth ?? 0, hoehe: img?.naturalHeight ?? 0 },
     zeit: performance.now(),
+    dauerhaft,
   };
 }
 
@@ -127,7 +170,9 @@ export function fliege(
   natur: { breite: number; hoehe: number } = { breite: 0, hoehe: 0 },
 ): Promise<void> {
   if (von.breite < 1 || von.hoehe < 1) return Promise.resolve();
-  sichtbarMachen(zuEl);
+  // Kommt man in die Halle zurück, zählt ihre gemerkte Höhe — sonst holt der
+  // Flug sein Ziel selbst in den sichtbaren Bereich.
+  if (!stelleHalleWiederHer()) sichtbarMachen(zuEl);
   if (ruhigeBewegung()) return Promise.resolve();
   const zu = messe(zuEl);
   if (zu.breite < 1 || zu.hoehe < 1) return Promise.resolve();
@@ -193,7 +238,7 @@ export function useAnkunft(schluessel: string | null | undefined, ref: RefObject
     const el = ref.current;
     if (!schluessel || !el || !abflug) return;
     if (abflug.schluessel !== schluessel) return;
-    if (performance.now() - abflug.zeit > FRIST_MS) { abflug = null; return; }
+    if (!abflug.dauerhaft && performance.now() - abflug.zeit > FRIST_MS) { abflug = null; return; }
     // Mobil- und Desktop-Fassung der Werkseite stehen beide im Baum, immer eine
     // davon per CSS ausgeblendet. Die ausgeblendete hat kein Rechteck — sie darf
     // den Abflug NICHT aufbrauchen, sonst verschluckt sie den Flug der sichtbaren.
