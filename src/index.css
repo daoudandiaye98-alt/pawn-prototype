@@ -258,6 +258,17 @@
   }
   /* Teil S3 — Kacheln der Halle kommen flacher herein als Fließtext: 18 px. */
   .palace-reveal--kachel { transform: translateY(18px); }
+
+  /* Teil S5 — beim Wechsel zwischen zwei Stücken bewegt sich nur das Bild:
+     das alte 16 px hoch hinaus, das neue 16 px von unten herein. Kein
+     Seitenwechsel, kein Sprung nach oben. Nur transform und opacity. */
+  @keyframes werk-raus { from { transform: none; opacity: 1; } to { transform: translateY(-16px); opacity: 0; } }
+  @keyframes werk-rein { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .werk-raus { animation: werk-raus 260ms var(--k-aus, ease) both; }
+  .werk-rein { animation: werk-rein 380ms var(--k-aus, ease) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .werk-raus, .werk-rein { animation-duration: 120ms; }
+  }
   .palace-reveal.is-visible { opacity: 1; transform: none; }
 
   /* Grain removed */

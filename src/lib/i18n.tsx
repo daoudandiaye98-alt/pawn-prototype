@@ -2178,6 +2178,11 @@ const de = {
   "product.werkstatt.link": "Zum Haus →",
 
   // Teil J1 — Artikelseiten-Pass: Lightbox, Preise, Kaufweg, Ontologie-Labels, vollständig zweisprachig.
+  "product.wegweiser.voriges": "Voriges Stück",
+  "product.wegweiser.naechstes": "Nächstes Stück",
+  "spruch.halle": "Tipp mich an, wenn du nicht weiterweißt.",
+  "spruch.werkseite": "Tipp das Bild an, wenn du näher rangehen willst.",
+  "spruch.original": "Originale kannst du direkt beim Haus anfragen.",
   "product.lichttisch.hinweis": "Größer ansehen",
   "product.lightbox.close": "Schließen",
   "product.lightbox.thumbAria": "Bild {n} anzeigen",
@@ -4610,6 +4615,11 @@ const en: Record<keyof typeof de, string> = {
   "product.werkstatt.link": "To the house →",
 
   // Teil J1 — article page pass: lightbox, prices, buy path, ontology labels, fully bilingual.
+  "product.wegweiser.voriges": "Previous piece",
+  "product.wegweiser.naechstes": "Next piece",
+  "spruch.halle": "Tap me if you get stuck.",
+  "spruch.werkseite": "Tap the image to come closer.",
+  "spruch.original": "Originals can be requested straight from the house.",
   "product.lichttisch.hinweis": "View larger",
   "product.lightbox.close": "Close",
   "product.lightbox.thumbAria": "Show image {n}",
