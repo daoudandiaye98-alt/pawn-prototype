@@ -30,7 +30,11 @@ export function PawnBlinkButton({ onClick, ariaLabel }: { onClick: () => void; a
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="flex h-[46px] w-[46px] shrink-0 items-center justify-center border-[1.5px] border-black bg-black"
+      /* Teil T4 — dieser Knopf steht auf der Werkseite, also im Haus. Schwarz auf
+         schwarz war eine zweite Farbe, die das Haus nie gewählt hat; die Rückfallwerte
+         halten ihn überall sonst schwarz-weiß wie bisher. */
+      className="flex h-[46px] w-[46px] shrink-0 items-center justify-center border-[1.5px]"
+      style={{ borderColor: "var(--house-fg, #000)", background: "var(--house-fg, #000)", color: "var(--house-bg, #fff)" }}
     >
       <PawnFigurSvg invert eyeState={eyeState} className="h-[21px] w-[16px]" />
     </button>

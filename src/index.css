@@ -241,14 +241,27 @@
   .palace .palace-serif.italic,
   .palace .palace-serif em, .palace .palace-serif i { font-weight: 500 !important; }
 
+  /*
+    Teil T6 — DIE UNTERGRENZE FÜR VERSALIEN.
+
+    Vorher: 0.6rem mit 0.42em Sperrung. Auf dem Telefon sind das rund 9,6 px,
+    und die weite Sperrung zieht die Buchstaben so weit auseinander, dass das
+    Wort auseinanderfällt statt zu führen. Ab hier gilt: keine Versalien-Zeile
+    unter 0.68rem, und die Sperrung nimmt ab, je größer die Schrift wird —
+    bis 0.8rem 0.22em, darüber 0.14em (`.palace-eyebrow--gross`).
+
+    Das steht hier und nicht an vierzig Einzelstellen: wer eine Beschriftung
+    setzt, nimmt diese Klasse, nicht eine eigene Zahl.
+  */
   .palace .palace-eyebrow {
     font-family: Inter, system-ui, sans-serif;
-    font-size: 0.6rem;
-    letter-spacing: 0.42em;
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: #000;
     font-weight: 500;
   }
+  .palace .palace-eyebrow--gross { font-size: 0.95rem; letter-spacing: 0.14em; }
   .palace .uline {
     border-bottom: 1.5px solid currentColor;
     padding-bottom: 1px;
@@ -366,6 +379,32 @@
   .palace .house-theme .house-ink { color: var(--house-fg, #000); }
   .palace .house-theme .house-media { border-radius: var(--house-radius, 0px); overflow: hidden; }
   .palace .house-theme .house-gap-y { padding-top: var(--house-gap-y, 4rem); padding-bottom: var(--house-gap-y, 4rem); }
+  /*
+    Teil T3 — der Rahmen um das Werk atmet im Flächenrhythmus des Hauses.
+    Bis hierher steuerte `flaechenrhythmus` nur die Abstände zwischen den
+    Abschnitten weiter unten; der Aufmacher — die Fläche, die man zuerst sieht —
+    hatte gar keinen Rand. „Episch" war deshalb nirgends zu sehen, wo es zählt.
+    eng 2.5rem · ruhig 4.5rem · luftig 6.5rem · episch 9rem.
+  */
+  .palace .house-theme .house-rahmen { padding: min(var(--house-gap-y, 4.5rem), 7vw); }
+  @media (min-width: 1024px) {
+    /* Auf dem Telefon würde „episch" (9rem) beidseitig 288 px fressen — vom Werk
+       bliebe ein Briefmarkenrest. Der Rhythmus gilt dort gedeckelt, in voller
+       Größe erst auf der Doppelseite, wo die Fläche ihn trägt. */
+    .palace .house-theme .house-rahmen { padding: var(--house-gap-y, 4.5rem); }
+  }
+
+  /*
+    Teil T4 — die zwei Wege unter der Werkseite. Die Umkehrung beim Überfahren
+    bleibt Hausgesetz; sie tauscht ab jetzt Haus-Grund gegen Haus-Tinte statt
+    Weiß gegen Schwarz. Kein Inline-Stil, sonst könnte kein :hover mehr greifen.
+  */
+  .palace .house-theme .house-weg {
+    background: var(--house-bg);
+    color: var(--house-fg);
+    transition: background-color var(--dur-micro) var(--ease-pawn), color var(--dur-micro) var(--ease-pawn);
+  }
+  .palace .house-theme .house-weg:hover { background: var(--house-fg); color: var(--house-bg); }
 
   .palace .house-theme[data-textur="papier"] {
     background-image: repeating-linear-gradient(0deg, color-mix(in srgb, var(--house-fg,#000) 3%, transparent) 0px, transparent 1px, transparent 2px);

@@ -59,6 +59,49 @@ function budgetChips(t: TFn) {
   ];
 }
 
+/**
+ * Teil T2 — das natürliche Verhältnis eines Bildes (Breite ÷ Höhe).
+ *
+ * Dieselbe Rechnung wie `rBild` in `deckmass()` (src/hooks/useFlug.ts) — dort
+ * `natur.breite / natur.hoehe`, hier `naturalWidth / naturalHeight`. Eine
+ * Formel, zwei Orte, kein zweites Modell.
+ *
+ * 4:5 als Vorgabe: das ist das Verhältnis der Kachel in der Halle. Der Rahmen
+ * steht damit schon vor dem Laden so, wie das Werk ankommt.
+ */
+const VORGABE_VERHAELTNIS = 4 / 5;
+
+/** Liegt das Bild schon im Speicher des Browsers, steht das Maß sofort — ohne Warten. */
+function sofortMessen(src: string | null | undefined): number | null {
+  if (!src || typeof Image === "undefined") return null;
+  const probe = new Image();
+  probe.src = src;
+  return probe.complete && probe.naturalWidth && probe.naturalHeight
+    ? probe.naturalWidth / probe.naturalHeight
+    : null;
+}
+
+function useNatuerlichesVerhaeltnis(src: string | null | undefined): { verhaeltnis: number; bekannt: boolean } {
+  const [stand, setStand] = useState(() => {
+    const sofort = sofortMessen(src);
+    return { verhaeltnis: sofort ?? VORGABE_VERHAELTNIS, bekannt: sofort !== null };
+  });
+  useEffect(() => {
+    const sofort = sofortMessen(src);
+    setStand({ verhaeltnis: sofort ?? VORGABE_VERHAELTNIS, bekannt: sofort !== null });
+    if (!src || sofort !== null) return;
+    let verworfen = false;
+    const probe = new Image();
+    probe.onload = () => {
+      if (verworfen || !probe.naturalWidth || !probe.naturalHeight) return;
+      setStand({ verhaeltnis: probe.naturalWidth / probe.naturalHeight, bekannt: true });
+    };
+    probe.src = src;
+    return () => { verworfen = true; };
+  }, [src]);
+  return stand;
+}
+
 const ProductDetail = () => {
   const params = useParams<{ slug?: string; id?: string }>();
   const slug = params.slug ?? params.id ?? "asymmetric-coat";
@@ -310,12 +353,32 @@ const ProductDetail = () => {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   /* Teil S — das Werk kommt aus seiner Kachel angeflogen. Mobil- und
-     Desktop-Fassung stehen beide im Baum; nur die sichtbare fängt den Flug. */
+     Desktop-Fassung stehen beide im Baum; nur die sichtbare fängt den Flug.
+     Teil T2 — beide Halter sind jetzt der RAHMEN im Seitenverhältnis des
+     Werks, nicht mehr die ganze Spalte. Damit ist das gemessene Rechteck
+     exakt das Bild selbst (siehe Kommentar an `werkVerhaeltnis`). */
+  const werkMass = useNatuerlichesVerhaeltnis(heroImage);
   const heldMobil = useRef<HTMLDivElement>(null);
   const heldDesktop = useRef<HTMLDivElement>(null);
   const flugSchluessel = dbProduct?.slug ? werkSchluessel(dbProduct.slug) : null;
-  useAnkunft(flugSchluessel, heldMobil);
-  useAnkunft(flugSchluessel, heldDesktop);
+  /*
+    Teil T2 — der Flug wartet, bis der Rahmen seine endgültige Form hat.
+
+    Gemessen und behoben: solange das natürliche Maß noch nicht bekannt war,
+    stand der Rahmen auf der 4:5-Vorgabe. Der Flug maß also ein 4:5-Ziel und
+    landete darauf — und im nächsten Moment klappte der Rahmen auf das echte
+    Verhältnis um. Bei einem Querformat gemessen: der Geist endete 573×716,
+    das Ziel war 573×322. Ein sichtbarer Sprung, genau der, den Teil T
+    ausschließt.
+
+    Deshalb fängt erst der Rahmen mit dem richtigen Verhältnis den Flug. Liegt
+    das Bild im Speicher (es kommt gerade aus der Kachel), ist das derselbe
+    Wimpernschlag; lädt es länger als die Frist des Abflugs, erscheint die
+    Seite ohne Flug — ruhig statt springend.
+  */
+  const flugBereit = werkMass.bekannt ? flugSchluessel : null;
+  useAnkunft(flugBereit, heldMobil);
+  useAnkunft(flugBereit, heldDesktop);
   const lichttischSchluessel = dbProduct?.slug ? `lichttisch:${dbProduct.slug}` : null;
   /* Ein Original im Sinne von Teil S6: Welt Kunst UND als Unikat angelegt
      (`product_dna.typ === "original"`, siehe src/lib/weltFelder.ts). Eine
@@ -337,12 +400,50 @@ const ProductDetail = () => {
   const istKunstOriginal = dbProduct?.world === "Kunst"
     && (dbProduct?.product_dna as { typ?: string } | null)?.typ === "original";
 
+  /*
+    Teil T2 — DAS WERK BESTIMMT SEINEN RAHMEN.
+
+    Bis hierher gab der Bildschirm die Form vor: mobil 70svh hoch, auf dem
+    Desktop 56 % breit und bildschirmhoch. Was nicht hineinpasste, wurde
+    beschnitten (`object-cover`). Für Mode geht das — bei Kunst und Interior
+    IST die Proportion das Werk. Ein Querformat als Hochkant zu zeigen heißt,
+    es nicht zu zeigen.
+
+    Ab hier trägt der Rahmen das Verhältnis des Werks und wird nur von der
+    verfügbaren Fläche begrenzt: `width: min(100 %, verfügbare Höhe × r)`
+    zusammen mit `aspect-ratio: r`. Ist das Bild hoch, bindet die Höhe; ist es
+    quer, bindet die Breite. Kein Beschnitt, keine Balken.
+
+    Warum `useFlug.ts` dafür NICHT angefasst werden muss: `deckmass()` rechnet
+    dort mit `cover`, also `rFeld > rBild ? … : …`. Trägt das Zielfeld exakt
+    das Verhältnis des Bildes, sind rFeld und rBild gleich — beide Zweige
+    liefern dann genau das Feld selbst. Cover und contain fallen zusammen.
+    Flug und Anzeige nehmen also dieselbe Annahme, ohne dass sich an der
+    Rechnung etwas ändert. Voraussetzung: der gemessene Halter IST der Rahmen
+    (siehe `heldMobil`/`heldDesktop`), nicht die Spalte darum.
+
+    Bis das Bild geladen ist, gilt 4:5 — dasselbe Verhältnis wie die Kachel in
+    der Halle, aus der das Werk kommt. Damit ist der Rahmen im Moment der
+    Landung schon richtig und rückt danach höchstens leise nach.
+  */
+  const werkVerhaeltnis = werkMass.verhaeltnis;
+
   /* Teil S3 — der Rückweg. Beim Zurückgehen (Browser-Pfeil oder Wischgeste)
      hält die Werkseite ihr Kopfbild durchgehend abflugbereit; die Kachel in
      der Halle fängt es wieder auf. Beim Rollen wird die Messung nachgeführt,
      höchstens einmal je Bild. Es fliegt die Fassung, die gerade sichtbar ist. */
+  /*
+    Gemessen und behoben (Teil T2): dieses Bereitstellen lief schon beim ersten
+    Bild der Seite und überschrieb dabei den gemerkten Abflug AUS DER KACHEL.
+    Solange die Ankunft ungetaktet direkt daneben lag, machte das nichts — sie
+    war ein `useLayoutEffect` und damit vorher dran. Seit die Ankunft auf das
+    fertige Seitenverhältnis wartet, war sie es nicht mehr: geflogen wurde dann
+    vom eigenen Rahmen der Werkseite statt von der Kachel (gemessen: Start
+    573×716 statt 280×350). Deshalb wartet auch das Bereitstellen auf `bekannt`
+    — in demselben Durchgang ist die Ankunft dann wieder zuerst dran.
+  */
   useEffect(() => {
-    if (!flugSchluessel || lightboxIndex !== null) return;
+    if (!flugSchluessel || lightboxIndex !== null || !werkMass.bekannt) return;
     let angemeldet = 0;
     const bereit = () => {
       angemeldet = 0;
@@ -359,7 +460,7 @@ const ProductDetail = () => {
       window.removeEventListener("scroll", spaeter);
       window.removeEventListener("resize", spaeter);
     };
-  }, [flugSchluessel, lightboxIndex]);
+  }, [flugSchluessel, lightboxIndex, werkMass.bekannt]);
   /* Teil S4 — von hier wächst das Werk weiter auf den Lichttisch. */
   const oeffneLichttisch = (von: HTMLElement | null, index = 0) => {
     if (lichttischSchluessel && index === 0) merkeAbflug(lichttischSchluessel, von);
@@ -441,7 +542,7 @@ const ProductDetail = () => {
         {formatPrice(dbProduct?.price ?? product.price, locale)}
       </p>
       {product.designer && (
-        <p className="house-ink text-[0.58rem] uppercase tracking-[0.14em] opacity-50">
+        <p className="house-ink palace-eyebrow opacity-50">
           {t("product.split", { name: product.designer })}
         </p>
       )}
@@ -454,20 +555,20 @@ const ProductDetail = () => {
         <span className="house-ink palace-eyebrow opacity-60 line-through">{formatPrice(Number(dbProduct.compare_at_price), locale)}</span>
       )}
       {noCartKind && (
-        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
+        <span className="house-hair house-ink border px-2 py-1 palace-eyebrow">
           {kunstKind === "live_portrait" ? t("studio.stueckNeu.kunstArt.live_portrait") : t("studio.stueckNeu.kunstArt.auftragsarbeit")}
         </span>
       )}
       {isMto && !noCartKind && (
-        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">
+        <span className="house-hair house-ink border px-2 py-1 palace-eyebrow">
           {t("product.badge.mto")}{dbProduct?.lead_time_days ? ` · ${t("product.badge.mtoLeadTime", { days: dbProduct.lead_time_days })}` : ""}
         </span>
       )}
       {!isMto && soldOut && (
-        <span className="border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]" style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}>{t("product.badge.soldOut")}</span>
+        <span className="border px-2 py-1 palace-eyebrow" style={{ borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }}>{t("product.badge.soldOut")}</span>
       )}
       {!isMto && lowStock && (
-        <span className="house-hair house-ink border px-2 py-1 text-[0.56rem] uppercase tracking-[0.28em]">{t("product.badge.lowStock", { n: stock })}</span>
+        <span className="house-hair house-ink border px-2 py-1 palace-eyebrow">{t("product.badge.lowStock", { n: stock })}</span>
       )}
     </>
   );
@@ -545,7 +646,7 @@ const ProductDetail = () => {
             <button
               key={c}
               onClick={() => setColor(c)}
-              className="house-ink border px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.28em] transition-colors duration-300"
+              className="house-ink border px-3 py-1.5 palace-eyebrow transition-colors duration-300"
               style={c === color
                 ? { borderColor: "var(--house-fg)", background: "var(--house-fg)", color: "var(--house-bg)" }
                 : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
@@ -568,7 +669,7 @@ const ProductDetail = () => {
                 disabled={outOfStock}
                 title={outOfStock ? t(`product.variant.soldOut.${product.world}`) : undefined}
                 className={cn(
-                  "house-ink border px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.28em] transition-colors duration-300",
+                  "house-ink border px-3 py-1.5 palace-eyebrow transition-colors duration-300",
                   outOfStock && "cursor-not-allowed line-through opacity-40",
                 )}
                 style={s === size && !outOfStock
@@ -586,7 +687,7 @@ const ProductDetail = () => {
   );
 
   const vatNoteLine = (
-    <p className="house-ink text-[0.6rem] uppercase tracking-[0.22em] opacity-50">
+    <p className="house-ink palace-eyebrow opacity-50">
       {vatNote(effectiveVatRate(dbProduct?.vat_rate as number | null, (dbProduct?.designers as { vat_rate?: number } | null)?.vat_rate ?? 19), locale)} · {t("product.vat.paymentMethods")}
     </p>
   );
@@ -607,7 +708,7 @@ const ProductDetail = () => {
           <p className="house-serif house-ink mt-4 italic" style={{ fontSize: "1.2rem", lineHeight: 1.6 }}>
             {dbProduct.designer_note}
           </p>
-          <p className="house-ink mt-3 text-[0.62rem] uppercase tracking-[0.32em] opacity-60">
+          <p className="house-ink mt-3 palace-eyebrow opacity-60">
             — {product.designer}
             {dbProduct?.designers && "house_number" in (dbProduct.designers as Record<string, unknown>)
               ? `, Haus № ${(dbProduct.designers as { house_number?: number }).house_number ?? ""}` : ""}
@@ -618,12 +719,12 @@ const ProductDetail = () => {
       {/* Personalisierung nur mit Beleg (Teil 35): erscheint nur eingeloggt + mit echtem
           Engagement-Beleg — sonst nichts, kein Platzhalter, keine generische Zeile. */}
       {user && matchExplanation && (
-        <Reveal className="mt-10 flex gap-4 border-[1.5px] border-black p-6" style={{ boxShadow: "8px 8px 0 0 #000" }}>
-          <PawnFigurSvg className="h-[45px] w-[34px] shrink-0" aria-hidden="true" />
+        <Reveal className="mt-10 flex gap-4 border-[1.5px] p-6" style={{ borderColor: "var(--house-fg)", boxShadow: "8px 8px 0 0 var(--house-fg)" }}>
+          <PawnFigurSvg className="house-ink h-[45px] w-[34px] shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-serif italic text-[1.05rem] leading-snug text-black">{matchExplanation.these}</p>
-            <p className="mt-3 border-t border-black/10 pt-3 text-[0.8rem] text-black/70">
-              <b className="font-medium text-black">{t("product.persona.beleg")}</b> {matchExplanation.beleg}
+            <p className="house-ink font-serif italic text-[1.05rem] leading-snug">{matchExplanation.these}</p>
+            <p className="house-hair house-ink mt-3 border-t pt-3 text-[0.8rem] opacity-70">
+              <b className="font-medium">{t("product.persona.beleg")}</b> {matchExplanation.beleg}
             </p>
           </div>
         </Reveal>
@@ -649,7 +750,7 @@ const ProductDetail = () => {
             <dl className="mt-4 grid gap-x-10 gap-y-2 sm:grid-cols-2">
               {angaben.map(({ feld, wert }) => (
                 <div key={feld.schluessel} className="flex flex-wrap items-baseline justify-between gap-3 border-b border-current/10 py-1.5">
-                  <dt className="house-ink text-[0.62rem] uppercase tracking-[0.18em] opacity-60">{feld.label}</dt>
+                  <dt className="house-ink palace-eyebrow opacity-60">{feld.label}</dt>
                   <dd className="house-ink text-sm">{wert}</dd>
                 </div>
               ))}
@@ -673,7 +774,7 @@ const ProductDetail = () => {
               bildUrl: zertifikatBild,
               datum: new Date(),
             })}
-            className="house-ink text-[0.6rem] uppercase tracking-[0.24em] underline underline-offset-4 hover:opacity-70">
+            className="house-ink palace-eyebrow underline underline-offset-4 hover:opacity-70">
             {t("product.zertifikat.link")}
           </button>
         </Reveal>
@@ -684,12 +785,12 @@ const ProductDetail = () => {
         <Reveal className="house-hair mt-10 flex flex-wrap items-baseline justify-between gap-4 border-t pt-6">
           <div>
             <h3 className="house-serif house-ink text-[1.3rem] font-light">{dbProduct.designers.brand_name}</h3>
-            <p className="house-ink mt-1 text-[0.62rem] uppercase tracking-[0.18em] opacity-60">
+            <p className="house-ink mt-1 palace-eyebrow opacity-60">
               {[dbProduct.designers.location, product.world, ausgabeNummer != null ? t("product.werkstatt.since", { n: ausgabeNummer }) : null]
                 .filter(Boolean).join(" · ")}
             </p>
           </div>
-          <Link to={`/designer/${dbProduct.designers.slug}`} className="house-ink text-[0.6rem] uppercase tracking-[0.24em] underline underline-offset-4 hover:opacity-70">
+          <Link to={`/designer/${dbProduct.designers.slug}`} className="house-ink palace-eyebrow underline underline-offset-4 hover:opacity-70">
             {t("product.werkstatt.link")}
           </Link>
         </Reveal>
@@ -708,7 +809,7 @@ const ProductDetail = () => {
             detail: { message: msg, page_context: { route: "/product/" + product.slug, product_slug: product.slug } }
           })), 220);
         }}
-        className="house-ink inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
+        className="house-ink inline-flex items-center gap-2 palace-eyebrow underline underline-offset-4 hover:opacity-70"
       >
         {t("product.ask.askPawn")}
       </button>
@@ -716,7 +817,7 @@ const ProductDetail = () => {
         <button
           type="button"
           onClick={() => setReqOpen(true)}
-          className="house-ink inline-flex text-[0.62rem] uppercase tracking-[0.32em] underline underline-offset-4 hover:opacity-70"
+          className="house-ink inline-flex palace-eyebrow underline underline-offset-4 hover:opacity-70"
         >
           {t("product.ask.customRequest")}
         </button>
@@ -819,46 +920,57 @@ const ProductDetail = () => {
     <PalaceLayout transparentHeader={false}>
       <div className="palace house-theme" data-typografie={themeForPage.typografie} data-textur={themeForPage.hintergrundtextur.typ} style={themeCssVars(themeForPage)}>
 
-      {/* ===== MOBIL/TABLET (<1024px): Cover als bildschirmfüllender Held (Teil 27b) ===== */}
-      <section className="relative pt-20 md:pt-24 lg:hidden">
+      {/* ===== MOBIL/TABLET (<1024px) — Teil T1/T2/T3/T5 =====
+          Ein Grund: das Bild steht auf dem Grund des Hauses, im Verhältnis des
+          Werks, und der Text steht DARUNTER — nicht als schwarzer Balken darauf.
+          Dieselbe Reihenfolge wie auf dem Desktop: erst das Werk, dann die Sprache. */}
+      <section className="relative pt-20 md:pt-24 lg:hidden" style={{ background: "var(--house-bg)" }}>
         <Reveal>
-          <div ref={heldMobil} className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
-            {vorigesBild && (
-              <MediaImg src={vorigesBild} alt="" aria-hidden className="werk-raus absolute inset-0 z-[1] h-full w-full object-cover object-center" />
-            )}
-            {heroImage ? (
-              <button
-                type="button"
-                onClick={() => oeffneLichttisch(heldMobil.current)}
-                aria-label={t("product.lightbox.openAria")}
-                className="group/held absolute inset-0 block h-full w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
-              >
-                {/* Teil Q — formatfüllend statt eingepasst. Vorher stand hier ab md
-                    `object-contain` auf schwarzem Grund: ein quadratisches Werkfoto in
-                    diesem hohen Rahmen bekam dadurch schwarze Balken über und unter dem
-                    Bild. Das vollständige Bild zeigt die Lightbox (ein Tipp darauf). */}
-                <MediaImg key={heroImage} src={heroImage} alt={imageAlt} className="werk-rein h-full w-full object-cover object-center" />
-              </button>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-black">
-                <span className="palace-eyebrow text-white/50">{t("product.gallery.noImage")}</span>
-              </div>
-            )}
-            {/* Schwarzer Balken-Unterleger statt Verlauf — Gesetz 1 */}
-            <div className="werk-textspalte absolute inset-x-0 bottom-0 bg-black px-6 py-6 md:px-14 md:py-10">
-              <p className="palace-eyebrow text-white/70">
-                {product.world}{product.designer ? ` · ${product.designer}` : ""}
-              </p>
-              <h1
-                className="palace-serif mt-3 font-light text-white"
-                style={{ fontSize: "clamp(2rem, 5.2vw, 4.6rem)", lineHeight: 1.02, letterSpacing: "-0.01em" }}
-              >
-                {product.name}
-              </h1>
-              {creditLine && (
-                <p className="mt-3 text-[0.56rem] uppercase tracking-[0.24em] text-white/60">{creditLine}</p>
+          <div
+            className="house-rahmen flex justify-center"
+            style={{ ["--werk-ratio" as string]: String(werkVerhaeltnis) }}
+          >
+            <div
+              ref={heldMobil}
+              className="relative"
+              style={{
+                width: "min(100%, calc(76svh * var(--werk-ratio)))",
+                aspectRatio: "var(--werk-ratio)",
+              }}
+            >
+              {vorigesBild && (
+                <MediaImg src={vorigesBild} alt="" aria-hidden className="werk-raus absolute inset-0 z-[1] h-full w-full object-contain" />
+              )}
+              {heroImage ? (
+                <button
+                  type="button"
+                  onClick={() => oeffneLichttisch(heldMobil.current)}
+                  aria-label={t("product.lightbox.openAria")}
+                  className="group/held absolute inset-0 block h-full w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current"
+                  style={{ color: "var(--house-fg)" }}
+                >
+                  <MediaImg key={heroImage} src={heroImage} alt={imageAlt} className="werk-rein h-full w-full object-contain" />
+                </button>
+              ) : (
+                <div className="house-hair absolute inset-0 flex items-center justify-center border">
+                  <span className="palace-eyebrow house-ink opacity-50">{t("product.gallery.noImage")}</span>
+                </div>
               )}
             </div>
+          </div>
+          <div className="werk-textspalte px-6 pb-12 md:px-14">
+            <p className="palace-eyebrow house-ink opacity-60">
+              {product.world}{product.designer ? ` · ${product.designer}` : ""}
+            </p>
+            <h1
+              className="palace-serif house-ink mt-3 font-light"
+              style={{ fontSize: "clamp(2rem, 5.2vw, 4.6rem)", lineHeight: 1.02, letterSpacing: "-0.01em" }}
+            >
+              {product.name}
+            </h1>
+            {creditLine && (
+              <p className="palace-eyebrow house-ink mt-3 opacity-50">{creditLine}</p>
+            )}
           </div>
         </Reveal>
         <div className="pointer-events-none absolute right-4 top-24 z-30 md:right-8 md:top-28">
@@ -870,36 +982,56 @@ const ProductDetail = () => {
 
       {/* ===== DESKTOP (≥1024px): Doppelseite — sticky Bildspalte + Textspalte (Teil 36) ===== */}
       <section className="hidden lg:flex lg:items-start">
-        <div ref={heldDesktop} className="sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden bg-black">
-          {vorigesBild && (
-            <MediaImg src={vorigesBild} alt="" aria-hidden className="werk-raus absolute inset-0 z-[1] h-full w-full object-cover object-center" />
-          )}
-          {heroImage ? (
-            <button
-              type="button"
-              onClick={() => oeffneLichttisch(heldDesktop.current)}
-              aria-label={t("product.lightbox.openAria")}
-              className="group/held flex h-full w-full cursor-zoom-in items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
-            >
-              {/* Teil Q — dieselbe Korrektur auf der Doppelseite: festes 4:5, füllend
-                  und mittig beschnitten. Vollständig sehen: Lightbox. */}
-              <MediaImg
-                key={heroImage}
-                src={heroImage}
-                alt={imageAlt}
-                className="werk-rein h-full w-full object-cover object-center"
-              />
-              {/* Erscheint beim Darüberfahren — auf Touch gibt es kein Hover,
-                  dort führt der Tipp aufs Bild direkt zum Lichttisch. */}
-              <span className="pointer-events-none absolute bottom-6 right-6 border-[1.5px] border-white/70 px-3 py-1.5 text-[0.56rem] uppercase tracking-[0.28em] text-white opacity-0 transition-opacity duration-200 group-hover/held:opacity-100 group-focus-visible/held:opacity-100">
-                {t("product.lichttisch.hinweis")}
-              </span>
-            </button>
-          ) : (
-            <span className="palace-eyebrow text-white/50">{t("product.gallery.noImage")}</span>
-          )}
+        {/* Teil T1/T2/T3 — die Bildspalte trägt den Grund des Hauses, nicht Schwarz.
+            Schwarz bleibt möglich — aber als Wahl (`farbwelt.bg = "#000000"`),
+            nicht als Vorgabe. Der Rahmen darin hat das Verhältnis des Werks und
+            wird von der Höhe der Spalte minus dem Flächenrhythmus begrenzt. */}
+        <div
+          className="house-rahmen sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden"
+          style={{ ["--werk-ratio" as string]: String(werkVerhaeltnis) }}
+        >
+          <div
+            ref={heldDesktop}
+            className="relative"
+            style={{
+              width: "min(100%, calc((100vh - 2 * var(--house-gap-y, 4.5rem)) * var(--werk-ratio)))",
+              aspectRatio: "var(--werk-ratio)",
+            }}
+          >
+            {vorigesBild && (
+              <MediaImg src={vorigesBild} alt="" aria-hidden className="werk-raus absolute inset-0 z-[1] h-full w-full object-contain" />
+            )}
+            {heroImage ? (
+              <button
+                type="button"
+                onClick={() => oeffneLichttisch(heldDesktop.current)}
+                aria-label={t("product.lightbox.openAria")}
+                className="group/held absolute inset-0 flex h-full w-full cursor-zoom-in items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current"
+                style={{ color: "var(--house-fg)" }}
+              >
+                <MediaImg
+                  key={heroImage}
+                  src={heroImage}
+                  alt={imageAlt}
+                  className="werk-rein h-full w-full object-contain"
+                />
+                {/* Erscheint beim Darüberfahren — auf Touch gibt es kein Hover,
+                    dort führt der Tipp aufs Bild direkt zum Lichttisch. */}
+                <span
+                  className="palace-eyebrow pointer-events-none absolute bottom-4 right-4 border-[1.5px] px-3 py-1.5 opacity-0 transition-opacity duration-200 group-hover/held:opacity-100 group-focus-visible/held:opacity-100"
+                  style={{ borderColor: "var(--house-fg)", background: "var(--house-bg)", color: "var(--house-fg)" }}
+                >
+                  {t("product.lichttisch.hinweis")}
+                </span>
+              </button>
+            ) : (
+              <div className="house-hair absolute inset-0 flex items-center justify-center border">
+                <span className="palace-eyebrow house-ink opacity-50">{t("product.gallery.noImage")}</span>
+              </div>
+            )}
+          </div>
           {creditLine && (
-            <p className="absolute bottom-6 left-8 z-[2] text-[0.56rem] uppercase tracking-[0.24em] text-white/60">{creditLine}</p>
+            <p className="palace-eyebrow house-ink absolute bottom-4 left-6 z-[2] opacity-50">{creditLine}</p>
           )}
           <div className="pointer-events-none absolute right-8 top-8 z-30">
             <div className="pointer-events-auto">
@@ -925,10 +1057,12 @@ const ProductDetail = () => {
           </div>
 
           {/* Kaufblock: sitzt oben in der Textspalte und bleibt sticky, während Geschichte/
-              Fakten darunter durchscrollen — der Kauf hat Vorrang (Teil 35/36). */}
+              Fakten darunter durchscrollen — der Kauf hat Vorrang (Teil 35/36).
+              Teil T4 — Rahmen und Schatten in der Tinte des Hauses. Schwarz auf
+              cremefarbenem Grund war eine zweite Farbe, die das Haus nie gewählt hat. */}
           <div
-            className="sticky top-24 z-20 mt-8 max-w-[65ch] border-[1.5px] border-black p-6"
-            style={{ background: "var(--house-bg)", boxShadow: "6px 6px 0 0 #000" }}
+            className="sticky top-24 z-20 mt-8 max-w-[65ch] border-[1.5px] p-6"
+            style={{ background: "var(--house-bg)", borderColor: "var(--house-fg)", boxShadow: "6px 6px 0 0 var(--house-fg)" }}
           >
             <div className="flex flex-wrap items-baseline gap-3">
               {priceAndSplit}
@@ -1042,7 +1176,7 @@ const ProductDetail = () => {
                     key={chip}
                     type="button"
                     onClick={() => setReqBudget((v) => (v === chip ? "" : chip))}
-                    className="house-hair house-ink min-h-[36px] border px-3 py-1.5 text-[0.68rem] uppercase tracking-[0.18em]"
+                    className="house-hair house-ink min-h-[36px] border px-3 py-1.5 palace-eyebrow"
                     style={reqBudget === chip ? { background: "var(--house-fg)", color: "var(--house-bg)" } : undefined}
                   >
                     {chip}
@@ -1091,19 +1225,25 @@ function WerkWegweiser({ slug }: { slug: string }) {
   const { prev, next } = useProductPrevNext(slug);
   if (!prev && !next) return null;
   return (
-    <nav className="mt-16 grid gap-px border-t-[1.5px] border-black bg-[rgba(0,0,0,.18)] sm:grid-cols-2">
+    /* Teil T4 — auch der Wegweiser trägt Grund und Tinte des Hauses. Die
+       Umkehrung beim Überfahren bleibt (Hausgesetz), sie tauscht jetzt nur
+       Haus-Grund gegen Haus-Tinte statt Weiß gegen Schwarz. */
+    <nav
+      className="house-hair mt-16 grid gap-px border-t-[1.5px] sm:grid-cols-2"
+      style={{ borderColor: "var(--house-fg)", background: "color-mix(in srgb, var(--house-fg) 18%, transparent)" }}
+    >
       {prev ? (
-        <Link to={prev.to} className="group/weg block bg-white px-1 py-6 transition-colors hover:bg-black">
-          <span className="palace-eyebrow block text-black/60 group-hover/weg:text-white/70">‹ {t("product.wegweiser.voriges")}</span>
-          <span className="palace-serif mt-2 block text-[1.05rem] italic leading-tight text-black group-hover/weg:text-white">{prev.label}</span>
+        <Link to={prev.to} className="house-weg group/weg block px-1 py-6">
+          <span className="palace-eyebrow block opacity-60">‹ {t("product.wegweiser.voriges")}</span>
+          <span className="palace-serif mt-2 block text-[1.05rem] italic leading-tight">{prev.label}</span>
         </Link>
-      ) : <span className="hidden bg-white sm:block" />}
+      ) : <span className="hidden sm:block" style={{ background: "var(--house-bg)" }} />}
       {next ? (
-        <Link to={next.to} className="group/weg block bg-white px-1 py-6 text-right transition-colors hover:bg-black sm:text-right">
-          <span className="palace-eyebrow block text-black/60 group-hover/weg:text-white/70">{t("product.wegweiser.naechstes")} ›</span>
-          <span className="palace-serif mt-2 block text-[1.05rem] italic leading-tight text-black group-hover/weg:text-white">{next.label}</span>
+        <Link to={next.to} className="house-weg group/weg block px-1 py-6 text-right sm:text-right">
+          <span className="palace-eyebrow block opacity-60">{t("product.wegweiser.naechstes")} ›</span>
+          <span className="palace-serif mt-2 block text-[1.05rem] italic leading-tight">{next.label}</span>
         </Link>
-      ) : <span className="hidden bg-white sm:block" />}
+      ) : <span className="hidden sm:block" style={{ background: "var(--house-bg)" }} />}
     </nav>
   );
 }
