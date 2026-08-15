@@ -106,7 +106,10 @@ function extractText(node: ReactNode): string {
 }
 
 export function Editable({ contentKey, children, as, className, multiline = false }: EditableProps) {
-  const { enabled } = useEditMode();
+  const { enabled: modusAn, isAdmin } = useEditMode();
+  // Site-Texte gehören der Plattform: nur Admins dürfen sie ändern. Im Auftritt-Modus
+  // eines Hauses (Teil U1.1) ist der Modus zwar an, ein Designer aber kein Admin.
+  const enabled = modusAn && isAdmin;
   const { locale } = useI18n();
   const Tag = (as ?? "span") as ElementType;
   const fallback = extractText(children);
@@ -162,6 +165,100 @@ export function Editable({ contentKey, children, as, className, multiline = fals
   );
 }
 
+/* ————————————————————————————————————————————————————————————————
+   Teil U1.2 — dieselbe Geste, andere Ablage.
+
+   <Editable contentKey="hero_headline">   → site_content            (oben)
+   <BausteinText block={b} feld="heading"> → designer_page_blocks.content.heading
+
+   Verhalten identisch: tippen, Blur speichert, Escape nimmt zurück. Es gibt kein
+   zweites Vorschau-Modell — geschrieben wird direkt in die Zeile, aus der die
+   öffentliche Hausseite liest.
+   ———————————————————————————————————————————————————————————————— */
+
+export interface BearbeitbarerBaustein { id: string; content: Record<string, unknown> }
+
+/**
+ * Schreibt ein einzelnes Feld in `designer_page_blocks.content`.
+ * `.select("id")` ist hier kein Luxus: verbietet die RLS den Schreibzugriff, meldet
+ * PostgREST keinen Fehler, sondern liefert schlicht null Zeilen zurück. Ohne diese
+ * Prüfung wäre ein blockierter Schreibversuch ein stiller Verlust.
+ */
+async function speichereBausteinFeld(
+  blockId: string, content: Record<string, unknown>, feld: string, wert: string,
+): Promise<boolean> {
+  const naechster = { ...content, [feld]: wert };
+  const { data, error } = await supabase
+    .from("designer_page_blocks" as never)
+    .update({ content: naechster } as never)
+    .eq("id", blockId)
+    .select("id");
+  if (error) { toast.error("Nicht gespeichert: " + error.message); return false; }
+  if (!data || (data as unknown[]).length === 0) {
+    toast.error("Nicht gespeichert — diese Seite gehört einem anderen Haus.");
+    return false;
+  }
+  toast.success("Gespeichert");
+  return true;
+}
+
+interface BausteinTextProps {
+  block: BearbeitbarerBaustein;
+  feld: string;
+  /** Blasser Hinweis, solange das Feld leer ist — nur im Bearbeiten-Zustand sichtbar. */
+  platzhalter?: string;
+  as?: ElementType;
+  className?: string;
+  style?: React.CSSProperties;
+  multiline?: boolean;
+}
+
+export function BausteinText({ block, feld, platzhalter, as, className, style, multiline = false }: BausteinTextProps) {
+  const { enabled } = useEditMode();
+  const Tag = (as ?? "span") as ElementType;
+  const ausDb = typeof block.content[feld] === "string" ? String(block.content[feld]) : "";
+  const [wert, setWert] = useState(ausDb);
+  const ref = useRef<HTMLElement>(null);
+  const zuletzt = useRef(ausDb);
+
+  useEffect(() => { setWert(ausDb); zuletzt.current = ausDb; }, [ausDb]);
+
+  if (!enabled) return <Tag className={className} style={style}>{wert}</Tag>;
+
+  return (
+    <Tag
+      ref={ref}
+      className={`${className ?? ""} pawn-baustein-editable`}
+      style={style}
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      role="textbox"
+      tabIndex={0}
+      aria-label={platzhalter ?? feld}
+      data-feld={feld}
+      data-platzhalter={platzhalter ?? ""}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (!multiline && e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          if (ref.current) ref.current.textContent = zuletzt.current;
+          (e.currentTarget as HTMLElement).blur();
+        }
+      }}
+      onBlur={async (e: React.FocusEvent) => {
+        const neu = (e.currentTarget.textContent ?? "").trim();
+        if (neu === zuletzt.current) return;
+        const ok = await speichereBausteinFeld(block.id, block.content, feld, neu);
+        if (ok) { zuletzt.current = neu; setWert(neu); block.content[feld] = neu; }
+        else if (ref.current) { ref.current.textContent = zuletzt.current; }
+      }}
+    >
+      {wert}
+    </Tag>
+  );
+}
+
 interface EditableImageProps {
   contentKey: string;
   fallback: string;
@@ -172,7 +269,8 @@ interface EditableImageProps {
 }
 
 export function EditableImage({ contentKey, fallback, alt, className, loading = "lazy", fallbackNode }: EditableImageProps) {
-  const { enabled } = useEditMode();
+  const { enabled: modusAn, isAdmin } = useEditMode();
+  const enabled = modusAn && isAdmin;
   const value = useContentValue(contentKey, fallback);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

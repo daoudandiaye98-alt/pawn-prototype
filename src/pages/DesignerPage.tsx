@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { PrevNext } from "@/components/palace/PrevNext";
@@ -17,6 +17,7 @@ import { aktiverArchetyp, ARCHETYP_PLATES, type Archetyp } from "@/features/hous
 import { currentVerwandlungGlyph, type HouseMilestones } from "@/features/verwandlung";
 import { usePageVisit } from "@/features/personalization/usePageVisit";
 import { MediaImg } from "@/components/palace/MediaImg";
+import { AuftrittScope } from "@/lib/editMode";
 
 interface DbDesigner {
   id: string;
@@ -118,6 +119,10 @@ function CustomCursor() {
 const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const activeSlug = slug ?? "y-project";
+  // Teil U1.1 — der Einstieg in den Auftritt-Modus. Der Wunsch steht in der Adresse,
+  // das Recht entscheidet <AuftrittScope> (und endgültig die RLS).
+  const [sucheParams] = useSearchParams();
+  const auftrittGewuenscht = sucheParams.get("auftritt") === "1";
   const reduced = useReducedMotion();
   const editionNum = useSiteContent("ausgabe_nummer");
   const edition = String(editionNum ?? "07");
@@ -215,8 +220,11 @@ const DesignerPage = () => {
   }, [dbDesigner]);
 
   // Hausseite-Bausteine (Teil 12c) — nur laden, wenn das Haus veröffentlicht hat.
+  // Teil U1.1: im Auftritt-Modus auch vorher, damit ein Haus seine Seite bauen kann,
+  // bevor sie live geht. Wer kein Recht hat, bekommt von der RLS nichts zurück.
   useEffect(() => {
-    if (!dbDesigner?.page_published_at) return;
+    if (!dbDesigner) return;
+    if (!dbDesigner.page_published_at && !auftrittGewuenscht) return;
     let cancelled = false;
     (async () => {
       const [{ data: b }, { data: m }, { data: p }, { data: t }, { data: ms }] = await Promise.all([
@@ -235,7 +243,7 @@ const DesignerPage = () => {
       setHouseMilestones((ms as unknown as HouseMilestones) ?? null);
     })();
     return () => { cancelled = true; };
-  }, [dbDesigner]);
+  }, [dbDesigner, auftrittGewuenscht]);
 
   // Kollektion für die Standarddarstellung (Akt III) — unabhängig davon, ob das Haus eine
   // eigens gestaltete Hausseite veröffentlicht hat. Kommt direkt aus der products-Tabelle,
@@ -372,7 +380,7 @@ const DesignerPage = () => {
 
   // Neue Hausseite (Teil 12c): veröffentlicht und mit Bausteinen → ersetzt die
   // gesamte alte Rückblick. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
-  if (dbDesigner?.page_published_at && pageBlocks.length > 0) {
+  if ((dbDesigner?.page_published_at || auftrittGewuenscht) && dbDesigner && pageBlocks.length > 0) {
     const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
     // Teil 27c: die Hausseite öffnet mit dem stärksten Werk in voller Höhe, bevor die
     // Bausteine beginnen — unabhängig davon, ob das Haus selbst einen "Auftakt"-Baustein
@@ -381,11 +389,16 @@ const DesignerPage = () => {
       ?? blockProducts.find((p) => p.image_url)?.image_url ?? null;
     return (
       <PalaceLayout transparentHeader>
-        {houseTheme && schwelleActive && (
+        {/* Im Auftritt-Modus keine Schwelle — wer bearbeitet, will sofort an die Seite. */}
+        {houseTheme && schwelleActive && !auftrittGewuenscht && (
           <Schwelle houseName={dbDesigner.brand_name} theme={houseTheme} onDone={() => setSchwelleActive(false)} />
         )}
         <HouseHero brandName={dbDesigner.brand_name} houseNumber={dbDesigner.house_number} image={heroImage} />
-        <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
+        {/* Teil U1.1 — dieselbe Komponente, zwei Orte: hier zusätzlich bearbeitbar,
+            aber nur für den Inhaber dieses Hauses (oder einen Admin). */}
+        <AuftrittScope designerId={dbDesigner.id} gewuenscht={auftrittGewuenscht}>
+          <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
+        </AuftrittScope>
         {/* Teil 15c: dezentes Zeichen der Verwandlungsstufe — nie mehr als ein stiller Hinweis. */}
         {houseMilestones && (() => {
           const sign = currentVerwandlungGlyph(houseMilestones);

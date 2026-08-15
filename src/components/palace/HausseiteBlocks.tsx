@@ -18,6 +18,8 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_HOUSE_THEME, themeCssVars, type Flaechenrhythmus, type HouseTheme } from "@/features/houseTheme/theme";
 import { MediaImg } from "@/components/palace/MediaImg";
+import { BausteinText } from "@/components/palace/Editable";
+import { useEditMode } from "@/lib/editMode";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
 
@@ -124,6 +126,9 @@ export function HausseiteBlocks({
 }) {
   const t = theme ?? DEFAULT_HOUSE_THEME;
   const { locale } = useI18n();
+  // Teil U1.2: derselbe Baum, nur bearbeitbar. Wahr im Auftritt-Modus des eigenen Hauses
+  // (oder für Admins) — sonst rendert alles exakt wie zuvor.
+  const { enabled: bearbeiten } = useEditMode();
   const gestaffelt = t.bewegungscharakter === "gestaffelt";
   const parallaxOn = t.bewegungscharakter === "ausdrucksstark";
   const productsById = Object.fromEntries(products.map((p) => [p.id, p]));
@@ -155,12 +160,19 @@ export function HausseiteBlocks({
             return (
               <section key={b.id} className="house-hair house-reveal house-gap-y border-b px-6 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
                 <div className="mx-auto max-w-2xl">
-                  {!!c.heading && (
-                    <h2 className="house-serif font-light" style={{ fontSize: "clamp(1.8rem,4vw,3rem)", lineHeight: 1.05 }}>
-                      {String(c.heading)}
-                    </h2>
+                  {(bearbeiten || !!c.heading) && (
+                    <BausteinText
+                      block={b} feld="heading" platzhalter="Überschrift" as="h2"
+                      className="house-serif block font-light"
+                      style={{ fontSize: "clamp(1.8rem,4vw,3rem)", lineHeight: 1.05 }}
+                    />
                   )}
-                  {!!c.text && <p className="house-body mt-6 text-[1.05rem] leading-relaxed opacity-80">{String(c.text)}</p>}
+                  {(bearbeiten || !!c.text) && (
+                    <BausteinText
+                      block={b} feld="text" platzhalter="Text" as="p" multiline
+                      className="house-body mt-6 block text-[1.05rem] leading-relaxed opacity-80"
+                    />
+                  )}
                 </div>
               </section>
             );
@@ -168,9 +180,13 @@ export function HausseiteBlocks({
             return (
               <section key={b.id} className="house-hair house-reveal house-gap-y border-b px-6 text-center md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
                 <blockquote className="house-serif mx-auto max-w-3xl italic" style={{ fontSize: "clamp(1.6rem,3.4vw,2.6rem)", lineHeight: 1.15 }}>
-                  „{String(c.quote ?? "")}"
+                  „<BausteinText block={b} feld="quote" platzhalter="Zitat" multiline />"
                 </blockquote>
-                {!!c.author && <p className="house-accent palace-eyebrow mt-6">{String(c.author)}</p>}
+                {(bearbeiten || !!c.author) && (
+                  <p className="house-accent palace-eyebrow mt-6">
+                    <BausteinText block={b} feld="author" platzhalter="Name" />
+                  </p>
+                )}
               </section>
             );
           case "produktreihe": {

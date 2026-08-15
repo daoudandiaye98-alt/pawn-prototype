@@ -446,3 +446,17 @@
   transition: opacity .15s ease;
 }
 .pawn-editable:hover::after, .pawn-editable:focus::after { opacity: 1; }
+
+/* Teil U1.2 — Bausteintext direkt auf der Hausseite. Gleiche Geste wie oben, aber in
+   der Farbe des Hauses (currentColor), damit der Auftritt-Modus keine fremde Farbe
+   in eine Farbwelt trägt. Kein Radius, keine weichen Kanten. */
+.pawn-baustein-editable {
+  outline: 1px dashed currentColor;
+  outline-offset: 4px;
+  cursor: text;
+  min-width: 2ch;
+  transition: outline-color .15s ease;
+}
+.pawn-baustein-editable:hover { outline-style: solid; }
+.pawn-baustein-editable:focus { outline: 1.5px solid currentColor; outline-offset: 4px; }
+.pawn-baustein-editable:empty::before { content: attr(data-platzhalter); opacity: .35; }
