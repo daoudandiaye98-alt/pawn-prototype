@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { X, Pencil, Package as PackageIcon } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 type Designer = Database["public"]["Tables"]["designers"]["Row"];
 type Product = Database["public"]["Tables"]["products"]["Row"];
@@ -207,6 +209,7 @@ function BrandEditor({ designer, onSaved }: { designer: Designer; onSaved: (d: D
 type EditProd = Partial<Product> & { variants?: { name: string; options: string[] }[] };
 
 function ProductsManager({ designerId }: { designerId: string }) {
+  const { locale } = useI18n();
   const [items, setItems] = useState<Product[]>([]);
   const [editing, setEditing] = useState<EditProd | null>(null);
   const [busy, setBusy] = useState(false);
@@ -275,7 +278,7 @@ function ProductsManager({ designerId }: { designerId: string }) {
           <li key={p.id} className="flex items-center gap-4 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="truncate font-serif">{p.name}</p>
-              <p className="text-xs text-muted-foreground">{p.world} · €{Number(p.price)} · {p.status} · {p.inventory_mode === "made_to_order" ? `Anfertigung${p.lead_time_days ? " " + p.lead_time_days + "T" : ""}` : `Lager ${p.stock_quantity}`}</p>
+              <p className="text-xs text-muted-foreground">{p.world} · {formatPrice(Number(p.price), locale)} · {p.status} · {p.inventory_mode === "made_to_order" ? `Anfertigung${p.lead_time_days ? " " + p.lead_time_days + "T" : ""}` : `Lager ${p.stock_quantity}`}</p>
             </div>
             <button onClick={() => setEditing({ ...(p as EditProd), variants: (p.variants ?? []) as { name: string; options: string[] }[] })} className="text-[0.6rem] uppercase tracking-[0.28em] hover:text-foreground">Bearbeiten</button>
             <button onClick={() => del(p)} className="text-[0.6rem] uppercase tracking-[0.28em] text-destructive">Löschen</button>

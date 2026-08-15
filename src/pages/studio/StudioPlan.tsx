@@ -17,6 +17,7 @@ import { isPaidPlan, ladePlanGate, preisFor, stripePriceFor, limitFor, canUse } 
 import { useMediaUrl } from "@/lib/media";
 import { useContentValue } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { Check, Sparkles } from "lucide-react";
 // Teil O Fix — die Plan-Bilder aus Teil O: sie füllen die Beispiel-Fläche, solange
 // kein echtes Beispiel existiert. Nie ein leeres schwarzes Loch.
@@ -125,7 +126,7 @@ function MonthLine({ used, limits, unlimited }: { used: Record<"videos" | "cinem
 export default function StudioPlan() {
   const { user } = useAuth();
   const { designer } = useMyDesigner();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const plan: Plan = ((designer as unknown as { plan?: Plan })?.plan) ?? "haus";
   const quota = usePlanQuota(designer?.id, plan);
   const [busy, setBusy] = useState<Plan | null>(null);
@@ -240,9 +241,9 @@ export default function StudioPlan() {
   };
 
   const priceFor = (p: Plan): string => {
-    if (p === "haus") return "0 €";
+    if (p === "haus") return formatPrice(0, locale);
     const eur = preisFor(p);
-    return eur > 0 ? `${eur} €` : "–";
+    return eur > 0 ? formatPrice(eur, locale) : "–";
   };
 
   const benefitsFor = (p: Plan): string[] => {

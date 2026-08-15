@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Plus, Upload, X, Sparkles, Megaphone, HelpCircle, Check, ImageIcon, Share2, Package, Link2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { TagInput } from "@/features/ontology/TagInput";
 import { useOntology, type OntologyTerm } from "@/features/ontology/useOntology";
 import { renderShareKit, downloadBlob, SHARE_FORMAT_LABEL, type ShareFormat } from "@/features/share/shareKit";
@@ -291,7 +292,7 @@ export default function StudioProducts() {
                   <div className="mt-3 px-0.5">
                     <p className="truncate font-serif text-base leading-snug">{p.name}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {p.world} · €{p.price} · <span className={p.status === "published" ? "text-foreground" : ""}>{p.status === "published" ? t("studio.products.status.live") : p.status === "draft" ? t("studio.products.status.draft") : t("studio.products.status.archived")}</span>
+                      {p.world} · {formatPrice(Number(p.price), locale)} · <span className={p.status === "published" ? "text-foreground" : ""}>{p.status === "published" ? t("studio.products.status.live") : p.status === "draft" ? t("studio.products.status.draft") : t("studio.products.status.archived")}</span>
                       {p.inventory_mode === "made_to_order"
                         ? <> · <span className="text-foreground">{t("studio.products.madeToOrder")}{p.lead_time_days ? ` · ${t("studio.products.leadTimeDays", { n: p.lead_time_days })}` : ""}</span></>
                         : soldOut ? <> · <span className="text-destructive">{t("studio.products.soldOut")}</span></>
@@ -683,7 +684,7 @@ function ProductEditor({ initial, designer, userId, onCancel, save, busy, setEdi
             <div className="mt-3 border-l-2 border-foreground bg-muted/40 px-3 py-2 text-xs">
               <p>
                 {t("studio.products.vatBreakdown", {
-                  gross: formatEuro(vat.gross), net: formatEuro(vat.net), vat: formatEuro(vat.vat),
+                  gross: formatPrice(vat.gross, locale), net: formatPrice(vat.net, locale), vat: formatPrice(vat.vat, locale),
                   rateSuffix: vat.rate > 0 ? ` (${formatRate(vat.rate)} %)` : "",
                 })}
               </p>

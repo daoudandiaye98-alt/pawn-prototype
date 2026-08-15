@@ -123,6 +123,23 @@ export interface PublicProduct {
   designer_id: string;
 }
 
+/**
+ * Teil R7 — die eine Tür in die öffentliche Halle.
+ *
+ * `status = 'published'` allein genügt nicht. Ein Stück wird nur gezeigt, wenn
+ * es auch **vorzeigbar** ist: Name, Preis und Bild müssen gesetzt sein. Sonst
+ * baut die Halle eine Kachel um ein Loch herum — „Ohne Bild", 0 €, leerer Titel.
+ *
+ * Diese Funktion ist absichtlich die einzige Stelle mit dieser Regel. Wer eine
+ * neue Fläche baut, filtert hierdurch — nicht mit einer eigenen Bedingung.
+ */
+export function istZeigbar(p: { name?: string | null; price?: number | string | null; image_url?: string | null }): boolean {
+  const name = (p.name ?? "").trim();
+  const bild = (p.image_url ?? "").trim();
+  const preis = Number(p.price ?? 0);
+  return name.length > 0 && bild.length > 0 && Number.isFinite(preis) && preis > 0;
+}
+
 export function usePublishedProducts(world?: "Mode" | "Interior" | "Kunst") {
   const [products, setProducts] = useState<PublicProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +155,7 @@ export function usePublishedProducts(world?: "Mode" | "Interior" | "Kunst") {
       if (world) q = q.eq("world", world);
       const { data } = await q;
       if (cancelled) return;
-      setProducts((data ?? []) as PublicProduct[]);
+      setProducts(((data ?? []) as PublicProduct[]).filter(istZeigbar));
       setLoading(false);
     })();
     return () => { cancelled = true; };

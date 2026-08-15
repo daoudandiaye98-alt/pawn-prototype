@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { Reveal } from "@/components/palace/Reveal";
 import { Editable } from "@/components/palace/Editable";
 import { supabase } from "@/integrations/supabase/client";
+import { KiBildZeichen } from "@/components/pawn/KiBildZeichen";
 
 interface PremiereItem {
   id: string;
@@ -62,11 +63,8 @@ export function PremiereSection() {
                     onPlay={() => onPlay(it.id)}
                     className="aspect-[9/16] w-full bg-black object-contain"
                   />
-                  {it.shows_synthetic_person && (
-                    <span className="absolute left-2 top-2 border border-white bg-black/70 px-2 py-1 text-[0.55rem] uppercase tracking-[0.22em] text-white">
-                      KI-generiert
-                    </span>
-                  )}
+                  {/* Teil R8 — dasselbe Zeichen wie an KI-Standbildern, eine Komponente. */}
+                  {it.shows_synthetic_person && <KiBildZeichen className="absolute left-2 top-2 z-[2]" />}
                 </div>
                 <div className="flex items-center justify-between p-4">
                   <div>

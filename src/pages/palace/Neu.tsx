@@ -7,8 +7,11 @@ import { Editable } from "@/components/palace/Editable";
 import { useSiteContent } from "@/lib/siteContent";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 export default function Neu() {
+  const { locale } = useI18n();
   // PART 51 Teil D — Sichtbarkeit ab Tag 1: "Alles Neue" muss echte, veröffentlichte Stücke
   // zeigen, nicht den leeren Kern-Store. Dieselbe Quelle wie WorldPage.tsx (/mode /interior /kunst).
   const { designers } = usePublicDesigners();
@@ -67,7 +70,7 @@ export default function Neu() {
                         <p className="palace-serif italic text-[1.1rem] text-[#000000]">{p.name}</p>
                         <p className="palace-eyebrow mt-2">{p.world} · {p.designer}</p>
                       </div>
-                      <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
+                      <p className="palace-eyebrow text-[#000000]">{formatPrice(p.price, locale)}</p>
                     </div>
                   </Link>
                 </Reveal>

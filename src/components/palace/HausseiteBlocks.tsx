@@ -18,6 +18,8 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_HOUSE_THEME, themeCssVars, type Flaechenrhythmus, type HouseTheme } from "@/features/houseTheme/theme";
 import { MediaImg } from "@/components/palace/MediaImg";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 export type PageBlockKind =
   | "auftakt" | "editorial_text" | "zitat" | "produktreihe" | "lookbook_streifen"
@@ -90,6 +92,7 @@ function Media({ asset, className, allowTon, style }: {
 /** Teil 16c: ein kurzer, sichtbarer Weg zum Kauf — überall, wo ein Medium ein Stück zeigt.
     mediaAssetId (falls bekannt) bucht den Shop-Klick auf genau dieses Bild/Video. */
 function ShopLink({ product, mediaAssetId }: { product?: BlockProductLite; mediaAssetId?: string }) {
+  const { locale } = useI18n();
   if (!product) return null;
   return (
     <Link
@@ -97,7 +100,7 @@ function ShopLink({ product, mediaAssetId }: { product?: BlockProductLite; media
       onClick={() => { if (mediaAssetId) void supabase.rpc("bump_media_metric" as never, { p_media_asset_id: mediaAssetId, p_metric: "shop_clicks" } as never); }}
       className="house-accent mt-3 inline-flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.2em] hover:underline"
     >
-      Zum Stück · {product.name} · €{product.price.toLocaleString("de-DE")}
+      Zum Stück · {product.name} · {formatPrice(product.price, locale)}
     </Link>
   );
 }
@@ -120,6 +123,7 @@ export function HausseiteBlocks({
   theme?: HouseTheme;
 }) {
   const t = theme ?? DEFAULT_HOUSE_THEME;
+  const { locale } = useI18n();
   const gestaffelt = t.bewegungscharakter === "gestaffelt";
   const parallaxOn = t.bewegungscharakter === "ausdrucksstark";
   const productsById = Object.fromEntries(products.map((p) => [p.id, p]));
@@ -180,7 +184,7 @@ export function HausseiteBlocks({
                     <Link key={p.id} to={`/product/${p.slug}`} className="group block" style={gestaffelt ? { transitionDelay: `${i * 60}ms` } : undefined}>
                       {p.image_url && <MediaImg src={p.image_url} alt={p.name} className="house-media aspect-[4/5] w-full object-cover" loading="lazy" />}
                       <p className="house-serif mt-3 text-[1rem]">{p.name}</p>
-                      <p className="house-accent palace-eyebrow mt-1">€{p.price.toLocaleString("de-DE")}</p>
+                      <p className="house-accent palace-eyebrow mt-1">{formatPrice(p.price, locale)}</p>
                     </Link>
                   ))}
                 </div>

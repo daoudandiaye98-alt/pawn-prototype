@@ -11,7 +11,6 @@ import { useI18n } from "@/lib/i18n";
 import { formatPrice, formatCreditLine } from "@/lib/format";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { BauerSpruch } from "@/components/pawn/BauerSpruch";
-import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import heroImage1400 from "@/assets/landing-hero-1400.webp";
 import heroImage2400 from "@/assets/landing-hero-2400.webp";
 // Teil O — feste Bilder für die drei Welten (lokal, WebP).
@@ -19,6 +18,9 @@ import weltModeBild from "@/assets/teil-o/welt-mode.webp";
 import weltInteriorBild from "@/assets/teil-o/welt-interior.webp";
 import weltKunstBild from "@/assets/teil-o/welt-kunst.webp";
 import { MediaImg } from "@/components/palace/MediaImg";
+import { KiBildZeichen } from "@/components/pawn/KiBildZeichen";
+import { AiDisclosureNote } from "@/components/pawn/AiDisclosureNote";
+import { useKiBilder, istKiBild } from "@/lib/kiHerkunft";
 
 /**
  * Teil 27a — Die Bühne: Landing 1:1 nach docs/design-referenz/landing.html.
@@ -33,17 +35,11 @@ const WORLDS: { key: "Mode" | "Interior" | "Kunst"; labelKey: string; label: str
   { key: "Kunst", labelKey: "landing.world_kunst_label", label: "Kunst", textKey: "landing.world_kunst_text", text: "Arbeiten, die einen Raum verändern." },
 ];
 
-/** Zellen 1/6, 6/10, 10/13 im 12er-Raster, versetzte Höhen — wie die Referenz, aber
- * gedeckelt statt reiner vh-Werte (Teil 36): kein Kachel-Abschnitt über 82vh, auch auf
- * sehr hochauflösenden/hohen Desktop-Bildschirmen. */
-const WORLD_TILE_STYLE = [
-  { gridColumn: "1 / 6" as const, minHeight: "clamp(420px, 76vh, 760px)", marginTop: "0" },
-  { gridColumn: "6 / 10" as const, minHeight: "clamp(340px, 58vh, 580px)", marginTop: "5rem" },
-  { gridColumn: "10 / 13" as const, minHeight: "clamp(380px, 66vh, 660px)", marginTop: "1.5rem" },
-];
-
 const Index = () => {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
+  /* Teil R8 — welche Bilder dieser Seite aus einer Maschine kommen. Eine Abfrage
+     für die ganze Landing, kein Nachschlagen je Kachel. */
+  const kiBilder = useKiBilder();
   const { designers } = usePublicDesigners();
   const { products } = usePublishedProducts();
   const collection = useActiveCollection();
@@ -96,38 +92,51 @@ const Index = () => {
           className="absolute inset-0 h-full w-full object-cover"
           fetchPriority="high"
         />
-        {/* Teil J2 — das neue Hero-Bild ist hell; ein durchgehender Schwarz-Schleier plus
-            verstärkter Verlauf am Boden sichert die Lesbarkeit von "YOUR MOVE." (Designgesetz:
-            nur #000, kein Grauton als Fläche — deshalb reine Schwarz-Deckkraft statt Grau). */}
-        <div className="pointer-events-none absolute inset-0 bg-black/22" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/78 via-black/35 to-black/12" />
+        {/*
+          Teil R1 — LESBARKEIT DURCH EINE KANTE, NICHT DURCH EINEN VERLAUF.
+
+          Bis hierher lagen zwei Schleier über dem Foto: eine flächige
+          Schwarz-Deckkraft und darüber ein Verlauf von unten nach oben. Weiß
+          auf hellem Beton blieb trotzdem grenzwertig — der Verlauf ist an
+          jeder Stelle unterschiedlich stark, also ist auch der Kontrast an
+          jeder Stelle ein anderer. Gemessen werden kann so nichts.
+
+          Jetzt steht der ganze Textblock auf einer massiven schwarzen Fläche
+          mit harter Kante — dieselbe Lösung wie beim Label „Der kuratierte
+          Raum", das schon immer funktioniert hat. Weiß auf #000 sind 21:1,
+          unabhängig davon, wie hell das Foto dahinter gerade ist.
+        */}
         <div className="relative z-[2] mx-auto w-full max-w-[1440px] px-6 pb-12 pt-32 md:px-10">
-          <span className="inline-block bg-black px-[0.8rem] py-[0.45rem] text-[0.62rem] uppercase tracking-[0.36em]">
-            <Editable contentKey="landing.cover_kicker">Der kuratierte Raum</Editable>
-          </span>
-          <PawnWordmark as="div" className="mt-[1.3rem] text-[clamp(1.3rem,2.8vw,2rem)] text-white/90" />
-          <h1 className="mt-[0.7rem] max-w-[16ch] font-serif text-[clamp(3.2rem,10vw,8.4rem)] font-semibold italic leading-[0.9] tracking-[-0.028em]">
-            YOUR MOVE.
-          </h1>
-          <p className="mt-[1.6rem] max-w-[44ch] text-[1rem] text-white/92">
-            PAWN turns creative potential into real-world opportunity.
-          </p>
-          <div className="mt-[2.2rem] flex flex-wrap gap-[0.9rem]">
-            <Button asChild variant="editorial" size="chip" className="border-white bg-white text-black hover:bg-transparent hover:text-white">
-              <Link to="/start">Mach deinen Zug</Link>
-            </Button>
-            {/* Teil Q — der zweite Weg führt in die Boutique: von der Landing ist
-                alles Kaufbare jetzt einen Tipp entfernt. */}
-            <Button asChild variant="editorial" size="chip" className="border-white bg-transparent text-white hover:bg-white hover:text-black">
-              <Link to="/shop">Häuser entdecken</Link>
-            </Button>
+          <div className="w-fit max-w-full bg-black px-6 py-8 md:px-10 md:py-10">
+            <span className="inline-block border-[1.5px] border-white px-[0.8rem] py-[0.45rem] text-[0.68rem] uppercase tracking-[0.32em]">
+              <Editable contentKey="landing.cover_kicker">Der kuratierte Raum</Editable>
+            </span>
+            {/* Eine Wortmarke pro Bildschirm: die im Kopf. Die zweite,
+                dekorative stand direkt über „YOUR MOVE." und überlagerte sie
+                auf schmalen Geräten. */}
+            <h1 className="mt-[1.1rem] max-w-[16ch] font-serif text-[clamp(3.2rem,10vw,8.4rem)] font-semibold italic leading-[0.9] tracking-[-0.028em]">
+              YOUR MOVE.
+            </h1>
+            <p className="mt-[1.6rem] max-w-[44ch] text-[1rem] text-white">
+              {t("landing.cover_claim")}
+            </p>
+            <div className="mt-[2.2rem] flex flex-wrap gap-[0.9rem]">
+              <Button asChild variant="editorial" size="chip" className="border-white bg-white text-black hover:bg-transparent hover:text-white">
+                <Link to="/start">Mach deinen Zug</Link>
+              </Button>
+              {/* Teil Q — der zweite Weg führt in die Boutique: von der Landing ist
+                  alles Kaufbare jetzt einen Tipp entfernt. */}
+              <Button asChild variant="editorial" size="chip" className="border-white bg-transparent text-white hover:bg-white hover:text-black">
+                <Link to="/shop">Häuser entdecken</Link>
+              </Button>
+            </div>
+            {coverDesigner && (
+              <p className="mt-8 text-[0.68rem] uppercase tracking-[0.28em] text-white">
+                {formatCreditLine({ houseNumber: coverDesigner.house_number, brandName: coverDesigner.brand_name, third: coverDesigner.location })}
+              </p>
+            )}
           </div>
         </div>
-        {coverDesigner && (
-          <div className="absolute bottom-[1.2rem] left-6 z-[3] text-[0.58rem] uppercase tracking-[0.28em] text-white/85 md:left-10">
-            {formatCreditLine({ houseNumber: coverDesigner.house_number, brandName: coverDesigner.brand_name, third: coverDesigner.location })}
-          </div>
-        )}
       </div>
 
       {/* 01B AUS DEN HÄUSERN — Teil H: der Slogan behauptet, die Werke beweisen. Kuratierte/
@@ -147,14 +156,17 @@ const Index = () => {
                 return (
                   <Reveal key={p.id} delay={i * 60}>
                     <Link to={`/product/${p.slug}`} className="group block">
-                      <EditorialImage seed={`house-${p.slug}`} src={p.image_url} ratio="4/5" className="w-full" />
+                      <div className="relative">
+                        <EditorialImage seed={`house-${p.slug}`} src={p.image_url} ratio="4/5" className="w-full" />
+                        {/* Teil R8 — Bilder mit KI-Herkunft tragen ihr Zeichen. */}
+                        {istKiBild(p.image_url, kiBilder) && <KiBildZeichen className="absolute left-2 top-2 z-[2]" />}
+                      </div>
                       <p className="mt-3 font-serif text-[1.05rem] italic leading-tight">{p.name}</p>
                       <p className="mt-1 text-[0.62rem] uppercase tracking-[0.24em] text-[#404040]">
                         {designer?.brand_name ?? "PAWN"}
                       </p>
-                      <p className="mt-1 text-[0.8rem] tabular-nums">
-                        €{Math.round(p.price).toLocaleString(locale === "en" ? "en-US" : "de-DE")}
-                      </p>
+                      {/* Teil R2 — eine einzige Preis-Schreibweise, aus formatPrice. */}
+                      <p className="mt-1 text-[0.8rem] tabular-nums">{formatPrice(p.price, locale)}</p>
                     </Link>
                   </Reveal>
                 );
@@ -203,28 +215,35 @@ const Index = () => {
               Alle Häuser
             </Link>
           </Reveal>
-          <div className="grid gap-6 md:grid-cols-12">
+          {/*
+            Teil R6 — unter 768px eine Reihe zum Wischen mit Schnappen an der
+            Kante: alle drei Kacheln gleich breit, gleich hoch, gleicher
+            Ausschnitt. Ab 768px der versetzte Zwölfer-Raster-Satz wie zuvor.
+            Höhe, Spalte und Versatz stehen jetzt in `index.css` (`.welt-kachel`),
+            nicht mehr als Inline-Stil — Inline-Stil kennt keinen Umbruchpunkt.
+          */}
+          <div className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 md:mx-0 md:grid md:grid-cols-12 md:gap-6 md:overflow-visible md:px-0 md:pb-0">
             {WORLDS.map((w, i) => {
               const img = worldImage(w.key);
               return (
                 <Reveal
                   key={w.key}
-                  className="md:min-h-0"
-                  style={{ gridColumn: WORLD_TILE_STYLE[i].gridColumn, minHeight: WORLD_TILE_STYLE[i].minHeight, marginTop: WORLD_TILE_STYLE[i].marginTop }}
+                  className={`welt-kachel welt-kachel--${i + 1} w-[78vw] shrink-0 snap-start sm:w-[62vw] md:w-auto md:shrink`}
                 >
                   {/* Teil Q — die Welt-Kachel führt in die Boutique mit vorgewählter
                       Welt, statt auf eine eigene Weltseite. Ein Weg, ein Regal. */}
                   <Link
                     to={`/shop?welt=${w.key}`}
-                    className="group relative flex h-full min-h-[52vh] items-end overflow-hidden text-white no-underline md:min-h-0"
+                    className="group relative flex h-full items-end overflow-hidden text-white no-underline"
                   >
                     <MediaImg src={img} alt="" width={896} height={1200} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(.76,0,.18,1)] group-hover:scale-[1.03]" />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />
-                    <div className="relative z-[2] p-[1.6rem]">
+                    {/* Teil R6/R1 — eine Kante statt eines Verlaufs: der Kartentext
+                        steht auf massivem Schwarz, nicht auf hellem Beton. */}
+                    <div className="relative z-[2] w-full bg-black p-[1.4rem]">
                       <div className="font-serif text-[clamp(1.8rem,3.4vw,2.7rem)] font-medium italic tracking-[-0.02em]">
                         <Editable contentKey={w.labelKey}>{w.label}</Editable>
                       </div>
-                      <div className="mt-[0.4rem] max-w-[30ch] text-[0.85rem] text-white/90">
+                      <div className="mt-[0.4rem] max-w-[30ch] text-[0.85rem] text-white">
                         <Editable contentKey={w.textKey}>{w.text}</Editable>
                       </div>
                     </div>
@@ -236,7 +255,10 @@ const Index = () => {
         </div>
       </section>
 
-      {/* 04 AUSGABE */}
+      {/* 04 AUSGABE — Teil R7: findet dieser Aufmacher kein vorzeigbares Stück,
+          fällt der ganze Abschnitt weg. Kein Platzhalter, keine leere Kachel.
+          Ein leerer Aufmacher ist besser als ein falscher. */}
+      {issuePieces.length > 0 && (
       <section className="border-t-[1.5px] border-black py-[5.5rem] md:py-32">
         <div className="mx-auto max-w-[1440px] px-6 md:px-10">
           <Reveal className="mb-[2.8rem] flex flex-wrap items-end justify-between gap-8">
@@ -250,38 +272,41 @@ const Index = () => {
               Zur Ausgabe
             </Link>
           </Reveal>
-          {issuePieces.length === 0 ? (
-            <Reveal className="border border-dashed border-border py-24 text-center">
-              <p className="font-serif text-lg italic">Die ersten Stücke ziehen ein.</p>
-            </Reveal>
-          ) : (
-            <div className="grid grid-cols-1 gap-[2.2rem] sm:grid-cols-2 lg:grid-cols-3">
-              {issuePieces.map((p, i) => {
-                const d = designerById.get(p.designer_id);
-                const offset = issuePieces.length >= 4 ? (i === 1 ? "lg:mt-16" : i === 3 ? "lg:-mt-[2.2rem]" : "") : "";
-                return (
-                  <Reveal key={p.id} className={offset}>
-                    <Link to={`/product/${p.slug}`} className="block text-black no-underline">
+          <div className="grid grid-cols-1 gap-[2.2rem] sm:grid-cols-2 lg:grid-cols-3">
+            {issuePieces.map((p, i) => {
+              const d = designerById.get(p.designer_id);
+              const offset = issuePieces.length >= 4 ? (i === 1 ? "lg:mt-16" : i === 3 ? "lg:-mt-[2.2rem]" : "") : "";
+              return (
+                <Reveal key={p.id} className={offset}>
+                  <Link to={`/product/${p.slug}`} className="block text-black no-underline">
+                    <div className="relative">
                       <EditorialImage src={p.image_url} seed={p.slug} ratio="4/5" alt={p.name} color className="group [&_.palace-image-inner]:transition-transform [&_.palace-image-inner]:duration-[900ms] [&:hover_.palace-image-inner]:scale-[1.035]" />
-                      <p className="mt-[0.9rem] font-serif text-[1.3rem] font-semibold tracking-[-0.02em]">{p.name}</p>
-                      <div className="mt-[0.3rem] flex items-center justify-between gap-4 text-[0.58rem] uppercase tracking-[0.26em] text-[#404040]">
-                        <span>{d?.brand_name ?? "PAWN"} · {p.world}</span>
-                        <span>{formatPrice(p.price, locale)}</span>
-                      </div>
-                    </Link>
-                  </Reveal>
-                );
-              })}
-            </div>
-          )}
+                      {/* Teil R8 — auch das Wochen-Feature kennzeichnet KI-Bilder. */}
+                      {istKiBild(p.image_url, kiBilder) && <KiBildZeichen className="absolute left-2 top-2 z-[2]" />}
+                    </div>
+                    <p className="mt-[0.9rem] font-serif text-[1.3rem] font-semibold tracking-[-0.02em]">{p.name}</p>
+                    <div className="mt-[0.3rem] flex items-center justify-between gap-4 text-[0.58rem] uppercase tracking-[0.26em] text-[#404040]">
+                      <span>{d?.brand_name ?? "PAWN"} · {p.world}</span>
+                      <span>{formatPrice(p.price, locale)}</span>
+                    </div>
+                  </Link>
+                </Reveal>
+              );
+            })}
+          </div>
         </div>
       </section>
+      )}
 
       {/* 05 CONCIERGE */}
       <ConciergeSection />
 
-      {/* 06 DESIGNER-FINALE */}
-      <section className="flex min-h-[62vh] items-center border-t-[1.5px] border-black py-[5.5rem] md:py-32">
+      {/* 06 DESIGNER-FINALE — Teil R5: die Sektion hatte `min-h-[62vh]` UND
+          `items-center`. Der Inhalt saß damit in der Mitte einer viel zu hohen
+          Fläche, und unter „Haus eröffnen" stand fast ein leerer Bildschirm bis
+          zum Footer. Jetzt derselbe Abstand wie zwischen allen anderen
+          Abschnitten: py-[5.5rem] / md:py-32. */}
+      <section className="border-t-[1.5px] border-black py-[5.5rem] md:py-32">
         <Reveal className="mx-auto w-full max-w-[1440px] px-6 md:px-10">
           <p className="text-[0.62rem] font-medium uppercase tracking-[0.34em] text-[#404040]">Für Designer</p>
           <h2 className="mt-5 max-w-[15ch] font-serif text-[clamp(2.4rem,7.4vw,6rem)] font-semibold leading-[0.92] tracking-[-0.026em]">
@@ -346,6 +371,10 @@ function ConciergeSection() {
                   Fragen
                 </Button>
               </div>
+              {/* Teil R8 — dieses Feld ist der Eingang ins Gespräch mit PAWN.
+                  Die Gesprächs-Offenlegung hing bisher nur im Chat-Fenster
+                  dahinter, nicht an der Tür. Jetzt an beiden Stellen. */}
+              <AiDisclosureNote className="mt-4 text-white/70 [&_a]:hover:text-white" />
             </form>
           </Reveal>
         </div>

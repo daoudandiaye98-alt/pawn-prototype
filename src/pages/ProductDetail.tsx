@@ -576,7 +576,7 @@ const ProductDetail = () => {
                   : { borderColor: "color-mix(in srgb, var(--house-fg) 22%, transparent)" }}
               >
                 {s}
-                {variant && variant.surcharge > 0 && !outOfStock ? ` +€${formatEuro(variant.surcharge)}` : ""}
+                {variant && variant.surcharge > 0 && !outOfStock ? ` +${formatPrice(variant.surcharge, locale)}` : ""}
               </button>
             );
           })}

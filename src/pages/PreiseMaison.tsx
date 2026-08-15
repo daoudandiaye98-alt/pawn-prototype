@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ladePlanGate, preisFor, limitFor, canUse } from "@/lib/planGate";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 // Teil O — das Kopfbild des Maison-Plans (lokal, WebP).
 import planMaisonBild from "@/assets/teil-o/plan-maison.webp";
 
@@ -25,7 +26,7 @@ function fmtCount(n: number, noun: string, unlimitedPrefix: string): string {
 export default function PreiseMaison() {
   const { hasRole } = useAuth();
   const isDesigner = hasRole("designer");
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [gateReady, setGateReady] = useState(false);
   const [commissionPct, setCommissionPct] = useState(7);
 
@@ -70,7 +71,7 @@ export default function PreiseMaison() {
             {t("preise.maison.title")}
           </h1>
           <p className="mt-6 max-w-xl text-base text-black/70">
-            {t("preise.maison.intro", { price: gateReady ? `${preisFor("maison")} €` : "…" })}
+            {t("preise.maison.intro", { price: gateReady ? formatPrice(preisFor("maison"), locale) : "…" })}
           </p>
         </Reveal>
 
@@ -78,7 +79,7 @@ export default function PreiseMaison() {
           <p className="palace-eyebrow">{t("preise.card.planLabel")}</p>
           <h2 className="palace-serif mt-2 text-3xl text-black">{t("preise.maison.planName")}</h2>
           <p className="mt-3 tabular-nums text-2xl text-black">
-            {gateReady ? `${preisFor("maison")} €` : "…"}<span className="text-sm text-black/60"> {t("preise.card.perMonth")}</span>
+            {gateReady ? formatPrice(preisFor("maison"), locale) : "…"}<span className="text-sm text-black/60"> {t("preise.card.perMonth")}</span>
           </p>
 
           <img

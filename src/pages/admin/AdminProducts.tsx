@@ -7,8 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { useStore, marketplaceSelectors } from "@/core";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 const AdminProducts = () => {
+  const { locale } = useI18n();
   const products = useStore(marketplaceSelectors.getAllProductViews);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("All");
@@ -74,7 +77,7 @@ const AdminProducts = () => {
                 <td className="px-6 py-3">
                   <Badge variant={p.status === "Active" ? "default" : "outline"}>{p.status}</Badge>
                 </td>
-                <td className="px-6 py-3 text-right tabular-nums">€{p.price.toLocaleString("de-DE")}</td>
+                <td className="px-6 py-3 text-right tabular-nums">{formatPrice(p.price, locale)}</td>
               </tr>
             ))}
           </tbody>

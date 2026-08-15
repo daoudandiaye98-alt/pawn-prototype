@@ -8,6 +8,7 @@ import { useDesignerPrevNext } from "@/features/navigation/usePrevNext";
 import { useSiteContent } from "@/lib/siteContent";
 import { Editable } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { Languages } from "lucide-react";
 import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
 import { resolveTheme, type HouseTheme } from "@/features/houseTheme/theme";
@@ -669,7 +670,7 @@ const DesignerPage = () => {
                       <EditorialImage src={p.image_url} alt={p.name} color seed={`d-${p.slug}`} ratio={odd ? "3/4" : "4/5"} />
                       <div className="mt-4 flex items-baseline justify-between gap-4">
                         <p className="palace-serif italic text-[1.15rem] text-[#000000]">{p.name}</p>
-                        <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
+                        <p className="palace-eyebrow text-[#000000]">{formatPrice(p.price, locale)}</p>
                       </div>
                     </Link>
                   );
@@ -933,6 +934,7 @@ function KollektionArchetyp({ archetyp, products, collectionTitle, sectionRef }:
   collectionTitle: string | null;
   sectionRef: React.RefObject<HTMLElement>;
 }) {
+  const { locale } = useI18n();
   const plate = ARCHETYP_PLATES[archetyp];
   const Trenner = ({ h = "h-20 md:h-32" }: { h?: string }) => (
     <div aria-hidden className={`${h} w-full overflow-hidden`}>
@@ -956,7 +958,7 @@ function KollektionArchetyp({ archetyp, products, collectionTitle, sectionRef }:
   const zeile = (p: { slug: string; name: string; price: number }) => (
     <div className="mt-4 flex items-baseline justify-between gap-4">
       <p className="palace-serif italic text-[1.15rem] text-[#000000]">{p.name}</p>
-      <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
+      <p className="palace-eyebrow text-[#000000]">{formatPrice(p.price, locale)}</p>
     </div>
   );
 

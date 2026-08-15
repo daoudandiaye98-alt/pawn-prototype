@@ -11,6 +11,8 @@ import { useStore, marketplaceSelectors } from "@/core";
 import type { World } from "@/core/types/entities";
 import { usePublicDesigners, usePublishedProducts } from "@/lib/publicData";
 import { usePersonalization, sortByPersonalization } from "@/features/personalization";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 
 interface WorldPageProps {
@@ -30,6 +32,7 @@ interface WorldPageProps {
  * - Slim CTA to /apply
  */
 export function WorldPage({ world, eyebrow, headlineA, headlineB, intro }: WorldPageProps) {
+  const { locale } = useI18n();
   const worldKey = world.toLowerCase();
   const seedProducts = useStore(marketplaceSelectors.getAllProductViews);
   const { designers } = usePublicDesigners();
@@ -192,7 +195,7 @@ const worldHeroImage = useContentValue(`world_${world}_hero_image`);
                           <p className="palace-serif italic text-[1.15rem] leading-tight text-[#000000]">{p.name}</p>
                           <p className="palace-eyebrow mt-2">{p.category} · {p.designer}</p>
                         </div>
-                        <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
+                        <p className="palace-eyebrow text-[#000000]">{formatPrice(p.price, locale)}</p>
                       </div>
                     </Link>
                   </Reveal>

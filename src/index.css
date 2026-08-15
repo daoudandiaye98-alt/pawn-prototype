@@ -57,6 +57,11 @@
     --ease-pawn: cubic-bezier(0.76, 0, 0.18, 1);
     --dur-micro: 250ms;
     --dur-reveal: 600ms;
+
+    /* Teil R3 — die tatsächliche Höhe des festen Kopfes: 3.5rem Zellenhöhe
+       (`h-14` in PalaceHeader) plus die 1.5px-Trennlinie darunter. Steht hier
+       einmal, damit kein Abschnitt sie noch einmal schätzen muss. */
+    --kopf-hoehe: calc(3.5rem + 1.5px);
   }
 
   .dark {
@@ -127,6 +132,15 @@
     letter-spacing: 0.2em;
   }
   .skip-link:focus-visible { left: 0; }
+
+  /* Teil R3 — der feste Kopf verschluckte jeden Abschnittsanfang: wer auf einen
+     Anker sprang, landete mit der Überschrift UNTER der Kopfleiste. `scroll-margin-top`
+     hält beim Springen genau diesen Abstand frei — plus einen Finger Luft, damit
+     die Überschrift nicht an der Linie klebt. Wirkt ausschließlich beim Springen,
+     nie im normalen Fluss. */
+  section, [id] {
+    scroll-margin-top: calc(var(--kopf-hoehe) + 1rem);
+  }
 }
 
 @layer components {
@@ -288,6 +302,23 @@
 
   /* Grain removed */
   .palace-grain { display: none !important; }
+
+  /* Teil R6 — DIE DREI WELTEN.
+     Bis hierher standen Höhe, Spalte und Versatz als Inline-Stil an der Kachel.
+     Inline-Stil kennt keinen Umbruchpunkt: auf dem Telefon, wo es nur EINE
+     Spalte gibt, blieben die drei verschiedenen Mindesthöhen und die
+     `margin-top`-Versätze stehen — daher die drei unterschiedlichen Höhen und
+     die halb herausstehende dritte Kachel.
+     Ab jetzt: unter 768px eine Reihe zum Wischen, alle Kacheln gleich hoch,
+     gleicher Ausschnitt, Schnappen an der Kante. Ab 768px der versetzte
+     Zwölfer-Raster-Satz wie zuvor. */
+  .welt-kachel { min-height: clamp(360px, 58vh, 520px); }
+  @media (min-width: 768px) {
+    .welt-kachel { min-height: 0; }
+    .welt-kachel--1 { grid-column: 1 / 6;   min-height: clamp(420px, 76vh, 760px); margin-top: 0; }
+    .welt-kachel--2 { grid-column: 6 / 10;  min-height: clamp(340px, 58vh, 580px); margin-top: 5rem; }
+    .welt-kachel--3 { grid-column: 10 / 13; min-height: clamp(380px, 66vh, 660px); margin-top: 1.5rem; }
+  }
 
   @keyframes palace-marquee {
     from { transform: translateX(0); }

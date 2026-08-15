@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Copy, Printer, Truck, Check, AlertTriangle } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 type Bucket = "offen" | "unterwegs" | "erledigt";
 
@@ -49,7 +50,7 @@ function bucketOf(s: FulfillmentStatus): Bucket {
 }
 
 export default function StudioVersand() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { designer, loading } = useMyDesigner();
   const { lines, loading: ordersLoading, refresh } = useDesignerOrders(designer?.id);
   const [bucket, setBucket] = useState<Bucket>("offen");
@@ -204,7 +205,7 @@ export default function StudioVersand() {
                 <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-5 py-3">
                   <p className="font-serif text-lg">{s.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(s.created_at).toLocaleDateString("de-DE")} · {t("studio.versand.orderShort", { id: s.order_id.slice(0, 8) })} · € {s.total.toLocaleString("de-DE")}
+                    {new Date(s.created_at).toLocaleDateString("de-DE")} · {t("studio.versand.orderShort", { id: s.order_id.slice(0, 8) })} · {formatPrice(s.total, locale)}
                   </p>
                 </div>
 
