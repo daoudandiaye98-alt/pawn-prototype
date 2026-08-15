@@ -9,9 +9,11 @@
  * Merken-Herz ist keine zweite Handlung, sondern ein stiller Schalter auf dem
  * Bild — ohne Zähler, ohne Zwischenschritt.
  */
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { Heart } from "lucide-react";
 import { EditorialImage } from "@/components/palace/EditorialImage";
+import { merkeAbflug, merkeHallenstand, useAnkunft, werkSchluessel } from "@/hooks/useFlug";
 import { useI18n } from "@/lib/i18n";
 
 export interface WerkKartenDaten {
@@ -39,10 +41,20 @@ export function WerkKarte({
 }) {
   const { t } = useI18n();
   const ausverkauft = werk.inventory_mode === "stock" && Number(werk.stock_quantity ?? 0) <= 0;
+  /* Teil S — dieses Feld ist Start und Ziel des Flugs: hin zur Werkseite und
+     auf demselben Weg zurück. Das Bild landet exakt wieder in seiner Kachel. */
+  const bildFeld = useRef<HTMLDivElement>(null);
+  const schluessel = werkSchluessel(werk.slug);
+  useAnkunft(schluessel, bildFeld);
 
   return (
-    <Link to={`/product/${werk.slug}`} className="group block">
-      <div className="relative">
+    <Link
+      to={`/product/${werk.slug}`}
+      data-werk-id={schluessel}
+      onClick={() => { merkeHallenstand(); merkeAbflug(schluessel, bildFeld.current); }}
+      className="group block"
+    >
+      <div className="relative" ref={bildFeld}>
         <EditorialImage
           src={werk.image_url}
           alt={`${werk.name} — ${werk.designers?.brand_name ?? "PAWN"}`}

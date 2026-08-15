@@ -883,7 +883,7 @@ const de = {
   "studio.stueckNeu.live.detailsHint": "Maßtabelle, Material, Pflege und die Geschichte des Stücks trägst du unter „Details ergänzen\" ein — sie erscheinen auf der Artikelseite als ausklappbare Abschnitte und speisen den Passform-Hinweis für Kundinnen.",
   "studio.stueckNeu.improveImage.heading": "Bild verbessern (optional)",
   "studio.stueckNeu.improveImage.detecting": "PAWN sieht sich das Foto an…",
-  "studio.stueckNeu.improveImage.artLabel": "Art",
+  "studio.stueckNeu.improveImage.artLabel": "Objektart",
   "studio.stueckNeu.improveImage.pleaseConfirm": "bitte bestätigen",
   "studio.stueckNeu.improveImage.exampleComing": "Beispiel folgt",
   "studio.stueckNeu.improveImage.selectAtLeastOne": "Wähle mindestens eine Variante.",
@@ -1969,7 +1969,7 @@ const de = {
   "studio.campaignNew.material.useShot": "Nutzen",
   "studio.campaignNew.staging.eyebrow": "Inszenierung",
   "studio.campaignNew.staging.detecting": "PAWN sieht sich das Foto an…",
-  "studio.campaignNew.staging.artLabel": "Art",
+  "studio.campaignNew.staging.artLabel": "Objektart",
   "studio.campaignNew.staging.artConfirm": " — bitte bestätigen",
   "studio.campaignNew.staging.exampleSoon": "Beispiel folgt",
   "studio.campaignNew.staging.selectAtLeastOne": "Wähle mindestens eine Variante.",
@@ -2178,6 +2178,12 @@ const de = {
   "product.werkstatt.link": "Zum Haus →",
 
   // Teil J1 — Artikelseiten-Pass: Lightbox, Preise, Kaufweg, Ontologie-Labels, vollständig zweisprachig.
+  "product.wegweiser.voriges": "Voriges Stück",
+  "product.wegweiser.naechstes": "Nächstes Stück",
+  "spruch.halle": "Tipp mich an, wenn du nicht weiterweißt.",
+  "spruch.werkseite": "Tipp das Bild an, wenn du näher rangehen willst.",
+  "spruch.original": "Originale kannst du direkt beim Haus anfragen.",
+  "product.lichttisch.hinweis": "Größer ansehen",
   "product.lightbox.close": "Schließen",
   "product.lightbox.thumbAria": "Bild {n} anzeigen",
   "product.lightbox.openAria": "Bild vergrößern",
@@ -4609,6 +4615,12 @@ const en: Record<keyof typeof de, string> = {
   "product.werkstatt.link": "To the house →",
 
   // Teil J1 — article page pass: lightbox, prices, buy path, ontology labels, fully bilingual.
+  "product.wegweiser.voriges": "Previous piece",
+  "product.wegweiser.naechstes": "Next piece",
+  "spruch.halle": "Tap me if you get stuck.",
+  "spruch.werkseite": "Tap the image to come closer.",
+  "spruch.original": "Originals can be requested straight from the house.",
+  "product.lichttisch.hinweis": "View larger",
   "product.lightbox.close": "Close",
   "product.lightbox.thumbAria": "Show image {n}",
   "product.lightbox.openAria": "Enlarge image",

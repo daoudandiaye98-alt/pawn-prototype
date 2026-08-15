@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { EditorialImage } from "@/components/palace/EditorialImage";
+import { merkeAbflug, useAnkunft, werkSchluessel } from "@/hooks/useFlug";
 import { Reveal } from "@/components/palace/Reveal";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -29,6 +30,7 @@ import { PrevNext } from "@/components/palace/PrevNext";
 import { useProductPrevNext } from "@/features/navigation/usePrevNext";
 import { DEFAULT_HOUSE_THEME, resolveTheme, themeCssVars, type HouseTheme } from "@/features/houseTheme/theme";
 import { PawnBlinkButton } from "@/components/pawn/PawnBlinkButton";
+import { BauerSpruch } from "@/components/pawn/BauerSpruch";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
 import { ProductServiceSheet } from "@/components/palace/ProductServiceSheet";
 import { ErrorBoundary } from "@/components/palace/ErrorBoundary";
@@ -306,6 +308,63 @@ const ProductDetail = () => {
     [heroImage, gallery],
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  /* Teil S — das Werk kommt aus seiner Kachel angeflogen. Mobil- und
+     Desktop-Fassung stehen beide im Baum; nur die sichtbare fängt den Flug. */
+  const heldMobil = useRef<HTMLDivElement>(null);
+  const heldDesktop = useRef<HTMLDivElement>(null);
+  const flugSchluessel = dbProduct?.slug ? werkSchluessel(dbProduct.slug) : null;
+  useAnkunft(flugSchluessel, heldMobil);
+  useAnkunft(flugSchluessel, heldDesktop);
+  const lichttischSchluessel = dbProduct?.slug ? `lichttisch:${dbProduct.slug}` : null;
+  /* Ein Original im Sinne von Teil S6: Welt Kunst UND als Unikat angelegt
+     (`product_dna.typ === "original"`, siehe src/lib/weltFelder.ts). Eine
+     Auflage von 25 ist kein Original — dort stimmt der Satz nicht. */
+  /* Teil S5 — das alte Bild bleibt 260 ms liegen und zieht hinaus, während
+     das neue von unten hereinkommt. Zwei Bilder für einen Moment, danach eins. */
+  const [vorigesBild, setVorigesBild] = useState<string | null>(null);
+  const letztesBild = useRef<string | null>(null);
+  useEffect(() => {
+    if (letztesBild.current && heroImage && letztesBild.current !== heroImage) {
+      setVorigesBild(letztesBild.current);
+      const weg = setTimeout(() => setVorigesBild(null), 300);
+      letztesBild.current = heroImage;
+      return () => clearTimeout(weg);
+    }
+    letztesBild.current = heroImage ?? null;
+  }, [heroImage]);
+
+  const istKunstOriginal = dbProduct?.world === "Kunst"
+    && (dbProduct?.product_dna as { typ?: string } | null)?.typ === "original";
+
+  /* Teil S3 — der Rückweg. Beim Zurückgehen (Browser-Pfeil oder Wischgeste)
+     hält die Werkseite ihr Kopfbild durchgehend abflugbereit; die Kachel in
+     der Halle fängt es wieder auf. Beim Rollen wird die Messung nachgeführt,
+     höchstens einmal je Bild. Es fliegt die Fassung, die gerade sichtbar ist. */
+  useEffect(() => {
+    if (!flugSchluessel || lightboxIndex !== null) return;
+    let angemeldet = 0;
+    const bereit = () => {
+      angemeldet = 0;
+      const held = [heldMobil.current, heldDesktop.current]
+        .find((el) => el && el.getBoundingClientRect().width >= 1) ?? null;
+      merkeAbflug(flugSchluessel, held, true);
+    };
+    const spaeter = () => { if (!angemeldet) angemeldet = requestAnimationFrame(bereit); };
+    bereit();
+    window.addEventListener("scroll", spaeter, { passive: true });
+    window.addEventListener("resize", spaeter);
+    return () => {
+      if (angemeldet) cancelAnimationFrame(angemeldet);
+      window.removeEventListener("scroll", spaeter);
+      window.removeEventListener("resize", spaeter);
+    };
+  }, [flugSchluessel, lightboxIndex]);
+  /* Teil S4 — von hier wächst das Werk weiter auf den Lichttisch. */
+  const oeffneLichttisch = (von: HTMLElement | null, index = 0) => {
+    if (lichttischSchluessel && index === 0) merkeAbflug(lichttischSchluessel, von);
+    setLightboxIndex(index);
+  };
   // Für das Werkzertifikat: eine frisch signierte Adresse des Titelbilds.
   const zertifikatBild = useMediaUrl(heroImage ?? null);
 
@@ -462,7 +521,18 @@ const ProductDetail = () => {
       >
         <Heart className={cn("h-3 w-3", (saved || wished) && "fill-current")} strokeWidth={1.4} />
       </Button>
-      <PawnBlinkButton onClick={() => setServiceSheetOpen((v) => !v)} ariaLabel={t("product.pawnButtonAria")} />
+      {/* Teil S4 — auf dem Lichttisch ist nur das Werk. Der Bauer tritt ab. */}
+      {lightboxIndex === null && (
+        <div className="relative shrink-0">
+          {/* Teil S6 — zwei Sätze, je höchstens einmal pro Sitzung. Sie kommen
+              nacheinander, damit nie zwei Blasen gleichzeitig stehen. */}
+          <BauerSpruch schluessel="werkseite" text={t("spruch.werkseite")} verzoegerungMs={1200}
+            className="absolute bottom-full right-0 mb-3" />
+          <BauerSpruch schluessel="original" text={t("spruch.original")} verzoegerungMs={6200}
+            wenn={istKunstOriginal} className="absolute bottom-full right-0 mb-3" />
+          <PawnBlinkButton onClick={() => setServiceSheetOpen((v) => !v)} ariaLabel={t("product.pawnButtonAria")} />
+        </div>
+      )}
     </>
   );
 
@@ -665,7 +735,7 @@ const ProductDetail = () => {
           >
             <button
               type="button"
-              onClick={() => setLightboxIndex(Math.max(0, allImages.indexOf(url)))}
+              onClick={() => oeffneLichttisch(null, Math.max(0, allImages.indexOf(url)))}
               aria-label={t("product.gallery.moreView", { name: product.name })}
               className="block w-full text-left"
             >
@@ -752,19 +822,22 @@ const ProductDetail = () => {
       {/* ===== MOBIL/TABLET (<1024px): Cover als bildschirmfüllender Held (Teil 27b) ===== */}
       <section className="relative pt-20 md:pt-24 lg:hidden">
         <Reveal>
-          <div className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
+          <div ref={heldMobil} className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
+            {vorigesBild && (
+              <MediaImg src={vorigesBild} alt="" aria-hidden className="werk-raus absolute inset-0 z-[1] h-full w-full object-cover object-center" />
+            )}
             {heroImage ? (
               <button
                 type="button"
-                onClick={() => setLightboxIndex(0)}
+                onClick={() => oeffneLichttisch(heldMobil.current)}
                 aria-label={t("product.lightbox.openAria")}
-                className="absolute inset-0 block h-full w-full"
+                className="group/held absolute inset-0 block h-full w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
               >
                 {/* Teil Q — formatfüllend statt eingepasst. Vorher stand hier ab md
                     `object-contain` auf schwarzem Grund: ein quadratisches Werkfoto in
                     diesem hohen Rahmen bekam dadurch schwarze Balken über und unter dem
                     Bild. Das vollständige Bild zeigt die Lightbox (ein Tipp darauf). */}
-                <MediaImg src={heroImage} alt={imageAlt} className="h-full w-full object-cover object-center" />
+                <MediaImg key={heroImage} src={heroImage} alt={imageAlt} className="werk-rein h-full w-full object-cover object-center" />
               </button>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black">
@@ -797,21 +870,30 @@ const ProductDetail = () => {
 
       {/* ===== DESKTOP (≥1024px): Doppelseite — sticky Bildspalte + Textspalte (Teil 36) ===== */}
       <section className="hidden lg:flex lg:items-start">
-        <div className="sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden bg-black">
+        <div ref={heldDesktop} className="sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden bg-black">
+          {vorigesBild && (
+            <MediaImg src={vorigesBild} alt="" aria-hidden className="werk-raus absolute inset-0 z-[1] h-full w-full object-cover object-center" />
+          )}
           {heroImage ? (
             <button
               type="button"
-              onClick={() => setLightboxIndex(0)}
+              onClick={() => oeffneLichttisch(heldDesktop.current)}
               aria-label={t("product.lightbox.openAria")}
-              className="flex h-full w-full items-center justify-center"
+              className="group/held flex h-full w-full cursor-zoom-in items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
             >
               {/* Teil Q — dieselbe Korrektur auf der Doppelseite: festes 4:5, füllend
                   und mittig beschnitten. Vollständig sehen: Lightbox. */}
               <MediaImg
+                key={heroImage}
                 src={heroImage}
                 alt={imageAlt}
-                className="h-full w-full object-cover object-center"
+                className="werk-rein h-full w-full object-cover object-center"
               />
+              {/* Erscheint beim Darüberfahren — auf Touch gibt es kein Hover,
+                  dort führt der Tipp aufs Bild direkt zum Lichttisch. */}
+              <span className="pointer-events-none absolute bottom-6 right-6 border-[1.5px] border-white/70 px-3 py-1.5 text-[0.56rem] uppercase tracking-[0.28em] text-white opacity-0 transition-opacity duration-200 group-hover/held:opacity-100 group-focus-visible/held:opacity-100">
+                {t("product.lichttisch.hinweis")}
+              </span>
             </button>
           ) : (
             <span className="palace-eyebrow text-white/50">{t("product.gallery.noImage")}</span>
@@ -866,9 +948,10 @@ const ProductDetail = () => {
             />
           </div>
 
-          <div className="mt-16 max-w-[65ch]">
+          <div key={product.slug} className="mt-16 max-w-[65ch]">
             {storyAndFacts}
             {askLinks}
+            <WerkWegweiser slug={product.slug} />
           </div>
         </div>
       </section>
@@ -980,6 +1063,7 @@ const ProductDetail = () => {
       <ProductLightbox
         images={allImages}
         alt={imageAlt}
+        flugSchluessel={lichttischSchluessel}
         open={lightboxIndex !== null}
         initialIndex={lightboxIndex ?? 0}
         onClose={() => setLightboxIndex(null)}
@@ -994,6 +1078,34 @@ function PrevNextForProduct({ slug }: { slug: string }) {
   const { prev, next } = useProductPrevNext(slug);
   if (!prev && !next) return null;
   return <PrevNext prev={prev} next={next} />;
+}
+
+/**
+ * Teil S5 — zwei Wege unter der Textspalte, jeweils mit dem Titel darunter.
+ * Es ist derselbe Weg wie zuvor (`/product/:slug`), also bleibt die Seite
+ * stehen: React Router tauscht nur die Kennung, nichts wird neu aufgebaut.
+ * Bewegen tut sich deshalb allein das Bild (siehe `werk-raus`/`werk-rein`).
+ */
+function WerkWegweiser({ slug }: { slug: string }) {
+  const { t } = useI18n();
+  const { prev, next } = useProductPrevNext(slug);
+  if (!prev && !next) return null;
+  return (
+    <nav className="mt-16 grid gap-px border-t-[1.5px] border-black bg-[rgba(0,0,0,.18)] sm:grid-cols-2">
+      {prev ? (
+        <Link to={prev.to} className="group/weg block bg-white px-1 py-6 transition-colors hover:bg-black">
+          <span className="palace-eyebrow block text-black/60 group-hover/weg:text-white/70">‹ {t("product.wegweiser.voriges")}</span>
+          <span className="palace-serif mt-2 block text-[1.05rem] italic leading-tight text-black group-hover/weg:text-white">{prev.label}</span>
+        </Link>
+      ) : <span className="hidden bg-white sm:block" />}
+      {next ? (
+        <Link to={next.to} className="group/weg block bg-white px-1 py-6 text-right transition-colors hover:bg-black sm:text-right">
+          <span className="palace-eyebrow block text-black/60 group-hover/weg:text-white/70">{t("product.wegweiser.naechstes")} ›</span>
+          <span className="palace-serif mt-2 block text-[1.05rem] italic leading-tight text-black group-hover/weg:text-white">{next.label}</span>
+        </Link>
+      ) : <span className="hidden bg-white sm:block" />}
+    </nav>
+  );
 }
 
 export default ProductDetail;

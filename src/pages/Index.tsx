@@ -10,6 +10,7 @@ import { useSiteContent } from "@/lib/siteContent";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice, formatCreditLine } from "@/lib/format";
 import { PawnFigurSvg } from "@/components/pawn/PawnFigur";
+import { BauerSpruch } from "@/components/pawn/BauerSpruch";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import heroImage1400 from "@/assets/landing-hero-1400.webp";
 import heroImage2400 from "@/assets/landing-hero-2400.webp";
@@ -298,6 +299,7 @@ const Index = () => {
 };
 
 function ConciergeSection() {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const send = () => {
     const text = value.trim();
@@ -323,7 +325,10 @@ function ConciergeSection() {
             </p>
           </Reveal>
           <Reveal>
-            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="border-[1.5px] border-white p-[1.3rem] pb-[1.1rem]">
+            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="relative border-[1.5px] border-white p-[1.3rem] pb-[1.1rem]">
+              {/* Teil S6 — einmal pro Sitzung, 4,2 s, dann leise weg. */}
+              <BauerSpruch schluessel="halle" text={t("spruch.halle")} verzoegerungMs={2000} hell
+                className="absolute bottom-full left-0 mb-3" />
               <div className="flex items-center gap-2">
                 <PawnFigurSvg invert className="h-6 w-[18px] shrink-0" />
                 <p className="text-[0.58rem] uppercase tracking-[0.3em] text-white/70">Frag die Halle</p>
