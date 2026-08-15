@@ -36,7 +36,8 @@ export function RoleGate({ role, fallback, children }: Props) {
     return <Navigate to="/admin" replace state={{ from: location }} />;
   }
   if (roles.includes("designer") && role !== "designer") {
-    return <Navigate to="/portal" replace state={{ from: location }} />;
+    // Teil R9 — ein Haus gehört ins Studio, nicht auf die alte Portal-Attrappe.
+    return <Navigate to="/studio" replace state={{ from: location }} />;
   }
   return <Navigate to={fallback ?? "/account"} replace state={{ from: location }} />;
 }
