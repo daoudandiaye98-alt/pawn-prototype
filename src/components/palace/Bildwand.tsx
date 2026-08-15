@@ -13,7 +13,7 @@
  * (ohne Haus-Thema) ist das exakt die alte Schwarz-Weiß-Sprache; auf einer Hausseite
  * mit eigener Farbwelt fügt sich die Wand ein, statt eine fremde Farbe mitzubringen.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,11 +40,13 @@ interface BildwandProps {
   onWahl: (id: string) => void;
   /** Nach einem Upload: das Elternteil lädt seine Medienliste neu. */
   onNeu?: () => void;
+  /** Im Blatt trägt schon die Kopfzeile den Titel — dann hier keinen zweiten. */
+  ohneTitel?: boolean;
   className?: string;
 }
 
 export function Bildwand({
-  designerId, medien, gewaehlt, mehrfach = false, nurArt, onWahl, onNeu, className,
+  designerId, medien, gewaehlt, mehrfach = false, nurArt, onWahl, onNeu, ohneTitel, className,
 }: BildwandProps) {
   const { user } = useAuth();
   const [laedt, setLaedt] = useState(false);
@@ -90,7 +92,7 @@ export function Bildwand({
   return (
     <div className={className} style={{ color: "var(--house-fg, #000)" }}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="palace-eyebrow">{mehrfach ? "Bilder wählen" : "Bild wählen"}</span>
+        <span className="palace-eyebrow">{ohneTitel ? "" : mehrfach ? "Bilder wählen" : "Bild wählen"}</span>
         <button
           type="button"
           onClick={() => dateiRef.current?.click()}
@@ -159,6 +161,7 @@ export function Bildwand({
 export function Bildblatt({ offen, onSchliessen, titel, children }: {
   offen: boolean; onSchliessen: () => void; titel: string; children: React.ReactNode;
 }) {
+  useEscape(offen, onSchliessen);
   if (!offen) return null;
   return (
     <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label={titel}>
@@ -178,11 +181,21 @@ export function Bildblatt({ offen, onSchliessen, titel, children }: {
             className="min-h-[36px] border-[1.5px] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.2em]"
             style={{ borderColor: "var(--house-fg, #000)", background: "var(--house-bg, #fff)", color: "var(--house-fg, #000)" }}
           >
-            Fertig
+            Zurück
           </button>
         </div>
         {children}
       </div>
     </div>
   );
+}
+
+/** Escape schließt — überall gleich, mit Tastatur allein bedienbar (U1-Abnahme 7). */
+export function useEscape(aktiv: boolean, onEscape: () => void) {
+  useEffect(() => {
+    if (!aktiv) return;
+    const hoer = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); onEscape(); } };
+    window.addEventListener("keydown", hoer);
+    return () => window.removeEventListener("keydown", hoer);
+  }, [aktiv, onEscape]);
 }

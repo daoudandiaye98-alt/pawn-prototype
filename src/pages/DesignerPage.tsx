@@ -139,6 +139,8 @@ const DesignerPage = () => {
   const [houseMilestones, setHouseMilestones] = useState<HouseMilestones | null>(null);
   // Teil 15b: die Schwelle einmalig je Haus-Besuch zeigen, nicht bei jedem Re-Render.
   const [schwelleActive, setSchwelleActive] = useState(true);
+  // Teil U1.5: nach Anlegen/Verdoppeln/Löschen/Ziehen die Bausteine frisch holen.
+  const [bausteinStand, setBausteinStand] = useState(0);
   useEffect(() => { setSchwelleActive(true); }, [dbDesigner?.id]);
   usePageVisit("designer", dbDesigner?.id);
 
@@ -244,7 +246,7 @@ const DesignerPage = () => {
       setHouseMilestones((ms as unknown as HouseMilestones) ?? null);
     })();
     return () => { cancelled = true; };
-  }, [dbDesigner, auftrittGewuenscht]);
+  }, [dbDesigner, auftrittGewuenscht, bausteinStand]);
 
   // Kollektion für die Standarddarstellung (Akt III) — unabhängig davon, ob das Haus eine
   // eigens gestaltete Hausseite veröffentlicht hat. Kommt direkt aus der products-Tabelle,
@@ -400,7 +402,8 @@ const DesignerPage = () => {
         <AuftrittScope designerId={dbDesigner.id} gewuenscht={auftrittGewuenscht}>
           <HausseiteBlocks
             blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined}
-            designerId={dbDesigner.id} medien={blockMedia} onAenderung={() => setDbDesigner((d) => (d ? { ...d } : d))}
+            designerId={dbDesigner.id} medien={blockMedia} seiteIstLive={!!dbDesigner.page_published_at}
+            onAenderung={() => setBausteinStand((n) => n + 1)}
           />
         </AuftrittScope>
         {/* Teil 15c: dezentes Zeichen der Verwandlungsstufe — nie mehr als ein stiller Hinweis. */}
