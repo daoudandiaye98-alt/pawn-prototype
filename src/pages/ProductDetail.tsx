@@ -845,7 +845,7 @@ const ProductDetail = () => {
               </div>
             )}
             {/* Schwarzer Balken-Unterleger statt Verlauf — Gesetz 1 */}
-            <div className="absolute inset-x-0 bottom-0 bg-black px-6 py-6 md:px-14 md:py-10">
+            <div className="werk-textspalte absolute inset-x-0 bottom-0 bg-black px-6 py-6 md:px-14 md:py-10">
               <p className="palace-eyebrow text-white/70">
                 {product.world}{product.designer ? ` · ${product.designer}` : ""}
               </p>
@@ -909,7 +909,7 @@ const ProductDetail = () => {
         </div>
 
         <div className="min-w-0 flex-1 px-10 py-16 xl:px-16">
-          <div className="max-w-[65ch]">
+          <div className="werk-textspalte max-w-[65ch]">
             <p className="palace-eyebrow house-ink opacity-60">{product.world}</p>
             <h1
               className="palace-serif house-ink mt-3 font-light"
