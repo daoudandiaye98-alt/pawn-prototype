@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { EditorialImage } from "@/components/palace/EditorialImage";
+import { useAnkunft, werkSchluessel } from "@/hooks/useFlug";
 import { Reveal } from "@/components/palace/Reveal";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -306,6 +307,14 @@ const ProductDetail = () => {
     [heroImage, gallery],
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  /* Teil S — das Werk kommt aus seiner Kachel angeflogen. Mobil- und
+     Desktop-Fassung stehen beide im Baum; nur die sichtbare fängt den Flug. */
+  const heldMobil = useRef<HTMLDivElement>(null);
+  const heldDesktop = useRef<HTMLDivElement>(null);
+  const flugSchluessel = dbProduct?.slug ? werkSchluessel(dbProduct.slug) : null;
+  useAnkunft(flugSchluessel, heldMobil);
+  useAnkunft(flugSchluessel, heldDesktop);
   // Für das Werkzertifikat: eine frisch signierte Adresse des Titelbilds.
   const zertifikatBild = useMediaUrl(heroImage ?? null);
 
@@ -752,7 +761,7 @@ const ProductDetail = () => {
       {/* ===== MOBIL/TABLET (<1024px): Cover als bildschirmfüllender Held (Teil 27b) ===== */}
       <section className="relative pt-20 md:pt-24 lg:hidden">
         <Reveal>
-          <div className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
+          <div ref={heldMobil} className="relative h-[70svh] min-h-[420px] w-full overflow-hidden bg-black md:h-[84svh]">
             {heroImage ? (
               <button
                 type="button"
@@ -797,7 +806,7 @@ const ProductDetail = () => {
 
       {/* ===== DESKTOP (≥1024px): Doppelseite — sticky Bildspalte + Textspalte (Teil 36) ===== */}
       <section className="hidden lg:flex lg:items-start">
-        <div className="sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden bg-black">
+        <div ref={heldDesktop} className="sticky top-0 flex h-screen w-[56%] shrink-0 items-center justify-center overflow-hidden bg-black">
           {heroImage ? (
             <button
               type="button"

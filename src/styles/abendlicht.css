@@ -512,3 +512,26 @@
 .abendlicht .al-magazin :is([class*="border-foreground"], [class*="border-black"]) { border-color: #000 !important; border-width: 1.5px !important; }
 .abendlicht .al-magazin :is(.border-border, [class*="border-border"], .divide-border > *) { border-color: rgba(0, 0, 0, 0.18) !important; }
 .abendlicht .al-magazin [class*="shadow-["] { box-shadow: 6px 6px 0 #000 !important; }
+
+/* ============================================================================
+   Teil S — BEWEGUNGS-TOKEN (global, nicht auf .abendlicht beschränkt)
+
+   Der Rest dieser Datei gilt nur innerhalb von .abendlicht (dem Studio). Diese
+   vier Werte gelten überall, weil Bewegung auf der Bühne wie im Studio derselben
+   Regel folgt: eine Zeit für alles, was der Finger direkt anfasst, und eine
+   längere für den Wechsel zwischen Ansichten.
+
+   GESETZ FÜR JEDE ANIMATION IN PAWN:
+   Es werden ausschließlich `transform` und `opacity` animiert. Niemals `width`,
+   `height`, `top`, `left`, `margin`, `box-shadow` oder `filter` — das rechnet
+   die CPU statt der GPU und ruckelt auf dem iPad sichtbar.
+   ========================================================================== */
+:root {
+  --t-ui: 240ms;      /* alles, was der Finger direkt anfasst */
+  --t-buehne: 700ms;  /* Übergänge zwischen Ansichten */
+  --k-aus: cubic-bezier(.22, .8, .22, 1);   /* Standard: schnell los, weich an */
+  --k-weich: cubic-bezier(.4, 0, .2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-ui: 120ms; --t-buehne: 120ms; }
+}
