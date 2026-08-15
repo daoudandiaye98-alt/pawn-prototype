@@ -18,7 +18,8 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_HOUSE_THEME, themeCssVars, type Flaechenrhythmus, type HouseTheme } from "@/features/houseTheme/theme";
 import { MediaImg } from "@/components/palace/MediaImg";
-import { BausteinText } from "@/components/palace/Editable";
+import { BausteinText, speichereBausteinFeld } from "@/components/palace/Editable";
+import { Bildwand, Bildblatt } from "@/components/palace/Bildwand";
 import { useEditMode } from "@/lib/editMode";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
@@ -64,6 +65,34 @@ function useParallax(active: boolean) {
     return () => cancelAnimationFrame(raf);
   }, [active]);
   return { ref, offset };
+}
+
+/**
+ * Teil U1.3 — im Auftritt-Modus liegt über jedem Medium eine unsichtbare Fläche:
+ * antippen öffnet die Bildwand. Außerhalb des Modus existiert sie nicht.
+ */
+function MediaGriff({ onWaehlen, leer, children }: {
+  onWaehlen?: () => void; leer: boolean; children: React.ReactNode;
+}) {
+  if (!onWaehlen) return <>{children}</>;
+  return (
+    <span className="relative block">
+      {children}
+      <button
+        type="button"
+        onClick={onWaehlen}
+        className="absolute inset-0 flex items-center justify-center outline-1 outline-dashed outline-offset-[-4px]"
+        style={{ outlineColor: "currentColor" }}
+      >
+        <span
+          className="palace-eyebrow border-[1.5px] px-2 py-1"
+          style={{ borderColor: "var(--house-fg, #000)", background: "var(--house-bg, #fff)", color: "var(--house-fg, #000)" }}
+        >
+          {leer ? "Bild wählen" : "Bild ändern"}
+        </span>
+      </button>
+    </span>
+  );
 }
 
 function Media({ asset, className, allowTon, style }: {
@@ -117,18 +146,52 @@ function ParallaxSection({ active, className, style, children }: {
 }
 
 export function HausseiteBlocks({
-  blocks, mediaById, products, theme,
+  blocks, mediaById, products, theme, designerId, medien, onAenderung,
 }: {
   blocks: PageBlockRow[];
   mediaById: Record<string, BlockMediaLite>;
   products: BlockProductLite[];
   theme?: HouseTheme;
+  /** Nur im Auftritt-Modus gebraucht: wem gehört diese Seite (für Upload + Bildwand). */
+  designerId?: string;
+  /** Dieselben Medien wie `mediaById`, aber als Liste in der Reihenfolge neueste zuerst. */
+  medien?: BlockMediaLite[];
+  /** Nach einer Änderung: das Elternteil lädt neu. */
+  onAenderung?: () => void;
 }) {
   const t = theme ?? DEFAULT_HOUSE_THEME;
   const { locale } = useI18n();
   // Teil U1.2: derselbe Baum, nur bearbeitbar. Wahr im Auftritt-Modus des eigenen Hauses
   // (oder für Admins) — sonst rendert alles exakt wie zuvor.
   const { enabled: bearbeiten } = useEditMode();
+  // Teil U1.3 — welches Feld welches Bausteins gerade in der Bildwand liegt.
+  const [blatt, setBlatt] = useState<{ block: PageBlockRow; feld: string; mehrfach?: boolean } | null>(null);
+  const [, neuZeichnen] = useState(0);
+  const wandOffen = bearbeiten && !!designerId;
+  const griff = (block: PageBlockRow, feld: string, mehrfach?: boolean) =>
+    wandOffen ? () => setBlatt({ block, feld, mehrfach }) : undefined;
+
+  const waehle = async (id: string) => {
+    if (!blatt) return;
+    const c = blatt.block.content;
+    if (blatt.mehrfach) {
+      const bisher = (c[blatt.feld] as string[] | undefined) ?? [];
+      const naechste = bisher.includes(id) ? bisher.filter((x) => x !== id) : [...bisher, id];
+      if (await speichereBausteinFeld(blatt.block.id, c, blatt.feld, naechste)) {
+        c[blatt.feld] = naechste;
+        neuZeichnen((n) => n + 1);
+        onAenderung?.();
+      }
+      return;
+    }
+    if (await speichereBausteinFeld(blatt.block.id, c, blatt.feld, id)) {
+      c[blatt.feld] = id;
+      setBlatt(null);
+      neuZeichnen((n) => n + 1);
+      onAenderung?.();
+    }
+  };
+
   const gestaffelt = t.bewegungscharakter === "gestaffelt";
   const parallaxOn = t.bewegungscharakter === "ausdrucksstark";
   const productsById = Object.fromEntries(products.map((p) => [p.id, p]));
@@ -149,9 +212,11 @@ export function HausseiteBlocks({
             return (
               <ParallaxSection key={b.id} active={parallaxOn} className="house-hair house-reveal overflow-hidden border-b" style={staggerStyle}>
                 {(offset) => (
-                  <Media asset={asset} allowTon={!!c.ton}
-                    style={parallaxOn ? { transform: `translateY(${offset}px) scale(1.08)` } : undefined}
-                    className="house-media aspect-[16/10] w-full object-cover md:aspect-[21/9]" />
+                  <MediaGriff leer={!asset} onWaehlen={griff(b, "media_asset_id")}>
+                    <Media asset={asset} allowTon={!!c.ton}
+                      style={parallaxOn ? { transform: `translateY(${offset}px) scale(1.08)` } : undefined}
+                      className="house-media aspect-[16/10] w-full object-cover md:aspect-[21/9]" />
+                  </MediaGriff>
                 )}
               </ParallaxSection>
             );
@@ -192,7 +257,16 @@ export function HausseiteBlocks({
           case "produktreihe": {
             const ids = (c.product_ids as string[]) ?? [];
             const items = ids.map((id) => productsById[id]).filter(Boolean) as BlockProductLite[];
-            if (items.length === 0) return null;
+            if (items.length === 0 && !bearbeiten) return null;
+            if (items.length === 0) {
+              // Im Auftritt-Modus bleibt auch ein leerer Baustein sichtbar — sonst ließe er
+              // sich weder füllen noch entfernen.
+              return (
+                <section key={b.id} className="house-hair house-gap-y border-b px-6 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
+                  <p className="palace-eyebrow opacity-50">Produktreihe — noch keine Stücke gewählt.</p>
+                </section>
+              );
+            }
             return (
               <section key={b.id} className="house-hair house-reveal house-gap-y border-b px-6 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
                 <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
@@ -210,10 +284,22 @@ export function HausseiteBlocks({
           case "lookbook_streifen": {
             const ids = (c.media_asset_ids as string[]) ?? [];
             const items = ids.map((id) => mediaById[id]).filter(Boolean) as BlockMediaLite[];
-            if (items.length === 0) return null;
+            if (items.length === 0 && !bearbeiten) return null;
             const product = productsById[c.product_id as string];
             return (
               <section key={b.id} className="house-hair house-reveal border-b" style={staggerStyle}>
+                {wandOffen && (
+                  <div className="px-6 pt-6 md:px-14">
+                    <button
+                      type="button"
+                      onClick={griff(b, "media_asset_ids", true)}
+                      className="palace-eyebrow border-[1.5px] px-3 py-1.5"
+                      style={{ borderColor: "var(--house-fg, #000)", background: "var(--house-bg, #fff)", color: "var(--house-fg, #000)" }}
+                    >
+                      {items.length === 0 ? "Bilder wählen" : `Bilder ändern (${items.length})`}
+                    </button>
+                  </div>
+                )}
                 <div className="overflow-x-auto">
                   <div className="flex gap-px" style={{ minWidth: "max-content" }}>
                     {items.map((asset) => <Media key={asset.id} asset={asset} allowTon={!!c.ton} className="house-media h-[60vh] w-auto max-w-[80vw] object-cover md:h-[70vh]" />)}
@@ -228,7 +314,9 @@ export function HausseiteBlocks({
             const product = productsById[c.product_id as string];
             return (
               <section key={b.id} className="house-hair house-reveal border-b px-6 py-10 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
-                <Media asset={asset} allowTon={!!c.ton} className="house-media aspect-[3/4] w-full max-w-sm object-cover md:aspect-[2/3]" />
+                <MediaGriff leer={!asset} onWaehlen={griff(b, "media_asset_id")}>
+                  <Media asset={asset} allowTon={!!c.ton} className="house-media aspect-[3/4] w-full max-w-sm object-cover md:aspect-[2/3]" />
+                </MediaGriff>
                 <ShopLink product={product} mediaAssetId={asset?.id} />
               </section>
             );
@@ -240,9 +328,11 @@ export function HausseiteBlocks({
               <section key={b.id} className="house-hair house-reveal overflow-hidden border-b" style={staggerStyle}>
                 <ParallaxSection active={parallaxOn} className="">
                   {(offset) => (
-                    <Media asset={asset} allowTon={!!c.ton}
-                      style={parallaxOn ? { transform: `translateY(${offset}px) scale(1.08)` } : undefined}
-                      className="house-media aspect-[3/1] w-full object-cover md:aspect-[4/1]" />
+                    <MediaGriff leer={!asset} onWaehlen={griff(b, "media_asset_id")}>
+                      <Media asset={asset} allowTon={!!c.ton}
+                        style={parallaxOn ? { transform: `translateY(${offset}px) scale(1.08)` } : undefined}
+                        className="house-media aspect-[3/1] w-full object-cover md:aspect-[4/1]" />
+                    </MediaGriff>
                   )}
                 </ParallaxSection>
                 {product && <div className="px-6 py-4 md:px-14"><ShopLink product={product} mediaAssetId={asset?.id} /></div>}
@@ -256,9 +346,15 @@ export function HausseiteBlocks({
             return (
               <section key={b.id} className="house-hair house-reveal house-gap-y relative border-b px-6 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
                 <div className="relative mx-auto max-w-4xl">
-                  <Media asset={assetA} className="house-media aspect-[4/5] w-[70%] object-cover" />
+                  <div className="w-[70%]">
+                    <MediaGriff leer={!assetA} onWaehlen={griff(b, "media_asset_id_a")}>
+                      <Media asset={assetA} className="house-media aspect-[4/5] w-full object-cover" />
+                    </MediaGriff>
+                  </div>
                   <div className="absolute bottom-[-10%] right-0 w-[55%]">
-                    <Media asset={assetB} className="house-media aspect-[4/5] w-full object-cover" style={{ boxShadow: "0 0 0 1.5px var(--house-bg, #fff)" }} />
+                    <MediaGriff leer={!assetB} onWaehlen={griff(b, "media_asset_id_b")}>
+                      <Media asset={assetB} className="house-media aspect-[4/5] w-full object-cover" style={{ boxShadow: "0 0 0 1.5px var(--house-bg, #fff)" }} />
+                    </MediaGriff>
                   </div>
                 </div>
                 {product && <div className="mx-auto max-w-4xl pt-[14%]"><ShopLink product={product} mediaAssetId={assetB?.id ?? assetA?.id} /></div>}
@@ -269,6 +365,26 @@ export function HausseiteBlocks({
             return null;
         }
       })}
+
+      {/* Teil U1.3 — die Bildwand. Mobil ein Blatt von unten, ab Bildschirmbreite rechts. */}
+      {blatt && designerId && (
+        <Bildblatt
+          offen
+          onSchliessen={() => setBlatt(null)}
+          titel={blatt.mehrfach ? "Bilder wählen" : "Bild wählen"}
+        >
+          <Bildwand
+            designerId={designerId}
+            medien={medien ?? Object.values(mediaById)}
+            mehrfach={blatt.mehrfach}
+            gewaehlt={blatt.mehrfach
+              ? ((blatt.block.content[blatt.feld] as string[] | undefined) ?? [])
+              : ((blatt.block.content[blatt.feld] as string | undefined) ?? null)}
+            onWahl={(id) => void waehle(id)}
+            onNeu={onAenderung}
+          />
+        </Bildblatt>
+      )}
     </div>
   );
 }

@@ -184,8 +184,8 @@ export interface BearbeitbarerBaustein { id: string; content: Record<string, unk
  * PostgREST keinen Fehler, sondern liefert schlicht null Zeilen zurück. Ohne diese
  * Prüfung wäre ein blockierter Schreibversuch ein stiller Verlust.
  */
-async function speichereBausteinFeld(
-  blockId: string, content: Record<string, unknown>, feld: string, wert: string,
+export async function speichereBausteinFeld(
+  blockId: string, content: Record<string, unknown>, feld: string, wert: unknown,
 ): Promise<boolean> {
   const naechster = { ...content, [feld]: wert };
   const { data, error } = await supabase

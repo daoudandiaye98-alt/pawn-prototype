@@ -229,7 +229,8 @@ const DesignerPage = () => {
     (async () => {
       const [{ data: b }, { data: m }, { data: p }, { data: t }, { data: ms }] = await Promise.all([
         supabase.from("designer_page_blocks" as never).select("id, kind, position, content").eq("designer_id", dbDesigner.id).order("position"),
-        supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", dbDesigner.id),
+        // Neueste zuerst — so erscheint die Bildwand (Teil U1.3) in der erwarteten Ordnung.
+        supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", dbDesigner.id).order("created_at", { ascending: false }),
         supabase.from("products").select("id, name, slug, price, image_url").eq("designer_id", dbDesigner.id),
         supabase.from("house_themes" as never).select("*").eq("designer_id", dbDesigner.id).eq("is_current", true).maybeSingle(),
         supabase.from("house_milestones" as never).select("*").eq("designer_id", dbDesigner.id).maybeSingle(),
@@ -397,7 +398,10 @@ const DesignerPage = () => {
         {/* Teil U1.1 — dieselbe Komponente, zwei Orte: hier zusätzlich bearbeitbar,
             aber nur für den Inhaber dieses Hauses (oder einen Admin). */}
         <AuftrittScope designerId={dbDesigner.id} gewuenscht={auftrittGewuenscht}>
-          <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
+          <HausseiteBlocks
+            blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined}
+            designerId={dbDesigner.id} medien={blockMedia} onAenderung={() => setDbDesigner((d) => (d ? { ...d } : d))}
+          />
         </AuftrittScope>
         {/* Teil 15c: dezentes Zeichen der Verwandlungsstufe — nie mehr als ein stiller Hinweis. */}
         {houseMilestones && (() => {

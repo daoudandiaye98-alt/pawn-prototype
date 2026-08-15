@@ -460,3 +460,12 @@
 .pawn-baustein-editable:hover { outline-style: solid; }
 .pawn-baustein-editable:focus { outline: 1.5px solid currentColor; outline-offset: 4px; }
 .pawn-baustein-editable:empty::before { content: attr(data-platzhalter); opacity: .35; }
+
+/* Teil U1.3 — das Blatt kommt herein, ohne dass sich Größen bewegen: nur transform. */
+@keyframes bildblatt-herein { from { transform: translateY(12%); opacity: 0; } to { transform: none; opacity: 1; } }
+.bildblatt { animation: bildblatt-herein .22s ease-out both; will-change: transform, opacity; }
+@media (min-width: 768px) {
+  @keyframes bildblatt-herein-seite { from { transform: translateX(8%); opacity: 0; } to { transform: none; opacity: 1; } }
+  .bildblatt { animation-name: bildblatt-herein-seite; }
+}
+@media (prefers-reduced-motion: reduce) { .bildblatt { animation: none; } }
