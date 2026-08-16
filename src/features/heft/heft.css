@@ -8,7 +8,12 @@
  * steht nur, was der Mechanismus zum Sichtbarwerden braucht.
  */
 
-.heft-wurzel {
+/* Die Eröffnung und der Hinweis liegen neben der Wurzel, nicht darin — sie
+   brauchen dieselben Farben, sonst steht die Wortmarke auf dem dunklen Tisch
+   statt auf Papier. */
+.heft-wurzel,
+.heft-eroeffnung,
+.heft-hinweis {
   --papier: #f2efe9;
   --tinte: #12100e;
   --nacht: #0a0a0a;
@@ -181,6 +186,50 @@
 .heft-leerseite.aussen-rechts .heft-folio {
   text-align: right;
 }
+/* M4 — der Titel. */
+.heft-titel {
+  justify-content: space-between;
+  gap: clamp(1rem, 3vh, 2.25rem);
+}
+.heft-titel-marke {
+  margin: 0;
+  font-size: clamp(2.25rem, 7vw, 5.5rem);
+  color: var(--tinte);
+}
+.heft-titel-haltung {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1rem, 1.7vw, 1.4rem);
+  line-height: 1.35;
+  color: var(--tinte);
+}
+.heft-titel-haltung p {
+  margin: 0;
+}
+/* `:focus`, nicht `:focus-visible`: der Ring soll beweisbar sein. Ein Werkzeug,
+   das programmatisch fokussiert, sieht `:focus-visible` nie. */
+.heft-weg-hinein:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.heft-weg-hinein span {
+  /* Die Sperrung frisst das Leerzeichen vor dem Pfeil — deshalb ein echter Abstand. */
+  margin-left: 0.5em;
+}
+.heft-weg-hinein {
+  align-self: flex-start;
+  border-bottom: 1.5px solid currentColor;
+  padding-bottom: 0.2rem;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--tinte);
+  /* Trefferfläche: 44 px auch dann, wenn die Zeile nur 17 px hoch ist. */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
 .heft-titelzeile {
   margin: 0 0 auto;
   font-family: "Fraunces", Georgia, serif;
@@ -188,6 +237,118 @@
   font-weight: 400;
   line-height: 1.05;
   color: var(--tinte);
+}
+
+/* ————————————————— M3 · Die Eröffnung ————————————————— */
+
+.heft-eroeffnung {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: var(--papier);
+  /* Sie hält nichts fest: wer sofort blättern will, blättert sofort. */
+  pointer-events: none;
+  animation: heft-flaeche-ab 1100ms cubic-bezier(0.22, 1, 0.36, 1) 2700ms both;
+}
+
+.heft-eroeffnung-marke {
+  color: var(--tinte);
+  font-size: clamp(2.5rem, 9vw, 7rem);
+}
+
+/* Die Sperrung zieht sich zusammen — als Verschiebung je Glied, nicht als
+   letter-spacing. Ein animiertes letter-spacing rechnet in jedem Bild den Satz
+   neu; auf dem iPad sieht man das. */
+.heft-eroeffnung .pawn-glied {
+  display: inline-block;
+  animation: heft-marke-zieht 2600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes heft-marke-zieht {
+  from {
+    transform: translate3d(calc(var(--i) * 0.46em), 10px, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/* Die Marke wandert beim Zusammenziehen nach links; die Hülle hält sie mittig. */
+.heft-eroeffnung .heft-eroeffnung-marke {
+  animation: heft-marke-mitte 2600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes heft-marke-mitte {
+  from { transform: translate3d(-0.46em, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes heft-flaeche-ab {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Das Heft steigt auf und setzt sich — beginnt, wenn die Fläche abblendet. */
+.heft-wurzel.eroeffnet .heft {
+  animation: heft-setzt-sich 1600ms cubic-bezier(0.22, 1, 0.36, 1) 2700ms both;
+}
+
+@keyframes heft-setzt-sich {
+  from {
+    transform: translate3d(0, 26px, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+.heft-hinweis > span {
+  /* Eine schmale Papierplatte trägt den Hinweis — sonst steht er mal auf dem
+     dunklen Tisch, mal auf dem hellen Blatt, und ist einmal davon unlesbar. */
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  background: var(--papier);
+}
+.heft-hinweis {
+  position: fixed;
+  bottom: clamp(0.9rem, 3vh, 2rem);
+  left: 0;
+  right: 0;
+  z-index: 55;
+  margin: 0;
+  text-align: center;
+  pointer-events: none;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--tinte);
+  animation: heft-hinweis-auf 900ms cubic-bezier(0.22, 1, 0.36, 1) 4600ms both;
+}
+.heft-hinweis.ruhig {
+  animation: heft-hinweis-auf 200ms linear 300ms both;
+}
+
+@keyframes heft-hinweis-auf {
+  from { opacity: 0; }
+  to { opacity: 0.72; }
+}
+
+/* Bei reduzierter Bewegung: Wortmarke steht sofort, 200 ms Blende, fertig. */
+.heft-eroeffnung.ruhig {
+  animation: heft-flaeche-ab 200ms linear 200ms both;
+}
+.heft-eroeffnung.ruhig .heft-eroeffnung-marke,
+.heft-eroeffnung.ruhig .pawn-glied {
+  animation: none;
+  transform: none;
+  opacity: 1;
 }
 
 /* ————— Der zweite Weg: reduzierte Bewegung ————— */
@@ -216,4 +377,15 @@
   .heft-folge-paar {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* Die Ausgabe ist die Überschrift der Titelseite — klein gesetzt, aber die h1. */
+.heft-titel-ausgabe {
+  margin: 0;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--tinte);
 }

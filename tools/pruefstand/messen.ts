@@ -488,6 +488,12 @@ export async function messeFokus(page: Page, seite: string, breite: number): Pro
     return treffer;
   }, FOKUSSIERBAR);
 
+  // BLINDSTELLE: gemessen wird mit `el.focus()`. Chromium wertet das als
+  // Mausfokus, also greift `:focus-visible` nicht — ein Element, dessen Ring nur
+  // über `:focus-visible` kommt, fällt hier durch, obwohl die Tastatur ihn zeigt.
+  // Ein vorheriger Tab-Druck ändert das nicht (geprüft). Wer 3.4 auswertet, muss
+  // deshalb im Zweifel in den Stil sehen: `:focus` ist beweisbar, `:focus-visible`
+  // nicht. Ein echter Tastaturlauf über die ganze Seite wäre die saubere Lösung.
   let ohneZeichen = 0;
   const stumm: string[] = [];
   for (const st of stellen) {

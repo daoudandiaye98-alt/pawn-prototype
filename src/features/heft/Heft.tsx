@@ -23,6 +23,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   FENSTER, WEG, blattStand, scrollHoehe, seitenNummer, standFuerSeite,
 } from "@/features/heft/wendel";
+import { BlaetternHinweis, Eroeffnung, eroeffnungFaellig } from "@/features/heft/Eroeffnung";
 import "@/features/heft/heft.css";
 
 export interface HeftBlatt {
@@ -73,19 +74,31 @@ export function Heft({ blaetter, grundLinks, grundRechts, adresse, startSeite = 
     }
   }, [adresse]);
 
-  if (reduziert) {
-    return (
-      <HeftFolge
-        blaetter={blaetter} grundLinks={grundLinks} grundRechts={grundRechts}
-        titel={titel} startSeite={startSeite} adresseSetzen={adresseSetzen}
-      />
-    );
-  }
-  return (
+  // M3 — die Eröffnung läuft einmal je Sitzung, und nur, wenn das Heft vorn
+  // aufgeschlagen wird. Wer eine Doppelseite teilt, soll sie sofort sehen.
+  const [oeffnet] = useState(() => startSeite <= 1 && eroeffnungFaellig());
+  const [laeuft, setLaeuft] = useState(oeffnet);
+  const fertig = useCallback(() => setLaeuft(false), []);
+
+  const heft = reduziert ? (
+    <HeftFolge
+      blaetter={blaetter} grundLinks={grundLinks} grundRechts={grundRechts}
+      titel={titel} startSeite={startSeite} adresseSetzen={adresseSetzen}
+    />
+  ) : (
     <HeftGewendet
       blaetter={blaetter} grundLinks={grundLinks} grundRechts={grundRechts}
       titel={titel} anzahl={anzahl} startSeite={startSeite} adresseSetzen={adresseSetzen}
+      eroeffnet={oeffnet}
     />
+  );
+
+  return (
+    <>
+      {heft}
+      {laeuft && <Eroeffnung reduziert={reduziert} onFertig={fertig} />}
+      {oeffnet && <BlaetternHinweis reduziert={reduziert} />}
+    </>
   );
 }
 
@@ -95,10 +108,12 @@ interface InnenProps extends Omit<HeftProps, "adresse" | "startSeite"> {
   anzahl: number;
   startSeite: number;
   adresseSetzen: (n: number) => void;
+  /** M3: nur beim ersten Aufschlagen steigt das Heft auf. */
+  eroeffnet?: boolean;
 }
 
 function HeftGewendet({
-  blaetter, grundLinks, grundRechts, titel, anzahl, startSeite, adresseSetzen,
+  blaetter, grundLinks, grundRechts, titel, anzahl, startSeite, adresseSetzen, eroeffnet,
 }: InnenProps) {
   const blattRefs = useRef<(HTMLDivElement | null)[]>([]);
   const knickRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -174,7 +189,7 @@ function HeftGewendet({
   }, []);
 
   return (
-    <div className="heft-wurzel">
+    <div className={`heft-wurzel${eroeffnet ? " eroeffnet" : ""}`}>
       <div className="heft-tisch">
         <div className="heft-korn" aria-hidden />
         <div className="heft-buehne">
