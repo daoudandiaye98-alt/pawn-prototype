@@ -8,12 +8,13 @@
  * steht nur, was der Mechanismus zum Sichtbarwerden braucht.
  */
 
-/* Die Eröffnung und der Hinweis liegen neben der Wurzel, nicht darin — sie
+/* Eröffnung, Hinweis und Sprunglink liegen neben der Wurzel, nicht darin — sie
    brauchen dieselben Farben, sonst steht die Wortmarke auf dem dunklen Tisch
    statt auf Papier. */
 .heft-wurzel,
 .heft-eroeffnung,
-.heft-hinweis {
+.heft-hinweis,
+.heft-textweg {
   --papier: #f2efe9;
   --tinte: #12100e;
   --nacht: #0a0a0a;
@@ -158,21 +159,8 @@
   }
 }
 
-/* Die leere Seite aus M1: nur Papier und Folio. Was darauf steht, entscheidet M2. */
-/* Höhe des Blattes, nicht mehr: eine Mindesthöhe größer als das Blatt schöbe das
-   Folio unter die Kante, und `.heft-flaeche` schneidet ab. Die Mindesthöhe gilt
-   nur im zweiten Weg, wo die Seite selbst die Höhe bestimmt. */
-.heft-leerseite {
-  position: relative;
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: clamp(1.25rem, 3vw, 2.75rem);
-}
-.heft-folge-seite .heft-leerseite {
-  min-height: 70vh;
-}
+/* Die leere Seite aus M1 ist fort: seit M2 trägt jede Seite den Satzspiegel
+   (`.heftseite`). Geblieben ist das Folio — es gilt in beiden Wegen. */
 .heft-folio {
   font-family: "Outfit", system-ui, sans-serif;
   font-size: 0.68rem;
@@ -180,17 +168,7 @@
   letter-spacing: 0.28em;
   color: var(--tinte);
 }
-.heft-leerseite.aussen-links .heft-folio {
-  text-align: left;
-}
-.heft-leerseite.aussen-rechts .heft-folio {
-  text-align: right;
-}
 /* M4 — der Titel. */
-.heft-titel {
-  justify-content: space-between;
-  gap: clamp(1rem, 3vh, 2.25rem);
-}
 .heft-titel-marke {
   margin: 0;
   font-size: clamp(2.25rem, 7vw, 5.5rem);
@@ -205,38 +183,40 @@
 .heft-titel-haltung p {
   margin: 0;
 }
-/* `:focus`, nicht `:focus-visible`: der Ring soll beweisbar sein. Ein Werkzeug,
-   das programmatisch fokussiert, sieht `:focus-visible` nie. */
-.heft-weg-hinein:focus {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-.heft-weg-hinein span {
-  /* Die Sperrung frisst das Leerzeichen vor dem Pfeil — deshalb ein echter Abstand. */
-  margin-left: 0.5em;
-}
-.heft-weg-hinein {
-  align-self: flex-start;
-  border-bottom: 1.5px solid currentColor;
-  padding-bottom: 0.2rem;
+/* Der Weg aus M4 heißt seit M2 `.heftseite-weg` und steht im Fuß jeder Seite. */
+
+/* Der Sprunglink in den zweiten Weg. Er liegt über allem, nimmt keinen Platz
+   weg und fährt erst herunter, wenn er den Fokus hat — bewegt wird nur
+   `transform`, wie überall im Heft. */
+.heft-textweg {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 70;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  border: 1.5px solid var(--tinte);
+  border-top: 0;
+  padding: 0 1.1rem;
+  background: var(--papier);
   font-family: "Outfit", system-ui, sans-serif;
   font-size: 0.68rem;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--tinte);
-  /* Trefferfläche: 44 px auch dann, wenn die Zeile nur 17 px hoch ist. */
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
+  transform: translate(-50%, -110%);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-.heft-titelzeile {
-  margin: 0 0 auto;
-  font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(1.75rem, 4vw, 3.25rem);
-  font-weight: 400;
-  line-height: 1.05;
-  color: var(--tinte);
+.heft-textweg:focus {
+  transform: translate(-50%, 0);
+  outline: 2px solid var(--tinte);
+  outline-offset: -6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heft-textweg {
+    transition: none;
+  }
 }
 
 /* ————————————————— M3 · Die Eröffnung ————————————————— */
@@ -388,4 +368,133 @@
   letter-spacing: 0.34em;
   text-transform: uppercase;
   color: var(--tinte);
+}
+
+/* ————————————————— M2 · Der Satzspiegel ————————————————— */
+
+.heftseite {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: clamp(0.75rem, 2vh, 1.5rem);
+  padding: clamp(1.1rem, 2.6vw, 2.4rem);
+  background: var(--papier);
+  color: var(--tinte);
+}
+/* Der Rhythmus: Papier → Nacht → Papier. */
+.heftseite.ton-nacht {
+  background: var(--nacht);
+  color: var(--weiss);
+}
+.heftseite.ton-nacht .heft-folio,
+.heftseite.ton-nacht .heftseite-kolumne,
+.heftseite.ton-nacht .heftseite-weg {
+  color: var(--weiss);
+}
+
+.heftseite-kopf,
+.heftseite-fuss {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+/* Außen ist außen: auf der linken Seite links, auf der rechten rechts.
+   Marke und Folio stehen als Erstes im Quelltext, also gilt eine Regel für
+   Kopf und Fuß gemeinsam. */
+.heftseite.aussen-links .heftseite-kopf,
+.heftseite.aussen-links .heftseite-fuss {
+  flex-direction: row;
+}
+.heftseite.aussen-rechts .heftseite-kopf,
+.heftseite.aussen-rechts .heftseite-fuss {
+  flex-direction: row-reverse;
+}
+
+.heftseite-marke {
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+.heftseite-kolumne {
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--tinte);
+}
+
+/* Der Satz selbst: was auf der Seite steht. */
+.heftseite-satz {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.6rem, 1.6vh, 1.2rem);
+  overflow: hidden;
+}
+
+.heftseite-weg {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.5em;
+  border-bottom: 1.5px solid currentColor;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--tinte);
+}
+/* `:focus`, nicht `:focus-visible`: der Ring soll beweisbar sein. Ein Werkzeug,
+   das programmatisch fokussiert, sieht `:focus-visible` nie. */
+.heftseite-weg:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ————— Die Hierarchie ————— */
+
+.heft-kicker {
+  margin: 0;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+.heft-schlagzeile {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1.7rem, 4.4vw, 3.6rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+}
+.heft-vorspann {
+  margin: 0;
+  max-width: 34ch;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1rem, 1.7vw, 1.35rem);
+  line-height: 1.35;
+}
+.heft-fliesstext {
+  margin: 0;
+  max-width: 46ch;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: clamp(0.85rem, 1.1vw, 0.98rem);
+  line-height: 1.6;
+}
+.heft-bildunterschrift {
+  margin: 0;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  opacity: 0.75;
+}
+
+/* Im zweiten Weg bestimmt der Inhalt die Höhe. */
+.heft-folge-seite .heftseite {
+  min-height: 70vh;
 }
