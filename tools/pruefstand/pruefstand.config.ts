@@ -102,8 +102,15 @@ export const SCHWELLEN = {
   liste_laenge: 10,
 } as const;
 
-/** Wartezeit nach dem Laden, bevor gemessen wird (React braucht einen Moment). */
-export const RUHE_MS = 2500;
+/**
+ * Wartezeit nach dem Laden, bevor gemessen wird (React braucht einen Moment).
+ *
+ * Sie muss über der längsten Eröffnung liegen, die eine Seite abspielt — sonst
+ * misst man eine Fläche, die noch darüber liegt, und nennt das Ergebnis einen
+ * Befund. Längster Fall heute: die Eröffnung des Hefts mit 3900 ms
+ * (`src/features/heft/Eroeffnung.tsx`, ENDE_MS).
+ */
+export const RUHE_MS = 4300;
 
 /** Chromium-Pfad, falls die Umgebung einen mitbringt (Container, CI). */
 export const CHROMIUM_PFAD = process.env.PRUEFSTAND_CHROMIUM ?? undefined;

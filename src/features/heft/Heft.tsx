@@ -117,6 +117,11 @@ function HeftGewendet({
 }: InnenProps) {
   const blattRefs = useRef<(HTMLDivElement | null)[]>([]);
   const knickRefs = useRef<(HTMLDivElement | null)[]>([]);
+  /** Die beiden Flächen je Blatt und die beiden Grundseiten — für die Lesbarkeit. */
+  const vornRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const rueckRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const grundLinksRef = useRef<HTMLDivElement | null>(null);
+  const grundRechtsRef = useRef<HTMLDivElement | null>(null);
   const [hoehe, setHoehe] = useState(() =>
     scrollHoehe(anzahl, typeof window === "undefined" ? 800 : window.innerHeight));
 
@@ -131,6 +136,42 @@ function HeftGewendet({
     blatt.classList.toggle("fern", fern);
     if (knick) knick.style.opacity = String(s.knick);
   }, []);
+
+  /**
+   * Was gerade aufgeschlagen ist, darf angefasst werden — der Rest nicht.
+   *
+   * Ein Heft stapelt alle Seiten übereinander. Ohne diese Sperre führt die
+   * Tabulatortaste in Seiten, die körperlich hinter dem obersten Blatt liegen:
+   * der Fokusring sitzt dann auf etwas Unsichtbarem (Kontrolle 3.4). `inert`
+   * nimmt die verdeckten Seiten aus der Tabulatorfolge und aus dem
+   * Vorlesebaum — bis sie aufgeschlagen sind.
+   *
+   * Sichtbar ist immer genau eine Doppelseite: die Rückseite des zuletzt
+   * gewendeten Blattes links, die Vorderseite des ersten noch offenen rechts.
+   * Ein Blatt zeigt seine Vorderseite, solange es weniger als halb gedreht ist.
+   */
+  const lesbar = useRef<[number, number]>([-2, -2]);
+
+  const lesbarkeitSetzen = useCallback((y: number) => {
+    let letztesGewendete = -1;
+    for (let i = 0; i < anzahl; i++) {
+      if (blattStand(y, i).e < 0.5) break;
+      letztesGewendete = i;
+    }
+    const erstesOffene = letztesGewendete + 1;
+    const [altL, altR] = lesbar.current;
+    if (altL === letztesGewendete && altR === erstesOffene) return;
+    lesbar.current = [letztesGewendete, erstesOffene];
+
+    for (let i = 0; i < anzahl; i++) {
+      const vorn = vornRefs.current[i];
+      const rueck = rueckRefs.current[i];
+      if (vorn) vorn.inert = i !== erstesOffene;
+      if (rueck) rueck.inert = i !== letztesGewendete;
+    }
+    if (grundLinksRef.current) grundLinksRef.current.inert = letztesGewendete !== -1;
+    if (grundRechtsRef.current) grundRechtsRef.current.inert = erstesOffene !== anzahl;
+  }, [anzahl]);
 
   /** Ein Bild je Scroll-Ereignis, mit Sperre. */
   const angefordert = useRef(false);
@@ -154,8 +195,9 @@ function HeftGewendet({
     }
     for (let i = von; i <= bis; i++) schreibe(i, y, false);
 
+    lesbarkeitSetzen(y);
     adresseSetzen(seitenNummer(y, anzahl));
-  }, [anzahl, schreibe, adresseSetzen]);
+  }, [anzahl, schreibe, lesbarkeitSetzen, adresseSetzen]);
 
   useEffect(() => {
     const beiScroll = () => {
@@ -196,8 +238,10 @@ function HeftGewendet({
           <div className="heft" role="group" aria-label={titel}>
             {/* Die Reihenfolge im DOM ist die Lesereihenfolge — eine Vorlesehilfe
                 liest das Heft von vorn nach hinten. Sichtbar gestapelt wird über
-                z-index, nicht über die Reihenfolge. */}
-            <div className="heft-seite links">{grundLinks}</div>
+                z-index, nicht über die Reihenfolge. Verdeckte Seiten sind
+                zusätzlich `inert` (s. `lesbarkeitSetzen`), damit Tabulator und
+                Vorlesebaum dem folgen, was aufgeschlagen ist. */}
+            <div className="heft-seite links" ref={grundLinksRef}>{grundLinks}</div>
             {blaetter.map((b, i) => (
               <div
                 key={b.schluessel}
@@ -205,12 +249,12 @@ function HeftGewendet({
                 ref={(el) => { blattRefs.current[i] = el; }}
                 style={{ zIndex: 40 - i }}
               >
-                <div className="heft-flaeche vorn">{b.vorn}</div>
-                <div className="heft-flaeche rueck">{b.rueck}</div>
+                <div className="heft-flaeche vorn" ref={(el) => { vornRefs.current[i] = el; }}>{b.vorn}</div>
+                <div className="heft-flaeche rueck" ref={(el) => { rueckRefs.current[i] = el; }}>{b.rueck}</div>
                 <div className="heft-knick" ref={(el) => { knickRefs.current[i] = el; }} aria-hidden />
               </div>
             ))}
-            <div className="heft-seite rechts">{grundRechts}</div>
+            <div className="heft-seite rechts" ref={grundRechtsRef}>{grundRechts}</div>
           </div>
         </div>
       </div>

@@ -31,13 +31,27 @@ function upsertLink(rel: string, hreflang: string | null, href: string) {
  * für beide Sprachen (+ x-default), lang-Attribut auf <html> hält I18nProvider
  * bereits synchron. Rendert nichts sichtbar, wirkt nur auf <head>.
  */
-export function Seo({ title, description }: { title: string; description: string }) {
+export function Seo({ title, description, noindex = false }: {
+  title: string;
+  description: string;
+  /**
+   * Teil M: einzelne Routen aus dem Index nehmen, solange sie im Bau sind
+   * (Kontrolle 2.7 — kein Entwurfsinhalt in der Suche).
+   *
+   * ACHTUNG: der <head> ist in einer SPA für alle Routen derselbe. Deshalb wird
+   * `robots` IMMER gesetzt — auf „noindex" hier, sonst ausdrücklich zurück auf
+   * „index". Würde die Marke nur gesetzt und nie zurückgenommen, nähme ein
+   * Klick von der gesperrten Seite auf die Startseite die ganze Site mit.
+   */
+  noindex?: boolean;
+}) {
   const { pathname } = useLocation();
   const { locale } = useI18n();
 
   useEffect(() => {
     document.title = title;
     upsertMeta("name", "description", description);
+    upsertMeta("name", "robots", noindex ? "noindex, nofollow" : "index, follow");
     upsertMeta("property", "og:title", title);
     upsertMeta("property", "og:description", description);
 
@@ -46,7 +60,7 @@ export function Seo({ title, description }: { title: string; description: string
     upsertLink("alternate", "de", url);
     upsertLink("alternate", "en", url);
     upsertLink("alternate", "x-default", url);
-  }, [title, description, pathname, locale]);
+  }, [title, description, noindex, pathname, locale]);
 
   return null;
 }

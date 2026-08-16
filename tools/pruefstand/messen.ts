@@ -474,9 +474,22 @@ export async function messeFokus(page: Page, seite: string, breite: number): Pro
     for (const el of Array.from(document.querySelectorAll(sel))) {
       const cs = getComputedStyle(el);
       if (cs.display === "none" || cs.visibility === "hidden") continue;
+      // `inert` nimmt ein Element aus der Tabulatorfolge. Was die Tastatur nicht
+      // erreicht, braucht auch keinen Ring — sonst zählt 3.4 Elemente mit, die
+      // niemand fokussieren kann (z. B. verdeckte Seiten in einem Heft).
+      if (el.closest("[inert]")) continue;
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1 || r.right <= 0 || r.left >= document.documentElement.clientWidth) continue;
       if (r.bottom < 0 || r.top > window.innerHeight) continue;
+      // Verdeckt: liegt etwas anderes über der Mitte des Elements (typisch ein
+      // Zustimmungs-Dialog), kann sein Ring auf dem Bild gar nicht erscheinen.
+      // Ein solcher Befund wäre eine Aussage über die Überlagerung, nicht über
+      // den Fokus. Dieselbe Regel wie in 3.10.
+      const oben = document.elementFromPoint(
+        Math.min(document.documentElement.clientWidth - 1, Math.max(0, r.x + r.width / 2)),
+        Math.min(window.innerHeight - 1, Math.max(0, r.y + r.height / 2)),
+      );
+      if (oben && oben !== el && !el.contains(oben) && !oben.contains(el)) continue;
       const marke = "f" + ++lfd;
       el.setAttribute("data-pruefstand-fokus", marke);
       treffer.push({
