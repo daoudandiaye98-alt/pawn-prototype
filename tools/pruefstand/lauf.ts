@@ -291,7 +291,10 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   } finally {
     await page.close();
   }
-  return huelleMarkieren(befunde, datenFehler);
+  // Hier gilt die Hüllen-Regel NICHT: 4.3 und 4.5 lesen HTTP-Antworten, nicht
+  // den Inhalt einer Seite. Ob Supabase geantwortet hat, ändert weder den
+  // Statuscode eines Weges noch den einer erfundenen Adresse.
+  return befunde;
 }
 
 async function haupt() {
