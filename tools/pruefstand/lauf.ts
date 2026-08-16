@@ -86,6 +86,12 @@ async function istUmgeleitet(page: Page, erwartetHost: string): Promise<string |
  */
 function huelleMarkieren(befunde: Befund[], datenFehler: string[]): Befund[] {
   if (datenFehler.length === 0) return befunde;
+  // Der Grund steht in jedem einzelnen Befund — aber wer den Lauf ansieht
+  // (im Terminal oder im Protokoll der Action), soll ihn sehen, ohne erst den
+  // Bericht herunterzuladen. Eine Seite, die als Hülle gewertet wird, muss
+  // sagen, WORAN sie gescheitert ist.
+  console.error(`    ⚠ HÜLLE — ${datenFehler.length} Anfrage(n) an ${DATEN_HOSTS.join(", ")} fehlgeschlagen:`);
+  for (const zeile of datenFehler.slice(0, 3)) console.error(`      ${zeile}`);
   const grund = `Die Seite hat ihre Daten nicht bekommen: ${datenFehler.length} Anfrage(n) an `
     + `${DATEN_HOSTS.join(", ")} fehlgeschlagen (${datenFehler[0]}). Gemessen wurde eine leere `
     + "Hülle, nicht die Seite.";

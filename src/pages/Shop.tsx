@@ -212,7 +212,13 @@ const Shop = () => {
   const hasFilters = !!(world || designer || size || search || preisGewaehlt || Object.values(weltFilter).some(Boolean));
 
   return (
-    <PalaceLayout transparentHeader={false}>
+    <PalaceLayout
+      transparentHeader={false}
+      /* Teil K5 — die Boutique hatte bis hierher Titel und Beschreibung der
+         Startseite. Eigener Titel, eigene Beschreibung, eigene canonical. */
+      title="Boutique — PAWN"
+      description="Alle Stücke der laufenden Ausgabe: Mode, Interior und Kunst aus unabhängigen Häusern. Jedes Werk mit Herkunft und Handschrift."
+    >
       {/* Hero */}
       <section className="border-b border-[rgba(0,0,0,.18)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
         <div className="mx-auto max-w-[1600px]">

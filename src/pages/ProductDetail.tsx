@@ -917,7 +917,21 @@ const ProductDetail = () => {
   );
 
   return (
-    <PalaceLayout transparentHeader={false}>
+    <PalaceLayout
+      transparentHeader={false}
+      /* Teil K5 — bis hierher hatte jedes Werk denselben Titel und dieselbe
+         Beschreibung wie die Startseite. Ein geteilter Link zeigte weder, um
+         welches Stück es geht, noch aus welchem Haus. */
+      title={[product.name, product.designer, "PAWN"].filter(Boolean).join(" — ")}
+      description={
+        product.description?.trim()
+        || [product.name, product.designer && `aus dem Haus ${product.designer}`, `${product.world} auf PAWN`]
+          .filter(Boolean).join(" — ")
+      }
+      image={heroImage ?? undefined}
+      imageAlt={imageAlt}
+      seoType="product"
+    >
       <div className="palace house-theme" data-typografie={themeForPage.typografie} data-textur={themeForPage.hintergrundtextur.typ} style={themeCssVars(themeForPage)}>
 
       {/* ===== MOBIL/TABLET (<1024px) — Teil T1/T2/T3/T5 =====
