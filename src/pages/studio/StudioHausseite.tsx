@@ -15,8 +15,9 @@ import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChevronUp, ChevronDown, Trash2, ExternalLink } from "lucide-react";
+import { ChevronUp, ChevronDown, Trash2, ExternalLink, Pencil } from "lucide-react";
 import { HausseiteBlocks, type PageBlockKind, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
+import { Bildwand } from "@/components/palace/Bildwand";
 import { CoverMoment } from "@/features/studio/CoverMoment";
 import {
   DEFAULT_HOUSE_THEME, resolveTheme, type HouseTheme,
@@ -237,6 +238,11 @@ export default function StudioHausseite() {
             className="flex min-h-[36px] items-center gap-1.5 border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
             {t("studio.hausseite.liveView")} <ExternalLink className="h-3 w-3" />
           </a>
+          {/* Teil U1.1 — der Einstieg in den Auftritt-Modus: die echte Hausseite, bearbeitbar. */}
+          <a href={`/designer/${designer.slug}?auftritt=1`} target="_blank" rel="noopener noreferrer"
+            className="flex min-h-[36px] items-center gap-1.5 border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
+            {t("studio.hausseite.auftrittBearbeiten")} <Pencil className="h-3 w-3" />
+          </a>
           <button onClick={() => void publish(!published)} disabled={busy || (!published && !readyToPublish)}
             title={!published && !readyToPublish ? t("studio.hausseite.publishBlockedHint") : undefined}
             className="min-h-[36px] border border-foreground bg-foreground px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-50">
@@ -351,7 +357,8 @@ export default function StudioHausseite() {
                   <button onClick={() => void removeBlock(b)} className="p-1 text-muted-foreground hover:text-foreground" aria-label={t("common.delete")}><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
-              <BlockEditor block={b} media={media} products={products} onChange={(c) => void updateContent(b, c)} t={t} />
+              <BlockEditor block={b} media={media} products={products} onChange={(c) => void updateContent(b, c)} t={t}
+                designerId={designer.id} onNeu={() => void refresh()} />
             </div>
           ))}
         </div>
@@ -398,16 +405,26 @@ export default function StudioHausseite() {
 }
 
 function BlockEditor({
-  block, media, products, onChange, t,
-}: { block: PageBlockRow; media: BlockMediaLite[]; products: BlockProductLite[]; onChange: (c: Record<string, unknown>) => void; t: (key: string, vars?: Record<string, string | number>) => string }) {
+  block, media, products, onChange, t, designerId, onNeu,
+}: {
+  block: PageBlockRow; media: BlockMediaLite[]; products: BlockProductLite[];
+  onChange: (c: Record<string, unknown>) => void;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  designerId: string; onNeu: () => void;
+}) {
   const c = block.content;
+  // Teil U1.3 — die Liste aus Zeichenketten ist weg. Hier steht dieselbe Bildwand
+  // wie im Auftritt-Modus auf der echten Hausseite.
   const mediaPicker = (value: string, onSelect: (id: string) => void, filterKind?: "bild" | "video") => (
-    <select value={value} onChange={(e) => onSelect(e.target.value)} className="mt-2 w-full border border-border bg-white p-2 text-sm">
-      <option value="">{t("studio.hausseite.mediaPicker.placeholder")}</option>
-      {media.filter((m) => !filterKind || m.kind === filterKind).map((m) => (
-        <option key={m.id} value={m.id}>{m.kind === "video" ? "🎬" : "🖼"} {m.id.slice(0, 8)}</option>
-      ))}
-    </select>
+    <Bildwand
+      className="mt-3"
+      designerId={designerId}
+      medien={media}
+      nurArt={filterKind}
+      gewaehlt={value || null}
+      onWahl={onSelect}
+      onNeu={onNeu}
+    />
   );
 
   const body = (() => {
@@ -457,25 +474,20 @@ function BlockEditor({
         );
       }
       case "lookbook_streifen": {
-        const ids = new Set((c.media_asset_ids as string[]) ?? []);
+        const ids = (c.media_asset_ids as string[]) ?? [];
         return (
-          <div className="mt-2 grid max-h-40 grid-cols-2 gap-1 overflow-y-auto text-sm">
-            {media.map((m) => (
-              <label key={m.id} className="flex items-center gap-1.5">
-                <input type="checkbox" checked={ids.has(m.id)} onChange={(e) => {
-                  const next = new Set(ids);
-                  if (e.target.checked) next.add(m.id); else next.delete(m.id);
-                  onChange({ ...c, media_asset_ids: Array.from(next) });
-                }} />
-                {m.kind === "video" ? "🎬" : "🖼"} {m.id.slice(0, 8)}
-              </label>
-            ))}
-            {media.length === 0 && (
-              <p className="col-span-2 text-muted-foreground">
-                {t("studio.hausseite.mediaEmpty")} <Link to="/studio/mediathek" className="underline">{t("studio.hausseite.mediaEmpty.cta")}</Link>
-              </p>
-            )}
-          </div>
+          <Bildwand
+            className="mt-3"
+            designerId={designerId}
+            medien={media}
+            mehrfach
+            gewaehlt={ids}
+            onWahl={(id) => onChange({
+              ...c,
+              media_asset_ids: ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+            })}
+            onNeu={onNeu}
+          />
         );
       }
       case "ueberlappend":

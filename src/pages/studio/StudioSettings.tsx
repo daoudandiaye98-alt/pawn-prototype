@@ -3,7 +3,7 @@ import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { AccountSettingsPanel } from "@/components/palace/AccountSettings";
 import { Link } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPrice } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
@@ -77,8 +77,8 @@ export default function StudioSettings() {
 
               {dna.price_band && (
                 <div className="mt-6 grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
-                  <Stat label={t("studio.settings.dna.avgPrice")} value={`€ ${Math.round(dna.price_band.avg ?? 0)}`} />
-                  <Stat label={t("studio.settings.dna.priceBand")} value={`€ ${Math.round(dna.price_band.min ?? 0)}–${Math.round(dna.price_band.max ?? 0)}`} />
+                  <Stat label={t("studio.settings.dna.avgPrice")} value={formatPrice(Math.round(dna.price_band.avg ?? 0), locale)} />
+                  <Stat label={t("studio.settings.dna.priceBand")} value={`${formatPrice(Math.round(dna.price_band.min ?? 0), locale)}–${formatPrice(Math.round(dna.price_band.max ?? 0), locale)}`} />
                   <Stat label={t("studio.settings.dna.pieces")} value={String(dna.product_count ?? 0)} />
                 </div>
               )}

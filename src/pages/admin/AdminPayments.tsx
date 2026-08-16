@@ -3,6 +3,8 @@ import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useInternalHandles } from "@/lib/handles";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 interface Order {
   id: string; user_id: string | null; amount_total: number; currency: string;
@@ -21,6 +23,7 @@ interface BusinessProfile {
 }
 
 export default function AdminPayments() {
+  const { locale } = useI18n();
   const [orders, setOrders] = useState<Order[]>([]);
   const [designers, setDesigners] = useState<DesignerLite[]>([]);
   const [products, setProducts] = useState<ProductLite[]>([]);
@@ -105,7 +108,7 @@ export default function AdminPayments() {
   return (
     <AdminShell title="Zahlungen" eyebrow="Handel">
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Stat label="Umsatz (bezahlt)" value={`€ ${(totalPaid / 100).toLocaleString("de-DE")}`} />
+        <Stat label="Umsatz (bezahlt)" value={formatPrice(totalPaid / 100, locale)} />
         <Stat label="Bestellungen bezahlt" value={String(countPaid)} />
         <Stat label="Bestellungen offen" value={String(countPending)} />
       </div>
@@ -214,9 +217,9 @@ export default function AdminPayments() {
                       <td className="px-4 py-3"><ConnectStatus designer={designer!} /></td>
                       <td className="px-4 py-3 tabular-nums">{r.orders.size}</td>
                       <td className="px-4 py-3 tabular-nums">{r.qty}</td>
-                      <td className="px-4 py-3 tabular-nums">€ {r.revenue.toLocaleString("de-DE", { maximumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-3 tabular-nums font-medium">€ {payout.toLocaleString("de-DE", { maximumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-3 tabular-nums text-muted-foreground">€ {platform.toLocaleString("de-DE", { maximumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3 tabular-nums">{formatPrice(r.revenue, locale)}</td>
+                      <td className="px-4 py-3 tabular-nums font-medium">{formatPrice(payout, locale)}</td>
+                      <td className="px-4 py-3 tabular-nums text-muted-foreground">{formatPrice(platform, locale)}</td>
                     </tr>
                   );
                 })}
@@ -250,6 +253,7 @@ function OrdersTable({
   productBySlug: Map<string, ProductLite>;
   commissionPct: number;
 }) {
+  const { locale } = useI18n();
   const userIds = useMemo(() => Array.from(new Set(orders.map((o) => o.user_id).filter(Boolean) as string[])), [orders]);
   const handles = useInternalHandles(userIds);
   return (
@@ -281,8 +285,8 @@ function OrdersTable({
                 <td className="px-4 py-3">{new Date(o.created_at).toLocaleString("de-DE")}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.id.slice(0, 8)}</td>
                 <td className="px-4 py-3">{handle} <span className="text-muted-foreground">an</span> {designerLabels}</td>
-                <td className="px-4 py-3 tabular-nums">€ {amount.toLocaleString("de-DE")}</td>
-                <td className="px-4 py-3 tabular-nums text-muted-foreground">€ {platform.toLocaleString("de-DE", { maximumFractionDigits: 2 })} <span className="text-[0.55rem] uppercase">({commissionPct}%)</span></td>
+                <td className="px-4 py-3 tabular-nums">{formatPrice(amount, locale)}</td>
+                <td className="px-4 py-3 tabular-nums text-muted-foreground">{formatPrice(platform, locale)} <span className="text-[0.55rem] uppercase">({commissionPct}%)</span></td>
                 <td className="px-4 py-3 uppercase tracking-widest text-xs">{o.status}</td>
               </tr>
             );

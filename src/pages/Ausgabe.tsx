@@ -11,6 +11,7 @@ import { EditorialImage } from "@/components/palace/EditorialImage";
 import { Reveal } from "@/components/palace/Reveal";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteContent } from "@/lib/siteContent";
+import { istZeigbar } from "@/lib/publicData";
 
 interface HouseSpread {
   id: string;
@@ -56,11 +57,12 @@ export default function Ausgabe() {
           if (!cancelled) setAccentById(map);
 
           const { data: prods } = await supabase.from("products")
-            .select("designer_id, slug, name, price, created_at")
+            .select("designer_id, slug, name, price, image_url, created_at")
             .in("designer_id", rows.map((h) => h.id)).eq("status", "published")
             .order("created_at", { ascending: false });
           const topMap: Record<string, TopProduct> = {};
-          for (const p of (prods ?? []) as unknown as Array<{ designer_id: string; slug: string; name: string; price: number }>) {
+          // Teil R7 — auch als reine Textzeile gilt: kein Stück ohne Name, Preis und Bild.
+          for (const p of ((prods ?? []) as unknown as Array<{ designer_id: string; slug: string; name: string; price: number; image_url: string | null }>).filter(istZeigbar)) {
             if (!topMap[p.designer_id]) topMap[p.designer_id] = { slug: p.slug, name: p.name, price: p.price };
           }
           if (!cancelled) setTopProductById(topMap);

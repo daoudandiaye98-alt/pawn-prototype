@@ -21,6 +21,13 @@ import { ladePlanGate, weltenErlaubt, naechsterPlanFuerMehrWelten } from "@/lib/
 import { Upload, ArrowRight } from "lucide-react";
 import { CoverMoment } from "@/features/studio/CoverMoment";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
+/* Vorgefunden und behoben: diese Seite benutzte ANGEBOTSTYPEN, WELT_FELDER,
+   WeltName und ein `findeAngebotstyp`, ohne sie zu importieren — und
+   `findeAngebotstyp` gibt es gar nicht, die Funktion heißt `angebotstyp`.
+   Die Seite „Stück anlegen" wäre beim Öffnen mit einem ReferenceError
+   stehengeblieben. `npm run build` merkt das nicht (Vite typprüft nicht). */
+import { ANGEBOTSTYPEN, WELT_FELDER, angebotstyp as findeAngebotstyp, type Welt as WeltName } from "@/lib/weltFelder";
 
 type World = "Mode" | "Interior" | "Kunst";
 const WORLD_LABEL_KEY: Record<World, string> = { Mode: "studio.stueckNeu.world.mode", Interior: "studio.stueckNeu.world.interior", Kunst: "studio.stueckNeu.world.kunst" };
@@ -60,7 +67,7 @@ async function uploadPhoto(userId: string, file: File): Promise<string> {
 }
 
 export default function StudioStueckNeu() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user, hasRole } = useAuth();
   const { designer, loading } = useMyDesigner();
   const [searchParams] = useSearchParams();
@@ -422,7 +429,7 @@ export default function StudioStueckNeu() {
                 {product.image_url && <img src={product.image_url} alt="" className="h-20 w-20 object-cover" />}
                 <div>
                   <p className="font-serif text-xl">{product.name}</p>
-                  <p className="text-sm text-muted-foreground">€ {product.price.toLocaleString("de-DE")}</p>
+                  <p className="text-sm text-muted-foreground">{formatPrice(product.price, locale)}</p>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-3">

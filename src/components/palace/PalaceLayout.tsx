@@ -70,10 +70,18 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
       {showBreadcrumbs && <div className="pt-[68px] md:pt-[76px]"><Breadcrumbs /></div>}
       <main id="inhalt">{children}</main>
       <footer className="border-t-[1.5px] border-black bg-white">
-        <div className="mx-auto max-w-[1600px] px-6 pt-16 md:px-14">
+        {/*
+          Teil R5 — die große Wortmarke stand mit `leading-none` in einem Kasten
+          ohne unteres Polster: der Bauer ragt um 0,06em unter die Grundlinie und
+          wurde von der Trennlinie darunter abgeschnitten. Jetzt hat die Zeile
+          Höhe (1.12) und der Kasten unten Luft — die Marke steht vollständig da.
+          Zugleich eine Nummer kleiner gesetzt, damit sie auf dem Telefon nicht
+          den halben Bildschirm einnimmt.
+        */}
+        <div className="mx-auto max-w-[1600px] px-6 pb-6 pt-16 md:px-14 md:pb-8">
           <PawnWordmark
-            className="block w-full text-center leading-none text-black"
-            style={{ fontSize: "clamp(6rem, 15vw, 15rem)" }}
+            className="block w-full text-center text-black"
+            style={{ fontSize: "clamp(4.5rem, 12vw, 12rem)", lineHeight: 1.12 }}
           />
         </div>
         <div className="mx-auto grid max-w-[1600px] grid-cols-2 gap-0 border-t-[1.5px] border-black md:grid-cols-4">

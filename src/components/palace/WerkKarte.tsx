@@ -15,6 +15,7 @@ import { Heart } from "lucide-react";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { merkeAbflug, merkeHallenstand, useAnkunft, werkSchluessel } from "@/hooks/useFlug";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 export interface WerkKartenDaten {
   id: string;
@@ -39,7 +40,7 @@ export function WerkKarte({
   onMerken?: (id: string) => void;
   seedPrefix?: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const ausverkauft = werk.inventory_mode === "stock" && Number(werk.stock_quantity ?? 0) <= 0;
   /* Teil S — dieses Feld ist Start und Ziel des Flugs: hin zur Werkseite und
      auf demselben Weg zurück. Das Bild landet exakt wieder in seiner Kachel. */
@@ -86,7 +87,7 @@ export function WerkKarte({
           <p className="palace-serif italic text-[1.1rem] leading-tight text-[#000000]">{werk.name}</p>
           <p className="palace-eyebrow mt-2">{werk.designers?.brand_name ?? "PAWN"}</p>
         </div>
-        <p className="palace-eyebrow text-[#000000]">€{Number(werk.price).toLocaleString("de-DE")}</p>
+        <p className="palace-eyebrow text-[#000000]">{formatPrice(Number(werk.price), locale)}</p>
       </div>
     </Link>
   );

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Send, Sparkles, RefreshCw } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { Gesperrt } from "@/components/Gesperrt";
 import { ladePlanGate, type Plan } from "@/lib/planGate";
@@ -76,7 +77,7 @@ export default function StudioCopilot() {
                 <Stat label={t("studio.copilot.mirror.views")} value={mirror.stats.views_total} />
                 <Stat label={t("studio.copilot.mirror.wishlist")} value={mirror.stats.wish_total} />
                 <Stat label={t("studio.copilot.mirror.sales")} value={mirror.stats.orders_count} />
-                <Stat label={t("studio.copilot.mirror.revenue")} value={`€${mirror.stats.revenue_eur.toFixed(0)}`} />
+                <Stat label={t("studio.copilot.mirror.revenue")} value={formatPrice(mirror.stats.revenue_eur, locale)} />
               </div>
               <p className="mt-6 font-serif text-lg leading-relaxed text-foreground">{mirror.text}</p>
               {mirror.stats.top.length > 0 && (

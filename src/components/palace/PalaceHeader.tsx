@@ -128,7 +128,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
           </Link>
 
           {/* Nav cells */}
-          <nav className="hidden min-w-0 flex-1 items-stretch md:flex">
+          <nav className="hidden min-w-0 items-stretch md:flex">
             {NAV_HAUPT.map((item) => (
               <NavLink
                 key={item.label}
@@ -145,7 +145,23 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
             ))}
           </nav>
 
-          <div className="ml-auto flex items-stretch xl:ml-0">
+          {/*
+            Teil R4 — die Fläche zwischen Wortmarke und den rechten Zeichen war
+            eine leere Zelle mit Rahmen: links die 1.5px-Linie der Wortmarke,
+            rechts die des Warenkorbs, dazwischen nichts. Sie ist jetzt die
+            Suche — kein Rahmen ohne Inhalt und kein Inhalt ohne Rahmen.
+            Keine eigene linke Linie: die Zelle davor bringt sie mit.
+          */}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className={`flex min-w-0 flex-1 items-center gap-3 px-4 text-left transition-colors duration-200 hover:bg-black hover:text-white md:px-5 ${text}`}
+          >
+            <PawnSearchIcon className="h-5 w-5 shrink-0" />
+            <span className="truncate text-[0.62rem] uppercase tracking-[0.3em] opacity-70">{t("nav.suche")}</span>
+          </button>
+
+          <div className="flex items-stretch">
             {/* Frag PAWN — solid black cell with blinking dot */}
             <button
               onClick={() => setChatOpen(true)}
@@ -153,16 +169,6 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
             >
               <span className="inline-block h-[6px] w-[6px] animate-pulse rounded-full bg-current" />
               {t("nav.frag")}
-            </button>
-
-            {/* Search cell */}
-            <button
-              type="button"
-              aria-label="Suche"
-              onClick={() => setSearchOpen(true)}
-              className={`hidden items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white md:inline-flex ${border} ${text}`}
-            >
-              <PawnSearchIcon className="h-5 w-5" />
             </button>
 
             {/* Locale cell */}

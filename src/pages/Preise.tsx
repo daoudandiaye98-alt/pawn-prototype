@@ -21,6 +21,7 @@ import planAtelierBild from "@/assets/teil-o/plan-atelier.webp";
 
 const PLAN_BILD: Record<string, string> = { haus: planHausBild, atelier: planAtelierBild };
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 function fmtCount(n: number, noun: string, unlimitedPrefix: string): string {
   return n < 0 ? `${unlimitedPrefix} ${noun}` : `${n} ${noun}`;
@@ -50,7 +51,7 @@ function fourBoxLines(t: ReturnType<typeof useI18n>["t"], plan: Plan, commission
 export default function Preise() {
   const { hasRole } = useAuth();
   const isDesigner = hasRole("designer");
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [gateReady, setGateReady] = useState(false);
   const [commissionPct, setCommissionPct] = useState(7);
 
@@ -85,7 +86,7 @@ export default function Preise() {
               <p className="palace-eyebrow">{t("preise.card.planLabel")}</p>
               <h2 className="palace-serif mt-2 text-3xl text-black">{key === "haus" ? t("preise.card.name.haus") : t("preise.card.name.atelier")}</h2>
               <p className="mt-3 tabular-nums text-2xl text-black">
-                {key === "haus" ? "0 €" : gateReady ? `${preisFor("atelier")} €` : "…"}
+                {key === "haus" ? formatPrice(0, locale) : gateReady ? formatPrice(preisFor("atelier"), locale) : "…"}
                 <span className="text-sm text-black/60"> {t("preise.card.perMonth")}</span>
               </p>
               <p className="mt-3 max-w-xs text-sm text-black/70">

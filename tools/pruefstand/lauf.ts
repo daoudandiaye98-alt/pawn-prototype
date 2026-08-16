@@ -1,0 +1,310 @@
+/**
+ * Teil P — der Einstiegspunkt.
+ *
+ *   npx tsx tools/pruefstand/lauf.ts --ziel preview
+ *   npx tsx tools/pruefstand/lauf.ts --ziel live
+ *   npx tsx tools/pruefstand/lauf.ts --ziel live --seiten halle
+ *
+ * Schreibt tools/pruefstand/artefakte/bericht.json und die Screenshots daneben.
+ * Endet mit Code 1, sobald ein Launch Gate gefallen ist.
+ */
+import { chromium, type Browser, type Page } from "playwright";
+import { execSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  BREITEN, CHROMIUM_PFAD, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD, VORGABE_ZIEL, ZIELE,
+  type Breite, type SeitenZiel, type ZielName,
+} from "./pruefstand.config";
+import {
+  messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten, messeLayout,
+  messeTrefferflaechen, type Befund,
+} from "./messen";
+
+const ORDNER = join(process.cwd(), "tools", "pruefstand", "artefakte");
+
+/**
+ * tsx/esbuild hängt an benannte Funktionen einen Helfer `__name`, den es im Browser
+ * nicht gibt — jede `page.evaluate`-Rückrufsfunktion mit einer benannten inneren
+ * Funktion stürzt sonst mit „__name is not defined" ab. Ein Zeilen-Ersatz vor jeder
+ * Navigation, damit im Messcode nichts verrenkt geschrieben werden muss.
+ */
+async function nameHelferSetzen(page: Page) {
+  await page.addInitScript(() => {
+    const g = globalThis as unknown as { __name?: unknown };
+    if (!g.__name) g.__name = (f: unknown) => f;
+  });
+}
+
+function argument(name: string): string | undefined {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+
+function commit(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "unbekannt";
+  }
+}
+
+/** Erkennt, ob die Adresse uns auf eine Anmeldung umgeleitet hat. */
+async function istUmgeleitet(page: Page, erwartetHost: string): Promise<string | null> {
+  const jetzt = new URL(page.url());
+  if (jetzt.host !== erwartetHost) return page.url();
+  return null;
+}
+
+async function seiteMessen(
+  browser: Browser, basis: string, seite: SeitenZiel, breite: Breite,
+  ruhigeBewegung = false,
+): Promise<Befund[]> {
+  const page = await browser.newPage({
+    viewport: { width: breite.breite, height: breite.hoehe },
+    hasTouch: breite.eingabe === "finger",
+    isMobile: breite.eingabe === "finger",
+    locale: "de-DE",
+    reducedMotion: ruhigeBewegung ? "reduce" : "no-preference",
+  });
+  await nameHelferSetzen(page);
+  const befunde: Befund[] = [];
+
+  // 4.7 Gewicht + Konsolenfehler laufen nebenher mit.
+  let gewicht = 0;
+  const groessen: { url: string; bytes: number }[] = [];
+  const konsole: string[] = [];
+  const fehlgeschlagen: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") konsole.push(m.text().slice(0, 160)); });
+  page.on("pageerror", (e) => konsole.push("pageerror: " + e.message.slice(0, 160)));
+  page.on("requestfailed", (r) => fehlgeschlagen.push(`${r.url().slice(0, 90)} — ${r.failure()?.errorText}`));
+  page.on("response", async (r) => {
+    try {
+      const laenge = Number(r.headers()["content-length"] ?? 0);
+      const bytes = laenge > 0 ? laenge : (await r.body().catch(() => Buffer.alloc(0))).length;
+      gewicht += bytes;
+      groessen.push({ url: r.url().split("/").pop()?.slice(0, 48) ?? "", bytes });
+    } catch { /* Antwort nicht lesbar — zählt nicht mit */ }
+  });
+  const adresse = basis + seite.pfad;
+  try {
+    const antwort = await page.goto(adresse, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    await page.waitForTimeout(RUHE_MS);
+
+    const umgeleitet = await istUmgeleitet(page, new URL(basis).host);
+    if (umgeleitet) {
+      return [{
+        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        seite: seite.pfad, breite: breite.breite, gemessen: page.url(), schwelle: basis,
+        notiz: `Adresse leitet auf einen fremden Host um (${umgeleitet}) — es wurde nicht PAWN geladen, `
+          + "deshalb wurde auf dieser Seite nichts gemessen.",
+      }];
+    }
+    if (antwort && antwort.status() >= 400) {
+      return [{
+        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        seite: seite.pfad, breite: breite.breite, gemessen: antwort.status(), schwelle: "< 400",
+        notiz: "Seite antwortet mit Fehlerstatus — nicht messbar.",
+      }];
+    }
+
+    if (ruhigeBewegung) {
+      // 3.9: hier zählt nur, dass die Seite trägt und der Hauptweg erreichbar bleibt.
+      befunde.push(...await messeKnopfVerdeckung(page, seite.pfad, breite.breite));
+      befunde[befunde.length - 1] = { ...befunde[befunde.length - 1], kontrolle: "3.9", gate: false };
+      await page.close();
+      return befunde;
+    }
+
+    // Jede Kontrolle sagt, wie lange sie gebraucht hat — damit „das dauert lange"
+    // eine Zahl bekommt statt eines Gefühls.
+    const mitUhr = async (name: string, f: () => Promise<Befund[]>) => {
+      const t = Date.now();
+      const r = await f();
+      process.stderr.write(`    ${name} ${((Date.now() - t) / 1000).toFixed(1)}s\n`);
+      befunde.push(...r);
+    };
+    await mitUhr("3.8", () => messeLayout(page, seite.pfad, breite.breite));
+    await mitUhr("3.5", () => messeTrefferflaechen(page, seite.pfad, breite));
+    await mitUhr("3.10", () => messeKnopfVerdeckung(page, seite.pfad, breite.breite));
+    await mitUhr("5.x", () => messeKopfdaten(page, seite.pfad, breite.breite));
+    await mitUhr("3.4", () => messeFokus(page, seite.pfad, breite.breite));
+    // Kontrast zuletzt: er stellt Bewegung still und färbt Glyphen um.
+    await mitUhr("3.3", () => messeKontrast(page, seite.pfad, breite.breite));
+
+    // 3.7 — die Aufnahme, gegen die jede Zahl gegengelesen werden kann.
+    mkdirSync(ORDNER, { recursive: true });
+    await page.screenshot({
+      path: join(ORDNER, `${seite.name}--${breite.breite}.png`),
+      fullPage: true,
+    });
+
+    groessen.sort((a, b) => b.bytes - a.bytes);
+    befunde.push({
+      kontrolle: "4.7", gate: true,
+      status: gewicht > SCHWELLEN.gewicht_seite ? "gefallen" : "bestanden",
+      seite: seite.pfad, breite: breite.breite,
+      auswahl: groessen.slice(0, SCHWELLEN.liste_laenge).map((g) => `${g.url} ${Math.round(g.bytes / 1024)}kB`).join(" · "),
+      gemessen: gewicht, schwelle: SCHWELLEN.gewicht_seite,
+      notiz: `Gesamtgewicht der Seite in Byte über ${groessen.length} Antworten`,
+    });
+    befunde.push({
+      kontrolle: "—", gate: false,
+      status: konsole.length + fehlgeschlagen.length > 0 ? "gefallen" : "bestanden",
+      seite: seite.pfad, breite: breite.breite,
+      auswahl: [...konsole.slice(0, 5), ...fehlgeschlagen.slice(0, 5)].join(" · ") || undefined,
+      gemessen: konsole.length + fehlgeschlagen.length, schwelle: 0,
+      notiz: `${konsole.length} Konsolenfehler, ${fehlgeschlagen.length} fehlgeschlagene Anfragen`,
+    });
+  } catch (e) {
+    befunde.push({
+      kontrolle: "01", gate: false, status: "nicht_pruefbar",
+      seite: seite.pfad, breite: breite.breite, gemessen: null, schwelle: null,
+      notiz: `Messung abgebrochen: ${(e as Error).message}`,
+    });
+  } finally {
+    await page.close();
+  }
+  return befunde;
+}
+
+/** 4.3 Wege · 4.5 404 — beides über echte Anfragen, einmal je Lauf. */
+async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
+  const befunde: Befund[] = [];
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await nameHelferSetzen(page);
+  try {
+    await page.goto(basis + "/", { waitUntil: "domcontentloaded", timeout: 45_000 });
+    await page.waitForTimeout(RUHE_MS);
+    const links = await page.evaluate((host) => {
+      const intern: string[] = [];
+      const extern: string[] = [];
+      const post: string[] = [];
+      for (const a of Array.from(document.querySelectorAll("a[href]"))) {
+        const href = (a as HTMLAnchorElement).href;
+        if (/^(mailto|tel):/i.test(href)) post.push(href);
+        else if (href.startsWith("http") && new URL(href).host !== host) extern.push(href);
+        else if (href.startsWith("http")) intern.push(new URL(href).pathname);
+      }
+      return {
+        intern: [...new Set(intern)], extern: [...new Set(extern)].slice(0, 20), post: [...new Set(post)],
+      };
+    }, new URL(basis).host);
+
+    // Interne Wege: eine SPA beantwortet jede Adresse mit 200 und der Hülle. Deshalb
+    // wird zusätzlich geprüft, ob die Anwendung dort ihre 404-Ansicht zeigt.
+    const schlecht: string[] = [];
+    for (const pfad of links.intern.slice(0, 40)) {
+      const antwort = await page.goto(basis + pfad, { waitUntil: "domcontentloaded", timeout: 30_000 }).catch(() => null);
+      await page.waitForTimeout(400);
+      const status = antwort?.status() ?? 0;
+      const zeigt404 = await page.evaluate(() => /404|nicht gefunden|not found/i.test(document.body.innerText.slice(0, 400)));
+      if (status >= 400 || zeigt404) schlecht.push(`${pfad} (${status}${zeigt404 ? ", 404-Ansicht" : ""})`);
+    }
+    befunde.push({
+      kontrolle: "4.3", gate: true, status: schlecht.length > 0 ? "gefallen" : "bestanden",
+      seite: "/", breite: 1280,
+      auswahl: schlecht.slice(0, SCHWELLEN.liste_laenge).join(" · ") || undefined,
+      gemessen: schlecht.length, schwelle: 0,
+      notiz: `${links.intern.length} interne Wege gefunden, ${Math.min(links.intern.length, 40)} angesteuert · `
+        + `${links.extern.length} externe Adressen und ${links.post.length} mailto/tel wurden nicht angefasst `
+        + "(externe Ziele gehören nicht in einen automatischen Lauf).",
+    });
+
+    const unsinn = await page.goto(basis + UNSINN_PFAD, { waitUntil: "domcontentloaded", timeout: 30_000 }).catch(() => null);
+    await page.waitForTimeout(1200);
+    const zurueck = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("a[href]")).some((a) => {
+        const h = (a as HTMLAnchorElement).getAttribute("href") ?? "";
+        return h === "/" || h.endsWith("/");
+      }));
+    const status = unsinn?.status() ?? 0;
+    befunde.push({
+      kontrolle: "4.5", gate: true,
+      status: status === 404 && zurueck ? "bestanden" : "gefallen",
+      seite: UNSINN_PFAD, breite: 1280,
+      gemessen: `Status ${status}, Weg zurück ${zurueck ? "vorhanden" : "fehlt"}`,
+      schwelle: "Status 404 und ein Weg zurück",
+      notiz: status === 200
+        ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für Suchmaschinen "
+          + "ist eine erfundene Adresse damit eine gültige Seite."
+        : undefined,
+    });
+  } catch (e) {
+    befunde.push({
+      kontrolle: "4.3", gate: true, status: "nicht_pruefbar", seite: "/", breite: 1280,
+      gemessen: null, schwelle: null, notiz: `Wege-Prüfung abgebrochen: ${(e as Error).message}`,
+    });
+  } finally {
+    await page.close();
+  }
+  return befunde;
+}
+
+async function haupt() {
+  const zielName = (argument("ziel") ?? VORGABE_ZIEL) as ZielName;
+  const ziel = ZIELE[zielName];
+  if (!ziel) {
+    console.error(`Unbekanntes Ziel „${zielName}". Bekannt: ${Object.keys(ZIELE).join(", ")}`);
+    process.exit(2);
+  }
+  const nurSeiten = argument("seiten")?.split(",").map((s) => s.trim());
+  const seiten = nurSeiten ? SEITEN.filter((s) => nurSeiten.includes(s.name)) : SEITEN;
+  const nurBreiten = argument("breiten")?.split(",").map((b) => Number(b.trim()));
+  const breiten = nurBreiten ? BREITEN.filter((b) => nurBreiten.includes(b.breite)) : BREITEN;
+
+  // Steht ein Ausgangs-Proxy in der Umgebung (Container, CI), muss der Browser ihn
+  // benutzen — sonst misst er nur einen Verbindungsfehler. Für ein lokales Ziel gilt
+  // das nicht: die Umleitung über den Proxy beantwortet 127.0.0.1 mit 405.
+  const lokalesZiel = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(new URL(ziel.adresse).hostname);
+  const proxyServer = lokalesZiel ? undefined : (process.env.HTTPS_PROXY ?? process.env.https_proxy);
+  const browser = await chromium.launch({
+    executablePath: CHROMIUM_PFAD,
+    // Chromium versteht die üblichen NO_PROXY-Listen mit CIDR und Sternchen nicht;
+    // eine falsch geparste Liste schaltet den Proxy stillschweigend ganz ab.
+    proxy: proxyServer ? { server: proxyServer, bypass: "localhost,127.0.0.1,::1" } : undefined,
+  });
+  const befunde: Befund[] = [];
+  for (const seite of seiten) {
+    for (const breite of breiten) {
+      process.stderr.write(`… ${seite.pfad} @ ${breite.breite}\n`);
+      befunde.push(...await seiteMessen(browser, ziel.adresse, seite, breite));
+    }
+  }
+  // 3.9 — zweiter Durchlauf mit „Bewegung reduzieren", eine Breite genügt.
+  for (const seite of seiten) {
+    process.stderr.write(`… ${seite.pfad} @ 390 (Bewegung reduziert)\n`);
+    befunde.push(...await seiteMessen(browser, ziel.adresse, seite, BREITEN[0], true));
+  }
+  process.stderr.write("… Wege und 404\n");
+  befunde.push(...await wegeUnd404(browser, ziel.adresse));
+  await browser.close();
+
+  const gates = befunde.filter((b) => b.gate);
+  const bericht = {
+    ziel: zielName,
+    adresse: ziel.adresse,
+    zeitpunkt: new Date().toISOString(),
+    commit: commit(),
+    gates: {
+      bestanden: gates.filter((b) => b.status === "bestanden").length,
+      gefallen: gates.filter((b) => b.status === "gefallen").length,
+      nicht_pruefbar: gates.filter((b) => b.status === "nicht_pruefbar").length,
+    },
+    befunde,
+  };
+
+  mkdirSync(ORDNER, { recursive: true });
+  writeFileSync(join(ORDNER, "bericht.json"), JSON.stringify(bericht, null, 2));
+
+  const gefallen = bericht.gates.gefallen;
+  process.stderr.write(
+    `\n${zielName} · ${ziel.adresse}\n`
+    + `Gates: ${bericht.gates.bestanden} bestanden · ${gefallen} gefallen · `
+    + `${bericht.gates.nicht_pruefbar} nicht prüfbar\n`
+    + `Bericht: tools/pruefstand/artefakte/bericht.json\n`,
+  );
+  process.exit(gefallen > 0 ? 1 : 0);
+}
+
+void haupt();

@@ -6,9 +6,11 @@ import { Editable } from "@/components/palace/Editable";
 import { supabase } from "@/integrations/supabase/client";
 import { useWishlist } from "@/features/wishlist/useWishlist";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type Locale } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { filterFelder, type Welt as WeltName } from "@/lib/weltFelder";
 import { WerkKarte } from "@/components/palace/WerkKarte";
+import { istZeigbar } from "@/lib/publicData";
 
 type World = "Mode" | "Interior" | "Kunst";
 
@@ -41,8 +43,9 @@ const PREIS_MIN = 0;
 const PREIS_MAX = 1000;
 const PREIS_SCHRITT = 10;
 
-const eur = (n: number) => `${n.toLocaleString("de-DE")} €`;
-const preisLabel = (n: number, obenOffen: boolean) => (obenOffen ? `${eur(n)}+` : eur(n));
+/* Teil R2 — auch die Schieber-Beschriftung kommt aus formatPrice. */
+const preisLabel = (n: number, obenOffen: boolean, locale: Locale) =>
+  obenOffen ? `${formatPrice(n, locale)}+` : formatPrice(n, locale);
 
 function sizesOf(product: ShopProduct): string[] {
   const list = Array.isArray(product.size_variants) ? (product.size_variants as Array<{ size?: string }>) : [];
@@ -65,7 +68,8 @@ function useShopProducts() {
         .limit(200);
       if (cancelled) return;
       if (err) setError("Die Boutique lässt sich gerade nicht laden.");
-      setProducts((data ?? []) as unknown as ShopProduct[]);
+      // Teil R7 — dieselbe Tür wie überall: nur Stücke mit Name, Preis und Bild.
+      setProducts(((data ?? []) as unknown as ShopProduct[]).filter(istZeigbar));
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -80,7 +84,7 @@ const Shop = () => {
   // keine Zähler, kein Druck.
   const wishlist = useWishlist();
   const { saveProduct } = useCustomerEvents();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   // Teil Q — die Welt kann von der Landing vorgewählt kommen (/shop?welt=Kunst).
   const [params, setParams] = useSearchParams();
@@ -290,7 +294,7 @@ const Shop = () => {
           ))}
 
           {(
-            <FilterGroup title={`Preis · ${eur(spanne[0])} – ${preisLabel(spanne[1], obenOffen)}`}>
+            <FilterGroup title={`Preis · ${formatPrice(spanne[0], locale)} – ${preisLabel(spanne[1], obenOffen, locale)}`}>
               <PreisSchieber
                 von={preisVon}
                 bis={preisBis}
@@ -415,6 +419,7 @@ function PreisSchieber({
   wert: [number, number];
   onChange: (wert: [number, number]) => void;
 }) {
+  const { locale } = useI18n();
   const [minWert, maxWert] = wert;
   const breite = bis - von || 1;
   const anteil = (n: number) => ((n - von) / breite) * 100;
@@ -493,7 +498,7 @@ function PreisSchieber({
           value={minWert}
           onChange={(e) => setzeMin(Number(e.target.value))}
           aria-label="Preis von"
-          aria-valuetext={eur(minWert)}
+          aria-valuetext={formatPrice(minWert, locale)}
         />
         <input
           type="range"
@@ -505,7 +510,7 @@ function PreisSchieber({
           value={maxWert}
           onChange={(e) => setzeMax(Number(e.target.value))}
           aria-label="Preis bis"
-          aria-valuetext={eur(maxWert)}
+          aria-valuetext={formatPrice(maxWert, locale)}
         />
       </div>
 

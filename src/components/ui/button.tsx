@@ -19,7 +19,8 @@ const buttonVariants = cva(
         ghost: "hover:bg-foreground hover:text-background",
         link: "text-primary underline-offset-4 hover:underline",
         // Ersetzt .palace-btn (Teil 26b) — bewusst ohne feste Höhe, Padding kommt aus size="chip".
-        editorial: "border-[1.5px] border-black bg-white text-black gap-[.6rem] text-[0.65rem] uppercase tracking-[.36em] font-medium hover:bg-black hover:text-white",
+        // Teil T6 — Versalien-Untergrenze: 0.68rem, Sperrung 0.22em (vorher 0.65rem/0.36em).
+        editorial: "border-[1.5px] border-black bg-white text-black gap-[.6rem] text-[0.68rem] uppercase tracking-[.22em] font-medium hover:bg-black hover:text-white",
       },
       size: {
         default: "h-10 px-4 py-2",

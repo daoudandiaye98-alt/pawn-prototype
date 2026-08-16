@@ -5,6 +5,8 @@ import { useCart } from "@/store/cart";
 import { usePersonalization, sortByPersonalization, scoreForPersonalization, explainMatch } from "@/features/personalization";
 import { ProductImage } from "@/components/pawn/ProductImage";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 interface Props {
   title?: string;
@@ -18,6 +20,7 @@ interface Props {
  * Falls back to DNA-based suggestions when the cart is empty.
  */
 export function CartRecommendations({ title = "Passt dazu", limit = 3, variant = "in-cart" }: Props) {
+  const { locale } = useI18n();
   const { items, add } = useCart();
   const all = useStore(marketplaceSelectors.getAllProductViews);
   const personalization = usePersonalization();
@@ -64,7 +67,7 @@ export function CartRecommendations({ title = "Passt dazu", limit = 3, variant =
                   {p.name}
                 </Link>
               </div>
-              <span className="shrink-0 text-[0.8rem] tabular-nums">€{p.price.toLocaleString("de-DE")}</span>
+              <span className="shrink-0 text-[0.8rem] tabular-nums">{formatPrice(p.price, locale)}</span>
             </div>
             {why && <p className="mt-1 truncate text-[0.68rem] italic text-muted-foreground" title={why}>{why}</p>}
             <button

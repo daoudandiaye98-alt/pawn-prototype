@@ -33,6 +33,7 @@ import { leseSitzungsspur, weltDerSitzung, haeuserDerSitzung } from "@/features/
 import { useWishlist } from "@/features/wishlist/useWishlist";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { istZeigbar } from "@/lib/publicData";
 
 const JE_REIHE = 6;
 
@@ -70,7 +71,8 @@ export default function DeineBoutique() {
       .limit(200)
       .then(({ data }) => {
         if (abgebrochen) return;
-        setWerke((data ?? []) as unknown as Werk[]);
+        // Teil R7 — nur vorzeigbare Stücke, gleiche Regel wie in der Boutique.
+        setWerke(((data ?? []) as unknown as Werk[]).filter(istZeigbar));
         setLaedt(false);
       });
     return () => { abgebrochen = true; };

@@ -57,6 +57,11 @@
     --ease-pawn: cubic-bezier(0.76, 0, 0.18, 1);
     --dur-micro: 250ms;
     --dur-reveal: 600ms;
+
+    /* Teil R3 — die tatsächliche Höhe des festen Kopfes: 3.5rem Zellenhöhe
+       (`h-14` in PalaceHeader) plus die 1.5px-Trennlinie darunter. Steht hier
+       einmal, damit kein Abschnitt sie noch einmal schätzen muss. */
+    --kopf-hoehe: calc(3.5rem + 1.5px);
   }
 
   .dark {
@@ -127,6 +132,15 @@
     letter-spacing: 0.2em;
   }
   .skip-link:focus-visible { left: 0; }
+
+  /* Teil R3 — der feste Kopf verschluckte jeden Abschnittsanfang: wer auf einen
+     Anker sprang, landete mit der Überschrift UNTER der Kopfleiste. `scroll-margin-top`
+     hält beim Springen genau diesen Abstand frei — plus einen Finger Luft, damit
+     die Überschrift nicht an der Linie klebt. Wirkt ausschließlich beim Springen,
+     nie im normalen Fluss. */
+  section, [id] {
+    scroll-margin-top: calc(var(--kopf-hoehe) + 1rem);
+  }
 }
 
 @layer components {
@@ -227,14 +241,27 @@
   .palace .palace-serif.italic,
   .palace .palace-serif em, .palace .palace-serif i { font-weight: 500 !important; }
 
+  /*
+    Teil T6 — DIE UNTERGRENZE FÜR VERSALIEN.
+
+    Vorher: 0.6rem mit 0.42em Sperrung. Auf dem Telefon sind das rund 9,6 px,
+    und die weite Sperrung zieht die Buchstaben so weit auseinander, dass das
+    Wort auseinanderfällt statt zu führen. Ab hier gilt: keine Versalien-Zeile
+    unter 0.68rem, und die Sperrung nimmt ab, je größer die Schrift wird —
+    bis 0.8rem 0.22em, darüber 0.14em (`.palace-eyebrow--gross`).
+
+    Das steht hier und nicht an vierzig Einzelstellen: wer eine Beschriftung
+    setzt, nimmt diese Klasse, nicht eine eigene Zahl.
+  */
   .palace .palace-eyebrow {
     font-family: Inter, system-ui, sans-serif;
-    font-size: 0.6rem;
-    letter-spacing: 0.42em;
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: #000;
     font-weight: 500;
   }
+  .palace .palace-eyebrow--gross { font-size: 0.95rem; letter-spacing: 0.14em; }
   .palace .uline {
     border-bottom: 1.5px solid currentColor;
     padding-bottom: 1px;
@@ -266,6 +293,21 @@
   @keyframes werk-rein { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
   .werk-raus { animation: werk-raus 260ms var(--k-aus, ease) both; }
   .werk-rein { animation: werk-rein 380ms var(--k-aus, ease) both; }
+
+  /* Teil S3 — die Textspalte kommt NACH dem Bild: 14 px von unten, 50 ms je
+     Zeile, Start 180 ms nach dem Flug (--t-buehne ist 700 ms, die Bewegung ist
+     da schon gut sichtbar). Erst das Bild, dann die Sprache. */
+  @keyframes werk-zeile { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .werk-textspalte > * { animation: werk-zeile 420ms var(--k-aus, ease) both; }
+  .werk-textspalte > *:nth-child(1) { animation-delay: 180ms; }
+  .werk-textspalte > *:nth-child(2) { animation-delay: 230ms; }
+  .werk-textspalte > *:nth-child(3) { animation-delay: 280ms; }
+  .werk-textspalte > *:nth-child(4) { animation-delay: 330ms; }
+  .werk-textspalte > *:nth-child(5) { animation-delay: 380ms; }
+  .werk-textspalte > *:nth-child(n+6) { animation-delay: 430ms; }
+  @media (prefers-reduced-motion: reduce) {
+    .werk-textspalte > * { animation-duration: 120ms; animation-delay: 0ms !important; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .werk-raus, .werk-rein { animation-duration: 120ms; }
   }
@@ -273,6 +315,23 @@
 
   /* Grain removed */
   .palace-grain { display: none !important; }
+
+  /* Teil R6 — DIE DREI WELTEN.
+     Bis hierher standen Höhe, Spalte und Versatz als Inline-Stil an der Kachel.
+     Inline-Stil kennt keinen Umbruchpunkt: auf dem Telefon, wo es nur EINE
+     Spalte gibt, blieben die drei verschiedenen Mindesthöhen und die
+     `margin-top`-Versätze stehen — daher die drei unterschiedlichen Höhen und
+     die halb herausstehende dritte Kachel.
+     Ab jetzt: unter 768px eine Reihe zum Wischen, alle Kacheln gleich hoch,
+     gleicher Ausschnitt, Schnappen an der Kante. Ab 768px der versetzte
+     Zwölfer-Raster-Satz wie zuvor. */
+  .welt-kachel { min-height: clamp(360px, 58vh, 520px); }
+  @media (min-width: 768px) {
+    .welt-kachel { min-height: 0; }
+    .welt-kachel--1 { grid-column: 1 / 6;   min-height: clamp(420px, 76vh, 760px); margin-top: 0; }
+    .welt-kachel--2 { grid-column: 6 / 10;  min-height: clamp(340px, 58vh, 580px); margin-top: 5rem; }
+    .welt-kachel--3 { grid-column: 10 / 13; min-height: clamp(380px, 66vh, 660px); margin-top: 1.5rem; }
+  }
 
   @keyframes palace-marquee {
     from { transform: translateX(0); }
@@ -320,6 +379,32 @@
   .palace .house-theme .house-ink { color: var(--house-fg, #000); }
   .palace .house-theme .house-media { border-radius: var(--house-radius, 0px); overflow: hidden; }
   .palace .house-theme .house-gap-y { padding-top: var(--house-gap-y, 4rem); padding-bottom: var(--house-gap-y, 4rem); }
+  /*
+    Teil T3 — der Rahmen um das Werk atmet im Flächenrhythmus des Hauses.
+    Bis hierher steuerte `flaechenrhythmus` nur die Abstände zwischen den
+    Abschnitten weiter unten; der Aufmacher — die Fläche, die man zuerst sieht —
+    hatte gar keinen Rand. „Episch" war deshalb nirgends zu sehen, wo es zählt.
+    eng 2.5rem · ruhig 4.5rem · luftig 6.5rem · episch 9rem.
+  */
+  .palace .house-theme .house-rahmen { padding: min(var(--house-gap-y, 4.5rem), 7vw); }
+  @media (min-width: 1024px) {
+    /* Auf dem Telefon würde „episch" (9rem) beidseitig 288 px fressen — vom Werk
+       bliebe ein Briefmarkenrest. Der Rhythmus gilt dort gedeckelt, in voller
+       Größe erst auf der Doppelseite, wo die Fläche ihn trägt. */
+    .palace .house-theme .house-rahmen { padding: var(--house-gap-y, 4.5rem); }
+  }
+
+  /*
+    Teil T4 — die zwei Wege unter der Werkseite. Die Umkehrung beim Überfahren
+    bleibt Hausgesetz; sie tauscht ab jetzt Haus-Grund gegen Haus-Tinte statt
+    Weiß gegen Schwarz. Kein Inline-Stil, sonst könnte kein :hover mehr greifen.
+  */
+  .palace .house-theme .house-weg {
+    background: var(--house-bg);
+    color: var(--house-fg);
+    transition: background-color var(--dur-micro) var(--ease-pawn), color var(--dur-micro) var(--ease-pawn);
+  }
+  .palace .house-theme .house-weg:hover { background: var(--house-fg); color: var(--house-bg); }
 
   .palace .house-theme[data-textur="papier"] {
     background-image: repeating-linear-gradient(0deg, color-mix(in srgb, var(--house-fg,#000) 3%, transparent) 0px, transparent 1px, transparent 2px);
@@ -361,3 +446,26 @@
   transition: opacity .15s ease;
 }
 .pawn-editable:hover::after, .pawn-editable:focus::after { opacity: 1; }
+
+/* Teil U1.2 — Bausteintext direkt auf der Hausseite. Gleiche Geste wie oben, aber in
+   der Farbe des Hauses (currentColor), damit der Auftritt-Modus keine fremde Farbe
+   in eine Farbwelt trägt. Kein Radius, keine weichen Kanten. */
+.pawn-baustein-editable {
+  outline: 1px dashed currentColor;
+  outline-offset: 4px;
+  cursor: text;
+  min-width: 2ch;
+  transition: outline-color .15s ease;
+}
+.pawn-baustein-editable:hover { outline-style: solid; }
+.pawn-baustein-editable:focus { outline: 1.5px solid currentColor; outline-offset: 4px; }
+.pawn-baustein-editable:empty::before { content: attr(data-platzhalter); opacity: .35; }
+
+/* Teil U1.3 — das Blatt kommt herein, ohne dass sich Größen bewegen: nur transform. */
+@keyframes bildblatt-herein { from { transform: translateY(12%); opacity: 0; } to { transform: none; opacity: 1; } }
+.bildblatt { animation: bildblatt-herein .22s ease-out both; will-change: transform, opacity; }
+@media (min-width: 768px) {
+  @keyframes bildblatt-herein-seite { from { transform: translateX(8%); opacity: 0; } to { transform: none; opacity: 1; } }
+  .bildblatt { animation-name: bildblatt-herein-seite; }
+}
+@media (prefers-reduced-motion: reduce) { .bildblatt { animation: none; } }

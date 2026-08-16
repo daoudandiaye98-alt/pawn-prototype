@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 type StatusFilter = "alle" | "paid" | "pending" | "failed";
 
@@ -58,7 +59,7 @@ async function callFulfillment(body: Record<string, unknown>): Promise<{ ok: boo
 }
 
 export default function StudioOrders() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { designer, loading } = useMyDesigner();
   const { lines, loading: ordersLoading, refresh } = useDesignerOrders(designer?.id);
   const [filter, setFilter] = useState<StatusFilter>("alle");
@@ -199,7 +200,7 @@ export default function StudioOrders() {
                   {o.customer_first_name ?? t("studio.orders.customerFallback")}{o.customer_country ? ` · ${o.customer_country}` : ""}
                   <span className="ml-2 text-xs text-muted-foreground">· {t("studio.orders.lineCount", { n: o.lines.length })}</span>
                 </span>
-                <span className="tabular-nums text-sm">€ {o.total.toLocaleString("de-DE")}</span>
+                <span className="tabular-nums text-sm">{formatPrice(o.total, locale)}</span>
                 <span className="flex flex-wrap items-center gap-1">
                   <StatusPill status={o.order_status} />
                   {o.refunded_amount_cents > 0 && (
@@ -221,7 +222,7 @@ export default function StudioOrders() {
                     <div className="mb-5 border-[1.5px] border-black p-4 text-sm">
                       {o.refunded_amount_cents > 0 && (
                         <p>
-                          <strong>{t("studio.orders.refundNotice.label")}</strong> {t("studio.orders.refundNotice.body", { amount: (o.refunded_amount_cents / 100).toLocaleString("de-DE") })}
+                          <strong>{t("studio.orders.refundNotice.label")}</strong> {t("studio.orders.refundNotice.body", { amount: formatPrice(o.refunded_amount_cents / 100, locale) })}
                         </p>
                       )}
                       {o.dispute_status && (
@@ -247,7 +248,7 @@ export default function StudioOrders() {
                           )}
                           <span className="ml-2 text-xs text-muted-foreground">× {l.qty}</span>
                         </span>
-                        <span className="tabular-nums">€ {(l.unit_price * l.qty).toLocaleString("de-DE")}</span>
+                        <span className="tabular-nums">{formatPrice(l.unit_price * l.qty, locale)}</span>
                       </li>
                     ))}
                   </ul>

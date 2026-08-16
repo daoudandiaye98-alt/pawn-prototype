@@ -18,6 +18,8 @@ import { useJarvisCockpit, type JarvisRunRow, type JarvisQueueItem, type Zone, t
 import { useCockpitBuhne } from "@/features/admin/useCockpitBuhne";
 import { useMarkenKartei } from "@/features/admin/useMarkenKartei";
 import { useDisplayName } from "@/lib/displayName";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { PawnFigur } from "@/components/pawn/PawnFigur";
 
@@ -670,6 +672,7 @@ function Buhne({
   onVerdichten: () => void; verdichtenBusy: boolean; navigate: (to: string) => void;
   markenKartei: ReturnType<typeof useMarkenKartei>;
 }) {
+  const { locale } = useI18n();
   const [showFehler, setShowFehler] = useState(false);
   // PART 45 — die wichtigste Zahl des Hauses: wer kann überhaupt Geld empfangen?
   const [kasse, setKasse] = useState<{ bereit: number; gesamt: number } | null>(null);
@@ -866,6 +869,7 @@ function Buhne({
 /* ─────────────────────── Command Deck (OS body) ─────────────────────── */
 
 function CommandDeck() {
+  const { locale } = useI18n();
   const navigate = useNavigate();
 
   // Live-Puls: die ganze Seite lädt ihre Daten alle 30 Sekunden neu.
@@ -978,12 +982,12 @@ function CommandDeck() {
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCell
           label="Umsatz · 30 T"
-          value={kpis.loading ? "…" : `€${kpis.revenue30d.toLocaleString("de-DE")}`}
+          value={kpis.loading ? "…" : formatPrice(kpis.revenue30d, locale)}
           delta={`${kpis.revenue30dDelta >= 0 ? "+" : ""}${kpis.revenue30dDelta} %`}
           trend={kpis.revenue30dDelta >= 0 ? "up" : "down"} series={kpis.revenueSeries}
           why={[
             `Bezahlte Bestellungen: ${kpis.orders30d}`,
-            `Ø Bestellwert: €${kpis.aov30d.toLocaleString("de-DE")}`,
+            `Ø Bestellwert: ${formatPrice(kpis.aov30d, locale)}`,
             kpis.revenue30d === 0 ? "Noch keine Verkäufe — der erste kommt." : "Live aus orders (paid, 30 T).",
           ]}
         />
@@ -994,7 +998,7 @@ function CommandDeck() {
           series={kpis.orderSeries} accent="emerald"
           why={kpis.orders30d === 0 ? ["Keine bezahlten Bestellungen in den letzten 30 Tagen."] : [`${kpis.orders30d} bezahlt`, "Tages-Buckets aus orders"]} />
         <KpiCell label="Ø Bestellwert"
-          value={kpis.loading ? "…" : (kpis.aov30d > 0 ? `€${kpis.aov30d.toLocaleString("de-DE")}` : "—")}
+          value={kpis.loading ? "…" : (kpis.aov30d > 0 ? formatPrice(kpis.aov30d, locale) : "—")}
           delta={kpis.aov30d > 0 ? `${kpis.aovDelta >= 0 ? "+" : ""}${kpis.aovDelta} %` : "keine Basis"}
           trend={kpis.aovDelta >= 0 ? "up" : "down"}
           series={kpis.revenueSeries.map((v, i) => (kpis.orderSeries[i] > 0 ? Math.round(v / kpis.orderSeries[i]) : 0))}
@@ -1063,9 +1067,9 @@ function CommandDeck() {
               <>
                 <ChartPlaceholder series={kpis.revenueSeries} labels={kpis.dayLabels.filter((_, i) => i % 5 === 0)} tone="dark" variant="area" height={240} />
                 <div className="mt-3 flex items-center justify-between text-[11px] text-[hsl(0_0%_74%)]">
-                  <span>Summe 30 T: <span className="text-[hsl(0_0%_94%)] tabular-nums">€{kpis.revenue30d.toLocaleString("de-DE")}</span></span>
+                  <span>Summe 30 T: <span className="text-[hsl(0_0%_94%)] tabular-nums">{formatPrice(kpis.revenue30d, locale)}</span></span>
                   <span>Bestellungen: <span className="text-[hsl(0_0%_94%)] tabular-nums">{kpis.orders30d}</span></span>
-                  <span>Ø: <span className="text-[hsl(0_0%_94%)] tabular-nums">€{kpis.aov30d.toLocaleString("de-DE")}</span></span>
+                  <span>Ø: <span className="text-[hsl(0_0%_94%)] tabular-nums">{formatPrice(kpis.aov30d, locale)}</span></span>
                 </div>
               </>
             )}
@@ -1099,7 +1103,7 @@ function CommandDeck() {
                     <td className="px-5 py-2.5">
                       <span className="border border-white/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.2em] text-[hsl(0_0%_78%)]">{o.status}</span>
                     </td>
-                    <td className="px-5 py-2.5 text-right tabular-nums text-[hsl(0_0%_92%)]">€{o.total.toLocaleString("de-DE")}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-[hsl(0_0%_92%)]">{formatPrice(o.total, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1123,7 +1127,7 @@ function CommandDeck() {
                     <span className="text-[hsl(0_0%_88%)]">{d.name}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="tabular-nums text-[hsl(0_0%_92%)]">€{d.revenue.toLocaleString("de-DE")}</span>
+                    <span className="tabular-nums text-[hsl(0_0%_92%)]">{formatPrice(d.revenue, locale)}</span>
                     <span className="text-[11px] text-[hsl(0_0%_55%)]">{d.orders} Pos.</span>
                   </div>
                 </li>

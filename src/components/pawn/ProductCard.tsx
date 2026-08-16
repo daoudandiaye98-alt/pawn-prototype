@@ -6,8 +6,11 @@ import { ProductImage } from "./ProductImage";
 import { DnaBadge } from "./DnaBadge";
 import { useDnaMatch } from "@/features/dna/hooks";
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
+import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 export function ProductCard({ product, recommendationId }: { product: ProductView; recommendationId?: string }) {
+  const { locale } = useI18n();
   const match = useDnaMatch(product.id);
   const { viewProduct, saveProduct } = useCustomerEvents();
   const ref = useRef<HTMLAnchorElement | null>(null);
@@ -73,7 +76,7 @@ export function ProductCard({ product, recommendationId }: { product: ProductVie
           )}
         </div>
         <span className="font-sans text-[0.85rem] tabular-nums tracking-wide">
-          €{product.price.toLocaleString("de-DE")}
+          {formatPrice(product.price, locale)}
         </span>
       </div>
     </Link>

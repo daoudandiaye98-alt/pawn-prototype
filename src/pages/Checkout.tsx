@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 
 const METHODS = [
   { key: "card", label: "Kreditkarte" },
@@ -168,7 +169,7 @@ const Checkout = () => {
                     <p className="text-[#000000]">{i.product.name}</p>
                     <p className="palace-eyebrow mt-1 text-black/60">{i.product.designer} · {i.size} · ×{i.qty}</p>
                   </div>
-                  <span className="tabular-nums text-[#000000]">€{(i.product.price * i.qty).toLocaleString("de-DE")}</span>
+                  <span className="tabular-nums text-[#000000]">{formatPrice(i.product.price * i.qty, locale)}</span>
                 </li>
               ))}
               {items.length === 0 && (
@@ -177,9 +178,9 @@ const Checkout = () => {
             </ul>
             <div className="my-5 h-px w-full bg-[rgba(0,0,0,.18)]" />
             <dl className="space-y-2 text-sm text-[#000000]">
-              <div className="flex justify-between"><dt className="text-black/70">Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
+              <div className="flex justify-between"><dt className="text-black/70">Zwischensumme</dt><dd className="tabular-nums">{formatPrice(subtotal, locale)}</dd></div>
               <div className="flex justify-between"><dt className="text-black/70">Versand</dt><dd className="text-[0.8rem] text-black/70">wird im nächsten Schritt gewählt</dd></div>
-              <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Zwischensumme</dt><dd className="tabular-nums">€{subtotal.toLocaleString("de-DE")}</dd></div>
+              <div className="flex justify-between pt-3 palace-serif text-[1.15rem]"><dt>Zwischensumme</dt><dd className="tabular-nums">{formatPrice(subtotal, locale)}</dd></div>
             </dl>
             <button
               type="submit"

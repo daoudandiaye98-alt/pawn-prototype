@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { PalaceLayout } from "@/components/palace/PalaceLayout";
 import { EditorialImage } from "@/components/palace/EditorialImage";
 import { PrevNext } from "@/components/palace/PrevNext";
@@ -8,6 +8,7 @@ import { useDesignerPrevNext } from "@/features/navigation/usePrevNext";
 import { useSiteContent } from "@/lib/siteContent";
 import { Editable } from "@/components/palace/Editable";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice } from "@/lib/format";
 import { Languages } from "lucide-react";
 import { HausseiteBlocks, type PageBlockRow, type BlockMediaLite, type BlockProductLite } from "@/components/palace/HausseiteBlocks";
 import { resolveTheme, type HouseTheme } from "@/features/houseTheme/theme";
@@ -16,6 +17,7 @@ import { aktiverArchetyp, ARCHETYP_PLATES, type Archetyp } from "@/features/hous
 import { currentVerwandlungGlyph, type HouseMilestones } from "@/features/verwandlung";
 import { usePageVisit } from "@/features/personalization/usePageVisit";
 import { MediaImg } from "@/components/palace/MediaImg";
+import { AuftrittScope } from "@/lib/editMode";
 
 interface DbDesigner {
   id: string;
@@ -117,6 +119,10 @@ function CustomCursor() {
 const DesignerPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const activeSlug = slug ?? "y-project";
+  // Teil U1.1 — der Einstieg in den Auftritt-Modus. Der Wunsch steht in der Adresse,
+  // das Recht entscheidet <AuftrittScope> (und endgültig die RLS).
+  const [sucheParams] = useSearchParams();
+  const auftrittGewuenscht = sucheParams.get("auftritt") === "1";
   const reduced = useReducedMotion();
   const editionNum = useSiteContent("ausgabe_nummer");
   const edition = String(editionNum ?? "07");
@@ -133,6 +139,8 @@ const DesignerPage = () => {
   const [houseMilestones, setHouseMilestones] = useState<HouseMilestones | null>(null);
   // Teil 15b: die Schwelle einmalig je Haus-Besuch zeigen, nicht bei jedem Re-Render.
   const [schwelleActive, setSchwelleActive] = useState(true);
+  // Teil U1.5: nach Anlegen/Verdoppeln/Löschen/Ziehen die Bausteine frisch holen.
+  const [bausteinStand, setBausteinStand] = useState(0);
   useEffect(() => { setSchwelleActive(true); }, [dbDesigner?.id]);
   usePageVisit("designer", dbDesigner?.id);
 
@@ -214,13 +222,17 @@ const DesignerPage = () => {
   }, [dbDesigner]);
 
   // Hausseite-Bausteine (Teil 12c) — nur laden, wenn das Haus veröffentlicht hat.
+  // Teil U1.1: im Auftritt-Modus auch vorher, damit ein Haus seine Seite bauen kann,
+  // bevor sie live geht. Wer kein Recht hat, bekommt von der RLS nichts zurück.
   useEffect(() => {
-    if (!dbDesigner?.page_published_at) return;
+    if (!dbDesigner) return;
+    if (!dbDesigner.page_published_at && !auftrittGewuenscht) return;
     let cancelled = false;
     (async () => {
       const [{ data: b }, { data: m }, { data: p }, { data: t }, { data: ms }] = await Promise.all([
         supabase.from("designer_page_blocks" as never).select("id, kind, position, content").eq("designer_id", dbDesigner.id).order("position"),
-        supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", dbDesigner.id),
+        // Neueste zuerst — so erscheint die Bildwand (Teil U1.3) in der erwarteten Ordnung.
+        supabase.from("media_assets" as never).select("id, url, kind").eq("designer_id", dbDesigner.id).order("created_at", { ascending: false }),
         supabase.from("products").select("id, name, slug, price, image_url").eq("designer_id", dbDesigner.id),
         supabase.from("house_themes" as never).select("*").eq("designer_id", dbDesigner.id).eq("is_current", true).maybeSingle(),
         supabase.from("house_milestones" as never).select("*").eq("designer_id", dbDesigner.id).maybeSingle(),
@@ -234,7 +246,7 @@ const DesignerPage = () => {
       setHouseMilestones((ms as unknown as HouseMilestones) ?? null);
     })();
     return () => { cancelled = true; };
-  }, [dbDesigner]);
+  }, [dbDesigner, auftrittGewuenscht, bausteinStand]);
 
   // Kollektion für die Standarddarstellung (Akt III) — unabhängig davon, ob das Haus eine
   // eigens gestaltete Hausseite veröffentlicht hat. Kommt direkt aus der products-Tabelle,
@@ -371,7 +383,7 @@ const DesignerPage = () => {
 
   // Neue Hausseite (Teil 12c): veröffentlicht und mit Bausteinen → ersetzt die
   // gesamte alte Rückblick. Ohne Veröffentlichung bleibt Akt I-VI unverändert.
-  if (dbDesigner?.page_published_at && pageBlocks.length > 0) {
+  if ((dbDesigner?.page_published_at || auftrittGewuenscht) && dbDesigner && pageBlocks.length > 0) {
     const mediaById = Object.fromEntries(blockMedia.map((m) => [m.id, m]));
     // Teil 27c: die Hausseite öffnet mit dem stärksten Werk in voller Höhe, bevor die
     // Bausteine beginnen — unabhängig davon, ob das Haus selbst einen "Auftakt"-Baustein
@@ -380,11 +392,20 @@ const DesignerPage = () => {
       ?? blockProducts.find((p) => p.image_url)?.image_url ?? null;
     return (
       <PalaceLayout transparentHeader>
-        {houseTheme && schwelleActive && (
+        {/* Im Auftritt-Modus keine Schwelle — wer bearbeitet, will sofort an die Seite. */}
+        {houseTheme && schwelleActive && !auftrittGewuenscht && (
           <Schwelle houseName={dbDesigner.brand_name} theme={houseTheme} onDone={() => setSchwelleActive(false)} />
         )}
         <HouseHero brandName={dbDesigner.brand_name} houseNumber={dbDesigner.house_number} image={heroImage} />
-        <HausseiteBlocks blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined} />
+        {/* Teil U1.1 — dieselbe Komponente, zwei Orte: hier zusätzlich bearbeitbar,
+            aber nur für den Inhaber dieses Hauses (oder einen Admin). */}
+        <AuftrittScope designerId={dbDesigner.id} gewuenscht={auftrittGewuenscht}>
+          <HausseiteBlocks
+            blocks={pageBlocks} mediaById={mediaById} products={blockProducts} theme={houseTheme ?? undefined}
+            designerId={dbDesigner.id} medien={blockMedia} seiteIstLive={!!dbDesigner.page_published_at}
+            onAenderung={() => setBausteinStand((n) => n + 1)}
+          />
+        </AuftrittScope>
         {/* Teil 15c: dezentes Zeichen der Verwandlungsstufe — nie mehr als ein stiller Hinweis. */}
         {houseMilestones && (() => {
           const sign = currentVerwandlungGlyph(houseMilestones);
@@ -669,7 +690,7 @@ const DesignerPage = () => {
                       <EditorialImage src={p.image_url} alt={p.name} color seed={`d-${p.slug}`} ratio={odd ? "3/4" : "4/5"} />
                       <div className="mt-4 flex items-baseline justify-between gap-4">
                         <p className="palace-serif italic text-[1.15rem] text-[#000000]">{p.name}</p>
-                        <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
+                        <p className="palace-eyebrow text-[#000000]">{formatPrice(p.price, locale)}</p>
                       </div>
                     </Link>
                   );
@@ -933,6 +954,7 @@ function KollektionArchetyp({ archetyp, products, collectionTitle, sectionRef }:
   collectionTitle: string | null;
   sectionRef: React.RefObject<HTMLElement>;
 }) {
+  const { locale } = useI18n();
   const plate = ARCHETYP_PLATES[archetyp];
   const Trenner = ({ h = "h-20 md:h-32" }: { h?: string }) => (
     <div aria-hidden className={`${h} w-full overflow-hidden`}>
@@ -956,7 +978,7 @@ function KollektionArchetyp({ archetyp, products, collectionTitle, sectionRef }:
   const zeile = (p: { slug: string; name: string; price: number }) => (
     <div className="mt-4 flex items-baseline justify-between gap-4">
       <p className="palace-serif italic text-[1.15rem] text-[#000000]">{p.name}</p>
-      <p className="palace-eyebrow text-[#000000]">€{p.price.toLocaleString("de-DE")}</p>
+      <p className="palace-eyebrow text-[#000000]">{formatPrice(p.price, locale)}</p>
     </div>
   );
 
