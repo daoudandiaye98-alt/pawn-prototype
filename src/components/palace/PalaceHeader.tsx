@@ -105,7 +105,22 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
   const isDesigner = roles.includes("designer");
   const isApplicant = roles.includes("designer_applicant" as never);
 
-  // Teil 27: auf dem Cover transparent mit weißer Schrift, danach wie überall solide.
+  /**
+   * Teil K3 — die Kopfzeile bekommt einen eigenen Grund.
+   *
+   * Gemessen stand sie nackt auf dem Titelfoto: „Suche" 1,11–1,96:1, die
+   * Wortmarke 1,67–2,52:1, „Boutique" und „Vision" um 1,8–2,1:1. 1,11:1 ist
+   * kein schwacher Kontrast, das ist unsichtbarer Text — weiß auf hellem Beton.
+   *
+   * Kein Verlauf: ein Verlauf ist an jeder Stelle unterschiedlich stark, also
+   * ist auch der Kontrast an jeder Stelle ein anderer, und messen lässt sich
+   * nichts. Stattdessen eine massive Fläche mit harter Kante — dieselbe Lösung
+   * wie beim Textblock im Helden. Weiß auf #000 sind 21:1, unabhängig davon,
+   * wie hell das Foto dahinter gerade ist.
+   *
+   * Der Unterschied zwischen Cover und Rest bleibt: dort schwarzer Grund mit
+   * weißer Schrift, danach weißer Grund mit schwarzer Schrift.
+   */
   const solid = variant !== "transparent-on-hero" || scrolled;
   const border = solid ? "border-black" : "border-white/30";
   const borderSoft = solid ? "border-[rgba(0,0,0,.18)]" : "border-white/20";
@@ -114,7 +129,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-50 border-b-[1.5px] transition-colors duration-300 ${border} ${solid ? "bg-white" : "bg-transparent"}`}
+        className={`fixed inset-x-0 top-0 z-50 border-b-[1.5px] transition-colors duration-300 ${border} ${solid ? "bg-white" : "bg-black"}`}
         style={{ transitionTimingFunction: "cubic-bezier(.76,0,.18,1)" }}
       >
         <div className="mx-auto flex h-14 max-w-[1600px] items-stretch">
