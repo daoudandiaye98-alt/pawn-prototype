@@ -106,7 +106,10 @@ const Index = () => {
           Raum", das schon immer funktioniert hat. Weiß auf #000 sind 21:1,
           unabhängig davon, wie hell das Foto dahinter gerade ist.
         */}
-        <div className="relative z-[2] mx-auto w-full max-w-[1440px] px-6 pb-12 pt-32 md:px-10">
+        {/* Teil K1 — der Held ist `100svh` hoch und unten ausgerichtet; eine
+            Polsterung am `body` ändert daran nichts. Deshalb rechnet er die
+            Höhe der Einwilligungsleiste selbst dazu, solange sie steht. */}
+        <div className="relative z-[2] mx-auto w-full max-w-[1440px] px-6 pb-[calc(3rem+var(--pawn-einwilligung,0px))] pt-32 md:px-10">
           <div className="w-fit max-w-full bg-black px-6 py-8 md:px-10 md:py-10">
             <span className="inline-block border-[1.5px] border-white px-[0.8rem] py-[0.45rem] text-[0.68rem] uppercase tracking-[0.32em]">
               <Editable contentKey="landing.cover_kicker">Der kuratierte Raum</Editable>
