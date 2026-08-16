@@ -28,7 +28,9 @@ const BREITEN = [
   { b: 1920, h: 1080, finger: false },
 ];
 const WEG = 900;
-const BLAETTER = 4;
+// Die Zahl der Blätter steht in der Seite, nicht hier: sie wächst mit dem Heft.
+// Eine fest verdrahtete Zahl misst sonst irgendwann ein anderes Heft.
+let BLAETTER = 0;
 
 const lies = () =>
   Array.from(document.querySelectorAll(".heft-blatt")).map((el, i) => {
@@ -59,6 +61,7 @@ for (const v of BREITEN) {
   await page.goto(`${BASIS}/ausgabe/001`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".heft-blatt");
   await page.waitForTimeout(600);
+  BLAETTER = await page.evaluate(() => document.querySelectorAll(".heft-blatt").length);
 
   // Echte Scrollhöhe?
   const doku = await page.evaluate(() => ({
@@ -68,7 +71,7 @@ for (const v of BREITEN) {
     ueberlauf: getComputedStyle(document.body).overflowY,
   }));
   const erwartet = BLAETTER * WEG + doku.fenster;
-  console.log(`\n=== ${v.b}px  Dokumenthöhe ${doku.hoehe} (erwartet ${erwartet}) · rollbar ${doku.rollbar} · body overflow-y ${doku.ueberlauf}`);
+  console.log(`\n=== ${v.b}px  ${BLAETTER} Blätter · Dokumenthöhe ${doku.hoehe} (erwartet ${erwartet}) · rollbar ${doku.rollbar} · body overflow-y ${doku.ueberlauf}`);
   if (doku.hoehe !== erwartet) { console.log("   ABWEICHUNG Scrollhöhe"); fehler++; }
 
   // Durchblättern in Achtelschritten und jeden Zustand prüfen.
