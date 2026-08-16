@@ -67,6 +67,8 @@ export const HAUS_SLUG = "obara";
 
 export const SEITEN: SeitenZiel[] = [
   { name: "halle", pfad: "/" },
+  // Teil M — das Heft. Gehört ab jetzt zum öffentlichen Frontend, also in die Messung.
+  { name: "heft", pfad: "/ausgabe/001" },
   { name: "boutique", pfad: "/shop" },
   { name: "werk", pfad: `/product/${PRODUKT_SLUG}` },
   { name: "haus", pfad: `/designer/${HAUS_SLUG}` },

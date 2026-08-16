@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { captureReferralCode } from "@/features/referral";
 import { captureLeadRef } from "@/features/acquisition/leadAttribution";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -25,6 +25,9 @@ import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
 import Ausgabe from "./pages/Ausgabe.tsx";
+// Teil M — das Heft lädt als eigenes Bündel: es soll das Haupt-Bündel nicht wachsen
+// lassen (M9), und wer nie blättert, lädt den Mechanismus nie.
+const AusgabeHeft = lazy(() => import("./pages/AusgabeHeft.tsx"));
 import Vision from "./pages/Vision.tsx";
 import Preise from "./pages/Preise.tsx";
 import PreiseMaison from "./pages/PreiseMaison.tsx";
@@ -159,6 +162,9 @@ const App = () => (
                 <Route path="/dna" element={<DNA />} />
                 <Route path="/designers" element={<Designers />} />
                 <Route path="/ausgabe" element={<Ausgabe />} />
+                {/* Teil M1 — das Heft. Vorerst nur der Wendel; /ausgabe bleibt unberührt. */}
+                <Route path="/ausgabe/001" element={<Suspense fallback={null}><AusgabeHeft /></Suspense>} />
+                <Route path="/ausgabe/001/:seite" element={<Suspense fallback={null}><AusgabeHeft /></Suspense>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/preise" element={<Preise />} />
                 <Route path="/preise/maison" element={<PreiseMaison />} />

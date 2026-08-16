@@ -1,0 +1,219 @@
+/**
+ * Teil M1 — das Blatt.
+ *
+ * Alles, was hier animiert wird, ist `transform` oder `opacity`. Keine Ausnahme:
+ * width, height, top, left, margin, box-shadow und filter stehen still.
+ *
+ * Die Farben sind die Papierfarben aus M2. Weitere Gestaltung folgt in M2 — hier
+ * steht nur, was der Mechanismus zum Sichtbarwerden braucht.
+ */
+
+.heft-wurzel {
+  --papier: #f2efe9;
+  --tinte: #12100e;
+  --nacht: #0a0a0a;
+  --weiss: #ffffff;
+}
+
+/* Der Untergrund. Fest, damit das Heft beim Rollen an seinem Platz bleibt —
+   die Scrollhöhe liefert `.heft-weg`, deshalb bleibt der Rollbalken echt. */
+.heft-tisch {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 18%, #23211d 0%, #17151300 62%),
+    linear-gradient(180deg, #1b1917 0%, #100f0e 100%);
+  overflow: hidden;
+}
+
+/* Feines Korn. Ein statisches SVG-Rauschen, kein Filter auf dem Inhalt. */
+.heft-korn {
+  position: absolute;
+  inset: 0;
+  opacity: 0.055;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>\
+<filter id='k'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter>\
+<rect width='140' height='140' filter='url(%23k)'/></svg>");
+}
+
+.heft-buehne {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  perspective: 2600px;
+  perspective-origin: 50% 46%;
+  padding: clamp(0.75rem, 3vw, 2.5rem);
+}
+
+.heft {
+  position: relative;
+  aspect-ratio: 1.44 / 1;
+  width: min(100%, calc((100vh - 5rem) * 1.44));
+  max-height: 100%;
+  transform-style: preserve-3d;
+}
+
+/* Die beiden Grundseiten: die unterste Lage, über der alle Blätter liegen. */
+.heft-seite {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 10;
+  overflow: hidden;
+  background: var(--papier);
+  color: var(--tinte);
+}
+.heft-seite.links {
+  left: 0;
+  box-shadow: inset -18px 0 34px -26px rgba(0, 0, 0, 0.55);
+}
+.heft-seite.rechts {
+  left: 50%;
+  box-shadow: inset 18px 0 34px -26px rgba(0, 0, 0, 0.55);
+}
+
+/* Das Blatt selbst — zwei Flächen Rücken an Rücken, gedreht um die linke Kante. */
+.heft-blatt {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 50%;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.heft-flaeche {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  background: var(--papier);
+  color: var(--tinte);
+}
+.heft-flaeche.vorn {
+  box-shadow: inset 18px 0 34px -26px rgba(0, 0, 0, 0.5);
+}
+.heft-flaeche.rueck {
+  transform: rotateY(180deg);
+  box-shadow: inset -18px 0 34px -26px rgba(0, 0, 0, 0.5);
+}
+
+/* Der Knick. Nur die Deckkraft bewegt sich — das ist der Unterschied
+   zwischen Papier und einer sich drehenden Karte. */
+.heft-knick {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.42) 0%,
+    rgba(0, 0, 0, 0.14) 22%,
+    rgba(0, 0, 0, 0) 55%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+}
+
+/* Blätter außerhalb des Fensters werden nicht gezeichnet. */
+.heft-blatt.fern {
+  content-visibility: auto;
+  contain-intrinsic-size: 700px 490px;
+}
+
+/* Die Scrollhöhe. Ein leerer Streifen — er stiehlt nichts, er trägt den Rollbalken. */
+.heft-weg {
+  position: relative;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* Einzelseite: dasselbe Blatt, volle Breite, gleicher Wendel. */
+@media (max-width: 820px) {
+  .heft {
+    aspect-ratio: 0.78 / 1;
+    width: min(100%, calc((100vh - 3rem) * 0.78));
+  }
+  .heft-seite.links {
+    display: none;
+  }
+  .heft-seite.rechts {
+    left: 0;
+    width: 100%;
+  }
+  .heft-blatt {
+    left: 0;
+    width: 100%;
+  }
+}
+
+/* Die leere Seite aus M1: nur Papier und Folio. Was darauf steht, entscheidet M2. */
+/* Höhe des Blattes, nicht mehr: eine Mindesthöhe größer als das Blatt schöbe das
+   Folio unter die Kante, und `.heft-flaeche` schneidet ab. Die Mindesthöhe gilt
+   nur im zweiten Weg, wo die Seite selbst die Höhe bestimmt. */
+.heft-leerseite {
+  position: relative;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: clamp(1.25rem, 3vw, 2.75rem);
+}
+.heft-folge-seite .heft-leerseite {
+  min-height: 70vh;
+}
+.heft-folio {
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.28em;
+  color: var(--tinte);
+}
+.heft-leerseite.aussen-links .heft-folio {
+  text-align: left;
+}
+.heft-leerseite.aussen-rechts .heft-folio {
+  text-align: right;
+}
+.heft-titelzeile {
+  margin: 0 0 auto;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 3.25rem);
+  font-weight: 400;
+  line-height: 1.05;
+  color: var(--tinte);
+}
+
+/* ————— Der zweite Weg: reduzierte Bewegung ————— */
+/* Kein 3D. Dieselben Seiten, senkrecht untereinander, normales Rollen.
+   Vollwertig, kein Notbehelf. */
+.heft-folge {
+  background: #161413;
+  padding: clamp(0.75rem, 3vw, 2.5rem) 0;
+}
+/* Keine feste Proportion: hier bestimmt der Inhalt die Höhe, sonst schneidet die
+   Seite ab, sobald ein Text länger wird. */
+.heft-folge-seite {
+  position: relative;
+  margin: 0 auto clamp(0.75rem, 3vw, 2.5rem);
+  width: min(94vw, 62rem);
+  min-height: 70vh;
+  background: var(--papier);
+  color: var(--tinte);
+}
+.heft-folge-paar {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: inherit;
+}
+@media (min-width: 821px) {
+  .heft-folge-paar {
+    grid-template-columns: 1fr 1fr;
+  }
+}

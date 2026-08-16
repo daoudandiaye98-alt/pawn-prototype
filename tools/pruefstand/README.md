@@ -81,6 +81,23 @@ Alle Schwellwerte stehen in `pruefstand.config.ts`. Keine Zahl ist im Messcode v
 25–30 Minuten. Der Löwenanteil sind die Kontrast-Aufnahmen und das Absuchen aller internen
 Wege. Beim Nachbessern lohnt `--seiten … --breiten …`.
 
+## Der Wendel (Teil M)
+
+Der Prüfstand misst die Launch Gates. Ob das Blatt richtig dreht, ist eine andere
+Frage — dafür gibt es ein zweites Skript:
+
+```bash
+node tools/pruefstand/wendel.mjs
+```
+
+Es prüft auf vier Breiten: Dokumenthöhe, Winkel und Stapelordnung an jedem
+Achtelschritt, Knickstärke, Tastaturrollen, Tieflink, Adressnachführung, den zweiten
+Weg bei reduzierter Bewegung und den Inhalt im DOM. Endet mit Code 1 bei Abweichung.
+
+**Achtung beim Messen:** die Seite hat `scroll-behavior: smooth`. Wer mit
+`window.scrollTo(0, y)` springt, misst die Rollanimation statt das Blatt —
+`behavior: "instant"` verwenden.
+
 ## Der Bericht
 
 `artefakte/bericht.json`:
