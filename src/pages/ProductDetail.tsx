@@ -1176,11 +1176,11 @@ const ProductDetail = () => {
             </p>
             <label className="mt-6 block">
               <span className="house-ink palace-eyebrow">{t("product.requestModal.nameLabel")}</span>
-              <input value={reqName} onChange={(e) => setReqName(e.target.value)} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
+              <input value={reqName} onChange={(e) => setReqName(e.target.value)} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] " />
             </label>
             <label className="mt-4 block">
               <span className="house-ink palace-eyebrow">{t("product.requestModal.wishLabel")}</span>
-              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
+              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] " />
             </label>
             <div className="mt-4">
               <span className="house-ink palace-eyebrow">{t("product.requestModal.budgetLabel")}</span>

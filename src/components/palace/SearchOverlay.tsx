@@ -67,7 +67,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Stücke, Ateliers, Welten …"
-          className="w-full border-0 border-b border-[rgba(0,0,0,.28)] bg-transparent pb-4 palace-serif text-[clamp(1.8rem,4vw,3rem)] font-light text-[#000000] placeholder:text-black/60 focus:outline-none"
+          className="w-full border-0 border-b border-[rgba(0,0,0,.28)] bg-transparent pb-4 palace-serif text-[clamp(1.8rem,4vw,3rem)] font-light text-[#000000] placeholder:text-black/60 "
         />
         <div className="mt-10 space-y-2">
           {q.trim().length < 2 && (

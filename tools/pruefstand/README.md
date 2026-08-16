@@ -81,6 +81,23 @@ Alle Schwellwerte stehen in `pruefstand.config.ts`. Keine Zahl ist im Messcode v
 25–30 Minuten. Der Löwenanteil sind die Kontrast-Aufnahmen und das Absuchen aller internen
 Wege. Beim Nachbessern lohnt `--seiten … --breiten …`.
 
+## Der Fokus-Wächter (Teil K2)
+
+```bash
+node tools/pruefstand/fokus-waechter.mjs
+```
+
+Eine Sekunde, kein Browser. Er sucht Stellen, die den Tastatur-Rahmen wegnehmen
+(`focus:outline-none`, `outline: none`), ohne an derselben Stelle einen eigenen
+zu setzen. Solche Stellen sieht man mit der Maus nie — und die Grundregel aus
+`src/index.css` steht in der Basis-Schicht, wird also von jeder Tailwind-Klasse
+überstimmt.
+
+Er misst nicht, ob der Fokus sichtbar IST — das tut Kontrolle 3.4 am echten
+Bild. Er verhindert nur, dass wieder eine blinde Stelle dazukommt. Zwei
+Ausnahmen stehen im Kopf des Skripts, jede mit Grund. Endet mit Code 1 bei einem
+Fund; läuft in der Action vor dem Browser.
+
 ## Der Wendel (Teil M)
 
 Der Prüfstand misst die Launch Gates. Ob das Blatt richtig dreht, ist eine andere
