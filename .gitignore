@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
+
+# Teil P — Messartefakte des Prüfstands sind Ergebnisse, kein Quellcode.
+tools/pruefstand/artefakte/
