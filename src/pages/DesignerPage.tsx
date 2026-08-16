@@ -575,7 +575,7 @@ const DesignerPage = () => {
                 }}
               >
                 {manifestoWords.length === 0 ? (
-                  <span className="italic text-[#000000]/40">Noch kein Manifest hinterlegt.</span>
+                  <span className="italic text-[#000000]">Noch kein Manifest hinterlegt.</span>
                 ) : (
                   manifestoWords.map((w, i) => {
                     const step = manifestoWords.length > 0 ? i / manifestoWords.length : 0;
@@ -661,7 +661,7 @@ const DesignerPage = () => {
                 }}
               >
                 {designerProducts.length === 0 && (
-                  <p className="palace-serif italic text-[1.4rem] text-[#000000]/50">Kollektion in Vorbereitung.</p>
+                  <p className="palace-serif italic text-[1.4rem] text-[#000000]">Kollektion in Vorbereitung.</p>
                 )}
                 {designerProducts.map((p, i) => {
                   const odd = i % 2 === 0;
@@ -973,7 +973,7 @@ function KollektionArchetyp({ archetyp, products, collectionTitle, sectionRef }:
     </div>
   );
   const leer = products.length === 0 && (
-    <p className="palace-serif italic text-[1.4rem] text-[#000000]/50">Kollektion in Vorbereitung.</p>
+    <p className="palace-serif italic text-[1.4rem] text-[#000000]">Kollektion in Vorbereitung.</p>
   );
   const zeile = (p: { slug: string; name: string; price: number }) => (
     <div className="mt-4 flex items-baseline justify-between gap-4">

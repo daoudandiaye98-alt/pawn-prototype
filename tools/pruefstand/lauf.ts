@@ -13,7 +13,7 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD, VORGABE_ZIEL, ZIELE,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD, VORGABE_ZIEL, ZIELE,
   type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
 import {
@@ -65,6 +65,39 @@ async function istUmgeleitet(page: Page, erwartetHost: string): Promise<string |
   return null;
 }
 
+/**
+ * Eine leere Hülle darf nie als Ergebnis durchgehen.
+ *
+ * Kam die Seite nicht an ihre Daten (Anfragen an `DATEN_HOSTS` fehlgeschlagen),
+ * dann zeigt der Browser ein Gerüst ohne Werke und ohne Bilder. Jede Zahl daran
+ * ist wahr über das Gerüst und falsch über die Seite: der Kontrast stimmt, weil
+ * nichts dasteht; die Trefferflächen stimmen, weil es keine gibt; der primäre
+ * Weg ist frei, weil der Fuß nach oben gerutscht ist. Ein „bestanden" wäre
+ * hier gefährlicher als ein „gefallen" — es sähe aus wie ein Beleg.
+ *
+ * Deshalb werden ALLE Befunde dieser Seite auf `nicht_pruefbar` gesetzt, mit
+ * dem Grund und der ursprünglichen Messung in der Notiz, damit nichts verloren
+ * geht.
+ *
+ * GRENZE: erkannt werden Transportfehler (`requestfailed`). Eine Antwort mit
+ * 401 oder 500 vom Datenhost fällt hier NICHT auf — das absichtlich, weil
+ * einzelne 401 auf geschützte Tabellen im Normalbetrieb vorkommen und sonst
+ * jede Seite entwertet würde.
+ */
+function huelleMarkieren(befunde: Befund[], datenFehler: string[]): Befund[] {
+  if (datenFehler.length === 0) return befunde;
+  const grund = `Die Seite hat ihre Daten nicht bekommen: ${datenFehler.length} Anfrage(n) an `
+    + `${DATEN_HOSTS.join(", ")} fehlgeschlagen (${datenFehler[0]}). Gemessen wurde eine leere `
+    + "Hülle, nicht die Seite.";
+  return befunde.map((b) => ({
+    ...b,
+    status: "nicht_pruefbar" as const,
+    gemessen: null,
+    notiz: `${grund} Ursprünglich gemessen: ${b.gemessen ?? "—"} (Schwelle ${b.schwelle ?? "—"})`
+      + `${b.notiz ? " · " + b.notiz : ""}`,
+  }));
+}
+
 async function seiteMessen(
   browser: Browser, basis: string, seite: SeitenZiel, breite: Breite,
   ruhigeBewegung = false,
@@ -84,9 +117,15 @@ async function seiteMessen(
   const groessen: { url: string; bytes: number }[] = [];
   const konsole: string[] = [];
   const fehlgeschlagen: string[] = [];
+  /** Nur die Fehlschläge zum Datenhost — sie entwerten die ganze Seite. */
+  const datenFehler: string[] = [];
   page.on("console", (m) => { if (m.type() === "error") konsole.push(m.text().slice(0, 160)); });
   page.on("pageerror", (e) => konsole.push("pageerror: " + e.message.slice(0, 160)));
-  page.on("requestfailed", (r) => fehlgeschlagen.push(`${r.url().slice(0, 90)} — ${r.failure()?.errorText}`));
+  page.on("requestfailed", (r) => {
+    const zeile = `${r.url().slice(0, 90)} — ${r.failure()?.errorText}`;
+    fehlgeschlagen.push(zeile);
+    if (DATEN_HOSTS.some((h) => r.url().includes(h))) datenFehler.push(zeile);
+  });
   page.on("response", async (r) => {
     try {
       const laenge = Number(r.headers()["content-length"] ?? 0);
@@ -122,7 +161,7 @@ async function seiteMessen(
       befunde.push(...await messeKnopfVerdeckung(page, seite.pfad, breite.breite));
       befunde[befunde.length - 1] = { ...befunde[befunde.length - 1], kontrolle: "3.9", gate: false };
       await page.close();
-      return befunde;
+      return huelleMarkieren(befunde, datenFehler);
     }
 
     // Jede Kontrolle sagt, wie lange sie gebraucht hat — damit „das dauert lange"
@@ -179,7 +218,7 @@ async function seiteMessen(
   } finally {
     await page.close();
   }
-  return befunde;
+  return huelleMarkieren(befunde, datenFehler);
 }
 
 /** 4.3 Wege · 4.5 404 — beides über echte Anfragen, einmal je Lauf. */
@@ -252,7 +291,7 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   } finally {
     await page.close();
   }
-  return befunde;
+  return huelleMarkieren(befunde, datenFehler);
 }
 
 async function haupt() {

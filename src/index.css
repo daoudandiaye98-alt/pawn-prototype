@@ -93,6 +93,10 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss01", "cv11";
     font-weight: 400;
+    /* Teil K1 — solange die Einwilligungsleiste unten steht, bekommt die Seite
+       Platz in ihrer Höhe. Die Leiste misst sich selbst und schreibt die Zahl
+       an die Wurzel (`ConsentBanner.tsx`); ohne Leiste ist sie 0. */
+    padding-bottom: var(--pawn-einwilligung, 0px);
   }
   h1, h2, h3, h4, .font-serif, .font-display, .palace-serif, .font-cormorant {
     font-family: "Playfair Display", "Cormorant Garamond", Georgia, serif;
