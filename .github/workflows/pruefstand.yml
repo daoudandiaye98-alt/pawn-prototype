@@ -1,0 +1,70 @@
+# Teil P, Stufe 2 — der Prüfstand auf einer Maschine mit Netz.
+#
+# Warum überhaupt: der Entwicklungscontainer hat für den Browser keinen Ausgang
+# ins Netz. Jede Seite, die ihre Inhalte von Supabase holt, ist dort eine leere
+# Hülle, und `lauf.ts` setzt solche Läufe seit der Hüllen-Regel geschlossen auf
+# `nicht_pruefbar`. Der GitHub-Runner hat Netz — er ist damit der einzige Ort,
+# an dem `/shop`, `/product` und `/designer` je echte Zahlen bekommen.
+#
+# WICHTIG, damit niemand den Bericht falsch liest: gemessen wird **pawn.vision**,
+# also der ausgelieferte Stand — nicht der Stand des Commits, der diesen Lauf
+# ausgelöst hat. Solange Lovable/Vercel den Push noch nicht veröffentlicht haben,
+# beschreibt der Bericht den Zustand *davor*. Der Bericht nennt Ziel, Adresse und
+# Commit, damit sich beides auseinanderhalten lässt.
+#
+# Der Lauf endet mit Code 1, sobald ein Launch Gate gefallen ist — dann ist der
+# Check rot. `nicht_pruefbar` macht nichts rot; das ist Absicht, denn eine nicht
+# prüfbare Kontrolle ist kein Befund.
+
+name: Prüfstand
+
+on:
+  push:
+    branches: ["**"]
+  # Von Hand nachziehen, ohne einen Commit erfinden zu müssen.
+  workflow_dispatch:
+
+# Ein Lauf je Zweig. Ein neuer Push macht den alten Lauf gegenstandslos.
+concurrency:
+  group: pruefstand-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  messen:
+    runs-on: ubuntu-latest
+    # Vier Breiten über fünf Seiten plus Wege und 404 brauchen ihre Zeit;
+    # der Deckel verhindert, dass ein Hänger eine Stunde Runner frisst.
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Abhängigkeiten
+        run: npm ci
+
+      # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
+      # die Systembibliotheken, ohne die der Browser auf dem Runner nicht läuft.
+      - name: Browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Prüfstand gegen pawn.vision
+        run: npx tsx tools/pruefstand/lauf.ts --ziel live
+
+      # `always()`: gerade der rote Lauf ist der, dessen Bericht und Aufnahmen
+      # man sehen will. Ohne das gäbe es beim Fehlschlag nichts zum Nachlesen.
+      - name: Bericht und Aufnahmen anhängen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pruefstand-${{ github.run_number }}-${{ github.sha }}
+          path: tools/pruefstand/artefakte/
+          # `warn`, nicht `error`: gibt es nichts anzuhängen, ist der Lauf schon
+          # im Schritt davor rot geworden. Ein zweiter Fehlschlag verdeckt den
+          # ersten nur.
+          if-no-files-found: warn
+          retention-days: 30

@@ -77,6 +77,18 @@ export const SEITEN: SeitenZiel[] = [
 /** Absichtlich ungültig — für 4.5. */
 export const UNSINN_PFAD = "/diese-seite-gibt-es-nicht-4d9f21";
 
+/**
+ * Die Hosts, von denen die Seite ihre Inhalte holt.
+ *
+ * Schlägt dorthin eine Anfrage fehl, zeigt der Browser eine leere Hülle: keine
+ * Werke, keine Bilder, ein Fuß, der in den ersten Bildschirm rutscht. Alles,
+ * was man daran misst, ist wahr über die Hülle und falsch über die Seite.
+ * Deshalb bekommen in dem Fall ALLE Befunde dieser Seite `nicht_pruefbar`
+ * (s. `huelleMarkieren` in `lauf.ts`) — eine leere Hülle darf nie als Ergebnis
+ * durchgehen, weder als bestanden noch als gefallen.
+ */
+export const DATEN_HOSTS = ["supabase.co"];
+
 export const SCHWELLEN = {
   /** 3.3 — WCAG. Klein: unter 24 px, bzw. unter 18,66 px wenn fett. */
   kontrast_klein: 4.5,

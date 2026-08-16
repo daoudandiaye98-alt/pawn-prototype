@@ -126,5 +126,31 @@ Exit-Code **1**, sobald ein Launch Gate gefallen ist. Sonst **0**.
   (`grep -rn "pruefstand" src/` bleibt leer).
 - Playwright, tsx und pngjs stehen in `devDependencies` — nichts davon landet im Bundle.
 - Screenshots und Bericht liegen in `artefakte/` und sind in `.gitignore`. Nie committen.
-- Vor jeder Veröffentlichung von Hand laufen lassen. Als GitHub Action erst, wenn die
-  Lovable-GitHub-Anbindung dafür eingerichtet ist.
+
+## Die Hüllen-Regel
+
+Kam eine Seite nicht an ihre Daten — Anfragen an `DATEN_HOSTS` (Supabase) sind
+fehlgeschlagen —, dann werden **alle** Befunde dieser Seite auf `nicht_pruefbar` gesetzt,
+mit Grund und ursprünglicher Messung in der Notiz. Kein `bestanden`, kein `gefallen`.
+
+Der Grund: ohne Daten zeigt der Browser ein Gerüst. Der Kontrast stimmt, weil nichts
+dasteht. Die Trefferflächen stimmen, weil es keine gibt. Der primäre Weg ist frei, weil
+der Fuß nach oben gerutscht ist. Ein `bestanden` wäre hier gefährlicher als ein
+`gefallen` — es sähe aus wie ein Beleg.
+
+**Praktische Folge:** im Entwicklungscontainer hat der Browser keinen Ausgang ins Netz
+(curl schon, Chromium nicht — belegt: der Proxy protokolliert bei HTTPS kein CONNECT).
+Damit sind dort **alle** Seiten Hüllen, auch `/`. Ein `--ziel lokal`-Lauf taugt zum
+Entwickeln des Prüfstands, liefert aber keine abnahmefähigen Zahlen mehr.
+
+## Stufe 2 — der Lauf auf dem Runner
+
+`.github/workflows/pruefstand.yml`: bei jedem Push auf jeden Zweig, gegen **pawn.vision**.
+Der Runner hat Netz — er ist der einzige Ort, an dem `/shop`, `/product` und `/designer`
+echte Zahlen bekommen. `bericht.json` und die Aufnahmen hängen als Artefakt am Lauf (auch
+am roten). Gefallenes Launch Gate → Exit 1 → Check rot.
+
+Gemessen wird der **ausgelieferte** Stand, nicht der Stand des Commits, der den Lauf
+ausgelöst hat. Solange der Push noch nicht veröffentlicht ist, beschreibt der Bericht den
+Zustand davor; `ziel`, `adresse` und `commit` stehen im Bericht, damit sich das
+auseinanderhalten lässt.
