@@ -50,17 +50,43 @@ export interface HeftProps {
 const magReduziert = () =>
   typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
+/**
+ * Der zweite Weg lässt sich auch ohne Systemeinstellung betreten: `?text=1`.
+ * So ist er verlinkbar, überlebt das Neuladen und lässt sich weitergeben.
+ */
+const TEXT_PARAM = "text";
+const willText = () =>
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).get(TEXT_PARAM) === "1";
+
 export function Heft({ blaetter, grundLinks, grundRechts, adresse, startSeite = 1, titel }: HeftProps) {
-  const [reduziert, setReduziert] = useState(magReduziert);
+  const [magsRuhig, setMagsRuhig] = useState(magReduziert);
+  const [alsText, setAlsText] = useState(willText);
+  const reduziert = magsRuhig || alsText;
   const anzahl = blaetter.length;
 
   // Der Nutzer kann die Einstellung im laufenden Betrieb umlegen — beide Wege sind
   // vollwertig, also wird auch live gewechselt.
   useEffect(() => {
     const mm = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const hoer = () => setReduziert(mm.matches);
+    const hoer = () => setMagsRuhig(mm.matches);
     mm.addEventListener("change", hoer);
     return () => mm.removeEventListener("change", hoer);
+  }, []);
+
+  /**
+   * Der Sprunglink. Er hat eine echte Adresse (`?text=1`), damit Mittelklick,
+   * neuer Tab und Weitergeben funktionieren — der Klick wird aber abgefangen,
+   * damit die Seite nicht neu lädt. Danach steht der Weg in der Adresszeile.
+   */
+  const textWegNehmen = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    const p = new URLSearchParams(window.location.search);
+    p.set(TEXT_PARAM, "1");
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${p}`);
+    // Kein eigener Sprung: der zweite Weg stellt sich selbst auf die Doppelseite,
+    // auf der man steht. Zwei Scrollbefehle würden sich gegenseitig überholen.
+    setAlsText(true);
   }, []);
 
   /** Die Adresse nachführen — nur wenn sich die Doppelseite wirklich ändert. */
@@ -95,6 +121,14 @@ export function Heft({ blaetter, grundLinks, grundRechts, adresse, startSeite = 
 
   return (
     <>
+      {/* Ganz oben und als Erstes erreichbar: der Weg aus dem Gewendeten heraus.
+          Sichtbar, sobald er den Fokus hat — die übliche Form eines Sprunglinks.
+          Im zweiten Weg fehlt er, weil man dann schon dort ist. */}
+      {!reduziert && (
+        <a className="heft-textweg" href={`?${TEXT_PARAM}=1`} onClick={textWegNehmen}>
+          Das ganze Heft als Text lesen
+        </a>
+      )}
       {heft}
       {laeuft && <Eroeffnung reduziert={reduziert} onFertig={fertig} />}
       {oeffnet && <BlaetternHinweis reduziert={reduziert} />}

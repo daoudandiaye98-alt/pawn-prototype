@@ -41,6 +41,15 @@ function argument(name: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
+/**
+ * `--kontrollen 3.4,3.3` misst nur diese Kontrollen. Gedacht für den Fall, dass
+ * eine Zahl neu erhoben werden muss, ohne den ganzen Lauf zu wiederholen: der
+ * Teillauf benutzt dieselben Messfunktionen, also sind die Zahlen dieselben.
+ * Der Bericht hält fest, dass es ein Teillauf war — sonst liest ihn später
+ * jemand als Gesamtbild.
+ */
+const NUR_KONTROLLEN = argument("kontrollen")?.split(",").map((s) => s.trim()).filter(Boolean);
+
 function commit(): string {
   try {
     return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
@@ -119,6 +128,7 @@ async function seiteMessen(
     // Jede Kontrolle sagt, wie lange sie gebraucht hat — damit „das dauert lange"
     // eine Zahl bekommt statt eines Gefühls.
     const mitUhr = async (name: string, f: () => Promise<Befund[]>) => {
+      if (NUR_KONTROLLEN && !NUR_KONTROLLEN.includes(name)) return;
       const t = Date.now();
       const r = await f();
       process.stderr.write(`    ${name} ${((Date.now() - t) / 1000).toFixed(1)}s\n`);
@@ -133,11 +143,15 @@ async function seiteMessen(
     await mitUhr("3.3", () => messeKontrast(page, seite.pfad, breite.breite));
 
     // 3.7 — die Aufnahme, gegen die jede Zahl gegengelesen werden kann.
-    mkdirSync(ORDNER, { recursive: true });
-    await page.screenshot({
-      path: join(ORDNER, `${seite.name}--${breite.breite}.png`),
-      fullPage: true,
-    });
+    // Bei einem Teillauf entfällt sie: sie gehört zum Gesamtbild, nicht zu einer
+    // einzelnen Kontrolle, und auf langen Seiten kostet sie am meisten Zeit.
+    if (!NUR_KONTROLLEN) {
+      mkdirSync(ORDNER, { recursive: true });
+      await page.screenshot({
+        path: join(ORDNER, `${seite.name}--${breite.breite}.png`),
+        fullPage: true,
+      });
+    }
 
     groessen.sort((a, b) => b.bytes - a.bytes);
     befunde.push({
@@ -277,7 +291,8 @@ async function haupt() {
     befunde.push(...await seiteMessen(browser, ziel.adresse, seite, BREITEN[0], true));
   }
   process.stderr.write("… Wege und 404\n");
-  befunde.push(...await wegeUnd404(browser, ziel.adresse));
+  // Wege und 404 gehören zum Gesamtbild, nicht zu einer einzelnen Kontrolle.
+  if (!NUR_KONTROLLEN) befunde.push(...await wegeUnd404(browser, ziel.adresse));
   await browser.close();
 
   const gates = befunde.filter((b) => b.gate);
@@ -286,6 +301,9 @@ async function haupt() {
     adresse: ziel.adresse,
     zeitpunkt: new Date().toISOString(),
     commit: commit(),
+    // Steht hier etwas, war es ein Teillauf: die Gate-Zahlen unten zählen dann
+    // nur diese Kontrollen und sind kein Gesamtstand.
+    nur_kontrollen: NUR_KONTROLLEN ?? null,
     gates: {
       bestanden: gates.filter((b) => b.status === "bestanden").length,
       gefallen: gates.filter((b) => b.status === "gefallen").length,
@@ -300,6 +318,7 @@ async function haupt() {
   const gefallen = bericht.gates.gefallen;
   process.stderr.write(
     `\n${zielName} · ${ziel.adresse}\n`
+    + (NUR_KONTROLLEN ? `TEILLAUF — nur ${NUR_KONTROLLEN.join(", ")}\n` : "")
     + `Gates: ${bericht.gates.bestanden} bestanden · ${gefallen} gefallen · `
     + `${bericht.gates.nicht_pruefbar} nicht prüfbar\n`
     + `Bericht: tools/pruefstand/artefakte/bericht.json\n`,

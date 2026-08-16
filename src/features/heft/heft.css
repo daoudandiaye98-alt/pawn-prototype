@@ -8,12 +8,13 @@
  * steht nur, was der Mechanismus zum Sichtbarwerden braucht.
  */
 
-/* Die Eröffnung und der Hinweis liegen neben der Wurzel, nicht darin — sie
+/* Eröffnung, Hinweis und Sprunglink liegen neben der Wurzel, nicht darin — sie
    brauchen dieselben Farben, sonst steht die Wortmarke auf dem dunklen Tisch
    statt auf Papier. */
 .heft-wurzel,
 .heft-eroeffnung,
-.heft-hinweis {
+.heft-hinweis,
+.heft-textweg {
   --papier: #f2efe9;
   --tinte: #12100e;
   --nacht: #0a0a0a;
@@ -183,6 +184,40 @@
   margin: 0;
 }
 /* Der Weg aus M4 heißt seit M2 `.heftseite-weg` und steht im Fuß jeder Seite. */
+
+/* Der Sprunglink in den zweiten Weg. Er liegt über allem, nimmt keinen Platz
+   weg und fährt erst herunter, wenn er den Fokus hat — bewegt wird nur
+   `transform`, wie überall im Heft. */
+.heft-textweg {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 70;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  border: 1.5px solid var(--tinte);
+  border-top: 0;
+  padding: 0 1.1rem;
+  background: var(--papier);
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--tinte);
+  transform: translate(-50%, -110%);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.heft-textweg:focus {
+  transform: translate(-50%, 0);
+  outline: 2px solid var(--tinte);
+  outline-offset: -6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heft-textweg {
+    transition: none;
+  }
+}
 
 /* ————————————————— M3 · Die Eröffnung ————————————————— */
 
