@@ -10,11 +10,25 @@ export function PawnWordmark({
   className,
   style,
   as: Tag = "span",
+  gliedern = false,
 }: {
   className?: string;
   style?: CSSProperties;
   as?: "span" | "h1" | "h2" | "div";
+  /**
+   * Teil M3 — die Eröffnung zieht die Sperrung der Wortmarke zusammen. Weil nur
+   * `transform` und `opacity` bewegt werden dürfen (M0), kann dafür nicht
+   * `letter-spacing` animiert werden; stattdessen bekommt jedes Glied eine eigene
+   * Hülle mit laufender Nummer, die einzeln verschoben wird. Die Marke selbst
+   * bleibt unverändert — hier entsteht nur ein Griff für die Bewegung.
+   */
+  gliedern?: boolean;
 }) {
+  const glied = (i: number, inhalt: React.ReactNode) =>
+    gliedern
+      ? <span className="pawn-glied" style={{ ["--i" as string]: i }} aria-hidden>{inhalt}</span>
+      : inhalt;
+
   return (
     <Tag
       className={cn(
@@ -25,9 +39,9 @@ export function PawnWordmark({
       style={{ letterSpacing: "-0.02em", ...style }}
       aria-label="PAWN"
     >
-      <span aria-hidden>P</span>
-      <PawnGlyph />
-      <span aria-hidden>WN</span>
+      {glied(0, <span aria-hidden>P</span>)}
+      {glied(1, <PawnGlyph />)}
+      {glied(2, <span aria-hidden>WN</span>)}
     </Tag>
   );
 }
