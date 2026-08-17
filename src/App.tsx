@@ -45,6 +45,7 @@ import Versand from "./pages/Versand.tsx";
 import AGB from "./pages/AGB.tsx";
 import Widerruf from "./pages/Widerruf.tsx";
 import Barrierefreiheit from "./pages/Barrierefreiheit.tsx";
+import WiePawnKiNutzt from "./pages/WiePawnKiNutzt.tsx";
 import VertragKuendigen from "./pages/VertragKuendigen.tsx";
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import StudioOverview from "./pages/studio/StudioOverview.tsx";
@@ -216,6 +217,15 @@ const App = () => (
                 <Route path="/agb" element={<AGB />} />
                 <Route path="/widerruf" element={<Widerruf />} />
                 <Route path="/barrierefreiheit" element={<Barrierefreiheit />} />
+                {/*
+                  Die Seite gab es schon (`src/pages/WiePawnKiNutzt.tsx`), die
+                  Route nicht: die Datenschutzerklärung verlinkt seit Teil AP3
+                  auf `/wie-pawn-ki-nutzt`, und dort stand die „Seite nicht
+                  gefunden"-Ansicht. Gefunden hat es die Link-Prüfung, die zu
+                  K7 gehört — vorher fiel es niemandem auf, weil ein toter Link
+                  in dieser Anwendung mit Status 200 antwortete.
+                */}
+                <Route path="/wie-pawn-ki-nutzt" element={<WiePawnKiNutzt />} />
                 <Route path="/vertrag-kuendigen" element={<VertragKuendigen />} />
                 <Route path="/kontakt" element={<Kontakt />} />
                 <Route path="/shop" element={<Shop />} />

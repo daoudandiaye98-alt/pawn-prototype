@@ -218,6 +218,28 @@ nach 15 Minuten keine fertige Vorschau da, bricht der Lauf ab und listet die gef
 Deployments — **kein stiller Rückfall auf pawn.vision**: ein Lauf, der etwas anderes
 gemessen hat als er sollte, ist schlimmer als ein roter Lauf.
 
+## Gemessen: läuft Edge Middleware? (K7 · Kontrolle 4.5)
+
+Hinter der SPA-Umschreibung antwortete jede erfundene Adresse mit 200. Ein Statuscode
+lässt sich nur **vor** der Umschreibung setzen, also nur in einer Middleware — und ob die
+auf diesem Projekt greift, war eine Behauptung: PAWN ist Vite, nicht Next.
+
+Deshalb erst eine Sonde und sonst nichts: `middleware.ts` beantwortete ausschließlich
+`/__sonde-middleware`, jede andere Adresse lief daran vorbei.
+
+| | |
+|---|---|
+| **Gemessen** | 17.08.2026, `GET https://pawn.vision/__sonde-middleware` |
+| **Antwort** | `middleware-laeuft` · `content-type: text/plain` · `x-pawn-sonde: middleware` |
+| **Bedeutet** | Middleware greift, und zwar vor der Umschreibung. Wäre HTML zurückgekommen, wäre die Umschreibung zuerst dran gewesen und K7 auf diesem Weg nicht baubar. |
+
+Die Sonde ist damit **ersetzt** — sie war ein Messgerät, kein Baustein. An ihrer Stelle
+steht die echte 404: `routen.ts` führt die Adressen, die es gibt, `middleware.ts` liefert
+für alles andere dieselbe Hülle mit Status 404 und der Kopfzeile `x-pawn-404: middleware`.
+Zwei Tests halten das zusammen (`src/__tests__/routen.spec.ts`): die Liste darf nicht von
+`App.tsx` abweichen, und kein interner Link darf auf eine Adresse zeigen, die es nicht
+gibt — sonst wäre die neue 404 eine neue Fehlerquelle statt einer Behebung.
+
 ## Dokumentierte Ausnahmen
 
 Eine Kontrolle darf auf REVIEW stehen und trotzdem ausgeliefert werden — aber nur als
