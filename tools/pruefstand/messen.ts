@@ -556,6 +556,30 @@ export async function messeTrefferflaechen(
     }];
   }
   const kleine = await page.evaluate(({ sel, min }) => {
+    /*
+     * WCAG 2.5.8 nimmt einen Fall ausdrücklich aus: „inline — das Ziel steht in
+     * einem Satz". Ein Link mitten im Fließtext lässt sich nicht auf 44 px
+     * aufpolstern, ohne die Zeile auseinanderzureißen; die Zeilenhöhe des Textes
+     * um ihn herum begrenzt ihn. Wer es trotzdem tut, zerstört den Satz und
+     * gewinnt nichts — der Finger trifft die Nachbarzeile.
+     *
+     * Genau messbar ist der Fall so: das Element fließt inline UND in seinem
+     * Kasten steht Text, der nicht zu ihm gehört. Beides muss zutreffen. Eine
+     * Rechtszeile aus lauter Links (kein fremder Text) fällt damit nicht unter
+     * die Ausnahme und wird weiter gemessen.
+     */
+    const imSatz = (el: Element): boolean => {
+      if (getComputedStyle(el).display !== "inline") return false;
+      const kasten = el.parentElement;
+      if (!kasten) return false;
+      let fremd = 0;
+      for (const kind of Array.from(kasten.childNodes)) {
+        if (kind === el) continue;
+        if (kind.nodeType === Node.TEXT_NODE) fremd += (kind.textContent ?? "").trim().length;
+      }
+      return fremd > 0;
+    };
+
     const treffer: { auswahl: string; b: number; h: number }[] = [];
     for (const el of Array.from(document.querySelectorAll(sel))) {
       const cs = getComputedStyle(el);
@@ -563,6 +587,7 @@ export async function messeTrefferflaechen(
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       if (r.right <= 0 || r.left >= document.documentElement.clientWidth) continue;
+      if (imSatz(el)) continue;
       if (Math.min(r.width, r.height) < min) {
         treffer.push({
           auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“",

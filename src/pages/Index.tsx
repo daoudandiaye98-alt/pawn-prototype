@@ -214,8 +214,9 @@ const Index = () => {
                 Drei <span className="font-serif font-medium italic">Welten.</span>
               </h2>
             </div>
-            <Link to="/designers" className="whitespace-nowrap border-b-[1.5px] border-black pb-[0.25rem] text-[0.62rem] uppercase tracking-[0.3em] text-black">
-              Alle Häuser
+            <Link to="/designers" className="trefferflaeche whitespace-nowrap text-[0.62rem] uppercase tracking-[0.3em] text-black">
+              {/* Prüfstand 3.5 — der Kasten wird 44 px hoch, der Strich bleibt am Wort. */}
+              <span className="border-b-[1.5px] border-black pb-[0.25rem]">Alle Häuser</span>
             </Link>
           </Reveal>
           {/*
@@ -271,8 +272,9 @@ const Index = () => {
                 Diese Woche <span className="font-serif font-medium italic">hängt hier.</span>
               </h2>
             </div>
-            <Link to="/ausgabe" className="whitespace-nowrap border-b-[1.5px] border-black pb-[0.25rem] text-[0.62rem] uppercase tracking-[0.3em] text-black">
-              Zur Ausgabe
+            <Link to="/ausgabe" className="trefferflaeche whitespace-nowrap text-[0.62rem] uppercase tracking-[0.3em] text-black">
+              {/* Prüfstand 3.5 — der Kasten wird 44 px hoch, der Strich bleibt am Wort. */}
+              <span className="border-b-[1.5px] border-black pb-[0.25rem]">Zur Ausgabe</span>
             </Link>
           </Reveal>
           <div className="grid grid-cols-1 gap-[2.2rem] sm:grid-cols-2 lg:grid-cols-3">

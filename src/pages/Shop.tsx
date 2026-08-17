@@ -246,7 +246,7 @@ const Shop = () => {
             placeholder="Boutique durchsuchen"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-2 text-sm text-[#000000] placeholder:text-black/60 focus:border-[#000000] focus:outline-none"
+            className="min-h-[44px] w-full border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-2 text-sm text-[#000000] placeholder:text-black/60 focus:border-[#000000] focus:outline-none"
           />
 
           <FilterGroup title="Welt">
@@ -324,7 +324,7 @@ const Shop = () => {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-[#000000]"
+              className="min-h-[44px] border border-[rgba(0,0,0,.28)] bg-transparent px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.28em] text-[#000000]"
             >
               <option value="curated">Kurator-Auswahl</option>
               <option value="price_asc">Preis · aufsteigend</option>
@@ -395,8 +395,8 @@ function FilterPill({ children, active, onClick }: { children: React.ReactNode; 
       onClick={onClick}
       className={
         active
-          ? "block border border-[#000000] bg-[#000000] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#FFFFFF]"
-          : "block border border-[rgba(0,0,0,.22)] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#000000] transition-colors hover:border-[#000000]"
+          ? "flex min-h-[44px] items-center border border-[#000000] bg-[#000000] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#FFFFFF]"
+          : "flex min-h-[44px] items-center border border-[rgba(0,0,0,.22)] px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.28em] text-[#000000] transition-colors hover:border-[#000000]"
       }
     >
       {children}

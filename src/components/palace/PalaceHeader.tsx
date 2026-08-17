@@ -264,19 +264,30 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
 
 
 
-      {/* Mobile / tablet fullscreen menu */}
+      {/*
+        Mobile / tablet fullscreen menu.
+
+        `data-offen` schaltet über `.menue-schicht` (index.css) die Sichtbarkeit.
+        Vorher stand das geschlossene Menü nur auf `opacity: 0` — es war
+        unsichtbar, aber vorhanden: die Tastatur wanderte durch elf Menüpunkte,
+        die niemand sehen konnte. Die Regel setzt `visibility: hidden` erst nach
+        Ablauf der Blende, das Ausblenden bleibt also erhalten.
+      */}
       <div
-        className={`fixed inset-0 z-[90] flex flex-col bg-white transition-opacity duration-500 ${
+        className={`menue-schicht fixed inset-0 z-[90] flex flex-col bg-white transition-opacity duration-500 ${
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
+        data-offen={menuOpen ? "true" : "false"}
       >
         <div className="flex items-center justify-between border-b-[1.5px] border-black px-6 py-4">
           <PawnWordmark className="text-[1.6rem] text-black" />
+          {/* Prüfstand 3.5 — das Kreuz war 20 × 20 px. Das Zeichen bleibt 20 px,
+              der greifbare Kasten darum wird 44 px. */}
           <button
             type="button"
             aria-label="Menü schließen"
             onClick={() => setMenuOpen(false)}
-            className="text-[#000000]"
+            className="trefferflaeche justify-center text-[#000000]"
           >
             <PawnCloseIcon className="h-5 w-5" />
           </button>
@@ -325,17 +336,21 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
             {t("nav.frag")} →
           </MenueZeile>
         </nav>
-        <div className="space-y-2 border-t border-[rgba(0,0,0,.18)] px-8 py-6">
+        {/* Prüfstand 3.5 — dieser Fuß trug die kleinsten Ziele der ganzen Seite
+            („ANMELDEN" 91 × 14 px). Alle sechs Zeilen tragen jetzt dieselbe
+            Trefferfläche; `space-y-2` fällt weg, weil die 44 px den Abstand
+            mitbringen. */}
+        <div className="border-t border-[rgba(0,0,0,.18)] px-8 py-3">
           {user ? (
             <>
-              <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.account")}</Link>
-              {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.myStudio")}</Link>}
-              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.applicationStatus")}</Link>}
-              {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.adminCockpit")}</Link>}
-              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-black/70">{t("nav.logout")}</button>
+              <Link to="/account" onClick={() => setMenuOpen(false)} className="trefferflaeche w-full text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.account")}</Link>
+              {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="trefferflaeche w-full text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.myStudio")}</Link>}
+              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="trefferflaeche w-full text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.applicationStatus")}</Link>}
+              {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="trefferflaeche w-full text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.adminCockpit")}</Link>}
+              <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="trefferflaeche w-full text-[0.7rem] uppercase tracking-[0.32em] text-black/70">{t("nav.logout")}</button>
             </>
           ) : (
-            <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.login")}</Link>
+            <Link to="/auth" onClick={() => setMenuOpen(false)} className="trefferflaeche w-full text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.login")}</Link>
           )}
           <button
             type="button"

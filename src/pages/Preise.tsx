@@ -114,12 +114,12 @@ export default function Preise() {
 
               {key === "atelier" && (
                 <p className="mt-6 text-xs text-black/60">
-                  <Link to="/preise/maison" className="underline hover:no-underline">{t("preise.card.maisonLink")}</Link>
+                  <Link to="/preise/maison" className="trefferflaeche underline hover:no-underline">{t("preise.card.maisonLink")}</Link>
                 </p>
               )}
 
               <Link to={ctaHref}
-                className="mt-8 inline-block border border-black px-5 py-3 text-[0.68rem] uppercase tracking-[0.24em] text-black hover:bg-black hover:text-white">
+                className="mt-8 inline-flex min-h-[44px] items-center border border-black px-5 py-3 text-[0.68rem] uppercase tracking-[0.24em] text-black hover:bg-black hover:text-white">
                 {ctaLabel}
               </Link>
             </Reveal>

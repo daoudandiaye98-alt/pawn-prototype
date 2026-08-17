@@ -23,18 +23,21 @@ export function FooterLegalRow() {
     { label: t("footer.legal.barrierefreiheit"), to: "/barrierefreiheit" },
   ];
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 border-t-[1.5px] border-black px-6 py-5 text-[0.6rem] uppercase tracking-[0.28em] text-black md:px-14">
+    /*
+     * Prüfstand 3.5 — die sechs Einträge waren 16 px hoch und „AGB" 28 px breit.
+     * Jeder trägt jetzt `trefferflaeche` (44 × 44 px Polster); die Schrift bleibt
+     * unverändert klein, die Unterstreichung sitzt auf dem inneren <span> und
+     * bleibt damit am Wort. Das Polster der Zeile selbst schrumpft von py-5 auf
+     * py-1, sonst wäre die Rechtszeile plötzlich 84 px hoch.
+     */
+    <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-0 border-t-[1.5px] border-black px-6 py-1 text-[0.6rem] uppercase tracking-[0.28em] text-black md:px-14">
       {links.map((l) => (
-        <Link key={l.to} to={l.to} className="border-b border-transparent transition-colors hover:border-black">
-          {l.label}
+        <Link key={l.to} to={l.to} className="trefferflaeche">
+          <span className="unterstrich">{l.label}</span>
         </Link>
       ))}
-      <button
-        type="button"
-        onClick={reopen}
-        className="border-b border-transparent uppercase tracking-[0.28em] transition-colors hover:border-black"
-      >
-        {t("footer.legal.cookies")}
+      <button type="button" onClick={reopen} className="trefferflaeche uppercase tracking-[0.28em]">
+        <span className="unterstrich">{t("footer.legal.cookies")}</span>
       </button>
     </div>
   );
@@ -129,14 +132,14 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
               className={`${i > 0 ? "border-l-[1.5px] border-black" : ""} px-6 py-8`}
             >
               <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">{resolvedColTitles[i]}</p>
-              <ul className="mt-4 space-y-2">
+              {/* Prüfstand 3.5 — die Spaltenlinks waren 13 px hoch. Polster statt
+                  Schriftgröße: `space-y-2` fällt weg, weil die 44 px des Kastens
+                  den Abstand schon mitbringen. */}
+              <ul className="mt-2">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link
-                      to={l.to}
-                      className="inline-block border-b border-transparent text-[0.85rem] text-black transition-colors hover:border-black"
-                    >
-                      {l.label}
+                    <Link to={l.to} className="trefferflaeche text-[0.85rem] text-black">
+                      <span className="unterstrich">{l.label}</span>
                     </Link>
                   </li>
                 ))}
