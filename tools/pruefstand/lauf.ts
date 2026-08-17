@@ -13,15 +13,31 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD, VORGABE_ZIEL, ZIELE,
-  type Breite, type SeitenZiel, type ZielName,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, DREH_ERWARTET, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
+  VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
 import {
-  messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten, messeLayout,
-  messeTrefferflaechen, type Befund,
+  messeDrehHinweis, messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
+  messeLayout, messeTrefferflaechen, type Befund,
 } from "./messen";
 
 const ORDNER = join(process.cwd(), "tools", "pruefstand", "artefakte");
+
+/**
+ * Die Vercel-Vorschau ist standardmäßig gesperrt: JEDE Anfrage, auch die auf ein
+ * `.webp`, antwortet mit 302 auf `vercel.com/sso-api`. Ein Lauf dagegen würde die
+ * Anmeldeseite vermessen und lauter grüne Zahlen liefern, die nichts bedeuten.
+ *
+ * „Protection Bypass for Automation" hebt das auf. Das Geheimnis liegt in den
+ * GitHub-Secrets, kommt über die Umgebung herein und wird NIE hier notiert. Es
+ * geht als Kopfzeile an jede Anfrage des Browsers mit — auch an die Bilder,
+ * nicht nur an das Dokument.
+ *
+ * Fehlt es, wird nichts mitgeschickt. Dann trifft der Lauf die Sperre und meldet
+ * das als Umleitung, statt still etwas Falsches zu messen.
+ */
+const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+const ZUSATZ_KOPFZEILEN = BYPASS ? { "x-vercel-protection-bypass": BYPASS } : undefined;
 
 /**
  * tsx/esbuild hängt an benannte Funktionen einen Helfer `__name`, den es im Browser
@@ -114,6 +130,7 @@ async function seiteMessen(
     isMobile: breite.eingabe === "finger",
     locale: "de-DE",
     reducedMotion: ruhigeBewegung ? "reduce" : "no-preference",
+    extraHTTPHeaders: ZUSATZ_KOPFZEILEN,
   });
   await nameHelferSetzen(page);
   const befunde: Befund[] = [];
@@ -162,6 +179,47 @@ async function seiteMessen(
       }];
     }
 
+    /*
+     * Gibt es diese Adresse auf DIESEM Ziel überhaupt?
+     *
+     * Hinter der SPA-Umschreibung antwortet der Server auf jede Adresse mit 200
+     * und liefert dieselbe Anwendung. Kennt die Anwendung den Weg nicht, zeigt
+     * sie die 404-Seite — mit demselben Kopf, demselben Fuß, denselben kleinen
+     * Links. Der Prüfstand misst dann diese Ersatzseite und schreibt die Befunde
+     * der angeforderten Adresse zu. Genau das ist beim ersten Lauf mit der Hülle
+     * in der Liste passiert: `/heft/umschlag` liegt noch im Zweig, nicht auf
+     * pawn.vision, und `X.dreh` meldete „kein Hinweis" — richtig gemessen,
+     * falsch zugeordnet.
+     *
+     * Erkannt wird das am Kennzeichen `data-nicht-gefunden`, das die 404-Seite
+     * selbst trägt. Kein Ratespiel: die Anwendung sagt damit ausdrücklich „das
+     * hier ist keine Seite".
+     *
+     * NICHT am `noindex`, obwohl das zuerst naheliegt — die Hülle setzt es
+     * ebenfalls, weil sie noch nicht indexiert werden soll. Eine Gegenprobe
+     * gegen den lokalen Stand hat die Hülle prompt für nicht vorhanden erklärt
+     * und damit still stummgeschaltet. Der Unterschied kostete eine Zeile und
+     * hätte sonst jede Zahl über die Hülle verschluckt.
+     *
+     * Die absichtlich erfundene Adresse für 4.5 ist ausgenommen — dort ist
+     * genau die Ersatzseite das Messziel.
+     *
+     * Folge ist immer `nicht_pruefbar`, nie „gefallen". Eine Seite, die es auf
+     * diesem Ziel noch nicht gibt, ist kein Befund — so wenig wie eine leere
+     * Hülle einer ist.
+     */
+    const nichtVorhanden = seite.pfad !== UNSINN_PFAD && await page.evaluate(
+      () => document.querySelector("[data-nicht-gefunden]") !== null);
+    if (nichtVorhanden) {
+      await page.close();
+      return [{
+        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        seite: seite.pfad, breite: breite.breite, gemessen: "404-Ersatzseite", schwelle: "die Seite selbst",
+        notiz: "Diese Adresse kennt das gemessene Ziel nicht — geliefert wurde die 404-Seite. "
+          + "Auf diesem Stand ist über die Adresse nichts zu sagen.",
+      }];
+    }
+
     if (ruhigeBewegung) {
       // 3.9: hier zählt nur, dass die Seite trägt und der Hauptweg erreichbar bleibt.
       befunde.push(...await messeKnopfVerdeckung(page, seite.pfad, breite.breite));
@@ -181,6 +239,7 @@ async function seiteMessen(
     };
     await mitUhr("3.8", () => messeLayout(page, seite.pfad, breite.breite));
     await mitUhr("3.5", () => messeTrefferflaechen(page, seite.pfad, breite));
+    await mitUhr("X.dreh", () => messeDrehHinweis(page, seite.pfad, breite, DREH_ERWARTET));
     await mitUhr("3.10", () => messeKnopfVerdeckung(page, seite.pfad, breite.breite));
     await mitUhr("5.x", () => messeKopfdaten(page, seite.pfad, breite.breite));
     await mitUhr("3.4", () => messeFokus(page, seite.pfad, breite.breite));
@@ -193,7 +252,7 @@ async function seiteMessen(
     if (!NUR_KONTROLLEN) {
       mkdirSync(ORDNER, { recursive: true });
       await page.screenshot({
-        path: join(ORDNER, `${seite.name}--${breite.breite}.png`),
+        path: join(ORDNER, `${seite.name}--${breite.name.replace(/\s+/g, "-")}.png`),
         fullPage: true,
       });
     }
@@ -300,12 +359,30 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   // Hier gilt die Hüllen-Regel NICHT: 4.3 und 4.5 lesen HTTP-Antworten, nicht
   // den Inhalt einer Seite. Ob Supabase geantwortet hat, ändert weder den
   // Statuscode eines Weges noch den einer erfundenen Adresse.
+  //
+  // Diese Zeile ist eine Fehlerkorrektur, nicht nur eine Aufräumung: stand hier
+  // `huelleMarkieren(befunde, datenFehler)`, brach JEDER Lauf mit
+  // `ReferenceError: datenFehler is not defined` ab — nach der vollständigen
+  // Messung, aber vor dem Schreiben von `bericht.json`. Sie kam aus zwei
+  // Zweigen zugleich (#173 und #174) und ist beim Zusammenführen einmal
+  // übrig geblieben, wie es sein soll.
   return befunde;
 }
 
 async function haupt() {
-  const zielName = (argument("ziel") ?? VORGABE_ZIEL) as ZielName;
-  const ziel = ZIELE[zielName];
+  /*
+   * `--adresse https://…` misst eine frei übergebene Adresse.
+   *
+   * Nötig für die Vercel-Vorschau: ihr Name enthält einen gekürzten Zweignamen
+   * („…-git-claude-357453-…"), der sich aus dem Zweig NICHT verlässlich ableiten
+   * lässt. Ihn zu erraten wäre eine Fehlerquelle, die niemand findet — also wird
+   * er übergeben. Die benannten Ziele bleiben unverändert.
+   */
+  const freieAdresse = argument("adresse") ?? process.env.PRUEFSTAND_ADRESSE?.trim();
+  const zielName = (freieAdresse ? "vorschau" : (argument("ziel") ?? VORGABE_ZIEL)) as ZielName;
+  const ziel = freieAdresse
+    ? { adresse: freieAdresse.replace(/\/+$/, ""), hinweis: "frei übergebene Adresse" }
+    : ZIELE[zielName];
   if (!ziel) {
     console.error(`Unbekanntes Ziel „${zielName}". Bekannt: ${Object.keys(ZIELE).join(", ")}`);
     process.exit(2);
@@ -329,14 +406,27 @@ async function haupt() {
   const befunde: Befund[] = [];
   for (const seite of seiten) {
     for (const breite of breiten) {
-      process.stderr.write(`… ${seite.pfad} @ ${breite.breite}\n`);
+      process.stderr.write(`… ${seite.pfad} @ ${breite.name}\n`);
       befunde.push(...await seiteMessen(browser, ziel.adresse, seite, breite));
     }
   }
-  // 3.9 — zweiter Durchlauf mit „Bewegung reduzieren", eine Breite genügt.
+  /*
+   * 3.9 — zweiter Durchlauf mit „Bewegung reduzieren".
+   *
+   * Zwei Lagen, nicht eine. Hochkant steht auf der Hülle der Dreh-Hinweis — dort
+   * läuft überhaupt keine Bewegung, die Prüfung wäre leer. Gemessen wird deshalb
+   * auch quer, wo das Heft wirklich blättert. Die hochkante Lage bleibt trotzdem
+   * drin: die übrigen Seiten animieren dort sehr wohl.
+   */
+  const bewegungsLagen = [
+    BREITEN[0],
+    BREITEN.find((b) => b.breite > b.hoehe && b.eingabe === "finger") ?? BREITEN[0],
+  ].filter((b, i, alle) => alle.indexOf(b) === i);
   for (const seite of seiten) {
-    process.stderr.write(`… ${seite.pfad} @ 390 (Bewegung reduziert)\n`);
-    befunde.push(...await seiteMessen(browser, ziel.adresse, seite, BREITEN[0], true));
+    for (const lage of bewegungsLagen) {
+      process.stderr.write(`… ${seite.pfad} @ ${lage.name} (Bewegung reduziert)\n`);
+      befunde.push(...await seiteMessen(browser, ziel.adresse, seite, lage, true));
+    }
   }
   process.stderr.write("… Wege und 404\n");
   // Wege und 404 gehören zum Gesamtbild, nicht zu einer einzelnen Kontrolle.
@@ -371,6 +461,39 @@ async function haupt() {
     + `${bericht.gates.nicht_pruefbar} nicht prüfbar\n`
     + `Bericht: tools/pruefstand/artefakte/bericht.json\n`,
   );
+
+  /*
+   * Die gefallenen Gates einzeln ins Log.
+   *
+   * Bisher stand am Ende nur eine Zahl. Wer den Lauf nicht auf der eigenen
+   * Maschine wiederholen kann — und das gilt für jeden, der nur die Ausgabe des
+   * Runners sieht —, wusste damit, DASS 26 Gates gefallen sind, aber nicht
+   * welche. Eine Zahl ohne Fundstelle ist kein Befund, sondern eine Behauptung.
+   *
+   * `bericht.json` liegt als Artefakt bei und bleibt die vollständige Quelle;
+   * diese Liste ist der Auszug, den man ohne Download lesen kann. Gekürzt auf
+   * 60 Zeilen, damit ein durchgefallener Lauf das Log nicht zuschüttet.
+   */
+  if (gefallen > 0) {
+    const liste = gates.filter((b) => b.status === "gefallen");
+    process.stderr.write(`\nGefallene Gates (${liste.length}):\n`);
+    for (const b of liste.slice(0, 60)) {
+      const ort = `${b.seite} @ ${b.breite}px`;
+      // Der Beleg: was gemessen wurde, wogegen, und wo genau. Ohne diese drei
+      // Angaben ist eine Zeile hier so wenig wert wie die Zahl allein.
+      const beleg = [
+        b.auswahl,
+        b.gemessen !== null ? `gemessen ${b.gemessen}` : null,
+        b.schwelle !== null ? `soll ${b.schwelle}` : null,
+        b.notiz,
+      ].filter(Boolean).join(" · ");
+      process.stderr.write(`  ${b.kontrolle.padEnd(5)} ${ort.padEnd(44)} ${beleg}\n`);
+    }
+    if (liste.length > 60) {
+      process.stderr.write(`  … ${liste.length - 60} weitere, vollständig in bericht.json\n`);
+    }
+  }
+
   process.exit(gefallen > 0 ? 1 : 0);
 }
 

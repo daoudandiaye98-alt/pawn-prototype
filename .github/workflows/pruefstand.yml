@@ -23,6 +23,16 @@ on:
     branches: ["**"]
   # Von Hand nachziehen, ohne einen Commit erfinden zu müssen.
   workflow_dispatch:
+    inputs:
+      adresse:
+        description: >
+          Adresse statt pawn.vision messen — z. B. die Vercel-Vorschau dieses
+          Zweigs. Ihr Name enthält einen gekürzten Zweignamen, der sich nicht
+          verlässlich ableiten lässt; deshalb wird er eingetragen, nicht geraten.
+          Leer lassen = pawn.vision.
+        required: false
+        default: ""
+
 
 # Ein Lauf je Zweig. Ein neuer Push macht den alten Lauf gegenstandslos.
 concurrency:
@@ -32,8 +42,9 @@ concurrency:
 jobs:
   messen:
     runs-on: ubuntu-latest
-    # Vier Breiten über fünf Seiten plus Wege und 404 brauchen ihre Zeit;
-    # der Deckel verhindert, dass ein Hänger eine Stunde Runner frisst.
+    # Fünf Lagen über sechs Seiten plus zwei Bewegungs-Durchläufe, Wege und 404
+    # brauchen ihre Zeit; der Deckel verhindert, dass ein Hänger eine Stunde
+    # Runner frisst.
     timeout-minutes: 45
 
     steps:
@@ -70,8 +81,26 @@ jobs:
       - name: Browser
         run: npx playwright install --with-deps chromium
 
-      - name: Prüfstand gegen pawn.vision
-        run: npx tsx tools/pruefstand/lauf.ts --ziel live
+      # Ohne Adresse: pawn.vision, der ausgelieferte Stand. Mit Adresse: die dort
+      # eingetragene Vorschau.
+      #
+      # `VERCEL_AUTOMATION_BYPASS_SECRET` hebt die Vorschau-Sperre auf. Ohne das
+      # Geheimnis antwortet jede Anfrage an eine Vorschau mit 302 auf die
+      # Anmeldung, und der Lauf würde die Anmeldeseite vermessen. Der Wert steht
+      # nur in den GitHub-Secrets, wird nie ausgegeben und nie protokolliert.
+      # Für pawn.vision spielt er keine Rolle — dort ist nichts gesperrt.
+      - name: Prüfstand
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          PRUEFSTAND_ADRESSE: ${{ inputs.adresse }}
+        run: |
+          if [ -n "$PRUEFSTAND_ADRESSE" ]; then
+            echo "Ziel: $PRUEFSTAND_ADRESSE"
+            npx tsx tools/pruefstand/lauf.ts --adresse "$PRUEFSTAND_ADRESSE"
+          else
+            echo "Ziel: pawn.vision"
+            npx tsx tools/pruefstand/lauf.ts --ziel live
+          fi
 
       # `always()`: gerade der rote Lauf ist der, dessen Bericht und Aufnahmen
       # man sehen will. Ohne das gäbe es beim Fehlschlag nichts zum Nachlesen.

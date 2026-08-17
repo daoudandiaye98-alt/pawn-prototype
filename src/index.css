@@ -121,6 +121,50 @@
     outline-offset: 3px;
   }
 
+  /* Teil L2 / Prüfstand 3.5 — Trefferfläche.
+     Ein Link, der 16 px hoch ist, ist mit der Maus tadellos und mit dem Finger
+     Glücksspiel. WCAG verlangt 44 × 44 px. Gelöst wird das mit POLSTER, nie mit
+     Schriftgröße: die Zeile bleibt exakt so klein und so schmal wie gesetzt, nur
+     der greifbare Kasten um sie herum wächst.
+
+     Die Unterstreichung beim Überfahren darf dabei nicht mitwandern — sie gehört
+     an den Text, nicht an den Rand des Kastens. Deshalb sitzt sie auf einem
+     inneren <span> und der Kasten trägt nur das Polster. Wer die Klasse benutzt,
+     schreibt also:
+
+       <a class="trefferflaeche"><span class="unterstrich">AGB</span></a>
+
+     Nur dort nötig, wo der Finger bedient. Am Schreibtisch stört es nicht, also
+     gilt es überall — eine Regel ist billiger als zwei. */
+  .trefferflaeche {
+    display: inline-flex;
+    align-items: center;
+    /* Linksbündig, nicht zentriert: in einer Spalte linksbündiger Links würde
+       Zentrieren die Kante zersägen. Wo ein Wort schmaler als 44 px ist („AGB"),
+       liegt die zusätzliche Fläche rechts daneben — unsichtbar, aber greifbar. */
+    justify-content: flex-start;
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .trefferflaeche > .unterstrich {
+    border-bottom: 1px solid transparent;
+    transition: border-color 150ms;
+  }
+  .trefferflaeche:hover > .unterstrich { border-bottom-color: currentColor; }
+
+  /* Teil L2 — das geschlossene Vollbild-Menü war nur durchsichtig, nicht
+     abwesend: die Tastatur lief hindurch, die Vorlesehilfe las es mit. Beides
+     ist ein Fehler, den niemand sieht.
+
+     `visibility` wird verzögert geschaltet — erst nach den 500 ms der Blende.
+     Deshalb bleibt das Ausblenden sichtbar und das Menü verschwindet danach
+     wirklich. Beim Öffnen greift die Sichtbarkeit sofort, die Deckkraft blendet
+     auf. */
+  .menue-schicht[data-offen="false"] {
+    visibility: hidden;
+    transition: opacity 500ms, visibility 0s 500ms;
+  }
+
   /* Teil L2 — Sprunglink "Zum Inhalt springen": unsichtbar, bis er per Tastatur
      fokussiert wird — dann als erstes Element oben links sichtbar. */
   .skip-link {

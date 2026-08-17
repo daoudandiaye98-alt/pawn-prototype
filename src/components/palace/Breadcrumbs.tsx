@@ -62,7 +62,7 @@ export function Breadcrumbs({ trail }: { trail?: { label: string; to?: string }[
         <li className="flex">
           <Link
             to="/"
-            className="flex items-center border-r border-black/20 px-3 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-black hover-invert"
+            className="flex min-h-[44px] items-center border-r border-black/20 px-3 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-black hover-invert"
           >
             Start
           </Link>
@@ -72,12 +72,12 @@ export function Breadcrumbs({ trail }: { trail?: { label: string; to?: string }[
             {item.to ? (
               <Link
                 to={item.to}
-                className="flex items-center border-r border-black/20 px-3 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-black hover-invert"
+                className="flex min-h-[44px] items-center border-r border-black/20 px-3 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-black hover-invert"
               >
                 {item.label}
               </Link>
             ) : (
-              <span className="flex items-center border-r border-black/20 px-3 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-black/60">
+              <span className="flex min-h-[44px] items-center border-r border-black/20 px-3 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-black/60">
                 {item.label}
               </span>
             )}

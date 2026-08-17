@@ -28,6 +28,10 @@ import Ausgabe from "./pages/Ausgabe.tsx";
 // Teil M — das Heft lädt als eigenes Bündel: es soll das Haupt-Bündel nicht wachsen
 // lassen (M9), und wer nie blättert, lädt den Mechanismus nie.
 const AusgabeHeft = lazy(() => import("./pages/AusgabeHeft.tsx"));
+// Teil X2 — die eine Hülle des Magazins. Eigenes Bündel, damit das
+// Haupt-Bündel nicht wächst (X11: der Umzug muss leichter machen, nicht
+// schwerer).
+const HeftRoute = lazy(() => import("./heft/HeftRoute.tsx"));
 import Vision from "./pages/Vision.tsx";
 import Preise from "./pages/Preise.tsx";
 import PreiseMaison from "./pages/PreiseMaison.tsx";
@@ -165,6 +169,30 @@ const App = () => (
                 {/* Teil M1 — das Heft. Vorerst nur der Wendel; /ausgabe bleibt unberührt. */}
                 <Route path="/ausgabe/001" element={<Suspense fallback={null}><AusgabeHeft /></Suspense>} />
                 <Route path="/ausgabe/001/:seite" element={<Suspense fallback={null}><AusgabeHeft /></Suspense>} />
+                {/*
+                  Teil X2 — die eine Hülle. EINE Komponente für alle
+                  Heft-Adressen: der Router bildet Adresse → Doppelseiten-Index
+                  ab, statt Adresse → Seitenkomponente. Deshalb steht hier
+                  mehrfach dasselbe Element und kein Dutzend Seiten.
+
+                  Schritt 1 nimmt nur Adressen, die es vorher nicht gab. `/`,
+                  `/mode` und `/shop` ziehen mit Schritt 3 ein — bis dahin
+                  bleibt die Seite für Kundinnen unverändert benutzbar.
+
+                  Eigenes Bündel (X11): wer nie blättert, lädt den Wendel nie.
+                */}
+                <Route path="/heft" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                {/*
+                  Die elf redaktionellen Sektionen (X5). Sie liegen unter `/heft/…`,
+                  weil `/mode`, `/interior` und `/kunst` heute lebende Kundenseiten
+                  sind — sie werden mit X1 abgelöst, nicht vorher. Ein Platzhalter
+                  statt elf Zeilen: die Zuordnung Adresse → Doppelseite steht in
+                  `heft/spreads/index.tsx`, nicht hier.
+                */}
+                <Route path="/heft/:sektion" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                <Route path="/inhalt" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                <Route path="/verzeichnis" element={<Navigate to="/verzeichnis/1" replace />} />
+                <Route path="/verzeichnis/:seite" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/preise" element={<Preise />} />
                 <Route path="/preise/maison" element={<PreiseMaison />} />

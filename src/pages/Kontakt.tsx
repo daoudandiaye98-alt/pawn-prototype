@@ -75,7 +75,10 @@ export default function Kontakt() {
               <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={7} required className="w-full border-[1.5px] border-black bg-white px-3 py-3 text-[0.9rem] outline-none focus:shadow-hard-sm" />
             </Field>
             <div>
-              <button type="submit" disabled={sending} className="border-[1.5px] border-black bg-black px-6 py-3 text-[0.7rem] uppercase tracking-[0.3em] text-white transition-colors hover:bg-white hover:text-black disabled:opacity-50">
+              {/* Prüfstand 3.5 — der Knopf war 43,4 px hoch: ein halbes Pixel unter
+                  der Schwelle. `min-h-[44px]` macht daraus eine Zusage statt eines
+                  Zufalls der Zeilenhöhe. */}
+              <button type="submit" disabled={sending} className="inline-flex min-h-[44px] items-center border-[1.5px] border-black bg-black px-6 py-3 text-[0.7rem] uppercase tracking-[0.3em] text-white transition-colors hover:bg-white hover:text-black disabled:opacity-50">
                 {sending ? "Senden…" : "Nachricht senden →"}
               </button>
             </div>
