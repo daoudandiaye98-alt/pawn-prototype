@@ -460,82 +460,30 @@
 .hx-seite[data-lage="links"] .hx-platte-bund img { left: 0; }
 .hx-seite[data-lage="rechts"] .hx-platte-bund img { right: 0; }
 
-/*
- * Die Platte als Band — nur auf dem Telefon, wo die linke Seite nicht zu sehen
- * ist. Auf breiten Geräten steht sie ganzseitig links und dieses Band entfällt;
- * `display: none` von Anfang an heißt: das Bild wird dort auch nicht geladen.
- */
-.hx-platte-band { display: none; }
-
-/* Zwei Schalter für Inhalte, die je Breite auf verschiedenen Seiten stehen.
-   `display: none` nimmt sie auch aus dem Vorlesebaum — es gibt also nie zwei
-   Fassungen desselben Inhalts für eine Vorlesehilfe. */
-.hx-nur-schmal { display: none; }
-
-/* Die Gruppe des Satzes. Ohne eigenen Grund — den bekommt sie erst auf dem
-   Telefon, wo sie über einer Platte liegt. Der Abstand zwischen den Stufen der
-   Hierarchie muss hier stehen, sonst geht er verloren, sobald die Stufen in
-   einer Gruppe stecken statt direkt im Satzspiegel. */
+/* Die Gruppe des Satzes. Der Abstand zwischen den Stufen der Hierarchie muss
+   hier stehen, sonst geht er verloren, sobald die Stufen in einer Gruppe stecken
+   statt direkt im Satzspiegel. */
 .hx-satz-block {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
 }
 
-@media (max-width: 819.98px), (max-height: 599.98px) {
-  .hx-nur-breit { display: none; }
-  .hx-nur-schmal { display: block; }
-  /*
-   * Auf dem Telefon füllt die Platte die Seite, und der Satz steht in einem
-   * massiven Block darüber.
-   *
-   * Der erste Versuch war ein Band über dem Satz — gemessen bei 390 px blieb
-   * davon ein 36 px hoher Streifen: der Behälter bezog seine Höhe aus dem Bild
-   * und das Bild seine aus dem Behälter. Statt das mit einem festen
-   * Seitenverhältnis zu flicken, das die Kleiderstange quer beschneiden würde,
-   * bekommt die Platte die ganze Seite. Das ist auch die bessere Seite: ein
-   * Telefon zeigt ein Bild ganz oder gar nicht.
-   */
-  .hx-platte-band {
-    display: block;
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    z-index: 0;
-  }
-  .hx-platte-band img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-  /*
-   * Der Satz rückt nach unten und bekommt seinen eigenen Grund — weiß auf
-   * `--nacht` sind 21:1, unabhängig davon, was die Platte dort zeigt
-   * (Kontrolle 3.3). Auf breiten Geräten ist dieser Block durchsichtig, weil
-   * dort die Platte auf der Nachbarseite steht und der Satz freien Grund hat.
-   */
-  /*
-   * Auf dem Telefon liegt die Platte auf DIESER Seite — also brauchen auch hier
-   * Kolumnentitel und Folio ihren eigenen Grund. Die Regel steht in der
-   * Medienabfrage und nicht daneben, weil `:has()` auch auf ein ausgeblendetes
-   * Band anspricht: draußen gesetzt bekäme die rechte Seite auf breiten Geräten
-   * Felder, obwohl dort gar keine Platte liegt.
-   */
-  .hx-seite:has(.hx-platte-band) .hx-kopf > *,
-  .hx-seite:has(.hx-platte-band) .hx-fuss > * {
-    background: var(--papier);
-    color: var(--tinte);
-    padding: 0.25rem 0.5rem;
-  }
-  .hx-seite:has(.hx-platte-band) .hx-kolumne { flex: 0 1 auto; }
-
-  .hx-satz-block {
-    position: relative;
-    z-index: 1;
-    margin-top: auto;
-    background: var(--nacht);
-    color: var(--papier);
-    padding: clamp(0.9rem, 3.4vw, 1.4rem);
-    gap: 0.7rem;
-  }
-}
+/*
+ * Was hier stand — und warum es weg ist.
+ *
+ * Bis zur Einzelseiten-Korrektur gab es drei Behelfe für EIN Problem: auf dem
+ * Telefon war die linke Seite einer Doppelseite nicht zu sehen, weil der Wendel
+ * dort um eine ganze Doppelseite wendete. Also wiederholte die rechte Seite,
+ * was links stand — die Platte als Band (`.hx-platte-band`), das
+ * Inhaltsverzeichnis und die Katalogzeilen über die Schalter `.hx-nur-schmal`
+ * und `.hx-nur-breit`.
+ *
+ * Seit der Wendel im Einzelseiten-Modus um EINE Seite wendet, wird die linke
+ * Seite aufgeschlagen. Damit ist die Ursache weg, und die drei Behelfe sind es
+ * auch: ein Inhalt, eine Stelle. Die Platte steht auf ihrer Seite, die sechs
+ * Stücke stehen links und die anderen sechs rechts.
+ */
 
 /*
  * Der Textblock über einer Platte: massives Schwarz, harte Kante.
@@ -850,6 +798,8 @@
  * Umgesetzt über das Verhältnis des Hefts und die Breite der Flächen — nicht
  * über ein zweites Layout. Ein Heft, zwei Breiten.
  */
+/* Dieselbe Bedingung wie `EINZELSEITE_ABFRAGE` in `wendel.ts` — dort steht,
+   warum sie an zwei Stellen wörtlich gleich sein muss. */
 @media (max-width: 819.98px), (max-height: 599.98px) {
   /*
    * EIN Schwellwert, kein zweiter Modus.
@@ -883,18 +833,17 @@
   .hx-blatt { left: 0; width: 100%; }
 
   /*
-   * Die Rückseiten der Blätter — die linken Seiten — bleiben auf dem Telefon fort.
+   * Die Rückseiten der Blätter bleiben fort — jetzt aus einem anderen Grund.
    *
-   * Gemessen bei 390 px: links neben dem Heft lief eine Spalte fremder Folios
-   * („02 04 06 …") durch den Rand. Das waren die gewendeten Blätter. Auf der
-   * Einzelseite sitzt das Scharnier an der linken Kante des Hefts, ein
-   * gewendetes Blatt landet also NEBEN dem Heft statt darüber — anders als auf
-   * der Doppelseite, wo das Scharnier im Bund liegt. Das ist keine Einstellung,
-   * das ist die Geometrie einer Einzelseite.
+   * Auf der Einzelseite sitzt das Scharnier an der linken Kante des Hefts, ein
+   * gewendetes Blatt landet also NEBEN dem Heft statt darüber. Seine Rückseite
+   * ist an ihrem Platz nie zu sehen; gemessen bei 390 px lief links neben dem
+   * Heft eine Spalte fremder Folios durch den Rand.
    *
-   * Folge: auf dem Telefon zeigt das Heft nur rechte Seiten. Was auf einer linken
-   * Seite steht, muss dort zusätzlich auf der rechten stehen — das tun
-   * `PlatteBand` und der Schalter `hx-nur-schmal`. Verloren geht dadurch nichts.
+   * Deshalb trägt hier jedes Blatt genau EINE Seite (`einzelseitenAus` in
+   * `doppelseiten.ts`), und die Rückseiten sind leer. Diese Regel blendet leere
+   * Flächen aus, keine Inhalte mehr: die linke Seite einer Doppelseite ist auf
+   * dem Telefon ein eigenes Blatt und wird aufgeschlagen wie jedes andere.
    */
   .hx-flaeche.rueck { display: none; }
 }
@@ -1054,18 +1003,17 @@
 }
 
 /*
- * Auf dem Telefon trägt die rechte Seite alle zwölf. Zwei Spalten mal sechs
- * Zeilen wären auf 390 px zu klein — also drei Spalten mal vier Zeilen, und das
- * Bild wird quadratisch statt hochkant, damit die Höhe reicht.
+ * Auf dem Telefon ist die Seite die Einheit, nicht die Doppelseite: sechs Stücke
+ * je Seite, zwei Züge je Doppelseite. Das Raster bleibt also dasselbe wie am
+ * Schreibtisch — es steht nur auf einer schmaleren Fläche. Enger gesetzt, damit
+ * sechs Einträge auf 390 px Breite Platz haben, und quadratische Bilder, damit
+ * die Höhe reicht.
  */
 @media (max-width: 819.98px), (max-height: 599.98px) {
-  .hx-nur-schmal .hx-verzeichnis {
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.5rem 0.45rem;
-  }
-  .hx-nur-schmal .hx-werk-bild { aspect-ratio: 1 / 1; }
-  /* Das Haus fällt weg, nicht der Preis: bei zwölf Einträgen auf einer
-     Telefonseite ist der Platz für eine dritte Zeile nicht da, und wer kauft,
-     braucht den Preis. Das Haus steht auf der Werkseite dahinter. */
-  .hx-nur-schmal .hx-werk-haus { display: none; }
+  .hx-verzeichnis { gap: 0.55rem 0.5rem; }
+  .hx-werk-bild { aspect-ratio: 1 / 1; }
+  /* Das Haus fällt weg, nicht der Preis: der Platz für eine dritte Zeile ist auf
+     einer Telefonseite nicht da, und wer kauft, braucht den Preis. Das Haus steht
+     auf der Werkseite dahinter. */
+  .hx-werk-haus { display: none; }
 }

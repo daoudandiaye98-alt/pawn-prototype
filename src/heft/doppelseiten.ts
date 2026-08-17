@@ -72,12 +72,25 @@ export interface Blatt {
   schluessel: string;
   vorn: ReactNode;
   rueck: ReactNode;
+  /** Der Ton der Vorderseite. Steht am Blatt, damit die Hülle nicht rechnen muss. */
+  tonVorn: Ton;
+  /** Der Ton der Rückseite. `null`, wenn das Blatt keine trägt (Einzelseite). */
+  tonRueck: Ton | null;
 }
 
 export interface Heftaufbau {
   grundLinks: ReactNode;
   grundRechts: ReactNode;
+  tonGrundLinks: Ton | null;
+  tonGrundRechts: Ton | null;
   blaetter: Blatt[];
+  /**
+   * Wie viele Wendel-Schritte es gibt — die Länge von `blaetter`.
+   *
+   * Steht mit im Aufbau, weil die Hülle daraus ihre Scrollhöhe rechnet und die
+   * Zahl je Modus eine andere ist. Sie soll sie nicht selbst herleiten müssen.
+   */
+  schritte: number;
 }
 
 /**
@@ -94,12 +107,69 @@ export function blaetterAus(seiten: Doppelseite[]): Heftaufbau {
       schluessel: seiten[i].schluessel,
       vorn: seiten[i].rechts,
       rueck: seiten[i + 1].links,
+      tonVorn: seiten[i].ton,
+      tonRueck: seiten[i + 1].ton,
     });
   }
   return {
     grundLinks: seiten[0]?.links ?? null,
     grundRechts: seiten[seiten.length - 1]?.rechts ?? null,
+    tonGrundLinks: seiten[0]?.ton ?? null,
+    tonGrundRechts: seiten[seiten.length - 1]?.ton ?? null,
     blaetter,
+    schritte: blaetter.length,
+  };
+}
+
+/**
+ * Doppelseiten → EINZELNE Seiten. Die zweite Ableitung aus derselben Wahrheit.
+ *
+ * **Warum es sie gibt.** Auf dem Telefon zeigt das Heft eine Seite (X3). Bisher
+ * wendete es dort trotzdem um eine ganze DOPPELSEITE — und weil auf einer
+ * Einzelseite nur die rechte Seite zu sehen ist, übersprang jeder Wendel die
+ * linke. Im Verzeichnis hieß das: sechs Stücke pro Wendel unsichtbar. Der Leser
+ * bekam die Hälfte des Hefts nie zu sehen.
+ *
+ * Jetzt ist die Seite die Einheit: `/verzeichnis/7` schlägt links auf, einmal
+ * wenden zeigt rechts (dieselbe Adresse), noch einmal wenden ist
+ * `/verzeichnis/8`.
+ *
+ * **Warum nur Vorderseiten.** Auf der Einzelseite sitzt das Scharnier an der
+ * linken Kante des Blatts, nicht im Bund. Ein gewendetes Blatt landet damit
+ * NEBEN dem Heft, nicht darüber — seine Rückseite ist an ihrem Platz nie zu
+ * sehen. Was beim Wenden erscheint, ist die Vorderseite des Blatts darunter.
+ * Also trägt hier jedes Blatt genau eine Seite, und das letzte liegt als Grund.
+ *
+ * **Warum das keine zweite Fassung ist.** Beides sind Ableitungen aus derselben
+ * Liste von Doppelseiten, in dieselbe Form (`Heftaufbau`). Die Hülle zeichnet
+ * unverändert; sie bekommt nur einen anderen Stapel. Die Wahrheit bleibt eine.
+ */
+export function einzelseitenAus(seiten: Doppelseite[]): Heftaufbau {
+  /* Alle Seiten in Leserichtung: links, rechts, links, rechts … */
+  const flach: { schluessel: string; inhalt: ReactNode; ton: Ton }[] = [];
+  for (const s of seiten) {
+    flach.push({ schluessel: `${s.schluessel}-l`, inhalt: s.links, ton: s.ton });
+    flach.push({ schluessel: `${s.schluessel}-r`, inhalt: s.rechts, ton: s.ton });
+  }
+
+  /* Jedes Blatt außer dem letzten wendet; das letzte ist der Grund darunter. */
+  const blaetter: Blatt[] = flach.slice(0, -1).map((s) => ({
+    schluessel: s.schluessel,
+    vorn: s.inhalt,
+    rueck: null,
+    tonVorn: s.ton,
+    tonRueck: null,
+  }));
+  const letzte = flach[flach.length - 1];
+
+  return {
+    /* Links liegt auf der Einzelseite nichts — das Blatt füllt die Fläche. */
+    grundLinks: null,
+    grundRechts: letzte?.inhalt ?? null,
+    tonGrundLinks: null,
+    tonGrundRechts: letzte?.ton ?? null,
+    blaetter,
+    schritte: blaetter.length,
   };
 }
 

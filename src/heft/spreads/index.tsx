@@ -43,7 +43,7 @@ import { folios } from "../doppelseiten";
 import {
   Bildunterschrift, Fliesstext, Heftseite, Kicker, Schlagzeile, Vorspann,
 } from "../satzspiegel";
-import { AufPlatte, Platte, PlatteBand, PlatteBund } from "../platte";
+import { AufPlatte, Platte, PlatteBund } from "../platte";
 import { Inhaltsverzeichnis } from "../inhaltsverzeichnis";
 import {
   LEERES_VERZEICHNIS, STUECKE_JE_DOPPELSEITE, STUECKE_JE_SEITE, V, WerkZeilen,
@@ -162,27 +162,16 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
       >
         <Schlagzeile>Erst Haltung, dann Auswahl, dann Handlung.</Schlagzeile>
         {/*
-          Auf breiten Geräten der Vorspann dieser Doppelseite; auf dem Telefon
-          das Verzeichnis selbst. Grund: die linke Seite — und damit die
-          Navigation aus X5 — ist bei ≤ 820 px nicht zu sehen (siehe
-          `PlatteBand`). Lieber die Navigation als der Satz darüber: das
-          Verzeichnis ist der Zweck dieser Seite, der Satz ihre Begleitung.
+          Hier stand bis zur Einzelseiten-Korrektur eine zweite Fassung des
+          Inhaltsverzeichnisses, weil die linke Seite auf dem Telefon nicht zu
+          sehen war. Sie ist zu sehen, seit der Wendel dort um EINE Seite wendet —
+          der Behelf ist mit seiner Ursache weg.
         */}
-        <div className="hx-nur-breit">
-          <Fliesstext>
-            Das ist die Ordnung dieses Hefts. Wer wissen will, was PAWN ist, liest
-            vorn. Wer kaufen will, blättert nach hinten — dort liegt das Verzeichnis.
-            Beides ist einen Griff entfernt, und keines drängt sich vor.
-          </Fliesstext>
-        </div>
-        <div className="hx-nur-schmal">
-          {ohneInhalt ? null : (
-            <Inhaltsverzeichnis
-              seiten={heftSeiten({ aufSprung, ohneInhalt: true, verzeichnis })}
-              aufSprung={aufSprung}
-            />
-          )}
-        </div>
+        <Fliesstext>
+          Das ist die Ordnung dieses Hefts. Wer wissen will, was PAWN ist, liest
+          vorn. Wer kaufen will, blättert nach hinten — dort liegt das Verzeichnis.
+          Beides ist einen Griff entfernt, und keines drängt sich vor.
+        </Fliesstext>
       </Heftseite>
     ),
   }));
@@ -464,14 +453,15 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
               {n > 1 ? <Bildunterschrift>Blatt 1 liegt am Anfang des Verzeichnisses.</Bildunterschrift> : null}
             </>
           ) : (
-            <>
-              {/* Breit: die zweiten sechs. Schmal: alle zwölf, weil die linke
-                  Seite dort nicht zu sehen ist. Kein doppelter Inhalt für eine
-                  Vorlesehilfe — `display: none` nimmt die jeweils andere Fassung
-                  auch aus dem Vorlesebaum. */}
-              <div className="hx-nur-breit"><WerkZeilen werke={rechte} /></div>
-              <div className="hx-nur-schmal"><WerkZeilen werke={alleZwoelf} /></div>
-            </>
+            /*
+             * Die zweiten sechs — auf jedem Gerät.
+             *
+             * Hier standen auf dem Telefon einmal alle zwölf, weil die linke
+             * Seite dort nicht zu sehen war. Seit der Wendel im
+             * Einzelseiten-Modus um EINE Seite wendet, ist sie zu sehen: sechs
+             * links, sechs rechts, zwei Züge je Doppelseite.
+             */
+            <WerkZeilen werke={rechte} />
           )}
         </Heftseite>
       ),
@@ -550,12 +540,9 @@ function welt(a: {
     ),
     rechts: (f) => (
       <Heftseite lage="rechts" kolumne={a.kolumne} folio={f} weg={a.weg}>
-        {/* Auf dem Telefon steht die Platte hier als Band — die linke Seite ist
-            dort nicht zu sehen (siehe `PlatteBand`). Auf breiten Geräten ist
-            dieses Band ausgeblendet und die Platte füllt die linke Seite. */}
-        <PlatteBand name={a.platte} alt={a.plattenAlt} />
-        {/* Auf dem Telefon ein Block über der Platte, auf breiten Geräten nur
-            eine Gruppe ohne eigenen Grund — siehe `hx-satz-block` in heft.css. */}
+        {/* Die Platte steht auf ihrer eigenen Seite (links) — auf jedem Gerät.
+            Das Band, das sie auf dem Telefon hier wiederholte, ist mit seiner
+            Ursache weg: die linke Seite wird jetzt aufgeschlagen. */}
         <div className="hx-satz-block">
           <Kicker>{a.kicker}</Kicker>
           <Schlagzeile>{a.titel}</Schlagzeile>
