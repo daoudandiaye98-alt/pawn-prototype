@@ -1148,6 +1148,17 @@
  * gewendeten Blatt wäre `fixed` nicht auf das Fenster bezogen.
  */
 .hx-auflage {
+  /*
+   * Die vier Farben noch einmal — nicht aus Nachlässigkeit, sondern weil die
+   * Auflage im `body` hängt und damit AUSSERHALB von `.hx-wurzel`, wo sie
+   * definiert sind. Ohne diese Zeilen wäre `var(--papier)` hier leer, und jede
+   * Regel, die es benutzt, fiele aus: die umgekehrte Größenwahl trüge dann
+   * Schrift in der Farbe ihrer eigenen Fläche und wäre unsichtbar.
+   */
+  --papier: #ffffff;
+  --tinte: #12100e;
+  --nacht: #0a0a0a;
+
   position: fixed;
   inset: 0;
   z-index: 80;
