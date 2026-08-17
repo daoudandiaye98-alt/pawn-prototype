@@ -90,6 +90,9 @@ export const HAUS_SLUG = "obara";
 /** Der Umschlag — die erste Doppelseite der Hülle (X5, Sektion „umschlag"). */
 export const HEFT_PFAD = "/heft/umschlag";
 
+/** Das erste Blatt des Katalogs (X6). */
+export const VERZEICHNIS_PFAD = "/verzeichnis/1";
+
 export const SEITEN: SeitenZiel[] = [
   { name: "halle", pfad: "/" },
   // Teil M — das Ausgabe-Heft. Gehört zum öffentlichen Frontend, also in die Messung.
@@ -103,16 +106,23 @@ export const SEITEN: SeitenZiel[] = [
    * den Dreh-Hinweis, der nur hier lebt. Das war die eigentliche Lücke.
    */
   { name: "huelle", pfad: HEFT_PFAD },
+  /*
+   * Teil X6 — das Verzeichnis. Eigene Zeile und nicht mit der Hülle erledigt:
+   * es ist die einzige Heftseite, die aus Daten entsteht, die einzige mit einem
+   * Raster aus zwölf Einträgen und die einzige, an deren Blattrand Schalter
+   * hängen (die Filterreiter). Genau daran fällt eine Messung, wenn sie fällt.
+   */
+  { name: "verzeichnis", pfad: VERZEICHNIS_PFAD },
 ];
 
 /**
  * Adressen, auf denen der Dreh-Hinweis im Hochformat erwartet wird.
  *
- * Nur die Hülle bittet ums Drehen. Zwei Adressen sind ausdrücklich ausgenommen
- * und dürfen ihn NIE zeigen (X9 die Kasse, X7 die Werkseite) — die stehen in
- * `NIE_SPERREN` in `src/heft/drehhinweis.tsx`.
+ * Jede Heftadresse bittet ums Drehen — das Verzeichnis also auch. Zwei Adressen
+ * sind ausdrücklich ausgenommen und dürfen ihn NIE zeigen (X9 die Kasse, X7 die
+ * Werkseite); die stehen in `NIE_SPERREN` in `src/heft/drehhinweis.tsx`.
  */
-export const DREH_ERWARTET = [HEFT_PFAD];
+export const DREH_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD];
 
 /** Absichtlich ungültig — für 4.5. */
 export const UNSINN_PFAD = "/diese-seite-gibt-es-nicht-4d9f21";

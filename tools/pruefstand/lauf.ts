@@ -220,6 +220,33 @@ async function seiteMessen(
       }];
     }
 
+    /*
+     * Dieselbe Regel für Seiten, deren Inhalt aus der Datenbank kommt.
+     *
+     * Das Verzeichnis (X6) kennzeichnet sich selbst mit `data-daten-fehlen`, solange
+     * es lädt oder die Abfrage gescheitert ist. Ohne diese Zeile hätte der Lauf den
+     * Fehlersatz für den Inhalt gehalten und das Blatt als „bestanden" gezählt —
+     * gemessen richtig, über den Katalog aber nichts gesagt.
+     *
+     * Wichtig ist der Unterschied zu einem LEEREN Katalog: der ist ein echter
+     * Zustand mit einem echten Satz und wird gemessen. Gekennzeichnet wird nur,
+     * wenn die Daten NICHT ANGEKOMMEN sind.
+     */
+    const datenFehlen = await page.evaluate(
+      () => document.querySelector("[data-daten-fehlen]") !== null);
+    if (datenFehlen) {
+      await page.close();
+      return [{
+        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        seite: seite.pfad, breite: breite.breite,
+        gemessen: "Seite ohne ihre Daten", schwelle: "Seite mit ihren Daten",
+        notiz: "Die Seite holt ihren Inhalt aus der Datenbank und hat ihn nicht bekommen. "
+          + "Gegen eine lokale Vorschau ist das der Normalfall (der Browser läuft dort ohne "
+          + "Proxy, siehe Kommentar am Proxy) — gemessen werden muss sie gegen ein "
+          + "ausgeliefertes Ziel.",
+      }];
+    }
+
     if (ruhigeBewegung) {
       // 3.9: hier zählt nur, dass die Seite trägt und der Hauptweg erreichbar bleibt.
       befunde.push(...await messeKnopfVerdeckung(page, seite.pfad, breite.breite));
@@ -392,9 +419,23 @@ async function haupt() {
   const nurBreiten = argument("breiten")?.split(",").map((b) => Number(b.trim()));
   const breiten = nurBreiten ? BREITEN.filter((b) => nurBreiten.includes(b.breite)) : BREITEN;
 
-  // Steht ein Ausgangs-Proxy in der Umgebung (Container, CI), muss der Browser ihn
-  // benutzen — sonst misst er nur einen Verbindungsfehler. Für ein lokales Ziel gilt
-  // das nicht: die Umleitung über den Proxy beantwortet 127.0.0.1 mit 405.
+  /*
+   * Steht ein Ausgangs-Proxy in der Umgebung (Container, CI), muss der Browser ihn
+   * benutzen — sonst misst er nur einen Verbindungsfehler. Für ein lokales Ziel gilt
+   * das nicht: die Umleitung über den Proxy beantwortet 127.0.0.1 mit 405.
+   *
+   * Der Preis dieses Sonderfalls ist gemessen und bekannt: ohne Proxy erreicht der
+   * Browser auch die Datenbank nicht (`ERR_CONNECTION_RESET`). Gegen eine lokale
+   * Vorschau ist eine Seite, die ihre Stücke aus der Datenbank holt, deshalb NICHT
+   * prüfbar — sie zeigt dort ihren Fehlersatz. Vier Bypass-Schreibweisen wurden
+   * durchprobiert (keine, `127.0.0.1,localhost,::1`, `<local>`, mit Port): alle vier
+   * ergaben lokal 405 UND außen einen Verbindungsabbruch. Es gibt hier also keine
+   * Einstellung, die beides kann.
+   *
+   * Damit daraus kein falsches „bestanden" wird, kennzeichnen die betroffenen Seiten
+   * ihren datenlosen Zustand selbst (`data-daten-fehlen`), und der Lauf zählt sie als
+   * nicht prüfbar — dieselbe Hüllen-Regel wie bei `data-nicht-gefunden`.
+   */
   const lokalesZiel = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(new URL(ziel.adresse).hostname);
   const proxyServer = lokalesZiel ? undefined : (process.env.HTTPS_PROXY ?? process.env.https_proxy);
   const browser = await chromium.launch({

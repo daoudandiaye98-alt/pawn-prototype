@@ -45,6 +45,10 @@ import {
 } from "../satzspiegel";
 import { AufPlatte, Platte, PlatteBand, PlatteBund } from "../platte";
 import { Inhaltsverzeichnis } from "../inhaltsverzeichnis";
+import {
+  LEERES_VERZEICHNIS, STUECKE_JE_DOPPELSEITE, STUECKE_JE_SEITE, V, WerkZeilen,
+  blattZahl, verzeichnisSatz, type VerzeichnisStand,
+} from "../verzeichnis";
 
 /**
  * Das Präfix der Sektionsadressen. Eine Stelle, damit der Umzug auf die
@@ -54,9 +58,6 @@ const S = "/heft";
 
 /** Die Adresse der Sektion „Frag PAWN" — die Marke am Blattrand braucht sie. */
 export const FRAG_PAWN_PFAD = `${S}/frag-pawn`;
-
-/** Wie viele Katalog-Doppelseiten es in diesem Schritt gibt. */
-export const VERZEICHNIS_SEITEN = 3;
 
 export interface HeftSeitenOptionen {
   /** Antippen im Inhaltsverzeichnis soll blättern, nicht neu laden. */
@@ -75,6 +76,14 @@ export interface HeftSeitenOptionen {
    * halten müsste — und genau die will X2 nicht.
    */
   ohneInhalt?: boolean;
+  /**
+   * Der Katalog (X6). Ohne Angabe steht ein Blatt mit dem ehrlichen Satz da.
+   *
+   * Er kommt von außen, weil er aus der Datenbank kommt und diese Funktion rein
+   * bleiben soll: sie ordnet Doppelseiten, sie holt keine Daten. Die Route lädt,
+   * filtert und reicht den Stand herein.
+   */
+  verzeichnis?: VerzeichnisStand;
 }
 
 /**
@@ -85,7 +94,7 @@ export interface HeftSeitenOptionen {
  * ist die Reihenfolge im Heft — es gibt keine zweite Liste, die man synchron
  * halten müsste, und das Inhaltsverzeichnis liest dieselbe.
  */
-export function heftSeiten({ aufSprung, ohneInhalt }: HeftSeitenOptionen): Doppelseite[] {
+export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOptionen): Doppelseite[] {
   const seiten: Doppelseite[] = [];
 
   /* ——— 01 Umschlag ———
@@ -140,7 +149,7 @@ export function heftSeiten({ aufSprung, ohneInhalt }: HeftSeitenOptionen): Doppe
         {/* Dieselbe Liste, aus der das Heft besteht — es gibt keine zweite. */}
         {ohneInhalt ? null : (
           <Inhaltsverzeichnis
-            seiten={heftSeiten({ aufSprung, ohneInhalt: true })}
+            seiten={heftSeiten({ aufSprung, ohneInhalt: true, verzeichnis })}
             aufSprung={aufSprung}
           />
         )}
@@ -169,7 +178,7 @@ export function heftSeiten({ aufSprung, ohneInhalt }: HeftSeitenOptionen): Doppe
         <div className="hx-nur-schmal">
           {ohneInhalt ? null : (
             <Inhaltsverzeichnis
-              seiten={heftSeiten({ aufSprung, ohneInhalt: true })}
+              seiten={heftSeiten({ aufSprung, ohneInhalt: true, verzeichnis })}
               aufSprung={aufSprung}
             />
           )}
@@ -392,16 +401,30 @@ export function heftSeiten({ aufSprung, ohneInhalt }: HeftSeitenOptionen): Doppe
     ),
   }));
 
-  /* ——— 12+ Das Verzeichnis ———
-     Der Katalog. In diesem Schritt drei Doppelseiten ohne Stücke: die zwölf je
-     Doppelseite kommen mit X6, und sie brauchen die Datenbank. Der leere Zustand
-     ist ausgeschrieben und nicht weggelassen — eine Doppelseite ohne Erklärung
-     gibt es im Heft nicht. */
-  for (let n = 1; n <= VERZEICHNIS_SEITEN; n++) {
+  /* ——— 12+ Das Verzeichnis (X6) ———
+     Der Katalog: zwölf Stücke je Doppelseite, sechs links, sechs rechts. Jede
+     Doppelseite hat ihre eigene Adresse; geblättert wird, nicht nachgeladen.
+     Wie viele Blätter es gibt, entscheidet der Bestand — nicht das Gerüst. */
+  const kat = verzeichnis ?? LEERES_VERZEICHNIS;
+  const blaetter = Math.max(blattZahl(kat.werke.length), kat.mindestBlaetter);
+  for (let n = 1; n <= blaetter; n++) {
     const nummer = seiten.length + 1;
+    const von = (n - 1) * STUECKE_JE_DOPPELSEITE;
+    const linke = kat.werke.slice(von, von + STUECKE_JE_SEITE);
+    const rechte = kat.werke.slice(von + STUECKE_JE_SEITE, von + STUECKE_JE_DOPPELSEITE);
+    const alleZwoelf = kat.werke.slice(von, von + STUECKE_JE_DOPPELSEITE);
+    /*
+     * Der Satz statt der Stücke — und er steht nur auf der RECHTEN Seite.
+     *
+     * Grund: auf dem Telefon ist die linke Seite nicht zu sehen. Stünde die
+     * Erklärung links, wäre das Blatt dort leer und ohne Erklärung — genau das,
+     * was X6 verbietet. Die rechte Seite ist die, die es auf jedem Gerät gibt.
+     */
+    const ueberBestand = !kat.laedt && !kat.fehler && n > blattZahl(kat.werke.length);
+    const satz = verzeichnisSatz(kat, alleZwoelf.length === 0, ueberBestand);
     seiten.push(bau({
       schluessel: `verzeichnis-${n}`,
-      pfad: `/verzeichnis/${n}`,
+      pfad: `${V}/${n}`,
       kolumne: "Das Verzeichnis",
       titel: "Das Verzeichnis",
       sektion: "verzeichnis",
@@ -410,40 +433,46 @@ export function heftSeiten({ aufSprung, ohneInhalt }: HeftSeitenOptionen): Doppe
       nummer,
       links: (f) => (
         <Heftseite lage="links" kolumne="Das Verzeichnis" folio={f}>
-          {/* Die Platte trägt nur das erste Blatt des Katalogs. Auf den übrigen
-              steht der Satz ohne den schwarzen Block — der Block ist die Lösung
-              für Text ÜBER einem Bild, und ohne Bild wäre er nur eine Fläche. */}
-          {n === 1 ? (
-            <>
-              <Platte
-                name="boutique-objekte"
-                alt="Eine Marmorplatte mit einer hellen Vase, einer schwarzen Schale, zwei gestapelten Büchern und einem bernsteinfarbenen Glas."
-              />
-              <AufPlatte>
-                <Kicker>{`Verzeichnis · Blatt ${n} von ${VERZEICHNIS_SEITEN}`}</Kicker>
-                <Schlagzeile>Zwölf Stücke je Doppelseite.</Schlagzeile>
-              </AufPlatte>
-            </>
-          ) : (
-            <Kicker>{`Verzeichnis · Blatt ${n} von ${VERZEICHNIS_SEITEN}`}</Kicker>
-          )}
+          <Kicker>{`Verzeichnis · Blatt ${n} von ${blaetter}`}</Kicker>
+          <WerkZeilen werke={linke} />
         </Heftseite>
       ),
       rechts: (f) => (
         <Heftseite
           lage="rechts" kolumne="Das Verzeichnis" folio={f}
-          weg={n === VERZEICHNIS_SEITEN
-            ? { text: "Zurück zum Inhalt", zu: "/inhalt" }
-            : { text: "Weiterblättern", zu: `/verzeichnis/${n + 1}` }}
+          /*
+           * Das letzte Blatt trägt den Weg zur Kasse — X6. Die Kasse selbst zieht
+           * erst mit X9 als Beileger ins Heft; bis dahin ist `/cart` die Seite,
+           * die es wirklich gibt (dieselbe Ehrlichkeit wie bei der Korb-Marke).
+           */
+          weg={n === blaetter
+            ? { text: "Zur Kasse", zu: "/cart" }
+            : { text: "Weiterblättern", zu: `${V}/${n + 1}` }}
         >
-          <Fliesstext>
-            Sechs links, sechs rechts, auf dem Telefon vier je Seite. Geblättert
-            wird, nicht nachgeladen. Dieses Blatt ist leer, weil die Datenbank
-            gerade nicht antwortet — nicht, weil kein Stück da wäre.
-          </Fliesstext>
-          <Bildunterschrift>
-            Der Katalog wächst mit den Stücken, nicht mit dem Gerüst.
-          </Bildunterschrift>
+          {satz ? (
+            <>
+              {/*
+                Das Kennzeichen sagt dem Prüfstand: hier fehlen die DATEN, nicht die
+                Ware. Ein leerer Katalog ist ein echter Zustand und wird gemessen;
+                eine Seite, deren Abfrage gescheitert ist oder noch läuft, ist nicht
+                prüfbar. Ohne diesen Unterschied zählte ein Lauf gegen eine lokale
+                Vorschau den Fehlersatz als bestandenes Blatt.
+              */}
+              <div {...(kat.laedt || kat.fehler ? { "data-daten-fehlen": "" } : {})}>
+                <Fliesstext>{satz}</Fliesstext>
+              </div>
+              {n > 1 ? <Bildunterschrift>Blatt 1 liegt am Anfang des Verzeichnisses.</Bildunterschrift> : null}
+            </>
+          ) : (
+            <>
+              {/* Breit: die zweiten sechs. Schmal: alle zwölf, weil die linke
+                  Seite dort nicht zu sehen ist. Kein doppelter Inhalt für eine
+                  Vorlesehilfe — `display: none` nimmt die jeweils andere Fassung
+                  auch aus dem Vorlesebaum. */}
+              <div className="hx-nur-breit"><WerkZeilen werke={rechte} /></div>
+              <div className="hx-nur-schmal"><WerkZeilen werke={alleZwoelf} /></div>
+            </>
+          )}
         </Heftseite>
       ),
     }));
