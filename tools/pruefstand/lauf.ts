@@ -371,6 +371,39 @@ async function haupt() {
     + `${bericht.gates.nicht_pruefbar} nicht prüfbar\n`
     + `Bericht: tools/pruefstand/artefakte/bericht.json\n`,
   );
+
+  /*
+   * Die gefallenen Gates einzeln ins Log.
+   *
+   * Bisher stand am Ende nur eine Zahl. Wer den Lauf nicht auf der eigenen
+   * Maschine wiederholen kann — und das gilt für jeden, der nur die Ausgabe des
+   * Runners sieht —, wusste damit, DASS 26 Gates gefallen sind, aber nicht
+   * welche. Eine Zahl ohne Fundstelle ist kein Befund, sondern eine Behauptung.
+   *
+   * `bericht.json` liegt als Artefakt bei und bleibt die vollständige Quelle;
+   * diese Liste ist der Auszug, den man ohne Download lesen kann. Gekürzt auf
+   * 60 Zeilen, damit ein durchgefallener Lauf das Log nicht zuschüttet.
+   */
+  if (gefallen > 0) {
+    const liste = gates.filter((b) => b.status === "gefallen");
+    process.stderr.write(`\nGefallene Gates (${liste.length}):\n`);
+    for (const b of liste.slice(0, 60)) {
+      const ort = `${b.seite} @ ${b.breite}px`;
+      // Der Beleg: was gemessen wurde, wogegen, und wo genau. Ohne diese drei
+      // Angaben ist eine Zeile hier so wenig wert wie die Zahl allein.
+      const beleg = [
+        b.auswahl,
+        b.gemessen !== null ? `gemessen ${b.gemessen}` : null,
+        b.schwelle !== null ? `soll ${b.schwelle}` : null,
+        b.notiz,
+      ].filter(Boolean).join(" · ");
+      process.stderr.write(`  ${b.kontrolle.padEnd(5)} ${ort.padEnd(44)} ${beleg}\n`);
+    }
+    if (liste.length > 60) {
+      process.stderr.write(`  … ${liste.length - 60} weitere, vollständig in bericht.json\n`);
+    }
+  }
+
   process.exit(gefallen > 0 ? 1 : 0);
 }
 

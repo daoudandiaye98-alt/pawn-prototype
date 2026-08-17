@@ -32,7 +32,19 @@ import {
 } from "./doppelseiten";
 import { Register } from "./register";
 import { Marken } from "./marken";
+import { Drehhinweis, darfSperren, useHochformat } from "./drehhinweis";
 import "./heft.css";
+
+/**
+ * Der zweite Weg lässt sich auch ohne Systemeinstellung betreten: `?text=1`.
+ * So ist er verlinkbar, überlebt das Neuladen und lässt sich weitergeben.
+ *
+ * Dieselbe Adresse wie im Ausgabe-Heft aus Teil M — ein Weg, ein Name.
+ */
+const TEXT_PARAM = "text";
+const willText = () =>
+  typeof window !== "undefined"
+  && new URLSearchParams(window.location.search).get(TEXT_PARAM) === "1";
 
 export interface HeftProps {
   /**
@@ -60,15 +72,40 @@ const magReduziert = () =>
 export function Heft({ bauen, titel, suchePfad }: HeftProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [reduziert, setReduziert] = useState(magReduziert);
+  const [magsRuhig, setMagsRuhig] = useState(magReduziert);
+  const [alsText, setAlsText] = useState(willText);
+  const reduziert = magsRuhig || alsText;
 
   // Beide Wege sind vollwertig, also wird auch im laufenden Betrieb gewechselt.
   useEffect(() => {
     const mm = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const hoer = () => setReduziert(mm.matches);
+    const hoer = () => setMagsRuhig(mm.matches);
     mm.addEventListener("change", hoer);
     return () => mm.removeEventListener("change", hoer);
   }, []);
+
+  /**
+   * Die Tür in die Textfassung. Echte Adresse, damit Mittelklick und Weitergeben
+   * funktionieren — der Klick wird abgefangen, damit die Seite nicht neu lädt.
+   */
+  const textWegNehmen = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    const p = new URLSearchParams(window.location.search);
+    p.set(TEXT_PARAM, "1");
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${p}`);
+    setAlsText(true);
+  }, []);
+
+  /*
+   * Der Dreh-Hinweis.
+   *
+   * Nicht gefragt wird auf der Kasse und auf einer Werkseite (siehe
+   * `darfSperren`) — und nicht, wenn schon jemand die Tür genommen hat: wer die
+   * Textfassung liest, braucht keine Aufforderung zu drehen.
+   */
+  const sperrbar = darfSperren(pathname) && !alsText;
+  const hochformat = useHochformat(sperrbar);
 
   /**
    * Ein Reiter im Griffregister, eine Zeile im Inhaltsverzeichnis, eine
@@ -132,6 +169,23 @@ export function Heft({ bauen, titel, suchePfad }: HeftProps) {
 
   const aufbau = useMemo(() => blaetterAus(seiten), [seiten]);
   const hier = seiten[aktuell - 1];
+
+  /*
+   * Steht das Gerät hoch, steht statt des Hefts der Hinweis da.
+   *
+   * Die Abzweigung liegt bewusst NACH allen Haken: React verlangt dieselbe
+   * Reihenfolge in jedem Durchlauf, und ein früher Ausstieg würde sie beim
+   * Drehen verschieben. Die `h1` bleibt stehen — auch dieser Bildschirm ist
+   * eine Adresse und braucht einen Titel (Kontrolle 5.2).
+   */
+  if (hochformat) {
+    return (
+      <div className="hx-wurzel">
+        <h1 className="hx-titel">{hier?.titel ?? titel}</h1>
+        <Drehhinweis textAdresse={`?${TEXT_PARAM}=1`} aufText={textWegNehmen} />
+      </div>
+    );
+  }
 
   return (
     <div className="hx-wurzel">

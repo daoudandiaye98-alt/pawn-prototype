@@ -366,6 +366,70 @@
   border: 0;
 }
 
+/* ————————————————— Der Dreh-Hinweis ————————————————— */
+
+/*
+ * Tisch-Grund, Wortmarke oben, Zeichen mittig, eine Zeile. Kein Chrom, keine
+ * Leiste — und unten die Tür in die Textfassung.
+ */
+.hx-dreh {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 7vw, 3rem) clamp(1.2rem, 6vw, 2.5rem);
+  background:
+    radial-gradient(130% 100% at 50% 12%, #f3f1ee 0%, #e8e6e200 58%),
+    linear-gradient(180deg, #ecebe7 0%, #dddbd6 100%);
+  background-color: var(--tisch);
+  color: var(--tinte);
+  font-family: Outfit, system-ui, sans-serif;
+  overflow: hidden;
+  /* Die Einwilligungsleiste steht auch hier noch — der Hinweis endet darüber. */
+  padding-bottom: calc(clamp(1.5rem, 7vw, 3rem) + var(--pawn-einwilligung, 0px));
+}
+
+.hx-dreh-marke { font-size: 1.15rem; letter-spacing: 0.08em; }
+
+.hx-dreh-mitte {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.2rem, 5vw, 2rem);
+  text-align: center;
+}
+.hx-dreh-zeichen { width: clamp(96px, 34vw, 148px); height: auto; }
+.hx-dreh-satz {
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(1.15rem, 5.2vw, 1.6rem);
+  line-height: 1.25;
+  max-width: 18ch;
+}
+
+/*
+ * Die Tür. Sichtbar, nicht versteckt — und mit 44 px Trefferfläche, weil sie
+ * hier das einzige Bedienelement auf dem Bildschirm ist.
+ *
+ * Tinte auf Tisch (#12100E auf #E8E6E2) liegt weit über 4,5:1; die Unterlinie
+ * macht sie zusätzlich als Weg erkennbar und nicht nur als Satz.
+ */
+.hx-dreh-tuer {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.2rem 0;
+  color: var(--tinte);
+  text-decoration: none;
+  border-bottom: 1.5px solid var(--tinte);
+  font-size: clamp(0.72rem, 3.4vw, 0.82rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
 /* ————————————————— Die Platten (X10) ————————————————— */
 
 /*
