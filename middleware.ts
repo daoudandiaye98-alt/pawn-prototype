@@ -28,7 +28,28 @@
  * kein Text. Eine zweite „nicht gefunden"-Seite neben `src/pages/NotFound.tsx`
  * wären zwei Fassungen derselben Sache — genau das, was der Umzug verbietet.
  */
-import { istBekannteRoute, istPlattformOderDatei } from "./routen";
+/*
+ * `./routen.js` — mit Endung, und die Endung lautet `.js`, obwohl die Datei
+ * `routen.ts` heißt. Das sieht nach einem Tippfehler aus und ist keiner.
+ *
+ * Vercel prüft diese Datei mit strengeren Import-Regeln als unser eigener
+ * Typecheck (`--moduleResolution node16`). Ohne Endung schlägt der Import dort
+ * fehl — und zwar OHNE den Build rot zu machen: die Middleware wird einfach
+ * nicht mit ausgeliefert. Genau das stand im Build-Protokoll von caf8afd:
+ *
+ *   middleware.ts(31,57): error TS2835: Relative import paths need explicit
+ *   file extensions … Did you mean './routen.js'?
+ *
+ * Das erklärt alle drei Messungen: die Sonde lief, weil sie nichts importiert
+ * hat. Beide Fassungen mit Import liefen nicht — weder mit noch ohne Muster.
+ * Ich habe zuerst das Muster verdächtigt und einen ganzen Lauf darauf
+ * verwendet; der Beweis lag die ganze Zeit im Build-Protokoll, nicht im
+ * Prüfstand.
+ *
+ * `.js` ist dabei die richtige Schreibweise für eine `.ts`-Datei: unter diesen
+ * Regeln benennt der Import die AUSGABE, nicht die Quelle.
+ */
+import { istBekannteRoute, istPlattformOderDatei } from "./routen.js";
 
 /*
  * Das Muster — drei Fassungen, zwei Messungen, ein Schluss.
@@ -40,16 +61,17 @@ import { istBekannteRoute, istPlattformOderDatei } from "./routen";
  *      „Keine Kopfzeile x-pawn-404" — die Middleware lief für diese Anfrage
  *      überhaupt nicht.
  *
- * Ich hatte Fassung 3 gebaut, weil ein Muster, das man nicht braucht, weg
- * gehört. Das war falsch herum gedacht: gemessen ist, dass DIESES Projekt eine
- * Middleware ohne Muster gar nicht erst aufruft. Also kommt das Muster zurück —
- * nicht als Filter, sondern als Anmeldung.
+ * Ich habe daraus zuerst geschlossen, das Muster sei die Ursache, und Fassung 4
+ * mit `"/:pfad*"` gebaut. **Das war falsch** — auch sie lief nicht. Die Ursache
+ * stand die ganze Zeit im Build-Protokoll und steht unten am `import`: der
+ * Import ohne Dateiendung, an dem Vercel die Middleware stillschweigend
+ * fallen lässt. Was alle drei gescheiterten Fassungen gemeinsam hatten, war
+ * nicht das Muster, sondern dieser Import; die Sonde hatte keinen.
  *
- * `"/:pfad*"` ist gewöhnliche Pfad-Syntax und trifft jede Adresse samt Wurzel.
- * Bewusst KEINE negative Vorschau wie in Fassung 2: die ist der einzige andere
- * Verdächtige, und man ändert nicht zwei Dinge auf einmal. Das Aussortieren von
- * Dateien und Plattform-Adressen bleibt, wo es geprüft ist — in
- * `istPlattformOderDatei`.
+ * Das Muster bleibt trotzdem stehen, aber ehrlich beschriftet: es ist eine
+ * Anmeldung, kein Filter, und es ist nicht das, was den Fehler behoben hat.
+ * `"/:pfad*"` trifft jede Adresse samt Wurzel. Das Aussortieren von Dateien und
+ * Plattform-Adressen bleibt, wo es geprüft ist — in `istPlattformOderDatei`.
  */
 export const config = { matcher: ["/:pfad*"] };
 
