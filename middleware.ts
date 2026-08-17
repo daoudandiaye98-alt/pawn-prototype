@@ -86,23 +86,31 @@ export default async function middleware(request: Request): Promise<Response | u
    * geliefert hätte, nur mit anderem Statuscode. `/index.html` trägt einen
    * Punkt und fällt damit oben aus der Prüfung: keine Schleife.
    *
-   * **Die Kekse des Besuchers kommen mit.** Ohne sie ist dieser Nachschlag eine
+   * **Der Ausweis des Besuchers kommt mit.** Ohne ihn ist dieser Nachschlag eine
    * anonyme Anfrage — und auf einer gesperrten Vorschau weist die Sperre eine
-   * anonyme Anfrage ab. Die Middleware fiele dann jedes Mal auf „weiter wie
-   * bisher" zurück, obwohl sie läuft: gemessen an 665522a, 812 Aufrufe und
-   * nicht eine einzige 404 im Protokoll. Auf pawn.vision fiele das nie auf,
-   * weil dort nichts gesperrt ist — der Fehler wäre erst auf der Vorschau
-   * sichtbar und dort für immer unerklärlich.
+   * anonyme Anfrage ab. Die Middleware fällt dann jedes Mal auf „weiter wie
+   * bisher" zurück, obwohl sie läuft.
    *
-   * Sachlich richtig ist das ohnehin: die Hülle wird für DIESEN Besucher
-   * geholt, also mit seiner Kennung, nicht mit keiner.
+   * Welcher Ausweis das ist, hängt vom Besucher ab, und genau daran scheiterte
+   * 24cbe64: ein Mensch im Browser trägt einen Keks, der Prüfstand dagegen
+   * weist sich per Kopfzeile aus (`x-vercel-protection-bypass`, siehe
+   * `tools/pruefstand/lauf.ts`). Nur die Kekse weiterzugeben half ihm also
+   * nichts. Deshalb gehen alle Ausweise mit, soweit vorhanden.
+   *
+   * Auf pawn.vision fällt nichts davon auf, weil dort nichts gesperrt ist —
+   * dieser Fehler lebt ausschließlich auf der Vorschau.
+   *
+   * Sachlich richtig ist die Weitergabe ohnehin: die Hülle wird für DIESEN
+   * Besucher geholt, also mit seiner Kennung, nicht mit keiner.
    */
-  const keks = request.headers.get("cookie");
+  const nachschlagKopf: Record<string, string> = { accept: "text/html" };
+  for (const name of ["cookie", "authorization", "x-vercel-protection-bypass"]) {
+    const wert = request.headers.get(name);
+    if (wert) nachschlagKopf[name] = wert;
+  }
   let huelle: Response;
   try {
-    huelle = await fetch(new URL("/index.html", request.url), {
-      headers: keks ? { accept: "text/html", cookie: keks } : { accept: "text/html" },
-    });
+    huelle = await fetch(new URL("/index.html", request.url), { headers: nachschlagKopf });
   } catch (fehler) {
     /*
      * Alles bleibt wie bisher: 200 mit der Hülle aus der Umschreibung. Das ist
