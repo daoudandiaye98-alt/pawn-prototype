@@ -164,6 +164,36 @@ jobs:
             --jq '.[] | "  id=\(.id) environment=\(.environment) produktion=\(.production_environment)"' || echo "  keine"
           exit 1
 
+      # ————————————————— Läuft die Middleware? (K7 · Kontrolle 4.5) —————————————————
+      #
+      # Der Prüfstand meldet für 4.5 nur „Status 200" — und das sieht identisch
+      # aus, egal ob die Middleware gar nicht lief oder ob sie lief und an der
+      # Hülle scheiterte. Zwei verschiedene Fehler mit zwei verschiedenen
+      # Behebungen, nicht unterscheidbar. Deshalb hier eine Anfrage, die die
+      # Kopfzeilen zeigt: `middleware.ts` setzt `x-pawn-404` auf JEDEM Weg.
+      #
+      #   x-pawn-404: middleware      → 404 gesetzt, alles richtig
+      #   x-pawn-404: huelle-<code>   → lief, konnte die Hülle nicht holen
+      #   x-pawn-404: fehler-<name>   → lief, Ausnahme beim Holen
+      #   Kopfzeile fehlt             → lief NICHT (Muster, Bündelung, Deploy)
+      #
+      # `|| true`: eine Auskunft, kein Tor. Das Urteil über 4.5 fällt der
+      # Prüfstand, nicht dieser Schritt. Das Geheimnis wird als Kopfzeile
+      # mitgeschickt und nie ausgegeben — gedruckt werden nur unsere eigenen.
+      - name: Middleware-Spur
+        env:
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          ADRESSE: ${{ steps.ziel.outputs.adresse }}
+        run: |
+          ziel="${ADRESSE:-https://pawn.vision}"
+          echo "Anfrage an ${ziel}/diese-seite-gibt-es-nicht-4d9f21"
+          curl -s -o /dev/null -D - --max-time 30 \
+            -H "x-vercel-protection-bypass: ${BYPASS}" \
+            -H "x-vercel-set-bypass-cookie: true" \
+            "${ziel}/diese-seite-gibt-es-nicht-4d9f21" \
+            | grep -iE "^(HTTP/|x-pawn-404|content-type|x-vercel-|location)" || echo "keine Antwort"
+        continue-on-error: true
+
       # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
       # die Systembibliotheken, ohne die der Browser auf dem Runner nicht läuft.
       # Steht NACH der Zielsuche: während dort gewartet wird, muss kein Browser

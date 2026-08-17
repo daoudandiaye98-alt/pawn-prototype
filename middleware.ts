@@ -30,15 +30,21 @@
  */
 import { istBekannteRoute, istPlattformOderDatei } from "./routen";
 
-export const config = {
-  /*
-   * Alles außer den Dingen, die es wirklich als Datei gibt. Der Ausschluss
-   * steht doppelt: hier grob (damit Bilder und Skripte die Middleware gar
-   * nicht erst wecken) und in `istPlattformOderDatei` genau. Ein Muster hier
-   * ist eine Optimierung, kein Schutz — verlassen wird sich auf die Funktion.
-   */
-  matcher: "/((?!_vercel|assets|api).*)",
-};
+/*
+ * KEIN `config.matcher`.
+ *
+ * Die Sonde lief mit einem wörtlichen Muster (`"/__sonde-middleware"`) und hat
+ * geantwortet. Der erste Anlauf dieser Datei benutzte stattdessen ein Muster
+ * mit negativer Vorschau (`"/((?!_vercel|assets|api).*)"`) — und im Lauf gegen
+ * die Vorschau blieb die erfundene Adresse bei Status 200. Damit ist das Muster
+ * der erste Verdächtige, und ein Verdächtiger, den man nicht braucht, wird
+ * entfernt statt untersucht: `istPlattformOderDatei` schließt Dateien und
+ * Plattform-Adressen ohnehin genau aus, und zwar in Code, der getestet ist.
+ *
+ * Ohne Muster läuft die Middleware auf jeder Anfrage. Das kostet einen
+ * Funktionsaufruf pro Datei — der Preis dafür, dass die Auswahl an einer
+ * Stelle steht, die man lesen und prüfen kann.
+ */
 
 export default async function middleware(request: Request): Promise<Response | undefined> {
   const pfad = new URL(request.url).pathname;
@@ -51,16 +57,19 @@ export default async function middleware(request: Request): Promise<Response | u
    * geliefert hätte, nur mit anderem Statuscode. `/index.html` trägt einen
    * Punkt und fällt damit oben aus der Prüfung: keine Schleife.
    */
-  const huelle = await fetch(new URL("/index.html", request.url), {
-    headers: { accept: "text/html" },
-  });
-
-  /*
-   * Wenn das Nachladen scheitert, bleibt alles wie bisher: 200 mit der Hülle.
-   * Das ist der heutige Zustand — schlechter wird es dadurch nie. Eine leere
-   * Seite oder ein Servertext wäre schlechter als eine falsche 200.
-   */
-  if (!huelle.ok) return undefined;
+  let huelle: Response;
+  try {
+    huelle = await fetch(new URL("/index.html", request.url), { headers: { accept: "text/html" } });
+  } catch (fehler) {
+    /*
+     * Alles bleibt wie bisher: 200 mit der Hülle aus der Umschreibung. Das ist
+     * der heutige Zustand — schlechter wird es dadurch nie. Die Kopfzeile sagt,
+     * dass es diesen Weg gab, damit ein stiller Rückfall nicht als Erfolg
+     * durchgeht.
+     */
+    return weiter(`fehler-${(fehler as Error).name}`);
+  }
+  if (!huelle.ok) return weiter(`huelle-${huelle.status}`);
 
   return new Response(huelle.body, {
     status: 404,
@@ -73,5 +82,20 @@ export default async function middleware(request: Request): Promise<Response | u
          404 aus dieser Datei kommt und nicht aus einem Zufall. */
       "x-pawn-404": "middleware",
     },
+  });
+}
+
+/**
+ * Weiter wie bisher — aber nicht stumm.
+ *
+ * Vercel übernimmt die Kopfzeilen einer Antwort mit `x-middleware-next: 1`,
+ * lässt die Anfrage aber weiterlaufen. So steht im Protokoll, dass die
+ * Middleware lief und **warum** sie keine 404 gesetzt hat. Ohne diese Spur
+ * sähe „Status 200" identisch aus, egal ob die Middleware gar nicht lief oder
+ * ob sie lief und an der Hülle scheiterte — zwei Fehler, zwei Behebungen.
+ */
+function weiter(grund: string): Response {
+  return new Response(null, {
+    headers: { "x-middleware-next": "1", "x-pawn-404": grund },
   });
 }
