@@ -65,21 +65,66 @@ npx tsx tools/pruefstand/lauf.ts --ziel lokal --seiten "$SEITEN" --breiten "$BRE
   >/tmp/sicht-lauf.log 2>&1
 LAUF=$?
 
-mkdir -p "$ZIEL"
-ANZAHL=0
+# Gezaehlt wird, was DIESER Lauf erzeugt hat — nicht, was im Zielordner liegt.
+#
+# Belegt am 2026-08-17: die erste Fassung zaehlte `ls .claude/sicht/<datum>/*.png`.
+# Der Ordner sammelt aber ueber den Tag hinweg an. Ein Lauf, der GAR NICHTS
+# fotografiert, meldete damit „1/1 · FEHLER: keine", weil vier Bilder von vorhin
+# danebenlagen. Ein Pruefstand, der auf alten Artefakten gruen wird, ist genau
+# der Fehler, gegen den dieser ganze Harness gebaut ist.
+NEU=0
 if compgen -G "tools/pruefstand/artefakte/*.png" >/dev/null; then
+  NEU=$(ls -1 tools/pruefstand/artefakte/*.png | wc -l | tr -d ' ')
+fi
+
+SOLL=$(( $(echo "$SEITEN" | tr ',' '\n' | grep -c .) * $(echo "$BREITEN" | tr ',' '\n' | grep -c .) ))
+
+mkdir -p "$ZIEL"
+if [ "$NEU" -gt 0 ]; then
   cp tools/pruefstand/artefakte/*.png "$ZIEL/" 2>/dev/null || true
-  ANZAHL=$(ls -1 "$ZIEL"/*.png 2>/dev/null | wc -l | tr -d ' ')
 fi
 [ -f tools/pruefstand/artefakte/bericht.json ] && cp tools/pruefstand/artefakte/bericht.json "$ZIEL/"
 
-if [ "$ANZAHL" -eq 0 ]; then
+if [ "$NEU" -eq 0 ]; then
   tail -20 /tmp/sicht-lauf.log
-  echo "SICHT: 0/1 · FEHLER: keine einzige Aufnahme entstanden (Pruefstand Exit ${LAUF})"
+  echo "SICHT: 0/${SOLL} · FEHLER: keine einzige Aufnahme entstanden (Pruefstand Exit ${LAUF})"
   exit 1
 fi
 
-echo "  ${ANZAHL} Aufnahmen in ${ZIEL}/ — ANSEHEN, nicht nur zaehlen:"
-ls -1 "$ZIEL"/*.png | sed 's|^|    |'
-echo "SICHT: 1/1 · FEHLER: keine"
+ANZAHL="$NEU"
+
+echo "  ${ANZAHL} von ${SOLL} erwarteten Aufnahmen — ANSEHEN, nicht nur zaehlen:"
+ls -1 tools/pruefstand/artefakte/*.png | sed "s|tools/pruefstand/artefakte|    ${ZIEL}|"
+
+# Ehrlichkeit ueber die eigene Blindheit.
+#
+# Belegt am 2026-08-17: ein Lauf hier meldete gruen, waehrend die GitHub-Action
+# mit echtem Netz zur selben Zeit 15 gefallene Gates fand. Der Browser in diesem
+# Container kommt nicht an Supabase; Seiten, die ihre Inhalte von dort holen,
+# sind leere Huellen, und schwarze Flaechen darin sind ein Artefakt der Umgebung,
+# KEIN Befund.
+#
+# Der Pruefstand erkennt den Fall selbst und schreibt „HÜLLE" ins Protokoll.
+# Das wird hier durchgereicht — aber es ist ein UNTERES Mass: die Marke feuert
+# nur, wenn eine Anfrage sichtbar scheitert. Bleiben Bilder schwarz, ohne dass
+# eine Anfrage scheitert, sagt sie nichts. Verlass dich auf die Action.
+HUELLEN=$(grep -c "HÜLLE" /tmp/sicht-lauf.log 2>/dev/null || true)
+HUELLEN=${HUELLEN:-0}
+
+FEHLER=""
+[ "$HUELLEN" -gt 0 ] && FEHLER="${HUELLEN} Huellen (kein Netz zur Datenbank)"
+if [ "$ANZAHL" -lt "$SOLL" ]; then
+  [ -n "$FEHLER" ] && FEHLER="${FEHLER}, "
+  FEHLER="${FEHLER}$(( SOLL - ANZAHL )) Aufnahmen fehlen"
+fi
+
+if [ -n "$FEHLER" ]; then
+  echo ""
+  echo "  Diese Aufnahmen tragen NICHT das ganze Bild. Echte Zahlen liefert nur"
+  echo "  .github/workflows/pruefstand.yml gegen die Vercel-Vorschau."
+  echo "SICHT: ${ANZAHL}/${SOLL} · FEHLER: ${FEHLER}"
+  exit 1
+fi
+
+echo "SICHT: ${ANZAHL}/${SOLL} · FEHLER: keine"
 exit 0
