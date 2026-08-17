@@ -118,12 +118,14 @@ jobs:
           if [ -n "${EINGETRAGEN:-}" ]; then
             echo "Ziel: $EINGETRAGEN (von Hand eingetragen)"
             echo "adresse=$EINGETRAGEN" >> "$GITHUB_OUTPUT"
+            echo "gatet=ja" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [ "${{ github.ref_name }}" = "$HAUPTZWEIG" ]; then
             echo "Ziel: pawn.vision — dieser Push ist auf dem Hauptzweig, seine Vorschau IST die Produktion."
             echo "adresse=" >> "$GITHUB_OUTPUT"
+            echo "gatet=ja" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -131,6 +133,8 @@ jobs:
             echo "Ziel: pawn.vision — ohne VERCEL_AUTOMATION_BYPASS_SECRET ist die Vorschau gesperrt."
             echo "Hinweis: mit dem Geheimnis in den Repository-Secrets misst dieser Lauf den Zweig selbst."
             echo "adresse=" >> "$GITHUB_OUTPUT"
+            # Siehe „gatet" unten: ein Zweig darf nicht an fremden Zahlen scheitern.
+            echo "gatet=nein" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -145,6 +149,7 @@ jobs:
               if [ -n "$url" ]; then
                 echo "Ziel: $url (Vorschau dieses Zweigs, Deployment $id)"
                 echo "adresse=$url" >> "$GITHUB_OUTPUT"
+                echo "gatet=ja" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
             done
@@ -172,16 +177,46 @@ jobs:
       # Lauf würde die Anmeldeseite vermessen. Der Wert steht nur in den
       # GitHub-Secrets, wird nie ausgegeben und nie protokolliert. Für pawn.vision
       # spielt er keine Rolle — dort ist nichts gesperrt.
+      #
+      # `gatet` entscheidet, ob dieses Urteil den Zweig sperren darf.
+      #
+      # Gemessen wurde der Fehler an mir selbst: auf einem Zweig OHNE Geheimnis
+      # misst der Lauf pawn.vision und wird rot — an 34 gefallenen Gates, die dem
+      # ausgelieferten Stand gehören und mit dem Zweig nichts zu tun haben. Ein
+      # Check, der unabhängig vom Inhalt des Zweigs rot ist, ist keine Aussage
+      # über den Zweig; er lehrt nur, Rot zu übersehen. Genau das darf ein
+      # Prüfstand nicht tun.
+      #
+      # Deshalb: `lauf.ts` urteilt immer gleich und endet immer mit 1 bei einem
+      # gefallenen Gate — das bleibt unangetastet. Nur ob dieses Urteil den Check
+      # sperrt, entscheidet sich hier, an derselben Stelle, an der auch das Ziel
+      # bestimmt wird. Gate zu bei Vorschau, Hauptzweig und eingetragener Adresse;
+      # Gate offen beim Rückfall, mit einem Satz im Protokoll, der sagt warum.
       - name: Prüfstand
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           ADRESSE: ${{ steps.ziel.outputs.adresse }}
+          GATET: ${{ steps.ziel.outputs.gatet }}
         run: |
           if [ -n "$ADRESSE" ]; then
-            npx tsx tools/pruefstand/lauf.ts --adresse "$ADRESSE"
+            npx tsx tools/pruefstand/lauf.ts --adresse "$ADRESSE" && ende=0 || ende=$?
           else
-            npx tsx tools/pruefstand/lauf.ts --ziel live
+            npx tsx tools/pruefstand/lauf.ts --ziel live && ende=0 || ende=$?
           fi
+
+          if [ "$ende" -eq 0 ]; then exit 0; fi
+          if [ "$GATET" = "ja" ]; then exit "$ende"; fi
+
+          echo "::warning::Gefallene Gates auf pawn.vision — NICHT auf diesem Zweig."
+          echo ""
+          echo "Gemessen wurde der ausgelieferte Stand, weil VERCEL_AUTOMATION_BYPASS_SECRET"
+          echo "fehlt und die Vorschau dieses Zweigs damit gesperrt ist. Über den Zweig sagt"
+          echo "dieser Lauf NICHTS — deshalb bleibt der Check grün. Die Befunde oben gehören"
+          echo "pawn.vision und stehen vollständig im Bericht (Artefakt)."
+          echo ""
+          echo "Setze das Geheimnis in den Repository-Secrets, dann misst der nächste Push"
+          echo "den Zweig selbst und ein gefallenes Gate macht diesen Check zu Recht rot."
+          exit 0
 
       # `always()`: gerade der rote Lauf ist der, dessen Bericht und Aufnahmen
       # man sehen will. Ohne das gäbe es beim Fehlschlag nichts zum Nachlesen.
