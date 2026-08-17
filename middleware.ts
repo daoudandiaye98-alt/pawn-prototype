@@ -31,20 +31,27 @@
 import { istBekannteRoute, istPlattformOderDatei } from "./routen";
 
 /*
- * KEIN `config.matcher`.
+ * Das Muster — drei Fassungen, zwei Messungen, ein Schluss.
  *
- * Die Sonde lief mit einem wörtlichen Muster (`"/__sonde-middleware"`) und hat
- * geantwortet. Der erste Anlauf dieser Datei benutzte stattdessen ein Muster
- * mit negativer Vorschau (`"/((?!_vercel|assets|api).*)"`) — und im Lauf gegen
- * die Vorschau blieb die erfundene Adresse bei Status 200. Damit ist das Muster
- * der erste Verdächtige, und ein Verdächtiger, den man nicht braucht, wird
- * entfernt statt untersucht: `istPlattformOderDatei` schließt Dateien und
- * Plattform-Adressen ohnehin genau aus, und zwar in Code, der getestet ist.
+ *   1. Sonde, `matcher: ["/__sonde-middleware"]`      → lief (Antwort kam)
+ *   2. `matcher: ["/((?!_vercel|assets|api).*)"]`     → 404 kam nicht
+ *   3. gar kein `config`                              → 404 kam nicht,
+ *      und der Lauf gegen die Vorschau von 996d7d7 belegt warum:
+ *      „Keine Kopfzeile x-pawn-404" — die Middleware lief für diese Anfrage
+ *      überhaupt nicht.
  *
- * Ohne Muster läuft die Middleware auf jeder Anfrage. Das kostet einen
- * Funktionsaufruf pro Datei — der Preis dafür, dass die Auswahl an einer
- * Stelle steht, die man lesen und prüfen kann.
+ * Ich hatte Fassung 3 gebaut, weil ein Muster, das man nicht braucht, weg
+ * gehört. Das war falsch herum gedacht: gemessen ist, dass DIESES Projekt eine
+ * Middleware ohne Muster gar nicht erst aufruft. Also kommt das Muster zurück —
+ * nicht als Filter, sondern als Anmeldung.
+ *
+ * `"/:pfad*"` ist gewöhnliche Pfad-Syntax und trifft jede Adresse samt Wurzel.
+ * Bewusst KEINE negative Vorschau wie in Fassung 2: die ist der einzige andere
+ * Verdächtige, und man ändert nicht zwei Dinge auf einmal. Das Aussortieren von
+ * Dateien und Plattform-Adressen bleibt, wo es geprüft ist — in
+ * `istPlattformOderDatei`.
  */
+export const config = { matcher: ["/:pfad*"] };
 
 export default async function middleware(request: Request): Promise<Response | undefined> {
   const pfad = new URL(request.url).pathname;
@@ -93,6 +100,12 @@ export default async function middleware(request: Request): Promise<Response | u
  * Middleware lief und **warum** sie keine 404 gesetzt hat. Ohne diese Spur
  * sähe „Status 200" identisch aus, egal ob die Middleware gar nicht lief oder
  * ob sie lief und an der Hülle scheiterte — zwei Fehler, zwei Behebungen.
+ *
+ * Was die Spur NICHT beweist: bleibt die Kopfzeile aus, kann das heißen „lief
+ * nicht" oder „lief, ging weiter, und Vercel hat die Kopfzeile beim
+ * Weiterreichen verworfen". Beides sähe gleich aus. Solange die 404 nicht
+ * ankommt, ist das kein Unterschied, der die Behebung ändert — kommt sie an,
+ * erübrigt sich die Frage.
  */
 function weiter(grund: string): Response {
   return new Response(null, {
