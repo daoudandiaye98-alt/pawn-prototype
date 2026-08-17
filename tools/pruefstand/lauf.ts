@@ -86,6 +86,12 @@ async function istUmgeleitet(page: Page, erwartetHost: string): Promise<string |
  */
 function huelleMarkieren(befunde: Befund[], datenFehler: string[]): Befund[] {
   if (datenFehler.length === 0) return befunde;
+  // Der Grund steht in jedem einzelnen Befund — aber wer den Lauf ansieht
+  // (im Terminal oder im Protokoll der Action), soll ihn sehen, ohne erst den
+  // Bericht herunterzuladen. Eine Seite, die als Hülle gewertet wird, muss
+  // sagen, WORAN sie gescheitert ist.
+  console.error(`    ⚠ HÜLLE — ${datenFehler.length} Anfrage(n) an ${DATEN_HOSTS.join(", ")} fehlgeschlagen:`);
+  for (const zeile of datenFehler.slice(0, 3)) console.error(`      ${zeile}`);
   const grund = `Die Seite hat ihre Daten nicht bekommen: ${datenFehler.length} Anfrage(n) an `
     + `${DATEN_HOSTS.join(", ")} fehlgeschlagen (${datenFehler[0]}). Gemessen wurde eine leere `
     + "Hülle, nicht die Seite.";
@@ -291,7 +297,10 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   } finally {
     await page.close();
   }
-  return huelleMarkieren(befunde, datenFehler);
+  // Hier gilt die Hüllen-Regel NICHT: 4.3 und 4.5 lesen HTTP-Antworten, nicht
+  // den Inhalt einer Seite. Ob Supabase geantwortet hat, ändert weder den
+  // Statuscode eines Weges noch den einer erfundenen Adresse.
+  return befunde;
 }
 
 async function haupt() {

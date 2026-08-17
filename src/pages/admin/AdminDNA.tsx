@@ -278,7 +278,7 @@ export default function AdminDNA() {
                   max={STRAND_MAX}
                   value={weights[k]}
                   onChange={(e) => setWeights((w) => ({ ...w, [k]: Number(e.target.value) }))}
-                  className="mt-1 w-full border-[1.5px] border-black bg-white px-2 py-1.5 text-sm focus:outline-none"
+                  className="mt-1 w-full border-[1.5px] border-black bg-white px-2 py-1.5 text-sm "
                 />
               </label>
             ))}

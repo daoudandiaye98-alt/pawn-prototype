@@ -6,14 +6,28 @@
     <title>PAWN — Mode, Interior und Kunst. Kuratiert.</title>
     <meta name="description" content="PAWN ist ein kuratierter Marktplatz für unabhängige Designer:innen aus Mode, Interior und Kunst. Kein Ranking, sondern Handschrift." />
     <meta name="author" content="PAWN" />
-    <link rel="canonical" href="https://pawn.vision/" />
 
+    <!-- Teil K5 — was hier steht, ist der Grundfall für Abrufer, die kein
+         JavaScript ausführen. Sobald die Seite läuft, schreibt
+         `src/components/palace/Seo.tsx` jedes dieser Felder je Route neu.
+
+         Bewusst NICHT mehr hier: `canonical` und `og:url` auf „https://pawn.vision/".
+         Beide standen fest auf der Startseite und waren damit auf jeder
+         Unterseite falsch — ein Abrufer ohne JavaScript las auf
+         /product/… , die Seite sei die Startseite. Fehlen beide, nimmt jeder
+         Abrufer die tatsächlich abgerufene Adresse. Kein Eintrag ist hier
+         richtiger als ein falscher. -->
     <meta property="og:title" content="PAWN — Mode, Interior und Kunst. Kuratiert." />
     <meta property="og:description" content="Ein kuratierter Marktplatz für unabhängige Designer:innen. Kein Ranking, sondern Handschrift." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://pawn.vision/" />
+    <meta property="og:site_name" content="PAWN" />
+    <meta property="og:image" content="https://pawn.vision/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="PAWN — Mode, Interior und Kunst" />
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://pawn.vision/og.png" />
 
     <link rel="icon" href="/favicon.png" type="image/png" />
     <!-- Schriften laufen komplett lokal über @fontsource (main.tsx) — kein Google-Fonts-Request

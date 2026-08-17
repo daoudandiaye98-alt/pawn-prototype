@@ -50,7 +50,23 @@ const DEFAULT_SEO = {
 /**
  * PalaceLayout — final black/white system.
  */
-export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true, title, description }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean; title?: string; description?: string }) {
+export function PalaceLayout({
+  children, transparentHeader = true, showBreadcrumbs = true, title, description, image, imageAlt, seoType,
+}: {
+  children: ReactNode;
+  transparentHeader?: boolean;
+  showBreadcrumbs?: boolean;
+  title?: string;
+  description?: string;
+  /**
+   * Teil K5 — das Bild, das beim Teilen erscheint. Seiten mit einem Werk
+   * (Produkt, Haus) reichen ihr eigenes durch; ohne Angabe steht das
+   * PAWN-Blatt aus `public/og.png`.
+   */
+  image?: string;
+  imageAlt?: string;
+  seoType?: "website" | "article" | "product";
+}) {
   const headerVariant = transparentHeader && !showBreadcrumbs ? "transparent-on-hero" : "solid";
   const { locale, t } = useI18n();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
@@ -61,7 +77,13 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
   const resolvedColTitles = [colTitleHaeuser, colTitleFuerSie, colTitleFuerDesigner, colTitleHaus];
   return (
     <div className="palace min-h-screen bg-white text-black">
-      <Seo title={title ?? DEFAULT_SEO[locale].title} description={description ?? DEFAULT_SEO[locale].description} />
+      <Seo
+        title={title ?? DEFAULT_SEO[locale].title}
+        description={description ?? DEFAULT_SEO[locale].description}
+        image={image}
+        imageAlt={imageAlt}
+        type={seoType}
+      />
       <JsonLd data={organizationLd()} />
       {/* Teil L2 — Sprunglink: erstes fokussierbares Element, sichtbar nur per Tastatur. */}
       <a href="#inhalt" className="skip-link">{t("a11y.skipToContent")}</a>

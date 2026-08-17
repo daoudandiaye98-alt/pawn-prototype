@@ -117,7 +117,7 @@ export function BauerGespraech({ open, onClose, plan, seed }: { open: boolean; o
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder={t("studio.bauer.gespraech.placeholder")}
-            className="flex-1 border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+            className="flex-1 border border-border bg-background px-3 py-2 text-sm "
           />
           <button type="button" onClick={send} disabled={busy || !input.trim()} aria-label={t("studio.bauer.gespraech.send")} className="flex h-11 w-11 items-center justify-center border border-foreground bg-foreground text-background disabled:opacity-50">
             <Send className="h-4 w-4" />

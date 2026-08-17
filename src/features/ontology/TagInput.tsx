@@ -85,7 +85,7 @@ export function TagInput({ value, onChange, world, placeholder }: Props) {
             }
           }}
           placeholder={value.length === 0 ? (placeholder ?? "Tippe ein Merkmal — z. B. „Kaschmir\" oder „skulptural\"") : ""}
-          className="min-w-[10ch] flex-1 bg-transparent px-1 py-1 text-sm outline-none"
+          className="min-w-[10ch] flex-1 bg-transparent px-1 py-1 text-sm"
         />
       </div>
 
