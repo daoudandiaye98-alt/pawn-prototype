@@ -27,7 +27,6 @@ const Checkout = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [done] = useState(false);
 
   // Ein Kauf gehört immer genau einem Haus — die Kasse zeigt nur dessen Stücke.
   const houseKey = params.get("haus");
@@ -82,28 +81,15 @@ const Checkout = () => {
   }
 
 
-  if (done) {
-    return (
-      <PalaceLayout>
-        <section className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-6 py-32 text-center md:px-14">
-          <p className="palace-eyebrow">Danke</p>
-          <h1
-            className="palace-serif mt-6 font-light text-[#000000]"
-            style={{ fontSize: "clamp(2.4rem, 5vw, 4rem)", lineHeight: 1, letterSpacing: "-0.02em" }}
-          >
-            Bestellung bestätigt.
-          </h1>
-          <p className="mx-auto mt-8 max-w-md font-serif italic text-[1.05rem] text-[#000000]/70">
-            Das Haus wurde benachrichtigt und bereitet deine Bestellung vor.
-          </p>
-          <div className="mt-14 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild variant="editorial" size="chip"><Link to="/account">Deine Sammlung</Link></Button>
-            <Button asChild variant="editorial" size="chip"><Link to="/">Weiter entdecken</Link></Button>
-          </div>
-        </section>
-      </PalaceLayout>
-    );
-  }
+  /*
+   * Hier stand ein Block `if (done) { …Bestellung bestätigt… }`.
+   *
+   * Er konnte nie erscheinen: `done` wurde mit `useState(false)` angelegt und
+   * NIE gesetzt, und der Weg biegt vorher zu Stripe ab. Eine Bestätigungsseite,
+   * die niemand je sieht, ist keine Bestätigung — die echte steht unter
+   * `/order/success` und sieht seit X9 in der Datenbank nach, statt eine grüne
+   * Meldung zu zeigen.
+   */
 
   return (
     <PalaceLayout transparentHeader={false}>
