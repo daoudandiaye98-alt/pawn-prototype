@@ -173,6 +173,47 @@ async function seiteMessen(
       }];
     }
 
+    /*
+     * Gibt es diese Adresse auf DIESEM Ziel überhaupt?
+     *
+     * Hinter der SPA-Umschreibung antwortet der Server auf jede Adresse mit 200
+     * und liefert dieselbe Anwendung. Kennt die Anwendung den Weg nicht, zeigt
+     * sie die 404-Seite — mit demselben Kopf, demselben Fuß, denselben kleinen
+     * Links. Der Prüfstand misst dann diese Ersatzseite und schreibt die Befunde
+     * der angeforderten Adresse zu. Genau das ist beim ersten Lauf mit der Hülle
+     * in der Liste passiert: `/heft/umschlag` liegt noch im Zweig, nicht auf
+     * pawn.vision, und `X.dreh` meldete „kein Hinweis" — richtig gemessen,
+     * falsch zugeordnet.
+     *
+     * Erkannt wird das am Kennzeichen `data-nicht-gefunden`, das die 404-Seite
+     * selbst trägt. Kein Ratespiel: die Anwendung sagt damit ausdrücklich „das
+     * hier ist keine Seite".
+     *
+     * NICHT am `noindex`, obwohl das zuerst naheliegt — die Hülle setzt es
+     * ebenfalls, weil sie noch nicht indexiert werden soll. Eine Gegenprobe
+     * gegen den lokalen Stand hat die Hülle prompt für nicht vorhanden erklärt
+     * und damit still stummgeschaltet. Der Unterschied kostete eine Zeile und
+     * hätte sonst jede Zahl über die Hülle verschluckt.
+     *
+     * Die absichtlich erfundene Adresse für 4.5 ist ausgenommen — dort ist
+     * genau die Ersatzseite das Messziel.
+     *
+     * Folge ist immer `nicht_pruefbar`, nie „gefallen". Eine Seite, die es auf
+     * diesem Ziel noch nicht gibt, ist kein Befund — so wenig wie eine leere
+     * Hülle einer ist.
+     */
+    const nichtVorhanden = seite.pfad !== UNSINN_PFAD && await page.evaluate(
+      () => document.querySelector("[data-nicht-gefunden]") !== null);
+    if (nichtVorhanden) {
+      await page.close();
+      return [{
+        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        seite: seite.pfad, breite: breite.breite, gemessen: "404-Ersatzseite", schwelle: "die Seite selbst",
+        notiz: "Diese Adresse kennt das gemessene Ziel nicht — geliefert wurde die 404-Seite. "
+          + "Auf diesem Stand ist über die Adresse nichts zu sagen.",
+      }];
+    }
+
     if (ruhigeBewegung) {
       // 3.9: hier zählt nur, dass die Seite trägt und der Hauptweg erreichbar bleibt.
       befunde.push(...await messeKnopfVerdeckung(page, seite.pfad, breite.breite));

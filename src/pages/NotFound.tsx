@@ -46,7 +46,24 @@ const NotFound = () => {
         description="Diese Adresse gibt es nicht."
         noindex
       />
-      <section className="mx-auto flex min-h-[80vh] max-w-[900px] flex-col items-center justify-center px-6 py-32 text-center">
+      {/*
+        `data-nicht-gefunden` ist kein Zierrat, sondern die einzige verlässliche
+        Auskunft „diese Adresse kennt die Anwendung nicht".
+
+        Hinter der SPA-Umschreibung antwortet der Server auf ALLES mit 200, also
+        kann man am Status nichts ablesen. `noindex` wäre naheliegend, taugt aber
+        nicht: die Hülle (`src/heft/HeftRoute.tsx`) setzt es ebenfalls, weil sie
+        noch nicht indexiert werden soll. Wer daran „404" festmacht, erklärt eine
+        fertige Seite für nicht vorhanden — gemessen und verworfen, bevor es
+        hinausging.
+
+        Der Prüfstand liest dieses Kennzeichen und schreibt die Befunde der
+        Ersatzseite dann NICHT der angeforderten Adresse zu.
+      */}
+      <section
+        data-nicht-gefunden=""
+        className="mx-auto flex min-h-[80vh] max-w-[900px] flex-col items-center justify-center px-6 py-32 text-center"
+      >
         <Suspense fallback={<div className="mx-auto h-[280px] w-[280px]" aria-hidden />}>
           <BauerSpaet />
         </Suspense>
