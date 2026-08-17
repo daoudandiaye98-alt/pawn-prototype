@@ -832,9 +832,30 @@
  * über ein zweites Layout. Ein Heft, zwei Breiten.
  */
 @media (max-width: 819.98px), (max-height: 599.98px) {
+  /*
+   * EIN Schwellwert, kein zweiter Modus.
+   *
+   * Die Seite hält ihr Verhältnis 0,72 — solange sie damit mindestens 320 px
+   * breit wird. Darunter gibt sie das Verhältnis auf und füllt den Raum.
+   *
+   * Warum überhaupt: die Breite hing allein an der Höhe. Quer auf dem Telefon
+   * (390 px hoch) ergab das rund 280 px Breite, und der Satz einer Doppelseite
+   * passt nicht in 280 px — Prüfstand 3.8 meldete zwölf Paare mit Anteil 1,0,
+   * weil der Text über sein Blatt hinaus auf die Nachbarblätter lief.
+   *
+   * Wie es in zwei Zeilen geht, ohne eine zweite Regel:
+   *   `max(320px, …)`  hebt die Breite an, sobald das Verhältnis zu klein wird
+   *   `max-height`     kappt die Höhe, die das Verhältnis dann fordern würde
+   *
+   * Über der Schwelle greift die Deckelung nie, das Blatt ist genau 0,72 breit.
+   * Unter ihr kappt sie, und das Verhältnis ist damit aufgegeben — nicht durch
+   * einen Schalter, sondern weil der Raum es nicht mehr trägt. Der Wendel
+   * bleibt unberührt: er dreht Blätter, er misst sie nicht.
+   */
   .hx-heft {
     aspect-ratio: 0.72 / 1;
-    width: min(100%, calc((100dvh - 1.5rem - var(--pawn-einwilligung, 0px)) * 0.72));
+    width: min(100%, max(320px, calc((100dvh - 1.5rem - var(--pawn-einwilligung, 0px)) * 0.72)));
+    max-height: calc(100dvh - 1.5rem - var(--pawn-einwilligung, 0px));
   }
   /* Die linke Hälfte einer Doppelseite tritt hinter die rechte: auf einer
      Einzelseite ist immer die Seite zu sehen, die man gerade aufschlägt. */
@@ -917,4 +938,16 @@
   .hx-kolumne { display: none; }
   /* Der Kopf trägt jetzt nichts mehr — er soll auch keinen Platz mehr nehmen. */
   .hx-kopf { display: none; }
+
+  /*
+   * Volle Fläche, schmaler Rand.
+   *
+   * Hier greift die Regel von oben mit dieser zusammen: bei so wenig Höhe hat
+   * das Verhältnis 0,72 die Seite längst unter 320 px gedrückt, sie füllt also
+   * den Raum. Damit „den Raum füllen" nicht heißt „den Rand verschlucken",
+   * schrumpft der Satzspiegel-Rand mit — knapp, aber vorhanden. Ein Heft ohne
+   * Rand ist ein Aushang.
+   */
+  .hx-wurzel { --rand: 0.7rem; }
+  .hx-buehne { padding: 0.4rem; }
 }

@@ -226,9 +226,21 @@ const Shop = () => {
             <Editable as="p" contentKey="shop_eyebrow" className="palace-eyebrow">
               Boutique · Aktuelles Kapitel
             </Editable>
+            {/*
+              Prüfstand 3.8 bei 390 px: die zwei Spannen der Schlagzeile
+              überlappten zu 29 %. Gemessen sind sie 55 px hoch, der
+              Zeilenabstand war 39 px — `lineHeight: 0.94` ist enger als der
+              Glyphenkasten der Playfair, also legen sich aufeinanderfolgende
+              Zeilen übereinander. Auf dem Telefon bricht die Zeile dreimal, dort
+              fällt es auf; am Schreibtisch steht sie in einer Zeile.
+
+              Deshalb bekommt sie Luft, wo sie bricht, und behält den engen Satz,
+              wo er wirkt. `lineHeight` musste aus dem `style`-Attribut heraus —
+              ein Inline-Stil überstimmt jede Klasse und damit den Umbruchpunkt.
+            */}
             <h1
-              className="palace-serif mt-8 font-light text-[#000000]"
-              style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", lineHeight: 0.94, letterSpacing: "-0.025em" }}
+              className="palace-serif mt-8 leading-[1.3] text-[#000000] md:leading-[0.94]"
+              style={{ fontSize: "clamp(2.6rem, 7vw, 6.4rem)", letterSpacing: "-0.025em" }}
             >
               <Editable as="span" contentKey="shop_headline_a">Alles, was gerade </Editable>
               <Editable as="span" contentKey="shop_headline_b" className="italic">im Raum steht.</Editable>
