@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { istZeigbar } from "@/lib/publicData";
 import { formatPrice } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
+import { bildVariante } from "@/lib/media";
 import type { Welt } from "@/lib/weltFelder";
 
 /**
@@ -349,8 +350,13 @@ export function WerkZeilen({ werke, aufWerk }: {
                 ein Stück sein Foto verliert. `istZeigbar` lässt zwar keines ohne
                 Bild herein; die Fläche hält trotzdem, statt sich darauf zu
                 verlassen. */}
+            {/* Zwölf Stück je Doppelseite: hier zählt jedes Kilobyte doppelt.
+                420 px reichen für die Kachel auf einem scharfen Bildschirm —
+                das Original wäre bis zu 725 kB groß (siehe `bildVariante`). */}
             <span className="hx-werk-bild">
-              {w.bild ? <img src={w.bild} alt="" loading="lazy" decoding="async" /> : null}
+              {w.bild
+                ? <img src={bildVariante(w.bild, { breite: 420 })} alt="" loading="lazy" decoding="async" />
+                : null}
             </span>
             <span className="hx-werk-name">{w.name}</span>
             {w.haus ? <span className="hx-werk-haus">{w.haus.name}</span> : null}
