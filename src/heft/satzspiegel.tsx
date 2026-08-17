@@ -94,7 +94,19 @@ export const Kicker = ({ children }: { children: ReactNode }) => (
   <p className="hx-kicker">{children}</p>
 );
 
-export const Schlagzeile = ({ children, als: Als = "h1" }: { children: ReactNode; als?: "h1" | "h2" }) => (
+/**
+ * Die Schlagzeile ist ein `h2`, nicht ein `h1`.
+ *
+ * Ein Heft hat alle Doppelseiten gleichzeitig im DOM — X12 verlangt echtes HTML
+ * und ausdrücklich keine virtualisierte Seitenliste. Wären die Schlagzeilen
+ * `h1`, stünden zwölf davon auf einer Adresse, und die Regel „eine `h1` je
+ * Adresse" wäre gebrochen, sobald das Heft mehr als eine Sektion hat.
+ *
+ * Die eine `h1` trägt deshalb die Hülle (`Heft.tsx`): sie nennt den Titel der
+ * aufgeschlagenen Doppelseite und geht beim Blättern mit. Ihr Text ist derselbe
+ * wie hier — es gibt keinen zweiten Titel, der etwas anderes behauptet.
+ */
+export const Schlagzeile = ({ children, als: Als = "h2" }: { children: ReactNode; als?: "h2" | "h3" }) => (
   <Als className="hx-schlagzeile">{children}</Als>
 );
 

@@ -34,6 +34,20 @@ export interface Doppelseite {
   /** Steht oben innen auf beiden Seiten. */
   kolumne: string;
   /**
+   * Der Titel dieser Doppelseite — Seitentitel und die eine `h1`.
+   *
+   * **Warum das hier steht und nicht im Satzspiegel.** X12 verlangt genau eine
+   * `h1` je Adresse. Ein Heft hat aber alle Doppelseiten gleichzeitig im DOM
+   * (X12: echtes HTML, keine virtualisierte Seitenliste) — wären die
+   * Schlagzeilen `h1`, stünden zwölf davon auf einer Adresse. Deshalb sind alle
+   * sichtbaren Schlagzeilen `h2`, und die Hülle trägt eine einzige `h1`, die den
+   * Titel der aufgeschlagenen Doppelseite nennt und beim Blättern mitgeht.
+   *
+   * Der Text ist derselbe wie die sichtbare Schlagzeile — kein zweiter Titel,
+   * der etwas anderes behauptet.
+   */
+  titel: string;
+  /**
    * Zu welcher Sektion diese Doppelseite gehört.
    *
    * Nötig, weil eine Sektion mehrere Doppelseiten haben kann — das Verzeichnis

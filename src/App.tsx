@@ -182,6 +182,14 @@ const App = () => (
                   Eigenes Bündel (X11): wer nie blättert, lädt den Wendel nie.
                 */}
                 <Route path="/heft" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                {/*
+                  Die elf redaktionellen Sektionen (X5). Sie liegen unter `/heft/…`,
+                  weil `/mode`, `/interior` und `/kunst` heute lebende Kundenseiten
+                  sind — sie werden mit X1 abgelöst, nicht vorher. Ein Platzhalter
+                  statt elf Zeilen: die Zuordnung Adresse → Doppelseite steht in
+                  `heft/spreads/index.tsx`, nicht hier.
+                */}
+                <Route path="/heft/:sektion" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
                 <Route path="/inhalt" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
                 <Route path="/verzeichnis" element={<Navigate to="/verzeichnis/1" replace />} />
                 <Route path="/verzeichnis/:seite" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />

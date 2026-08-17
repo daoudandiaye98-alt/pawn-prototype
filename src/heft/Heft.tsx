@@ -31,20 +31,33 @@ import {
   type Doppelseite, blaetterAus, nummerFuerPfad, pfadFuerNummer,
 } from "./doppelseiten";
 import { Register } from "./register";
+import { Marken } from "./marken";
 import "./heft.css";
 
 export interface HeftProps {
-  /** Alle Doppelseiten in Leserichtung. Die einzige Quelle. */
-  seiten: Doppelseite[];
+  /**
+   * Baut alle Doppelseiten in Leserichtung. Die einzige Quelle.
+   *
+   * Eine Funktion und keine fertige Liste, weil die Seiten selbst blättern
+   * müssen: das Inhaltsverzeichnis auf Doppelseite 02 und die drei Weltzeilen
+   * auf 04 brauchen den Sprungbefehl, und der entsteht erst hier in der Hülle.
+   * Wer die Liste von außen hereingäbe, hätte den Befehl noch nicht.
+   *
+   * Muss über Zeichnungen hinweg dieselbe Funktion bleiben (`useCallback`),
+   * sonst baut das Heft bei jedem Blättern seinen ganzen Inhalt neu.
+   */
+  bauen: (aufSprung: (nummer: number) => void) => Doppelseite[];
   /** Für die Vorlesehilfe. */
   titel: string;
+  /** Die Adresse der Sektion „Frag PAWN" — die Marke am Blattrand braucht sie. */
+  suchePfad: string;
 }
 
 const magReduziert = () =>
   typeof window !== "undefined"
   && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
-export function Heft({ seiten, titel }: HeftProps) {
+export function Heft({ bauen, titel, suchePfad }: HeftProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [reduziert, setReduziert] = useState(magReduziert);
@@ -58,11 +71,36 @@ export function Heft({ seiten, titel }: HeftProps) {
   }, []);
 
   /**
+   * Ein Reiter im Griffregister, eine Zeile im Inhaltsverzeichnis, eine
+   * Weltzeile — alle springen über diesen einen Befehl.
+   *
+   * Im Wendel ist „springen" ein Scrollbefehl; die Adresse führt der Wendel
+   * selbst nach, sobald er dort steht. Im zweiten Weg gibt es keinen Wendel,
+   * dort führt `navigate` die Adresse und der Beobachter zieht nach.
+   *
+   * Die Seitenliste liegt hier in einem Ref und nicht in den Abhängigkeiten:
+   * die Liste entsteht ihrerseits aus diesem Befehl (das Inhaltsverzeichnis
+   * braucht ihn), und beides voneinander abhängig zu machen wäre ein Kreis.
+   * Gelesen wird der Ref nur aus Ereignissen, nie beim Zeichnen.
+   */
+  const seitenRef = useRef<Doppelseite[]>([]);
+  const sprung = useCallback((n: number) => {
+    if (reduziert) {
+      navigate(pfadFuerNummer(seitenRef.current, n));
+      return;
+    }
+    window.scrollTo({ top: standFuerSeite(n), behavior: "instant" as ScrollBehavior });
+  }, [reduziert, navigate]);
+
+  const seiten = useMemo(() => bauen(sprung), [bauen, sprung]);
+  seitenRef.current = seiten;
+
+  /**
    * Die Doppelseite, mit der geöffnet wird — einmal beim Betreten festgehalten.
    *
    * Absichtlich `useState` mit Initialwert und nicht ein Wert, der bei jedem
-   * `pathname` neu gelesen wird: sonst würde das eigene `replaceState` beim
-   * Blättern zurückschlagen und das Heft auf die Startseite zwingen.
+   * `pathname` neu gelesen wird: sonst würde das eigene Fortschreiben der
+   * Adresse beim Blättern zurückschlagen und das Heft auf die Startseite zwingen.
    */
   const [startSeite] = useState(() => nummerFuerPfad(seiten, pathname));
 
@@ -75,29 +113,40 @@ export function Heft({ seiten, titel }: HeftProps) {
     setAktuell(n);
     const ziel = pfadFuerNummer(seiten, n);
     if (window.location.pathname !== ziel) {
-      window.history.replaceState(window.history.state, "", ziel + window.location.search);
+      /*
+       * Über den Router ersetzen, nicht über `history.replaceState` von Hand.
+       *
+       * Gemessen wäre sonst: der Seitentitel und die kanonische Adresse (die
+       * Kontrollen 5.1 und 5.3) blieben beim Blättern auf der Adresse stehen, mit
+       * der man das Heft betreten hat — `useLocation` erfährt von einem
+       * händischen `replaceState` nichts. Der Router schreibt dieselbe Sorte
+       * Eintrag, sagt es aber der Anwendung.
+       *
+       * Es bleibt ein Ersetzen und kein neuer Eintrag: der Zurück-Knopf soll die
+       * Rollposition wiederherstellen und damit zurückblättern, nicht zwölf
+       * Einträge für zwölf Doppelseiten anlegen.
+       */
+      navigate(ziel + window.location.search, { replace: true });
     }
-  }, [seiten]);
-
-  /**
-   * Ein Reiter im Griffregister springt.
-   *
-   * Im Wendel ist „springen" ein Scrollbefehl — die Adresse führt der Wendel
-   * selbst nach, sobald er dort steht. Im zweiten Weg gibt es keinen Wendel,
-   * dort führt `navigate` die Adresse und der Beobachter zieht nach.
-   */
-  const sprung = useCallback((n: number) => {
-    if (reduziert) {
-      navigate(pfadFuerNummer(seiten, n));
-      return;
-    }
-    window.scrollTo({ top: standFuerSeite(n), behavior: "instant" as ScrollBehavior });
-  }, [reduziert, navigate, seiten]);
+  }, [seiten, navigate]);
 
   const aufbau = useMemo(() => blaetterAus(seiten), [seiten]);
+  const hier = seiten[aktuell - 1];
 
   return (
     <div className="hx-wurzel">
+      {/*
+        Die eine `h1` je Adresse (X12).
+
+        Sie steht in der Hülle und nicht auf der Seite, weil alle Doppelseiten
+        gleichzeitig im DOM liegen — zwölf sichtbare Schlagzeilen wären zwölf
+        `h1`. Ihr Text ist der Titel der aufgeschlagenen Doppelseite und damit
+        derselbe wie die sichtbare Schlagzeile darunter; sie behauptet nichts
+        Zweites. Für das Auge ist sie fort, für Vorlesehilfe und Prüfstand ist
+        sie der Seitentitel.
+      */}
+      <h1 className="hx-titel">{hier?.titel ?? titel}</h1>
+
       {reduziert ? (
         <HeftFolge seiten={seiten} titel={titel} startSeite={startSeite} adresseSetzen={adresseSetzen} />
       ) : (
@@ -107,6 +156,10 @@ export function Heft({ seiten, titel }: HeftProps) {
         />
       )}
       <Register seiten={seiten} aktuell={aktuell} aufSprung={sprung} />
+      <Marken
+        suchePfad={suchePfad}
+        aufSuche={() => sprung(nummerFuerPfad(seiten, suchePfad))}
+      />
     </div>
   );
 }
