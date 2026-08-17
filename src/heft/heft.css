@@ -734,6 +734,19 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 60;
+  /*
+   * Zwölf Reiter à 44 px sind rund 530 px, und im Verzeichnis kommen die Filter
+   * dazu. Auf einem niedrigen Fenster passt das nicht, und ein Register, dessen
+   * letzte Reiter unter dem Rand liegen, ist kein Register. Es rollt dann in
+   * sich — echter Rollbalken, nichts gestohlen.
+   *
+   * Die Deckelung sitzt hier und nicht auf den Listen: seit X6 sind es mehrere
+   * Listen (Sektionen, Welt, Preis, Haus), und je Liste gedeckelt könnte ihre
+   * Summe wieder über den Rand laufen.
+   */
+  max-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .hx-register ol {
   list-style: none;
@@ -742,15 +755,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  /*
-   * Zwölf Reiter à 44 px sind rund 530 px. Auf einem niedrigen Fenster passt das
-   * nicht, und ein Register, dessen letzte Sektionen unter dem Rand liegen, ist
-   * kein Register. Es rollt dann in sich — echter Rollbalken, nichts gestohlen.
-   */
-  max-height: 100dvh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
+/* Die Filtergruppen (X6) sitzen an derselben Kante, in derselben Form — nur
+   durch eine Lücke von den Sektionen getrennt. Keine zweite Leiste. */
+.hx-register-filter { margin-top: 0.8rem; }
 /*
  * Der Reiter zeigt eingefahren SEINE ZAHL, nicht eine leere Fläche.
  *
@@ -803,6 +811,17 @@
 }
 .hx-reiter[data-hier] .hx-reiter-zahl { opacity: 0.75; }
 .hx-reiter-wort { padding-right: 0.9rem; }
+/* Ein Filterreiter ist ein Schalter, kein Weg — sonst trägt er dieselbe Form.
+   Der Knopf bringt eigene Schrift und eigene Ränder mit; beide werden hier
+   zurückgenommen, damit er neben den Sektionsreitern nicht auffällt. */
+.hx-reiter-wahl {
+  font: inherit;
+  font-size: var(--schriftzeile);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+}
 
 /* Auf dem Telefon ein schmaler Streifen: nur die Zahlen, kein Wort. */
 @media (max-width: 819.98px), (max-height: 599.98px) {
@@ -950,4 +969,103 @@
    */
   .hx-wurzel { --rand: 0.7rem; }
   .hx-buehne { padding: 0.4rem; }
+}
+
+/* ————————————————— Das Verzeichnis (X6) ————————————————— */
+
+/*
+ * Sechs Einträge je Seite in zwei Spalten — drei Zeilen, drei Zeilen. Zwei
+ * Spalten und nicht eine: eine Spalte von sechs Zeilen wäre auf der Höhe einer
+ * Heftseite entweder zu eng gesetzt oder zu lang.
+ *
+ * `align-content: start`, damit die Einträge oben stehen bleiben, wenn ein Blatt
+ * nur zwei trägt. Ohne das verteilte das Raster zwei Einträge über die ganze
+ * Seitenhöhe und das letzte Blatt sähe aus wie ein Fehler statt wie ein Ende.
+ */
+.hx-verzeichnis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  gap: 0.9rem 0.8rem;
+}
+
+/*
+ * Ein Eintrag: Bild, Name, Haus, Preis. Vier Angaben, die zum Entscheiden
+ * reichen — mehr wäre eine Werkseite, und die liegt hinter dem Link.
+ */
+.hx-werk {
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 0.25rem;
+  color: inherit;
+  text-decoration: none;
+}
+.hx-werk-bild {
+  display: block;
+  aspect-ratio: 3 / 4;
+  border: 1.5px solid currentColor;
+  overflow: hidden;
+}
+.hx-werk-bild img {
+  width: 100%;
+  height: 100%;
+  /*
+   * `cover` und nicht `contain`: ein Katalogeintrag ist eine Fläche, und
+   * `contain` ließe an den Seiten Streifen des Papiers stehen — dieselbe
+   * Entscheidung wie in Teil Q2.
+   */
+  object-fit: cover;
+  display: block;
+}
+.hx-werk-name {
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(0.72rem, 1.05vw, 0.95rem);
+  line-height: 1.25;
+}
+.hx-werk-haus,
+.hx-werk-preis {
+  font-family: Outfit, system-ui, sans-serif;
+  font-size: var(--schriftzeile);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.hx-werk-haus { opacity: 0.7; }
+.hx-werk-preis { font-variant-numeric: tabular-nums; }
+
+/* Zeigen kehrt den Eintrag um — Invertierung, nie Opacity (Designgesetz). Nur
+   das Bild bleibt, wie es ist: ein invertiertes Foto wäre ein anderes Foto. */
+.hx-werk:hover,
+.hx-werk:focus-visible {
+  background: currentColor;
+}
+.hx-werk:hover .hx-werk-name,
+.hx-werk:hover .hx-werk-haus,
+.hx-werk:hover .hx-werk-preis,
+.hx-werk:focus-visible .hx-werk-name,
+.hx-werk:focus-visible .hx-werk-haus,
+.hx-werk:focus-visible .hx-werk-preis {
+  /* Die Fläche trägt jetzt die Tinte, also muss die Schrift das Papier tragen.
+     Über `--papier`/`--tinte`, damit der Ton der Doppelseite (Nacht) mitgeht. */
+  color: var(--papier);
+  mix-blend-mode: normal;
+}
+
+/*
+ * Auf dem Telefon trägt die rechte Seite alle zwölf. Zwei Spalten mal sechs
+ * Zeilen wären auf 390 px zu klein — also drei Spalten mal vier Zeilen, und das
+ * Bild wird quadratisch statt hochkant, damit die Höhe reicht.
+ */
+@media (max-width: 819.98px), (max-height: 599.98px) {
+  .hx-nur-schmal .hx-verzeichnis {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem 0.45rem;
+  }
+  .hx-nur-schmal .hx-werk-bild { aspect-ratio: 1 / 1; }
+  /* Das Haus fällt weg, nicht der Preis: bei zwölf Einträgen auf einer
+     Telefonseite ist der Platz für eine dritte Zeile nicht da, und wer kauft,
+     braucht den Preis. Das Haus steht auf der Werkseite dahinter. */
+  .hx-nur-schmal .hx-werk-haus { display: none; }
 }

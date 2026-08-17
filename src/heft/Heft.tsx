@@ -30,7 +30,7 @@ import {
 import {
   type Doppelseite, blaetterAus, nummerFuerPfad, pfadFuerNummer,
 } from "./doppelseiten";
-import { Register } from "./register";
+import { Register, type FilterGruppe } from "./register";
 import { Marken } from "./marken";
 import { Drehhinweis, darfSperren, useHochformat } from "./drehhinweis";
 import "./heft.css";
@@ -63,13 +63,21 @@ export interface HeftProps {
   titel: string;
   /** Die Adresse der Sektion „Frag PAWN" — die Marke am Blattrand braucht sie. */
   suchePfad: string;
+  /**
+   * Die Filter des Verzeichnisses (X6) — sie sind Reiter im Griffregister.
+   *
+   * Sie gehen durch die Hülle hindurch, weil das Register hier gezeichnet wird,
+   * die Auswahl aber der Route gehört: dort liegen die Adresse und die Daten.
+   * Die Hülle liest sie nicht, sie reicht sie weiter.
+   */
+  filter?: FilterGruppe[];
 }
 
 const magReduziert = () =>
   typeof window !== "undefined"
   && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
-export function Heft({ bauen, titel, suchePfad }: HeftProps) {
+export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [magsRuhig, setMagsRuhig] = useState(magReduziert);
@@ -209,7 +217,7 @@ export function Heft({ bauen, titel, suchePfad }: HeftProps) {
           startSeite={startSeite} adresseSetzen={adresseSetzen}
         />
       )}
-      <Register seiten={seiten} aktuell={aktuell} aufSprung={sprung} />
+      <Register seiten={seiten} aktuell={aktuell} aufSprung={sprung} filter={filter} />
       <Marken
         suchePfad={suchePfad}
         aufSuche={() => sprung(nummerFuerPfad(seiten, suchePfad))}
