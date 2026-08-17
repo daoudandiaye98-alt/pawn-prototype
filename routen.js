@@ -24,7 +24,7 @@
  */
 
 /** Alle Routen, in der Reihenfolge aus `App.tsx`. Ohne den Auffang `*`. */
-export const ROUTEN: readonly string[] = [
+export const ROUTEN = [
   "/",
   "/mode",
   "/interior",
@@ -129,7 +129,7 @@ export const ROUTEN: readonly string[] = [
   "/portal",
   "/portal/onboarding",
   "/portal/editor",
-] as const;
+];
 
 /**
  * Adressen, die nie durch die Middleware laufen sollen.
@@ -139,7 +139,7 @@ export const ROUTEN: readonly string[] = [
  * Diese Prüfung ist der Grund, warum das Nachladen der Hülle unten keine
  * Schleife baut: `/index.html` trägt einen Punkt.
  */
-export function istPlattformOderDatei(pfad: string): boolean {
+export function istPlattformOderDatei(pfad) {
   if (pfad.startsWith("/api/") || pfad.startsWith("/_vercel/")) return true;
   const letzter = pfad.slice(pfad.lastIndexOf("/") + 1);
   return letzter.includes(".");
@@ -157,16 +157,16 @@ export function istPlattformOderDatei(pfad: string): boolean {
  * Form hat, die das Heft kennt. Eine Form ohne Inhalt beantwortet die Seite
  * selbst — eine Form, die es nicht gibt, beantwortet der Server mit 404.
  */
-export function istBekannteRoute(pfad: string): boolean {
+export function istBekannteRoute(pfad) {
   const teile = zerlege(pfad);
   return ROUTEN.some((muster) => passt(zerlege(muster), teile));
 }
 
-function zerlege(pfad: string): string[] {
+function zerlege(pfad) {
   return pfad.split("/").filter((t) => t.length > 0);
 }
 
-function passt(muster: string[], teile: string[]): boolean {
+function passt(muster, teile) {
   if (muster.length !== teile.length) return false;
   return muster.every((m, i) => (m.startsWith(":") ? teile[i].length > 0 : m === teile[i]));
 }

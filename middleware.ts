@@ -49,6 +49,16 @@
  * `.js` ist dabei die richtige Schreibweise für eine `.ts`-Datei: unter diesen
  * Regeln benennt der Import die AUSGABE, nicht die Quelle.
  */
+/*
+ * `./routen.js` ist jetzt WIRKLICH eine .js-Datei (Typen in `routen.d.ts`).
+ *
+ * Vorher lag dahinter ein `routen.ts` — ein Kunstgriff, den TypeScript kennt
+ * und ein fremder Bündler nicht versprechen muss. Löst er ihn nicht auf, wird
+ * die Middleware STILL weggelassen: der Build bleibt grün, die Datei fehlt, und
+ * von außen sieht es aus, als liefe sie nur nicht. Genau dieser stille Ausfall
+ * hat hier mehrere Läufe gekostet, und die einzige Fassung, die je antwortete,
+ * war die ohne jeden Import.
+ */
 import { istBekannteRoute, istPlattformOderDatei } from "./routen.js";
 
 /*
