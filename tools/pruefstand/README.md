@@ -146,28 +146,74 @@ Exit-Code **1**, sobald ein Launch Gate gefallen ist. Sonst **0**.
 
 ## Die Hüllen-Regel
 
-Kam eine Seite nicht an ihre Daten — Anfragen an `DATEN_HOSTS` (Supabase) sind
-fehlgeschlagen —, dann werden **alle** Befunde dieser Seite auf `nicht_pruefbar` gesetzt,
-mit Grund und ursprünglicher Messung in der Notiz. Kein `bestanden`, kein `gefallen`.
+> **Eine Seite, die ihre Datenschicht nicht erreicht, ist NIE `bestanden`.**
+
+Das ist die Regel. Sie gilt ohne Ausnahme und unabhängig davon, woran es lag. Alle
+Befunde einer solchen Seite werden auf `nicht_pruefbar` gesetzt, mit Grund und
+ursprünglicher Messung in der Notiz. Kein `bestanden`, kein `gefallen`.
 
 Der Grund: ohne Daten zeigt der Browser ein Gerüst. Der Kontrast stimmt, weil nichts
 dasteht. Die Trefferflächen stimmen, weil es keine gibt. Der primäre Weg ist frei, weil
 der Fuß nach oben gerutscht ist. Ein `bestanden` wäre hier gefährlicher als ein
 `gefallen` — es sähe aus wie ein Beleg.
 
+Eine Seite kann auf **zwei** Wegen zugeben, dass sie ohne Daten dasteht. Beide führen
+zum selben Urteil; es ist eine Regel, nicht zwei.
+
+**1 · Die Anfrage kam nicht durch.** Anfragen an `DATEN_HOSTS` (Supabase) sind
+fehlgeschlagen — `requestfailed`, also Transportfehler: Name nicht auflösbar, Verbindung
+abgebrochen, kein Proxy. `huelleMarkieren()` in `lauf.ts` erledigt das.
+
+**2 · Die Seite sagt es selbst: `data-daten-fehlen`.** Trägt irgendein Element auf der
+Seite dieses Kennzeichen, ist die Seite nicht prüfbar. Sie setzt es, während sie lädt und
+wenn ihre Abfrage mit einem Fehler geantwortet hat.
+
+Weg 2 ist nicht überflüssig, sondern deckt genau die Fälle, die Weg 1 nicht sieht:
+
+- **Die Anfrage gelingt, die Antwort ist ein Fehler.** RLS verweigert den Lesezugriff →
+  HTTP 401/403. `requestfailed` löst dabei nicht aus, denn die Anfrage KAM durch. Für
+  Weg 1 ist alles in Ordnung, die Seite ist trotzdem leer.
+- **Die Abfrage läuft noch.** `RUHE_MS` war kürzer als die Antwort brauchte.
+
+Gemessen, nicht vermutet: im Lauf vom 17.08. gegen die lokale Vorschau von
+`/verzeichnis/1` schlug bei **einem** von sieben Seitenläufen eine Supabase-Anfrage fehl —
+nur dort griff Weg 1. Die anderen sechs zählten als richtige Messungen, obwohl der
+Katalog seinen Fehlersatz zeigte. Genau dieses Loch schließt Weg 2.
+
+**Was NICHT gekennzeichnet wird:** ein Katalog, der leer ist, weil es keine Ware gibt.
+Das ist ein echter Zustand mit einem echten Satz auf der Seite, und er wird gemessen. Der
+Unterschied ist nicht kosmetisch — er entscheidet, ob eine Zahl etwas bedeutet.
+
 **Praktische Folge:** im Entwicklungscontainer hat der Browser keinen Ausgang ins Netz
-(curl schon, Chromium nicht — belegt: der Proxy protokolliert bei HTTPS kein CONNECT).
-Damit sind dort **alle** Seiten Hüllen, auch `/`. Ein `--ziel lokal`-Lauf taugt zum
-Entwickeln des Prüfstands, liefert aber keine abnahmefähigen Zahlen mehr.
+(curl schon, Chromium nicht — belegt: vier Proxy-Schreibweisen durchprobiert, keine
+erreicht lokales Ziel UND Datenhost). Damit sind dort **alle** datentragenden Seiten
+Hüllen. Ein lokaler Lauf taugt zum Entwickeln des Prüfstands, liefert aber keine
+abnahmefähigen Zahlen. Abgenommen wird auf dem Runner.
 
 ## Stufe 2 — der Lauf auf dem Runner
 
-`.github/workflows/pruefstand.yml`: bei jedem Push auf jeden Zweig, gegen **pawn.vision**.
-Der Runner hat Netz — er ist der einzige Ort, an dem `/shop`, `/product` und `/designer`
-echte Zahlen bekommen. `bericht.json` und die Aufnahmen hängen als Artefakt am Lauf (auch
-am roten). Gefallenes Launch Gate → Exit 1 → Check rot.
+`.github/workflows/pruefstand.yml`, bei jedem Push auf jeden Zweig. Der Runner hat Netz —
+er ist der einzige Ort, an dem Vorschau und echte Daten zusammen messbar sind.
+`bericht.json` und die Aufnahmen hängen als Artefakt am Lauf (auch am roten). Gefallenes
+Launch Gate → Exit 1 → Check rot.
 
-Gemessen wird der **ausgelieferte** Stand, nicht der Stand des Commits, der den Lauf
-ausgelöst hat. Solange der Push noch nicht veröffentlicht ist, beschreibt der Bericht den
-Zustand davor; `ziel`, `adresse` und `commit` stehen im Bericht, damit sich das
-auseinanderhalten lässt.
+**Welches Ziel gemessen wird**, in dieser Reihenfolge:
+
+| Fall | Ziel | Was der Bericht beschreibt |
+|---|---|---|
+| Adresse von Hand eingetragen (`workflow_dispatch`) | diese Adresse | was dort steht |
+| Zweig ≠ Hauptzweig **und** `VERCEL_AUTOMATION_BYPASS_SECRET` gesetzt | **die Vercel-Vorschau dieses Zweigs** | den Stand **dieses Commits** |
+| sonst | **pawn.vision** | den **ausgelieferten** Stand, also ggf. den Zustand VOR diesem Push |
+
+Der zweite Fall ist der Sinn dieser Stufe: nur dort messen die Zahlen den Zweig, auf dem
+gearbeitet wird. Ohne Geheimnis fällt die Action auf pawn.vision zurück, statt
+stillzustehen — sie schreibt in beiden Fällen ins Protokoll, was sie gemessen hat, und
+`ziel`, `adresse` und `commit` stehen im Bericht.
+
+**Die Vorschau-Adresse wird nicht geraten.** Sie enthält einen gekürzten, gehashten
+Zweignamen (`…-git-claude-357453-…`), der aus dem Zweignamen nicht ableitbar ist. Gelesen
+wird sie dort, wo Vercel sie hinterlegt: `environment_url` im Status der GitHub-Deployment
+zu diesem Commit (`production_environment = false` trennt Vorschau von Produktion). Ist
+nach 15 Minuten keine fertige Vorschau da, bricht der Lauf ab und listet die gefundenen
+Deployments — **kein stiller Rückfall auf pawn.vision**: ein Lauf, der etwas anderes
+gemessen hat als er sollte, ist schlimmer als ein roter Lauf.
