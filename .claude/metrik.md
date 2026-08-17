@@ -36,6 +36,20 @@ Fassung ohne Skill:
 | `zera-audit` | 6.0/6 | 1.5/6 | **+4.5** | DEUTLICH |
 | `pawn-kontext` | 5.0/6 | 4.5/6 | **+0.5** | SCHWACH |
 
+Die Auslöser sitzen dagegen bei allen vieren — 8 von 8 richtig, je ein Satz, der
+auslösen muss, und einer, der es nicht darf:
+
+| Satz | erwartet | gemessen |
+|---|---|---|
+| „Warum kann das Atelier-Haus kein Video erzeugen?" | `pawn-kontext` | ✓ |
+| „Wie spät ist es in Tokio?" | KEINER | ✓ |
+| „Neuer Eimer, Migration + Frontend + Function, ein PR. Bau das." | `kreuzverhoer` | ✓ |
+| „Schreib eine freundliche Absage-Mail." | KEINER | ✓ |
+| „create-checkout geändert, Migration dabei. Kann das raus?" | `deploy-choreografie` | ✓ |
+| „Benenne `spanne` in `preisSpanne` um." | KEINER | ✓ |
+| „Weißer Text auf Foto, Knopf 36 px. Ist das fertig?" | `zera-audit` | ✓ |
+| „Was bedeutet ECONNREFUSED allgemein?" | KEINER | ✓ |
+
 Der Auftrag verlangt: *mit Skill schlägt ohne Skill **deutlich***. Mit +0,5 tut
 `pawn-kontext` das nicht. Er fällt aber auch nicht unter „kein Unterschied", was
 sofortiges Löschen bedeutet hätte.
