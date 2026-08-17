@@ -1,5 +1,432 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/mode/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/interior/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/kunst/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/neu/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/auth/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/dna/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/designers/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/ausgabe/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/ausgabe/001/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/ausgabe/001/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/heft/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/heft/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/inhalt/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/verzeichnis/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/verzeichnis/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/werk/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/vision/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/preise/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/preise/maison/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/about/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/designers/all/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/designer/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/apply/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/apply/form/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/start/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/einladung/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/datenschutz/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/impressum/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/versand/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/agb/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/widerruf/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/barrierefreiheit/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/wie-pawn-ki-nutzt/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/vertrag-kuendigen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/kontakt/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/shop/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/boutique/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/product/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/presse/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/cart/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/checkout/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/order/success/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/account/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/dna/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/products/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/applications/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/designers/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/kampagnen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/ai/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/ki/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/trends/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/akquise/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/feldzug/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/wachstum/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/jarvis/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/nachrichten/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/zahlungen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/texte-bilder/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/posting/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/archiv/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/editionen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/werbung/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/aktionen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/werke/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/werke/neu/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/werke/bilder/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/werke/rochade/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/doppelseite/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/doppelseite/stil/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/clips/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/clips/neu/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/clips/fertig/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/aufbau/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/produkte/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/produkte/neu/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/mediathek/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/hausseite/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/kampagnen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/kampagnen/neu/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/videothek/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/postfach/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/geschaeft/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/bestellungen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/versand/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/content-begleiter/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/empfehlungen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/beweis/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/plan/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/dna/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/brand/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/nachrichten/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/auszahlung/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/copilot/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/einstellungen/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/automatik/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/vertraege/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/tueren/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/onboarding/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/portal/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/portal/onboarding/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/portal/editor/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/.*",
+      "dest": "/index.html",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-store",
+        "x-pawn-404": "vercel-json"
+      }
+    }
   ]
 }
