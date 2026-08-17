@@ -29,67 +29,43 @@
  * wären zwei Fassungen derselben Sache — genau das, was der Umzug verbietet.
  */
 /*
- * `./routen.js` — mit Endung, und die Endung lautet `.js`, obwohl die Datei
- * `routen.ts` heißt. Das sieht nach einem Tippfehler aus und ist keiner.
+ * **Die Anmeldung — nach der Vercel-Doku für Nicht-Next-Projekte.**
  *
- * Vercel prüft diese Datei mit strengeren Import-Regeln als unser eigener
- * Typecheck (`--moduleResolution node16`). Ohne Endung schlägt der Import dort
- * fehl — und zwar OHNE den Build rot zu machen: die Middleware wird einfach
- * nicht mit ausgeliefert. Genau das stand im Build-Protokoll von caf8afd:
+ * Sechs Läufe lang hat diese Datei nicht ausgelöst, und ich habe sechs Ursachen
+ * behauptet und widerlegt: das Muster, den Import ohne Endung, den Import mit
+ * `.js`-Endung, fehlende Kekse, fehlende Bypass-Kopfzeile, `routen` als `.ts`
+ * hinter einem `.js`-Import. Keine davon war es. Was fehlte, stand die ganze
+ * Zeit in der Doku und nicht in meinen Vermutungen:
  *
- *   middleware.ts(31,57): error TS2835: Relative import paths need explicit
- *   file extensions … Did you mean './routen.js'?
+ *   - `next()` aus `@vercel/functions` ist das „weiter wie bisher" — nicht
+ *     `undefined` und nicht eine selbstgebaute Antwort mit `x-middleware-next`.
+ *   - `@vercel/functions` gehört als echte Abhängigkeit in die `package.json`.
  *
- * Das erklärt alle drei Messungen: die Sonde lief, weil sie nichts importiert
- * hat. Beide Fassungen mit Import liefen nicht — weder mit noch ohne Muster.
- * Ich habe zuerst das Muster verdächtigt und einen ganzen Lauf darauf
- * verwendet; der Beweis lag die ganze Zeit im Build-Protokoll, nicht im
- * Prüfstand.
- *
- * `.js` ist dabei die richtige Schreibweise für eine `.ts`-Datei: unter diesen
- * Regeln benennt der Import die AUSGABE, nicht die Quelle.
+ * Vite ist dabei kein Ausschlussgrund; Routing-Middleware gibt es auch ohne
+ * Next.js. Und das Root Directory des Projekts ist nicht gesetzt, also der
+ * Repo-Stamm — diese Datei liegt richtig. Beides geprüft, nicht vermutet.
  */
-/*
- * `./routen.js` ist jetzt WIRKLICH eine .js-Datei (Typen in `routen.d.ts`).
- *
- * Vorher lag dahinter ein `routen.ts` — ein Kunstgriff, den TypeScript kennt
- * und ein fremder Bündler nicht versprechen muss. Löst er ihn nicht auf, wird
- * die Middleware STILL weggelassen: der Build bleibt grün, die Datei fehlt, und
- * von außen sieht es aus, als liefe sie nur nicht. Genau dieser stille Ausfall
- * hat hier mehrere Läufe gekostet, und die einzige Fassung, die je antwortete,
- * war die ohne jeden Import.
- */
+import { next } from "@vercel/functions";
 import { istBekannteRoute, istPlattformOderDatei } from "./routen.js";
 
 /*
- * Das Muster — drei Fassungen, zwei Messungen, ein Schluss.
+ * `routen.js` ist echtes JavaScript (Typen in `routen.d.ts`), damit der Import
+ * wörtlich stimmt. Das war einer der sechs Versuche und hat den Fehler nicht
+ * behoben — richtig ist es trotzdem: ein `./routen.js`, hinter dem in Wahrheit
+ * ein `routen.ts` liegt, ist ein Kunstgriff, den nicht jeder Bündler
+ * versprechen muss, und wenn er ihn nicht auflöst, verschwindet die Middleware
+ * still statt den Build rot zu färben.
  *
- *   1. Sonde, `matcher: ["/__sonde-middleware"]`      → lief (Antwort kam)
- *   2. `matcher: ["/((?!_vercel|assets|api).*)"]`     → 404 kam nicht
- *   3. gar kein `config`                              → 404 kam nicht,
- *      und der Lauf gegen die Vorschau von 996d7d7 belegt warum:
- *      „Keine Kopfzeile x-pawn-404" — die Middleware lief für diese Anfrage
- *      überhaupt nicht.
- *
- * Ich habe daraus zuerst geschlossen, das Muster sei die Ursache, und Fassung 4
- * mit `"/:pfad*"` gebaut. **Das war falsch** — auch sie lief nicht. Die Ursache
- * stand die ganze Zeit im Build-Protokoll und steht unten am `import`: der
- * Import ohne Dateiendung, an dem Vercel die Middleware stillschweigend
- * fallen lässt. Was alle drei gescheiterten Fassungen gemeinsam hatten, war
- * nicht das Muster, sondern dieser Import; die Sonde hatte keinen.
- *
- * Das Muster bleibt trotzdem stehen, aber ehrlich beschriftet: es ist eine
- * Anmeldung, kein Filter, und es ist nicht das, was den Fehler behoben hat.
- * `"/:pfad*"` trifft jede Adresse samt Wurzel. Das Aussortieren von Dateien und
- * Plattform-Adressen bleibt, wo es geprüft ist — in `istPlattformOderDatei`.
+ * `"/:pfad*"` trifft jede Adresse samt Wurzel. Das ist eine Anmeldung, kein
+ * Filter — aussortiert wird unten in `istPlattformOderDatei`, wo es geprüft ist.
  */
 export const config = { matcher: ["/:pfad*"] };
 
-export default async function middleware(request: Request): Promise<Response | undefined> {
+export default async function middleware(request: Request): Promise<Response> {
   const pfad = new URL(request.url).pathname;
 
-  if (istPlattformOderDatei(pfad)) return undefined;
-  if (istBekannteRoute(pfad)) return undefined;
+  if (istPlattformOderDatei(pfad)) return next();
+  if (istBekannteRoute(pfad)) return next();
 
   /*
    * Die Hülle noch einmal holen — dieselbe Datei, die die Umschreibung
@@ -163,19 +139,15 @@ export default async function middleware(request: Request): Promise<Response | u
  */
 function weiter(grund: string): Response {
   /*
-   * Zusätzlich ins Protokoll, nicht nur in die Kopfzeile.
+   * Auch der Rücktritt geht über `next()` — nicht über eine selbstgebaute
+   * Antwort mit `x-middleware-next`. Diese Kopfzeile von Hand zu setzen war
+   * einer der sechs Irrtümer: sie ist Vercels Innenleben, nicht unsere Schnur.
    *
-   * Die Kopfzeile ist der Weg nach außen, für den Prüfstand und für `curl -I`.
-   * Ob Vercel sie auf dem Weiter-Pfad wirklich durchreicht, ist ungeprüft — und
-   * genau daran hing eine Stunde: die Middleware lief, fiel jedes Mal zurück,
-   * und von außen sah das aus wie „läuft nicht". Diese Zeile steht in den
-   * Laufzeit-Protokollen und beantwortet die Frage in zehn Sekunden.
-   *
-   * Kein Fund-Werkzeug auf Zeit: ein stiller Rückfall, der niemandem etwas
-   * sagt, ist genau die Sorte Ausnahme, die der Umzug verbietet.
+   * Der Grund steht zusätzlich im Protokoll. Die Kopfzeile ist der Weg nach
+   * außen, für den Prüfstand und für `curl -I`; ob sie auf dem Weiter-Pfad
+   * durchgereicht wird, ist ungeprüft. Ein stiller Rückfall, der niemandem
+   * etwas sagt, ist genau die Sorte Ausnahme, die der Umzug verbietet.
    */
   console.warn(`[pawn-404] weiter statt 404 — Grund: ${grund}`);
-  return new Response(null, {
-    headers: { "x-middleware-next": "1", "x-pawn-404": grund },
-  });
+  return next({ headers: { "x-pawn-404": grund } });
 }
