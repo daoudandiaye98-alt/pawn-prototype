@@ -1,0 +1,35 @@
+{
+  "aktualisiert": "2026-08-17",
+  "branch": "claude/der-turm-v2-agent-harness-ibwwlw",
+  "offene_prs": [
+    {
+      "nr": 179,
+      "titel": "K7 — die echte 404, und die Sonde ist ersetzt",
+      "status": "Entwurf, offen, Basis main — fasst den Prüfstand an",
+      "blockiert_durch": "nichts — wartet auf Daoudas Durchsicht"
+    },
+    {
+      "nr": 0,
+      "titel": "Turm v2 — der Agent Harness",
+      "status": "Entwurf, offen. Nur CLAUDE.md und .gitignore geändert, alles Übrige ist neu. Nichts gelöscht.",
+      "blockiert_durch": "wartet auf Daoudas Durchsicht"
+    }
+  ],
+  "merge_reihenfolge": [
+    "179 zuerst — er sitzt auf ec53fac und ändert den Prüfstand, auf den sicht.sh aufsetzt",
+    "danach der Turm-v2-Zweig. Umgekehrt gäbe es einen Konflikt in tools/pruefstand/"
+  ],
+  "wartet_auf_mensch": [
+    "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen; sie sind sonst alle aktiv und dürfen ohne Rückfrage schreiben.",
+    "VERCEL_AUTOMATION_BYPASS_SECRET fehlt in den Repository-Secrets. Ohne das misst die Prüfstand-Action pawn.vision statt des Zweigs, und ihr Urteil sagt nichts über den Zweig.",
+    "Der Arbeitsordner ist in Claude Code nicht als vertrauenswürdig bestätigt — die permissions.allow-Einträge aus .claude/settings.json werden deshalb ignoriert. Einmal interaktiv den Vertrauensdialog bestätigen.",
+    "Entscheidung am 2026-09-14: bleibt der Skill pawn-kontext? Er hat die Eval-Latte nicht genommen (+0,5 statt deutlich). Zahlen und Begründung in .claude/metrik.md.",
+    "Offen: soll Zusage Z4 weiter gefasst werden als nur designer-media? Heute deckt sie genau das, was 61e0204 versprochen hat — mediathek und campaign-assets bleiben absichtlich signiert."
+  ],
+  "letzter_pruefstand": {
+    "datum": "2026-08-17",
+    "bestanden": 3,
+    "gefallen": 0
+  },
+  "naechster_zug": "Der Harness steht und ist vorgeführt. Der nächste echte Zug ist KEIN weiteres Werkzeug, sondern die erste Zahl: sobald ein Mensch nach einem Merge etwas findet, löst das Ritual aus .claude/rules/00-gesetze.md aus — Zeile in regressionen.json UND Kontrolle in scripts/verify/, einmal rot vorgeführt. Nach vier Wochen prüfen, ob die Nachfunde gegenüber der Grundlinie sinken (27 Fix-Commits in den letzten 200). Sinken sie nicht, misst das System das Falsche; dann liegt die Arbeit in regressionen.json, nicht in mehr Werkzeugen. Die drei Routinen aus v1 — Regressionsnacht, Deploy-Choreograf, Morgenbrief — bleiben ungebaut, bis diese zwei vier Wochen gelaufen sind."
+}

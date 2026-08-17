@@ -1,68 +1,130 @@
-# CLAUDE.md — PAWN Projekt-Briefing
+# CLAUDE.md — die Karte
 
-Du arbeitest am Repo **pawn-prototype**: PAWN (pawn.vision) — kuratierter Marktplatz + KI-Betriebssystem für unabhängige Designer (Mode · Interior · Kunst). Gründer: Daouda (kein Entwickler — erkläre Änderungen in einfachem Deutsch, keine Fachbegriffe ohne Erklärung).
+## Was PAWN ist
+PAWN (pawn.vision) ist ein kuratierter Marktplatz und ein KI-Betriebssystem für
+unabhängige Designer aus Mode, Interior und Kunst. Gründer ist Daouda — **kein
+Entwickler**: erkläre Änderungen in einfachem Deutsch, keine Fachbegriffe ohne
+Erklärung. PAWN ist live und nimmt echte Stripe-Zahlungen entgegen. Regressionen
+im Checkout- und Auth-Flow kosten echtes Geld.
 
-## Stack & Deployment (WICHTIG)
-- Vite + React + TypeScript + Tailwind; Backend: Lovable Cloud (managed Supabase, Projekt rnakubexbqfgfciynqpt).
-- **Frontend:** Push auf `main` → Lovable synct & deployt automatisch (Vercel spiegelt auf pawn.vision). Frontend-Arbeit ist also „gratis" über Git.
-- **Edge Functions (`supabase/functions/*`):** Code darfst du ändern, aber **Deploy passiert NUR über den Lovable-Agenten** (kostet Credits). Nach Function-Änderungen: Daouda sagen, dass ein Lovable-Deploy nötig ist. Niemals eigene Deploy-Versuche.
-- **Secrets** (STRIPE_SECRET_KEY, FAL_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, STRIPE_WEBHOOK_SECRET): existieren nur in Lovable/Supabase. Nie hardcoden, nie in .env committen, nie erfragen.
+## Die sieben Gesetze
+
+1. **Was der Agent nicht sehen kann, existiert nicht.**
+   Alles Nötige ist Datei im Repo. Nicht im Kopf, nicht im alten Chat, nicht im
+   PR-Kommentar.
+2. **Frag nicht, warum er scheitert — frag, welche Fähigkeit fehlt.**
+   Ein Fehler wird nie mit einem besseren Prompt beantwortet, sondern mit einer
+   Datei, einer Regel oder einer Prüfung.
+3. **Mechanische Durchsetzung statt Dokumentation.**
+   Was immer gelten muss, wird ein Hook oder ein Test. Prosa ist eine Bitte,
+   kein Gesetz.
+4. **Gib dem Agenten Augen.**
+   Screenshots, Build-Ausgaben, Prüfstandzahlen. Er muss sehen, was er gebaut
+   hat — nicht beschreiben, was er glaubt gebaut zu haben.
+5. **Eine Karte, kein Handbuch.**
+   Diese Datei ist eine Übersicht, kein Kompendium. Ein großes
+   Anweisungsdokument macht den Agenten schlechter, nicht besser.
+6. **Jede Sitzung fängt bei null an.**
+   Ohne Brücke arbeitet jede Schicht ohne Übergabe. Die Brücke ist eine Datei,
+   kein Gedächtnis: `.claude/stand.json`.
+7. **Beweis vor Bericht.**
+   Kein „fertig" ohne Ausgabe eines Befehls, der es zeigt.
+
+Und das Gesetz über den Gesetzen:
+
+> **Weniger ist das Ziel.** Nicht 40 Skills, sondern aus 20 mach 5. Der beste
+> Prozess ist der eliminierte. Jede Komponente muss den konkreten, belegten
+> Fehler benennen, den sie verhindert — sonst wird sie nicht gebaut.
+
+Und, weil es die teuerste Lücke dieses Projekts war:
+
+> **Ein Agent ist niemals sein eigener Prüfer.** Vor jeder Fertigmeldung läuft
+> der Subagent `pruefer`.
+
+## Wo stehen wir?
+`.claude/stand.json` — offene PRs, Merge-Reihenfolge, worauf ein Mensch wartet,
+nächster Zug. Wird beim Sitzungsstart gelesen und am Ende der Runde
+fortgeschrieben. Eine Sitzung, die den Stand nicht fortschreibt, ist nicht fertig.
+
+## Stack und was wo live geht
+- Vite + React + TypeScript + Tailwind. Backend: Lovable Cloud (managed
+  Supabase, Projekt `rnakubexbqfgfciynqpt`).
+- **Frontend:** Push auf `main` → Lovable synct und deployt, Vercel spiegelt auf
+  pawn.vision. Frontend-Arbeit über Git ist der günstige Kanal.
+- **Edge Functions (`supabase/functions/*`):** Code ändern ja — **Deploy nur
+  über den Lovable-Agenten**, das kostet Guthaben. Nach einer Änderung Daouda
+  sagen, dass ein Lovable-Deploy nötig ist. Nie selbst deployen.
+- **Secrets** (STRIPE_SECRET_KEY, FAL_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY,
+  STRIPE_WEBHOOK_SECRET) liegen nur in Lovable/Supabase. Nie hardcoden, nie in
+  `.env`, nie erfragen.
+
+## Die echten Befehle
+```bash
+npm ci                      # Abhängigkeiten
+npm run dev                 # Entwicklungsserver
+npm run build               # Produktionsbau — prüft KEINE Typen
+npx tsc --noEmit -p tsconfig.app.json   # Typprüfung, separat nötig
+npm test                    # Vitest, 54 Tests
+npm run lint                # ESLint
+npm run pruefstand          # Browser-Messung, 25–30 min
+
+scripts/verify/verify.sh schnell   # Sekunden — Typen, Tests, Regressionen
+scripts/verify/verify.sh voll      # Minuten — zusätzlich Bau und Augen
+scripts/verify/sicht.sh            # Screenshots nach .claude/sicht/<datum>/
+```
+Letzte Zeile jedes Verify-Laufs ist maschinenlesbar:
+`VERIFY: <bestanden>/<gesamt> · FEHLER: <kurzliste>`
 
 ## Design-Gesetze (nicht verhandelbar)
-- **Nur #000 und #FFF.** Keine Grautöne als Flächen, keine Farben — EINZIGE Ausnahme: Welt-Kopfbilder (world hero) via `color`-Prop auf `EditorialImage`.
-- **border-radius: 0 überall.** Harte Kanten, 1.5px-Linien, harte Offset-Schatten (`6px 6px 0 #000`).
-- Serifen: **Playfair Display** (600, italic für Akzente); UI: Inter. Kein font-weight 300.
-- Hover = Invertierung (schwarz↔weiß), nie Opacity.
-- Wordmark: `PawnWordmark`-Komponente (P + Bauern-SVG + WN). Nicht nachbauen.
-- Leere Zustände: ehrlich und poetisch („Die ersten Häuser ziehen ein."), NIE Fake-Daten.
+- **Nur #000 und #FFF.** Keine Grautöne als Flächen, keine Farben. Einzige
+  Ausnahme: Welt-Kopfbilder über das `color`-Prop auf `EditorialImage`.
+- **`border-radius: 0` überall.** Harte Kanten, 1.5px-Linien, harte
+  Offset-Schatten (`6px 6px 0 #000`).
+- Serifen: **Playfair Display** (600, italic für Akzente). UI: Inter. Kein
+  `font-weight: 300`.
+- Hover ist **Invertierung** (schwarz ↔ weiß), nie Opacity.
+- Wordmark ist die Komponente `PawnWordmark`. Nicht nachbauen.
+- Leere Zustände: ehrlich und poetisch („Die ersten Häuser ziehen ein."),
+  **nie Fake-Daten**.
 
 ## Harte Regeln
-1. **Keine Mock-/Seed-Daten wieder einführen.** `src/core/seed/*` hat leere Arrays — so bleibt es. Echte Markennamen (Rick Owens etc.) sind rechtlich verboten.
-2. **RLS-Policies, Trigger, Migrationen in `supabase/`**: nur nach explizitem Auftrag anfassen.
-3. **Rechtstexte** (`/agb`, `/impressum`, `/datenschutz`, `/widerruf`): Inhalte nur auf ausdrücklichen Wunsch ändern.
-4. **`vercel.json` (SPA-Rewrite) nicht löschen.**
-5. Auth läuft über `supabase.auth` direkt (signInWithOAuth mit `redirectTo: window.location.origin`) — NIE Lovable-interne `/~oauth`-Pfade verwenden.
-6. Texte/Bilder der Site kommen aus `site_content` (Key-Value) via `useContentValue` aus `src/components/palace/Editable.tsx` — neue statische Texte möglichst darüber anbinden, damit sie ohne Code änderbar sind.
-7. Konfiguration der KI liegt in DB-Tabelle `ai_config` (personas, directives, plans, video_provider, tryon_provider, business_profile) — im Code nur lesen, nie Werte hart verdrahten.
-8. **Rang ist nie käuflich.** Der Rang eines Hauses (`designer_level`-RPC, vom Bauern aufwärts) entsteht ausschließlich aus dem, was das Haus baut und verkauft — nie aus dem Plan. `planGate` kennt nur Plan → Funktion, nie Plan → Rang.
+1. **Keine Mock- oder Seed-Daten wieder einführen.** `src/core/seed/*` hat leere
+   Arrays — so bleibt es. Echte Markennamen sind rechtlich verboten.
+2. **RLS-Policies, Trigger und Migrationen in `supabase/`** nur nach
+   ausdrücklichem Auftrag anfassen. Nie eine Migration löschen.
+3. **Rechtstexte** (`/agb`, `/impressum`, `/datenschutz`, `/widerruf`) nur auf
+   ausdrücklichen Wunsch ändern.
+4. **`vercel.json` nicht löschen** — darin steht die SPA-Weiterleitung.
+5. Auth läuft direkt über `supabase.auth` (`signInWithOAuth` mit
+   `redirectTo: window.location.origin`). Nie Lovable-interne `/~oauth`-Pfade.
+6. **Rang ist nie käuflich.** Der Rang eines Hauses entsteht aus dem, was es
+   baut und verkauft — nie aus dem Plan.
 
-## Karte des Codes
-- `src/pages/Index.tsx` — Landing (Hero, Welten, Grid, Cover Story, Atelier-Feature, Pick-your-Style, Morph-Szene)
-- `src/components/palace/` — Design-System (Editable, EditorialImage, WorldPage/WorldHero, PawnWordmark …)
-- `src/pages/studio/` — Designer-Studio (Bühne mit „Nächster Zug", Kollektion, Kampagnen-Funnel `StudioCampaignNew.tsx`, Bestellungen mit Versand-Kette, Plan, Retrospektive)
-- `src/pages/admin/` — Admin-Cockpit (Overview mit Nächster-Zug, KI/Denklogik, Trends, Posting, Zahlungen, Aktionen-Log, Archiv, Editionen)
-- `src/features/campaign/renderer.ts` — Browser-Video-Renderer (Canvas + MediaRecorder; Szenen: Hook-Typo, Ken-Burns, Split, Parallax; Reel-Safe-Zones oben 14%/unten 20%; adaptive Szenenzahl nach Fotoanzahl; liest Signatur-Rezept, s.u.)
-- Wichtige Edge Functions: `create-checkout` (Stripe, KEIN automatic_payment_methods-Parameter!), `stripe-connect` (Designer-Auszahlungskonten, s.u.), `stripe-webhook`, `generate-broll` (fal i2v), `generate-tryon` (Kolors Try-On, Model-Pool), `generate-product-shot`, `poll-broll` (schreibt fertige Clips in `video_assets`), `generate-signatures` ("der Regisseur", s.u.), `generate-edition-video` (Editionen, s.u.), `pawn-chat`, `studio-ai`, `pawn-actions` (Aktionsschicht mit Undo), `compute-trends`, `pawn-jarvis` (interne KI-Instanz, s.u.)
-- Datenmodell-Kern: designers (house_number, plan haus/atelier/maison, brand_dna, video_taste_weights, stripe_account_id/stripe_charges_enabled/stripe_details_submitted, media_rights_granted_at), products (product_dna jsonb, designer_note, Maße), orders (application_fee_cents, destination_account — Buchhaltungs-Spur für Connect), campaigns, posting_queue, generation_requests, product_shot_requests, video_assets (Video-Archiv, s.u.), house_signatures, editions, edition_participants (s.u.), ai_budget_ledger, fashion_ontology (lernend, `learned`-Flag), user_memory, ai_actions_log, acquisition_leads (Akquise-Pipeline), jarvis_runs, jarvis_reports, site_content, ai_config
+## Das Ritual nach jedem Merge
+Findet ein Mensch **nach** einem Merge einen Mangel, gilt der Fehler erst als
+erledigt, wenn zusätzlich zur Reparatur eine Zeile in `.claude/regressionen.json`
+und eine Kontrolle in `scripts/verify/` steht. Vollständig in
+`.claude/rules/00-gesetze.md`.
 
-## Stripe Connect — Geld fließt direkt zum Designer
-Produktkäufe (nicht Abos!) werden beim Bezahlen automatisch geteilt: 93% direkt auf das Stripe-Konto des Designers, 7% (`ai_config.platform_commission`) als Plattformgebühr an PAWN. Designer-Geld liegt nie auf PAWNs Konto. Voraussetzung: der Designer hat sein Konto über `/studio/auszahlung` verbunden (`stripe-connect` Edge Function, Express-Account) und `stripe_charges_enabled = true`. Ohne aktives Connect-Konto blockiert `create-checkout` den Kauf freundlich — Ausnahme: Häuser, die einem Admin gehören (Join über `user_roles`), verkaufen weiterhin direkt an die Plattform. Ein Checkout = ein Haus (gemischte Warenkörbe werden abgelehnt). Abo-Zahlungen (Atelier/Maison) bleiben unverändert direkter PAWN-Umsatz.
-
-## Pläne & KI-Budget (Teil 6b, Preisumbau Teil 38 AP7 zurückgenommen Teil 38 WP7, vereinheitlicht PART 48 „Eine Wahrheit für Pläne")
-Es gibt drei kaufbare Pläne: **Haus** (DB-Wert `haus`, 0€), **Atelier** (DB-Wert `atelier`, 19€) und **Maison** (DB-Wert `maison`, 79€). **Eine einzige Quelle** für alles, was ein Plan kostet und erlaubt: der Schlüssel `ai_config.plans` (Feld `plaene.<plan>`: `eur_month`, `stripe_price_id`, `model_tier`, `budget_cents_month`, `credits_per_month`, `limits.*`). Die vier alten Schlüssel `plan_prices`/`plan_limits`/`plan_credits`/`ai_budget_limits` existieren nicht mehr. Gelesen wird ausschließlich über `planGate` (`src/lib/planGate.ts` clientseitig, `supabase/functions/_shared/planGate.ts` serverseitig) — nie direkt aus `ai_config`. `planGate` hardcodet keine Grenzwerte, nur die TYP-Zuordnung je Funktion (`monat`/`bestand`/`schalter` — WIE eine Zahl zu lesen ist, nicht WELCHE Zahl gilt). Serverseitig ist `checkAndCount()` die einzige Stelle, die zugleich prüft und zählt (Tabelle `plan_usage`, atomare RPC `plan_usage_inkrement`) — bei erschöpftem internem Cent-Budget wird bei zahlenden Plänen degradiert (Standard-Modell) statt hart blockiert.
-
-Video/Try-On/Produkt-Shots laufen NICHT über `limits`, sondern über die bestehende Credits-Kasse (`credits_ledger`/`book_credit_spend`, Teil 11a) — deren Monatsguthaben kommt aus `plaene.<plan>.credits_per_month`. Das Wort „Credits" ist aus der Oberfläche getilgt (heißt dort „Guthaben"), die Kasse selbst blieb real. Gesperrte Funktionen zeigt die Komponente `src/components/Gesperrt.tsx` (was/warum/Plan-Wechsel-Knopf ODER Reset-Datum, nie beides). Öffentliche Preisseiten: `/preise` (Haus + Atelier), `/preise/maison`. Ein Wechsel zwischen zwei laufenden Bezahlplänen (z. B. Atelier → Maison) läuft nie automatisch über einen zweiten Checkout, sondern als begleitete Anfrage ans Team (`message_threads`) — Gefahr sonst: zwei parallel laufende Abos.
-
-## Video-Archiv (Teil 6a)
-Jedes erzeugte Video (Client-Renderer wie auch kinematische fal-Clips über `poll-broll`) landet automatisch in `video_assets` (designer_id, campaign_id, url, source designer/edition/jarvis, video_dna jsonb, rights_granted, premiere, performance jsonb). Vor dem ersten Render muss ein Haus einmalig zustimmen (`designers.media_rights_granted_at`, separat von `image_usage_consent`): PAWN darf ausgewählte Videos mit Credit und Verlinkung auf der Plattform/den PAWN-Kanälen zeigen. Admin-Archiv `/admin/archiv`: alle Videos aller Häuser, Stern setzt eine Première, Pfeil schickt die zugehörige Kampagne in die `posting_queue`. Première-Sektion auf der Landing (`PremiereSection.tsx`): stumm-autoplay, Haus-Credit + Shop-Link, zählt `premiere_views`/`shop_clicks` atomar über die DB-Funktion `bump_video_metric`. Designer sehen ihre eigene Videothek unter `/studio/videothek` (Download + fertige Caption/Hashtags aus `brand_dna.signals`).
-
-## Signaturen, Lernschleife, Editionen (Teil 6c)
-`house_signatures` (designer_id, name, recipe jsonb: Licht/Palette/Kamerafahrt/Schnittrhythmus/Typo/Musik-Tempo): "der Regisseur" (`generate-signatures` Edge Function, ruft Claude direkt) destilliert je Haus 3–5 Signaturen aus `brand_dna` + `fashion_ontology`, on-demand beim ersten Öffnen von `/studio/kampagnen/neu`, plus Admin-Massenlauf (`/admin/jarvis`). Plan-Kontingent (`ai_config.plans` → `plaene.*.limits.signature_previews`): Haus 1, Atelier 3, Maison unbegrenzt + 1 Wunsch-Signatur. Der Client-Renderer (`renderer.ts`/`scenes.ts`) und `generate-broll` lesen das Rezept (Canvas-Filter, bevorzugte Einstellungen, Schnitttempo; `generate-broll` wechselt bei gesetzter Signatur zum stärksten i2v-Modell `ai_config.video_provider.model_premium`). Jedes Video schreibt sein `video_dna` (signatur, hook_typ, schnittrhythmus, palette, laenge_s, modelltyp).
-
-Wöchentlicher Jarvis-Modus `kampagnen_regie` (cron-fähig, gleiches `JARVIS_CRON_SECRET`-Muster): liest Première-Views/Shop-Klicks je Haus aus `video_assets.performance`, destilliert `designers.video_taste_weights` (analog `ai_config.matching_weights`, aber pro Haus), schreibt einen Bericht (`jarvis_reports` kind `regie`) und legt bei Gelegenheit eine **Edition** als Entwurf an (Zone Gelb, kein Auto-Launch).
-
-**Editionen** = häuserübergreifende Kampagnen (`editions` + `edition_participants`): Admin wählt Thema + Häuser unter `/admin/editionen` → „Produzieren starten" erzeugt je Haus einen Clip in dessen Signatur (`generate-edition-video`, source `edition`). Das Ergebnis landet NICHT direkt in `video_assets` — jedes Haus bekommt im Studio (`/studio/kampagnen`) eine Freigabe-Karte (Umsetzen/Verwerfen); erst „Umsetzen" schreibt den `video_assets`-Eintrag, macht ihn zum Première-Kandidaten im Admin-Archiv und zum Download in der Videothek verfügbar. Ohne Freigabe wird nie etwas veröffentlicht.
-
-## PAWN Jarvis
-Interne KI-Instanz für Daouda (nicht kundenseitig). Edge Function `pawn-jarvis` (admin-only, Modell `claude-sonnet-4-5`) mit drei Werkzeugen: `web_search` (nativ), `query_pawn` (liest Kennzahlen aus der DB), `pawn_action` (ruft `pawn-actions` mit der echten Admin-Session auf — nur dessen bestehende Whitelist, keine neuen Aktionen). Modi: `morgenbericht`, `wochenbericht`, `recherche`, `befehl`, `kampagnen_regie` (s.o.). Jeder Lauf schreibt eine Zeile in `jarvis_runs` und einen Bericht in `jarvis_reports`. Admin-Seite: `/admin/jarvis`. System-Prompt kommt aus `ai_config.persona_jarvis`, sonst Default im Code. Fehler landen nie als 500, immer 200 mit Klartext-Fehlermeldung.
-Der Herzschlag prüft u.a.: Designer ohne aktiven Stripe Connect können nicht verkaufen — meldet, wenn ein published Designer mit Produkten seit über 3 Tagen kein `stripe_charges_enabled` hat.
+## Wo das Übrige steht
+| Was | Wo |
+|---|---|
+| Stand zwischen Sitzungen | `.claude/stand.json` |
+| Das Ritual, die Kennzahl, das Ausmisten | `.claude/rules/00-gesetze.md` |
+| Edge-Function-Regeln (lädt nur bei Bedarf) | `.claude/rules/edge-functions.md` |
+| Datenmodell, Pläne, Stripe Connect, Video, Jarvis | Skill `pawn-kontext` |
+| Einen Plan zerlegen, bevor gebaut wird | Skill `kreuzverhoer` |
+| Migration → Merge → Edge Functions | Skill `deploy-choreografie` |
+| Webqualitätsnorm, 25 Launch Gates | Skill `zera-audit` |
+| Bericht gegen die Wirklichkeit halten | Subagent `pruefer` |
+| Die harten Zusagen, maschinenlesbar | `.claude/regressionen.json` |
+| Nachfunde je Merge | `.claude/metrik.md` |
+| Der Stand vor diesem Umbau | `.claude/archiv/` |
 
 ## Arbeitsweise
 - Kleine, fokussierte Commits mit deutschen Messages („Fix: …", „Feature: …").
-- Vor jedem Commit: `npm run build` (bzw. Typecheck) muss grün sein.
-- Mobile-first prüfen: iPad + 390px. Instagram-Safe-Zones bei allem, was Video/Reel betrifft.
-- Bei Unsicherheit über Produktentscheidungen: Frage stellen statt raten. Daouda entscheidet, du baust.
-- Aktuelle Prioritäten stehen ggf. in `docs/TODO.md` — falls vorhanden, zuerst lesen.
-
-## Kontext
-Budget ist knapp: Lovable-Credits sind teuer und nur für Edge-Function-Deploys reserviert. Deine Frontend-Arbeit über Git ist der günstige Kanal — nutze ihn präzise. PAWN ist live und hat echte Stripe-Zahlungen: Vorsicht vor Regressionen im Checkout- und Auth-Flow.
+- Vor jedem Commit muss `scripts/verify/verify.sh schnell` grün sein.
+- Mobile-first prüfen: 390 px und iPad. Instagram-Safe-Zones bei allem, was
+  Video oder Reel betrifft.
+- Bei Unsicherheit über Produktentscheidungen: fragen statt raten. Daouda
+  entscheidet, du baust.
