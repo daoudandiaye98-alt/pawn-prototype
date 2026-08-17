@@ -793,3 +793,125 @@ export async function messeKopfdaten(page: Page, seite: string, breite: number):
       schwelle: "beide gesetzt", notiz: k.ogBild.slice(0, 90) },
   ];
 }
+
+/* ————————————— X.blatt — die Geometrie der Einzelseite (Launch Gate) ————————————— */
+
+/**
+ * Hält das Blatt seine Maße? Drei Zahlen, drei Aussagen.
+ *
+ * **Warum es diese Kontrolle vorher nicht gab — und warum das ein Fehler war.**
+ * Die Ausnahme A1 hielt fest, die Einzelseiten-Geometrie sei „im Browser
+ * ungemessen", und nannte als Grund das fehlende Bypass-Geheimnis. Das war nur
+ * die halbe Wahrheit: als das Geheimnis da war und der Lauf zum ersten Mal den
+ * Zweig maß, standen die drei Zahlen trotzdem nirgends im Bericht. Es fehlte
+ * nicht der Zugang, es fehlte das Messgerät. Gesucht in `tools/pruefstand/`:
+ * `0,72`, `320` und `430` kamen dort nicht vor.
+ *
+ * **Was gemessen wird**, alles am gerenderten `.hx-heft`, nicht an der Regel:
+ *
+ *   1. `X.blatt.form`   — das Verhältnis 0,72, solange der Raum es trägt.
+ *   2. `X.blatt.breite` — das Blatt bleibt mindestens 320 px breit.
+ *   3. `X.blatt.knapp`  — unter 430 px Höhe fallen Kopf, Marke und Kolumne fort.
+ *
+ * **Die Schwelle ist Teil der Regel, kein Ausrutscher.** `heft.css` sagt:
+ * `width: min(100%, max(320px, hoehe * 0.72))`. Über der Schwelle ist das Blatt
+ * genau 0,72 breit; darunter gibt es das Verhältnis auf, weil 320 px wichtiger
+ * sind als die Form. Ein Prüfstand, der dort 0,72 verlangt, würde eine
+ * Absicht als Fehler melden — deshalb prüft 1. nur, wo die Regel es zusagt,
+ * und sagt sonst ehrlich `nicht_pruefbar`.
+ *
+ * **Wo nicht gemessen wird.** Nur im Einzelseiten-Modus (die Medienabfrage aus
+ * `heft.css`: höchstens 819,98 px breit ODER höchstens 599,98 px hoch) und nur
+ * auf Heft-Adressen. Sonst gibt es kein `.hx-heft`, und eine Kontrolle, die auf
+ * der Landing nach einem Blatt sucht, misst nichts und meldet trotzdem etwas.
+ */
+export async function messeBlattgeometrie(
+  page: Page, seite: string, breite: Breite, erwartet: readonly string[],
+): Promise<Befund[]> {
+  const einzelseite = breite.breite <= 819.98 || breite.hoehe <= 599.98;
+  const nichtHier = (grund: string): Befund[] => ["form", "breite", "knapp"].map((teil) => ({
+    kontrolle: `X.blatt.${teil}`, gate: true, status: "nicht_pruefbar" as const,
+    seite, breite: breite.breite, gemessen: null, schwelle: null, notiz: grund,
+  }));
+
+  if (!einzelseite) return nichtHier(`${breite.name}: die Einzelseite gilt erst schmal oder flach.`);
+  if (!erwartet.some((p) => seite === p || seite.startsWith(p))) {
+    return nichtHier("Diese Adresse trägt kein Heft-Blatt.");
+  }
+
+  const m = await page.evaluate(() => {
+    const blatt = document.querySelector<HTMLElement>(".hx-heft");
+    if (!blatt) return null;
+    const r = blatt.getBoundingClientRect();
+    const fort = (wahl: string) => {
+      const el = document.querySelector<HTMLElement>(wahl);
+      if (!el) return true; // gar nicht da ist auch fort
+      const cs = getComputedStyle(el);
+      return cs.display === "none" || cs.visibility === "hidden";
+    };
+    return {
+      b: r.width, h: r.height,
+      fensterB: window.innerWidth, fensterH: window.innerHeight,
+      kopfFort: fort(".hx-kopf"), markeFort: fort(".hx-marke"), kolumneFort: fort(".hx-kolumne"),
+    };
+  });
+
+  if (!m) return nichtHier("Kein `.hx-heft` auf der Seite — nichts zu messen.");
+
+  const befunde: Befund[] = [];
+  const verhaeltnis = m.h > 0 ? m.b / m.h : 0;
+
+  /* 1 · Die Form — nur dort, wo die Regel sie zusagt. */
+  const traegtDieForm = m.h * 0.72 >= 320;
+  befunde.push(traegtDieForm
+    ? {
+      kontrolle: "X.blatt.form", gate: true,
+      status: Math.abs(verhaeltnis - 0.72) <= 0.01 ? "bestanden" : "gefallen",
+      seite, breite: breite.breite,
+      gemessen: Number(verhaeltnis.toFixed(3)), schwelle: "0,72 ± 0,01",
+      notiz: `Blatt ${Math.round(m.b)} × ${Math.round(m.h)} px.`,
+    }
+    : {
+      kontrolle: "X.blatt.form", gate: true, status: "nicht_pruefbar",
+      seite, breite: breite.breite, gemessen: Number(verhaeltnis.toFixed(3)), schwelle: null,
+      notiz: `Unter der Schwelle: 0,72 ergäbe ${Math.round(m.h * 0.72)} px und damit weniger als 320. `
+        + "Hier gibt das Blatt die Form absichtlich auf — gemessen wird stattdessen die Breite.",
+    });
+
+  /* 2 · Die Untergrenze — gemessen gegen das, was der Raum hergibt. */
+  const untergrenze = Math.min(320, m.fensterB);
+  befunde.push({
+    kontrolle: "X.blatt.breite", gate: true,
+    status: m.b >= untergrenze - 0.5 ? "bestanden" : "gefallen",
+    seite, breite: breite.breite,
+    gemessen: Math.round(m.b), schwelle: untergrenze,
+    notiz: untergrenze < 320
+      ? `Das Fenster ist selbst nur ${m.fensterB} px breit — mehr als das kann kein Blatt sein.`
+      : undefined,
+  });
+
+  /* 3 · Der knappe Satzspiegel. */
+  const knapp = m.fensterH <= 429.98;
+  const alleFort = m.kopfFort && m.markeFort && m.kolumneFort;
+  befunde.push(knapp
+    ? {
+      kontrolle: "X.blatt.knapp", gate: true, status: alleFort ? "bestanden" : "gefallen",
+      seite, breite: breite.breite,
+      gemessen: [
+        `Kopf ${m.kopfFort ? "fort" : "da"}`,
+        `Marke ${m.markeFort ? "fort" : "da"}`,
+        `Kolumne ${m.kolumneFort ? "fort" : "da"}`,
+      ].join(" · "),
+      schwelle: "alle drei fort",
+      notiz: alleFort ? undefined
+        : `Bei ${m.fensterH} px Höhe bleibt für Kopfzeile, Satz und Fußzeile kein Platz — `
+          + "genau dafür fallen sie unter 430 px fort.",
+    }
+    : {
+      kontrolle: "X.blatt.knapp", gate: true, status: "nicht_pruefbar",
+      seite, breite: breite.breite, gemessen: m.fensterH, schwelle: null,
+      notiz: `${m.fensterH} px hoch — die knappe Fassung gilt erst unter 430.`,
+    });
+
+  return befunde;
+}

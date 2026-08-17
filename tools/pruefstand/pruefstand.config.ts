@@ -138,6 +138,16 @@ export const SEITEN: SeitenZiel[] = [
  */
 export const DREH_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD];
 
+/**
+ * Wo ein Heft-Blatt steht — für X.blatt.
+ *
+ * Nicht dieselbe Liste wie `DREH_ERWARTET`: der Dreh-Hinweis steht nur auf der
+ * Hülle, ein Blatt trägt jede Heft-Adresse. Die Werkseite gehört dazu, seit sie
+ * mit X7 eine Doppelseite im Heft ist. Verglichen wird mit `startsWith`, damit
+ * `/verzeichnis/3` und `/werk/<slug>` mitgemeint sind.
+ */
+export const BLATT_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD, "/werk/"];
+
 /** Absichtlich ungültig — für 4.5. */
 export const UNSINN_PFAD = "/diese-seite-gibt-es-nicht-4d9f21";
 

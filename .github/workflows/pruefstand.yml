@@ -187,11 +187,20 @@ jobs:
         run: |
           ziel="${ADRESSE:-https://pawn.vision}"
           echo "Anfrage an ${ziel}/diese-seite-gibt-es-nicht-4d9f21"
-          curl -s -o /dev/null -D - --max-time 30 \
+          # `-L` und ein Keksglas, weil die erste Antwort auf einer gesperrten
+          # Vorschau ein 307 ist: `x-vercel-set-bypass-cookie` setzt den Keks und
+          # schickt auf dieselbe Adresse zurück. Ohne Folgen misst man diesen
+          # Umweg statt der Seite — genau das ist beim ersten Versuch passiert
+          # (307, `location: /diese-seite-gibt-es-nicht-4d9f21`, keine
+          # `x-pawn-404`-Zeile), und ich hätte es fast für „Middleware lief
+          # nicht" gehalten. Ein Messgerät, das den eigenen Umweg misst, ist
+          # schlimmer als keines.
+          curl -s -o /dev/null -D - -L --max-time 30 \
+            -c /tmp/keks -b /tmp/keks \
             -H "x-vercel-protection-bypass: ${BYPASS}" \
             -H "x-vercel-set-bypass-cookie: true" \
             "${ziel}/diese-seite-gibt-es-nicht-4d9f21" \
-            | grep -iE "^(HTTP/|x-pawn-404|content-type|x-vercel-|location)" || echo "keine Antwort"
+            | grep -iE "^(HTTP/|x-pawn-404|content-type|location)" || echo "keine Antwort"
         continue-on-error: true
 
       # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
