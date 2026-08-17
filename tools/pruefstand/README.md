@@ -217,3 +217,20 @@ zu diesem Commit (`production_environment = false` trennt Vorschau von Produktio
 nach 15 Minuten keine fertige Vorschau da, bricht der Lauf ab und listet die gefundenen
 Deployments — **kein stiller Rückfall auf pawn.vision**: ein Lauf, der etwas anderes
 gemessen hat als er sollte, ist schlimmer als ein roter Lauf.
+
+## Dokumentierte Ausnahmen
+
+Eine Kontrolle darf auf REVIEW stehen und trotzdem ausgeliefert werden — aber nur als
+**dokumentierte Ausnahme**, und die braucht vier Angaben (ZERA-QA 06). Ohne
+Verantwortlichen und Termin ist es keine Ausnahme, sondern ein verschwiegener Fehler.
+Erledigte Ausnahmen bleiben mit Datum stehen: die Liste ist ein Protokoll, kein Aushang.
+
+### A1 · Einzelseiten-Geometrie im Browser ungemessen
+
+| | |
+|---|---|
+| **Sache** | Die Einzelseiten-Geometrie (Blattverhältnis 0,72 · Untergrenze 320 px · Satzspiegel unter 430 px Höhe) ist im Browser ungemessen. Die Rechnung dahinter ist es nicht — `src/heft/__tests__/einzelseite.spec.ts` prüft sie mit zehn Tests. Ungemessen ist, wie sie **aussieht**. |
+| **Grund** | Messbar erst auf dem Runner gegen die Vorschau des Zweigs. Der Entwicklungscontainer bringt Browser und Netz nicht zusammen (s. Hüllen-Regel), und ohne `VERCEL_AUTOMATION_BYPASS_SECRET` misst die Action pawn.vision statt des Zweigs. |
+| **Verantwortlich** | Daouda |
+| **Termin** | mit dem ersten Action-Lauf, der das Geheimnis hat |
+| **Betroffen** | `/heft/…`, `/verzeichnis/…`, `/werk/…`. Die Landing `/` und alle Kundenseiten davor bleiben unberührt — das Heft liegt auf eigenen Adressen und ist nicht indexiert. Das Risiko ist damit eingezäunt. |
