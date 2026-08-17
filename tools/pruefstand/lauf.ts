@@ -365,16 +365,33 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
         return h === "/" || h.endsWith("/");
       }));
     const status = unsinn?.status() ?? 0;
+    /*
+     * Die Spur der Middleware, direkt an der Antwort abgelesen.
+     *
+     * Ohne diese Zeile sagt ein gefallenes 4.5 nur „Status 200" — und das sieht
+     * bei drei verschiedenen Ursachen gleich aus: die Middleware lief gar nicht,
+     * sie lief und hielt die Adresse für bekannt, oder sie lief und kam nicht an
+     * die Hülle. Drei Ursachen, drei Behebungen. `middleware.ts` setzt deshalb
+     * `x-pawn-404` auf JEDEM Weg; hier wird der Kopf gelesen, statt ihn in einem
+     * eigenen curl-Schritt zu suchen, dessen Ausgabe niemand mehr findet.
+     */
+    const koepfe = unsinn?.headers() ?? {};
+    const spur = koepfe["x-pawn-404"];
     befunde.push({
       kontrolle: "4.5", gate: true,
       status: status === 404 && zurueck ? "bestanden" : "gefallen",
       seite: UNSINN_PFAD, breite: 1280,
       gemessen: `Status ${status}, Weg zurück ${zurueck ? "vorhanden" : "fehlt"}`,
       schwelle: "Status 404 und ein Weg zurück",
-      notiz: status === 200
-        ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für Suchmaschinen "
-          + "ist eine erfundene Adresse damit eine gültige Seite."
-        : undefined,
+      notiz: [
+        spur
+          ? `Spur x-pawn-404: „${spur}" — die Middleware lief.`
+          : "Keine Kopfzeile x-pawn-404: die Middleware lief für diese Anfrage nicht.",
+        status === 200
+          ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für "
+            + "Suchmaschinen ist eine erfundene Adresse damit eine gültige Seite."
+          : null,
+      ].filter(Boolean).join(" "),
     });
   } catch (e) {
     befunde.push({
@@ -516,6 +533,32 @@ async function haupt() {
    * diese Liste ist der Auszug, den man ohne Download lesen kann. Gekürzt auf
    * 60 Zeilen, damit ein durchgefallener Lauf das Log nicht zuschüttet.
    */
+  /*
+   * Im Teillauf: ALLE Befunde der gefragten Kontrollen, auch die bestandenen.
+   *
+   * Wer ausdrücklich nach drei Kontrollen fragt, will ihre Zahlen sehen und
+   * nicht ihr Urteil. „Kein Gate gefallen" beantwortet nicht die Frage, ob das
+   * Blatt 0,72 misst — es sagt nur, dass niemand widersprochen hat. Genau
+   * daran ist die Ausnahme A1 hängen geblieben: gemessen wurde, aber die Zahl
+   * stand nur in `bericht.json`, und das Artefakt lässt sich aus dem Container
+   * nicht herunterladen.
+   */
+  if (NUR_KONTROLLEN) {
+    const gefragt = befunde.filter((b) => NUR_KONTROLLEN.includes(b.kontrolle));
+    process.stderr.write(`\nBefunde der gefragten Kontrollen (${gefragt.length}):\n`);
+    for (const b of gefragt.slice(0, 200)) {
+      const ort = `${b.seite} @ ${b.breite}px`;
+      const beleg = [
+        b.gemessen !== null ? `gemessen ${b.gemessen}` : null,
+        b.schwelle !== null ? `soll ${b.schwelle}` : null,
+        b.notiz,
+      ].filter(Boolean).join(" · ");
+      process.stderr.write(
+        `  ${b.status.padEnd(14)} ${b.kontrolle.padEnd(8)} ${ort.padEnd(34)} ${beleg}\n`,
+      );
+    }
+  }
+
   if (gefallen > 0) {
     const liste = gates.filter((b) => b.status === "gefallen");
     process.stderr.write(`\nGefallene Gates (${liste.length}):\n`);

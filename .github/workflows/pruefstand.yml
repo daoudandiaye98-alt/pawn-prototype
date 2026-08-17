@@ -42,6 +42,14 @@ on:
           Vorschau dieses Zweigs (mit Geheimnis) bzw. pawn.vision (ohne).
         required: false
         default: ""
+      kontrollen:
+        description: >
+          Nur diese Kontrollen messen, mit Komma getrennt (z. B. „X.blatt" oder
+          „3.3,3.5"). Ein Teillauf schreibt ALLE Zahlen der gefragten Kontrollen
+          ins Protokoll, auch die bestandenen — dafür ist er da. Die Gate-Zahlen
+          eines Teillaufs sind kein Gesamtstand; leer lassen für den vollen Lauf.
+        required: false
+        default: ""
 
 # Ein Lauf je Zweig. Ein neuer Push macht den alten Lauf gegenstandslos.
 concurrency:
@@ -166,42 +174,19 @@ jobs:
 
       # ————————————————— Läuft die Middleware? (K7 · Kontrolle 4.5) —————————————————
       #
-      # Der Prüfstand meldet für 4.5 nur „Status 200" — und das sieht identisch
-      # aus, egal ob die Middleware gar nicht lief oder ob sie lief und an der
-      # Hülle scheiterte. Zwei verschiedene Fehler mit zwei verschiedenen
-      # Behebungen, nicht unterscheidbar. Deshalb hier eine Anfrage, die die
-      # Kopfzeilen zeigt: `middleware.ts` setzt `x-pawn-404` auf JEDEM Weg.
+      # Hier stand ein eigener curl-Schritt, der die Kopfzeile `x-pawn-404`
+      # sichtbar machte. Er ist ersatzlos weg, weil der Prüfstand sie jetzt
+      # selbst abliest und in den Befund 4.5 schreibt (`lauf.ts`, `wegeUnd404`).
+      # Zwei Messungen derselben Sache an zwei Orten sind eine zu viel: die eine
+      # steht im Bericht, die andere nur im Protokoll, und wenn sie sich je
+      # widersprächen, wüsste niemand welcher zu glauben ist.
+      #
+      # Zu lesen ist die Spur im Befund 4.5:
       #
       #   x-pawn-404: middleware      → 404 gesetzt, alles richtig
       #   x-pawn-404: huelle-<code>   → lief, konnte die Hülle nicht holen
       #   x-pawn-404: fehler-<name>   → lief, Ausnahme beim Holen
-      #   Kopfzeile fehlt             → lief NICHT (Muster, Bündelung, Deploy)
-      #
-      # `|| true`: eine Auskunft, kein Tor. Das Urteil über 4.5 fällt der
-      # Prüfstand, nicht dieser Schritt. Das Geheimnis wird als Kopfzeile
-      # mitgeschickt und nie ausgegeben — gedruckt werden nur unsere eigenen.
-      - name: Middleware-Spur
-        env:
-          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-          ADRESSE: ${{ steps.ziel.outputs.adresse }}
-        run: |
-          ziel="${ADRESSE:-https://pawn.vision}"
-          echo "Anfrage an ${ziel}/diese-seite-gibt-es-nicht-4d9f21"
-          # `-L` und ein Keksglas, weil die erste Antwort auf einer gesperrten
-          # Vorschau ein 307 ist: `x-vercel-set-bypass-cookie` setzt den Keks und
-          # schickt auf dieselbe Adresse zurück. Ohne Folgen misst man diesen
-          # Umweg statt der Seite — genau das ist beim ersten Versuch passiert
-          # (307, `location: /diese-seite-gibt-es-nicht-4d9f21`, keine
-          # `x-pawn-404`-Zeile), und ich hätte es fast für „Middleware lief
-          # nicht" gehalten. Ein Messgerät, das den eigenen Umweg misst, ist
-          # schlimmer als keines.
-          curl -s -o /dev/null -D - -L --max-time 30 \
-            -c /tmp/keks -b /tmp/keks \
-            -H "x-vercel-protection-bypass: ${BYPASS}" \
-            -H "x-vercel-set-bypass-cookie: true" \
-            "${ziel}/diese-seite-gibt-es-nicht-4d9f21" \
-            | grep -iE "^(HTTP/|x-pawn-404|content-type|location)" || echo "keine Antwort"
-        continue-on-error: true
+      #   Kopfzeile fehlt             → lief NICHT (Bündelung, Deploy)
 
       # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
       # die Systembibliotheken, ohne die der Browser auf dem Runner nicht läuft.
@@ -236,11 +221,17 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           ADRESSE: ${{ steps.ziel.outputs.adresse }}
           GATET: ${{ steps.ziel.outputs.gatet }}
+          KONTROLLEN: ${{ inputs.kontrollen }}
         run: |
+          # Leer = voller Lauf. Steht etwas drin, misst `lauf.ts` nur diese
+          # Kontrollen und schreibt ihre Zahlen einzeln ins Protokoll.
+          teil=""
+          if [ -n "$KONTROLLEN" ]; then teil="--kontrollen $KONTROLLEN"; fi
+
           if [ -n "$ADRESSE" ]; then
-            npx tsx tools/pruefstand/lauf.ts --adresse "$ADRESSE" && ende=0 || ende=$?
+            npx tsx tools/pruefstand/lauf.ts --adresse "$ADRESSE" $teil && ende=0 || ende=$?
           else
-            npx tsx tools/pruefstand/lauf.ts --ziel live && ende=0 || ende=$?
+            npx tsx tools/pruefstand/lauf.ts --ziel live $teil && ende=0 || ende=$?
           fi
 
           if [ "$ende" -eq 0 ]; then exit 0; fi
