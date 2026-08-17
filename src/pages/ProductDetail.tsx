@@ -15,7 +15,7 @@ import { useConsent } from "@/lib/consent";
 import { useSiteContent } from "@/lib/siteContent";
 
 import { useCustomerEvents } from "@/features/events/useCustomerEvents";
-import { useCart } from "@/store/cart";
+import { useInDenKorb } from "@/features/commerce/korb";
 import { useRoomShift } from "@/features/os/roomShift";
 import { useDbProductBySlug } from "@/features/products/useDbProduct";
 import { useWishlist } from "@/features/wishlist/useWishlist";
@@ -109,7 +109,7 @@ const ProductDetail = () => {
   const { locale, t } = useI18n();
 
   const { product: dbProduct, loading: productLoading } = useDbProductBySlug(slug);
-  const cart = useCart();
+  const inDenKorb = useInDenKorb();
   const { push } = useRoomShift();
   const wishlist = useWishlist();
 
@@ -251,7 +251,29 @@ const ProductDetail = () => {
 
   function addToBag() {
     if (soldOut) { toast.error(t("product.toast.soldOut")); return; }
-    cart.add(product, size);
+    // Erst anmelden, dann legen. Ohne die Anmeldung fällt die Korbzeile beim
+    // Anzeigen wieder heraus, weil der Bestand des Ladens nur die (leere) Saat
+    // kennt — siehe `features/commerce/korb.ts`. Der Knopf bestätigte bisher
+    // einen Korb, der danach leer war.
+    inDenKorb(
+      {
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        preis: dbProduct?.price ?? product.price,
+        welt: dbProduct?.world ?? null,
+        beschreibung: dbProduct?.description ?? null,
+        groessen: product.sizes,
+        haus: dbProduct?.designers
+          ? {
+            id: dbProduct.designers.id,
+            slug: dbProduct.designers.slug,
+            name: dbProduct.designers.brand_name,
+          }
+          : null,
+      },
+      size,
+    );
     push(`${product.name} betritt das Brett.`);
     toast.success(t("product.toast.addedToBag"));
   }

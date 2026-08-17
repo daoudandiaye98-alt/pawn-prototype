@@ -113,6 +113,20 @@ export const SEITEN: SeitenZiel[] = [
    * hängen (die Filterreiter). Genau daran fällt eine Messung, wenn sie fällt.
    */
   { name: "verzeichnis", pfad: VERZEICHNIS_PFAD },
+  /*
+   * Teil X7 — das Werk als Doppelseite. Dieselbe Ware wie die alte Werkseite
+   * darüber, damit beide Fassungen an denselben Zahlen gemessen werden.
+   *
+   * Sie ist zugleich die einzige Heftadresse, die den Dreh-Hinweis NIE zeigen
+   * darf (`NIE_SPERREN`): ein Kaufweg, der im Hochformat am Bildschirmrand
+   * endet, ist kein Kaufweg. Ohne diese Zeile stünde diese Regel im Code, ohne
+   * dass je jemand nachgesehen hätte.
+   *
+   * Gegen eine lokale Vorschau ist sie `nicht_pruefbar`: das Heft erreicht dort
+   * seine Datenschicht nicht, also gibt es die Doppelseite nicht. Genau dafür
+   * ist die Hüllen-Regel da.
+   */
+  { name: "werk-heft", pfad: `/werk/${PRODUKT_SLUG}` },
 ];
 
 /**

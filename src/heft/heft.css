@@ -1017,3 +1017,230 @@
      auf der Werkseite dahinter. */
   .hx-werk-haus { display: none; }
 }
+
+/* ————————————————— Das Werk (X7) ————————————————— */
+
+/*
+ * Der Rahmen: das Werk wird nie beschnitten.
+ *
+ * `contain` und nicht `cover` — und das ist die ausdrückliche Ausnahme von der
+ * Entscheidung aus Teil Q2, wo Werkkarten formatfüllend rendern. Eine Karte ist
+ * eine Fläche im Raster; ein Werk auf seiner eigenen Seite ist das Werk. Was in
+ * einen 4:5-Kasten gepresst wird, ist nicht mehr das, was das Haus gemacht hat.
+ *
+ * Der Rahmen ist ein Knopf, weil er etwas tut (den Lichttisch öffnen). Er sieht
+ * aus wie eine Fläche und nicht wie eine Schaltfläche — die Linie ist der
+ * Rahmen des Bildes, so wie im Verzeichnis.
+ */
+.hx-werkrahmen {
+  position: relative;
+  display: block;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  border: 1.5px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+  font: inherit;
+}
+.hx-werkrahmen img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+/* Der Hinweis sitzt in der Ecke und kehrt sich beim Zeigen mit dem Rahmen um. */
+.hx-werkrahmen-hinweis {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0.3rem 0.5rem;
+  background: currentColor;
+  font-size: var(--schriftzeile);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  /* Die Fläche trägt die Tinte, die Schrift trägt das Papier. */
+  color: var(--papier);
+  mix-blend-mode: normal;
+}
+[data-ton="nacht"] .hx-werkrahmen-hinweis { color: var(--nacht); }
+
+/*
+ * Die Angaben der Welt. Zwei Spalten am Schreibtisch, eine auf dem Telefon —
+ * dasselbe Muster wie die Katalogzeilen, damit die rechte Seite nicht plötzlich
+ * eine andere Ordnung hat als die linke.
+ */
+.hx-werk-angaben {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem 1.2rem;
+  margin: 0;
+}
+.hx-werk-angaben > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border-bottom: 1.5px solid currentColor;
+  padding: 0.3rem 0;
+}
+.hx-werk-angaben dt {
+  font-size: var(--schriftzeile);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.hx-werk-angaben dd {
+  margin: 0;
+  font-size: clamp(0.72rem, 1vw, 0.9rem);
+  text-align: right;
+}
+
+/* Größen und Budget-Spannen: eine Reihe von Wahlen, keine Klappliste. */
+.hx-groessen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.hx-groesse {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.7rem;
+  border: 1.5px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--schriftzeile);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+/* Gewählt heißt umgekehrt — Invertierung, nie Opacity (Designgesetz). */
+.hx-groesse[data-hier] {
+  background: currentColor;
+  color: var(--papier);
+}
+[data-ton="nacht"] .hx-groesse[data-hier] { color: var(--nacht); }
+
+/*
+ * Der Weg als Tat. Dieselbe Form wie der Weg als Adresse (`.hx-pfad`) — nur
+ * die Naturen unterscheiden sich, nicht das Aussehen: es ist derselbe eine Weg
+ * an derselben Stelle.
+ */
+.hx-pfad-tat {
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.hx-pfad-tat[disabled] { cursor: progress; }
+
+@media (max-width: 819.98px), (max-height: 599.98px) {
+  /* Auf einer Telefonseite ist für zwei Spalten Angaben kein Platz. */
+  .hx-werk-angaben { grid-template-columns: 1fr; }
+}
+
+/* ————————————————— Die Auflage: Lichttisch und Bogen (X7) ————————————————— */
+
+/*
+ * Sie liegt über dem Heft und hängt im `body` (siehe `auflage.tsx`): in einem
+ * gewendeten Blatt wäre `fixed` nicht auf das Fenster bezogen.
+ */
+.hx-auflage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  font-family: Outfit, system-ui, sans-serif;
+}
+.hx-auflage[data-ton="nacht"] { background: var(--nacht, #0a0a0a); color: #ffffff; }
+.hx-auflage[data-ton="papier"] { background: #ffffff; color: #12100e; }
+.hx-auflage-grund { position: absolute; inset: 0; }
+.hx-auflage-zu {
+  position: absolute;
+  top: clamp(0.6rem, 2vw, 1.4rem);
+  right: clamp(0.6rem, 2vw, 1.4rem);
+  z-index: 1;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1.5px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: clamp(0.62rem, 0.9vw, 0.72rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.hx-auflage-zu:hover,
+.hx-auflage-zu:focus-visible { background: currentColor; color: transparent; }
+/* Umkehrung mit echten Farben statt `transparent` — je Ton eine Zeile. */
+.hx-auflage[data-ton="nacht"] .hx-auflage-zu:hover,
+.hx-auflage[data-ton="nacht"] .hx-auflage-zu:focus-visible { color: #0a0a0a; }
+.hx-auflage[data-ton="papier"] .hx-auflage-zu:hover,
+.hx-auflage[data-ton="papier"] .hx-auflage-zu:focus-visible { color: #ffffff; }
+
+.hx-auflage-satz {
+  position: relative;
+  z-index: 1;
+  max-width: min(1100px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Der Lichttisch: nur das Werk, eine Zeile darunter. */
+.hx-lichttisch {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-height: 0;
+}
+.hx-lichttisch img {
+  /* `contain` auch hier: der Lichttisch ist der Ort, an dem das ganze Bild zu
+     sehen ist. Auf schwarzem Grund entstehen dabei keine Balken, sondern Rand. */
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 78vh;
+  margin: 0 auto;
+  display: block;
+}
+.hx-lichttisch figcaption {
+  text-align: center;
+  font-size: clamp(0.62rem, 0.9vw, 0.72rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* Der Anfragebogen: Satz, Felder, ein Knopf. */
+.hx-bogen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: min(560px, 100%);
+  overflow-y: auto;
+}
+.hx-feld { display: flex; flex-direction: column; gap: 0.3rem; }
+.hx-feld > span {
+  font-size: clamp(0.62rem, 0.9vw, 0.72rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.hx-feld textarea,
+.hx-feld input {
+  border: 1.5px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.6rem;
+  min-height: 44px;
+  border-radius: 0;
+}

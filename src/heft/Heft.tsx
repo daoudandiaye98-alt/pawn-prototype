@@ -29,8 +29,8 @@ import {
   scrollHoehe, seitenNummer, standFuerSeite,
 } from "./wendel";
 import {
-  type Doppelseite, type Heftaufbau, blaetterAus, einzelseitenAus, nummerFuerPfad,
-  pfadFuerNummer,
+  type Doppelseite, type Heftaufbau, blaetterAus, einzelseitenAus, findeNummer,
+  nummerFuerPfad, pfadFuerNummer,
 } from "./doppelseiten";
 import { Register, type FilterGruppe } from "./register";
 import { Marken } from "./marken";
@@ -180,6 +180,20 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
    */
   const [startSeite] = useState(() => nummerFuerPfad(seiten, pathname));
 
+  /*
+   * Eine Adresse, die es beim Betreten noch nicht gab — einmal nachgeholt.
+   *
+   * Die Werke (X7) entstehen aus Daten; im ersten Bild kennt das Heft sie noch
+   * nicht. Wer `/werk/leinenmantel` aufruft oder weitergibt, schlüge deshalb
+   * vorn auf und bliebe dort, weil `startSeite` bewusst nur einmal gelesen wird.
+   * Also merkt sich die Hülle die gesuchte Adresse und blättert dorthin, sobald
+   * das Blatt existiert — genau einmal. Danach führt wieder der Wendel; ein
+   * zweites Nachholen würde dem Leser die Seite unter dem Finger wegziehen.
+   */
+  const [nachzuholen, setNachzuholen] = useState<string | null>(
+    () => (findeNummer(seiten, pathname) === null ? pathname : null),
+  );
+
   /** Die Adresse nachführen — nur wenn sich die Doppelseite wirklich ändert. */
   const letzte = useRef(0);
   const [aktuell, setAktuell] = useState(startSeite);
@@ -205,6 +219,14 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
       navigate(ziel + window.location.search, { replace: true });
     }
   }, [seiten, navigate]);
+
+  useEffect(() => {
+    if (!nachzuholen) return;
+    const n = findeNummer(seiten, nachzuholen);
+    if (n === null) return;
+    setNachzuholen(null);
+    sprung(n);
+  }, [nachzuholen, seiten, sprung]);
 
   const aufbau = useMemo(
     () => (einzeln ? einzelseitenAus(seiten) : blaetterAus(seiten)),
@@ -383,6 +405,20 @@ function HeftGewendet({ aufbau, titel, startSeite, adresseSetzen, einzeln }: Gew
     lesbarkeitSetzen(y);
     adresseSetzen(adresseFuerStand(y));
   }, [anzahl, schreibe, lesbarkeitSetzen, adresseSetzen, adresseFuerStand]);
+
+  /*
+   * Kommen Blätter dazu, wächst die Rollhöhe mit.
+   *
+   * Sie wurde bisher nur beim Aufbau und beim Ändern der Fenstergröße gerechnet
+   * — das reichte, solange die Zahl der Blätter feststand. Sie steht aber nicht
+   * fest: das Verzeichnis wächst mit dem Bestand (X6), und mit X7 kommt je Werk
+   * eine Doppelseite dazu. Ohne diese Zeile bliebe die Rollhöhe die des ersten
+   * Bildes, und alles hinter ihr wäre nicht erreichbar — die Seiten stünden im
+   * Heft, aber niemand käme hin.
+   */
+  useEffect(() => {
+    setHoehe(scrollHoehe(anzahl, window.innerHeight));
+  }, [anzahl]);
 
   useEffect(() => {
     const beiScroll = () => {

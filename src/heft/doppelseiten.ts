@@ -181,9 +181,22 @@ export function einzelseitenAus(seiten: Doppelseite[]): Heftaufbau {
  * eine unbekannte Adresse schlägt das Heft vorn auf statt ins Leere zu greifen.
  */
 export function nummerFuerPfad(seiten: Doppelseite[], pfad: string): number {
+  return findeNummer(seiten, pfad) ?? 1;
+}
+
+/**
+ * Dasselbe, aber ehrlich: `null`, wenn es diese Adresse im Heft nicht gibt.
+ *
+ * Der Unterschied zählt seit X7. Die Werke entstehen aus Daten, und die sind im
+ * ersten Bild noch nicht da — `/werk/<slug>` ist dann eine Adresse, die es
+ * gleich geben wird. `nummerFuerPfad` kann das nicht sagen (es antwortet mit
+ * „die erste Seite"), und wer nicht unterscheiden kann, schlägt vorn auf und
+ * bleibt dort. Die Hülle holt die Adresse deshalb nach, sobald sie erscheint.
+ */
+export function findeNummer(seiten: Doppelseite[], pfad: string): number | null {
   const sauber = pfad.length > 1 ? pfad.replace(/\/+$/, "") : pfad;
   const i = seiten.findIndex((s) => s.pfad === sauber);
-  return i < 0 ? 1 : i + 1;
+  return i < 0 ? null : i + 1;
 }
 
 /** Doppelseiten-Nummer → Adresse. Außerhalb des Hefts der erste Pfad. */

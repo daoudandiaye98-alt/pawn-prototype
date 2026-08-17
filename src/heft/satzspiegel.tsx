@@ -25,13 +25,26 @@ import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 
 export type Seitenlage = "links" | "rechts";
 
+/**
+ * Der eine Weg einer Doppelseite — entweder eine Adresse oder eine Tat.
+ *
+ * Bis X7 war jeder Weg eine Adresse, weil jede Sektion auf eine andere Sektion
+ * zeigte. Ein Werk zeigt auf keine Seite: sein Weg ist „in den Korb" oder
+ * „Anfragen" (X7), und beides ist eine Handlung. Deshalb hat der Weg jetzt zwei
+ * Naturen — aber weiter nur EINE Stelle, dieselbe Form und dieselbe Regel:
+ * höchstens einer je Doppelseite.
+ */
+export type Weg =
+  | { text: string; zu: string; tu?: never }
+  | { text: string; tu: () => void; zu?: never };
+
 export interface HeftseiteProps {
   lage: Seitenlage;
   kolumne: string;
   /** `null` = keine Zahl (Umschlag). */
   folio: number | null;
   /** Höchstens einer je Doppelseite — das gilt für die Doppelseite, nicht die Seite. */
-  weg?: { text: string; zu: string };
+  weg?: Weg;
   children?: ReactNode;
 }
 
@@ -59,11 +72,21 @@ export function Heftseite({ lage, kolumne, folio, weg, children }: HeftseiteProp
         {folio !== null && (
           <span className="hx-folio" aria-hidden>{String(folio).padStart(2, "0")}</span>
         )}
-        {weg && (
+        {weg && (weg.zu !== undefined ? (
           <Link className="hx-pfad" to={weg.zu}>
             {weg.text}
           </Link>
-        )}
+        ) : (
+          /* Eine Tat ist ein Knopf, kein Link — ein `<a>` ohne Ziel wäre eine
+             Adresse, die es nicht gibt. Die Form bleibt dieselbe: es ist
+             derselbe Weg an derselben Stelle.
+             Ausnahme von Teil 26b wie im Griffregister: das Heft hat seine
+             eigene Formfamilie, `<Button>` brächte die des Palasts mit. */
+          /* eslint-disable-next-line no-restricted-syntax */
+          <button type="button" className="hx-pfad hx-pfad-tat" onClick={weg.tu}>
+            {weg.text}
+          </button>
+        ))}
       </div>
     </div>
   );
