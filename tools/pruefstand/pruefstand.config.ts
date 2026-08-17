@@ -43,17 +43,39 @@ export const ZIELE: Record<ZielName, Ziel> = {
 export const VORGABE_ZIEL: ZielName = "preview";
 
 export interface Breite {
+  /** Name für den Bericht. „844" allein sagt nicht, ob hoch oder quer. */
+  name: string;
   breite: number;
   hoehe: number;
-  /** Finger oder Maus — entscheidet über Trefferflächen-Schwelle und Fokus-Prüfung. */
+  /**
+   * Finger oder Maus. Der Browser emuliert entsprechend (`hasTouch`, `isMobile`),
+   * die Medienabfrage `pointer: coarse` trifft also bei „finger" zu und bei
+   * „maus" nicht. Das ist die Bedingung, an der der Dreh-Hinweis hängt.
+   */
   eingabe: "finger" | "maus";
+  /**
+   * Werden hier Trefferflächen (3.5) gemessen?
+   *
+   * Nicht überall sinnvoll. Am Schreibtisch bedient die Maus, dort gilt die
+   * 44-px-Regel nicht. Und im HOCHFORMAT auf dem Telefon zeigt das Heft keine
+   * Bedienung mehr, sondern den Dreh-Hinweis — Flächen dort zu vergrößern
+   * hieße, einen Bildschirm zu polieren, den niemand mehr sieht. Gemessen wird
+   * deshalb dort, wo mit dem Finger wirklich bedient wird: quer auf dem Telefon
+   * und auf dem Tablet.
+   */
+  trefferflaechen: boolean;
 }
 
 export const BREITEN: Breite[] = [
-  { breite: 390, hoehe: 844, eingabe: "finger" },
-  { breite: 768, hoehe: 1024, eingabe: "finger" },
-  { breite: 1280, hoehe: 900, eingabe: "maus" },
-  { breite: 1920, hoehe: 1080, eingabe: "maus" },
+  // Die vier gewachsenen Größen. Sie bleiben unverändert an ihrem Platz, damit
+  // die Reihe über alle Läufe hinweg vergleichbar bleibt.
+  { name: "390 hoch", breite: 390, hoehe: 844, eingabe: "finger", trefferflaechen: false },
+  { name: "768", breite: 768, hoehe: 1024, eingabe: "finger", trefferflaechen: true },
+  { name: "1280", breite: 1280, hoehe: 900, eingabe: "maus", trefferflaechen: false },
+  { name: "1920", breite: 1920, hoehe: 1080, eingabe: "maus", trefferflaechen: false },
+  // Neu: das Telefon nach dem Drehen. Das ist die Lage, in der das Heft
+  // gelesen und bedient wird — vorher hat sie niemand gemessen.
+  { name: "844 quer", breite: 844, hoehe: 390, eingabe: "finger", trefferflaechen: true },
 ];
 
 export interface SeitenZiel {
@@ -65,14 +87,32 @@ export interface SeitenZiel {
 export const PRODUKT_SLUG = "obara-rope-jacket";
 export const HAUS_SLUG = "obara";
 
+/** Der Umschlag — die erste Doppelseite der Hülle (X5, Sektion „umschlag"). */
+export const HEFT_PFAD = "/heft/umschlag";
+
 export const SEITEN: SeitenZiel[] = [
   { name: "halle", pfad: "/" },
-  // Teil M — das Heft. Gehört ab jetzt zum öffentlichen Frontend, also in die Messung.
-  { name: "heft", pfad: "/ausgabe/001" },
+  // Teil M — das Ausgabe-Heft. Gehört zum öffentlichen Frontend, also in die Messung.
+  { name: "ausgabe", pfad: "/ausgabe/001" },
   { name: "boutique", pfad: "/shop" },
   { name: "werk", pfad: `/product/${PRODUKT_SLUG}` },
   { name: "haus", pfad: `/designer/${HAUS_SLUG}` },
+  /*
+   * Teil X — die Hülle. Sie war bisher NICHT in dieser Liste, und deshalb hat
+   * kein Lauf je etwas über sie gesagt: weder über die Doppelseiten noch über
+   * den Dreh-Hinweis, der nur hier lebt. Das war die eigentliche Lücke.
+   */
+  { name: "huelle", pfad: HEFT_PFAD },
 ];
+
+/**
+ * Adressen, auf denen der Dreh-Hinweis im Hochformat erwartet wird.
+ *
+ * Nur die Hülle bittet ums Drehen. Zwei Adressen sind ausdrücklich ausgenommen
+ * und dürfen ihn NIE zeigen (X9 die Kasse, X7 die Werkseite) — die stehen in
+ * `NIE_SPERREN` in `src/heft/drehhinweis.tsx`.
+ */
+export const DREH_ERWARTET = [HEFT_PFAD];
 
 /** Absichtlich ungültig — für 4.5. */
 export const UNSINN_PFAD = "/diese-seite-gibt-es-nicht-4d9f21";

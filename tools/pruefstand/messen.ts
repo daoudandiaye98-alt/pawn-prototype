@@ -548,11 +548,13 @@ export async function messeFokus(page: Page, seite: string, breite: number): Pro
 export async function messeTrefferflaechen(
   page: Page, seite: string, breite: Breite,
 ): Promise<Befund[]> {
-  if (breite.eingabe !== "finger") {
+  if (!breite.trefferflaechen) {
     return [{
       kontrolle: "3.5", gate: true, status: "nicht_pruefbar", seite: seite, breite: breite.breite,
       gemessen: null, schwelle: SCHWELLEN.trefferflaeche,
-      notiz: "Trefferflächen gelten für Fingerbedienung; diese Breite wird mit Maus geprüft.",
+      notiz: breite.eingabe === "maus"
+        ? `${breite.name}: bedient die Maus, die 44-px-Regel gilt hier nicht.`
+        : `${breite.name}: hier steht der Dreh-Hinweis, keine Bedienung. Gemessen wird quer.`,
     }];
   }
   const kleine = await page.evaluate(({ sel, min }) => {
@@ -608,6 +610,86 @@ export async function messeTrefferflaechen(
     gemessen: kleinste ? Math.min(kleinste.b, kleinste.h) : SCHWELLEN.trefferflaeche,
     schwelle: SCHWELLEN.trefferflaeche,
     notiz: `kleinste Kante aller Bedienelemente in px · ${kleine.length} unter der Schwelle`,
+  }];
+}
+
+/* ————————————— X.dreh — der Dreh-Hinweis und seine Tür (Launch Gate) ————————————— */
+
+/**
+ * Steht im Hochformat der Dreh-Hinweis da — und steht darunter die Tür?
+ *
+ * Der Hinweis allein wäre für jeden mit eingeschalteter Rotationssperre eine
+ * Sackgasse: eine Aufforderung, der er nicht nachkommen kann, und dahinter
+ * nichts. Deshalb ist die Tür („Das ganze Heft als Text lesen") Teil des Gates
+ * und nicht Zierrat.
+ *
+ * Was hier NICHT gemessen wird: der Kontrast der Tür. Den misst 3.3 auf
+ * derselben Seite und derselben Breite bereits mit — sie ist sichtbarer Text.
+ * Läge sie unter 4,5:1, fiele 3.3. Eine zweite Kontrastrechnung an dieser
+ * Stelle wäre eine zweite Fassung derselben Sache, und die soll es nicht geben.
+ */
+export async function messeDrehHinweis(
+  page: Page, seite: string, breite: Breite, erwartet: readonly string[],
+): Promise<Befund[]> {
+  const zutreffend = breite.hoehe > breite.breite
+    && breite.breite <= 820
+    && breite.eingabe === "finger";
+
+  if (!zutreffend) {
+    return [{
+      kontrolle: "X.dreh", gate: true, status: "nicht_pruefbar", seite, breite: breite.breite,
+      gemessen: null, schwelle: null,
+      notiz: `${breite.name}: der Hinweis gilt nur hochkant, schmal und mit Finger.`,
+    }];
+  }
+  if (!erwartet.includes(seite)) {
+    return [{
+      kontrolle: "X.dreh", gate: true, status: "nicht_pruefbar", seite, breite: breite.breite,
+      gemessen: null, schwelle: null,
+      notiz: "Nur die Hülle bittet ums Drehen; diese Adresse tut es nie.",
+    }];
+  }
+
+  const e = await page.evaluate(() => {
+    const dreh = document.querySelector(".hx-dreh");
+    if (!dreh) return { hinweis: false, tuer: null as null | { b: number; h: number; text: string } };
+    const t = dreh.querySelector<HTMLElement>(".hx-dreh-tuer");
+    if (!t) return { hinweis: true, tuer: null };
+    const cs = getComputedStyle(t);
+    if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) {
+      return { hinweis: true, tuer: null };
+    }
+    const r = t.getBoundingClientRect();
+    // Außerhalb des Bildschirms versteckt zählt nicht als sichtbar.
+    if (r.bottom <= 0 || r.top >= window.innerHeight) return { hinweis: true, tuer: null };
+    return { hinweis: true, tuer: { b: Math.round(r.width), h: Math.round(r.height), text: (t.innerText || "").trim() } };
+  });
+
+  if (!e.hinweis) {
+    return [{
+      kontrolle: "X.dreh", gate: true, status: "gefallen", seite, breite: breite.breite,
+      gemessen: "kein Hinweis", schwelle: "Dreh-Hinweis sichtbar",
+      notiz: "Hochkant auf dem Telefon steht das Heft da, ohne ums Drehen zu bitten.",
+    }];
+  }
+  if (!e.tuer) {
+    return [{
+      kontrolle: "X.dreh", gate: true, status: "gefallen", seite, breite: breite.breite,
+      gemessen: "keine Tür", schwelle: "Sprunglink sichtbar",
+      notiz: "Der Hinweis steht, der Sprunglink in die Textfassung fehlt oder ist versteckt — "
+        + "für jeden mit Rotationssperre ist das eine Sackgasse.",
+    }];
+  }
+
+  const kleinste = Math.min(e.tuer.b, e.tuer.h);
+  return [{
+    kontrolle: "X.dreh", gate: true,
+    status: kleinste >= SCHWELLEN.trefferflaeche ? "bestanden" : "gefallen",
+    seite, breite: breite.breite,
+    auswahl: `a „${e.tuer.text.slice(0, 34)}" ${e.tuer.b}×${e.tuer.h}`,
+    gemessen: kleinste, schwelle: SCHWELLEN.trefferflaeche,
+    notiz: "Hinweis steht, Tür ist sichtbar. Gemessen wird ihre kleinste Kante — sie ist "
+      + "das einzige Bedienelement auf diesem Bildschirm.",
   }];
 }
 

@@ -13,15 +13,31 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD, VORGABE_ZIEL, ZIELE,
-  type Breite, type SeitenZiel, type ZielName,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, DREH_ERWARTET, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
+  VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
 import {
-  messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten, messeLayout,
-  messeTrefferflaechen, type Befund,
+  messeDrehHinweis, messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
+  messeLayout, messeTrefferflaechen, type Befund,
 } from "./messen";
 
 const ORDNER = join(process.cwd(), "tools", "pruefstand", "artefakte");
+
+/**
+ * Die Vercel-Vorschau ist standardmäßig gesperrt: JEDE Anfrage, auch die auf ein
+ * `.webp`, antwortet mit 302 auf `vercel.com/sso-api`. Ein Lauf dagegen würde die
+ * Anmeldeseite vermessen und lauter grüne Zahlen liefern, die nichts bedeuten.
+ *
+ * „Protection Bypass for Automation" hebt das auf. Das Geheimnis liegt in den
+ * GitHub-Secrets, kommt über die Umgebung herein und wird NIE hier notiert. Es
+ * geht als Kopfzeile an jede Anfrage des Browsers mit — auch an die Bilder,
+ * nicht nur an das Dokument.
+ *
+ * Fehlt es, wird nichts mitgeschickt. Dann trifft der Lauf die Sperre und meldet
+ * das als Umleitung, statt still etwas Falsches zu messen.
+ */
+const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+const ZUSATZ_KOPFZEILEN = BYPASS ? { "x-vercel-protection-bypass": BYPASS } : undefined;
 
 /**
  * tsx/esbuild hängt an benannte Funktionen einen Helfer `__name`, den es im Browser
@@ -108,6 +124,7 @@ async function seiteMessen(
     isMobile: breite.eingabe === "finger",
     locale: "de-DE",
     reducedMotion: ruhigeBewegung ? "reduce" : "no-preference",
+    extraHTTPHeaders: ZUSATZ_KOPFZEILEN,
   });
   await nameHelferSetzen(page);
   const befunde: Befund[] = [];
@@ -175,6 +192,7 @@ async function seiteMessen(
     };
     await mitUhr("3.8", () => messeLayout(page, seite.pfad, breite.breite));
     await mitUhr("3.5", () => messeTrefferflaechen(page, seite.pfad, breite));
+    await mitUhr("X.dreh", () => messeDrehHinweis(page, seite.pfad, breite, DREH_ERWARTET));
     await mitUhr("3.10", () => messeKnopfVerdeckung(page, seite.pfad, breite.breite));
     await mitUhr("5.x", () => messeKopfdaten(page, seite.pfad, breite.breite));
     await mitUhr("3.4", () => messeFokus(page, seite.pfad, breite.breite));
@@ -187,7 +205,7 @@ async function seiteMessen(
     if (!NUR_KONTROLLEN) {
       mkdirSync(ORDNER, { recursive: true });
       await page.screenshot({
-        path: join(ORDNER, `${seite.name}--${breite.breite}.png`),
+        path: join(ORDNER, `${seite.name}--${breite.name.replace(/\s+/g, "-")}.png`),
         fullPage: true,
       });
     }
@@ -304,8 +322,19 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
 }
 
 async function haupt() {
-  const zielName = (argument("ziel") ?? VORGABE_ZIEL) as ZielName;
-  const ziel = ZIELE[zielName];
+  /*
+   * `--adresse https://…` misst eine frei übergebene Adresse.
+   *
+   * Nötig für die Vercel-Vorschau: ihr Name enthält einen gekürzten Zweignamen
+   * („…-git-claude-357453-…"), der sich aus dem Zweig NICHT verlässlich ableiten
+   * lässt. Ihn zu erraten wäre eine Fehlerquelle, die niemand findet — also wird
+   * er übergeben. Die benannten Ziele bleiben unverändert.
+   */
+  const freieAdresse = argument("adresse") ?? process.env.PRUEFSTAND_ADRESSE?.trim();
+  const zielName = (freieAdresse ? "vorschau" : (argument("ziel") ?? VORGABE_ZIEL)) as ZielName;
+  const ziel = freieAdresse
+    ? { adresse: freieAdresse.replace(/\/+$/, ""), hinweis: "frei übergebene Adresse" }
+    : ZIELE[zielName];
   if (!ziel) {
     console.error(`Unbekanntes Ziel „${zielName}". Bekannt: ${Object.keys(ZIELE).join(", ")}`);
     process.exit(2);
@@ -329,14 +358,27 @@ async function haupt() {
   const befunde: Befund[] = [];
   for (const seite of seiten) {
     for (const breite of breiten) {
-      process.stderr.write(`… ${seite.pfad} @ ${breite.breite}\n`);
+      process.stderr.write(`… ${seite.pfad} @ ${breite.name}\n`);
       befunde.push(...await seiteMessen(browser, ziel.adresse, seite, breite));
     }
   }
-  // 3.9 — zweiter Durchlauf mit „Bewegung reduzieren", eine Breite genügt.
+  /*
+   * 3.9 — zweiter Durchlauf mit „Bewegung reduzieren".
+   *
+   * Zwei Lagen, nicht eine. Hochkant steht auf der Hülle der Dreh-Hinweis — dort
+   * läuft überhaupt keine Bewegung, die Prüfung wäre leer. Gemessen wird deshalb
+   * auch quer, wo das Heft wirklich blättert. Die hochkante Lage bleibt trotzdem
+   * drin: die übrigen Seiten animieren dort sehr wohl.
+   */
+  const bewegungsLagen = [
+    BREITEN[0],
+    BREITEN.find((b) => b.breite > b.hoehe && b.eingabe === "finger") ?? BREITEN[0],
+  ].filter((b, i, alle) => alle.indexOf(b) === i);
   for (const seite of seiten) {
-    process.stderr.write(`… ${seite.pfad} @ 390 (Bewegung reduziert)\n`);
-    befunde.push(...await seiteMessen(browser, ziel.adresse, seite, BREITEN[0], true));
+    for (const lage of bewegungsLagen) {
+      process.stderr.write(`… ${seite.pfad} @ ${lage.name} (Bewegung reduziert)\n`);
+      befunde.push(...await seiteMessen(browser, ziel.adresse, seite, lage, true));
+    }
   }
   process.stderr.write("… Wege und 404\n");
   // Wege und 404 gehören zum Gesamtbild, nicht zu einer einzelnen Kontrolle.
