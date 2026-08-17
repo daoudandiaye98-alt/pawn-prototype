@@ -85,10 +85,24 @@ export default async function middleware(request: Request): Promise<Response | u
    * Die Hülle noch einmal holen — dieselbe Datei, die die Umschreibung
    * geliefert hätte, nur mit anderem Statuscode. `/index.html` trägt einen
    * Punkt und fällt damit oben aus der Prüfung: keine Schleife.
+   *
+   * **Die Kekse des Besuchers kommen mit.** Ohne sie ist dieser Nachschlag eine
+   * anonyme Anfrage — und auf einer gesperrten Vorschau weist die Sperre eine
+   * anonyme Anfrage ab. Die Middleware fiele dann jedes Mal auf „weiter wie
+   * bisher" zurück, obwohl sie läuft: gemessen an 665522a, 812 Aufrufe und
+   * nicht eine einzige 404 im Protokoll. Auf pawn.vision fiele das nie auf,
+   * weil dort nichts gesperrt ist — der Fehler wäre erst auf der Vorschau
+   * sichtbar und dort für immer unerklärlich.
+   *
+   * Sachlich richtig ist das ohnehin: die Hülle wird für DIESEN Besucher
+   * geholt, also mit seiner Kennung, nicht mit keiner.
    */
+  const keks = request.headers.get("cookie");
   let huelle: Response;
   try {
-    huelle = await fetch(new URL("/index.html", request.url), { headers: { accept: "text/html" } });
+    huelle = await fetch(new URL("/index.html", request.url), {
+      headers: keks ? { accept: "text/html", cookie: keks } : { accept: "text/html" },
+    });
   } catch (fehler) {
     /*
      * Alles bleibt wie bisher: 200 mit der Hülle aus der Umschreibung. Das ist
@@ -130,6 +144,19 @@ export default async function middleware(request: Request): Promise<Response | u
  * erübrigt sich die Frage.
  */
 function weiter(grund: string): Response {
+  /*
+   * Zusätzlich ins Protokoll, nicht nur in die Kopfzeile.
+   *
+   * Die Kopfzeile ist der Weg nach außen, für den Prüfstand und für `curl -I`.
+   * Ob Vercel sie auf dem Weiter-Pfad wirklich durchreicht, ist ungeprüft — und
+   * genau daran hing eine Stunde: die Middleware lief, fiel jedes Mal zurück,
+   * und von außen sah das aus wie „läuft nicht". Diese Zeile steht in den
+   * Laufzeit-Protokollen und beantwortet die Frage in zehn Sekunden.
+   *
+   * Kein Fund-Werkzeug auf Zeit: ein stiller Rückfall, der niemandem etwas
+   * sagt, ist genau die Sorte Ausnahme, die der Umzug verbietet.
+   */
+  console.warn(`[pawn-404] weiter statt 404 — Grund: ${grund}`);
   return new Response(null, {
     headers: { "x-middleware-next": "1", "x-pawn-404": grund },
   });
