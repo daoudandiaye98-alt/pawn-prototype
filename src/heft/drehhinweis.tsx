@@ -144,15 +144,19 @@ function DrehZeichen() {
       strokeWidth="1.5"
       aria-hidden
     >
-      {/* das hochkant stehende Gerät */}
+      {/*
+        Das hochkant stehende Gerät, Mitte bei (48|32). Seine halbe Diagonale
+        misst rund 27,8 — der Bogen läuft deshalb auf Radius 34 und berührt den
+        Körper nirgends. Im ersten Entwurf endete der obere Pfeil bei (48|10),
+        also mitten im Telefon; das sah man.
+      */}
       <rect x="34" y="8" width="28" height="48" />
       <line x1="34" y1="15" x2="62" y2="15" />
       <line x1="34" y1="49" x2="62" y2="49" />
-      {/* der Bogen, der die Drehung meint */}
-      <path d="M20 44 A 28 28 0 0 1 48 62" />
-      <path d="M14 38 L20 45 L27 39" />
-      <path d="M76 28 A 28 28 0 0 0 48 10" />
-      <path d="M82 34 L76 27 L69 33" />
+
+      {/* Der Bogen unter dem Gerät, von links nach rechts, mit Spitze rechts. */}
+      <path d="M16 46 A 34 34 0 0 0 80 46" />
+      <path d="M72 42 L80 46 L76 54" />
     </svg>
   );
 }
