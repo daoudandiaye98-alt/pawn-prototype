@@ -255,7 +255,7 @@ export function DnaChat() {
           <textarea value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
             rows={1} placeholder="Erzähl mir von dir…"
-            className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-black placeholder:text-black/60 focus:outline-none" />
+            className="flex-1 resize-none bg-transparent text-[0.95rem] font-light text-black placeholder:text-black/60 " />
           <button type="submit" disabled={busy || (!input.trim() && pendingImages.length === 0)}
             className="text-[0.6rem] uppercase tracking-[0.42em] text-black disabled:text-black/60">
             Senden

@@ -120,7 +120,7 @@ export default function AdminMessages() {
               <div className="border-t border-border p-4">
                 <div className="flex gap-3">
                   <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2}
-                    className="flex-1 border border-border bg-transparent p-2 focus:outline-none" placeholder="Antworten…" />
+                    className="flex-1 border border-border bg-transparent p-2 " placeholder="Antworten…" />
                   <button onClick={send} disabled={!reply.trim()} className="px-4 py-2 bg-foreground text-background text-[0.72rem] uppercase tracking-[0.24em] disabled:opacity-40">Senden</button>
                 </div>
               </div>

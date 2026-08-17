@@ -58,6 +58,24 @@ jobs:
       - name: Abhängigkeiten
         run: npm ci
 
+      # Teil K2 — läuft vor dem Browser, weil er eine Sekunde braucht und einen
+      # Fehler findet, den man mit der Maus nie sieht: eine Stelle, die den
+      # Tastatur-Rahmen wegnimmt, ohne einen eigenen zu setzen.
+      - name: Fokus-Wächter
+        run: node tools/pruefstand/fokus-waechter.mjs
+
+      # Der Lauf vom 16.08. meldete auf JEDER Seite von pawn.vision
+      # `net::ERR_NAME_NOT_RESOLVED` für den Datenhost. Bevor daraus ein Befund
+      # wird, muss dastehen, ob der Name überhaupt auflösbar ist — und zwar von
+      # einer Maschine mit normalem Netz. Absichtlich `|| true`: das hier ist
+      # eine Auskunft, kein Tor.
+      - name: Datenhost auflösen
+        run: |
+          echo "— getent —";  getent hosts rnakubexbqfgfciynqpt.supabase.co || echo "keine Auflösung"
+          echo "— HTTP —";    curl -s -o /dev/null -w "%{http_code}\n" --max-time 15 \
+            https://rnakubexbqfgfciynqpt.supabase.co/rest/v1/ || echo "kein Verbindungsaufbau"
+        continue-on-error: true
+
       # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
       # die Systembibliotheken, ohne die der Browser auf dem Runner nicht läuft.
       - name: Browser

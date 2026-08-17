@@ -63,7 +63,7 @@ export default function Kontakt() {
               </Field>
             </div>
             <Field label="Betreff">
-              <select value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border-[1.5px] border-black bg-white px-3 py-3 text-[0.9rem] outline-none">
+              <select value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border-[1.5px] border-black bg-white px-3 py-3 text-[0.9rem]">
                 <option>Allgemeine Anfrage</option>
                 <option>Bestellung / Versand</option>
                 <option>Designer-Bewerbung</option>

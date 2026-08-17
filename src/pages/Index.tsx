@@ -368,7 +368,7 @@ function ConciergeSection() {
                 onChange={(e) => setValue(e.target.value)}
                 placeholder={placeholder}
                 aria-label="Frag die Halle"
-                className="mt-[0.7rem] w-full border-0 border-b-[1.5px] border-white bg-transparent py-[0.7rem] font-serif text-[1.25rem] font-medium italic text-white placeholder:text-white/55 focus:outline-none"
+                className="mt-[0.7rem] w-full border-0 border-b-[1.5px] border-white bg-transparent py-[0.7rem] font-serif text-[1.25rem] font-medium italic text-white placeholder:text-white/55 "
               />
               <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
                 <span className="text-[0.68rem] text-white/60">Oder lade ein Bild hoch — PAWN liest es.</span>

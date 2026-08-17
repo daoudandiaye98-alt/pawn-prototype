@@ -83,7 +83,7 @@ export default function StudioMessages() {
             <div className="p-6 space-y-4">
               <p className="editorial-eyebrow">{t("studio.messages.newThread")}</p>
               <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t("studio.messages.subjectPlaceholder")}
-                className="w-full border-b border-border bg-transparent py-2 focus:outline-none" />
+                className="w-full border-b border-border bg-transparent py-2 " />
               <div className="flex gap-2 flex-wrap">
                 {CATEGORIES.map((c) => (
                   <button key={c.value} onClick={() => setCategory(c.value)}
@@ -93,7 +93,7 @@ export default function StudioMessages() {
                 ))}
               </div>
               <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder={t("studio.messages.bodyPlaceholder")}
-                className="w-full border border-border bg-transparent p-3 focus:outline-none" />
+                className="w-full border border-border bg-transparent p-3 " />
               <div className="flex gap-3">
                 <button onClick={startThread} disabled={!subject.trim() || !body.trim()}
                   className="px-4 py-2 bg-foreground text-background text-[0.72rem] uppercase tracking-[0.24em] disabled:opacity-40">{t("chat.send")}</button>
@@ -118,7 +118,7 @@ export default function StudioMessages() {
                 <div className="flex gap-3">
                   <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-                    className="flex-1 border border-border bg-transparent p-2 focus:outline-none" placeholder={t("studio.messages.replyPlaceholder")} />
+                    className="flex-1 border border-border bg-transparent p-2 " placeholder={t("studio.messages.replyPlaceholder")} />
                   <button onClick={send} disabled={!reply.trim()} className="px-4 py-2 bg-foreground text-background text-[0.72rem] uppercase tracking-[0.24em] disabled:opacity-40">{t("chat.send")}</button>
                 </div>
               </div>

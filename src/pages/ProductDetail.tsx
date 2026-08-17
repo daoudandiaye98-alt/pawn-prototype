@@ -917,7 +917,21 @@ const ProductDetail = () => {
   );
 
   return (
-    <PalaceLayout transparentHeader={false}>
+    <PalaceLayout
+      transparentHeader={false}
+      /* Teil K5 — bis hierher hatte jedes Werk denselben Titel und dieselbe
+         Beschreibung wie die Startseite. Ein geteilter Link zeigte weder, um
+         welches Stück es geht, noch aus welchem Haus. */
+      title={[product.name, product.designer, "PAWN"].filter(Boolean).join(" — ")}
+      description={
+        product.description?.trim()
+        || [product.name, product.designer && `aus dem Haus ${product.designer}`, `${product.world} auf PAWN`]
+          .filter(Boolean).join(" — ")
+      }
+      image={heroImage ?? undefined}
+      imageAlt={imageAlt}
+      seoType="product"
+    >
       <div className="palace house-theme" data-typografie={themeForPage.typografie} data-textur={themeForPage.hintergrundtextur.typ} style={themeCssVars(themeForPage)}>
 
       {/* ===== MOBIL/TABLET (<1024px) — Teil T1/T2/T3/T5 =====
@@ -1162,11 +1176,11 @@ const ProductDetail = () => {
             </p>
             <label className="mt-6 block">
               <span className="house-ink palace-eyebrow">{t("product.requestModal.nameLabel")}</span>
-              <input value={reqName} onChange={(e) => setReqName(e.target.value)} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
+              <input value={reqName} onChange={(e) => setReqName(e.target.value)} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] " />
             </label>
             <label className="mt-4 block">
               <span className="house-ink palace-eyebrow">{t("product.requestModal.wishLabel")}</span>
-              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] focus:outline-none" />
+              <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={5} className="house-hair house-ink mt-2 w-full border bg-transparent p-3 text-[0.95rem] " />
             </label>
             <div className="mt-4">
               <span className="house-ink palace-eyebrow">{t("product.requestModal.budgetLabel")}</span>

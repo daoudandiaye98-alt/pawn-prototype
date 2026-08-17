@@ -102,6 +102,12 @@ async function istUmgeleitet(page: Page, erwartetHost: string): Promise<string |
  */
 function huelleMarkieren(befunde: Befund[], datenFehler: string[]): Befund[] {
   if (datenFehler.length === 0) return befunde;
+  // Der Grund steht in jedem einzelnen Befund — aber wer den Lauf ansieht
+  // (im Terminal oder im Protokoll der Action), soll ihn sehen, ohne erst den
+  // Bericht herunterzuladen. Eine Seite, die als Hülle gewertet wird, muss
+  // sagen, WORAN sie gescheitert ist.
+  console.error(`    ⚠ HÜLLE — ${datenFehler.length} Anfrage(n) an ${DATEN_HOSTS.join(", ")} fehlgeschlagen:`);
+  for (const zeile of datenFehler.slice(0, 3)) console.error(`      ${zeile}`);
   const grund = `Die Seite hat ihre Daten nicht bekommen: ${datenFehler.length} Anfrage(n) an `
     + `${DATEN_HOSTS.join(", ")} fehlgeschlagen (${datenFehler[0]}). Gemessen wurde eine leere `
     + "Hülle, nicht die Seite.";
@@ -354,11 +360,12 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   // den Inhalt einer Seite. Ob Supabase geantwortet hat, ändert weder den
   // Statuscode eines Weges noch den einer erfundenen Adresse.
   //
-  // Dieselbe Korrektur steht in PR #173. Sie liegt hier ein zweites Mal, weil
-  // ohne sie JEDER Lauf mit `ReferenceError: datenFehler is not defined`
-  // abbricht — nach der vollständigen Messung, aber vor dem Schreiben von
-  // `bericht.json`. Damit wäre kein Schritt von Teil X messbar. Beim Mergen von
-  // #173 fällt die doppelte Stelle zusammen.
+  // Diese Zeile ist eine Fehlerkorrektur, nicht nur eine Aufräumung: stand hier
+  // `huelleMarkieren(befunde, datenFehler)`, brach JEDER Lauf mit
+  // `ReferenceError: datenFehler is not defined` ab — nach der vollständigen
+  // Messung, aber vor dem Schreiben von `bericht.json`. Sie kam aus zwei
+  // Zweigen zugleich (#173 und #174) und ist beim Zusammenführen einmal
+  // übrig geblieben, wie es sein soll.
   return befunde;
 }
 

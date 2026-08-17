@@ -161,7 +161,7 @@ export function ProductServiceSheet({
           onChange={(e) => setInput(e.target.value)}
           placeholder={t("product.serviceSheet.inputPlaceholder")}
           aria-label={`${t("product.serviceSheet.title")} — ${productName}`}
-          className="flex-1 border-[1.5px] border-black bg-white px-3 py-2 text-sm focus:outline-none"
+          className="flex-1 border-[1.5px] border-black bg-white px-3 py-2 text-sm "
         />
         <button type="submit" disabled={busy || !input.trim()} className="border-[1.5px] border-black bg-black px-4 py-2 text-[0.6rem] uppercase tracking-[0.24em] text-white disabled:opacity-40">
           {t("product.serviceSheet.send")}

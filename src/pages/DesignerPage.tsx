@@ -423,7 +423,21 @@ const DesignerPage = () => {
   }
 
   return (
-    <PalaceLayout transparentHeader>
+    <PalaceLayout
+      transparentHeader
+      /* Teil K5 — jedes Haus trägt jetzt seinen eigenen Titel, seine eigene
+         Beschreibung und sein Porträt ins Teilbild. Vorher trugen alle
+         Hausseiten denselben Text wie die Startseite. */
+      title={designer.name ? `${designer.name} — Haus auf PAWN` : "Haus — PAWN"}
+      description={
+        designer.story?.trim().slice(0, 200)
+        || designer.manifesto?.trim().slice(0, 200)
+        || [designer.name, designer.location].filter(Boolean).join(" · ")
+        || "Ein Haus auf PAWN."
+      }
+      image={designer.portrait ?? undefined}
+      imageAlt={designer.name ? `Porträt — ${designer.name}` : undefined}
+    >
       <CustomCursor />
       {/* Fortschrittslinie */}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-[65] h-[2px] bg-transparent">
@@ -495,8 +509,14 @@ const DesignerPage = () => {
 
             {/* Front-text — identical placement, clipped so only the portion
                 that lies OUTSIDE the portrait band shows, making the letters
-                weave in front of the portrait. */}
-            <h1
+                weave in front of the portrait.
+
+                Teil K6 — das hier war ein zweites <h1> mit demselben Text. Zwei
+                Seitentitel auf einer Seite: das Vorlesegerät hörte den Namen
+                doppelt, die Suchmaschine fand keine eindeutige Überschrift.
+                Der Effekt ist reine Wiederholung fürs Auge — also ein <span>.
+                Sichtbar ändert sich nichts: dieselbe Klasse, derselbe Stil. */}
+            <span
               aria-hidden
               className="absolute inset-0 z-[5] flex items-center justify-center px-6 text-center leading-[0.82] text-[#FFFFFF]"
               style={{
@@ -508,7 +528,7 @@ const DesignerPage = () => {
               }}
             >
               {designer.name}
-            </h1>
+            </span>
 
 
             {/* Top eyebrow */}

@@ -212,7 +212,13 @@ const Shop = () => {
   const hasFilters = !!(world || designer || size || search || preisGewaehlt || Object.values(weltFilter).some(Boolean));
 
   return (
-    <PalaceLayout transparentHeader={false}>
+    <PalaceLayout
+      transparentHeader={false}
+      /* Teil K5 — die Boutique hatte bis hierher Titel und Beschreibung der
+         Startseite. Eigener Titel, eigene Beschreibung, eigene canonical. */
+      title="Boutique — PAWN"
+      description="Alle Stücke der laufenden Ausgabe: Mode, Interior und Kunst aus unabhängigen Häusern. Jedes Werk mit Herkunft und Handschrift."
+    >
       {/* Hero */}
       <section className="border-b border-[rgba(0,0,0,.18)] px-6 pt-36 pb-16 md:px-14 md:pt-44 md:pb-24">
         <div className="mx-auto max-w-[1600px]">
@@ -459,7 +465,17 @@ function PreisSchieber({
           margin: 0; padding: 0; background: transparent; -webkit-appearance: none; appearance: none;
           pointer-events: none;
         }
+        /* Teil K2 — der Regler ist 44 px hoch und liegt über der ganzen Breite.
+           Ein Rahmen um das Feld würde also einen Balken über beide Griffe legen
+           und nicht zeigen, WELCHER Griff am Zug ist. Deshalb bleibt das Feld
+           ohne Rahmen — und der Griff selbst bekommt die Marke. */
         .pawn-preis .pawn-preis-regler:focus { outline: none; }
+        .pawn-preis .pawn-preis-regler:focus-visible::-webkit-slider-thumb {
+          outline: 2px solid #000000; outline-offset: -12px;
+        }
+        .pawn-preis .pawn-preis-regler:focus-visible::-moz-range-thumb {
+          outline: 2px solid #000000; outline-offset: -12px;
+        }
         .pawn-preis .pawn-preis-regler::-webkit-slider-runnable-track { height: 44px; background: transparent; border: 0; }
         .pawn-preis .pawn-preis-regler::-moz-range-track { height: 44px; background: transparent; border: 0; }
         .pawn-preis .pawn-preis-regler::-webkit-slider-thumb {
