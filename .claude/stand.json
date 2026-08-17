@@ -21,9 +21,10 @@
   ],
   "wartet_auf_mensch": [
     "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen; sie sind sonst alle aktiv und dürfen ohne Rückfrage schreiben.",
-    "Der Prüfstand ist auf JEDEM Zweig rot, auch auf main — 15 gefallene Gates, die niemandem gehören: 14x Kontrolle 4.7 (Seitengewicht über 3 MB, getrieben vom 2.421 kB grossen index.js) und 1x Kontrolle 4.5 (erfundene Adresse antwortet 200 statt 404 — daran arbeitet PR #179). Solange das so bleibt, lehrt der Check, Rot zu übersehen. Entweder das Bundle aufteilen oder die Schwelle in pruefstand.config.ts begründet anheben.",
+    "Der Prüfstand ist auf JEDEM Zweig rot, auch auf main. 14x Kontrolle 4.7 (Seitengewicht über 3 MB, getrieben vom 2.421 kB grossen index.js) und 1x Kontrolle 4.5 (erfundene Adresse antwortet 200 statt 404 — daran arbeitet PR #179). Solange das so bleibt, lehrt der Check, Rot zu übersehen. Entweder das Bundle aufteilen oder die Schwelle in pruefstand.config.ts begründet anheben.",
+    "Ein 16. Gate flackert: Kontrolle 3.3 an der Wortmarke bei 844 px, gemessen 1.92 statt 3. Exakt der Wert, den PR #178 als behoben gemeldet hat. Derselbe Code lief einmal mit, einmal ohne diesen Befund — der harte Schnitt aus #178 deckt den Fall nicht ab, in dem die Marke über dem Kopfbild steht. Braucht MEHRFACHES Nachmessen, nicht einmaliges.",
     "Der Arbeitsordner ist in Claude Code nicht als vertrauenswürdig bestätigt — die permissions.allow-Einträge aus .claude/settings.json werden deshalb ignoriert. Einmal interaktiv den Vertrauensdialog bestätigen.",
-    "Entscheidung am 2026-09-14: bleibt der Skill pawn-kontext? Er hat die Eval-Latte nicht genommen (+0,5 statt deutlich). Zahlen und Begründung in .claude/metrik.md.",
+    "Entscheidung am 2026-09-14: bleibt der Skill pawn-kontext? Er hat die Eval-Latte nicht genommen (+0,5 statt deutlich). Zahlen und Trigger-Tabelle in .claude/metrik.md.",
     "Offen: soll Zusage Z4 weiter gefasst werden als nur designer-media? Heute deckt sie genau das, was 61e0204 versprochen hat — mediathek und campaign-assets bleiben absichtlich signiert."
   ],
   "letzter_pruefstand": {
@@ -34,5 +35,9 @@
     "verify_schnell": "3/3",
     "verify_voll": "5/5 (sicht 16/16, aber lokal ohne Datenbank)"
   },
-  "naechster_zug": "Der Harness steht und ist vorgeführt. Der nächste echte Zug ist KEIN weiteres Werkzeug, sondern die erste Zahl: sobald ein Mensch nach einem Merge etwas findet, löst das Ritual aus .claude/rules/00-gesetze.md aus — Zeile in regressionen.json UND Kontrolle in scripts/verify/, einmal rot vorgeführt. Nach vier Wochen prüfen, ob die Nachfunde gegenüber der Grundlinie sinken (27 Fix-Commits in den letzten 200). Sinken sie nicht, misst das System das Falsche; dann liegt die Arbeit in regressionen.json, nicht in mehr Werkzeugen. Die drei Routinen aus v1 — Regressionsnacht, Deploy-Choreograf, Morgenbrief — bleiben ungebaut, bis diese zwei vier Wochen gelaufen sind."
+  "naechster_zug": "Der Harness steht und ist vorgeführt. Der nächste echte Zug ist KEIN weiteres Werkzeug, sondern die erste Zahl: sobald ein Mensch nach einem Merge etwas findet, löst das Ritual aus .claude/rules/00-gesetze.md aus — Zeile in regressionen.json UND Kontrolle in scripts/verify/, einmal rot vorgeführt. Nach vier Wochen prüfen, ob die Nachfunde gegenüber der Grundlinie sinken (27 Fix-Commits in den letzten 200). Sinken sie nicht, misst das System das Falsche; dann liegt die Arbeit in regressionen.json, nicht in mehr Werkzeugen. Die drei Routinen aus v1 — Regressionsnacht, Deploy-Choreograf, Morgenbrief — bleiben ungebaut, bis diese zwei vier Wochen gelaufen sind.",
+  "nicht_pruefbar": [
+    "Der Prüfstand-Lauf auf 05671e8 ist rot, konnte aber NICHT gelesen werden: nach dem Fortsetzen der Sitzung war der GitHub-Zugriff weg (API antwortet 'GitHub access is not enabled for this session'). Der Commit änderte nur .claude/metrik.md — keine Datei, die ins Bundle geht. Erwartet werden dieselben 15 bzw. 16 bekannten Gates. Wer es prüfen kann: ein Mensch im Actions-Reiter, oder eine Sitzung mit GitHub-Zugriff.",
+    "Gelernt: Git-Remote (push/fetch) bleibt nach einem Resume erreichbar, die GitHub-API nicht. Die Routine 02-pr-waechter braucht deshalb zwingend eine eigene, aktive GitHub-Verbindung — sie kann sich nicht auf die Sitzung verlassen."
+  ]
 }
