@@ -141,7 +141,7 @@
 }
 
 /* Einzelseite: dasselbe Blatt, volle Breite, gleicher Wendel. */
-@media (max-width: 820px) {
+@media (max-width: 819.98px), (max-height: 599.98px) {
   .heft {
     aspect-ratio: 0.78 / 1;
     width: min(100%, calc((100vh - 3rem) * 0.78));
@@ -353,7 +353,7 @@
   grid-template-columns: 1fr;
   min-height: inherit;
 }
-@media (min-width: 821px) {
+@media (min-width: 820px) and (min-height: 600px) {
   .heft-folge-paar {
     grid-template-columns: 1fr 1fr;
   }
@@ -497,4 +497,24 @@
 /* Im zweiten Weg bestimmt der Inhalt die Höhe. */
 .heft-folge-seite .heftseite {
   min-height: 70vh;
+}
+
+/* ————————————————— Der knappe Satzspiegel unter 430 px Höhe ————————————————— */
+
+/*
+ * Dieselbe Regel wie in `src/heft/heft.css` (Teil X), mit denselben Zahlen und
+ * derselben Begründung. Sie steht zweimal, weil die beiden Hefte kein
+ * Stylesheet teilen — Teil M und Teil X sind getrennte Umsetzungen, und X1
+ * löst eine davon ohnehin ab. Eine gemeinsame Datei anzulegen, die in wenigen
+ * Schritten wieder verschwindet, wäre Arbeit für den Papierkorb.
+ *
+ * Anlass war ein gemessener Befund auf der AUSGELIEFERTEN Seite: Prüfstand 3.8
+ * meldete für /ausgabe/001 bei 844 × 390 `span.heftseite-kolumne ∩ span` mit
+ * Anteil 1,0 — der Kolumnentitel lag vollständig über dem Satz. Bei 390, 768,
+ * 1280 und 1920 fällt das nicht auf; nur quer auf dem Telefon.
+ */
+@media (max-height: 429.98px) {
+  .heftseite-marke,
+  .heftseite-kolumne { display: none; }
+  .heftseite-kopf { display: none; }
 }

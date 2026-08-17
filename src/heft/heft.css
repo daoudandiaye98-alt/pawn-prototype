@@ -482,7 +482,7 @@
   gap: 0.9rem;
 }
 
-@media (max-width: 820px) {
+@media (max-width: 819.98px), (max-height: 599.98px) {
   .hx-nur-breit { display: none; }
   .hx-nur-schmal { display: block; }
   /*
@@ -708,7 +708,7 @@
 }
 .hx-marke-zahl { font-variant-numeric: tabular-nums; }
 
-@media (max-width: 820px) {
+@media (max-width: 819.98px), (max-height: 599.98px) {
   /* Wie das Griffregister: nur das Zeichen, kein Wort. Der Platz gehört dem
      Papier, und die Bühne hält links genau diesen Streifen frei. */
   .hx-marke-band { transform: translateX(0); }
@@ -805,7 +805,7 @@
 .hx-reiter-wort { padding-right: 0.9rem; }
 
 /* Auf dem Telefon ein schmaler Streifen: nur die Zahlen, kein Wort. */
-@media (max-width: 820px) {
+@media (max-width: 819.98px), (max-height: 599.98px) {
   .hx-wurzel { --reiter-breite: 2.1rem; --marken-breite: 2.1rem; }
   .hx-reiter {
     transform: translateX(0);
@@ -831,7 +831,7 @@
  * Umgesetzt über das Verhältnis des Hefts und die Breite der Flächen — nicht
  * über ein zweites Layout. Ein Heft, zwei Breiten.
  */
-@media (max-width: 820px) {
+@media (max-width: 819.98px), (max-height: 599.98px) {
   .hx-heft {
     aspect-ratio: 0.72 / 1;
     width: min(100%, calc((100dvh - 1.5rem - var(--pawn-einwilligung, 0px)) * 0.72));
@@ -885,10 +885,36 @@
 /* In der Folge liegen beide Seiten im Fluss, nicht absolut übereinander. */
 .hx-folge-paar .hx-seite { position: relative; inset: auto; height: 100%; }
 
-@media (max-width: 820px) {
+@media (max-width: 819.98px), (max-height: 599.98px) {
   .hx-folge-paar {
     grid-template-columns: 1fr;
     aspect-ratio: auto;
   }
   .hx-folge-paar .hx-seite { min-height: 78dvh; }
+}
+
+/* ————————————————— Der knappe Satzspiegel unter 430 px Höhe ————————————————— */
+
+/*
+ * Ein Telefon quer hat 390 px Höhe. Darin sollen Kopfzeile, Satz und Fußzeile
+ * stehen — das geht nicht auf, und es ging auch nicht auf: gemessen bei
+ * 844 × 390 lag die Kopfmarke ÜBER der Wortmarke und der Kolumnentitel im
+ * Fließtext. Prüfstand 3.8 hat dasselbe im Ausgabe-Heft mit Anteil 1,0
+ * gemeldet, also vollständige Überdeckung.
+ *
+ * Statt die Zeilen kleiner zu setzen, fallen sie weg. Was bleibt, ist das
+ * Folio — die eine Angabe, die man auf einer Seite eines Hefts wirklich
+ * braucht. Kopfmarke und Kolumnentitel sind Wiederholungen: die Marke steht
+ * ohnehin als Wortmarke da, der Sektionsname im Griffregister und in der
+ * Überschrift der Doppelseite.
+ *
+ * 430 px, nicht 390: ein Telefon quer liegt je nach Gerät zwischen 375 und
+ * 430 px Höhe, und über der Grenze soll niemand mit halb überlappenden Zeilen
+ * dastehen.
+ */
+@media (max-height: 429.98px) {
+  .hx-marke,
+  .hx-kolumne { display: none; }
+  /* Der Kopf trägt jetzt nichts mehr — er soll auch keinen Platz mehr nehmen. */
+  .hx-kopf { display: none; }
 }
