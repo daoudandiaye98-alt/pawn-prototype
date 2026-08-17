@@ -29,6 +29,8 @@ export interface KorbStueck {
   name: string;
   preis: number;
   welt: string | null;
+  /** Das Foto. Ohne es zeigte der Korb eine gezeichnete Silhouette statt des Werks. */
+  bild?: string | null;
   beschreibung?: string | null;
   groessen?: string[];
   haus?: { id: string; slug: string; name: string } | null;
@@ -57,6 +59,7 @@ function alsProdukt(s: KorbStueck): Product {
     status: "Active" as Product["status"],
     description: s.beschreibung ?? "",
     genomeAffinity: {},
+    imageUrl: s.bild ?? undefined,
   };
 }
 

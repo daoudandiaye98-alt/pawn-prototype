@@ -20,6 +20,9 @@ export interface ProductView {
   status: Product["status"];
   description: string;
   genomeAffinity: Partial<StyleGenome>;
+  /** Das Foto des Stücks — siehe `Product.imageUrl`. Fehlt es, zeigt die
+   *  Oberfläche keine erfundene Silhouette, sondern eine leere Fläche. */
+  imageUrl?: string;
 }
 
 export interface DesignerView {
@@ -60,6 +63,7 @@ export function toProductView(product: Product, designer: Designer | undefined):
     status: product.status,
     description: product.description,
     genomeAffinity: product.genomeAffinity,
+    imageUrl: product.imageUrl,
   };
 }
 

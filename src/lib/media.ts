@@ -59,6 +59,43 @@ export async function signiereMedia(value?: string | null): Promise<string | nul
   return anfrage;
 }
 
+/**
+ * Dieselbe Datei, aber in Anzeigegröße und als webp.
+ *
+ * **Der Fund.** Auf der Landing lag ein Werkfoto als rohes PNG: 742 004 Byte
+ * (725 kB) für eine Karte, die 4:5 in einer Spalte steht. Gemessen am 17.08.2026
+ * an `campaign-assets/…/msa27zwvo2usif.png` — das ist kein Ausreißer, sondern
+ * der Normalfall: was ein Haus hochlädt, wird unverkleinert ausgeliefert.
+ *
+ * **Die Behebung.** Supabase kann dieselbe Datei über einen zweiten Weg
+ * ausliefern (`/render/image/` statt `/object/`) und dabei verkleinern und in
+ * webp umwandeln. Dieselbe Datei, dieselbe Berechtigung, kein Upload, keine
+ * Kopie — nur eine andere Adresse. Gemessen für dasselbe Foto:
+ *
+ * | Weg                        | Größe   | Typ        |
+ * |----------------------------|---------|------------|
+ * | `/object/sign/…` (bisher)  | 725 kB  | image/png  |
+ * | `/render/image/sign/…`     |  37 kB  | image/webp |
+ *
+ * Beide Formen sind geprüft, die signierte wie die öffentliche. Alles andere
+ * (fremde Adressen, `data:`, `blob:`) bleibt unangetastet — dort gibt es keinen
+ * zweiten Weg, und eine geratene Adresse wäre ein totes Bild.
+ */
+export function bildVariante(
+  url: string | undefined | null,
+  { breite, guete = 80 }: { breite: number; guete?: number },
+): string | undefined {
+  if (!url) return undefined;
+  if (!/\/storage\/v1\/object\/(sign|public)\//.test(url)) return url;
+
+  const umgeschrieben = url.replace(
+    /\/storage\/v1\/object\/(sign|public)\//,
+    "/storage/v1/render/image/$1/",
+  );
+  const trenner = umgeschrieben.includes("?") ? "&" : "?";
+  return `${umgeschrieben}${trenner}width=${Math.round(breite)}&quality=${guete}`;
+}
+
 /** React-Hook: gibt die anzeigbare URL zurück. Nicht-designer-media-Werte
  *  werden unverändert durchgereicht. */
 export function useMediaUrl(value?: string | null): string | undefined {

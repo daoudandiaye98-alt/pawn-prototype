@@ -128,16 +128,38 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
 
   return (
     <>
+      {/*
+        Die ganze Leiste kippt SOFORT — Grund, Linien und Schrift zugleich,
+        ohne jede Überblendung.
+
+        Gemessen an der Landing bei 844 quer: während der Überblendung stand
+        die weiße Wortmarke auf hellgrauem Grund — live 1,92 : 1, Kontrolle 3.3
+        verlangt 4,5 : 1. Der Grund war nicht Nachlässigkeit, sondern die
+        Überblendung selbst: Grund und Schrift tauschen die Plätze, also
+        kreuzen sie sich in der Mitte — und in der Mitte sind beide grau.
+
+        Nachgemessen im Container (844 × 390, Rollen auf 1200):
+          vorher   ruhend #000/#fff → +120 ms rgb(31,31,31)/rgb(198,198,198)
+          Zwischenschritt (nur der Grund ohne Übergang):
+                   +120 ms Grund #fff, Marke noch #fff — 1 : 1, unsichtbar
+          jetzt    ein einziger Schnitt, kein Zwischenbild
+
+        Der Zwischenschritt ist der Grund, warum hier keine
+        `transition-colors`-Klasse mehr steht und die Wortmarke
+        `hover-invert-schnitt` trägt statt `hover-invert`: es genügt nicht, den
+        Grund hart zu schalten, solange die Schrift noch überblendet. Eine
+        Invertierung braucht ohnehin keinen Übergang — sie ist ein Schnitt
+        (Designgesetz: „Hover = Invertierung, nie Opacity").
+      */}
       <header
-        className={`fixed inset-x-0 top-0 z-50 border-b-[1.5px] transition-colors duration-300 ${border} ${solid ? "bg-white" : "bg-black"}`}
-        style={{ transitionTimingFunction: "cubic-bezier(.76,0,.18,1)" }}
+        className={`fixed inset-x-0 top-0 z-50 border-b-[1.5px] ${border} ${solid ? "bg-white" : "bg-black"}`}
       >
         <div className="mx-auto flex h-14 max-w-[1600px] items-stretch">
           {/* Logo cell */}
           <Link
             to="/"
             aria-label="PAWN"
-            className={`flex items-center whitespace-nowrap border-r-[1.5px] px-5 md:px-7 hover-invert ${border} ${text}`}
+            className={`flex items-center whitespace-nowrap border-r-[1.5px] px-5 md:px-7 hover-invert-schnitt ${border} ${text}`}
           >
             <PawnWordmark className="text-[1.35rem] md:text-[1.5rem]" />
           </Link>
@@ -150,7 +172,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex items-center whitespace-nowrap border-r px-5 text-[0.66rem] uppercase tracking-[0.3em] transition-colors duration-200 hover:bg-black hover:text-white ${borderSoft} ${
+                  `flex items-center whitespace-nowrap border-r px-5 text-[0.66rem] uppercase tracking-[0.3em] hover:bg-black hover:text-white ${borderSoft} ${
                     isActive ? "bg-black text-white" : text
                   }`
                 }
@@ -170,7 +192,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className={`flex min-w-0 flex-1 items-center gap-3 px-4 text-left transition-colors duration-200 hover:bg-black hover:text-white md:px-5 ${text}`}
+            className={`flex min-w-0 flex-1 items-center gap-3 px-4 text-left hover:bg-black hover:text-white md:px-5 ${text}`}
           >
             <PawnSearchIcon className="h-5 w-5 shrink-0" />
             <span className="truncate text-[0.62rem] uppercase tracking-[0.3em] opacity-70">{t("nav.suche")}</span>
@@ -180,7 +202,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
             {/* Frag PAWN — solid black cell with blinking dot */}
             <button
               onClick={() => setChatOpen(true)}
-              className={`hidden items-center gap-2 whitespace-nowrap border-l-[1.5px] bg-black px-4 text-[0.62rem] uppercase tracking-[0.32em] text-white transition-colors duration-200 hover:bg-white hover:text-black xl:flex xl:px-5 ${border}`}
+              className={`hidden items-center gap-2 whitespace-nowrap border-l-[1.5px] bg-black px-4 text-[0.62rem] uppercase tracking-[0.32em] text-white hover:bg-white hover:text-black xl:flex xl:px-5 ${border}`}
             >
               <span className="inline-block h-[6px] w-[6px] animate-pulse rounded-full bg-current" />
               {t("nav.frag")}

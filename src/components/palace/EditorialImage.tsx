@@ -1,4 +1,4 @@
-import { useMediaUrl } from "@/lib/media";
+import { bildVariante, useMediaUrl } from "@/lib/media";
 
 interface Props {
   src?: string | null;
@@ -10,6 +10,16 @@ interface Props {
   height?: number;
   priority?: boolean;
   color?: boolean;
+  /**
+   * Wie breit das Bild höchstens gezeigt wird, in CSS-Pixeln. Daraus wird die
+   * ausgelieferte Größe bestimmt (doppelt, für scharfe Bildschirme).
+   *
+   * 600 als Vorgabe deckt den Normalfall ab: eine Karte in einem Raster steht
+   * selten breiter. Wer bildschirmfüllend zeigt, gibt eine größere Zahl an —
+   * es ist besser, hier eine Zahl zu nennen, als ein 725-kB-PNG für eine
+   * Kachel zu laden (siehe `bildVariante` in `src/lib/media.ts`).
+   */
+  anzeigeBreite?: number;
 }
 
 export function EditorialImage({
@@ -19,8 +29,10 @@ export function EditorialImage({
   alt = "",
   priority,
 color = false,
+  anzeigeBreite = 600,
 }: Props) {
-  const aufgeloest = useMediaUrl(src);
+  const roh = useMediaUrl(src);
+  const aufgeloest = bildVariante(roh, { breite: anzeigeBreite * 2 });
   const hasSrc = typeof aufgeloest === "string" && aufgeloest.trim().length > 0;
 
   return (

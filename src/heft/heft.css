@@ -773,7 +773,20 @@
 
 /* Auf dem Telefon ein schmaler Streifen: nur die Zahlen, kein Wort. */
 @media (max-width: 819.98px), (max-height: 599.98px) {
-  .hx-wurzel { --reiter-breite: 2.1rem; --marken-breite: 2.1rem; }
+  /*
+   * 44 px und nicht 2,1 rem (33,6 px).
+   *
+   * Gemessen bei 844 × 390 im Browser: der eingefahrene Streifen war 33 × 44 px
+   * groß — und damit unter der Schwelle von Kontrolle 3.5, die für die
+   * KLEINSTE Kante eines Bedienelements 44 px verlangt. Genau dort, wo mit dem
+   * Finger bedient wird, war der Griff also zu schmal.
+   *
+   * Der Streifen ist zugleich das Maß, das die Bühne freihält (`--marken-breite`
+   * steckt im Polster von `.hx-buehne`) — er wird breiter, das Papier schmaler.
+   * Das ist der Preis, und er ist richtig herum: lieber ein Blatt weniger breit
+   * als ein Griff, den man nicht trifft.
+   */
+  .hx-wurzel { --reiter-breite: 44px; --marken-breite: 44px; }
   .hx-reiter {
     transform: translateX(0);
     padding: 0 0.45rem;

@@ -32,6 +32,7 @@ import { angebotstyp, gefuellteFelder, type Welt } from "@/lib/weltFelder";
 import { createCustomRequestThread } from "@/features/messages/customRequest";
 import { useInDenKorb } from "@/features/commerce/korb";
 import { fliege, ruhigeBewegung } from "@/hooks/useFlug";
+import { bildVariante } from "@/lib/media";
 import { Auflage } from "./auflage";
 import { Bildunterschrift, Fliesstext, Heftseite, Kicker, Schlagzeile, Vorspann } from "./satzspiegel";
 import type { Werk } from "./verzeichnis";
@@ -73,6 +74,19 @@ export function WerkSeiteLinks({ werk, folio }: { werk: Werk; folio: number | nu
 function WerkBild({ werk }: { werk: Werk }) {
   const [offen, setOffen] = useState(false);
   const imRahmen = useRef<HTMLImageElement>(null);
+  /*
+   * EINE Fassung des Fotos für Rahmen, Lichttisch und Flug.
+   *
+   * 1600 px, weil der Lichttisch bildschirmfüllend zeigt; dieselbe Adresse für
+   * alle drei, damit der Flug nicht auf ein zweites, noch nicht geladenes Bild
+   * umschaltet — und damit der Browser genau einmal lädt.
+   *
+   * Warum überhaupt: das Original ist das, was das Haus hochgeladen hat.
+   * Gemessen am 17.08.2026 waren das für ein veröffentlichtes Stück 742 004
+   * Byte PNG. Über `bildVariante` sind es 37 028 Byte webp — dieselbe Datei,
+   * andere Adresse (siehe `src/lib/media.ts`).
+   */
+  const bildUrl = bildVariante(werk.bild, { breite: 1600, guete: 82 });
   /** Das Feld, aus dem geflogen wird — beim Öffnen gemessen, beim Schließen das Ziel. */
   const abflug = useRef<{ left: number; top: number; breite: number; hoehe: number } | null>(null);
 
@@ -91,14 +105,14 @@ function WerkBild({ werk }: { werk: Werk }) {
     const ziel = imRahmen.current;
     const von = vonLichttisch ? messe(vonLichttisch) : null;
     setOffen(false);
-    if (!von || !ziel || !werk.bild || ruhigeBewegung()) return;
+    if (!von || !ziel || !bildUrl || ruhigeBewegung()) return;
     /*
      * Erst im nächsten Bild: die Auflage muss weg sein, bevor der Geist fliegt —
      * sonst läge er dahinter. `fliege` versteckt das Ziel für die Dauer des
      * Flugs selbst und stellt es danach wieder her.
      */
-    requestAnimationFrame(() => { void fliege(von, ziel, werk.bild!); });
-  }, [werk.bild]);
+    requestAnimationFrame(() => { void fliege(von, ziel, bildUrl); });
+  }, [bildUrl]);
 
   if (!werk.bild) {
     /* Ohne Bild kein Rahmen und keine Entschuldigung — nur der ehrliche Satz.
@@ -111,25 +125,27 @@ function WerkBild({ werk }: { werk: Werk }) {
     <>
       {/* eslint-disable-next-line no-restricted-syntax */}
       <button type="button" className="hx-werkrahmen" onClick={oeffne} aria-label={`${werk.name} größer ansehen`}>
-        <img ref={imRahmen} src={werk.bild} alt={werk.name} decoding="async" />
+        <img ref={imRahmen} src={bildUrl} alt={werk.name} decoding="async" />
         <span className="hx-werkrahmen-hinweis" aria-hidden>Größer</span>
       </button>
-      {offen && <Lichttisch werk={werk} abflug={abflug.current} aufZu={schliesse} />}
+      {offen && <Lichttisch werk={werk} bildUrl={bildUrl} abflug={abflug.current} aufZu={schliesse} />}
     </>
   );
 }
 
 /** Der Lichttisch: das Werk groß, auf schwarzem Grund, ohne Beschnitt. */
-function Lichttisch({ werk, abflug, aufZu }: {
+function Lichttisch({ werk, bildUrl, abflug, aufZu }: {
   werk: Werk;
+  /** Dieselbe Fassung wie im Rahmen — sonst flöge der Übergang auf ein anderes Bild. */
+  bildUrl: string | undefined;
   abflug: { left: number; top: number; breite: number; hoehe: number } | null;
   aufZu: (bild: HTMLImageElement | null) => void;
 }) {
   const bild = useRef<HTMLImageElement>(null);
 
   useLayoutEffect(() => {
-    if (!abflug || !werk.bild || !bild.current) return;
-    void fliege(abflug, bild.current, werk.bild);
+    if (!abflug || !bildUrl || !bild.current) return;
+    void fliege(abflug, bild.current, bildUrl);
     // Nur beim Aufschlagen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -137,7 +153,7 @@ function Lichttisch({ werk, abflug, aufZu }: {
   return (
     <Auflage titel={werk.name} ton="nacht" aufZu={() => aufZu(bild.current)}>
       <figure className="hx-lichttisch">
-        <img ref={bild} src={werk.bild ?? ""} alt={werk.name} />
+        <img ref={bild} src={bildUrl ?? ""} alt={werk.name} />
         <figcaption>
           {werk.name}
           {werk.haus ? ` · ${werk.haus.name}` : ""}
@@ -169,6 +185,7 @@ export function WerkSeiteRechts({ werk, folio }: { werk: Werk; folio: number | n
         name: werk.name,
         preis: werk.preis,
         welt: werk.welt,
+        bild: werk.bild,
         beschreibung: werk.beschreibung,
         groessen: werk.groessen,
         haus: werk.haus ? { id: werk.haus.id, slug: werk.haus.slug, name: werk.haus.name } : null,

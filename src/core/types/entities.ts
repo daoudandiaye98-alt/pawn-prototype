@@ -122,6 +122,16 @@ export interface Product {
   status: ProductStatus;
   description: string;
   genomeAffinity: Partial<StyleGenome>;
+  /**
+   * Das Foto des Stücks.
+   *
+   * Optional, weil es Stücke ohne Foto geben kann — nicht, weil es unwichtig
+   * wäre. Ohne dieses Feld zeigte der Korb statt des Werks eine gezeichnete
+   * Silhouette (`ProductImage`): ein Bild, das aussieht wie ein Kleid, aber
+   * keins ist. Das ist nach dem Designgesetz eine erfundene Angabe, und im Korb
+   * ist sie besonders teuer — dort entscheidet jemand über Geld.
+   */
+  imageUrl?: string;
 }
 
 export interface Collection {

@@ -11,6 +11,7 @@ import { useCartStockLimits } from "@/features/commerce/hooks";
 import { CartRecommendations } from "@/features/commerce/CartRecommendations";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice } from "@/lib/format";
+import { bildVariante } from "@/lib/media";
 import { toast } from "sonner";
 
 /**
@@ -91,7 +92,31 @@ const Cart = () => {
               const atCap = max !== undefined && Number.isFinite(max) && i.qty >= max;
               return (
                 <li key={i.product.id + i.size} className="grid grid-cols-[110px_1fr_auto] items-start gap-6 py-6 md:grid-cols-[140px_1fr_auto]">
-                  <ProductImage seed={i.product.slug} className="aspect-[3/4] w-full" />
+                  {/*
+                    Das Foto des Stücks, wenn es eines gibt.
+
+                    Hier stand bisher ausnahmslos `ProductImage` — eine
+                    gezeichnete Silhouette aus dem Slug. Sie sieht aus wie ein
+                    Kleid, ist aber keins: im Korb, wo jemand über Geld
+                    entscheidet, war das eine erfundene Angabe. Sie bleibt als
+                    Platzhalter für Stücke ohne Foto, statt dort eine leere
+                    Fläche zu lassen.
+
+                    `cover` in festem 3:4 — dieselbe Entscheidung wie bei den
+                    Werkkarten (Teil Q2). Ungeschnitten zeigt das Werk nur seine
+                    eigene Seite.
+                  */}
+                  {i.product.imageUrl ? (
+                    <img
+                      src={bildVariante(i.product.imageUrl, { breite: 280 })}
+                      alt={i.product.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="aspect-[3/4] w-full object-cover"
+                    />
+                  ) : (
+                    <ProductImage seed={i.product.slug} className="aspect-[3/4] w-full" />
+                  )}
                   <div>
                     <p className="palace-eyebrow">{i.product.designer}</p>
                     <Link to={`/product/${i.product.slug}`} className="palace-serif mt-2 block text-[1.4rem] italic text-[#000000] hover:underline">

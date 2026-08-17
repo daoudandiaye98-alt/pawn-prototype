@@ -262,6 +262,7 @@ const ProductDetail = () => {
         name: product.name,
         preis: dbProduct?.price ?? product.price,
         welt: dbProduct?.world ?? null,
+        bild: dbProduct?.image_url ?? null,
         beschreibung: dbProduct?.description ?? null,
         groessen: product.sizes,
         haus: dbProduct?.designers

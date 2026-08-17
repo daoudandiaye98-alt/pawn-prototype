@@ -257,6 +257,16 @@
   .hover-invert:hover { background-color: #000; color: #fff; }
   .hover-invert-dark { transition: background-color var(--dur-micro) var(--ease-pawn), color var(--dur-micro) var(--ease-pawn); }
   .hover-invert-dark:hover { background-color: #fff; color: #000; }
+
+  /*
+    Dieselbe Invertierung, aber ohne Überblendung — ein Schnitt.
+    Gebraucht wird sie dort, wo Grund UND Schrift gleichzeitig tauschen: dann
+    kreuzen sich zwei Überblendungen, und in der Mitte steht Weiß auf Weiß.
+    Gemessen im Kopf der Landing bei 844 quer: 120 ms nach dem Rollen war der
+    Grund schon rgb(255,255,255), die Wortmarke noch rgb(255,255,255) — 1 : 1,
+    also unsichtbar (Kontrolle 3.3 verlangt 4,5 : 1).
+  */
+  .hover-invert-schnitt:hover { background-color: #000; color: #fff; }
 }
 
 /* Palace overrides — folded into the black/white system */
