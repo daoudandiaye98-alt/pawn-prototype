@@ -172,6 +172,10 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/kasse/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/order/success/?$",
       "dest": "/index.html"
     },

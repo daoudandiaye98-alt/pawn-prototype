@@ -448,12 +448,11 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
         <Heftseite
           lage="rechts" kolumne="Das Verzeichnis" folio={f}
           /*
-           * Das letzte Blatt trägt den Weg zur Kasse — X6. Die Kasse selbst zieht
-           * erst mit X9 als Beileger ins Heft; bis dahin ist `/cart` die Seite,
-           * die es wirklich gibt (dieselbe Ehrlichkeit wie bei der Korb-Marke).
+           * Das letzte Blatt trägt den Weg zur Kasse — X6. Seit X9 ist das der
+           * Beileger `/kasse`: ein loses Blatt, das nicht mitblättert.
            */
           weg={n === blaetter
-            ? { text: "Zur Kasse", zu: "/cart" }
+            ? { text: "Zur Kasse", zu: "/kasse" }
             : { text: "Weiterblättern", zu: `${V}/${n + 1}` }}
         >
           {satz ? (

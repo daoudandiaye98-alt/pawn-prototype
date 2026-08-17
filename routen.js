@@ -67,6 +67,7 @@ export const ROUTEN = [
   "/presse/:slug",
   "/cart",
   "/checkout",
+  "/kasse",
   "/order/success",
   "/account",
   "/admin",

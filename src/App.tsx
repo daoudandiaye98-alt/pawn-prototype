@@ -85,6 +85,7 @@ import Shop from "./pages/Shop.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Cart from "./pages/Cart.tsx";
 import Checkout from "./pages/Checkout.tsx";
+import Kasse from "./heft/kasse.tsx";
 import DesignersIndex from "./pages/DesignersIndex.tsx";
 import DesignerPage from "./pages/DesignerPage.tsx";
 import Account from "./pages/Account.tsx";
@@ -235,6 +236,9 @@ const App = () => (
                 <Route path="/presse/:slug" element={<Presse />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
+                {/* X9 — der Beileger. Die Kasse im Heft, mit den Pflichtangaben
+                    und der Schaltflaeche, die § 312j Abs. 3 BGB verlangt. */}
+                <Route path="/kasse" element={<Kasse />} />
                 <Route path="/order/success" element={<OrderConfirmation />} />
                 <Route path="/account" element={<Account />} />
 
