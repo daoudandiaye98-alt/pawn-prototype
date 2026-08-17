@@ -106,10 +106,21 @@ ls -1 tools/pruefstand/artefakte/*.png | sed "s|tools/pruefstand/artefakte|    $
 #
 # Der Pruefstand erkennt den Fall selbst und schreibt „HÜLLE" ins Protokoll.
 # Das wird hier durchgereicht — aber es ist ein UNTERES Mass: die Marke feuert
-# nur, wenn eine Anfrage sichtbar scheitert. Bleiben Bilder schwarz, ohne dass
-# eine Anfrage scheitert, sagt sie nichts. Verlass dich auf die Action.
+# nur, wenn eine Anfrage sichtbar SCHEITERT. Gemessen am 2026-08-17: die
+# Werkseite zeigte bei 390 px einen leeren Rahmen, weil es schlicht keine Daten
+# gab — keine Anfrage scheiterte, die Marke schwieg, und der Lauf meldete
+# „16/16 · FEHLER: keine".
+#
+# Deshalb sagt dieses Skript bei einem lokalen Ziel IMMER dazu, was es nicht
+# sehen konnte. „Keine Fehler" heisst hier „keine, die ich sehen kann".
 HUELLEN=$(grep -c "HÜLLE" /tmp/sicht-lauf.log 2>/dev/null || true)
 HUELLEN=${HUELLEN:-0}
+
+echo ""
+echo "  Gemessen wurde der lokal gebaute Stand ohne Datenbank. Leere Rahmen und"
+echo "  schwarze Flaechen sind hier Artefakte der Umgebung, KEIN Befund — und"
+echo "  umgekehrt sagt dieser Lauf nichts ueber Inhalte, die aus Supabase kommen."
+echo "  Ueber die echte Seite urteilt nur .github/workflows/pruefstand.yml."
 
 FEHLER=""
 [ "$HUELLEN" -gt 0 ] && FEHLER="${HUELLEN} Huellen (kein Netz zur Datenbank)"

@@ -29,9 +29,10 @@
   "letzter_pruefstand": {
     "datum": "2026-08-17",
     "bestanden": 1115,
-    "gefallen": 15,
-    "quelle": "GitHub-Action gegen die Vercel-Vorschau dieses Zweigs. Alle 15 bestehen auch auf PR #179 und auf main — sie gehoeren nicht diesem PR. 312 Kontrollen nicht pruefbar.",
-    "verify_schnell": "3/3"
+    "gefallen": 16,
+    "quelle": "GitHub-Action gegen die Vercel-Vorschau. 14x Kontrolle 4.7 (Seitengewicht) und 1x 4.5 (404) bestehen auch auf PR #179 und main. Das 16. Gate ist 3.3 an der Wortmarke bei 844px: gemessen 1.92, exakt der Wert, den PR #178 als behoben gemeldet hat. Flackert — derselbe Code lief einmal mit, einmal ohne diesen Befund. Gehoert nicht diesem PR.",
+    "verify_schnell": "3/3",
+    "verify_voll": "5/5 (sicht 16/16, aber lokal ohne Datenbank)"
   },
   "naechster_zug": "Der Harness steht und ist vorgeführt. Der nächste echte Zug ist KEIN weiteres Werkzeug, sondern die erste Zahl: sobald ein Mensch nach einem Merge etwas findet, löst das Ritual aus .claude/rules/00-gesetze.md aus — Zeile in regressionen.json UND Kontrolle in scripts/verify/, einmal rot vorgeführt. Nach vier Wochen prüfen, ob die Nachfunde gegenüber der Grundlinie sinken (27 Fix-Commits in den letzten 200). Sinken sie nicht, misst das System das Falsche; dann liegt die Arbeit in regressionen.json, nicht in mehr Werkzeugen. Die drei Routinen aus v1 — Regressionsnacht, Deploy-Choreograf, Morgenbrief — bleiben ungebaut, bis diese zwei vier Wochen gelaufen sind."
 }
