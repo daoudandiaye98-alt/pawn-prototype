@@ -20,6 +20,13 @@ import type { CommandResult } from "../commands";
  * `adapters/localStorage.ts`.
  */
 const isDurable = (e: DomainEvent) =>
+  /*
+   * Die Anmeldung eines Stücks ist so dauerhaft wie die Korbzeile, die sie
+   * begleitet. Wäre sie es nicht, stünde nach dem Neuladen wieder eine Zeile
+   * ohne Stück im Korb — genau der Zustand, den sie behebt.
+   */
+  e.type === "product.registered" ||
+  e.type === "designer.registered" ||
   e.type === "cart.item_added" ||
   e.type === "cart.item_removed" ||
   e.type === "cart.qty_set" ||

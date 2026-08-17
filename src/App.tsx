@@ -193,6 +193,13 @@ const App = () => (
                 <Route path="/inhalt" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
                 <Route path="/verzeichnis" element={<Navigate to="/verzeichnis/1" replace />} />
                 <Route path="/verzeichnis/:seite" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                {/*
+                  Ein Werk ist eine Doppelseite im selben Heft (X7) — deshalb
+                  dieselbe Route und keine eigene Seite. `/werk/…` und nicht
+                  `/product/…`: die alte Werkseite lebt weiter, bis X1 sie ablöst,
+                  und das Heft nimmt nur Adressen, die es vorher nicht gab.
+                */}
+                <Route path="/werk/:slug" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/preise" element={<Preise />} />
                 <Route path="/preise/maison" element={<PreiseMaison />} />

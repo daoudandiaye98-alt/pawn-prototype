@@ -43,12 +43,13 @@ import { folios } from "../doppelseiten";
 import {
   Bildunterschrift, Fliesstext, Heftseite, Kicker, Schlagzeile, Vorspann,
 } from "../satzspiegel";
-import { AufPlatte, Platte, PlatteBand, PlatteBund } from "../platte";
+import { AufPlatte, Platte, PlatteBund } from "../platte";
 import { Inhaltsverzeichnis } from "../inhaltsverzeichnis";
 import {
   LEERES_VERZEICHNIS, STUECKE_JE_DOPPELSEITE, STUECKE_JE_SEITE, V, WerkZeilen,
-  blattZahl, verzeichnisSatz, type VerzeichnisStand,
+  blattZahl, verzeichnisSatz, werkPfad, type VerzeichnisStand,
 } from "../verzeichnis";
+import { WerkSeiteLinks, WerkSeiteRechts, werkKolumne } from "../werk";
 
 /**
  * Das Präfix der Sektionsadressen. Eine Stelle, damit der Umzug auf die
@@ -162,27 +163,16 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
       >
         <Schlagzeile>Erst Haltung, dann Auswahl, dann Handlung.</Schlagzeile>
         {/*
-          Auf breiten Geräten der Vorspann dieser Doppelseite; auf dem Telefon
-          das Verzeichnis selbst. Grund: die linke Seite — und damit die
-          Navigation aus X5 — ist bei ≤ 820 px nicht zu sehen (siehe
-          `PlatteBand`). Lieber die Navigation als der Satz darüber: das
-          Verzeichnis ist der Zweck dieser Seite, der Satz ihre Begleitung.
+          Hier stand bis zur Einzelseiten-Korrektur eine zweite Fassung des
+          Inhaltsverzeichnisses, weil die linke Seite auf dem Telefon nicht zu
+          sehen war. Sie ist zu sehen, seit der Wendel dort um EINE Seite wendet —
+          der Behelf ist mit seiner Ursache weg.
         */}
-        <div className="hx-nur-breit">
-          <Fliesstext>
-            Das ist die Ordnung dieses Hefts. Wer wissen will, was PAWN ist, liest
-            vorn. Wer kaufen will, blättert nach hinten — dort liegt das Verzeichnis.
-            Beides ist einen Griff entfernt, und keines drängt sich vor.
-          </Fliesstext>
-        </div>
-        <div className="hx-nur-schmal">
-          {ohneInhalt ? null : (
-            <Inhaltsverzeichnis
-              seiten={heftSeiten({ aufSprung, ohneInhalt: true, verzeichnis })}
-              aufSprung={aufSprung}
-            />
-          )}
-        </div>
+        <Fliesstext>
+          Das ist die Ordnung dieses Hefts. Wer wissen will, was PAWN ist, liest
+          vorn. Wer kaufen will, blättert nach hinten — dort liegt das Verzeichnis.
+          Beides ist einen Griff entfernt, und keines drängt sich vor.
+        </Fliesstext>
       </Heftseite>
     ),
   }));
@@ -407,6 +397,23 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
      Wie viele Blätter es gibt, entscheidet der Bestand — nicht das Gerüst. */
   const kat = verzeichnis ?? LEERES_VERZEICHNIS;
   const blaetter = Math.max(blattZahl(kat.werke.length), kat.mindestBlaetter);
+
+  /*
+   * Von der Katalogzeile zur Doppelseite des Werks (X7).
+   *
+   * Die Tabelle wird erst NACH den Katalogblättern gefüllt — vorher ist nicht
+   * bekannt, an welcher Stelle im Heft die Werke beginnen. Der Sprungbefehl
+   * liest sie deshalb beim Antippen, nicht beim Bauen; zu diesem Zeitpunkt
+   * steht sie. Ohne Eintrag bleibt der Link ein gewöhnlicher Link und lädt die
+   * Adresse — das ist der Zustand, solange die Stücke noch geholt werden.
+   */
+  const werkNummer = new Map<string, number>();
+  const aufWerk = (slug: string): boolean => {
+    const n = werkNummer.get(slug);
+    if (!n) return false;
+    aufSprung(n);
+    return true;
+  };
   for (let n = 1; n <= blaetter; n++) {
     const nummer = seiten.length + 1;
     const von = (n - 1) * STUECKE_JE_DOPPELSEITE;
@@ -434,7 +441,7 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
       links: (f) => (
         <Heftseite lage="links" kolumne="Das Verzeichnis" folio={f}>
           <Kicker>{`Verzeichnis · Blatt ${n} von ${blaetter}`}</Kicker>
-          <WerkZeilen werke={linke} />
+          <WerkZeilen werke={linke} aufWerk={aufWerk} />
         </Heftseite>
       ),
       rechts: (f) => (
@@ -464,18 +471,48 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
               {n > 1 ? <Bildunterschrift>Blatt 1 liegt am Anfang des Verzeichnisses.</Bildunterschrift> : null}
             </>
           ) : (
-            <>
-              {/* Breit: die zweiten sechs. Schmal: alle zwölf, weil die linke
-                  Seite dort nicht zu sehen ist. Kein doppelter Inhalt für eine
-                  Vorlesehilfe — `display: none` nimmt die jeweils andere Fassung
-                  auch aus dem Vorlesebaum. */}
-              <div className="hx-nur-breit"><WerkZeilen werke={rechte} /></div>
-              <div className="hx-nur-schmal"><WerkZeilen werke={alleZwoelf} /></div>
-            </>
+            /*
+             * Die zweiten sechs — auf jedem Gerät.
+             *
+             * Hier standen auf dem Telefon einmal alle zwölf, weil die linke
+             * Seite dort nicht zu sehen war. Seit der Wendel im
+             * Einzelseiten-Modus um EINE Seite wendet, ist sie zu sehen: sechs
+             * links, sechs rechts, zwei Züge je Doppelseite.
+             */
+            <WerkZeilen werke={rechte} aufWerk={aufWerk} />
           )}
         </Heftseite>
       ),
     }));
+  }
+
+  /* ——— Die Werke (X7) ———
+     Jedes Werk eine Doppelseite: links das Werk, rechts die Angaben. Sie liegen
+     hinter dem Verzeichnis, in dessen Reihenfolge — dadurch sind voriges und
+     nächstes Werk ein Wendel und brauchen keine eigenen Knöpfe.
+
+     Aus dem UNGEFILTERTEN Bestand (siehe `VerzeichnisStand.alle`): eine Adresse
+     darf nicht verschwinden, weil jemand einen Reiter gewählt hat. */
+  for (const w of kat.alle) {
+    const nummer = seiten.length + 1;
+    werkNummer.set(w.slug, nummer);
+    const f = folios(nummer);
+    seiten.push({
+      schluessel: `werk-${w.slug}`,
+      pfad: werkPfad(w.slug),
+      kolumne: werkKolumne(w),
+      /* Der Titel ist die eine `h1` der Adresse (X12) — und genau EINE je Werk.
+         Die alte Werkseite hatte gar keine. */
+      titel: w.name,
+      /* Ein Werk gehört zum Verzeichnis: so bleibt sein Reiter im Griffregister
+         markiert, statt dass das Register beim Lesen eines Werks leer aussieht.
+         Ein eigener Reiter je Werk wäre bei 200 Stücken ein zweites Verzeichnis
+         am Blattrand. */
+      sektion: "verzeichnis",
+      ton: "papier",
+      links: <WerkSeiteLinks werk={w} folio={f.links} />,
+      rechts: <WerkSeiteRechts werk={w} folio={f.rechts} />,
+    });
   }
 
   return seiten;
@@ -550,12 +587,9 @@ function welt(a: {
     ),
     rechts: (f) => (
       <Heftseite lage="rechts" kolumne={a.kolumne} folio={f} weg={a.weg}>
-        {/* Auf dem Telefon steht die Platte hier als Band — die linke Seite ist
-            dort nicht zu sehen (siehe `PlatteBand`). Auf breiten Geräten ist
-            dieses Band ausgeblendet und die Platte füllt die linke Seite. */}
-        <PlatteBand name={a.platte} alt={a.plattenAlt} />
-        {/* Auf dem Telefon ein Block über der Platte, auf breiten Geräten nur
-            eine Gruppe ohne eigenen Grund — siehe `hx-satz-block` in heft.css. */}
+        {/* Die Platte steht auf ihrer eigenen Seite (links) — auf jedem Gerät.
+            Das Band, das sie auf dem Telefon hier wiederholte, ist mit seiner
+            Ursache weg: die linke Seite wird jetzt aufgeschlagen. */}
         <div className="hx-satz-block">
           <Kicker>{a.kicker}</Kicker>
           <Schlagzeile>{a.titel}</Schlagzeile>

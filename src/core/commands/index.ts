@@ -24,6 +24,24 @@ export const followDesigner = (_state: DomainState, p: C.FollowDesignerPayload):
   events: [{ type: "designer.followed", actor: p.identityId, payload: p }],
 });
 
+/**
+ * Ein Stück (und sein Haus) im Bestand anmelden.
+ *
+ * Siehe `RegisterStueckPayload`: ohne diesen Schritt kennt der Laden nur die
+ * leere Saat, und jede Korbzeile für ein echtes Stück verschwindet beim
+ * Anzeigen. Das Haus ist optional — ein Stück ohne Haus ist selten, aber es
+ * soll daran nicht scheitern.
+ */
+export const registerStueck = (_state: DomainState, p: C.RegisterStueckPayload): CommandResult => ({
+  ok: true,
+  events: [
+    ...(p.designer
+      ? [{ type: "designer.registered" as const, actor: p.identityId, payload: { designer: p.designer } }]
+      : []),
+    { type: "product.registered", actor: p.identityId, payload: { product: p.product } },
+  ],
+});
+
 // Cart
 export const addToCart = (_state: DomainState, p: C.AddToCartPayload): CommandResult => ({
   ok: true,

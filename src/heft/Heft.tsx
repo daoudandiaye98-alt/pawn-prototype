@@ -25,10 +25,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  FENSTER, WEG, blattStand, scrollHoehe, seitenNummer, standFuerSeite,
+  EINZELSEITE_ABFRAGE, FENSTER, WEG, blattStand, doppelseiteFuerSeite, ersteSeiteVon,
+  scrollHoehe, seitenNummer, standFuerSeite,
 } from "./wendel";
 import {
-  type Doppelseite, blaetterAus, nummerFuerPfad, pfadFuerNummer,
+  type Doppelseite, type Heftaufbau, blaetterAus, einzelseitenAus, findeNummer,
+  nummerFuerPfad, pfadFuerNummer,
 } from "./doppelseiten";
 import { Register, type FilterGruppe } from "./register";
 import { Marken } from "./marken";
@@ -77,6 +79,27 @@ const magReduziert = () =>
   typeof window !== "undefined"
   && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
+/**
+ * Zeigt das Heft gerade EINE Seite?
+ *
+ * Dieselbe Bedingung wie in der CSS, aus derselben Konstante (`wendel.ts`). Sie
+ * muss hier bekannt sein, weil davon abhängt, was gestapelt wird — nicht nur,
+ * wie es aussieht. Und sie wird im Betrieb nachgeführt: wer das Telefon dreht,
+ * wechselt den Modus, und dann wendet das Heft ab dem nächsten Zug anders.
+ */
+function useEinzelseite(): boolean {
+  const [einzeln, setEinzeln] = useState(
+    () => typeof window !== "undefined" && window.matchMedia?.(EINZELSEITE_ABFRAGE).matches === true,
+  );
+  useEffect(() => {
+    const mm = window.matchMedia(EINZELSEITE_ABFRAGE);
+    const hoer = () => setEinzeln(mm.matches);
+    mm.addEventListener("change", hoer);
+    return () => mm.removeEventListener("change", hoer);
+  }, []);
+  return einzeln;
+}
+
 export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -115,6 +138,9 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
   const sperrbar = darfSperren(pathname) && !alsText;
   const hochformat = useHochformat(sperrbar);
 
+  /* Eine Seite je Wendel oder zwei. Die eine Bedingung, aus `wendel.ts`. */
+  const einzeln = useEinzelseite();
+
   /**
    * Ein Reiter im Griffregister, eine Zeile im Inhaltsverzeichnis, eine
    * Weltzeile — alle springen über diesen einen Befehl.
@@ -129,13 +155,18 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
    * Gelesen wird der Ref nur aus Ereignissen, nie beim Zeichnen.
    */
   const seitenRef = useRef<Doppelseite[]>([]);
+  /** Im Einzelseiten-Modus zählt der Wendel Seiten, sonst Doppelseiten. */
+  const standFuer = useCallback(
+    (doppelseite: number) => standFuerSeite(einzeln ? ersteSeiteVon(doppelseite) : doppelseite),
+    [einzeln],
+  );
   const sprung = useCallback((n: number) => {
     if (reduziert) {
       navigate(pfadFuerNummer(seitenRef.current, n));
       return;
     }
-    window.scrollTo({ top: standFuerSeite(n), behavior: "instant" as ScrollBehavior });
-  }, [reduziert, navigate]);
+    window.scrollTo({ top: standFuer(n), behavior: "instant" as ScrollBehavior });
+  }, [reduziert, navigate, standFuer]);
 
   const seiten = useMemo(() => bauen(sprung), [bauen, sprung]);
   seitenRef.current = seiten;
@@ -148,6 +179,20 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
    * Adresse beim Blättern zurückschlagen und das Heft auf die Startseite zwingen.
    */
   const [startSeite] = useState(() => nummerFuerPfad(seiten, pathname));
+
+  /*
+   * Eine Adresse, die es beim Betreten noch nicht gab — einmal nachgeholt.
+   *
+   * Die Werke (X7) entstehen aus Daten; im ersten Bild kennt das Heft sie noch
+   * nicht. Wer `/werk/leinenmantel` aufruft oder weitergibt, schlüge deshalb
+   * vorn auf und bliebe dort, weil `startSeite` bewusst nur einmal gelesen wird.
+   * Also merkt sich die Hülle die gesuchte Adresse und blättert dorthin, sobald
+   * das Blatt existiert — genau einmal. Danach führt wieder der Wendel; ein
+   * zweites Nachholen würde dem Leser die Seite unter dem Finger wegziehen.
+   */
+  const [nachzuholen, setNachzuholen] = useState<string | null>(
+    () => (findeNummer(seiten, pathname) === null ? pathname : null),
+  );
 
   /** Die Adresse nachführen — nur wenn sich die Doppelseite wirklich ändert. */
   const letzte = useRef(0);
@@ -175,7 +220,18 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
     }
   }, [seiten, navigate]);
 
-  const aufbau = useMemo(() => blaetterAus(seiten), [seiten]);
+  useEffect(() => {
+    if (!nachzuholen) return;
+    const n = findeNummer(seiten, nachzuholen);
+    if (n === null) return;
+    setNachzuholen(null);
+    sprung(n);
+  }, [nachzuholen, seiten, sprung]);
+
+  const aufbau = useMemo(
+    () => (einzeln ? einzelseitenAus(seiten) : blaetterAus(seiten)),
+    [seiten, einzeln],
+  );
   const hier = seiten[aktuell - 1];
 
   /*
@@ -213,8 +269,18 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
         <HeftFolge seiten={seiten} titel={titel} startSeite={startSeite} adresseSetzen={adresseSetzen} />
       ) : (
         <HeftGewendet
-          seiten={seiten} aufbau={aufbau} titel={titel}
-          startSeite={startSeite} adresseSetzen={adresseSetzen}
+          /*
+           * `key` auf den Modus: wechselt er, baut der Wendel neu auf.
+           *
+           * Nötig, weil in ihm Refs und ein Fenster über den Blättern liegen, die
+           * beide auf die Blattzahl gerechnet sind — und die verdoppelt sich beim
+           * Drehen. Ein neuer Aufbau ist hier ehrlicher als ein Dutzend Effekte,
+           * die eine halb umgestellte Bühne nachziehen. Aufgeschlagen bleibt
+           * dieselbe Doppelseite: `startSeite` ist die aktuelle.
+           */
+          key={einzeln ? "einzeln" : "doppelt"}
+          aufbau={aufbau} titel={titel} einzeln={einzeln}
+          startSeite={aktuell} adresseSetzen={adresseSetzen}
         />
       )}
       <Register seiten={seiten} aktuell={aktuell} aufSprung={sprung} filter={filter} />
@@ -229,16 +295,38 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
 /* ————————————————— Der Wendel ————————————————— */
 
 interface GewendetProps {
-  seiten: Doppelseite[];
-  aufbau: ReturnType<typeof blaetterAus>;
+  aufbau: Heftaufbau;
   titel: string;
+  /** Die Doppelseite, mit der aufgeschlagen wird. */
   startSeite: number;
   adresseSetzen: (n: number) => void;
+  /** Eine Seite je Wendel statt einer Doppelseite. */
+  einzeln: boolean;
 }
 
-function HeftGewendet({ seiten, aufbau, titel, startSeite, adresseSetzen }: GewendetProps) {
-  const { blaetter, grundLinks, grundRechts } = aufbau;
+function HeftGewendet({ aufbau, titel, startSeite, adresseSetzen, einzeln }: GewendetProps) {
+  const { blaetter, grundLinks, grundRechts, tonGrundLinks, tonGrundRechts } = aufbau;
   const anzahl = blaetter.length;
+
+  /*
+   * Die zwei Umrechnungen zwischen Wendel und Adresse.
+   *
+   * Im Doppelseiten-Modus ist ein Wendel eine Doppelseite — Schritt und Adresse
+   * zählen gleich. Im Einzelseiten-Modus ist ein Wendel eine SEITE, und zwei
+   * Seiten tragen dieselbe Adresse. Beides steht in `wendel.ts`, hier wird nur
+   * ausgewählt.
+   */
+  const adresseFuerStand = useCallback(
+    (y: number) => {
+      const n = seitenNummer(y, anzahl);
+      return einzeln ? doppelseiteFuerSeite(n) : n;
+    },
+    [anzahl, einzeln],
+  );
+  const standFuerStart = useCallback(
+    () => standFuerSeite(einzeln ? ersteSeiteVon(startSeite) : startSeite),
+    [einzeln, startSeite],
+  );
 
   const blattRefs = useRef<(HTMLDivElement | null)[]>([]);
   const knickRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -315,8 +403,22 @@ function HeftGewendet({ seiten, aufbau, titel, startSeite, adresseSetzen }: Gewe
     for (let i = von; i <= bis; i++) schreibe(i, y, false);
 
     lesbarkeitSetzen(y);
-    adresseSetzen(seitenNummer(y, anzahl));
-  }, [anzahl, schreibe, lesbarkeitSetzen, adresseSetzen]);
+    adresseSetzen(adresseFuerStand(y));
+  }, [anzahl, schreibe, lesbarkeitSetzen, adresseSetzen, adresseFuerStand]);
+
+  /*
+   * Kommen Blätter dazu, wächst die Rollhöhe mit.
+   *
+   * Sie wurde bisher nur beim Aufbau und beim Ändern der Fenstergröße gerechnet
+   * — das reichte, solange die Zahl der Blätter feststand. Sie steht aber nicht
+   * fest: das Verzeichnis wächst mit dem Bestand (X6), und mit X7 kommt je Werk
+   * eine Doppelseite dazu. Ohne diese Zeile bliebe die Rollhöhe die des ersten
+   * Bildes, und alles hinter ihr wäre nicht erreichbar — die Seiten stünden im
+   * Heft, aber niemand käme hin.
+   */
+  useEffect(() => {
+    setHoehe(scrollHoehe(anzahl, window.innerHeight));
+  }, [anzahl]);
 
   useEffect(() => {
     const beiScroll = () => {
@@ -344,7 +446,7 @@ function HeftGewendet({ seiten, aufbau, titel, startSeite, adresseSetzen }: Gewe
   useLayoutEffect(() => {
     setHoehe(scrollHoehe(anzahl, window.innerHeight));
     window.scrollTo({
-      top: standFuerSeite(startSeite),
+      top: standFuerStart(),
       behavior: "instant" as ScrollBehavior,
     });
     fenster.current = [-1, -1];
@@ -362,7 +464,7 @@ function HeftGewendet({ seiten, aufbau, titel, startSeite, adresseSetzen }: Gewe
             {/* Die Reihenfolge im DOM ist die Lesereihenfolge. Gestapelt wird
                 über z-index, nicht über die Reihenfolge — so liest eine
                 Vorlesehilfe das Heft von vorn nach hinten. */}
-            <div className="hx-flaeche grund links" data-ton={seiten[0]?.ton} ref={grundLinksRef}>
+            <div className="hx-flaeche grund links" data-ton={tonGrundLinks ?? undefined} ref={grundLinksRef}>
               {grundLinks}
             </div>
             {blaetter.map((b, i) => (
@@ -374,14 +476,14 @@ function HeftGewendet({ seiten, aufbau, titel, startSeite, adresseSetzen }: Gewe
               >
                 <div
                   className="hx-flaeche vorn"
-                  data-ton={seiten[i]?.ton}
+                  data-ton={b.tonVorn}
                   ref={(el) => { vornRefs.current[i] = el; }}
                 >
                   {b.vorn}
                 </div>
                 <div
                   className="hx-flaeche rueck"
-                  data-ton={seiten[i + 1]?.ton}
+                  data-ton={b.tonRueck ?? undefined}
                   ref={(el) => { rueckRefs.current[i] = el; }}
                 >
                   {b.rueck}
@@ -391,7 +493,7 @@ function HeftGewendet({ seiten, aufbau, titel, startSeite, adresseSetzen }: Gewe
             ))}
             <div
               className="hx-flaeche grund rechts"
-              data-ton={seiten[seiten.length - 1]?.ton}
+              data-ton={tonGrundRechts ?? undefined}
               ref={grundRechtsRef}
             >
               {grundRechts}

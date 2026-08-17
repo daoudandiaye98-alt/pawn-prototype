@@ -107,42 +107,6 @@ export function PlatteBund({ name, alt, zuerst }: PlatteProps) {
 }
 
 /**
- * Die Platte als Band am Kopf der Seite — nur auf dem Telefon.
- *
- * **Warum das nötig ist.** Gemessen bei 390 px: von der Sektion Mode war nur die
- * dunkle Textseite zu sehen, die Platte lag links außerhalb des Bildschirms. Das
- * ist keine Nachlässigkeit, sondern Geometrie: bei ≤ 820 px zeigt das Heft eine
- * Einzelseite, und ein Blatt, das um seine linke Kante wendet, verlässt dabei den
- * Rahmen. Die linke Seite einer Doppelseite kann auf dem Telefon also gar nicht
- * erscheinen — und X10 stellt die ganzseitigen Platten genau dorthin.
- *
- * Deshalb steht die Platte auf schmalen Geräten ein zweites Mal, als Band über
- * dem Satz der rechten Seite. Dieselbe Adresse, also kein zweiter Download; die
- * jeweils nicht gebrauchte Fassung steht auf `display: none` und wird damit weder
- * geladen noch vorgelesen.
- *
- * Das ist eine Antwort auf einen Widerspruch im Auftrag, keine Auslegung davon:
- * X3 verlangt die Einzelseite, X5 und X10 legen Inhalt auf die Seite, die eine
- * Einzelseite nicht zeigen kann. Die Entscheidung gehört gemeldet.
- */
-export function PlatteBand({ name, alt }: PlatteProps) {
-  return (
-    <div className="hx-platte-band">
-      <img
-        src={`/heft/${name}-${BREITEN_SEITE[1]}.webp`}
-        srcSet={satz(name, BREITEN_SEITE)}
-        sizes="100vw"
-        alt={alt}
-        width={894}
-        height={1192}
-        loading="lazy"
-        decoding="async"
-      />
-    </div>
-  );
-}
-
-/**
  * Der Textblock über einer Platte.
  *
  * **Warum massives Schwarz und kein Verlauf.** Gemessen wurde das schon einmal,

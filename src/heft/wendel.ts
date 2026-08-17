@@ -19,6 +19,36 @@ export const WEG = 900;
 /** Ab hier eine Doppelseite, darunter eine Einzelseite. */
 export const EINZELSEITE_BIS = 820;
 
+/** Und ab hier der Höhe nach — ein Telefon quer ist breit, aber flach. */
+export const EINZELSEITE_HOEHE_BIS = 600;
+
+/**
+ * Die Bedingung für die Einzelseite, als Medienabfrage.
+ *
+ * Sie steht hier und nicht zweimal, weil zwei Stellen auseinanderlaufen können:
+ * das Heft baut aus ihr seinen Stapel (eine Seite je Blatt oder zwei), die CSS
+ * legt aus ihr die Flächen. Wären die Grenzen verschieden, zeigte das Heft für
+ * einen Streifen von Fenstergrößen zwei Seiten und wendete einzeln — oder
+ * umgekehrt.
+ *
+ * `heft.css` trägt die gleiche Abfrage wörtlich; sie kann keine JS-Konstante
+ * lesen. Der Kommentar dort verweist hierher. Wer eine Grenze verschiebt,
+ * verschiebt beide.
+ */
+export const EINZELSEITE_ABFRAGE =
+  `(max-width: ${EINZELSEITE_BIS - 0.02}px), (max-height: ${EINZELSEITE_HOEHE_BIS - 0.02}px)`;
+
+/**
+ * Einzelseiten-Modus: aus der Seitenzahl die Doppelseite, und zurück.
+ *
+ * Die Adresse gehört der DOPPELSEITE (X2) — auch dann, wenn nur eine Seite zu
+ * sehen ist. Seite 13 und Seite 14 tragen also dieselbe Adresse, und beim
+ * Blättern wechselt sie erst bei jedem zweiten Wendel. Wer eine Adresse aufruft,
+ * schlägt auf ihrer ERSTEN Seite auf, also links.
+ */
+export const doppelseiteFuerSeite = (seite: number) => Math.max(1, Math.ceil(seite / 2));
+export const ersteSeiteVon = (doppelseite: number) => Math.max(1, doppelseite * 2 - 1);
+
 /** Wie viele Blätter links und rechts vom aktuellen in der 3D-Ebene liegen. */
 export const FENSTER = 2;
 

@@ -32,8 +32,14 @@ import { formatPrice } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import type { Welt } from "@/lib/weltFelder";
 
-/** Ein Stück, wie es im Verzeichnis steht. Weniger Felder als in der Boutique —
- *  ein Katalogeintrag ist eine Zeile, keine Werkseite. */
+/**
+ * Ein Stück, wie es im Heft steht.
+ *
+ * Es trägt zweierlei: die vier Angaben der Katalogzeile (Bild, Name, Haus,
+ * Preis) und alles, was seine eigene Doppelseite braucht (X7). Beides aus
+ * derselben Abfrage — ein Stück, ein Datensatz. Zwei Abfragen wären zwei
+ * Wahrheiten, und die zweite wäre irgendwann die falsche.
+ */
 export interface Werk {
   id: string;
   slug: string;
@@ -41,7 +47,15 @@ export interface Werk {
   preis: number;
   welt: Welt | null;
   bild: string | null;
-  haus: { slug: string; name: string } | null;
+  haus: { id: string; slug: string; name: string; kannVerkaufen: boolean } | null;
+  /** Der Satz des Hauses zum Stück. Fehlt er, steht keiner da. */
+  beschreibung: string | null;
+  /** Die Angaben der Welt (Technik, Maße, Material …) — roh, gelesen von `gefuellteFelder`. */
+  dna: Record<string, unknown> | null;
+  /** Größen, falls das Stück welche hat. Ein Bild hat keine. */
+  groessen: string[];
+  /** Nimmt das Haus für dieses Stück Anfragen an? */
+  anfragenErlaubt: boolean;
 }
 
 export const STUECKE_JE_SEITE = 6;
@@ -49,6 +63,17 @@ export const STUECKE_JE_DOPPELSEITE = STUECKE_JE_SEITE * 2;
 
 /** Die Adresse des Verzeichnisses. Eine Stelle, damit X1 sie in einer Zeile umzieht. */
 export const V = "/verzeichnis";
+
+/**
+ * Die Adresse eines einzelnen Werks (X7).
+ *
+ * `/werk/<slug>` und nicht `/product/<slug>`: die alte Werkseite ist eine eigene
+ * Seite mit eigenem Gerüst, das Werk im Heft ist eine Doppelseite. Solange beide
+ * existieren, nimmt das Heft nur Adressen, die es vorher nicht gab — dieselbe
+ * Regel wie bei den `/heft/…`-Sektionen. `drehhinweis.tsx` kennt diesen Pfad
+ * schon: eine Werkseite wird nie ins Querformat gezwungen.
+ */
+export const werkPfad = (slug: string) => `/werk/${slug}`;
 
 /** Dieselbe Obergrenze wie in der Boutique: 200 Stücke, also 17 Doppelseiten. */
 const HOECHSTZAHL = 200;
@@ -153,7 +178,19 @@ interface Zeile {
   price: number;
   world: string | null;
   image_url: string | null;
-  designers: { slug: string; brand_name: string } | null;
+  description: string | null;
+  product_dna: Record<string, unknown> | null;
+  size_variants: unknown;
+  allow_custom_requests: boolean | null;
+  designers: { id: string; slug: string; brand_name: string; kauf_freigeschaltet: boolean | null } | null;
+}
+
+/** Die Größen eines Stücks — aus `size_variants`, ohne leere Einträge. */
+function groessenAus(roh: unknown): string[] {
+  if (!Array.isArray(roh)) return [];
+  return roh
+    .map((v) => (v as { size?: string })?.size)
+    .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
 }
 
 export function useVerzeichnisWerke() {
@@ -166,7 +203,10 @@ export function useVerzeichnisWerke() {
     (async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, slug, name, price, world, image_url, designers ( slug, brand_name )")
+        .select(
+          "id, slug, name, price, world, image_url, description, product_dna, size_variants,"
+          + " allow_custom_requests, designers ( id, slug, brand_name, kauf_freigeschaltet )",
+        )
         .eq("status", "published")
         .order("created_at", { ascending: false })
         .limit(HOECHSTZAHL);
@@ -185,7 +225,20 @@ export function useVerzeichnisWerke() {
           preis: Number(z.price),
           welt: (z.world as Welt | null) ?? null,
           bild: z.image_url,
-          haus: z.designers ? { slug: z.designers.slug, name: z.designers.brand_name } : null,
+          haus: z.designers
+            ? {
+              id: z.designers.id,
+              slug: z.designers.slug,
+              name: z.designers.brand_name,
+              /* Dieselbe Wahrheit wie auf der alten Werkseite: nur `false`
+                 sperrt. Fehlt die Spalte, wird nicht stillschweigend gesperrt. */
+              kannVerkaufen: z.designers.kauf_freigeschaltet !== false,
+            }
+            : null,
+          beschreibung: z.description,
+          dna: z.product_dna,
+          groessen: groessenAus(z.size_variants),
+          anfragenErlaubt: z.allow_custom_requests === true,
         })),
       );
       setLaedt(false);
@@ -201,6 +254,17 @@ export function useVerzeichnisWerke() {
 export interface VerzeichnisStand {
   /** Bereits gefiltert — die Doppelseite schneidet nur noch ihre zwölf heraus. */
   werke: Werk[];
+  /**
+   * Der ganze Bestand, ungefiltert — daraus entstehen die Werk-Doppelseiten (X7).
+   *
+   * **Warum ungefiltert.** Die Adresse eines Werks (`/werk/<slug>`) muss
+   * bestehen, egal welche Reiter gerade gewählt sind. Käme die Liste der
+   * Werkseiten aus der gefilterten Auswahl, verschwände ein weitergegebener Link
+   * in dem Moment, in dem der Empfänger einen Filter in seiner Adresse hat — und
+   * das Heft schlüge vorn auf statt beim Werk. Die Reiter legen das Verzeichnis
+   * neu; sie nehmen kein Werk aus dem Heft.
+   */
+  alle: Werk[];
   laedt: boolean;
   fehler: string | null;
   gefiltert: boolean;
@@ -222,7 +286,7 @@ export interface VerzeichnisStand {
 }
 
 export const LEERES_VERZEICHNIS: VerzeichnisStand = {
-  werke: [], laedt: true, fehler: null, gefiltert: false, mindestBlaetter: 1,
+  werke: [], alle: [], laedt: true, fehler: null, gefiltert: false, mindestBlaetter: 1,
 };
 
 /**
@@ -253,15 +317,34 @@ export function verzeichnisSatz(
  *
  * Bild, Name, Haus, Preis — vier Angaben, die reichen, um sich zu entscheiden.
  * Mehr wäre eine Werkseite, und die liegt hinter dem Link.
+ *
+ * **Der Link blättert, er lädt nicht neu.** Jedes Werk hat seine eigene
+ * Doppelseite im selben Heft (X7); `zuNummer` sagt, welche. Die Adresse steht
+ * trotzdem am `<a>`, damit Mittelklick, Weitergeben und Suchmaschine
+ * funktionieren — dieselbe Bauart wie im Inhaltsverzeichnis. Fehlt die Nummer
+ * (das Werk ist noch nicht im Heft), bleibt der Link ein gewöhnlicher Link.
  */
-export function WerkZeilen({ werke }: { werke: Werk[] }) {
+export function WerkZeilen({ werke, aufWerk }: {
+  werke: Werk[];
+  /** Blättert zum Werk. Gibt `false`, wenn es (noch) keine Doppelseite dafür gibt. */
+  aufWerk?: (slug: string) => boolean;
+}) {
   const { locale } = useI18n();
   if (werke.length === 0) return null;
   return (
     <ol className="hx-verzeichnis">
       {werke.map((w) => (
         <li key={w.id}>
-          <Link className="hx-werk" to={`/product/${w.slug}`}>
+          <Link
+            className="hx-werk"
+            to={werkPfad(w.slug)}
+            onClick={(e) => {
+              /* Fremde Absichten nicht abfangen: neuer Tab, neues Fenster. */
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              if (!aufWerk?.(w.slug)) return;
+              e.preventDefault();
+            }}
+          >
             {/* Der Rahmen steht auch ohne Bild — sonst rutschte die Zeile, sobald
                 ein Stück sein Foto verliert. `istZeigbar` lässt zwar keines ohne
                 Bild herein; die Fläche hält trotzdem, statt sich darauf zu
@@ -295,7 +378,14 @@ export function useVerzeichnisStand(
   const gefiltert = istGefiltert(filter);
   const sichtbar = useMemo(() => filtern(bestand.werke, filter), [bestand.werke, filter]);
   return useMemo(
-    () => ({ werke: sichtbar, laedt: bestand.laedt, fehler: bestand.fehler, gefiltert, mindestBlaetter }),
-    [sichtbar, bestand.laedt, bestand.fehler, gefiltert, mindestBlaetter],
+    () => ({
+      werke: sichtbar,
+      alle: bestand.werke,
+      laedt: bestand.laedt,
+      fehler: bestand.fehler,
+      gefiltert,
+      mindestBlaetter,
+    }),
+    [sichtbar, bestand.werke, bestand.laedt, bestand.fehler, gefiltert, mindestBlaetter],
   );
 }

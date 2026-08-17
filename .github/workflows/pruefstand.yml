@@ -2,15 +2,27 @@
 #
 # Warum überhaupt: der Entwicklungscontainer hat für den Browser keinen Ausgang
 # ins Netz. Jede Seite, die ihre Inhalte von Supabase holt, ist dort eine leere
-# Hülle, und `lauf.ts` setzt solche Läufe seit der Hüllen-Regel geschlossen auf
-# `nicht_pruefbar`. Der GitHub-Runner hat Netz — er ist damit der einzige Ort,
-# an dem `/shop`, `/product` und `/designer` je echte Zahlen bekommen.
+# Hülle, und `lauf.ts` setzt solche Läufe geschlossen auf `nicht_pruefbar`.
+# Belegt, nicht vermutet: vier Proxy-Schreibweisen durchprobiert, alle scheitern
+# entweder am lokalen Ziel (405) oder außen (Verbindungsabbruch). Der
+# GitHub-Runner hat Netz — er ist der einzige Ort, an dem Vorschau und echte
+# Daten zusammen messbar sind.
 #
-# WICHTIG, damit niemand den Bericht falsch liest: gemessen wird **pawn.vision**,
-# also der ausgelieferte Stand — nicht der Stand des Commits, der diesen Lauf
-# ausgelöst hat. Solange Lovable/Vercel den Push noch nicht veröffentlicht haben,
-# beschreibt der Bericht den Zustand *davor*. Der Bericht nennt Ziel, Adresse und
-# Commit, damit sich beides auseinanderhalten lässt.
+# WAS GEMESSEN WIRD — drei Fälle, in dieser Reihenfolge:
+#
+#   1. Adresse von Hand eingetragen (`workflow_dispatch`) → diese Adresse.
+#   2. Zweig ist nicht der Hauptzweig UND `VERCEL_AUTOMATION_BYPASS_SECRET`
+#      liegt in den Secrets → die **Vercel-Vorschau dieses Zweigs**. Das ist der
+#      Stand DIESES Commits, nicht der ausgelieferte.
+#   3. Sonst → **pawn.vision**, also der ausgelieferte Stand. Dann beschreibt der
+#      Bericht den Zustand VOR diesem Push, solange Lovable/Vercel ihn noch nicht
+#      veröffentlicht haben.
+#
+# Fall 2 ist der Grund für diese Stufe: nur dort messen Zahlen den Zweig, auf dem
+# gearbeitet wird. Fall 3 bleibt als Rückfall, damit die Action ohne Geheimnis
+# nicht stillsteht — sie sagt in beiden Fällen im Protokoll, was sie gemessen hat.
+# Der Bericht nennt `ziel`, `adresse` und `commit`, damit sich das nie verwechseln
+# lässt.
 #
 # Der Lauf endet mit Code 1, sobald ein Launch Gate gefallen ist — dann ist der
 # Check rot. `nicht_pruefbar` macht nichts rot; das ist Absicht, denn eine nicht
@@ -26,25 +38,29 @@ on:
     inputs:
       adresse:
         description: >
-          Adresse statt pawn.vision messen — z. B. die Vercel-Vorschau dieses
-          Zweigs. Ihr Name enthält einen gekürzten Zweignamen, der sich nicht
-          verlässlich ableiten lässt; deshalb wird er eingetragen, nicht geraten.
-          Leer lassen = pawn.vision.
+          Adresse statt der automatisch gefundenen messen. Leer lassen = die
+          Vorschau dieses Zweigs (mit Geheimnis) bzw. pawn.vision (ohne).
         required: false
         default: ""
-
 
 # Ein Lauf je Zweig. Ein neuer Push macht den alten Lauf gegenstandslos.
 concurrency:
   group: pruefstand-${{ github.ref }}
   cancel-in-progress: true
 
+# `deployments: read` ist der Grund, warum die Vorschau-Adresse gefunden werden
+# kann: Vercel legt je Push eine GitHub-Deployment an und trägt die fertige
+# Adresse in deren Status ein. Mehr Rechte braucht dieser Lauf nicht.
+permissions:
+  contents: read
+  deployments: read
+
 jobs:
   messen:
     runs-on: ubuntu-latest
-    # Fünf Lagen über sechs Seiten plus zwei Bewegungs-Durchläufe, Wege und 404
+    # Fünf Lagen über sieben Seiten plus zwei Bewegungs-Durchläufe, Wege und 404
     # brauchen ihre Zeit; der Deckel verhindert, dass ein Hänger eine Stunde
-    # Runner frisst.
+    # Runner frisst. Das Warten auf die Vorschau hat sein eigenes Zeitlimit.
     timeout-minutes: 45
 
     steps:
@@ -64,11 +80,8 @@ jobs:
       - name: Fokus-Wächter
         run: node tools/pruefstand/fokus-waechter.mjs
 
-      # Der Lauf vom 16.08. meldete auf JEDER Seite von pawn.vision
-      # `net::ERR_NAME_NOT_RESOLVED` für den Datenhost. Bevor daraus ein Befund
-      # wird, muss dastehen, ob der Name überhaupt auflösbar ist — und zwar von
-      # einer Maschine mit normalem Netz. Absichtlich `|| true`: das hier ist
-      # eine Auskunft, kein Tor.
+      # Absichtlich `|| true`: das hier ist eine Auskunft, kein Tor. Sie steht
+      # oben, damit man bei einer Hülle sofort sieht, ob es am Netz lag.
       - name: Datenhost auflösen
         run: |
           echo "— getent —";  getent hosts rnakubexbqfgfciynqpt.supabase.co || echo "keine Auflösung"
@@ -76,31 +89,134 @@ jobs:
             https://rnakubexbqfgfciynqpt.supabase.co/rest/v1/ || echo "kein Verbindungsaufbau"
         continue-on-error: true
 
+      # ————————————————— Das Ziel bestimmen —————————————————
+      #
+      # Die Vorschau-Adresse wird NICHT geraten. Sie enthält einen gekürzten,
+      # gehashten Zweignamen (`…-git-claude-357453-…`), der sich aus dem
+      # Zweignamen nicht ableiten lässt — jeder Versuch wäre ein Ratespiel, das
+      # irgendwann eine fremde Adresse vermisst.
+      #
+      # Stattdessen wird sie dort gelesen, wo Vercel sie selbst hinterlegt: in der
+      # GitHub-Deployment zu diesem Commit. `environment_url` im Status ist die
+      # fertige Adresse; `production_environment = false` unterscheidet Vorschau
+      # von Produktion.
+      #
+      # Gewartet wird, weil der Bau der Vorschau länger dauert als dieser Lauf
+      # braucht, um hier anzukommen. Läuft das Zeitlimit ab, bricht der Schritt
+      # ab — kein stiller Rückfall auf pawn.vision: ein Lauf, der etwas anderes
+      # gemessen hat als er sollte, ist schlimmer als ein roter Lauf.
+      - name: Ziel bestimmen
+        id: ziel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EINGETRAGEN: ${{ inputs.adresse }}
+          BYPASS_VORHANDEN: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET != '' }}
+          HAUPTZWEIG: ${{ github.event.repository.default_branch || 'main' }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${EINGETRAGEN:-}" ]; then
+            echo "Ziel: $EINGETRAGEN (von Hand eingetragen)"
+            echo "adresse=$EINGETRAGEN" >> "$GITHUB_OUTPUT"
+            echo "gatet=ja" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${{ github.ref_name }}" = "$HAUPTZWEIG" ]; then
+            echo "Ziel: pawn.vision — dieser Push ist auf dem Hauptzweig, seine Vorschau IST die Produktion."
+            echo "adresse=" >> "$GITHUB_OUTPUT"
+            echo "gatet=ja" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$BYPASS_VORHANDEN" != "true" ]; then
+            echo "Ziel: pawn.vision — ohne VERCEL_AUTOMATION_BYPASS_SECRET ist die Vorschau gesperrt."
+            echo "Hinweis: mit dem Geheimnis in den Repository-Secrets misst dieser Lauf den Zweig selbst."
+            echo "adresse=" >> "$GITHUB_OUTPUT"
+            # Siehe „gatet" unten: ein Zweig darf nicht an fremden Zahlen scheitern.
+            echo "gatet=nein" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Suche die Vercel-Vorschau zu ${GITHUB_SHA}…"
+          for versuch in $(seq 1 45); do
+            # Alle Deployments zu diesem Commit, nur die Vorschauen.
+            ids=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?sha=${GITHUB_SHA}&per_page=100" \
+                    --jq '.[] | select(.production_environment == false) | .id' 2>/dev/null || true)
+            for id in $ids; do
+              url=$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses?per_page=100" \
+                      --jq 'map(select(.state == "success")) | .[0].environment_url // empty' 2>/dev/null || true)
+              if [ -n "$url" ]; then
+                echo "Ziel: $url (Vorschau dieses Zweigs, Deployment $id)"
+                echo "adresse=$url" >> "$GITHUB_OUTPUT"
+                echo "gatet=ja" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+            sleep 20
+          done
+
+          # Nach 15 Minuten ohne fertige Vorschau: sagen, was DA war. Eine leere
+          # Fehlermeldung würde den nächsten Versuch genauso blind machen.
+          echo "::error::Keine fertige Vercel-Vorschau zu ${GITHUB_SHA} gefunden (15 min gewartet)."
+          echo "Gefundene Deployments zu diesem Commit:"
+          gh api "repos/${GITHUB_REPOSITORY}/deployments?sha=${GITHUB_SHA}&per_page=100" \
+            --jq '.[] | "  id=\(.id) environment=\(.environment) produktion=\(.production_environment)"' || echo "  keine"
+          exit 1
+
       # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
       # die Systembibliotheken, ohne die der Browser auf dem Runner nicht läuft.
+      # Steht NACH der Zielsuche: während dort gewartet wird, muss kein Browser
+      # installiert sein, und ein Fehlschlag dort spart den Download.
       - name: Browser
         run: npx playwright install --with-deps chromium
 
-      # Ohne Adresse: pawn.vision, der ausgelieferte Stand. Mit Adresse: die dort
-      # eingetragene Vorschau.
+      # `VERCEL_AUTOMATION_BYPASS_SECRET` hebt die Vorschau-Sperre auf; `lauf.ts`
+      # schickt es als `x-vercel-protection-bypass` mit. Ohne das Geheimnis
+      # antwortet jede Anfrage an eine Vorschau mit 302 auf die Anmeldung, und der
+      # Lauf würde die Anmeldeseite vermessen. Der Wert steht nur in den
+      # GitHub-Secrets, wird nie ausgegeben und nie protokolliert. Für pawn.vision
+      # spielt er keine Rolle — dort ist nichts gesperrt.
       #
-      # `VERCEL_AUTOMATION_BYPASS_SECRET` hebt die Vorschau-Sperre auf. Ohne das
-      # Geheimnis antwortet jede Anfrage an eine Vorschau mit 302 auf die
-      # Anmeldung, und der Lauf würde die Anmeldeseite vermessen. Der Wert steht
-      # nur in den GitHub-Secrets, wird nie ausgegeben und nie protokolliert.
-      # Für pawn.vision spielt er keine Rolle — dort ist nichts gesperrt.
+      # `gatet` entscheidet, ob dieses Urteil den Zweig sperren darf.
+      #
+      # Gemessen wurde der Fehler an mir selbst: auf einem Zweig OHNE Geheimnis
+      # misst der Lauf pawn.vision und wird rot — an 34 gefallenen Gates, die dem
+      # ausgelieferten Stand gehören und mit dem Zweig nichts zu tun haben. Ein
+      # Check, der unabhängig vom Inhalt des Zweigs rot ist, ist keine Aussage
+      # über den Zweig; er lehrt nur, Rot zu übersehen. Genau das darf ein
+      # Prüfstand nicht tun.
+      #
+      # Deshalb: `lauf.ts` urteilt immer gleich und endet immer mit 1 bei einem
+      # gefallenen Gate — das bleibt unangetastet. Nur ob dieses Urteil den Check
+      # sperrt, entscheidet sich hier, an derselben Stelle, an der auch das Ziel
+      # bestimmt wird. Gate zu bei Vorschau, Hauptzweig und eingetragener Adresse;
+      # Gate offen beim Rückfall, mit einem Satz im Protokoll, der sagt warum.
       - name: Prüfstand
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-          PRUEFSTAND_ADRESSE: ${{ inputs.adresse }}
+          ADRESSE: ${{ steps.ziel.outputs.adresse }}
+          GATET: ${{ steps.ziel.outputs.gatet }}
         run: |
-          if [ -n "$PRUEFSTAND_ADRESSE" ]; then
-            echo "Ziel: $PRUEFSTAND_ADRESSE"
-            npx tsx tools/pruefstand/lauf.ts --adresse "$PRUEFSTAND_ADRESSE"
+          if [ -n "$ADRESSE" ]; then
+            npx tsx tools/pruefstand/lauf.ts --adresse "$ADRESSE" && ende=0 || ende=$?
           else
-            echo "Ziel: pawn.vision"
-            npx tsx tools/pruefstand/lauf.ts --ziel live
+            npx tsx tools/pruefstand/lauf.ts --ziel live && ende=0 || ende=$?
           fi
+
+          if [ "$ende" -eq 0 ]; then exit 0; fi
+          if [ "$GATET" = "ja" ]; then exit "$ende"; fi
+
+          echo "::warning::Gefallene Gates auf pawn.vision — NICHT auf diesem Zweig."
+          echo ""
+          echo "Gemessen wurde der ausgelieferte Stand, weil VERCEL_AUTOMATION_BYPASS_SECRET"
+          echo "fehlt und die Vorschau dieses Zweigs damit gesperrt ist. Über den Zweig sagt"
+          echo "dieser Lauf NICHTS — deshalb bleibt der Check grün. Die Befunde oben gehören"
+          echo "pawn.vision und stehen vollständig im Bericht (Artefakt)."
+          echo ""
+          echo "Setze das Geheimnis in den Repository-Secrets, dann misst der nächste Push"
+          echo "den Zweig selbst und ein gefallenes Gate macht diesen Check zu Recht rot."
+          exit 0
 
       # `always()`: gerade der rote Lauf ist der, dessen Bericht und Aufnahmen
       # man sehen will. Ohne das gäbe es beim Fehlschlag nichts zum Nachlesen.
