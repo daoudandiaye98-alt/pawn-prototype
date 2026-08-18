@@ -16,6 +16,7 @@ import {
   BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, BLATT_ERWARTET, DREH_ERWARTET, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
   VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
+import { ausnahmeFuer, abgelaufen } from "./ausnahmen";
 import {
   messeBlattgeometrie, messeDrehHinweis, messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
   messeLayout, messeTrefferflaechen, type Befund,
@@ -564,14 +565,54 @@ async function haupt() {
   mkdirSync(ORDNER, { recursive: true });
   writeFileSync(join(ORDNER, "bericht.json"), JSON.stringify(bericht, null, 2));
 
-  const gefallen = bericht.gates.gefallen;
+  /*
+   * Dokumentierte Ausnahmen und der Rückgabewert (entschieden 18.08.2026).
+   *
+   * Vorher machte JEDES gefallene Gate den Check rot — auch eines, das als
+   * Ausnahme beschlossen war. Ein Check, der immer rot ist, hört auf, ein
+   * Signal zu sein: niemand unterscheidet mehr das bekannte Rot vom neuen.
+   * Deshalb: entschuldigte Gates zählen nicht in den Rückgabewert, stehen aber
+   * mit Name und Wecker in der Statuszeile und im eigenen Abschnitt unten.
+   * Läuft der Wecker ab, fällt das Gate wieder — der Termin ist die Zusage,
+   * an der die Ausnahme hängt, nicht eine Fußnote (s. `ausnahmen.ts`).
+   */
+  const heute = new Date().toISOString().slice(0, 10);
+  const gefalleneBefunde = gates.filter((b) => b.status === "gefallen");
+  const entschuldigt = gefalleneBefunde.filter((b) => ausnahmeFuer(b.kontrolle, heute) !== null);
+  const gefallen = gefalleneBefunde.length - entschuldigt.length;
+  const verstrichen = abgelaufen(heute)
+    .filter((a) => gefalleneBefunde.some((b) => b.kontrolle === a.kontrolle));
+  const aktiveAusnahmen = [...new Set(entschuldigt.map(
+    (b) => ausnahmeFuer(b.kontrolle, heute)!,
+  ))];
+
   process.stderr.write(
     `\n${zielName} · ${ziel.adresse}\n`
     + (NUR_KONTROLLEN ? `TEILLAUF — nur ${NUR_KONTROLLEN.join(", ")}\n` : "")
     + `Gates: ${bericht.gates.bestanden} bestanden · ${gefallen} gefallen · `
-    + `${bericht.gates.nicht_pruefbar} nicht prüfbar\n`
+    + `${bericht.gates.nicht_pruefbar} nicht prüfbar`
+    + (aktiveAusnahmen.length > 0
+      ? ` · ${aktiveAusnahmen.length} Ausnahme(n) aktiv (${entschuldigt.length} Befund(e) entschuldigt)`
+      : "")
+    + `\n`
     + `Bericht: tools/pruefstand/artefakte/bericht.json\n`,
   );
+
+  if (aktiveAusnahmen.length > 0) {
+    process.stderr.write(`\nDokumentierte Ausnahmen (zählen nicht als gefallen — bis zum Wecker):\n`);
+    for (const a of aktiveAusnahmen) {
+      process.stderr.write(`  ${a.kontrolle.padEnd(5)} ${a.name} · Termin ${a.termin} · Wecker ${a.wecker}\n`);
+    }
+  }
+  if (verstrichen.length > 0) {
+    process.stderr.write(`\nAUSNAHME ABGELAUFEN — zählt wieder als gefallen:\n`);
+    for (const a of verstrichen) {
+      process.stderr.write(
+        `  ${a.kontrolle.padEnd(5)} ${a.name} · Wecker war ${a.wecker}. `
+        + `Verlängern geht nur bewusst, in ausnahmen.ts.\n`,
+      );
+    }
+  }
 
   /*
    * Die gefallenen Gates einzeln ins Log.
@@ -614,7 +655,9 @@ async function haupt() {
   }
 
   if (gefallen > 0) {
-    const liste = gates.filter((b) => b.status === "gefallen");
+    // Nur die unentschuldigten — die Ausnahmen stehen oben mit Namen, nicht
+    // hier zwischen den echten Befunden, wo sie das Neue verdecken würden.
+    const liste = gefalleneBefunde.filter((b) => ausnahmeFuer(b.kontrolle, heute) === null);
     process.stderr.write(`\nGefallene Gates (${liste.length}):\n`);
     for (const b of liste.slice(0, 60)) {
       const ort = `${b.seite} @ ${b.breite}px`;

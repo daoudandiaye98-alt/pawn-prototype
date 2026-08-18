@@ -266,6 +266,22 @@ export async function messeKontrast(page: Page, seite: string, breite: number): 
   }).catch(() => {});
   await page.waitForTimeout(200);
 
+  /*
+   * Erst wenn jedes Bild fertig entschlüsselt ist, wird gemessen.
+   *
+   * Der Grund ist ein konkreter Fehlbefund: Lauf 57 meldete die Wortmarke „WN"
+   * über dem Hero mit 1,92:1 gegen einen hellsten Bildpunkt rgb(187,187,187) —
+   * Lauf 61, gleicher Code, meldete nichts. Der hellste Bildpunkt hing vom
+   * Ladezustand des Bildes ab, nicht von der Seite. Ein Messgerät, dessen
+   * Ergebnis davon abhängt, WANN es hinsieht, misst nicht die Seite, sondern
+   * den Zufall. `decode()` wartet, bis die Bildpunkte wirklich da sind; ein
+   * Bild, das nicht lädt, hält die Messung nicht auf (dann gilt, was zu sehen
+   * ist — genau wie beim Menschen).
+   */
+  await page.evaluate(() => Promise.all(
+    Array.from(document.images).map((img) => img.decode().catch(() => {})),
+  )).catch(() => {});
+
   // Die ganze Seite, nicht nur das erste Bild. Eingesammelt wird fensterweise, weil
   // die Verdeckungsprüfung (`elementFromPoint`) nur im sichtbaren Fenster arbeitet.
   const kandidaten: TextKandidat[] = [];

@@ -258,6 +258,19 @@ Eine Kontrolle darf auf REVIEW stehen und trotzdem ausgeliefert werden — aber 
 Verantwortlichen und Termin ist es keine Ausnahme, sondern ein verschwiegener Fehler.
 Erledigte Ausnahmen bleiben mit Datum stehen: die Liste ist ein Protokoll, kein Aushang.
 
+**Ausnahmen und der Rückgabewert** (entschieden 18.08.2026): eine hier eingetragene
+Ausnahme macht den Check nicht mehr rot — sonst wäre er dauerhaft rot für etwas
+bewusst Entschiedenes, und ein Check, der immer rot ist, hört auf, ein Signal zu
+sein. Dafür gilt: **der Termin ist ein Wecker, kein Kommentar.** Jede Ausnahme, die
+ein gefallenes Gate entschuldigt, steht zusätzlich maschinenlesbar in
+`ausnahmen.ts` mit einem Wecker-Datum. Bis dahin zählt das Gate nicht als
+gefallen und die Statuszeile druckt die Zahl aktiver Ausnahmen mit; danach fällt
+es wieder, und der Check wird rot — nicht weil sich die Seite verschlechtert
+hätte, sondern weil die Entscheidung abgelaufen ist. Verlängern geht nur als
+bewusste Änderung in `ausnahmen.ts`, nicht durch Wegsehen. (A1 steht dort nicht:
+ihre Befunde sind `nicht prüfbar`, nie „gefallen" — sie berührt den Rückgabewert
+nicht.)
+
 ### A1 · Einzelseiten-Geometrie im Browser ungemessen
 
 | | |
@@ -276,5 +289,5 @@ Erledigte Ausnahmen bleiben mit Datum stehen: die Liste ist ein Protokoll, kein 
 | **Sache** | Eine Adresse, die es nicht gibt, antwortet mit Status 200 statt 404. Der Mensch sieht die richtige Seite mit dem Weg zurück; eine Suchmaschine hält die erfundene Adresse für gültig und kann sie indexieren. |
 | **Grund** | Acht Fassungen über zwei unabhängige Mechanismen (Edge Middleware, `vercel.json`-`routes`) greifen auf der Vorschau nicht — Ursache unbekannt. Offene, ungeprüfte Spur: die Deployment Protection der Vorschau könnte vor dem Routing liegen. Der entscheidende Test läuft auf pawn.vision, s. Abschnitt K7 oben. |
 | **Verantwortlich** | Daouda |
-| **Termin** | offen — bewusst ohne Datum entschieden, keine weiteren Versuche |
+| **Termin** | **X11** — das Vorrendern der bekannten Routen löst die Statusfrage strukturell: jede echte Adresse wird eine echte Datei, `handle: filesystem` liefert sie, und der Auffang trifft nur noch Erfundenes. „Termin offen" (Stand 18.08.) war ein Fehler gegen die eigene Norm — ZERA-QA 06 verlangt einen. Wecker: **01.09.2026** (`ausnahmen.ts`); Reihenfolge bis dahin: Q4b → X8 → X1+X11. |
 | **Betroffen** | Nur erfundene Adressen. Alle echten Seiten wurden im selben Lauf gemessen und sind unberührt; Kauf-, Anmelde- und Heft-Wege sind nicht betroffen. Das Risiko ist SEO-Rauschen, kein Ausfall. |
