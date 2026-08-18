@@ -89,8 +89,28 @@ function gefragt(gruppe: string): boolean {
   return !NUR_KONTROLLEN || NUR_KONTROLLEN.some((k) => trifft(gruppe, k));
 }
 
-/** Soll dieser Befund gedruckt werden? */
+/**
+ * Der Abbruch-Befund einer ganzen Seite.
+ *
+ * `01` tragen nur die fünf Stellen, an denen eine Seite gar nicht erst vermessen
+ * wird: 404-Ersatzseite, fehlende Daten, Ladefehler. Sie ist keine Kontrolle,
+ * sondern die Begründung dafür, dass keine Kontrolle lief.
+ */
+const ABBRUCH = "01";
+
+/**
+ * Soll dieser Befund gedruckt werden?
+ *
+ * **Warum der Abbruch immer durchkommt.** Ein Teillauf druckt sonst NICHTS für
+ * eine Seite, die vorzeitig abgebrochen hat — die gefragte Kontrolle lief ja
+ * nicht, also hat sie auch keinen Befund. Genau diese Stille hat A1 zwei Läufe
+ * lang verschleiert: `/heft/umschlag @ 1280` stand im Protokoll ohne jede Zeile
+ * darunter, und das las sich wie „nichts zu beanstanden" statt wie „hier wurde
+ * nie gemessen". Ein Messgerät, das schweigt, wenn es nicht messen konnte, ist
+ * das gefährlichere Messgerät. Also: der Grund wird immer gedruckt.
+ */
 function passtZurFrage(kontrolle: string): boolean {
+  if (kontrolle === ABBRUCH) return true;
   return !NUR_KONTROLLEN || NUR_KONTROLLEN.some((k) => trifft(kontrolle, k));
 }
 
@@ -193,7 +213,7 @@ async function seiteMessen(
     const umgeleitet = await istUmgeleitet(page, new URL(basis).host);
     if (umgeleitet) {
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite, gemessen: page.url(), schwelle: basis,
         notiz: `Adresse leitet auf einen fremden Host um (${umgeleitet}) — es wurde nicht PAWN geladen, `
           + "deshalb wurde auf dieser Seite nichts gemessen.",
@@ -201,7 +221,7 @@ async function seiteMessen(
     }
     if (antwort && antwort.status() >= 400) {
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite, gemessen: antwort.status(), schwelle: "< 400",
         notiz: "Seite antwortet mit Fehlerstatus — nicht messbar.",
       }];
@@ -241,7 +261,7 @@ async function seiteMessen(
     if (nichtVorhanden) {
       await page.close();
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite, gemessen: "404-Ersatzseite", schwelle: "die Seite selbst",
         notiz: "Diese Adresse kennt das gemessene Ziel nicht — geliefert wurde die 404-Seite. "
           + "Auf diesem Stand ist über die Adresse nichts zu sagen.",
@@ -265,7 +285,7 @@ async function seiteMessen(
     if (datenFehlen) {
       await page.close();
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite,
         gemessen: "Seite ohne ihre Daten", schwelle: "Seite mit ihren Daten",
         notiz: "Die Seite holt ihren Inhalt aus der Datenbank und hat ihn nicht bekommen. "
@@ -332,7 +352,7 @@ async function seiteMessen(
     });
   } catch (e) {
     befunde.push({
-      kontrolle: "01", gate: false, status: "nicht_pruefbar",
+      kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
       seite: seite.pfad, breite: breite.breite, gemessen: null, schwelle: null,
       notiz: `Messung abgebrochen: ${(e as Error).message}`,
     });
@@ -577,7 +597,9 @@ async function haupt() {
    */
   if (NUR_KONTROLLEN) {
     const gefragt = befunde.filter((b) => passtZurFrage(b.kontrolle));
-    process.stderr.write(`\nBefunde der gefragten Kontrollen (${gefragt.length}):\n`);
+    process.stderr.write(
+      `\nBefunde der gefragten Kontrollen — plus jede Seite, die gar nicht gemessen wurde (${gefragt.length}):\n`,
+    );
     for (const b of gefragt.slice(0, 200)) {
       const ort = `${b.seite} @ ${b.breite}px`;
       const beleg = [
