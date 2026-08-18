@@ -36,7 +36,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { bildVariante } from "@/lib/media";
+import { bildSatz, bildVariante } from "@/lib/media";
 import { formatPrice } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { Bildunterschrift, Fliesstext, Heftseite, Kicker, Schlagzeile } from "./satzspiegel";
@@ -249,8 +249,12 @@ function KapitelPlatte({ haus }: { haus: HausKapitel }) {
   }
   return (
     <div className="hx-haus-platte" data-uebergang={haus.stil.uebergang}>
+      {/* Z4 — Anzeigegrößen: eine Seite ist die halbe Doppelseite, auf dem
+          Telefon die ganze. Dieselben sizes wie die gebündelten Platten. */}
       <img
-        src={bildVariante(haus.bild, { breite: 1200, guete: 80 })}
+        src={bildVariante(haus.bild, { breite: 960, guete: 80 })}
+        srcSet={bildSatz(haus.bild, [640, 960, 1280])}
+        sizes="(max-width: 820px) 100vw, 50vw"
         alt={`${haus.name} — Bild des Hauses.`}
         loading="lazy"
         decoding="async"
@@ -354,7 +358,12 @@ export function bausteinInhalt(
       return (
         <>
           <div className="hx-haus-platte" data-uebergang={haus.stil.uebergang}>
-            <img src={bildVariante(bild, { breite: 1200, guete: 80 })} alt="" loading="lazy" decoding="async" />
+            <img
+              src={bildVariante(bild, { breite: 960, guete: 80 })}
+              srcSet={bildSatz(bild, [640, 960, 1280])}
+              sizes="(max-width: 820px) 100vw, 50vw"
+              alt="" loading="lazy" decoding="async"
+            />
           </div>
           {unterschrift ? <Bildunterschrift>{unterschrift}</Bildunterschrift> : null}
         </>

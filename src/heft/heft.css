@@ -1366,3 +1366,38 @@
   margin: 0;
   padding: 0;
 }
+
+
+/* ————————————————— Z4 · Feinschliff, gemessen ————————————————— */
+
+/*
+ * Das Marken-Band hing eingefahren um seine Wortbreite links AUS DEM BILD
+ * (gemessen: 126 px bei englischen, ~104 px bei deutschen Beschriftungen —
+ * die Mechanik schiebt es um die eigene Breite hinaus, und die hängt am
+ * Wort). Unsichtbar war es ohnehin; jetzt ist es auch geometrisch weg:
+ * die Leiste beschneidet, was links über sie hinaussteht. Beim Zeigen
+ * fährt das Band unverändert ein — dann liegt es ganz in der Leiste.
+ */
+.hx-marken {
+  overflow: clip;
+}
+
+/*
+ * Wo das Blatt flacher ist als sein Satz, wird der Satzspiegel rollbar —
+ * statt beschnitten. Gemessen bei 844 × 390: das Inhaltsverzeichnis verlor
+ * seine obersten Zeilen an die Blattkante, das Folio stand in der letzten
+ * Zeile, und auf den Weltseiten ragte der Kicker aus der Seite (7–150 px).
+ *
+ * `justify-content: center` mit übergroßem Inhalt macht den Anfang
+ * unerreichbar — deshalb flex-start plus die Auto-Margen: passt der Inhalt,
+ * zentrieren sie ihn wie zuvor; passt er nicht, rollt er vom Anfang an.
+ */
+@media (max-width: 819.98px), (max-height: 599.98px) {
+  .hx-satz {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    justify-content: flex-start;
+  }
+  .hx-satz > :first-child { margin-top: auto; }
+  .hx-satz > :last-child { margin-bottom: auto; }
+}
