@@ -19,7 +19,7 @@
  * die aus der Seite ihre Richtung zieht, statt zweier Regeln, die auseinander
  * laufen können.
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 
@@ -45,6 +45,13 @@ export interface HeftseiteProps {
   folio: number | null;
   /** Höchstens einer je Doppelseite — das gilt für die Doppelseite, nicht die Seite. */
   weg?: Weg;
+  /**
+   * X8 — die Handschrift eines Hauses auf seinen Kapitel-Seiten: Papier, Tinte
+   * und Schrift aus dem Haus-Thema. Nur die Kapitel setzen das; für alle
+   * anderen Seiten gilt unverändert der Satz unten — Farbe und Schrift kommen
+   * vom Ton der Doppelseite.
+   */
+  hausStil?: { papier: string; tinte: string; schrift: string };
   children?: ReactNode;
 }
 
@@ -52,10 +59,21 @@ export interface HeftseiteProps {
  * Die Hülle einer einzelnen Heftseite. Der Inhalt steht in `children` und
  * bekommt vom Satzspiegel nur seinen Platz — nie eine Farbe, nie eine Schrift.
  * Farbe und Schrift kommen vom Ton der Doppelseite (`data-ton` am Blatt).
+ * Einzige Ausnahme: die Haus-Kapitel (X8, `hausStil`), sichtbar eingezäunt
+ * über `data-haus` in `heft.css`.
  */
-export function Heftseite({ lage, kolumne, folio, weg, children }: HeftseiteProps) {
+export function Heftseite({ lage, kolumne, folio, weg, hausStil, children }: HeftseiteProps) {
   return (
-    <div className="hx-seite" data-lage={lage}>
+    <div
+      className="hx-seite"
+      data-lage={lage}
+      data-haus={hausStil ? "" : undefined}
+      style={hausStil ? {
+        "--haus-papier": hausStil.papier,
+        "--haus-tinte": hausStil.tinte,
+        "--haus-schrift": hausStil.schrift,
+      } as CSSProperties : undefined}
+    >
       <div className="hx-kopf">
         {/* Die Reihenfolge im DOM ist immer außen → innen; welche Seite das
             heißt, entscheidet CSS über `data-lage`. So steht im Markup keine

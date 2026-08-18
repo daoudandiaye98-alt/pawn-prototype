@@ -72,6 +72,14 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/haus/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/haus/[^/]+/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/vision/?$",
       "dest": "/index.html"
     },

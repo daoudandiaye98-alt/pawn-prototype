@@ -1268,3 +1268,101 @@
   min-height: 44px;
   border-radius: 0;
 }
+
+/* ————————————————— X8 · Die Häuser als Kapitel ————————————————— */
+
+/*
+ * Die eingezäunte Ausnahme vom Schwarz-Weiß-Gesetz: NUR auf Kapitel-Seiten
+ * (`data-haus`) gelten Papier und Tinte des Hauses. Die Variablen setzt die
+ * Heftseite inline aus `house_themes`; alles außerhalb dieser Regeln bleibt
+ * beim Ton der Doppelseite. Die Schrift des Hauses spricht in Schlagzeile,
+ * Vorspann und Zitat — Kolumnentitel, Folio und Wege bleiben in der
+ * Heftschrift: das Kapitel gehört dem Haus, das Heft gehört PAWN.
+ */
+.hx-seite[data-haus] {
+  background: var(--haus-papier, var(--papier));
+  color: var(--haus-tinte, var(--tinte));
+}
+.hx-seite[data-haus] .hx-schlagzeile,
+.hx-seite[data-haus] .hx-vorspann,
+.hx-seite[data-haus] .hx-haus-zitat {
+  font-family: var(--haus-schrift, Fraunces, Georgia, serif);
+}
+
+/* Das Zitat eines Hauses — die große Kursive des Kapitels. */
+.hx-haus-zitat {
+  margin: 0;
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(1.4rem, 2.6vw, 2.4rem);
+  line-height: 1.2;
+}
+
+/* Der Name als Bild, wenn das Haus (noch) kein Foto hat: Tinte auf Papier,
+   gedreht wie ein Buchrücken. Kein grauer Platzhalter, kein Symbolbild. */
+.hx-haus-namensplatte {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.hx-haus-namensplatte span {
+  font-family: var(--haus-schrift, Fraunces, Georgia, serif);
+  font-size: clamp(2.2rem, 6vw, 5rem);
+  line-height: 1;
+  transform: rotate(-90deg);
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/*
+ * Die Platte des Kapitels — und die Übergangsart als Bildbehandlung.
+ *
+ * `uebergangsart` beschreibt auf der Hausseite den Seitenübergang. Im Heft
+ * gehört der Übergang dem Wendel; die Art wird deshalb zur Form, in der die
+ * Bilder des Hauses auf dem Papier stehen. Vier Behandlungen, alle statisch —
+ * gedruckt sähe es genauso aus:
+ *
+ *   fade      das Bild löst sich zum Rand hin ins Papier auf
+ *   iris      das Bild steht in einer Ellipse, wie hinter einer Blende
+ *   schnitt   harte Kante, bewusst versetzt — der Offset-Schatten des Hefts
+ *   wisch     eine Papier-Schräge läuft über die untere Kante
+ */
+.hx-haus-platte {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.hx-haus-platte img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.hx-haus-platte[data-uebergang="fade"] img {
+  -webkit-mask-image: radial-gradient(120% 120% at 50% 45%, #000 55%, transparent 98%);
+  mask-image: radial-gradient(120% 120% at 50% 45%, #000 55%, transparent 98%);
+}
+.hx-haus-platte[data-uebergang="iris"] {
+  inset: clamp(1.2rem, 4%, 2.5rem);
+}
+.hx-haus-platte[data-uebergang="iris"] img {
+  -webkit-clip-path: ellipse(46% 44% at 50% 50%);
+  clip-path: ellipse(46% 44% at 50% 50%);
+}
+.hx-haus-platte[data-uebergang="schnitt"] {
+  inset: clamp(1.4rem, 5%, 3rem) clamp(1.4rem, 5%, 3rem) clamp(2.2rem, 7%, 4rem) clamp(1rem, 3%, 2rem);
+  box-shadow: 6px 6px 0 var(--haus-tinte, var(--tinte));
+}
+.hx-haus-platte[data-uebergang="wisch"] img {
+  -webkit-clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%);
+}
+
+/* Die Produktreihe eines Kapitels — dieselben Zeilen wie das Inhaltsverzeichnis. */
+.hx-inhalt-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}

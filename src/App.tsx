@@ -202,6 +202,14 @@ const App = () => (
                   und das Heft nimmt nur Adressen, die es vorher nicht gab.
                 */}
                 <Route path="/werk/:slug" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                {/*
+                  Ein Haus ist ein Kapitel im selben Heft (X8): Auftakt unter
+                  `/haus/…`, die Baustein-Doppelseiten dahinter zählen Blätter.
+                  `/haus/…` und nicht `/designer/…` — dieselbe Regel wie beim
+                  Werk: die alte Hausseite lebt weiter, bis X1 sie ablöst.
+                */}
+                <Route path="/haus/:slug" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                <Route path="/haus/:slug/:blatt" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/preise" element={<Preise />} />
                 <Route path="/preise/maison" element={<PreiseMaison />} />

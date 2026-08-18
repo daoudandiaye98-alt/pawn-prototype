@@ -42,6 +42,8 @@ export const ROUTEN = [
   "/verzeichnis",
   "/verzeichnis/:seite",
   "/werk/:slug",
+  "/haus/:slug",
+  "/haus/:slug/:blatt",
   "/vision",
   "/preise",
   "/preise/maison",
