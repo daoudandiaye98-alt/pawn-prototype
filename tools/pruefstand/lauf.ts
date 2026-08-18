@@ -66,6 +66,34 @@ function argument(name: string): string | undefined {
  */
 const NUR_KONTROLLEN = argument("kontrollen")?.split(",").map((s) => s.trim()).filter(Boolean);
 
+/**
+ * Passt ein Name zu dem, wonach gefragt wurde?
+ *
+ * **Warum nicht einfach `includes`.** Kontrollen haben zwei Ebenen: der Lauf
+ * ruft Gruppen auf (`X.blatt`), die Befunde tragen Einzelnamen
+ * (`X.blatt.form`). Vorher verglich der Lauf auf Gruppen und die Ausgabe auf
+ * Einzelnamen — beide mit `includes`. Damit war der Teillauf für genau den Fall
+ * unbrauchbar, für den er gebaut wurde: „X.blatt" ließ die Gruppe laufen, druckte
+ * aber nichts, und „X.blatt.form" druckte nichts UND ließ die Gruppe aus.
+ * Gemessen am 18.08.2026: `Befunde der gefragten Kontrollen (0)`.
+ *
+ * Jetzt zählt beides, in beide Richtungen: wer die Gruppe nennt, bekommt ihre
+ * Einzelbefunde; wer einen Einzelnamen nennt, bekommt seine Gruppe gemessen.
+ */
+function trifft(name: string, frage: string): boolean {
+  return name === frage || name.startsWith(`${frage}.`) || frage.startsWith(`${name}.`);
+}
+
+/** Soll diese Gruppe laufen? */
+function gefragt(gruppe: string): boolean {
+  return !NUR_KONTROLLEN || NUR_KONTROLLEN.some((k) => trifft(gruppe, k));
+}
+
+/** Soll dieser Befund gedruckt werden? */
+function passtZurFrage(kontrolle: string): boolean {
+  return !NUR_KONTROLLEN || NUR_KONTROLLEN.some((k) => trifft(kontrolle, k));
+}
+
 function commit(): string {
   try {
     return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
@@ -258,7 +286,7 @@ async function seiteMessen(
     // Jede Kontrolle sagt, wie lange sie gebraucht hat — damit „das dauert lange"
     // eine Zahl bekommt statt eines Gefühls.
     const mitUhr = async (name: string, f: () => Promise<Befund[]>) => {
-      if (NUR_KONTROLLEN && !NUR_KONTROLLEN.includes(name)) return;
+      if (NUR_KONTROLLEN && !gefragt(name)) return;
       const t = Date.now();
       const r = await f();
       process.stderr.write(`    ${name} ${((Date.now() - t) / 1000).toFixed(1)}s\n`);
@@ -548,7 +576,7 @@ async function haupt() {
    * nicht herunterladen.
    */
   if (NUR_KONTROLLEN) {
-    const gefragt = befunde.filter((b) => NUR_KONTROLLEN.includes(b.kontrolle));
+    const gefragt = befunde.filter((b) => passtZurFrage(b.kontrolle));
     process.stderr.write(`\nBefunde der gefragten Kontrollen (${gefragt.length}):\n`);
     for (const b of gefragt.slice(0, 200)) {
       const ort = `${b.seite} @ ${b.breite}px`;
