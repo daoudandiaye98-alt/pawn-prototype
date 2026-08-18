@@ -1,5 +1,5 @@
 {
-  "aktualisiert": "2026-08-17",
+  "aktualisiert": "2026-08-18",
   "branch": "claude/der-turm-v2-agent-harness-ibwwlw",
   "offene_prs": [
     {
@@ -28,16 +28,14 @@
     "Offen: soll Zusage Z4 weiter gefasst werden als nur designer-media? Heute deckt sie genau das, was 61e0204 versprochen hat — mediathek und campaign-assets bleiben absichtlich signiert."
   ],
   "letzter_pruefstand": {
-    "datum": "2026-08-17",
-    "bestanden": 1115,
-    "gefallen": 16,
-    "quelle": "GitHub-Action gegen die Vercel-Vorschau. 14x Kontrolle 4.7 (Seitengewicht) und 1x 4.5 (404) bestehen auch auf PR #179 und main. Das 16. Gate ist 3.3 an der Wortmarke bei 844px: gemessen 1.92, exakt der Wert, den PR #178 als behoben gemeldet hat. Flackert — derselbe Code lief einmal mit, einmal ohne diesen Befund. Gehoert nicht diesem PR.",
-    "verify_schnell": "3/3",
-    "verify_voll": "5/5 (sicht 16/16, aber lokal ohne Datenbank)"
+    "datum": "2026-08-18",
+    "bestanden": 3,
+    "gefallen": 0
   },
   "naechster_zug": "Der Harness steht und ist vorgeführt. Der nächste echte Zug ist KEIN weiteres Werkzeug, sondern die erste Zahl: sobald ein Mensch nach einem Merge etwas findet, löst das Ritual aus .claude/rules/00-gesetze.md aus — Zeile in regressionen.json UND Kontrolle in scripts/verify/, einmal rot vorgeführt. Nach vier Wochen prüfen, ob die Nachfunde gegenüber der Grundlinie sinken (27 Fix-Commits in den letzten 200). Sinken sie nicht, misst das System das Falsche; dann liegt die Arbeit in regressionen.json, nicht in mehr Werkzeugen. Die drei Routinen aus v1 — Regressionsnacht, Deploy-Choreograf, Morgenbrief — bleiben ungebaut, bis diese zwei vier Wochen gelaufen sind.",
   "nicht_pruefbar": [
-    "Der Prüfstand-Lauf auf 05671e8 ist rot, konnte aber NICHT gelesen werden: nach dem Fortsetzen der Sitzung war der GitHub-Zugriff weg (API antwortet 'GitHub access is not enabled for this session'). Der Commit änderte nur .claude/metrik.md — keine Datei, die ins Bundle geht. Erwartet werden dieselben 15 bzw. 16 bekannten Gates. Wer es prüfen kann: ein Mensch im Actions-Reiter, oder eine Sitzung mit GitHub-Zugriff.",
-    "Gelernt: Git-Remote (push/fetch) bleibt nach einem Resume erreichbar, die GitHub-API nicht. Die Routine 02-pr-waechter braucht deshalb zwingend eine eigene, aktive GitHub-Verbindung — sie kann sich nicht auf die Sitzung verlassen."
-  ]
+    "Der Prüfstand-Lauf auf 05671e8 ist rot, konnte aber NICHT gelesen werden: nach dem Fortsetzen der Sitzung war der GitHub-Zugriff weg (API antwortet 403, 'GitHub access is not enabled for this session'). Der Commit änderte nur .claude/metrik.md — keine Datei, die ins Bundle geht. Erwartet werden dieselben 15 bzw. 16 bekannten Gates. Wer es prüfen kann: ein Mensch im Actions-Reiter, oder eine Sitzung mit GitHub-Zugriff.",
+    "Gelernt: Git-Remote (push/fetch) bleibt nach einem Resume erreichbar, die GitHub-API nicht. Webhook-Ereignisse kommen trotzdem an — man SIEHT also, was am PR passiert, kann aber nicht antworten. Die Routine 02-pr-waechter braucht deshalb zwingend eine eigene, aktive GitHub-Verbindung."
+  ],
+  "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active."
 }

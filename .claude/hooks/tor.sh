@@ -63,11 +63,38 @@ if [ $ENDE -ne 0 ]; then
 fi
 
 # ── 2. Gab es eine Uebergabe?
+#
 # Verglichen werden nur die Urteilsfelder. aktualisiert/branch/letzter_pruefstand
 # schreibt stand-schreiben.sh selbst — die zaehlen nicht als Uebergabe.
+#
+# Verglichen wird gegen den HAUPTZWEIG, nicht gegen HEAD.
+#
+# Warum: die erste Fassung verglich gegen HEAD. Sobald die Uebergabe committet
+# war, stand sie IN HEAD — und der Hook meldete bei jeder weiteren Runde „der
+# Stand wurde nicht fortgeschrieben", obwohl er es gerade war. Der Hook
+# bestrafte damit genau das Verhalten, das er erzwingen soll. Gemessen am
+# 2026-08-18 an dieser Sitzung; die erste Vorfuehrung hatte den Fall nicht
+# getroffen, weil stand.json damals noch gar nicht in HEAD lag.
+#
+# Die richtige Frage ist nicht „anders als der letzte Commit", sondern
+# „hat dieser ZWEIG die Uebergabe angefasst".
 URTEIL='{prs: .offene_prs, reihenfolge: .merge_reihenfolge, mensch: .wartet_auf_mensch, zug: .naechster_zug}'
 JETZT=$(jq -cS "$URTEIL" .claude/stand.json 2>/dev/null || echo "")
-VORHER=$(git show HEAD:.claude/stand.json 2>/dev/null | jq -cS "$URTEIL" 2>/dev/null || echo "")
+
+# TOR_HAUPTZWEIG erlaubt, die Sperre gegen einen anderen Punkt vorzufuehren.
+# Eine Wache, die sich nicht ausloesen laesst, ist eine Wache, der niemand
+# glaubt: solange stand.json noch nicht auf dem Hauptzweig liegt, ist VORHER
+# immer leer und dieser Zweig kaeme nie an die Sperre.
+HAUPT="${TOR_HAUPTZWEIG:-$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || echo "origin/main")}"
+BASIS=$(git merge-base HEAD "$HAUPT" 2>/dev/null || echo "")
+
+# Kein Vorsprung gegenueber dem Hauptzweig: es gibt nichts zu uebergeben.
+if [ -z "$BASIS" ] || [ "$BASIS" = "$(git rev-parse HEAD 2>/dev/null)" ]; then
+  echo "TOR: $ZEILE · Stand fortgeschrieben."
+  exit 0
+fi
+
+VORHER=$(git show "$BASIS:.claude/stand.json" 2>/dev/null | jq -cS "$URTEIL" 2>/dev/null || echo "")
 
 if [ -n "$VORHER" ] && [ "$JETZT" = "$VORHER" ]; then
   echo "TOR: der Stand wurde nicht fortgeschrieben." >&2
