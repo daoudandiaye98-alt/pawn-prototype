@@ -606,7 +606,15 @@ export async function messeTrefferflaechen(
       if (r.width < 1 || r.height < 1) continue;
       if (r.right <= 0 || r.left >= document.documentElement.clientWidth) continue;
       if (imSatz(el)) continue;
-      if (Math.min(r.width, r.height) < min) {
+      /*
+       * Ein halbes Pixel Toleranz — dieselbe Regel wie bei X.blatt.breite.
+       * Gemessen (Lauf 71): „Ins Verzeichnis" fiel mit „gemessen 44 · soll 44"
+       * — der Kasten war 43,98 px, der Bericht rundet, der Vergleich nicht.
+       * Ein Messgerät, das etwas anderes vergleicht, als es anzeigt, erzeugt
+       * Befunde, die niemand nachvollziehen kann. Browser setzen Bruchpixel;
+       * unter einem halben ist der Unterschied keiner, den ein Finger merkt.
+       */
+      if (Math.min(r.width, r.height) < min - 0.5) {
         treffer.push({
           auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“",
           b: Math.round(r.width), h: Math.round(r.height),
