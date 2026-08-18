@@ -20,6 +20,8 @@
     "danach der Turm-v2-Zweig. Umgekehrt gäbe es einen Konflikt in tools/pruefstand/"
   ],
   "wartet_auf_mensch": [
+    "RUECKKANAL TOT — Daouda, das ist der wichtigste Punkt. Diese Sitzung erreicht api.github.com nicht: JEDE Anfrage endet mit derselben 403 vom Anthropic-Vermittler, sogar api.github.com/zen, das GitHub ohne jede Anmeldung mit 200 beantwortet. Es ist KEIN GitHub-Problem und KEINE Frage von App-Berechtigungen. So behebst du es auf dem iPad: 1) claude.ai/code oeffnen und mit deinem Anthropic-Konto anmelden. 2) Die Aufforderung 'connect GitHub' befolgen und die Claude-GitHub-App neu autorisieren. 3) Danach eine NEUE Sitzung in pawn-prototype starten — die laufende bekommt den Zugriff nicht zurueck. Alternative am Rechner mit Terminal: 'gh auth login', dann '/web-setup' in der Claude-Code-CLI. Beleg: docs sagen woertlich 'App installation enables PR webhooks for Auto-fix; it is not a session-level access control' — deshalb kommen weiter Webhook-Ereignisse an, waehrend die API sperrt.",
+    "FOLGE FUER DIE ROUTINEN: '/schedule checks for either form of access and prompts you to run /web-setup if neither is configured' (code.claude.com/docs/en/claude-code-on-the-web). Solange der Rueckkanal tot ist, laesst sich keine der zwei Routinen aus routinen/ scharf schalten. Erst Zugriff, dann Routinen.",
     "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen; sie sind sonst alle aktiv und dürfen ohne Rückfrage schreiben.",
     "Der Prüfstand ist auf JEDEM Zweig rot, auch auf main. 14x Kontrolle 4.7 (Seitengewicht über 3 MB, getrieben vom 2.421 kB grossen index.js) und 1x Kontrolle 4.5 (erfundene Adresse antwortet 200 statt 404 — daran arbeitet PR #179). Solange das so bleibt, lehrt der Check, Rot zu übersehen. Entweder das Bundle aufteilen oder die Schwelle in pruefstand.config.ts begründet anheben.",
     "Ein 16. Gate flackert: Kontrolle 3.3 an der Wortmarke bei 844 px, gemessen 1.92 statt 3. Exakt der Wert, den PR #178 als behoben gemeldet hat. Derselbe Code lief einmal mit, einmal ohne diesen Befund — der harte Schnitt aus #178 deckt den Fall nicht ab, in dem die Marke über dem Kopfbild steht. Braucht MEHRFACHES Nachmessen, nicht einmaliges.",
@@ -44,5 +46,8 @@
     "datum": "2026-08-18",
     "bestanden": 3,
     "gefallen": 0
+  },
+  "lastprobe": {
+    "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   }
 }
