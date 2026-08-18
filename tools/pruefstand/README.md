@@ -282,6 +282,16 @@ nicht.)
 | **Termin** | offen — an die Datenfrage gebunden, nicht an ein Datum. Ein weiterer Lauf ohne sie misst wieder nichts. |
 | **Betroffen** | `/heft/…`, `/verzeichnis/…`, `/werk/…`. Die Landing `/` und alle Kundenseiten davor bleiben unberührt — das Heft liegt auf eigenen Adressen und ist nicht indexiert. Das Risiko ist damit eingezäunt. |
 
+### A2 · X9 — die Kasse ist unverkauft erprobt, nicht durchgekauft
+
+| | |
+|---|---|
+| **Sache** | Der Beileger (`/kasse`) ist gebaut, verlinkt alle vier Rechtstexte vor der Schaltfläche und trägt die gesetzlich verlangte Beschriftung „Zahlungspflichtig bestellen". Was fehlt, ist die Abnahme in ihrer geforderten Form: ein echter Kauf von Ende zu Ende, belegt an der Bestellzeile in der Datenbank — nicht an der grünen Meldung. |
+| **Grund** | Teil Z (18.08.2026): Design-Fertigstellung ist Priorität, das Testkauf-Gate ist aufgehoben. Der Kaufweg selbst ist unverändert der erprobte (`create-checkout` schreibt die Zeile vor der Umleitung, der Webhook setzt `paid`) — neu ist nur die Hülle davor. |
+| **Verantwortlich** | Daouda |
+| **Termin** | **vor dem ersten echten Verkauf** — ereignisgebunden, nicht datumsgebunden. Diese Ausnahme steht deshalb nicht in `ausnahmen.ts`: sie entschuldigt kein gefallenes Gate (der Prüfstand misst keinen Kauf), und ein Datums-Wecker würde am falschen Ereignis klingeln. |
+| **Betroffen** | Nur die Gewissheit über den neuen Weg in die Kasse. Wer heute kauft, kauft über den unveränderten Stripe-Weg. |
+
 ### K7 · Kontrolle 4.5 — erfundene Adressen antworten mit 200
 
 | | |
