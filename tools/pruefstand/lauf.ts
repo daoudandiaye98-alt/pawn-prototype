@@ -390,7 +390,7 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
         spur
           ? `Spur x-pawn-404: „${spur}" — der 404 wurde gesetzt.`
           : "Keine Kopfzeile x-pawn-404: niemand hat den Statuscode gesetzt. "
-            + "K7 ist dokumentierte Ausnahme (README, Abschnitt „Dokumentierte Ausnahmen").",
+            + "K7 ist dokumentierte Ausnahme — siehe README, Abschnitt Dokumentierte Ausnahmen.",
         status === 200
           ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für "
             + "Suchmaschinen ist eine erfundene Adresse damit eine gültige Seite."
