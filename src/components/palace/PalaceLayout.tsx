@@ -90,7 +90,8 @@ export function PalaceLayout({
         den Umschlag, sonst nichts. Die Navigation der Site ist das Heft.
       */}
       <div className="mx-auto w-full max-w-[1600px] px-6 pt-8 md:px-14">
-        <Link to="/" className="inline-block" aria-label="Zurück auf den Umschlag">
+        {/* Dieselbe 44-px-Trefffläche wie in der Kasse (3.5, gemessen). */}
+        <Link to="/" className="trefferflaeche inline-flex" aria-label="Zurück auf den Umschlag">
           <PawnWordmark className="h-6 text-black" />
         </Link>
       </div>

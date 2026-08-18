@@ -119,7 +119,10 @@ export default function Kasse() {
       <Seo title="Kasse · PAWN" description="Deine Bestellung abschließen." noindex />
 
       <div className="mx-auto w-full max-w-[46rem] px-6 py-14 md:px-10 md:py-20">
-        <Link to="/" className="inline-block" aria-label="Zurück ins Heft">
+        {/* Z4, gemessen (3.5): der Wortmarken-Link war 51 × 27 px — unter der
+            44-px-Schwelle. `trefferflaeche` polstert auf 44 × 44, die Marke
+            selbst bleibt unverändert klein. */}
+        <Link to="/" className="trefferflaeche inline-flex" aria-label="Zurück ins Heft">
           <PawnWordmark className="h-6" />
         </Link>
 
