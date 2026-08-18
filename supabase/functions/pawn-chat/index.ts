@@ -3,6 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { schreibePartieZug } from "../_shared/partieZug.ts";
 import { schreibeSignal } from "../_shared/pawnSignal.ts";
+import { alsWelt, WELT_DUKTUS, weltFelderZeilen } from "../_shared/weltWissen.ts";
 
 /** Teil 39 AP5 — Missbrauchs-/Kostenschutz. Fixes Ein-Minuten-Fenster pro Bucket (Nutzer- oder
  * IP-Schlüssel); Konfiguration liegt in ai_config, bewusst NICHT über die Client-Allowlist lesbar
@@ -1002,6 +1003,15 @@ Deno.serve(async (req) => {
           const dnaBits = ["materials","silhouette","colors","mood"]
             .map((k) => Array.isArray(dna[k]) && dna[k].length ? `${k}: ${dna[k].join(", ")}` : null)
             .filter(Boolean).join(" · ");
+          /*
+           * Q4b — die Welt-Felder (weltWissen.ts). Die vier Schlüssel oben sind
+           * die Mode-DNA-Arrays; seit Q4b liegen in derselben jsonb-Spalte auch
+           * die String-Felder der Welt (Kunst: Technik, Jahr, Auflage, Signatur …
+           * Interior: Maße, Material, Fertigung, Lieferzeit …). Ohne sie erfand
+           * PAWN auf der Werkseite Antworten zu Fragen, deren Antwort längst im
+           * Formular stand — oder wich aus, obwohl es nicht musste.
+           */
+          const weltZeilen = weltFelderZeilen(p.world, dna as Record<string, unknown>);
           const dims = [p.length_cm && `L ${p.length_cm}cm`, p.width_cm && `B ${p.width_cm}cm`, p.height_cm && `H ${p.height_cm}cm`].filter(Boolean).join(" × ");
           pageContextHint = [
             `AKTUELLE SEITE: Produktdetail von "${p.name}"${p.designers?.brand_name ? ` von ${p.designers.brand_name}` : ""}.`,
@@ -1010,6 +1020,8 @@ Deno.serve(async (req) => {
             p.description && `Beschreibung: ${p.description}`,
             p.designer_note && `Gedanke der Designer:in: ${p.designer_note}`,
             dnaBits && `DNA: ${dnaBits}.`,
+            weltZeilen.length && `Angaben zum Werk — ${weltZeilen.join(" · ")}.`,
+            WELT_DUKTUS[alsWelt(p.world)],
             p.tags?.length && `Tags: ${p.tags.slice(0,8).join(", ")}.`,
             dims && `Maße: ${dims}.`,
             p.made_in && `Gefertigt in: ${p.made_in}.`,
