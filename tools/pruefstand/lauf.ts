@@ -366,14 +366,17 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
       }));
     const status = unsinn?.status() ?? 0;
     /*
-     * Die Spur der Middleware, direkt an der Antwort abgelesen.
+     * Die Spur, direkt an der Antwort abgelesen.
      *
-     * Ohne diese Zeile sagt ein gefallenes 4.5 nur „Status 200" — und das sieht
-     * bei drei verschiedenen Ursachen gleich aus: die Middleware lief gar nicht,
-     * sie lief und hielt die Adresse für bekannt, oder sie lief und kam nicht an
-     * die Hülle. Drei Ursachen, drei Behebungen. `middleware.ts` setzt deshalb
-     * `x-pawn-404` auf JEDEM Weg; hier wird der Kopf gelesen, statt ihn in einem
-     * eigenen curl-Schritt zu suchen, dessen Ausgabe niemand mehr findet.
+     * Ohne sie sagt ein gefallenes 4.5 nur „Status 200", und das sieht bei
+     * mehreren Ursachen gleich aus. Wer den 404 setzt, trägt sich deshalb in
+     * `x-pawn-404` ein — heute `vercel-json` aus `vercel.json`.
+     *
+     * **Diese Notiz nannte früher die Middleware als einzige Ursache.** Das war
+     * falsch und hat einen ganzen Abend in die falsche Richtung geschickt: die
+     * Middleware ist seit K7 entfernt, und ihr Fehlen war nie der Grund. Die
+     * Notiz sagt jetzt, was sie weiß — dass keine Spur da ist — und nicht,
+     * woran es liegt. Der Stand steht in `README.md`, Abschnitt K7.
      */
     const koepfe = unsinn?.headers() ?? {};
     const spur = koepfe["x-pawn-404"];
@@ -385,8 +388,9 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
       schwelle: "Status 404 und ein Weg zurück",
       notiz: [
         spur
-          ? `Spur x-pawn-404: „${spur}" — die Middleware lief.`
-          : "Keine Kopfzeile x-pawn-404: die Middleware lief für diese Anfrage nicht.",
+          ? `Spur x-pawn-404: „${spur}" — der 404 wurde gesetzt.`
+          : "Keine Kopfzeile x-pawn-404: niemand hat den Statuscode gesetzt. "
+            + "K7 ist dokumentierte Ausnahme (README, Abschnitt „Dokumentierte Ausnahmen").",
         status === 200
           ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für "
             + "Suchmaschinen ist eine erfundene Adresse damit eine gültige Seite."

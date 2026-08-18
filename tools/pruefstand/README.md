@@ -218,27 +218,38 @@ nach 15 Minuten keine fertige Vorschau da, bricht der Lauf ab und listet die gef
 Deployments — **kein stiller Rückfall auf pawn.vision**: ein Lauf, der etwas anderes
 gemessen hat als er sollte, ist schlimmer als ein roter Lauf.
 
-## Gemessen: läuft Edge Middleware? (K7 · Kontrolle 4.5)
+## K7 · Kontrolle 4.5 — acht Versuche, kein 404
 
-Hinter der SPA-Umschreibung antwortete jede erfundene Adresse mit 200. Ein Statuscode
-lässt sich nur **vor** der Umschreibung setzen, also nur in einer Middleware — und ob die
-auf diesem Projekt greift, war eine Behauptung: PAWN ist Vite, nicht Next.
+Hinter der SPA-Umschreibung antwortet jede erfundene Adresse mit 200. Ein Statuscode
+lässt sich nur **vor** der Umschreibung setzen. Beide Wege dorthin wurden gebaut und
+gegen die eigene Vorschau gemessen; keiner hat gegriffen.
 
-Deshalb erst eine Sonde und sonst nichts: `middleware.ts` beantwortete ausschließlich
-`/__sonde-middleware`, jede andere Adresse lief daran vorbei.
+| Weg | Fassungen | Ergebnis auf der Vorschau |
+|---|---|---|
+| Edge Middleware (`middleware.ts`) | 7 — mit/ohne `config.matcher`, Import ohne Endung, mit `.js`, `routen` als echtes JS, Kekse und Bypass-Kopfzeile weitergereicht, zuletzt die dokumentierte Nicht-Next-Fassung mit `next()` aus `@vercel/functions` | Status 200, **keine** Kopfzeile — auch nicht die des Rücktritts |
+| `vercel.json` mit `routes` + `status: 404` | 1 | Status 200, **keine** Kopfzeile |
 
-| | |
-|---|---|
-| **Gemessen** | 17.08.2026, `GET https://pawn.vision/__sonde-middleware` |
-| **Antwort** | `middleware-laeuft` · `content-type: text/plain` · `x-pawn-sonde: middleware` |
-| **Bedeutet** | Middleware greift, und zwar vor der Umschreibung. Wäre HTML zurückgekommen, wäre die Umschreibung zuerst dran gewesen und K7 auf diesem Weg nicht baubar. |
+Geprüft und ausgeschlossen: Root Directory ist nicht gesetzt (also Repo-Stamm, die Datei
+lag richtig); Vite ist kein Ausschlussgrund, Routing-Middleware gibt es auch ohne Next.js;
+alle anderen Seiten wurden im selben Lauf normal geliefert, der Umbau hat nichts beschädigt.
 
-Die Sonde ist damit **ersetzt** — sie war ein Messgerät, kein Baustein. An ihrer Stelle
-steht die echte 404: `routen.ts` führt die Adressen, die es gibt, `middleware.ts` liefert
-für alles andere dieselbe Hülle mit Status 404 und der Kopfzeile `x-pawn-404: middleware`.
-Zwei Tests halten das zusammen (`src/__tests__/routen.spec.ts`): die Liste darf nicht von
-`App.tsx` abweichen, und kein interner Link darf auf eine Adresse zeigen, die es nicht
-gibt — sonst wäre die neue 404 eine neue Fehlerquelle statt einer Behebung.
+**Was NICHT gemessen ist:** ob es auf pawn.vision anders aussieht. Die Vorschau ist durch
+Deployment Protection gesperrt, der Prüfstand kommt mit `x-vercel-protection-bypass` hinein.
+Ob diese Schicht vor dem Routing sitzt und autorisierte Anfragen an Middleware und `routes`
+vorbei ausliefert, ist eine Hypothese — sie passt zu allem Beobachteten, ist aber ungeprüft.
+Der Test dazu ist ein Befehl auf der ungesperrten Produktion:
+
+    curl -I https://pawn.vision/diese-seite-gibt-es-nicht-4d9f21
+
+`404` und `x-pawn-404: vercel-json` hieße: die Lösung trägt, nur die gesperrte Vorschau kann
+sie nicht messen. `200` hieße: sie ist wirkungslos und `vercel.json` gehört auf die einfache
+`rewrites`-Form zurück.
+
+`middleware.ts` und `@vercel/functions` sind entfernt — sieben Fassungen lang haben sie
+nichts getan, und eine tote zweite Fassung derselben Sache ist genau das, was hier verboten
+ist. Geblieben ist, was unabhängig davon trägt: `routen.js` als einzige Adressliste,
+`tools/vercel-routen.mjs` als Erzeuger von `vercel.json` und zwei Wachen
+(`src/__tests__/routen.spec.ts`, `src/__tests__/vercel-routen.spec.ts`).
 
 ## Dokumentierte Ausnahmen
 
@@ -256,3 +267,13 @@ Erledigte Ausnahmen bleiben mit Datum stehen: die Liste ist ein Protokoll, kein 
 | **Verantwortlich** | Daouda |
 | **Termin** | mit dem ersten Action-Lauf, der das Geheimnis hat |
 | **Betroffen** | `/heft/…`, `/verzeichnis/…`, `/werk/…`. Die Landing `/` und alle Kundenseiten davor bleiben unberührt — das Heft liegt auf eigenen Adressen und ist nicht indexiert. Das Risiko ist damit eingezäunt. |
+
+### K7 · Kontrolle 4.5 — erfundene Adressen antworten mit 200
+
+| | |
+|---|---|
+| **Sache** | Eine Adresse, die es nicht gibt, antwortet mit Status 200 statt 404. Der Mensch sieht die richtige Seite mit dem Weg zurück; eine Suchmaschine hält die erfundene Adresse für gültig und kann sie indexieren. |
+| **Grund** | Acht Fassungen über zwei unabhängige Mechanismen (Edge Middleware, `vercel.json`-`routes`) greifen auf der Vorschau nicht — Ursache unbekannt. Offene, ungeprüfte Spur: die Deployment Protection der Vorschau könnte vor dem Routing liegen. Der entscheidende Test läuft auf pawn.vision, s. Abschnitt K7 oben. |
+| **Verantwortlich** | Daouda |
+| **Termin** | offen — bewusst ohne Datum entschieden, keine weiteren Versuche |
+| **Betroffen** | Nur erfundene Adressen. Alle echten Seiten wurden im selben Lauf gemessen und sind unberührt; Kauf-, Anmelde- und Heft-Wege sind nicht betroffen. Das Risiko ist SEO-Rauschen, kein Ausfall. |

@@ -172,7 +172,7 @@ jobs:
             --jq '.[] | "  id=\(.id) environment=\(.environment) produktion=\(.production_environment)"' || echo "  keine"
           exit 1
 
-      # ————————————————— Läuft die Middleware? (K7 · Kontrolle 4.5) —————————————————
+      # ————————————————— Wer setzt den 404? (K7 · Kontrolle 4.5) —————————————————
       #
       # Hier stand ein eigener curl-Schritt, der die Kopfzeile `x-pawn-404`
       # sichtbar machte. Er ist ersatzlos weg, weil der Prüfstand sie jetzt
@@ -183,10 +183,9 @@ jobs:
       #
       # Zu lesen ist die Spur im Befund 4.5:
       #
-      #   x-pawn-404: middleware      → 404 gesetzt, alles richtig
-      #   x-pawn-404: huelle-<code>   → lief, konnte die Hülle nicht holen
-      #   x-pawn-404: fehler-<name>   → lief, Ausnahme beim Holen
-      #   Kopfzeile fehlt             → lief NICHT (Bündelung, Deploy)
+      #   x-pawn-404: vercel-json     → 404 gesetzt, alles richtig
+      #   Kopfzeile fehlt             → niemand hat ihn gesetzt; K7 ist
+      #                                 dokumentierte Ausnahme (s. README)
 
       # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
       # die Systembibliotheken, ohne die der Browser auf dem Runner nicht läuft.
