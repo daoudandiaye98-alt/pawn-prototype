@@ -5,6 +5,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeLocale, localeInstruction } from "../_shared/locale.ts";
 import { checkAndCount, canUse, ladePlaene, type Plan } from "../_shared/planGate.ts";
+import { alsWelt, WELT_DUKTUS, WELT_PREISFAKTOREN, weltFelderZeilen } from "../_shared/weltWissen.ts";
 
 type Mode = "product_text" | "product_note" | "weekly_mirror" | "campaign_draft" | "chat" | "aufbau";
 type Msg = { role: "user" | "assistant" | "system"; content: string };
@@ -188,19 +189,31 @@ Deno.serve(async (req) => {
       if (!p) return ok({ ...fallbackFor(), error: "not_found" });
       const tags = (p.tags as string[] | null)?.join(", ") ?? "";
       const isNote = mode === "product_note";
+      /*
+       * Q4b — die KI kennt die Welten. Vorher lag `product_dna` zwar in der
+       * Abfrage, aber nicht im Prompt: über einen Öl auf Leinwand wurde im
+       * Produktduktus geschrieben, ohne Technik, Jahr oder Auflage zu kennen.
+       * Jetzt bekommt der Prompt den Duktus der Welt und die gefüllten Felder —
+       * nur die gefüllten, dieselbe Regel wie auf der Werkseite.
+       */
+      const welt = alsWelt(p.world as string | null);
+      const angaben = weltFelderZeilen(p.world as string | null, p.product_dna as Record<string, unknown> | null);
+      const angabenBlock = angaben.length ? `\nAngaben zum Werk:\n${angaben.join("\n")}` : "";
       const promptUser = isNote
         ? `Schreibe "Der Gedanke dahinter" — persönlich, erste Person, warum dieses Stück existiert. Auf Deutsch, max. 3 Sätze, ruhig, warm, ohne Marketing.
+${WELT_DUKTUS[welt]}
 Marke: ${designer.brand_name}
 Story der Marke: ${designer.story ?? "—"}
 Produkt: ${p.name} (${p.world})
-Tags: ${tags}
+Tags: ${tags}${angabenBlock}
 Beschreibung (Kontext): ${p.description ?? "—"}`
         : `Schreibe eine kurze editoriale Produktbeschreibung im PAWN-Ton (max. 3 Sätze, deutsch, keine Floskeln).
+${WELT_DUKTUS[welt]}
 Marke: ${designer.brand_name}
 Story: ${designer.story ?? "—"}
 Produkt: ${p.name}
 Welt: ${p.world}
-Tags: ${tags}`;
+Tags: ${tags}${angabenBlock}`;
       const aiRes = await ai(model, system, [{ role: "user", content: promptUser }]);
       const generated = aiRes.text ?? (isNote
         ? (locale === "en" ? `This piece exists because I wanted to think about ${p.name.toLowerCase()} differently — quieter, more honest.` : `Dieses Stück ist entstanden, weil ich ${p.name.toLowerCase()} anders denken wollte — leiser, ehrlicher.`)
@@ -404,6 +417,14 @@ Jede Idee bezieht sich auf die tatsächliche Arbeit dieses Hauses, ist in einem 
         const published = products.filter((p) => (p as { status?: string }).status === "published").length;
         contextHint = `Store-Kontext ${designer.brand_name}: ${products.length} Produkte (${published} veröffentlicht). Story: ${designer.story ?? "—"}.`;
       } catch { /* soft */ }
+      /*
+       * Q4b — Preisorientierung je Welt. Vorher wog PAWN jeden Preis wie einen
+       * Modepreis; bei einem Original mit Auflage 1 oder einem Schrank mit
+       * Speditionsversand rechnete es an der Sache vorbei. Die Faktoren sind
+       * eine Wiegeliste, kein Rechenmodell — geraten wird weiterhin nicht.
+       */
+      const hausWelt = alsWelt((designer.tags ?? []).find((t) => ["Mode", "Interior", "Kunst"].includes(t)));
+      contextHint += ` ${WELT_DUKTUS[hausWelt]} Wird nach Preis oder Kalkulation gefragt, wäge diese Faktoren und benenne sie: ${WELT_PREISFAKTOREN[hausWelt]}`;
       const chatModel = gate.degradiert ? gate.modell : model;
       const aiRes = await ai(chatModel, system + "\n\n" + contextHint, messages.length ? messages : [{ role: "user", content: lastUser }]);
       let reply = aiRes.text ?? `Ich bin da. Erzähl mir kurz, wo du gerade stehst — dann helfe ich beim nächsten Schritt.`;

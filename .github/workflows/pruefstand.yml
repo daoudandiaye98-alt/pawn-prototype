@@ -42,6 +42,14 @@ on:
           Vorschau dieses Zweigs (mit Geheimnis) bzw. pawn.vision (ohne).
         required: false
         default: ""
+      kontrollen:
+        description: >
+          Nur diese Kontrollen messen, mit Komma getrennt (z. B. „X.blatt" oder
+          „3.3,3.5"). Ein Teillauf schreibt ALLE Zahlen der gefragten Kontrollen
+          ins Protokoll, auch die bestandenen — dafür ist er da. Die Gate-Zahlen
+          eines Teillaufs sind kein Gesamtstand; leer lassen für den vollen Lauf.
+        required: false
+        default: ""
 
 # Ein Lauf je Zweig. Ein neuer Push macht den alten Lauf gegenstandslos.
 concurrency:
@@ -164,6 +172,21 @@ jobs:
             --jq '.[] | "  id=\(.id) environment=\(.environment) produktion=\(.production_environment)"' || echo "  keine"
           exit 1
 
+      # ————————————————— Wer setzt den 404? (K7 · Kontrolle 4.5) —————————————————
+      #
+      # Hier stand ein eigener curl-Schritt, der die Kopfzeile `x-pawn-404`
+      # sichtbar machte. Er ist ersatzlos weg, weil der Prüfstand sie jetzt
+      # selbst abliest und in den Befund 4.5 schreibt (`lauf.ts`, `wegeUnd404`).
+      # Zwei Messungen derselben Sache an zwei Orten sind eine zu viel: die eine
+      # steht im Bericht, die andere nur im Protokoll, und wenn sie sich je
+      # widersprächen, wüsste niemand welcher zu glauben ist.
+      #
+      # Zu lesen ist die Spur im Befund 4.5:
+      #
+      #   x-pawn-404: vercel-json     → 404 gesetzt, alles richtig
+      #   Kopfzeile fehlt             → niemand hat ihn gesetzt; K7 ist
+      #                                 dokumentierte Ausnahme (s. README)
+
       # Nur Chromium — der Prüfstand startet nichts anderes. `--with-deps` holt
       # die Systembibliotheken, ohne die der Browser auf dem Runner nicht läuft.
       # Steht NACH der Zielsuche: während dort gewartet wird, muss kein Browser
@@ -197,11 +220,17 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           ADRESSE: ${{ steps.ziel.outputs.adresse }}
           GATET: ${{ steps.ziel.outputs.gatet }}
+          KONTROLLEN: ${{ inputs.kontrollen }}
         run: |
+          # Leer = voller Lauf. Steht etwas drin, misst `lauf.ts` nur diese
+          # Kontrollen und schreibt ihre Zahlen einzeln ins Protokoll.
+          teil=""
+          if [ -n "$KONTROLLEN" ]; then teil="--kontrollen $KONTROLLEN"; fi
+
           if [ -n "$ADRESSE" ]; then
-            npx tsx tools/pruefstand/lauf.ts --adresse "$ADRESSE" && ende=0 || ende=$?
+            npx tsx tools/pruefstand/lauf.ts --adresse "$ADRESSE" $teil && ende=0 || ende=$?
           else
-            npx tsx tools/pruefstand/lauf.ts --ziel live && ende=0 || ende=$?
+            npx tsx tools/pruefstand/lauf.ts --ziel live $teil && ende=0 || ende=$?
           fi
 
           if [ "$ende" -eq 0 ]; then exit 0; fi

@@ -1,4 +1,11 @@
 // PAWN classify-term — turn unknown tags into ontology terms, with dedup via synonyms.
+//
+// Q4b: die Ontologie heißt zwar fashion_ontology, trägt aber seit jeher eine
+// world-Spalte mit allen drei Welten. Nur der Klassifizierungs-Prompt kannte
+// ausschließlich Mode — ein „Öl auf Leinwand" oder eine „Eiche geölt" wurde als
+// Mode-Attribut einsortiert. Jetzt kennt der Prompt die Welten und zwei
+// zusätzliche Arten: technik (Kunst: Radierung, Cyanotypie …) und finish
+// (Interior: geölt, gebeizt, pulverbeschichtet …).
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -18,7 +25,7 @@ async function classifyWithOpenAI(term: string, world: string, existingTerms: st
         temperature: 0.2,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "Du klassifizierst Mode-Ontologie-Terme. Antworte NUR mit JSON: {canonical, kind (material|silhouette|color|mood|era|attribute), world (Array aus Mode/Interior/Kunst), synonyms (2-3), duplicate_of?}. Wenn der Term semantisch identisch mit einem existierenden Term ist, setze duplicate_of. Deutsch." },
+          { role: "system", content: "Du klassifizierst Ontologie-Terme für die Welten Mode, Kunst und Interior. Antworte NUR mit JSON: {canonical, kind (material|silhouette|color|mood|era|attribute|technik|finish), world (Array aus Mode/Interior/Kunst — nur die Welten, in denen der Term wirklich vorkommt), synonyms (2-3), duplicate_of?}. technik = künstlerisches Verfahren (Radierung, Öl, Cyanotypie); finish = Oberflächenbehandlung (geölt, gebeizt, pulverbeschichtet); Holzarten und Stoffe sind material. Wenn der Term semantisch identisch mit einem existierenden Term ist, setze duplicate_of. Deutsch." },
           { role: "user", content: `Term: "${term}"\nKontext-Welt: ${world}\nExistierende Terme (Auszug): ${sample}` },
         ],
       }),

@@ -13,11 +13,12 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, DREH_ERWARTET, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, BLATT_ERWARTET, DREH_ERWARTET, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
   VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
+import { ausnahmeFuer, abgelaufen } from "./ausnahmen";
 import {
-  messeDrehHinweis, messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
+  messeBlattgeometrie, messeDrehHinweis, messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
   messeLayout, messeTrefferflaechen, type Befund,
 } from "./messen";
 
@@ -65,6 +66,54 @@ function argument(name: string): string | undefined {
  * jemand als Gesamtbild.
  */
 const NUR_KONTROLLEN = argument("kontrollen")?.split(",").map((s) => s.trim()).filter(Boolean);
+
+/**
+ * Passt ein Name zu dem, wonach gefragt wurde?
+ *
+ * **Warum nicht einfach `includes`.** Kontrollen haben zwei Ebenen: der Lauf
+ * ruft Gruppen auf (`X.blatt`), die Befunde tragen Einzelnamen
+ * (`X.blatt.form`). Vorher verglich der Lauf auf Gruppen und die Ausgabe auf
+ * Einzelnamen — beide mit `includes`. Damit war der Teillauf für genau den Fall
+ * unbrauchbar, für den er gebaut wurde: „X.blatt" ließ die Gruppe laufen, druckte
+ * aber nichts, und „X.blatt.form" druckte nichts UND ließ die Gruppe aus.
+ * Gemessen am 18.08.2026: `Befunde der gefragten Kontrollen (0)`.
+ *
+ * Jetzt zählt beides, in beide Richtungen: wer die Gruppe nennt, bekommt ihre
+ * Einzelbefunde; wer einen Einzelnamen nennt, bekommt seine Gruppe gemessen.
+ */
+function trifft(name: string, frage: string): boolean {
+  return name === frage || name.startsWith(`${frage}.`) || frage.startsWith(`${name}.`);
+}
+
+/** Soll diese Gruppe laufen? */
+function gefragt(gruppe: string): boolean {
+  return !NUR_KONTROLLEN || NUR_KONTROLLEN.some((k) => trifft(gruppe, k));
+}
+
+/**
+ * Der Abbruch-Befund einer ganzen Seite.
+ *
+ * `01` tragen nur die fünf Stellen, an denen eine Seite gar nicht erst vermessen
+ * wird: 404-Ersatzseite, fehlende Daten, Ladefehler. Sie ist keine Kontrolle,
+ * sondern die Begründung dafür, dass keine Kontrolle lief.
+ */
+const ABBRUCH = "01";
+
+/**
+ * Soll dieser Befund gedruckt werden?
+ *
+ * **Warum der Abbruch immer durchkommt.** Ein Teillauf druckt sonst NICHTS für
+ * eine Seite, die vorzeitig abgebrochen hat — die gefragte Kontrolle lief ja
+ * nicht, also hat sie auch keinen Befund. Genau diese Stille hat A1 zwei Läufe
+ * lang verschleiert: `/heft/umschlag @ 1280` stand im Protokoll ohne jede Zeile
+ * darunter, und das las sich wie „nichts zu beanstanden" statt wie „hier wurde
+ * nie gemessen". Ein Messgerät, das schweigt, wenn es nicht messen konnte, ist
+ * das gefährlichere Messgerät. Also: der Grund wird immer gedruckt.
+ */
+function passtZurFrage(kontrolle: string): boolean {
+  if (kontrolle === ABBRUCH) return true;
+  return !NUR_KONTROLLEN || NUR_KONTROLLEN.some((k) => trifft(kontrolle, k));
+}
 
 function commit(): string {
   try {
@@ -165,7 +214,7 @@ async function seiteMessen(
     const umgeleitet = await istUmgeleitet(page, new URL(basis).host);
     if (umgeleitet) {
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite, gemessen: page.url(), schwelle: basis,
         notiz: `Adresse leitet auf einen fremden Host um (${umgeleitet}) — es wurde nicht PAWN geladen, `
           + "deshalb wurde auf dieser Seite nichts gemessen.",
@@ -173,7 +222,7 @@ async function seiteMessen(
     }
     if (antwort && antwort.status() >= 400) {
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite, gemessen: antwort.status(), schwelle: "< 400",
         notiz: "Seite antwortet mit Fehlerstatus — nicht messbar.",
       }];
@@ -213,7 +262,7 @@ async function seiteMessen(
     if (nichtVorhanden) {
       await page.close();
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite, gemessen: "404-Ersatzseite", schwelle: "die Seite selbst",
         notiz: "Diese Adresse kennt das gemessene Ziel nicht — geliefert wurde die 404-Seite. "
           + "Auf diesem Stand ist über die Adresse nichts zu sagen.",
@@ -237,7 +286,7 @@ async function seiteMessen(
     if (datenFehlen) {
       await page.close();
       return [{
-        kontrolle: "01", gate: false, status: "nicht_pruefbar",
+        kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
         seite: seite.pfad, breite: breite.breite,
         gemessen: "Seite ohne ihre Daten", schwelle: "Seite mit ihren Daten",
         notiz: "Die Seite holt ihren Inhalt aus der Datenbank und hat ihn nicht bekommen. "
@@ -258,7 +307,7 @@ async function seiteMessen(
     // Jede Kontrolle sagt, wie lange sie gebraucht hat — damit „das dauert lange"
     // eine Zahl bekommt statt eines Gefühls.
     const mitUhr = async (name: string, f: () => Promise<Befund[]>) => {
-      if (NUR_KONTROLLEN && !NUR_KONTROLLEN.includes(name)) return;
+      if (NUR_KONTROLLEN && !gefragt(name)) return;
       const t = Date.now();
       const r = await f();
       process.stderr.write(`    ${name} ${((Date.now() - t) / 1000).toFixed(1)}s\n`);
@@ -267,6 +316,7 @@ async function seiteMessen(
     await mitUhr("3.8", () => messeLayout(page, seite.pfad, breite.breite));
     await mitUhr("3.5", () => messeTrefferflaechen(page, seite.pfad, breite));
     await mitUhr("X.dreh", () => messeDrehHinweis(page, seite.pfad, breite, DREH_ERWARTET));
+    await mitUhr("X.blatt", () => messeBlattgeometrie(page, seite.pfad, breite, BLATT_ERWARTET));
     await mitUhr("3.10", () => messeKnopfVerdeckung(page, seite.pfad, breite.breite));
     await mitUhr("5.x", () => messeKopfdaten(page, seite.pfad, breite.breite));
     await mitUhr("3.4", () => messeFokus(page, seite.pfad, breite.breite));
@@ -303,7 +353,7 @@ async function seiteMessen(
     });
   } catch (e) {
     befunde.push({
-      kontrolle: "01", gate: false, status: "nicht_pruefbar",
+      kontrolle: ABBRUCH, gate: false, status: "nicht_pruefbar",
       seite: seite.pfad, breite: breite.breite, gemessen: null, schwelle: null,
       notiz: `Messung abgebrochen: ${(e as Error).message}`,
     });
@@ -364,16 +414,37 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
         return h === "/" || h.endsWith("/");
       }));
     const status = unsinn?.status() ?? 0;
+    /*
+     * Die Spur, direkt an der Antwort abgelesen.
+     *
+     * Ohne sie sagt ein gefallenes 4.5 nur „Status 200", und das sieht bei
+     * mehreren Ursachen gleich aus. Wer den 404 setzt, trägt sich deshalb in
+     * `x-pawn-404` ein — heute `vercel-json` aus `vercel.json`.
+     *
+     * **Diese Notiz nannte früher die Middleware als einzige Ursache.** Das war
+     * falsch und hat einen ganzen Abend in die falsche Richtung geschickt: die
+     * Middleware ist seit K7 entfernt, und ihr Fehlen war nie der Grund. Die
+     * Notiz sagt jetzt, was sie weiß — dass keine Spur da ist — und nicht,
+     * woran es liegt. Der Stand steht in `README.md`, Abschnitt K7.
+     */
+    const koepfe = unsinn?.headers() ?? {};
+    const spur = koepfe["x-pawn-404"];
     befunde.push({
       kontrolle: "4.5", gate: true,
       status: status === 404 && zurueck ? "bestanden" : "gefallen",
       seite: UNSINN_PFAD, breite: 1280,
       gemessen: `Status ${status}, Weg zurück ${zurueck ? "vorhanden" : "fehlt"}`,
       schwelle: "Status 404 und ein Weg zurück",
-      notiz: status === 200
-        ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für Suchmaschinen "
-          + "ist eine erfundene Adresse damit eine gültige Seite."
-        : undefined,
+      notiz: [
+        spur
+          ? `Spur x-pawn-404: „${spur}" — der 404 wurde gesetzt.`
+          : "Keine Kopfzeile x-pawn-404: niemand hat den Statuscode gesetzt. "
+            + "K7 ist dokumentierte Ausnahme — siehe README, Abschnitt Dokumentierte Ausnahmen.",
+        status === 200
+          ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für "
+            + "Suchmaschinen ist eine erfundene Adresse damit eine gültige Seite."
+          : null,
+      ].filter(Boolean).join(" "),
     });
   } catch (e) {
     befunde.push({
@@ -494,14 +565,54 @@ async function haupt() {
   mkdirSync(ORDNER, { recursive: true });
   writeFileSync(join(ORDNER, "bericht.json"), JSON.stringify(bericht, null, 2));
 
-  const gefallen = bericht.gates.gefallen;
+  /*
+   * Dokumentierte Ausnahmen und der Rückgabewert (entschieden 18.08.2026).
+   *
+   * Vorher machte JEDES gefallene Gate den Check rot — auch eines, das als
+   * Ausnahme beschlossen war. Ein Check, der immer rot ist, hört auf, ein
+   * Signal zu sein: niemand unterscheidet mehr das bekannte Rot vom neuen.
+   * Deshalb: entschuldigte Gates zählen nicht in den Rückgabewert, stehen aber
+   * mit Name und Wecker in der Statuszeile und im eigenen Abschnitt unten.
+   * Läuft der Wecker ab, fällt das Gate wieder — der Termin ist die Zusage,
+   * an der die Ausnahme hängt, nicht eine Fußnote (s. `ausnahmen.ts`).
+   */
+  const heute = new Date().toISOString().slice(0, 10);
+  const gefalleneBefunde = gates.filter((b) => b.status === "gefallen");
+  const entschuldigt = gefalleneBefunde.filter((b) => ausnahmeFuer(b.kontrolle, heute) !== null);
+  const gefallen = gefalleneBefunde.length - entschuldigt.length;
+  const verstrichen = abgelaufen(heute)
+    .filter((a) => gefalleneBefunde.some((b) => b.kontrolle === a.kontrolle));
+  const aktiveAusnahmen = [...new Set(entschuldigt.map(
+    (b) => ausnahmeFuer(b.kontrolle, heute)!,
+  ))];
+
   process.stderr.write(
     `\n${zielName} · ${ziel.adresse}\n`
     + (NUR_KONTROLLEN ? `TEILLAUF — nur ${NUR_KONTROLLEN.join(", ")}\n` : "")
     + `Gates: ${bericht.gates.bestanden} bestanden · ${gefallen} gefallen · `
-    + `${bericht.gates.nicht_pruefbar} nicht prüfbar\n`
+    + `${bericht.gates.nicht_pruefbar} nicht prüfbar`
+    + (aktiveAusnahmen.length > 0
+      ? ` · ${aktiveAusnahmen.length} Ausnahme(n) aktiv (${entschuldigt.length} Befund(e) entschuldigt)`
+      : "")
+    + `\n`
     + `Bericht: tools/pruefstand/artefakte/bericht.json\n`,
   );
+
+  if (aktiveAusnahmen.length > 0) {
+    process.stderr.write(`\nDokumentierte Ausnahmen (zählen nicht als gefallen — bis zum Wecker):\n`);
+    for (const a of aktiveAusnahmen) {
+      process.stderr.write(`  ${a.kontrolle.padEnd(5)} ${a.name} · Termin ${a.termin} · Wecker ${a.wecker}\n`);
+    }
+  }
+  if (verstrichen.length > 0) {
+    process.stderr.write(`\nAUSNAHME ABGELAUFEN — zählt wieder als gefallen:\n`);
+    for (const a of verstrichen) {
+      process.stderr.write(
+        `  ${a.kontrolle.padEnd(5)} ${a.name} · Wecker war ${a.wecker}. `
+        + `Verlängern geht nur bewusst, in ausnahmen.ts.\n`,
+      );
+    }
+  }
 
   /*
    * Die gefallenen Gates einzeln ins Log.
@@ -515,8 +626,38 @@ async function haupt() {
    * diese Liste ist der Auszug, den man ohne Download lesen kann. Gekürzt auf
    * 60 Zeilen, damit ein durchgefallener Lauf das Log nicht zuschüttet.
    */
+  /*
+   * Im Teillauf: ALLE Befunde der gefragten Kontrollen, auch die bestandenen.
+   *
+   * Wer ausdrücklich nach drei Kontrollen fragt, will ihre Zahlen sehen und
+   * nicht ihr Urteil. „Kein Gate gefallen" beantwortet nicht die Frage, ob das
+   * Blatt 0,72 misst — es sagt nur, dass niemand widersprochen hat. Genau
+   * daran ist die Ausnahme A1 hängen geblieben: gemessen wurde, aber die Zahl
+   * stand nur in `bericht.json`, und das Artefakt lässt sich aus dem Container
+   * nicht herunterladen.
+   */
+  if (NUR_KONTROLLEN) {
+    const gefragt = befunde.filter((b) => passtZurFrage(b.kontrolle));
+    process.stderr.write(
+      `\nBefunde der gefragten Kontrollen — plus jede Seite, die gar nicht gemessen wurde (${gefragt.length}):\n`,
+    );
+    for (const b of gefragt.slice(0, 200)) {
+      const ort = `${b.seite} @ ${b.breite}px`;
+      const beleg = [
+        b.gemessen !== null ? `gemessen ${b.gemessen}` : null,
+        b.schwelle !== null ? `soll ${b.schwelle}` : null,
+        b.notiz,
+      ].filter(Boolean).join(" · ");
+      process.stderr.write(
+        `  ${b.status.padEnd(14)} ${b.kontrolle.padEnd(8)} ${ort.padEnd(34)} ${beleg}\n`,
+      );
+    }
+  }
+
   if (gefallen > 0) {
-    const liste = gates.filter((b) => b.status === "gefallen");
+    // Nur die unentschuldigten — die Ausnahmen stehen oben mit Namen, nicht
+    // hier zwischen den echten Befunden, wo sie das Neue verdecken würden.
+    const liste = gefalleneBefunde.filter((b) => ausnahmeFuer(b.kontrolle, heute) === null);
     process.stderr.write(`\nGefallene Gates (${liste.length}):\n`);
     for (const b of liste.slice(0, 60)) {
       const ort = `${b.seite} @ ${b.breite}px`;

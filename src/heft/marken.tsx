@@ -57,11 +57,11 @@ export function Marken({ suchePfad, aufSuche }: MarkenProps) {
       </Link>
 
       {/*
-        Der Warenkorb führt aus dem Heft hinaus — bis X9 die Kasse als Beileger
-        hereinholt, ist `/cart` die Seite, die es wirklich gibt. Kein Sprung im
-        Heft, also ein gewöhnlicher Link ohne abgefangenen Klick.
+        Seit X9 führt der Korb auf den Beileger `/kasse` — die Kasse ist im
+        Heft angekommen. Kein Sprung im Wendel, also weiterhin ein gewöhnlicher
+        Link ohne abgefangenen Klick: der Beileger blättert nicht, er liegt bei.
       */}
-      <Link to="/cart" className="hx-marke-band" data-voll={count > 0 || undefined}>
+      <Link to="/kasse" className="hx-marke-band" data-voll={count > 0 || undefined}>
         <span className="hx-marke-wort">Korb</span>
         {/* Die Zahl ist der Inhalt, nicht die Verzierung — sie wird vorgelesen.
             Das Wort davor benennt sie, auch wenn es eingefahren nicht zu sehen

@@ -218,6 +218,39 @@ nach 15 Minuten keine fertige Vorschau da, bricht der Lauf ab und listet die gef
 Deployments — **kein stiller Rückfall auf pawn.vision**: ein Lauf, der etwas anderes
 gemessen hat als er sollte, ist schlimmer als ein roter Lauf.
 
+## K7 · Kontrolle 4.5 — acht Versuche, kein 404
+
+Hinter der SPA-Umschreibung antwortet jede erfundene Adresse mit 200. Ein Statuscode
+lässt sich nur **vor** der Umschreibung setzen. Beide Wege dorthin wurden gebaut und
+gegen die eigene Vorschau gemessen; keiner hat gegriffen.
+
+| Weg | Fassungen | Ergebnis auf der Vorschau |
+|---|---|---|
+| Edge Middleware (`middleware.ts`) | 7 — mit/ohne `config.matcher`, Import ohne Endung, mit `.js`, `routen` als echtes JS, Kekse und Bypass-Kopfzeile weitergereicht, zuletzt die dokumentierte Nicht-Next-Fassung mit `next()` aus `@vercel/functions` | Status 200, **keine** Kopfzeile — auch nicht die des Rücktritts |
+| `vercel.json` mit `routes` + `status: 404` | 1 | Status 200, **keine** Kopfzeile |
+
+Geprüft und ausgeschlossen: Root Directory ist nicht gesetzt (also Repo-Stamm, die Datei
+lag richtig); Vite ist kein Ausschlussgrund, Routing-Middleware gibt es auch ohne Next.js;
+alle anderen Seiten wurden im selben Lauf normal geliefert, der Umbau hat nichts beschädigt.
+
+**Was NICHT gemessen ist:** ob es auf pawn.vision anders aussieht. Die Vorschau ist durch
+Deployment Protection gesperrt, der Prüfstand kommt mit `x-vercel-protection-bypass` hinein.
+Ob diese Schicht vor dem Routing sitzt und autorisierte Anfragen an Middleware und `routes`
+vorbei ausliefert, ist eine Hypothese — sie passt zu allem Beobachteten, ist aber ungeprüft.
+Der Test dazu ist ein Befehl auf der ungesperrten Produktion:
+
+    curl -I https://pawn.vision/diese-seite-gibt-es-nicht-4d9f21
+
+`404` und `x-pawn-404: vercel-json` hieße: die Lösung trägt, nur die gesperrte Vorschau kann
+sie nicht messen. `200` hieße: sie ist wirkungslos und `vercel.json` gehört auf die einfache
+`rewrites`-Form zurück.
+
+`middleware.ts` und `@vercel/functions` sind entfernt — sieben Fassungen lang haben sie
+nichts getan, und eine tote zweite Fassung derselben Sache ist genau das, was hier verboten
+ist. Geblieben ist, was unabhängig davon trägt: `routen.js` als einzige Adressliste,
+`tools/vercel-routen.mjs` als Erzeuger von `vercel.json` und zwei Wachen
+(`src/__tests__/routen.spec.ts`, `src/__tests__/vercel-routen.spec.ts`).
+
 ## Dokumentierte Ausnahmen
 
 Eine Kontrolle darf auf REVIEW stehen und trotzdem ausgeliefert werden — aber nur als
@@ -225,12 +258,46 @@ Eine Kontrolle darf auf REVIEW stehen und trotzdem ausgeliefert werden — aber 
 Verantwortlichen und Termin ist es keine Ausnahme, sondern ein verschwiegener Fehler.
 Erledigte Ausnahmen bleiben mit Datum stehen: die Liste ist ein Protokoll, kein Aushang.
 
+**Ausnahmen und der Rückgabewert** (entschieden 18.08.2026): eine hier eingetragene
+Ausnahme macht den Check nicht mehr rot — sonst wäre er dauerhaft rot für etwas
+bewusst Entschiedenes, und ein Check, der immer rot ist, hört auf, ein Signal zu
+sein. Dafür gilt: **der Termin ist ein Wecker, kein Kommentar.** Jede Ausnahme, die
+ein gefallenes Gate entschuldigt, steht zusätzlich maschinenlesbar in
+`ausnahmen.ts` mit einem Wecker-Datum. Bis dahin zählt das Gate nicht als
+gefallen und die Statuszeile druckt die Zahl aktiver Ausnahmen mit; danach fällt
+es wieder, und der Check wird rot — nicht weil sich die Seite verschlechtert
+hätte, sondern weil die Entscheidung abgelaufen ist. Verlängern geht nur als
+bewusste Änderung in `ausnahmen.ts`, nicht durch Wegsehen. (A1 steht dort nicht:
+ihre Befunde sind `nicht prüfbar`, nie „gefallen" — sie berührt den Rückgabewert
+nicht.)
+
 ### A1 · Einzelseiten-Geometrie im Browser ungemessen
 
 | | |
 |---|---|
 | **Sache** | Die Einzelseiten-Geometrie (Blattverhältnis 0,72 · Untergrenze 320 px · Satzspiegel unter 430 px Höhe) ist im Browser ungemessen. Die Rechnung dahinter ist es nicht — `src/heft/__tests__/einzelseite.spec.ts` prüft sie mit zehn Tests. Ungemessen ist, wie sie **aussieht**. |
-| **Grund** | Messbar erst auf dem Runner gegen die Vorschau des Zweigs. Der Entwicklungscontainer bringt Browser und Netz nicht zusammen (s. Hüllen-Regel), und ohne `VERCEL_AUTOMATION_BYPASS_SECRET` misst die Action pawn.vision statt des Zweigs. |
+| **Grund** | Der Lauf mit dem Geheimnis hat stattgefunden (Teillauf `X.blatt`, Lauf 32151979882 auf `0e2c4d0`, gegen die Vorschau des Zweigs) — und er hat weder bestätigt noch widerlegt: **kein einziger Befund** war prüfbar. Der Grund ist einer, nicht zwei: **die Vorschau bekommt keine Daten.** Im Protokoll steht es zweimal, einmal laut und einmal leise. Laut auf `/designer/obara`: „1 Anfrage(n) an supabase.co fehlgeschlagen … net::ERR_ABORTED. Gemessen wurde eine leere Hülle." Leise überall dort, wo die Zeile `X.blatt` im Protokoll **ganz fehlt** — auf `/heft/umschlag`, `/verzeichnis/1` und `/werk/…` bei 844 quer, 1280 und 1920. Dort greift die Wache in `lauf.ts` (`data-daten-fehlen`, s. `lauf.ts:264`): eine Seite ohne ihre Daten wird gar nicht erst vermessen. Das ist richtig so — aber es heißt, dass die Blattgeometrie nie an die Reihe kam. Der zweite Satz im Protokoll, „Kein `.hx-heft` auf der Seite", betrifft nur 390 und 768 und ist **kein Fehler**: dort steht das Fenster hoch, ist schmal und wird mit dem Finger bedient — genau die Bedingung, unter der das Heft den Dreh-Hinweis zeigt statt eines Blatts (`drehhinweis.tsx`, `HOCHFORMAT`). Er tut, was er soll. |
+| **Was fehlt, damit A1 messbar wird** | Eine Vorschau, die ihre Daten bekommt. Warum die Anfrage abbricht, ist mit diesem Lauf **nicht** geklärt und wird hier bewusst nicht geraten: ein Proxy scheidet aus (auf dem Runner ist keiner gesetzt, `lauf.ts:490`), alles Weitere wäre Vermutung. Sobald Daten ankommen, ist die eine Lage, die die Einzelseiten-Geometrie wirklich zeigt, **844 quer** — schmal genug für die Medienabfrage und quer, also ohne Dreh-Hinweis. 1280 und 1920 bleiben auch dann `nicht prüfbar`; das ist Absicht, kein Mangel. |
 | **Verantwortlich** | Daouda |
-| **Termin** | mit dem ersten Action-Lauf, der das Geheimnis hat |
+| **Termin** | offen — an die Datenfrage gebunden, nicht an ein Datum. Ein weiterer Lauf ohne sie misst wieder nichts. |
 | **Betroffen** | `/heft/…`, `/verzeichnis/…`, `/werk/…`. Die Landing `/` und alle Kundenseiten davor bleiben unberührt — das Heft liegt auf eigenen Adressen und ist nicht indexiert. Das Risiko ist damit eingezäunt. |
+
+### A2 · X9 — die Kasse ist unverkauft erprobt, nicht durchgekauft
+
+| | |
+|---|---|
+| **Sache** | Der Beileger (`/kasse`) ist gebaut, verlinkt alle vier Rechtstexte vor der Schaltfläche und trägt die gesetzlich verlangte Beschriftung „Zahlungspflichtig bestellen". Was fehlt, ist die Abnahme in ihrer geforderten Form: ein echter Kauf von Ende zu Ende, belegt an der Bestellzeile in der Datenbank — nicht an der grünen Meldung. |
+| **Grund** | Teil Z (18.08.2026): Design-Fertigstellung ist Priorität, das Testkauf-Gate ist aufgehoben. Der Kaufweg selbst ist unverändert der erprobte (`create-checkout` schreibt die Zeile vor der Umleitung, der Webhook setzt `paid`) — neu ist nur die Hülle davor. |
+| **Verantwortlich** | Daouda |
+| **Termin** | **vor dem ersten echten Verkauf** — ereignisgebunden, nicht datumsgebunden. Diese Ausnahme steht deshalb nicht in `ausnahmen.ts`: sie entschuldigt kein gefallenes Gate (der Prüfstand misst keinen Kauf), und ein Datums-Wecker würde am falschen Ereignis klingeln. |
+| **Betroffen** | Nur die Gewissheit über den neuen Weg in die Kasse. Wer heute kauft, kauft über den unveränderten Stripe-Weg. |
+
+### K7 · Kontrolle 4.5 — erfundene Adressen antworten mit 200
+
+| | |
+|---|---|
+| **Sache** | Eine Adresse, die es nicht gibt, antwortet mit Status 200 statt 404. Der Mensch sieht die richtige Seite mit dem Weg zurück; eine Suchmaschine hält die erfundene Adresse für gültig und kann sie indexieren. |
+| **Grund** | Acht Fassungen über zwei unabhängige Mechanismen (Edge Middleware, `vercel.json`-`routes`) greifen auf der Vorschau nicht — Ursache unbekannt. Offene, ungeprüfte Spur: die Deployment Protection der Vorschau könnte vor dem Routing liegen. Der entscheidende Test läuft auf pawn.vision, s. Abschnitt K7 oben. |
+| **Verantwortlich** | Daouda |
+| **Termin** | **X11** — das Vorrendern der bekannten Routen löst die Statusfrage strukturell: jede echte Adresse wird eine echte Datei, `handle: filesystem` liefert sie, und der Auffang trifft nur noch Erfundenes. „Termin offen" (Stand 18.08.) war ein Fehler gegen die eigene Norm — ZERA-QA 06 verlangt einen. Wecker: **01.09.2026** (`ausnahmen.ts`); Reihenfolge bis dahin: Q4b → X8 → X1+X11. |
+| **Betroffen** | Nur erfundene Adressen. Alle echten Seiten wurden im selben Lauf gemessen und sind unberührt; Kauf-, Anmelde- und Heft-Wege sind nicht betroffen. Das Risiko ist SEO-Rauschen, kein Ausfall. |

@@ -45,6 +45,7 @@ import Versand from "./pages/Versand.tsx";
 import AGB from "./pages/AGB.tsx";
 import Widerruf from "./pages/Widerruf.tsx";
 import Barrierefreiheit from "./pages/Barrierefreiheit.tsx";
+import WiePawnKiNutzt from "./pages/WiePawnKiNutzt.tsx";
 import VertragKuendigen from "./pages/VertragKuendigen.tsx";
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import StudioOverview from "./pages/studio/StudioOverview.tsx";
@@ -84,6 +85,7 @@ import Shop from "./pages/Shop.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Cart from "./pages/Cart.tsx";
 import Checkout from "./pages/Checkout.tsx";
+import Kasse from "./heft/kasse.tsx";
 import DesignersIndex from "./pages/DesignersIndex.tsx";
 import DesignerPage from "./pages/DesignerPage.tsx";
 import Account from "./pages/Account.tsx";
@@ -216,6 +218,15 @@ const App = () => (
                 <Route path="/agb" element={<AGB />} />
                 <Route path="/widerruf" element={<Widerruf />} />
                 <Route path="/barrierefreiheit" element={<Barrierefreiheit />} />
+                {/*
+                  Die Seite gab es schon (`src/pages/WiePawnKiNutzt.tsx`), die
+                  Route nicht: die Datenschutzerklärung verlinkt seit Teil AP3
+                  auf `/wie-pawn-ki-nutzt`, und dort stand die „Seite nicht
+                  gefunden"-Ansicht. Gefunden hat es die Link-Prüfung, die zu
+                  K7 gehört — vorher fiel es niemandem auf, weil ein toter Link
+                  in dieser Anwendung mit Status 200 antwortete.
+                */}
+                <Route path="/wie-pawn-ki-nutzt" element={<WiePawnKiNutzt />} />
                 <Route path="/vertrag-kuendigen" element={<VertragKuendigen />} />
                 <Route path="/kontakt" element={<Kontakt />} />
                 <Route path="/shop" element={<Shop />} />
@@ -225,6 +236,9 @@ const App = () => (
                 <Route path="/presse/:slug" element={<Presse />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
+                {/* X9 — der Beileger. Die Kasse im Heft, mit den Pflichtangaben
+                    und der Schaltflaeche, die § 312j Abs. 3 BGB verlangt. */}
+                <Route path="/kasse" element={<Kasse />} />
                 <Route path="/order/success" element={<OrderConfirmation />} />
                 <Route path="/account" element={<Account />} />
 
