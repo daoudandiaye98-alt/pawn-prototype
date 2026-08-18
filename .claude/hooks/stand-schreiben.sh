@@ -22,6 +22,22 @@ GEFALLEN="${2:-}"
 ZWEIG=$(git branch --show-current 2>/dev/null || echo "unbekannt")
 HEUTE=$(date +%Y-%m-%d)
 
+# WICHTIG: geschrieben wird `letzter_verify`, NICHT `letzter_pruefstand`.
+#
+# Belegt am 2026-08-18: die erste Fassung schrieb die Zahlen von
+# `verify.sh schnell` in das Feld `letzter_pruefstand`. Damit ueberschrieb sie
+# das Ergebnis der GitHub-Action — aus "1115 bestanden, 16 gefallen" wurde
+# "3 bestanden, 0 gefallen", und briefing.sh las das bei jedem Sitzungsstart
+# als "Letzter Pruefstand" vor. Zwei verschiedene Messungen teilten sich ein
+# Feld, und die kleinere gewann.
+#
+# Das ist schlimmer als eine fehlende Zahl: eine Bruecke, die eine falsche Zahl
+# vorliest, lehrt die naechste Schicht, ihr nicht zu glauben.
+#
+#   letzter_verify     - was DIESE Maschine messen kann (Typen, Tests,
+#                        Regressionen). Schreibt dieses Skript.
+#   letzter_pruefstand - was die GitHub-Action gegen die echte Vorschau misst.
+#                        Ruehrt dieses Skript NIE an.
 NEU=$(jq \
   --arg datum "$HEUTE" \
   --arg zweig "$ZWEIG" \
@@ -29,7 +45,7 @@ NEU=$(jq \
   --arg g "$GEFALLEN" '
   .aktualisiert = $datum
   | .branch = $zweig
-  | if $b != "" then .letzter_pruefstand = {datum: $datum, bestanden: ($b|tonumber), gefallen: ($g|tonumber)} else . end
+  | if $b != "" then .letzter_verify = {datum: $datum, bestanden: ($b|tonumber), gefallen: ($g|tonumber)} else . end
 ' "$STAND" 2>/dev/null) || exit 0
 
 # Nur schreiben, wenn dabei gueltiges JSON herauskam. Ein halb geschriebener

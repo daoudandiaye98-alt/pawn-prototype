@@ -45,7 +45,9 @@ jq -r '
   "Wartet auf einen Menschen:",
   (if (.wartet_auf_mensch | length) == 0 then "  nichts" else (.wartet_auf_mensch[] | "  · \(.)") end),
   "",
-  "Letzter Pruefstand: \(.letzter_pruefstand.datum) — \(.letzter_pruefstand.bestanden) bestanden, \(.letzter_pruefstand.gefallen) gefallen",
+  "Letzter verify.sh hier: \(.letzter_verify.datum // "nie") — \(.letzter_verify.bestanden // "?") von \(((.letzter_verify.bestanden // 0) + (.letzter_verify.gefallen // 0))) bestanden",
+  "Letzter Pruefstand (GitHub-Action, echte Vorschau): \(.letzter_pruefstand.datum // "nie") — \(.letzter_pruefstand.bestanden // "?") bestanden, \(.letzter_pruefstand.gefallen // "?") gefallen",
+  (if (.nicht_pruefbar // []) | length > 0 then "", "NICHT PRUEFBAR:", (.nicht_pruefbar[] | "  · \(.)") else empty end),
   "",
   "NAECHSTER ZUG: \(.naechster_zug)"
 ' .claude/stand.json 2>/dev/null || cat .claude/stand.json
