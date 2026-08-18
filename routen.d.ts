@@ -20,4 +20,6 @@ export declare const ROUTEN: readonly string[];
 export declare function istPlattformOderDatei(pfad: string): boolean;
 
 /** Passt die Adresse auf eine echte Route? */
+/** X1 — die Umzüge: alte Adresse → neue, 301 im Netz, Navigate in der App. */
+export declare const UMZUEGE: readonly { von: string; nach: string }[];
 export declare function istBekannteRoute(pfad: string): boolean;

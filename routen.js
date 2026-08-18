@@ -29,6 +29,12 @@ export const ROUTEN = [
   "/mode",
   "/interior",
   "/kunst",
+  "/kuratierter-raum",
+  "/drei-welten",
+  "/haeuser",
+  "/deine-dna",
+  "/frag-pawn",
+  "/fuer-designer",
   "/neu",
   "/auth",
   "/dna",
@@ -142,6 +148,31 @@ export const ROUTEN = [
  * Diese Prüfung ist der Grund, warum das Nachladen der Hülle unten keine
  * Schleife baut: `/index.html` trägt einen Punkt.
  */
+/**
+ * X1 — die fünf Umzüge. Alte Adressen, die eine neue haben, antworten mit 301:
+ * für den Menschen unsichtbar, für die Suchmaschine die Ansage, den Eintrag
+ * umzuschreiben statt doppelt zu führen.
+ *
+ * `:name` in `von` wird als ein Abschnitt gefangen und in `nach` als `:name`
+ * wieder eingesetzt — dieselbe Platzhalter-Sprache wie in ROUTEN. Die Ziele
+ * müssen bekannte Adressen sein; die Wache in `vercel-routen.spec.ts` prüft es.
+ *
+ * WICHTIG: jede Adresse hier steht AUCH in ROUTEN, weil `App.tsx` sie als
+ * clientseitigen Umzug führt (Navigate) — für Klicks in der App, wo kein
+ * Server dazwischen liegt. Serverseitig kommt die 301-Regel vor der 200-Regel
+ * und gewinnt.
+ */
+export const UMZUEGE = [
+  { von: "/shop", nach: "/verzeichnis/1" },
+  { von: "/product/:slug", nach: "/werk/:slug" },
+  { von: "/designer/:slug", nach: "/haus/:slug" },
+  { von: "/heft", nach: "/" },
+  /* Der Umschlag hieß `/heft/umschlag` — sein Ziel ist `/`, nicht `/umschlag`.
+     Die eigene Zeile VOR der Musterzeile, damit sie zuerst greift. */
+  { von: "/heft/umschlag", nach: "/" },
+  { von: "/heft/:sektion", nach: "/:sektion" },
+];
+
 export function istPlattformOderDatei(pfad) {
   if (pfad.startsWith("/api/") || pfad.startsWith("/_vercel/")) return true;
   const letzter = pfad.slice(pfad.lastIndexOf("/") + 1);

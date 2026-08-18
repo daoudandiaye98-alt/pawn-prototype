@@ -87,25 +87,25 @@ export interface SeitenZiel {
 export const PRODUKT_SLUG = "obara-rope-jacket";
 export const HAUS_SLUG = "obara";
 
-/** Der Umschlag — die erste Doppelseite der Hülle (X5, Sektion „umschlag"). */
-export const HEFT_PFAD = "/heft/umschlag";
+/** Der Umschlag — seit X1 die Startseite: `/` IST das Heft. */
+export const HEFT_PFAD = "/";
 
 /** Das erste Blatt des Katalogs (X6). */
 export const VERZEICHNIS_PFAD = "/verzeichnis/1";
 
 export const SEITEN: SeitenZiel[] = [
-  { name: "halle", pfad: "/" },
+  /*
+   * X1 — der Umschalttag hat diese Liste umgeschrieben. Die Halle, die alte
+   * Boutique und die alten Werk-/Hausseiten sind gelöscht; ihre Adressen
+   * antworten mit 301 und sind kein Messziel mehr — eine Weiterleitung hat
+   * keine Geometrie. Gemessen wird, was ausgeliefert wird: das Heft auf `/`,
+   * das Verzeichnis, das Werk, das Haus-Kapitel (X8) und die Kasse.
+   */
+  { name: "umschlag", pfad: HEFT_PFAD },
   // Teil M — das Ausgabe-Heft. Gehört zum öffentlichen Frontend, also in die Messung.
   { name: "ausgabe", pfad: "/ausgabe/001" },
-  { name: "boutique", pfad: "/shop" },
-  { name: "werk", pfad: `/product/${PRODUKT_SLUG}` },
-  { name: "haus", pfad: `/designer/${HAUS_SLUG}` },
-  /*
-   * Teil X — die Hülle. Sie war bisher NICHT in dieser Liste, und deshalb hat
-   * kein Lauf je etwas über sie gesagt: weder über die Doppelseiten noch über
-   * den Dreh-Hinweis, der nur hier lebt. Das war die eigentliche Lücke.
-   */
-  { name: "huelle", pfad: HEFT_PFAD },
+  { name: "haus-kapitel", pfad: `/haus/${HAUS_SLUG}` },
+  { name: "kasse", pfad: "/kasse" },
   /*
    * Teil X6 — das Verzeichnis. Eigene Zeile und nicht mit der Hülle erledigt:
    * es ist die einzige Heftseite, die aus Daten entsteht, die einzige mit einem
@@ -136,7 +136,7 @@ export const SEITEN: SeitenZiel[] = [
  * sind ausdrücklich ausgenommen und dürfen ihn NIE zeigen (X9 die Kasse, X7 die
  * Werkseite); die stehen in `NIE_SPERREN` in `src/heft/drehhinweis.tsx`.
  */
-export const DREH_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD];
+export const DREH_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD, "/haus/"];
 
 /**
  * Wo ein Heft-Blatt steht — für X.blatt.
@@ -146,7 +146,8 @@ export const DREH_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD];
  * mit X7 eine Doppelseite im Heft ist. Verglichen wird mit `startsWith`, damit
  * `/verzeichnis/3` und `/werk/<slug>` mitgemeint sind.
  */
-export const BLATT_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD, "/werk/"];
+export const BLATT_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD, "/werk/", "/haus/"];
+
 
 /** Absichtlich ungültig — für 4.5. */
 export const UNSINN_PFAD = "/diese-seite-gibt-es-nicht-4d9f21";

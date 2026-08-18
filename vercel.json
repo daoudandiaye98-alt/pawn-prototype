@@ -4,6 +4,48 @@
       "handle": "filesystem"
     },
     {
+      "src": "^/shop/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/verzeichnis/1"
+      }
+    },
+    {
+      "src": "^/product/([^/]+)/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/werk/$1"
+      }
+    },
+    {
+      "src": "^/designer/([^/]+)/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/haus/$1"
+      }
+    },
+    {
+      "src": "^/heft/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/"
+      }
+    },
+    {
+      "src": "^/heft/umschlag/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/"
+      }
+    },
+    {
+      "src": "^/heft/([^/]+)/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/$1"
+      }
+    },
+    {
       "src": "^/$",
       "dest": "/index.html"
     },
@@ -17,6 +59,30 @@
     },
     {
       "src": "^/kunst/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/kuratierter-raum/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/drei-welten/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/haeuser/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/frag-pawn/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/fuer-designer/?$",
       "dest": "/index.html"
     },
     {

@@ -644,6 +644,16 @@ export async function messeTrefferflaechen(
  * Läge sie unter 4,5:1, fiele 3.3. Eine zweite Kontrastrechnung an dieser
  * Stelle wäre eine zweite Fassung derselben Sache, und die soll es nicht geben.
  */
+/**
+ * Gehört diese Adresse zu einer erwarteten? Exakt, oder als Präfix — aber ein
+ * Präfix nur, wenn es mehr ist als "/": seit X1 steht der Umschlag auf `/`,
+ * und `startsWith("/")` würde JEDE Adresse zur Heftadresse erklären. Die Wurzel
+ * zählt deshalb nur exakt.
+ */
+function erwartetHier(seite: string, erwartet: readonly string[]): boolean {
+  return erwartet.some((p) => seite === p || (p.length > 1 && seite.startsWith(p)));
+}
+
 export async function messeDrehHinweis(
   page: Page, seite: string, breite: Breite, erwartet: readonly string[],
 ): Promise<Befund[]> {
@@ -658,7 +668,7 @@ export async function messeDrehHinweis(
       notiz: `${breite.name}: der Hinweis gilt nur hochkant, schmal und mit Finger.`,
     }];
   }
-  if (!erwartet.includes(seite)) {
+  if (!erwartetHier(seite, erwartet)) {
     return [{
       kontrolle: "X.dreh", gate: true, status: "nicht_pruefbar", seite, breite: breite.breite,
       gemessen: null, schwelle: null,
@@ -851,7 +861,7 @@ export async function messeBlattgeometrie(
   }));
 
   if (!einzelseite) return nichtHier(`${breite.name}: die Einzelseite gilt erst schmal oder flach.`);
-  if (!erwartet.some((p) => seite === p || seite.startsWith(p))) {
+  if (!erwartetHier(seite, erwartet)) {
     return nichtHier("Diese Adresse trägt kein Heft-Blatt.");
   }
 

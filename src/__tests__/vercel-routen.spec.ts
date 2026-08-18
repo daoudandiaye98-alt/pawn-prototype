@@ -18,7 +18,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ROUTEN } from "../../routen.js";
+import { ROUTEN, UMZUEGE, istBekannteRoute } from "../../routen.js";
 import { baueVercelJson } from "../../tools/vercel-routen.mjs";
 
 const erzeugt = baueVercelJson();
@@ -45,12 +45,37 @@ describe("vercel.json", () => {
     expect(erzeugt.routes[0]).toEqual({ handle: "filesystem" });
   });
 
-  it.each(ROUTEN.map((r) => [r]))("%s bekommt 200, nicht den Auffang", (route: string) => {
+  /* X1: eine Adresse, die umzieht, trifft zuerst ihre 301 — alle übrigen die 200. */
+  const zieht = (route: string) => UMZUEGE.some((u: { von: string }) => u.von === route);
+
+  it.each(ROUTEN.filter((r) => !zieht(r)).map((r) => [r]))("%s bekommt 200, nicht den Auffang", (route: string) => {
     // `:name` durch einen echten Abschnitt ersetzen — so kommt die Adresse an.
     const pfad = route.replace(/:[^/]+/g, "beispiel");
     const regel = ersteRegel(pfad);
     expect(regel, `keine Regel trifft ${pfad}`).toBeDefined();
     expect(regel!.status, `${pfad} fiele in den 404-Auffang`).toBeUndefined();
+  });
+
+  it.each(UMZUEGE.map((u: { von: string; nach: string }) => [u.von, u.nach]))(
+    "%s zieht mit 301 nach %s um", (von: string, nach: string) => {
+      /* „mode" als Beispielabschnitt, nicht ein Fantasiewort: beim
+         Sektions-Umzug ist das Ziel wörtlich (`/mode`), und nur ein echter
+         Sektionsname landet auf einer bekannten Adresse. `/heft/erfunden`
+         → `/erfunden` → 404 ist gewollt — ein Umzug adelt keine erfundene
+         Adresse. */
+      const pfad = von.replace(/:[^/]+/g, "mode");
+      const regel = ersteRegel(pfad);
+      expect(regel?.status, `${pfad} bekäme keinen 301`).toBe(301);
+      const ziel = (regel!.headers as Record<string, string>).Location
+        .replace(/\$\d+/g, "mode");
+      expect(ziel).toBe(nach.replace(/:[^/]+/g, "mode"));
+      // Ein Umzug in eine tote Adresse wäre eine 301 in die 404.
+      expect(istBekannteRoute(ziel), `${ziel} ist keine bekannte Adresse`).toBe(true);
+    });
+
+  it("der Umschlag-Umzug greift vor der Sektions-Musterzeile", () => {
+    const regel = ersteRegel("/heft/umschlag");
+    expect((regel!.headers as Record<string, string>).Location).toBe("/");
   });
 
   it.each([

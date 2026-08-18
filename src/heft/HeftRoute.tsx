@@ -135,18 +135,6 @@ export default function HeftRoute() {
       <Seo
         title={`${hier?.kolumne ?? AUSGABE} — PAWN`}
         description="PAWN als Magazin: Mode, Interior und Kunst aus unabhängigen Häusern. Eine Hülle, eine Route, jede Sektion eine Doppelseite."
-        /*
-         * Noch nicht in den Index.
-         *
-         * Nicht, weil die Sektionen leer wären — sie tragen jetzt ihren Text und
-         * ihre Platten. Sondern weil das Heft auf `/heft/…` liegt, während `/`,
-         * `/mode`, `/interior` und `/kunst` dieselben Inhalte noch als alte
-         * Seiten führen. Zwei indexierte Adressen für denselben Inhalt sind für
-         * die Suche schlechter als eine. Mit X1 zieht das Heft auf die
-         * endgültigen Adressen, die alten Seiten fallen weg, und diese Zeile
-         * fällt mit ihnen.
-         */
-        noindex
       />
       <Heft
         bauen={bauen}

@@ -56,10 +56,12 @@ import {
 } from "../haeuser";
 
 /**
- * Das Präfix der Sektionsadressen. Eine Stelle, damit der Umzug auf die
- * endgültigen Adressen in Schritt 8 eine Zeile ist und keine Suche.
+ * Das Präfix der Sektionsadressen — seit X1 leer: das Heft liegt auf den
+ * endgültigen Adressen, der Umschlag auf `/`. Die Konstante bleibt stehen,
+ * weil sie der eine Ort ist, an dem ein künftiger Umzug wieder eine Zeile
+ * wäre (und weil `${S}/mode` lesbarer bleibt als ein nacktes "/mode").
  */
-const S = "/heft";
+const S = "";
 
 /** Die Adresse der Sektion „Frag PAWN" — die Marke am Blattrand braucht sie. */
 export const FRAG_PAWN_PFAD = `${S}/frag-pawn`;
@@ -113,7 +115,8 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis, haeuser }: Heft
      Bauern als SVG — sie wird nicht nachgebaut, das ist Designgesetz. */
   seiten.push(bau({
     schluessel: "umschlag",
-    pfad: S,
+    /* Der Umschlag ist die Startseite — X1. */
+    pfad: "/",
     kolumne: "Umschlag",
     titel: "YOUR MOVE.",
     sektion: "umschlag",

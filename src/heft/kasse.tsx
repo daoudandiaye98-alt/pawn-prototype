@@ -119,7 +119,7 @@ export default function Kasse() {
       <Seo title="Kasse · PAWN" description="Deine Bestellung abschließen." noindex />
 
       <div className="mx-auto w-full max-w-[46rem] px-6 py-14 md:px-10 md:py-20">
-        <Link to="/heft/umschlag" className="inline-block" aria-label="Zurück ins Heft">
+        <Link to="/" className="inline-block" aria-label="Zurück ins Heft">
           <PawnWordmark className="h-6" />
         </Link>
 
