@@ -38,6 +38,7 @@
  * (Schritt 8) fällt das Präfix, und die Sektionen ziehen auf ihre endgültigen
  * Adressen; zu ändern ist dann diese eine Zeichenkette.
  */
+import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import type { Doppelseite } from "../doppelseiten";
 import { folios } from "../doppelseiten";
 import {
@@ -110,39 +111,43 @@ export interface HeftSeitenOptionen {
 export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis, haeuser }: HeftSeitenOptionen): Doppelseite[] {
   const seiten: Doppelseite[] = [];
 
-  /* ——— 01 Umschlag ———
-     Wortmarke, Bauer, drei Zeilen, ein Weg hinein. Die Wortmarke trägt den
-     Bauern als SVG — sie wird nicht nachgebaut, das ist Designgesetz. */
+  /* ——— 01 Umschlag — das Cover (Teil Ω, Checkpoint 1) ———
+     Wortmarke monumental über den Bund, der Bauer darin atmet, drei Zeilen
+     Haltung, EIN Weg hinein. Keine Bedienungsanleitung: ein Umschlag erklärt
+     nicht das Blättern, er ist das Versprechen des Hefts.
+
+     Die Wortmarke ist die echte Komponente (Designgesetz: nicht nachbauen) —
+     monumental gesetzt über denselben Bund-Trick wie die Platten: zweimal im
+     DOM, jede Seite doppelt so breit wie sie selbst, an ihre Bundkante
+     geschoben. Die Haltung stand schon auf der Landing und im Editorial —
+     Texte ziehen um, sie werden nicht neu erfunden (X1). */
   seiten.push(bau({
     schluessel: "umschlag",
     /* Der Umschlag ist die Startseite — X1. */
     pfad: "/",
     kolumne: "Umschlag",
-    titel: "YOUR MOVE.",
+    titel: "PAWN",
     sektion: "umschlag",
     reiter: "Umschlag",
     ton: "papier",
     nummer: 1,
     links: (f) => (
       <Heftseite lage="links" kolumne="Umschlag" folio={f}>
-        <Kicker>Der kuratierte Raum</Kicker>
-        <Schlagzeile>YOUR MOVE.</Schlagzeile>
-        <Vorspann>PAWN macht aus kreativem Potenzial echte Gelegenheiten.</Vorspann>
-        <Bildunterschrift>Was hier hängt, hat jemand gemacht.</Bildunterschrift>
+        <CoverMarke lage="links" />
       </Heftseite>
     ),
     rechts: (f) => (
       <Heftseite
         lage="rechts" kolumne="Umschlag" folio={f}
-        weg={{ text: "Aufschlagen", zu: "/inhalt" }}
+        weg={{ text: "Eintreten", zu: "/inhalt" }}
       >
-        <Kicker>Ausgabe 001</Kicker>
-        <Vorspann>Mode · Interior · Kunst</Vorspann>
-        <Fliesstext>
-          Ein Heft, eine Hülle. Jede Sektion eine Doppelseite. Geblättert wird mit
-          dem Rad, dem Balken, der Leertaste oder dem Griffregister an der Kante —
-          und jede Doppelseite hat ihre eigene Adresse.
-        </Fliesstext>
+        <CoverMarke lage="rechts" />
+        <div className="hx-cover-haltung">
+          <Kicker>Ausgabe 001 · Mode · Interior · Kunst</Kicker>
+          <p>Kunst von Händen, nicht von Fabriken.</p>
+          <p>Was hier hängt, hat jemand gemacht.</p>
+          <p>93 % jedes Kaufs gehen direkt an das Haus.</p>
+        </div>
       </Heftseite>
     ),
   }));
@@ -630,6 +635,33 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis, haeuser }: Heft
   }
 
   return seiten;
+}
+
+
+/**
+ * Die Wortmarke auf dem Umschlag — monumental über den Bund (Teil Ω).
+ *
+ * Derselbe Handel wie bei `PlatteBund`: ein Bild kann nicht wirklich über zwei
+ * Blattflächen laufen, also steht die Marke zweimal im DOM — jede Kopie doppelt
+ * so breit wie ihre Seite und an ihre Bundkante geschoben. Links zeigt die linke
+ * Hälfte, rechts die rechte; zusammen ergibt das EIN Wort, dessen Mitte genau
+ * im Bund sitzt.
+ *
+ * Es ist die echte `PawnWordmark` (Designgesetz: nicht nachbauen) — sie bringt
+ * den Bauern als SVG mit. Nur Größe und Schnitt kommen vom Umschlag: Fraunces
+ * 200 in `clamp(5rem, 16vw, 13rem)`, gesetzt in `heft.css`.
+ *
+ * `aria-hidden`: der Name des Hefts steht bereits in der einen `h1` der
+ * Adresse (X12). Zwei sichtbare Kopien wären für eine Vorlesehilfe „PAWN PAWN".
+ */
+function CoverMarke({ lage }: { lage: "links" | "rechts" }) {
+  return (
+    <div className="hx-cover-marke" aria-hidden>
+      <span className="hx-cover-band" data-lage={lage}>
+        <PawnWordmark className="hx-cover-wort" />
+      </span>
+    </div>
+  );
 }
 
 /* ————————————————— Wiederkehrende Formen ————————————————— */

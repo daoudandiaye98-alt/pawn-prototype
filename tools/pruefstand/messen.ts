@@ -633,36 +633,8 @@ export async function messeTrefferflaechen(
        * unter einem halben ist der Unterschied keiner, den ein Finger merkt.
        */
       if (Math.min(r.width, r.height) < min - 0.5) {
-        /*
-         * DIAGNOSE (temporär, wird zurückgenommen): Lauf 76/77 maßen auf der
-         * Vercel-Vorschau bei 768/844 Reiter 29 px und Marken 7 px — Werte,
-         * die zu keinem CSS-Zustand des Codes passen und sich lokal nicht
-         * reproduzieren. Für jeden Treffer druckt die Sonde den Rechenweg:
-         * display des Elements, flex-basis des ersten Kindes, die aufgelöste
-         * Streifen-Variable und den Media-Query-Stand.
-         */
-        /*
-         * Runde 2: die Computed Styles waren korrekt (flex, basis 42.5px,
-         * var 44px), aber das Rect maß die HALBE Breite bei voller Höhe —
-         * die Signatur einer Projektion. offsetWidth ignoriert Transforms;
-         * dazu der erste Vorfahr, der eine trägt.
-         */
-        const eigen = el as HTMLElement;
-        let verdreht = "kein Transform";
-        for (let k: HTMLElement | null = eigen; k; k = k.parentElement) {
-          const t = getComputedStyle(k).transform;
-          if (t && t !== "none") {
-            verdreht = k.tagName.toLowerCase()
-              + (k.className && typeof k.className === "string" ? "." + k.className.trim().split(/\s+/).slice(0, 2).join(".") : "")
-              + " → " + t.slice(0, 60);
-            break;
-          }
-        }
-        const diag = " {layout " + eigen.offsetWidth + "×" + eigen.offsetHeight
-          + "; " + verdreht
-          + "; vw " + document.documentElement.clientWidth + "}";
         treffer.push({
-          auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“" + diag,
+          auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“",
           b: Math.round(r.width), h: Math.round(r.height),
         });
       }

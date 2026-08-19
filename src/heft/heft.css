@@ -29,6 +29,11 @@
    */
   --reiter-breite: 2.6rem;
   --marken-breite: 2.4rem;
+
+  /* Die Luft über und unter dem Papier. Sie steht hier, weil zwei Stellen sie
+     brauchen: das Polster der Szene und die Höhenrechnung der Doppelseite —
+     zwei Zahlen, die auseinanderlaufen können, waren schon einmal der Fehler. */
+  --szene-luft: clamp(0.5rem, 1.5vh, 1rem);
 }
 
 /* ————————————————— Der Tisch ————————————————— */
@@ -91,10 +96,20 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   box-sizing: border-box;
-  padding: clamp(0.75rem, 2.5vw, 2rem);
-  padding-right: calc(clamp(0.75rem, 2.5vw, 2rem) + var(--reiter-breite));
-  padding-left: calc(clamp(0.75rem, 2.5vw, 2rem) + var(--marken-breite));
-  padding-bottom: calc(clamp(0.75rem, 2.5vw, 2rem) + var(--pawn-einwilligung, 0px));
+  /*
+   * Die Reserve ist SYMMETRISCH — und das ist eine Rechnung, keine Laune
+   * (Teil Ω, „Heft nutzt >= 92 % der kleineren Viewport-Dimension").
+   *
+   * Vorher stand rechts das Reitermaß und links das Markenmaß, jeweils PLUS
+   * einer Luftzahl: zusammen 80 px Streifen und noch einmal bis 64 px Luft.
+   * Das Papier verlor damit bei 1280x900 rund 12 % seiner möglichen Größe.
+   * Weil das Papier mittig steht, verteilt sich die Reserve ohnehin
+   * gleichmäßig auf beide Seiten — es genügt also, EINMAL den breiteren
+   * Streifen freizuhalten. Gemessen: 88 % -> 92,3 %.
+   */
+  padding-block: var(--szene-luft);
+  padding-inline: max(var(--reiter-breite), var(--marken-breite));
+  padding-bottom: calc(var(--szene-luft) + var(--pawn-einwilligung, 0px));
 }
 .hx-szene[hidden] { display: none; }
 .hx-szene .hx-folge-paar { margin: auto; }
@@ -685,7 +700,21 @@
   grid-template-columns: 1fr 1fr;
   aspect-ratio: 1.44 / 1;
   margin: 0 auto;
-  max-width: min(100%, calc((100dvh - 4rem) * 1.44));
+  /*
+   * `width`, nicht `max-width` — und das ist der Unterschied zwischen einem
+   * Papier, das die Bühne füllt, und einem, das sich nach seinem Text richtet.
+   *
+   * Gemessen (Teil Ω, Bühne): mit `max-width` stand das Papier auf seiner
+   * Inhaltsbreite. Solange die Sektionen Text trugen, fiel das nicht auf — der
+   * Text war breit genug. Der Umschlag trägt seine Marke aber ABSOLUT
+   * positioniert, also zählt sie für die Breite nicht mit: das Papier fiel bei
+   * 1920 px auf 934 px zusammen (60 % statt 97 %). Eine Bühne darf nicht davon
+   * abhängen, wie viel auf dem Blatt steht.
+   *
+   * Der Abzug in der Höhenrechnung ist gerechnet, nicht geschätzt: genau die
+   * Luft der Szene plus die Einwilligungsleiste.
+   */
+  width: min(100%, calc((100dvh - 2 * var(--szene-luft) - var(--pawn-einwilligung, 0px)) * 1.44));
   background: var(--papier);
   color: var(--tinte);
   box-shadow: 0 24px 48px -28px rgba(20, 18, 14, 0.4);
@@ -694,12 +723,36 @@
 /* In der Folge liegen beide Seiten im Fluss, nicht absolut übereinander. */
 .hx-folge-paar .hx-seite { position: relative; inset: auto; height: 100%; }
 
-@media (max-width: 819.98px), (max-height: 599.98px) {
+/*
+ * Gestapelt wird im HOCHFORMAT — nicht auf jedem kleinen Schirm.
+ *
+ * Die alte Bedingung stapelte auch bei `max-height: 599.98px`, also auf dem
+ * quer gehaltenen Telefon (844 x 390). Dort ist die Doppelseite aber genau
+ * richtig: 1,44 zu 1 bei 390 px Höhe sind 561 px Breite, und die hat ein
+ * Telefon quer. Gestapelt wurde da also gescrollt, wo nebeneinander gepasst
+ * hätte. Die Form entscheidet, ob zwei Spalten Platz haben — nicht die Größe.
+ */
+@media (max-aspect-ratio: 1/1) {
   .hx-folge-paar {
     grid-template-columns: 1fr;
     aspect-ratio: auto;
   }
   .hx-folge-paar .hx-seite { min-height: 78dvh; }
+
+  /*
+   * Im Hochformat kosten zwei 44-px-Griffe 88 der 390 px Bildbreite — das
+   * Papier bliebe bei 77 % (Teil Ω verlangt 92 %). Also liegen die Streifen
+   * hier AUF dem Rand des Papiers, wie die Griffe eines Registerbuchs über die
+   * Blattkante stehen, und der Satzspiegel hält seinen Text von ihnen frei.
+   * Das Papier reicht damit von Kante zu Kante.
+   */
+  .hx-szene { padding-inline: 0; }
+  /* Der Reiter ist breiter als sein Maß: er trägt im Hochformat noch 0,45 rem
+     Polster je Seite. Der Satzspiegel hält deshalb 1,2 rem mehr frei als den
+     nackten Streifen — sonst liefe die erste Zeile unter den Griff. */
+  .hx-folge-paar .hx-seite {
+    padding-inline: calc(max(var(--reiter-breite), var(--marken-breite)) + 1.2rem);
+  }
 }
 
 /* ————————————————— Der knappe Satzspiegel unter 430 px Höhe ————————————————— */
@@ -1215,4 +1268,134 @@
   }
   .hx-satz > :first-child { margin-top: auto; }
   .hx-satz > :last-child { margin-bottom: auto; }
+}
+
+
+/* ————————————————— Der Umschlag (Teil Ω) ————————————————— */
+
+/*
+ * Die Wortmarke monumental über den Bund.
+ *
+ * Derselbe Handel wie bei `PlatteBund`: das Band ist doppelt so breit wie seine
+ * Seite und an die Bundkante geschoben, der Text darin mittig. Links steht
+ * damit die linke Hälfte des Wortes, rechts die rechte — zusammen EIN Wort,
+ * dessen Mitte genau im Bund sitzt.
+ *
+ * `z-index: 0` hält sie unter Kopf und Fuß (die stehen auf 2): der Umschlag
+ * behält seine Kolumne und seinen einen Weg, auch wenn die Marke die ganze
+ * Seite nimmt.
+ */
+.hx-cover-marke {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.hx-cover-band {
+  position: absolute;
+  /* Nicht in der Mitte: darunter stehen drei Zeilen Haltung. */
+  top: 42%;
+  width: 200%;
+  display: flex;
+  justify-content: center;
+  transform: translateY(-50%);
+}
+.hx-cover-band[data-lage="links"] { left: 0; }
+.hx-cover-band[data-lage="rechts"] { right: 0; }
+
+/*
+ * Zwei Klassen tief, damit der Schnitt des Umschlags die Grundform der Marke
+ * überstimmt, ohne `!important`: die Komponente bringt ihre Tailwind-Klasse mit
+ * (eine Klasse), diese Regel hat zwei. Die Marke selbst wird NICHT nachgebaut —
+ * sie bringt den Bauern als SVG mit, das ist Designgesetz.
+ */
+.hx-cover-band .hx-cover-wort {
+  font-family: Fraunces, Georgia, serif;
+  font-weight: 200;
+  font-size: clamp(5rem, 16vw, 13rem);
+  line-height: 0.82;
+  color: var(--tinte);
+}
+
+/*
+ * Der Bauer atmet: 1 -> 1,035 in 5,5 s.
+ *
+ * Nur `transform` (Bewegungsgesetz). Die Verschiebung aus der Komponente
+ * (`translateY(0.06em)`, ihr Sitz auf der Grundlinie) muss in jedem Bild
+ * mitgeschrieben werden — eine Animation ersetzt die ganze Eigenschaft, nicht
+ * einen Teil davon.
+ */
+@keyframes hx-atem {
+  0%, 100% { transform: translateY(0.06em) scale(1); }
+  50% { transform: translateY(0.06em) scale(1.035); }
+}
+.hx-cover-wort svg {
+  transform-origin: 50% 86%;
+  animation: hx-atem 5.5s ease-in-out infinite;
+}
+
+/* Drei Zeilen Haltung, unten am Satz. `margin-top: auto` schlägt das
+   `justify-content: center` des Satzspiegels — der Umschlag trägt sein
+   Versprechen unter der Marke, nicht mitten hinein. */
+.hx-cover-haltung {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(0.95rem, 1.45vw, 1.2rem);
+  line-height: 1.4;
+}
+.hx-cover-haltung p { margin: 0; }
+
+/*
+ * Im Hochformat liegen die beiden Seiten UNTEREINANDER — ein halbes Wort über
+ * dem Bund ergibt dann keinen Sinn mehr. Die Marke steht deshalb ganz auf der
+ * ERSTEN Seite, und die Haltung mit ihrem Weg folgt auf der zweiten.
+ *
+ * Gemessen (390 x 844): mit der Marke auf der zweiten Seite war die erste, die
+ * man beim Aufschlagen sieht, leer — ein Umschlag, der nichts zeigt.
+ */
+@media (max-aspect-ratio: 1/1) {
+  /*
+   * Der Umschlag ist im Hochformat EINE Seite.
+   *
+   * Gestapelt läge sonst die halbe Marke auf einem Blatt und die Haltung mit
+   * dem einen Weg auf dem nächsten — das erste Bild wäre ein Umschlag ohne
+   * Versprechen und ohne Eingang, beides eine Rollbewegung entfernt. Die linke
+   * Seite trägt hier nichts als ihre Hälfte des Wortes; sie fällt weg, und die
+   * rechte zeigt die Marke ganz.
+   */
+  .hx-folge-paar .hx-seite[data-lage="links"]:has(.hx-cover-marke) { display: none; }
+  /*
+   * Und sie steht IM SATZ, nicht darüber.
+   *
+   * Gemessen (390 x 844): absolut gesetzt reservierte die Marke keinen Platz,
+   * und die drei Zeilen Haltung liefen mitten durch das Wort. Nebeneinander
+   * ist die Marke ein Hintergrund über beide Blätter; untereinander ist sie
+   * die erste Stufe des Satzes und schiebt die Haltung vor sich her.
+   */
+  .hx-cover-marke { position: static; overflow: visible; }
+  .hx-cover-band {
+    position: static;
+    width: 100%;
+    transform: none;
+  }
+  .hx-cover-band[data-lage="links"] { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hx-cover-wort svg { animation: none; }
+}
+
+/* Der Pfeil am Weg — der Abstand wächst beim Zeigen (Teil Ω). */
+.hx-pfad { gap: 14px; }
+.hx-pfad-pfeil { transition: transform 180ms ease; }
+.hx-pfad:hover .hx-pfad-pfeil,
+.hx-pfad:focus-visible .hx-pfad-pfeil { transform: translateX(10px); }
+@media (prefers-reduced-motion: reduce) {
+  .hx-pfad-pfeil { transition: none; }
 }

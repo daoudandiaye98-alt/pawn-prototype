@@ -14,6 +14,8 @@ import "@fontsource/cormorant-garamond/500.css";
 import "@fontsource/cormorant-garamond/600.css";
 // Teil N — das Abendlicht-System (nur /studio): Fraunces für Display und die Stimme
 // des Bauern (kursiv), Outfit für die Bedienoberfläche. Lokal wie alle Schriften.
+/* 200 — der Schnitt der monumentalen Wortmarke auf dem Umschlag (Teil Ω). */
+import "@fontsource/fraunces/200.css";
 import "@fontsource/fraunces/400.css";
 import "@fontsource/fraunces/500.css";
 import "@fontsource/fraunces/600.css";

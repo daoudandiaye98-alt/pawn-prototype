@@ -93,6 +93,7 @@ export function Heftseite({ lage, kolumne, folio, weg, hausStil, children }: Hef
         {weg && (weg.zu !== undefined ? (
           <Link className="hx-pfad" to={weg.zu}>
             {weg.text}
+            <Pfeil />
           </Link>
         ) : (
           /* Eine Tat ist ein Knopf, kein Link — ein `<a>` ohne Ziel wäre eine
@@ -103,11 +104,24 @@ export function Heftseite({ lage, kolumne, folio, weg, hausStil, children }: Hef
           /* eslint-disable-next-line no-restricted-syntax */
           <button type="button" className="hx-pfad hx-pfad-tat" onClick={weg.tu}>
             {weg.text}
+            <Pfeil />
           </button>
         ))}
       </div>
     </div>
   );
+}
+
+/**
+ * Der Pfeil am Weg (Teil Ω).
+ *
+ * Er steht als eigenes Glied und nicht im Text, weil der Abstand zwischen Wort
+ * und Pfeil beim Zeigen wächst (14 -> 24 px). Ein Pfeil im Text könnte das
+ * nicht — und `aria-hidden`, weil eine Vorlesehilfe „Eintreten" ansagen soll,
+ * nicht „Eintreten Pfeil nach rechts".
+ */
+function Pfeil() {
+  return <span className="hx-pfad-pfeil" aria-hidden>&#8594;</span>;
 }
 
 /**
