@@ -395,9 +395,27 @@ const MESSE_LAYOUT = `(() => {
     if (ausgeparkt(r)) { ausgeparkteAnzahl++; continue; }
     if (r.right > feld + 1) schuldige.push({ auswahl: wegSelektor(el), rechts: Math.round(r.right) });
     if (r.right > feld + 1 || r.left < -1) {
+      /*
+       * Erklärt ist ein Überstand, wenn ein Vorfahr seinen waagerechten
+       * Überlauf REGELT — rollbar (auto/scroll) oder beschneidend
+       * (hidden/clip). In beiden Fällen kann dort nichts sichtbar aus dem
+       * Sichtfeld ragen: entweder erreicht man es durch Rollen, oder die
+       * Schere des Vorfahren schneidet es ab, bevor der Fensterrand es
+       * könnte. Der Vorfahr selbst bleibt gemessen — ragt SEIN Kasten
+       * hinaus, fällt er.
+       *
+       * Gemessen (Lauf 76): die eingefahrenen Marken — Schubladen, die
+       * .hx-marken seit Z4 beschneidet — fielen als Anschnitt, während das
+       * gleich gebaute Griffregister durch sein overflow-y: auto
+       * entschuldigt war. Zwei gleich unsichtbare Zustände, zwei Urteile —
+       * das war ein Fehler des Messgeräts, nicht der Seite.
+       *
+       * (Dieser Block lebt in einem Template-Literal — deshalb hier keine
+       * Backticks.)
+       */
       let erklaert = false;
       for (let k = el.parentElement; k; k = k.parentElement) {
-        if (/(auto|scroll)/.test(getComputedStyle(k).overflowX)) { erklaert = true; break; }
+        if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(k).overflowX)) { erklaert = true; break; }
       }
       if (!erklaert) anschnitte.push({ auswahl: wegSelektor(el), links: Math.round(r.left), rechts: Math.round(r.right) });
     }
@@ -606,7 +624,15 @@ export async function messeTrefferflaechen(
       if (r.width < 1 || r.height < 1) continue;
       if (r.right <= 0 || r.left >= document.documentElement.clientWidth) continue;
       if (imSatz(el)) continue;
-      if (Math.min(r.width, r.height) < min) {
+      /*
+       * Ein halbes Pixel Toleranz — dieselbe Regel wie bei X.blatt.breite.
+       * Gemessen (Lauf 71): „Ins Verzeichnis" fiel mit „gemessen 44 · soll 44"
+       * — der Kasten war 43,98 px, der Bericht rundet, der Vergleich nicht.
+       * Ein Messgerät, das etwas anderes vergleicht, als es anzeigt, erzeugt
+       * Befunde, die niemand nachvollziehen kann. Browser setzen Bruchpixel;
+       * unter einem halben ist der Unterschied keiner, den ein Finger merkt.
+       */
+      if (Math.min(r.width, r.height) < min - 0.5) {
         treffer.push({
           auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“",
           b: Math.round(r.width), h: Math.round(r.height),
@@ -629,85 +655,9 @@ export async function messeTrefferflaechen(
   }];
 }
 
-/* ————————————— X.dreh — der Dreh-Hinweis und seine Tür (Launch Gate) ————————————— */
-
-/**
- * Steht im Hochformat der Dreh-Hinweis da — und steht darunter die Tür?
- *
- * Der Hinweis allein wäre für jeden mit eingeschalteter Rotationssperre eine
- * Sackgasse: eine Aufforderung, der er nicht nachkommen kann, und dahinter
- * nichts. Deshalb ist die Tür („Das ganze Heft als Text lesen") Teil des Gates
- * und nicht Zierrat.
- *
- * Was hier NICHT gemessen wird: der Kontrast der Tür. Den misst 3.3 auf
- * derselben Seite und derselben Breite bereits mit — sie ist sichtbarer Text.
- * Läge sie unter 4,5:1, fiele 3.3. Eine zweite Kontrastrechnung an dieser
- * Stelle wäre eine zweite Fassung derselben Sache, und die soll es nicht geben.
- */
-export async function messeDrehHinweis(
-  page: Page, seite: string, breite: Breite, erwartet: readonly string[],
-): Promise<Befund[]> {
-  const zutreffend = breite.hoehe > breite.breite
-    && breite.breite <= 820
-    && breite.eingabe === "finger";
-
-  if (!zutreffend) {
-    return [{
-      kontrolle: "X.dreh", gate: true, status: "nicht_pruefbar", seite, breite: breite.breite,
-      gemessen: null, schwelle: null,
-      notiz: `${breite.name}: der Hinweis gilt nur hochkant, schmal und mit Finger.`,
-    }];
-  }
-  if (!erwartet.includes(seite)) {
-    return [{
-      kontrolle: "X.dreh", gate: true, status: "nicht_pruefbar", seite, breite: breite.breite,
-      gemessen: null, schwelle: null,
-      notiz: "Nur die Hülle bittet ums Drehen; diese Adresse tut es nie.",
-    }];
-  }
-
-  const e = await page.evaluate(() => {
-    const dreh = document.querySelector(".hx-dreh");
-    if (!dreh) return { hinweis: false, tuer: null as null | { b: number; h: number; text: string } };
-    const t = dreh.querySelector<HTMLElement>(".hx-dreh-tuer");
-    if (!t) return { hinweis: true, tuer: null };
-    const cs = getComputedStyle(t);
-    if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) {
-      return { hinweis: true, tuer: null };
-    }
-    const r = t.getBoundingClientRect();
-    // Außerhalb des Bildschirms versteckt zählt nicht als sichtbar.
-    if (r.bottom <= 0 || r.top >= window.innerHeight) return { hinweis: true, tuer: null };
-    return { hinweis: true, tuer: { b: Math.round(r.width), h: Math.round(r.height), text: (t.innerText || "").trim() } };
-  });
-
-  if (!e.hinweis) {
-    return [{
-      kontrolle: "X.dreh", gate: true, status: "gefallen", seite, breite: breite.breite,
-      gemessen: "kein Hinweis", schwelle: "Dreh-Hinweis sichtbar",
-      notiz: "Hochkant auf dem Telefon steht das Heft da, ohne ums Drehen zu bitten.",
-    }];
-  }
-  if (!e.tuer) {
-    return [{
-      kontrolle: "X.dreh", gate: true, status: "gefallen", seite, breite: breite.breite,
-      gemessen: "keine Tür", schwelle: "Sprunglink sichtbar",
-      notiz: "Der Hinweis steht, der Sprunglink in die Textfassung fehlt oder ist versteckt — "
-        + "für jeden mit Rotationssperre ist das eine Sackgasse.",
-    }];
-  }
-
-  const kleinste = Math.min(e.tuer.b, e.tuer.h);
-  return [{
-    kontrolle: "X.dreh", gate: true,
-    status: kleinste >= SCHWELLEN.trefferflaeche ? "bestanden" : "gefallen",
-    seite, breite: breite.breite,
-    auswahl: `a „${e.tuer.text.slice(0, 34)}" ${e.tuer.b}×${e.tuer.h}`,
-    gemessen: kleinste, schwelle: SCHWELLEN.trefferflaeche,
-    notiz: "Hinweis steht, Tür ist sichtbar. Gemessen wird ihre kleinste Kante — sie ist "
-      + "das einzige Bedienelement auf diesem Bildschirm.",
-  }];
-}
+/* X.dreh und X.blatt sind mit dem Szenen-Umbau ausgebaut (19.08.2026):
+   Dreh-Hinweis und Blattgeometrie waren Messgrößen der Papiersimulation.
+   Siehe docs/heft-architektur-audit.md und README, Ausnahme A1 (erledigt). */
 
 /* ——————————————— Verdeckung des primären Knopfes im ersten Bild ——————————————— */
 
@@ -808,126 +758,4 @@ export async function messeKopfdaten(page: Page, seite: string, breite: number):
       gemessen: `og:image ${k.ogBild ? "gesetzt" : "fehlt"}, og:title ${k.ogTitel ? "gesetzt" : "fehlt"}`,
       schwelle: "beide gesetzt", notiz: k.ogBild.slice(0, 90) },
   ];
-}
-
-/* ————————————— X.blatt — die Geometrie der Einzelseite (Launch Gate) ————————————— */
-
-/**
- * Hält das Blatt seine Maße? Drei Zahlen, drei Aussagen.
- *
- * **Warum es diese Kontrolle vorher nicht gab — und warum das ein Fehler war.**
- * Die Ausnahme A1 hielt fest, die Einzelseiten-Geometrie sei „im Browser
- * ungemessen", und nannte als Grund das fehlende Bypass-Geheimnis. Das war nur
- * die halbe Wahrheit: als das Geheimnis da war und der Lauf zum ersten Mal den
- * Zweig maß, standen die drei Zahlen trotzdem nirgends im Bericht. Es fehlte
- * nicht der Zugang, es fehlte das Messgerät. Gesucht in `tools/pruefstand/`:
- * `0,72`, `320` und `430` kamen dort nicht vor.
- *
- * **Was gemessen wird**, alles am gerenderten `.hx-heft`, nicht an der Regel:
- *
- *   1. `X.blatt.form`   — das Verhältnis 0,72, solange der Raum es trägt.
- *   2. `X.blatt.breite` — das Blatt bleibt mindestens 320 px breit.
- *   3. `X.blatt.knapp`  — unter 430 px Höhe fallen Kopf, Marke und Kolumne fort.
- *
- * **Die Schwelle ist Teil der Regel, kein Ausrutscher.** `heft.css` sagt:
- * `width: min(100%, max(320px, hoehe * 0.72))`. Über der Schwelle ist das Blatt
- * genau 0,72 breit; darunter gibt es das Verhältnis auf, weil 320 px wichtiger
- * sind als die Form. Ein Prüfstand, der dort 0,72 verlangt, würde eine
- * Absicht als Fehler melden — deshalb prüft 1. nur, wo die Regel es zusagt,
- * und sagt sonst ehrlich `nicht_pruefbar`.
- *
- * **Wo nicht gemessen wird.** Nur im Einzelseiten-Modus (die Medienabfrage aus
- * `heft.css`: höchstens 819,98 px breit ODER höchstens 599,98 px hoch) und nur
- * auf Heft-Adressen. Sonst gibt es kein `.hx-heft`, und eine Kontrolle, die auf
- * der Landing nach einem Blatt sucht, misst nichts und meldet trotzdem etwas.
- */
-export async function messeBlattgeometrie(
-  page: Page, seite: string, breite: Breite, erwartet: readonly string[],
-): Promise<Befund[]> {
-  const einzelseite = breite.breite <= 819.98 || breite.hoehe <= 599.98;
-  const nichtHier = (grund: string): Befund[] => ["form", "breite", "knapp"].map((teil) => ({
-    kontrolle: `X.blatt.${teil}`, gate: true, status: "nicht_pruefbar" as const,
-    seite, breite: breite.breite, gemessen: null, schwelle: null, notiz: grund,
-  }));
-
-  if (!einzelseite) return nichtHier(`${breite.name}: die Einzelseite gilt erst schmal oder flach.`);
-  if (!erwartet.some((p) => seite === p || seite.startsWith(p))) {
-    return nichtHier("Diese Adresse trägt kein Heft-Blatt.");
-  }
-
-  const m = await page.evaluate(() => {
-    const blatt = document.querySelector<HTMLElement>(".hx-heft");
-    if (!blatt) return null;
-    const r = blatt.getBoundingClientRect();
-    const fort = (wahl: string) => {
-      const el = document.querySelector<HTMLElement>(wahl);
-      if (!el) return true; // gar nicht da ist auch fort
-      const cs = getComputedStyle(el);
-      return cs.display === "none" || cs.visibility === "hidden";
-    };
-    return {
-      b: r.width, h: r.height,
-      fensterB: window.innerWidth, fensterH: window.innerHeight,
-      kopfFort: fort(".hx-kopf"), markeFort: fort(".hx-marke"), kolumneFort: fort(".hx-kolumne"),
-    };
-  });
-
-  if (!m) return nichtHier("Kein `.hx-heft` auf der Seite — nichts zu messen.");
-
-  const befunde: Befund[] = [];
-  const verhaeltnis = m.h > 0 ? m.b / m.h : 0;
-
-  /* 1 · Die Form — nur dort, wo die Regel sie zusagt. */
-  const traegtDieForm = m.h * 0.72 >= 320;
-  befunde.push(traegtDieForm
-    ? {
-      kontrolle: "X.blatt.form", gate: true,
-      status: Math.abs(verhaeltnis - 0.72) <= 0.01 ? "bestanden" : "gefallen",
-      seite, breite: breite.breite,
-      gemessen: Number(verhaeltnis.toFixed(3)), schwelle: "0,72 ± 0,01",
-      notiz: `Blatt ${Math.round(m.b)} × ${Math.round(m.h)} px.`,
-    }
-    : {
-      kontrolle: "X.blatt.form", gate: true, status: "nicht_pruefbar",
-      seite, breite: breite.breite, gemessen: Number(verhaeltnis.toFixed(3)), schwelle: null,
-      notiz: `Unter der Schwelle: 0,72 ergäbe ${Math.round(m.h * 0.72)} px und damit weniger als 320. `
-        + "Hier gibt das Blatt die Form absichtlich auf — gemessen wird stattdessen die Breite.",
-    });
-
-  /* 2 · Die Untergrenze — gemessen gegen das, was der Raum hergibt. */
-  const untergrenze = Math.min(320, m.fensterB);
-  befunde.push({
-    kontrolle: "X.blatt.breite", gate: true,
-    status: m.b >= untergrenze - 0.5 ? "bestanden" : "gefallen",
-    seite, breite: breite.breite,
-    gemessen: Math.round(m.b), schwelle: untergrenze,
-    notiz: untergrenze < 320
-      ? `Das Fenster ist selbst nur ${m.fensterB} px breit — mehr als das kann kein Blatt sein.`
-      : undefined,
-  });
-
-  /* 3 · Der knappe Satzspiegel. */
-  const knapp = m.fensterH <= 429.98;
-  const alleFort = m.kopfFort && m.markeFort && m.kolumneFort;
-  befunde.push(knapp
-    ? {
-      kontrolle: "X.blatt.knapp", gate: true, status: alleFort ? "bestanden" : "gefallen",
-      seite, breite: breite.breite,
-      gemessen: [
-        `Kopf ${m.kopfFort ? "fort" : "da"}`,
-        `Marke ${m.markeFort ? "fort" : "da"}`,
-        `Kolumne ${m.kolumneFort ? "fort" : "da"}`,
-      ].join(" · "),
-      schwelle: "alle drei fort",
-      notiz: alleFort ? undefined
-        : `Bei ${m.fensterH} px Höhe bleibt für Kopfzeile, Satz und Fußzeile kein Platz — `
-          + "genau dafür fallen sie unter 430 px fort.",
-    }
-    : {
-      kontrolle: "X.blatt.knapp", gate: true, status: "nicht_pruefbar",
-      seite, breite: breite.breite, gemessen: m.fensterH, schwelle: null,
-      notiz: `${m.fensterH} px hoch — die knappe Fassung gilt erst unter 430.`,
-    });
-
-  return befunde;
 }

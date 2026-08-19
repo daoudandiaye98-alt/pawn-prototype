@@ -96,6 +96,27 @@ export function bildVariante(
   return `${umgeschrieben}${trenner}width=${Math.round(breite)}&quality=${guete}`;
 }
 
+/**
+ * Z4 — ein srcset über `bildVariante`: dieselbe Datei in mehreren Breiten,
+ * damit der Browser die Anzeigegröße wählt statt immer die größte zu laden.
+ * Für Adressen, die `bildVariante` nicht umschreiben kann (externe URLs),
+ * entsteht kein srcset — dann bleibt es ehrlich bei einer Fassung.
+ */
+export function bildSatz(
+  url: string | undefined | null,
+  breiten: number[],
+  guete = 80,
+): string | undefined {
+  if (!url) return undefined;
+  const glieder = breiten
+    .map((b) => {
+      const u = bildVariante(url, { breite: b, guete });
+      return u && u !== url ? `${u} ${b}w` : null;
+    })
+    .filter((g): g is string => g !== null);
+  return glieder.length === breiten.length ? glieder.join(", ") : undefined;
+}
+
 /** React-Hook: gibt die anzeigbare URL zurück. Nicht-designer-media-Werte
  *  werden unverändert durchgereicht. */
 export function useMediaUrl(value?: string | null): string | undefined {

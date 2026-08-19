@@ -178,7 +178,7 @@ export function fliege(
   if (zu.breite < 1 || zu.hoehe < 1) return Promise.resolve();
 
   const dauer = zahl("--t-buehne", 700);
-  const kurve = "cubic-bezier(.22,.8,.22,1)";
+  const kurve = "var(--kurve-fein)";
 
   const rahmen = document.createElement("div");
   rahmen.setAttribute("aria-hidden", "true");

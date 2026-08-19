@@ -1,11 +1,11 @@
 /**
  * X9 — der Beileger.
  *
- * **Warum eine eigene Fläche und kein Blatt.** Das Heft blättert; die Kasse
- * nicht. Wer mitten im Bezahlen steht, soll nicht wenden, nicht das Gerät
- * drehen und nichts suchen müssen. `/kasse` steht deshalb schon länger in
- * `NIE_SPERREN` (`drehhinweis.tsx`) — diese Datei ist das, wofür der Eintrag
- * gemacht wurde: ein loses Blatt, das aus dem Heft fällt.
+ * **Warum eine eigene Fläche und keine Szene.** Das Heft blättert; die Kasse
+ * nicht. Wer mitten im Bezahlen steht, soll nicht wenden und nichts suchen
+ * müssen: ein loses Blatt, das aus dem Heft fällt. (Die frühere Drehsperre
+ * samt `NIE_SPERREN` ist mit dem Szenen-Umbau gegangen — Hochformat ist
+ * überall ein Format, keine Sperre mehr.)
  *
  * **Die eine Stelle ohne gestalterische Freiheit.** Die letzte Schaltfläche
  * heißt „Zahlungspflichtig bestellen". Nicht „Kaufen", nicht „Jetzt kaufen",
@@ -119,7 +119,10 @@ export default function Kasse() {
       <Seo title="Kasse · PAWN" description="Deine Bestellung abschließen." noindex />
 
       <div className="mx-auto w-full max-w-[46rem] px-6 py-14 md:px-10 md:py-20">
-        <Link to="/heft/umschlag" className="inline-block" aria-label="Zurück ins Heft">
+        {/* Z4, gemessen (3.5): der Wortmarken-Link war 51 × 27 px — unter der
+            44-px-Schwelle. `trefferflaeche` polstert auf 44 × 44, die Marke
+            selbst bleibt unverändert klein. */}
+        <Link to="/" className="trefferflaeche inline-flex" aria-label="Zurück ins Heft">
           <PawnWordmark className="h-6" />
         </Link>
 

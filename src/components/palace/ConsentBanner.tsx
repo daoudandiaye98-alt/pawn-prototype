@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useConsent } from "@/lib/consent";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { istHeftAdresse } from "@/heft/doppelseiten";
 
 /**
  * Teil K1 — die Einwilligung ist eine Leiste, kein Fenster über dem Hauptweg.
@@ -25,6 +26,22 @@ import { Button } from "@/components/ui/button";
  */
 export function ConsentBanner() {
   const { bannerOpen, setConsent, decided, setOpenSettings, value } = useConsent();
+  const { pathname } = useLocation();
+
+  /*
+   * Im Heft steht sie NUR auf dem Umschlag.
+   *
+   * Eine Leiste, die mitten im Heft aufschlägt, unterbricht das Lesen an einer
+   * Stelle, an der niemand mit ihr gerechnet hat. Der Umschlag ist der Eingang;
+   * dort gehört sie hin. Außerhalb des Hefts (Studio, Verwaltung, Rechtstexte)
+   * bleibt sie unverändert überall.
+   *
+   * Was das kostet, sei gesagt: wer über einen tiefen Verweis mitten ins Heft
+   * kommt, sieht sie dort nicht. Verloren geht dabei nichts — ohne Einwilligung
+   * bleibt Google Consent Mode auf `denied`, es wird also nichts gesetzt, was
+   * einer Einwilligung bedürfte.
+   */
+  const imHeftAberNichtAufDemUmschlag = istHeftAdresse(pathname) && pathname !== "/";
 
   /**
    * Die Höhe steht nicht im Stylesheet, weil sie vom Text und von der Breite
@@ -53,7 +70,7 @@ export function ConsentBanner() {
   const zustimmen = useCallback(() => setConsent("accepted"), [setConsent]);
   const nurNotwendig = useCallback(() => setConsent("essential"), [setConsent]);
 
-  if (!bannerOpen) return null;
+  if (!bannerOpen || imHeftAberNichtAufDemUmschlag) return null;
 
   /** Beide Knöpfe tragen exakt dieselben Klassen. Wer hier eine hervorhebt, bricht die Wahl. */
   const knopf = "min-h-[44px] flex-1 justify-center border-[1.5px] border-black bg-white text-black hover:bg-black hover:text-white md:flex-none md:min-w-[190px]";
@@ -69,13 +86,31 @@ export function ConsentBanner() {
         {/* Kurz genug, dass die Leiste eine Leiste bleibt — vollständig genug,
             dass die Einwilligung informiert ist: Zweck, Widerruf, kein Verkauf,
             keine Werbe-Cookies, Verweis auf die Einzelheiten. */}
-        <p className="min-w-0 max-w-[78ch] text-[0.82rem] leading-[1.5] text-black">
+        {/* Auf einem niedrigen Fenster (Telefon quer) bleibt EINE Zeile stehen:
+            `line-clamp-1` unter 600 px Höhe, darüber der ganze Satz. Sonst wächst
+            die Leiste dort auf drei Zeilen und deckt das halbe Blatt zu.
+
+            Der Verweis auf den Datenschutz steht deshalb NICHT mehr in diesem
+            Absatz, sondern bei den Knöpfen: gemessen (Prüfstand 3.4, 844 quer)
+            wurde er von der Deckelung abgeschnitten und blieb trotzdem mit der
+            Tabulatortaste erreichbar — ein Bedienelement, das man nicht sieht
+            und trotzdem trifft. Bei den Knöpfen ist er immer sichtbar, und der
+            Satz darf sich kürzen. */}
+        <p className="min-w-0 max-w-[78ch] text-[0.82rem] leading-[1.5] text-black [@media(max-height:599px)]:line-clamp-1">
           PAWN merkt sich, was dich bewegt — deinem Konto zugeordnet und jederzeit dort löschbar. Keine
-          Werbe-Cookies, kein Datenverkauf.{" "}
-          <Link to="/datenschutz" className="underline underline-offset-4">Datenschutz</Link>.
+          Werbe-Cookies, kein Datenverkauf.
         </p>
 
-        <div className="flex shrink-0 items-center gap-2">
+        {/* `flex-wrap`: mit dem Datenschutz-Verweis sind es drei Dinge in der
+            Reihe, und auf 390 px ragte der letzte Knopf 74 px aus dem Bild
+            (Prüfstand 3.8). Sie brechen jetzt um, statt hinauszulaufen. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Link
+            to="/datenschutz"
+            className="flex min-h-[44px] shrink-0 items-center text-[0.82rem] text-black underline underline-offset-4"
+          >
+            Datenschutz
+          </Link>
           <Button type="button" variant="editorial" size="chip" onClick={zustimmen} className={knopf}>
             {value === "accepted" ? "Weiter merken" : "Einverstanden"}
           </Button>

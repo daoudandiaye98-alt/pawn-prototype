@@ -25,6 +25,7 @@ import {
   V, blattAusPfad, reiterAus, useVerzeichnisStand, useVerzeichnisWerke,
   type Filter,
 } from "./verzeichnis";
+import { useHausKapitel } from "./haeuser";
 
 const AUSGABE = "Ausgabe 001";
 
@@ -35,6 +36,10 @@ export default function HeftRoute() {
   /* ————— Das Verzeichnis (X6) ————— */
 
   const bestand = useVerzeichnisWerke();
+
+  /* Die Häuser als Kapitel (X8) — geladen wie das Verzeichnis: hier, nicht in
+     der Seitenliste. */
+  const haeuser = useHausKapitel();
 
   /*
    * Die Filter stehen in der Adresse, nicht in einem Zustand.
@@ -110,8 +115,8 @@ export default function HeftRoute() {
    * Filter wechseln — genau dann SOLL neu gebaut werden.
    */
   const bauen = useCallback(
-    (aufSprung: (n: number) => void): Doppelseite[] => heftSeiten({ aufSprung, verzeichnis }),
-    [verzeichnis],
+    (aufSprung: (n: number) => void): Doppelseite[] => heftSeiten({ aufSprung, verzeichnis, haeuser }),
+    [verzeichnis, haeuser],
   );
 
   /*
@@ -121,27 +126,15 @@ export default function HeftRoute() {
    * gezeichneten Seiten) und spart einen Rückkanal aus der Hülle heraus.
    */
   const hier = useMemo(() => {
-    const seiten = heftSeiten({ aufSprung: () => {}, verzeichnis });
+    const seiten = heftSeiten({ aufSprung: () => {}, verzeichnis, haeuser });
     return seiten[nummerFuerPfad(seiten, pathname) - 1];
-  }, [pathname, verzeichnis]);
+  }, [pathname, verzeichnis, haeuser]);
 
   return (
     <>
       <Seo
         title={`${hier?.kolumne ?? AUSGABE} — PAWN`}
         description="PAWN als Magazin: Mode, Interior und Kunst aus unabhängigen Häusern. Eine Hülle, eine Route, jede Sektion eine Doppelseite."
-        /*
-         * Noch nicht in den Index.
-         *
-         * Nicht, weil die Sektionen leer wären — sie tragen jetzt ihren Text und
-         * ihre Platten. Sondern weil das Heft auf `/heft/…` liegt, während `/`,
-         * `/mode`, `/interior` und `/kunst` dieselben Inhalte noch als alte
-         * Seiten führen. Zwei indexierte Adressen für denselben Inhalt sind für
-         * die Suche schlechter als eine. Mit X1 zieht das Heft auf die
-         * endgültigen Adressen, die alten Seiten fallen weg, und diese Zeile
-         * fällt mit ihnen.
-         */
-        noindex
       />
       <Heft
         bauen={bauen}

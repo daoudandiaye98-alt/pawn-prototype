@@ -111,7 +111,7 @@
 }
 .abendlicht .pawn { display: block; }
 .abendlicht .pawn {
-  animation: bob 4.2s ease-in-out infinite, arrive 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: bob 4.2s ease-in-out infinite, arrive 0.9s var(--kurve-fein) both;
   transform-origin: 50% 100%;
 }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
@@ -160,8 +160,8 @@
   50% { opacity: 1; box-shadow: 0 0 12px 3px rgba(244, 198, 103, 0.55); }
 }
 
-.al-auftauchen { animation: al-auftauchen 0.65s cubic-bezier(0.22, 0.8, 0.3, 1) both; }
-.al-auftauchen-spaet { animation: al-auftauchen 0.7s cubic-bezier(0.22, 0.8, 0.3, 1) 0.18s both; }
+.al-auftauchen { animation: al-auftauchen 0.65s var(--kurve-fein) both; }
+.al-auftauchen-spaet { animation: al-auftauchen 0.7s var(--kurve-fein) 0.18s both; }
 
 /* Getippte Sprache: die Breite wächst mit dem Text (JS), der Strich blinkt. */
 .al-caret::after {
@@ -529,8 +529,8 @@
 :root {
   --t-ui: 240ms;      /* alles, was der Finger direkt anfasst */
   --t-buehne: 700ms;  /* Übergänge zwischen Ansichten */
-  --k-aus: cubic-bezier(.22, .8, .22, 1);   /* Standard: schnell los, weich an */
-  --k-weich: cubic-bezier(.4, 0, .2, 1);
+  --k-aus: var(--kurve-fein);    /* schnell los, weich an — Teil B0 */
+  --k-weich: var(--kurve-standard);
 }
 @media (prefers-reduced-motion: reduce) {
   :root { --t-ui: 120ms; --t-buehne: 120ms; }

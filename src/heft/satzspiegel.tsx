@@ -19,7 +19,7 @@
  * die aus der Seite ihre Richtung zieht, statt zweier Regeln, die auseinander
  * laufen können.
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 
@@ -45,6 +45,13 @@ export interface HeftseiteProps {
   folio: number | null;
   /** Höchstens einer je Doppelseite — das gilt für die Doppelseite, nicht die Seite. */
   weg?: Weg;
+  /**
+   * X8 — die Handschrift eines Hauses auf seinen Kapitel-Seiten: Papier, Tinte
+   * und Schrift aus dem Haus-Thema. Nur die Kapitel setzen das; für alle
+   * anderen Seiten gilt unverändert der Satz unten — Farbe und Schrift kommen
+   * vom Ton der Doppelseite.
+   */
+  hausStil?: { papier: string; tinte: string; schrift: string };
   children?: ReactNode;
 }
 
@@ -52,10 +59,21 @@ export interface HeftseiteProps {
  * Die Hülle einer einzelnen Heftseite. Der Inhalt steht in `children` und
  * bekommt vom Satzspiegel nur seinen Platz — nie eine Farbe, nie eine Schrift.
  * Farbe und Schrift kommen vom Ton der Doppelseite (`data-ton` am Blatt).
+ * Einzige Ausnahme: die Haus-Kapitel (X8, `hausStil`), sichtbar eingezäunt
+ * über `data-haus` in `heft.css`.
  */
-export function Heftseite({ lage, kolumne, folio, weg, children }: HeftseiteProps) {
+export function Heftseite({ lage, kolumne, folio, weg, hausStil, children }: HeftseiteProps) {
   return (
-    <div className="hx-seite" data-lage={lage}>
+    <div
+      className="hx-seite"
+      data-lage={lage}
+      data-haus={hausStil ? "" : undefined}
+      style={hausStil ? {
+        "--haus-papier": hausStil.papier,
+        "--haus-tinte": hausStil.tinte,
+        "--haus-schrift": hausStil.schrift,
+      } as CSSProperties : undefined}
+    >
       <div className="hx-kopf">
         {/* Die Reihenfolge im DOM ist immer außen → innen; welche Seite das
             heißt, entscheidet CSS über `data-lage`. So steht im Markup keine
@@ -75,6 +93,7 @@ export function Heftseite({ lage, kolumne, folio, weg, children }: HeftseiteProp
         {weg && (weg.zu !== undefined ? (
           <Link className="hx-pfad" to={weg.zu}>
             {weg.text}
+            <Pfeil />
           </Link>
         ) : (
           /* Eine Tat ist ein Knopf, kein Link — ein `<a>` ohne Ziel wäre eine
@@ -85,11 +104,24 @@ export function Heftseite({ lage, kolumne, folio, weg, children }: HeftseiteProp
           /* eslint-disable-next-line no-restricted-syntax */
           <button type="button" className="hx-pfad hx-pfad-tat" onClick={weg.tu}>
             {weg.text}
+            <Pfeil />
           </button>
         ))}
       </div>
     </div>
   );
+}
+
+/**
+ * Der Pfeil am Weg (Teil Ω).
+ *
+ * Er steht als eigenes Glied und nicht im Text, weil der Abstand zwischen Wort
+ * und Pfeil beim Zeigen wächst (14 -> 24 px). Ein Pfeil im Text könnte das
+ * nicht — und `aria-hidden`, weil eine Vorlesehilfe „Eintreten" ansagen soll,
+ * nicht „Eintreten Pfeil nach rechts".
+ */
+function Pfeil() {
+  return <span className="hx-pfad-pfeil" aria-hidden>&#8594;</span>;
 }
 
 /**

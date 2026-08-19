@@ -3,7 +3,7 @@
  *
  *   0,0 s   Papierfläche, sonst nichts
  *   0,0 s   P♟WN erscheint: die Sperrung zieht sich zusammen, dazu 10 px Anstieg
- *           und Aufblenden — 2600 ms, cubic-bezier(.22,1,.36,1)
+ *           und Aufblenden — 2600 ms, var(--kurve-fein)
  *   2,7 s   Die Papierfläche blendet ab (1100 ms), das Heft steigt aus 26 px auf
  *           und setzt sich (1600 ms, gleiche Kurve)
  *   4,6 s   Der Hinweis „Blättern" erscheint leise und verschwindet beim ersten Rollen

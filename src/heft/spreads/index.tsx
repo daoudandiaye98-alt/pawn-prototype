@@ -38,6 +38,7 @@
  * (Schritt 8) fällt das Präfix, und die Sektionen ziehen auf ihre endgültigen
  * Adressen; zu ändern ist dann diese eine Zeichenkette.
  */
+import { PawnWordmark } from "@/components/pawn/PawnWordmark";
 import type { Doppelseite } from "../doppelseiten";
 import { folios } from "../doppelseiten";
 import {
@@ -50,12 +51,18 @@ import {
   blattZahl, verzeichnisSatz, werkPfad, type VerzeichnisStand,
 } from "../verzeichnis";
 import { WerkSeiteLinks, WerkSeiteRechts, werkKolumne } from "../werk";
+import {
+  HausSeiteLinks, HausSeiteRechts, HausZeilen, bausteinInhalt, hausKolumne, hausPfad,
+  LEERE_HAEUSER, type HaeuserStand,
+} from "../haeuser";
 
 /**
- * Das Präfix der Sektionsadressen. Eine Stelle, damit der Umzug auf die
- * endgültigen Adressen in Schritt 8 eine Zeile ist und keine Suche.
+ * Das Präfix der Sektionsadressen — seit X1 leer: das Heft liegt auf den
+ * endgültigen Adressen, der Umschlag auf `/`. Die Konstante bleibt stehen,
+ * weil sie der eine Ort ist, an dem ein künftiger Umzug wieder eine Zeile
+ * wäre (und weil `${S}/mode` lesbarer bleibt als ein nacktes "/mode").
  */
-const S = "/heft";
+const S = "";
 
 /** Die Adresse der Sektion „Frag PAWN" — die Marke am Blattrand braucht sie. */
 export const FRAG_PAWN_PFAD = `${S}/frag-pawn`;
@@ -85,6 +92,12 @@ export interface HeftSeitenOptionen {
    * filtert und reicht den Stand herein.
    */
   verzeichnis?: VerzeichnisStand;
+  /**
+   * Die Häuser (X8). Wie das Verzeichnis: von außen gereicht, weil sie aus der
+   * Datenbank kommen und diese Funktion rein bleibt. Ohne Angabe trägt die
+   * Sektion 08 ihren Satz und es gibt keine Kapitel.
+   */
+  haeuser?: HaeuserStand;
 }
 
 /**
@@ -95,41 +108,46 @@ export interface HeftSeitenOptionen {
  * ist die Reihenfolge im Heft — es gibt keine zweite Liste, die man synchron
  * halten müsste, und das Inhaltsverzeichnis liest dieselbe.
  */
-export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOptionen): Doppelseite[] {
+export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis, haeuser }: HeftSeitenOptionen): Doppelseite[] {
   const seiten: Doppelseite[] = [];
 
-  /* ——— 01 Umschlag ———
-     Wortmarke, Bauer, drei Zeilen, ein Weg hinein. Die Wortmarke trägt den
-     Bauern als SVG — sie wird nicht nachgebaut, das ist Designgesetz. */
+  /* ——— 01 Umschlag — das Cover (Teil Ω, Checkpoint 1) ———
+     Wortmarke monumental über den Bund, der Bauer darin atmet, drei Zeilen
+     Haltung, EIN Weg hinein. Keine Bedienungsanleitung: ein Umschlag erklärt
+     nicht das Blättern, er ist das Versprechen des Hefts.
+
+     Die Wortmarke ist die echte Komponente (Designgesetz: nicht nachbauen) —
+     monumental gesetzt über denselben Bund-Trick wie die Platten: zweimal im
+     DOM, jede Seite doppelt so breit wie sie selbst, an ihre Bundkante
+     geschoben. Die Haltung stand schon auf der Landing und im Editorial —
+     Texte ziehen um, sie werden nicht neu erfunden (X1). */
   seiten.push(bau({
     schluessel: "umschlag",
-    pfad: S,
+    /* Der Umschlag ist die Startseite — X1. */
+    pfad: "/",
     kolumne: "Umschlag",
-    titel: "YOUR MOVE.",
+    titel: "PAWN",
     sektion: "umschlag",
     reiter: "Umschlag",
     ton: "papier",
     nummer: 1,
     links: (f) => (
       <Heftseite lage="links" kolumne="Umschlag" folio={f}>
-        <Kicker>Der kuratierte Raum</Kicker>
-        <Schlagzeile>YOUR MOVE.</Schlagzeile>
-        <Vorspann>PAWN macht aus kreativem Potenzial echte Gelegenheiten.</Vorspann>
-        <Bildunterschrift>Was hier hängt, hat jemand gemacht.</Bildunterschrift>
+        <CoverMarke lage="links" />
       </Heftseite>
     ),
     rechts: (f) => (
       <Heftseite
         lage="rechts" kolumne="Umschlag" folio={f}
-        weg={{ text: "Aufschlagen", zu: "/inhalt" }}
+        weg={{ text: "Eintreten", zu: "/inhalt" }}
       >
-        <Kicker>Ausgabe 001</Kicker>
-        <Vorspann>Mode · Interior · Kunst</Vorspann>
-        <Fliesstext>
-          Ein Heft, eine Hülle. Jede Sektion eine Doppelseite. Geblättert wird mit
-          dem Rad, dem Balken, der Leertaste oder dem Griffregister an der Kante —
-          und jede Doppelseite hat ihre eigene Adresse.
-        </Fliesstext>
+        <CoverMarke lage="rechts" />
+        <div className="hx-cover-haltung">
+          <Kicker>Ausgabe 001 · Mode · Interior · Kunst</Kicker>
+          <p>Kunst von Händen, nicht von Fabriken.</p>
+          <p>Was hier hängt, hat jemand gemacht.</p>
+          <p>93 % jedes Kaufs gehen direkt an das Haus.</p>
+        </div>
       </Heftseite>
     ),
   }));
@@ -302,19 +320,59 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
      antwortet, steht hier kein leeres Raster und keine erfundene Liste, sondern
      der Satz, der erklärt, was ein Haus ist. Die Häuser selbst zieht X8 ein —
      dort bekommt jedes sein eigenes Kapitel. */
-  seiten.push(welt({
+  /* Die Kapitel liegen hinter den Werken (unten) — hier entsteht nur schon der
+     Sprungbefehl, nach demselben Handel wie `aufWerk`: die Tabelle füllt sich
+     beim Bauen der Kapitel, gelesen wird sie erst beim Antippen. */
+  const kap = haeuser ?? LEERE_HAEUSER;
+  const hausNummer = new Map<string, number>();
+  const aufHaus = (slug: string): boolean => {
+    const n = hausNummer.get(slug);
+    if (!n) return false;
+    aufSprung(n);
+    return true;
+  };
+
+  seiten.push(bau({
     schluessel: "haeuser",
     pfad: `${S}/haeuser`,
     kolumne: "Unsere Häuser",
     titel: "Jedes Haus ein eigenes Kapitel.",
+    sektion: "haeuser",
+    reiter: "Unsere Häuser",
     ton: "nacht",
     nummer: 8,
-    platte: "haeuser-werkbank",
-    plattenAlt: "Eine alte Holzwerkbank vor weißer Wand, darauf gefaltetes Leinen, eine Garnrolle, eine Schere und ein Falzbein.",
-    kicker: "Sektion 08 · Unsere Häuser",
-    text: "Ein Haus ist bei PAWN kein Verkäuferkonto, sondern eine Handschrift mit einer Nummer. Es bringt seine eigene Farbe, seine eigene Schrift und seinen eigenen Ton mit — und behält sie, auch hier im Heft.",
-    unterschrift: "Werkbank, Haus in Arbeit.",
-    weg: { text: "Deine DNA", zu: `${S}/deine-dna` },
+    links: (f) => (
+      <Heftseite lage="links" kolumne="Unsere Häuser" folio={f}>
+        <Platte
+          name="haeuser-werkbank"
+          alt="Eine alte Holzwerkbank vor weißer Wand, darauf gefaltetes Leinen, eine Garnrolle, eine Schere und ein Falzbein."
+        />
+      </Heftseite>
+    ),
+    rechts: (f) => (
+      <Heftseite lage="rechts" kolumne="Unsere Häuser" folio={f} weg={{ text: "Deine DNA", zu: `${S}/deine-dna` }}>
+        <div className="hx-satz-block">
+          <Kicker>Sektion 08 · Unsere Häuser</Kicker>
+          <Schlagzeile>Jedes Haus ein eigenes Kapitel.</Schlagzeile>
+          {kap.haeuser.length > 0 ? (
+            /* X8 — die Kapitel sind da: die Sektionsseite wird ihr Inhaltsverzeichnis. */
+            <HausZeilen haeuser={kap.haeuser} aufHaus={aufHaus} />
+          ) : (
+            /* Der Satz, der erklärt, was ein Haus ist — solange keine Daten da
+               sind. Das Kennzeichen unterscheidet für den Prüfstand „keine
+               Häuser" von „keine Daten" (dieselbe Regel wie im Verzeichnis). */
+            <div {...(kap.laedt || kap.fehler ? { "data-daten-fehlen": "" } : {})}>
+              <Fliesstext>
+                Ein Haus ist bei PAWN kein Verkäuferkonto, sondern eine Handschrift mit einer Nummer.
+                Es bringt seine eigene Farbe, seine eigene Schrift und seinen eigenen Ton mit — und
+                behält sie, auch hier im Heft.
+              </Fliesstext>
+            </div>
+          )}
+          <Bildunterschrift>Werkbank, Haus in Arbeit.</Bildunterschrift>
+        </div>
+      </Heftseite>
+    ),
   }));
 
   /* ——— 09 Deine DNA ——— */
@@ -514,7 +572,113 @@ export function heftSeiten({ aufSprung, ohneInhalt, verzeichnis }: HeftSeitenOpt
     });
   }
 
+  /* ——— Die Häuser als Kapitel (X8) ———
+     Hinter den Werken, aus demselben Grund, aus dem die Werke hinter dem
+     Verzeichnis liegen: alles Datengetragene liegt hinter den elf festen
+     Sektionen, damit deren Nummern stehen bleiben. Jedes Kapitel beginnt mit
+     einer Auftakt-Doppelseite; dahinter werden die Bausteine der Hausseite zu
+     Heftseiten, zwei je Doppelseite. Sie gehören zur Sektion „haeuser" — der
+     Reiter der Sektion 08 bleibt beim Lesen eines Kapitels markiert. */
+  for (const h of kap.haeuser) {
+    const nummer = seiten.length + 1;
+    hausNummer.set(h.slug, nummer);
+    const f = folios(nummer);
+    seiten.push({
+      schluessel: `haus-${h.slug}`,
+      pfad: hausPfad(h.slug),
+      kolumne: hausKolumne(h),
+      titel: h.name,
+      sektion: "haeuser",
+      ton: "papier",
+      links: <HausSeiteLinks haus={h} folio={f.links} />,
+      rechts: <HausSeiteRechts haus={h} folio={f.rechts} />,
+    });
+
+    /* Die Bausteine — nur die, die auf Papier etwas zeigen. Leere fallen weg,
+       bevor gepaart wird: sonst entstünden halbleere Doppelseiten aus
+       Bausteinen, die nie Inhalt hatten. */
+    const inhalte = h.bausteine
+      .map((b) => bausteinInhalt(h, b, kap, aufWerk))
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+    for (let i = 0; i < inhalte.length; i += 2) {
+      const blatt = i / 2 + 2;
+      const n2 = seiten.length + 1;
+      const f2 = folios(n2);
+      seiten.push({
+        schluessel: `haus-${h.slug}-${blatt}`,
+        pfad: `${hausPfad(h.slug)}/${blatt}`,
+        kolumne: hausKolumne(h),
+        titel: h.name,
+        sektion: "haeuser",
+        ton: "papier",
+        links: (
+          <Heftseite lage="links" kolumne={hausKolumne(h)} folio={f2.links} hausStil={h.stil}>
+            {inhalte[i]}
+          </Heftseite>
+        ),
+        rechts: (
+          <Heftseite lage="rechts" kolumne={hausKolumne(h)} folio={f2.rechts} hausStil={h.stil}
+            weg={i + 2 >= inhalte.length
+              ? { text: "Die Stücke des Hauses", zu: `${V}/1?haus=${h.slug}` }
+              : undefined}
+          >
+            {inhalte[i + 1] ?? (
+              /* Eine ungerade Zahl von Bausteinen lässt die letzte rechte Seite
+                 frei — im Heft ist das eine Vakatseite, kein Fehler. Sie trägt
+                 nur den Weg unten. */
+              <div aria-hidden />
+            )}
+          </Heftseite>
+        ),
+      });
+    }
+  }
+
   return seiten;
+}
+
+
+/**
+ * Die Wortmarke auf dem Umschlag — monumental über den Bund (Teil Ω).
+ *
+ * Derselbe Handel wie bei `PlatteBund`: ein Bild kann nicht wirklich über zwei
+ * Blattflächen laufen, also steht die Marke zweimal im DOM — jede Kopie doppelt
+ * so breit wie ihre Seite und an ihre Bundkante geschoben. Links zeigt die linke
+ * Hälfte, rechts die rechte; zusammen ergibt das EIN Wort, dessen Mitte genau
+ * im Bund sitzt.
+ *
+ * Es ist die echte `PawnWordmark` (Designgesetz: nicht nachbauen) — sie bringt
+ * den Bauern als SVG mit. Nur Größe und Schnitt kommen vom Umschlag: Fraunces
+ * 200 in `clamp(5rem, 16vw, 13rem)`, gesetzt in `heft.css`.
+ *
+ * `aria-hidden`: der Name des Hefts steht bereits in der einen `h1` der
+ * Adresse (X12). Zwei sichtbare Kopien wären für eine Vorlesehilfe „PAWN PAWN".
+ */
+function CoverMarke({ lage }: { lage: "links" | "rechts" }) {
+  return (
+    <div className="hx-cover-marke" aria-hidden>
+      <span className="hx-cover-band" data-lage={lage}>
+        {/*
+          Teil B4 — das Z-Sandwich ist ZURÜCKGENOMMEN, und zwar gemessen.
+
+          Gebaut waren drei Ebenen derselben Marke: Grund, ein vergrößerter
+          Bauer darüber, das „P" beschnitten darauf. Die Malreihenfolge stimmte
+          (Beweis durch Einfärben: über dem „P" gewann die vordere Ebene). Nur
+          traf sie nichts: die Silhouette des Bauern berührt die Buchstabenform
+          bei keiner Größe — der Schnitt seiner Fläche mit der Schrift war 0 px,
+          von 1,9 bis 2,9 unverändert. Zwischen „P" und „W" steht Weißraum, und
+          in den läuft der Bauer hinein, statt sich mit den Buchstaben zu
+          verschränken. Ohne Berührung gibt es keine Tiefe, nur eine größere
+          Figur an derselben Stelle.
+
+          Bezahlt hätte man dafür mit einem echten Befund: drei Kopien
+          desselben Wortes am selben Ort meldet der Prüfstand als überlappenden
+          Text (3.8, Anteil 1,0 auf allen Breiten) — und damit hat er recht.
+        */}
+        <PawnWordmark className="hx-cover-wort" />
+      </span>
+    </div>
+  );
 }
 
 /* ————————————————— Wiederkehrende Formen ————————————————— */

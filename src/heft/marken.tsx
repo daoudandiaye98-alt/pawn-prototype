@@ -68,6 +68,19 @@ export function Marken({ suchePfad, aufSuche }: MarkenProps) {
             ist: für eine Vorlesehilfe steht dort „Korb 2", nicht nur „2". */}
         <span className="hx-marke-kurz hx-marke-zahl">{count}</span>
       </Link>
+
+      {/*
+        X1 — die Rechtsmarke. Mit der Kopf- und Fußzeile ist auch die
+        Rechtszeile aus dem Blick gefallen; erreichbar bleiben müssen die
+        Rechtstexte trotzdem, von jeder Adresse (§ 5 TMG/DDG: „leicht
+        erkennbar, unmittelbar erreichbar"). Ein Paragraphenzeichen am
+        Blattrand: ein Zeichen, ein Weg. Das Impressum verweist auf die
+        übrigen Rechtstexte — ein Klick dorthin, einer weiter.
+      */}
+      <Link to="/impressum" className="hx-marke-band">
+        <span className="hx-marke-wort">Impressum</span>
+        <span className="hx-marke-kurz" aria-hidden>§</span>
+      </Link>
     </div>
   );
 }

@@ -29,13 +29,18 @@
    */
   --reiter-breite: 2.6rem;
   --marken-breite: 2.4rem;
+
+  /* Die Luft über und unter dem Papier. Sie steht hier, weil zwei Stellen sie
+     brauchen: das Polster der Szene und die Höhenrechnung der Doppelseite —
+     zwei Zahlen, die auseinanderlaufen können, waren schon einmal der Fehler. */
+  --szene-luft: clamp(0.5rem, 1.5vh, 1rem);
 }
 
 /* ————————————————— Der Tisch ————————————————— */
 
 /*
- * Fest, damit das Heft beim Rollen an seinem Platz bleibt — die Scrollhöhe
- * liefert `.hx-weg`, deshalb bleibt der Rollbalken echt.
+ * Fest — die Seite selbst rollt nicht. Seit dem Szenen-Umbau rollt nur die
+ * Szene, wenn ihr Inhalt höher ist als das Fenster.
  *
  * Papier ist reines Weiß. Ohne einen Grund darunter löste sich die Seite im
  * Browser auf; der Tisch ist also nicht Dekor, sondern die Bedingung dafür,
@@ -63,143 +68,55 @@
 <rect width='140' height='140' filter='url(%23k)'/></svg>");
 }
 
+/* ————————————————— Der Szenenraum ————————————————— */
+
 /*
- * X3 — Vollbild: die Bühne füllt 100dvw × 100dvh. `dvh` statt `vh`, weil die
- * Adressleiste mobiler Browser sonst den Fuß der Seite abschneidet.
+ * Eine Szene, ein Raum. Die aufgeschlagene Szene füllt das Fenster; ihre
+ * Nachbarn liegen unsichtbar (`hidden` + `inert`) daneben, damit ihre Bilder
+ * beim Schritt schon geladen sind. Es stapelt nichts, es rotiert nichts —
+ * der Übergang gehört der View Transition, nicht der Geometrie.
  *
- * Das Polster ist kein Rand am Heft, sondern der Tisch, der sichtbar bleiben
- * soll. Ohne es klebte das Blatt am Bildschirmrand und wäre kein Blatt mehr.
+ * Das Polster hält frei, was noch da ist: rechts die Reiter des
+ * Griffregisters, links die Marken, unten die Einwilligungsleiste
+ * (`--pawn-einwilligung` setzt `ConsentBanner.tsx`; ohne Leiste 0px).
+ *
+ * Zentriert wird über die Auto-Margen des Paars, nicht über `place-items`:
+ * passt die Komposition, steht sie mittig; ist sie höher als das Fenster
+ * (schmale Lage, gestapelte Spalten), rollt die Szene vom Anfang an —
+ * derselbe Handel wie beim knappen Satzspiegel (Z4).
  */
-.hx-buehne {
+.hx-szenenraum {
   position: absolute;
   inset: 0;
-  width: 100dvw;
-  height: 100dvh;
+}
+.hx-szene {
+  position: absolute;
+  inset: 0;
   display: grid;
-  place-items: center;
-  perspective: 2600px;
-  perspective-origin: 50% 46%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-sizing: border-box;
-
   /*
-   * Gemessen bei 1280 px: der Reiter des Griffregisters lag ÜBER dem Papier und
-   * verdeckte eine Textzeile, und die Einwilligungsleiste (K1) schnitt das Folio
-   * am Fuß ab. Beides ist derselbe Fehler — das Heft nahm sich den ganzen
-   * Bildschirm und rechnete nicht mit dem, was noch da ist.
+   * Die Reserve ist SYMMETRISCH — und das ist eine Rechnung, keine Laune
+   * (Teil Ω, „Heft nutzt >= 92 % der kleineren Viewport-Dimension").
    *
-   * Deshalb wird hier Platz freigehalten, nicht drübergelegt:
-   *   rechts  die Breite der eingefahrenen Reiter
-   *   unten   die Höhe der Einwilligungsleiste, die sich selbst misst
-   *
-   * `--pawn-einwilligung` setzt `ConsentBanner.tsx`; ohne Leiste ist sie 0px.
-   * Vollbild bleibt Vollbild: die Bühne füllt weiter 100dvw × 100dvh, sie stellt
-   * das Heft nur nicht mehr unter fremde Flächen.
+   * Vorher stand rechts das Reitermaß und links das Markenmaß, jeweils PLUS
+   * einer Luftzahl: zusammen 80 px Streifen und noch einmal bis 64 px Luft.
+   * Das Papier verlor damit bei 1280x900 rund 12 % seiner möglichen Größe.
+   * Weil das Papier mittig steht, verteilt sich die Reserve ohnehin
+   * gleichmäßig auf beide Seiten — es genügt also, EINMAL den breiteren
+   * Streifen freizuhalten. Gemessen: 88 % -> 92,3 %.
    */
-  padding: clamp(0.5rem, 2.2vw, 2rem);
-  padding-right: calc(clamp(0.5rem, 2.2vw, 2rem) + var(--reiter-breite));
-  padding-left: calc(clamp(0.5rem, 2.2vw, 2rem) + var(--marken-breite));
-  padding-bottom: calc(clamp(0.5rem, 2.2vw, 2rem) + var(--pawn-einwilligung, 0px));
+  padding-block: var(--szene-luft);
+  padding-inline: max(var(--reiter-breite), var(--marken-breite));
 }
+.hx-szene[hidden] { display: none; }
+.hx-szene .hx-folge-paar { margin: auto; }
 
-/*
- * Die Doppelseite steht bei 1.44/1 — das Magazinformat aus X10. Eine Seite
- * liegt damit bei rund 0,72/1.
- *
- * Der weiche Schatten liegt auf dem Heft, nicht auf den Blättern: so wirft das
- * ganze Heft einen Schatten auf den Tisch, und nicht jedes Blatt einen eigenen.
- */
-.hx-heft {
-  position: relative;
-  aspect-ratio: 1.44 / 1;
-  /* Die Höhe, die nach Polster und Einwilligungsleiste übrig ist — daraus folgt
-     die Breite über das Verhältnis. So bleibt das Heft immer ganz im Bild. */
-  width: min(100%, calc((100dvh - 2rem - var(--pawn-einwilligung, 0px)) * 1.44));
-  max-height: 100%;
-  transform-style: preserve-3d;
-  box-shadow: 0 30px 60px -30px rgba(20, 18, 14, 0.45);
-}
-
-/* ————————————————— Blatt und Fläche ————————————————— */
-
-/* Zwei Flächen Rücken an Rücken, gedreht um die linke Kante. */
-.hx-blatt {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 50%;
-  transform-origin: left center;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
-.hx-flaeche {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  overflow: hidden;
-  background: var(--papier);
-  color: var(--tinte);
-}
-
-/* Der Ton der Doppelseite. Papier → Nacht → Papier ist der Rhythmus (X4). */
-.hx-flaeche[data-ton="nacht"],
+/* Der Ton der Szene. Papier → Nacht → Papier ist der Rhythmus (X4). */
 .hx-folge-seite[data-ton="nacht"] .hx-seite {
   background: var(--nacht);
   color: var(--papier);
-}
-
-/* Die Grundseiten: die unterste Lage, über der alle Blätter liegen. */
-.hx-flaeche.grund {
-  top: 0;
-  bottom: 0;
-  width: 50%;
-  z-index: 10;
-}
-.hx-flaeche.grund.links { left: 0; }
-.hx-flaeche.grund.rechts { left: 50%; }
-
-/* Der Bund — die Rille in der Mitte. Gesetzt, nie bewegt. */
-.hx-flaeche.grund.links,
-.hx-flaeche.rueck {
-  box-shadow: inset -18px 0 34px -26px rgba(0, 0, 0, 0.5);
-}
-.hx-flaeche.grund.rechts,
-.hx-flaeche.vorn {
-  box-shadow: inset 18px 0 34px -26px rgba(0, 0, 0, 0.5);
-}
-.hx-flaeche.rueck { transform: rotateY(180deg); }
-
-/*
- * Der Knick. Nur die Deckkraft bewegt sich — das ist der Unterschied zwischen
- * Papier und einer sich drehenden Karte.
- */
-.hx-knick {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.4) 0%,
-    rgba(0, 0, 0, 0.13) 22%,
-    rgba(0, 0, 0, 0) 55%,
-    rgba(255, 255, 255, 0.12) 100%
-  );
-}
-
-/* X11 — Blätter außerhalb des Fensters werden nicht gezeichnet. */
-.hx-blatt.fern {
-  content-visibility: auto;
-  contain-intrinsic-size: 700px 490px;
-}
-
-/* Die Scrollhöhe. Ein leerer Streifen, der den echten Rollbalken trägt. */
-.hx-weg {
-  position: relative;
-  width: 100%;
-  pointer-events: none;
 }
 
 /* ————————————————— Der Satzspiegel (X4) ————————————————— */
@@ -210,6 +127,17 @@
   display: grid;
   grid-template-rows: auto 1fr auto;
   padding: var(--rand);
+  /*
+   * Solange die Einwilligungsleiste steht, rückt der FUSS über sie — das Papier
+   * bleibt in voller Größe.
+   *
+   * Vorher nahm die Leiste sich Platz von der ganzen Bühne: das Füllungs-Gate
+   * fiel schon bei 1280 (88,4 % statt 92,3 %), und quer auf dem Telefon kostete
+   * sie ein Viertel des Hefts (72,1 % statt 95,9 %). Jetzt liegt sie auf dem
+   * unteren Blattrand — auf Papier, das ohnehin leer ist — und nur der eine Weg
+   * und das Folio weichen ihr aus. Verdeckt wird damit nichts, was man braucht.
+   */
+  padding-bottom: calc(var(--rand) + var(--pawn-einwilligung, 0px));
   box-sizing: border-box;
   font-family: Outfit, system-ui, sans-serif;
 }
@@ -252,15 +180,24 @@
  * über einem Verlauf. Ein kleines Feld in Papierweiß macht daraus 21:1,
  * unabhängig davon, was die Platte dort gerade zeigt, und sieht aus wie eine
  * gedruckte Marke auf einem Bild.
+ *
+ * **Warum hier ZWEI Plattennamen stehen.** Gemessen (Lauf 82, erster Lauf mit
+ * echten Daten auf dem Haus-Kapitel): das Folio „26" stand schwarz auf einem
+ * dunklen Haus-Bild — 1,19:1 statt 4,5. Die Regel kannte nur `.hx-platte`, das
+ * Kapitel bringt aber seine eigene Platte mit (`.hx-haus-platte`, X8). Eine
+ * Schutzregel, die den halben Bestand nicht kennt, schützt nicht.
  */
 .hx-seite:has(.hx-platte) .hx-kopf > *,
-.hx-seite:has(.hx-platte) .hx-fuss > * {
+.hx-seite:has(.hx-platte) .hx-fuss > *,
+.hx-seite:has(.hx-haus-platte) .hx-kopf > *,
+.hx-seite:has(.hx-haus-platte) .hx-fuss > * {
   background: var(--papier);
   color: var(--tinte);
   padding: 0.25rem 0.5rem;
 }
 /* Der Kolumnentitel dehnt sich sonst über die halbe Seite als weißer Balken. */
-.hx-seite:has(.hx-platte) .hx-kolumne { flex: 0 1 auto; }
+.hx-seite:has(.hx-platte) .hx-kolumne,
+.hx-seite:has(.hx-haus-platte) .hx-kolumne { flex: 0 1 auto; }
 
 .hx-kopf-aussen { opacity: 0.9; }
 /* Die Wortmarke im Kopf: eine Nummer über der Zeile, damit der Bauer nicht
@@ -285,9 +222,9 @@
 /*
  * Ein Weg je Doppelseite. Nicht zwei.
  *
- * Er heißt `hx-pfad` und nicht `hx-weg`: `.hx-weg` ist der leere Streifen, der
- * die Scrollhöhe trägt. Zwei Dinge mit einem Namen wären genau die Art Fehler,
- * die erst beim Umbau in einem Monat weh tut.
+ * Er heißt `hx-pfad`: der Weg, den der Leser von dieser Szene aus nehmen
+ * kann. Genau einer je Szene, damit die Fußzeile eine Entscheidung trägt und
+ * keine Auswahl.
  */
 .hx-pfad {
   /* Der Link im Fuß. Er trägt die Farbe der Seite, damit er auf Papier
@@ -364,70 +301,6 @@
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
-}
-
-/* ————————————————— Der Dreh-Hinweis ————————————————— */
-
-/*
- * Tisch-Grund, Wortmarke oben, Zeichen mittig, eine Zeile. Kein Chrom, keine
- * Leiste — und unten die Tür in die Textfassung.
- */
-.hx-dreh {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  justify-items: center;
-  gap: 1.5rem;
-  padding: clamp(1.5rem, 7vw, 3rem) clamp(1.2rem, 6vw, 2.5rem);
-  background:
-    radial-gradient(130% 100% at 50% 12%, #f3f1ee 0%, #e8e6e200 58%),
-    linear-gradient(180deg, #ecebe7 0%, #dddbd6 100%);
-  background-color: var(--tisch);
-  color: var(--tinte);
-  font-family: Outfit, system-ui, sans-serif;
-  overflow: hidden;
-  /* Die Einwilligungsleiste steht auch hier noch — der Hinweis endet darüber. */
-  padding-bottom: calc(clamp(1.5rem, 7vw, 3rem) + var(--pawn-einwilligung, 0px));
-}
-
-.hx-dreh-marke { font-size: 1.15rem; letter-spacing: 0.08em; }
-
-.hx-dreh-mitte {
-  align-self: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(1.2rem, 5vw, 2rem);
-  text-align: center;
-}
-.hx-dreh-zeichen { width: clamp(96px, 34vw, 148px); height: auto; }
-.hx-dreh-satz {
-  font-family: Fraunces, Georgia, serif;
-  font-size: clamp(1.15rem, 5.2vw, 1.6rem);
-  line-height: 1.25;
-  max-width: 18ch;
-}
-
-/*
- * Die Tür. Sichtbar, nicht versteckt — und mit 44 px Trefferfläche, weil sie
- * hier das einzige Bedienelement auf dem Bildschirm ist.
- *
- * Tinte auf Tisch (#12100E auf #E8E6E2) liegt weit über 4,5:1; die Unterlinie
- * macht sie zusätzlich als Weg erkennbar und nicht nur als Satz.
- */
-.hx-dreh-tuer {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0.2rem 0;
-  color: var(--tinte);
-  text-decoration: none;
-  border-bottom: 1.5px solid var(--tinte);
-  font-size: clamp(0.72rem, 3.4vw, 0.82rem);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  text-align: center;
 }
 
 /* ————————————————— Die Platten (X10) ————————————————— */
@@ -631,12 +504,27 @@
   text-transform: uppercase;
   text-decoration: none;
   white-space: nowrap;
-  /* Nur transform wird bewegt (X12). */
+  /* Nur transform wird bewegt (X12). Zeit und Kurve: Teil B5, weiter unten. */
   transform: translateX(calc(-100% + var(--marken-breite)));
-  transition: transform 180ms ease;
 }
 .hx-marke-band:hover,
 .hx-marke-band:focus-visible { transform: translateX(0); }
+/*
+ * Fokus = Invertierung (Designgesetz), nicht nur das Einfahren.
+ *
+ * Gemessen (Lauf 76, Kontrolle 3.4): am Telefon ist das Band schon
+ * eingefahren — der einzige Fokus-Hinweis, die Bewegung, entfällt dort, und
+ * der Tastaturfokus war unsichtbar. Die Umkehrung gilt an jeder Breite; ein
+ * voller Korb (schon umgekehrt) kehrt sich zurück.
+ */
+.hx-marke-band:focus-visible {
+  background: var(--tinte);
+  color: var(--papier);
+}
+.hx-marke-band[data-voll]:focus-visible {
+  background: var(--papier);
+  color: var(--tinte);
+}
 /* Ein gefüllter Korb kehrt sich um — er fährt aber nicht aus, sonst läge er
    über dem Papier (derselbe Fehler wie beim Reiter). */
 .hx-marke-band[data-voll] {
@@ -650,7 +538,9 @@
  * Kante und das Wort beginnt dahinter, außerhalb des Bildes.
  */
 .hx-marke-kurz {
-  flex: 0 0 calc(var(--marken-breite) - 1.5px);
+  /* `width` statt `flex-basis: calc(var(...))` — siehe `.hx-reiter-zahl`. */
+  flex: 0 0 auto;
+  width: calc(var(--marken-breite) - 1.5px);
   text-align: center;
   letter-spacing: 0;
 }
@@ -742,7 +632,6 @@
   white-space: nowrap;
   /* Nur transform wird bewegt. Die Breite bleibt, wie sie ist. */
   transform: translateX(calc(100% - var(--reiter-breite)));
-  transition: transform 180ms ease;
 }
 .hx-reiter:hover,
 .hx-reiter:focus-visible { transform: translateX(0); }
@@ -750,9 +639,37 @@
   background: var(--tinte);
   color: var(--papier);
 }
-/* Genau so breit wie der sichtbare Streifen, abzüglich der Randlinie darin. */
+/* Fokus = Invertierung — dieselbe Messung wie bei den Marken (Lauf 76, 3.4):
+   am Telefon ist der Reiter schon ausgefahren, die Bewegung zeigt dort nichts.
+   Der aktuelle Reiter ist bereits umgekehrt und kehrt sich zurück. */
+.hx-reiter:focus-visible {
+  background: var(--tinte);
+  color: var(--papier);
+}
+.hx-reiter[data-hier]:focus-visible {
+  background: var(--papier);
+  color: var(--tinte);
+}
+/*
+ * Genau so breit wie der sichtbare Streifen, abzüglich der Randlinie darin.
+ *
+ * `width` und `flex: 0 0 auto` — NICHT `flex-basis: calc(var(...))`.
+ *
+ * Gemessen (Läufe 76-79): auf dem Prüfstand-Browser (Chromium 131) war der
+ * eingefahrene Reiter 29 px statt 58 px breit und die Marke 7 px statt 44 px.
+ * Die Sonde hat es eingekreist: kein Transform, keine falsche Variable —
+ * `getComputedStyle` meldete brav 42,5 px, die Layoutbreite war trotzdem die
+ * des Inhalts („01" plus Polster). Dieses Chromium wertet ein `calc()` mit
+ * eigener Eigenschaft in `flex-basis` beim Layout als `auto` aus.
+ *
+ * Das ist kein Messfehler, den man beim Messgerät lässt: wer mit einem
+ * älteren Browser kommt, SIEHT diesen zusammengefallenen Streifen — und der
+ * Griff wäre dort unter der 44-px-Regel. Über `width` gesetzt gilt dieselbe
+ * Zahl überall.
+ */
 .hx-reiter-zahl {
-  flex: 0 0 calc(var(--reiter-breite) - 1.5px);
+  flex: 0 0 auto;
+  width: calc(var(--reiter-breite) - 1.5px);
   text-align: center;
   font-variant-numeric: tabular-nums;
   opacity: 0.6;
@@ -782,7 +699,7 @@
    * Finger bedient wird, war der Griff also zu schmal.
    *
    * Der Streifen ist zugleich das Maß, das die Bühne freihält (`--marken-breite`
-   * steckt im Polster von `.hx-buehne`) — er wird breiter, das Papier schmaler.
+   * steckt im Polster von `.hx-szene`) — er wird breiter, das Papier schmaler.
    * Das ist der Preis, und er ist richtig herum: lieber ein Blatt weniger breit
    * als ein Griff, den man nicht trifft.
    */
@@ -802,83 +719,38 @@
   }
 }
 
-/* ————————————————— Einzelseite ≤ 820 px (X3) ————————————————— */
+/* ————————————————— Die Kompositionsfläche ————————————————— */
 
-/*
- * Gleicher Wendel, eine Seite je Bild. Der Satzspiegel schrumpft nicht, er
- * hält: die Ränder folgen weiter `--rand`, nur die Bühne wird schmaler.
- *
- * Umgesetzt über das Verhältnis des Hefts und die Breite der Flächen — nicht
- * über ein zweites Layout. Ein Heft, zwei Breiten.
- */
-/* Dieselbe Bedingung wie `EINZELSEITE_ABFRAGE` in `wendel.ts` — dort steht,
-   warum sie an zwei Stellen wörtlich gleich sein muss. */
-@media (max-width: 819.98px), (max-height: 599.98px) {
-  /*
-   * EIN Schwellwert, kein zweiter Modus.
-   *
-   * Die Seite hält ihr Verhältnis 0,72 — solange sie damit mindestens 320 px
-   * breit wird. Darunter gibt sie das Verhältnis auf und füllt den Raum.
-   *
-   * Warum überhaupt: die Breite hing allein an der Höhe. Quer auf dem Telefon
-   * (390 px hoch) ergab das rund 280 px Breite, und der Satz einer Doppelseite
-   * passt nicht in 280 px — Prüfstand 3.8 meldete zwölf Paare mit Anteil 1,0,
-   * weil der Text über sein Blatt hinaus auf die Nachbarblätter lief.
-   *
-   * Wie es in zwei Zeilen geht, ohne eine zweite Regel:
-   *   `max(320px, …)`  hebt die Breite an, sobald das Verhältnis zu klein wird
-   *   `max-height`     kappt die Höhe, die das Verhältnis dann fordern würde
-   *
-   * Über der Schwelle greift die Deckelung nie, das Blatt ist genau 0,72 breit.
-   * Unter ihr kappt sie, und das Verhältnis ist damit aufgegeben — nicht durch
-   * einen Schalter, sondern weil der Raum es nicht mehr trägt. Der Wendel
-   * bleibt unberührt: er dreht Blätter, er misst sie nicht.
-   */
-  .hx-heft {
-    aspect-ratio: 0.72 / 1;
-    width: min(100%, max(320px, calc((100dvh - 1.5rem - var(--pawn-einwilligung, 0px)) * 0.72)));
-    max-height: calc(100dvh - 1.5rem - var(--pawn-einwilligung, 0px));
-  }
-  /* Die linke Hälfte einer Doppelseite tritt hinter die rechte: auf einer
-     Einzelseite ist immer die Seite zu sehen, die man gerade aufschlägt. */
-  .hx-flaeche.grund.links { display: none; }
-  .hx-flaeche.grund.rechts { left: 0; width: 100%; }
-  .hx-blatt { left: 0; width: 100%; }
+/* Historischer Name aus dem zweiten Weg des Wendels — heute das EINE Layout
+   der Szene: zwei Spalten breit, gestapelt schmal.
 
-  /*
-   * Die Rückseiten der Blätter bleiben fort — jetzt aus einem anderen Grund.
-   *
-   * Auf der Einzelseite sitzt das Scharnier an der linken Kante des Hefts, ein
-   * gewendetes Blatt landet also NEBEN dem Heft statt darüber. Seine Rückseite
-   * ist an ihrem Platz nie zu sehen; gemessen bei 390 px lief links neben dem
-   * Heft eine Spalte fremder Folios durch den Rand.
-   *
-   * Deshalb trägt hier jedes Blatt genau EINE Seite (`einzelseitenAus` in
-   * `doppelseiten.ts`), und die Rückseiten sind leer. Diese Regel blendet leere
-   * Flächen aus, keine Inhalte mehr: die linke Seite einer Doppelseite ist auf
-   * dem Telefon ein eigenes Blatt und wird aufgeschlagen wie jedes andere.
-   */
-  .hx-flaeche.rueck { display: none; }
-}
-
-/* ————————————————— Der zweite Weg ————————————————— */
-
-.hx-folge {
-  background: var(--tisch);
-  min-height: 100dvh;
-}
-.hx-folge-seite {
-  /* Eine Doppelseite je Abschnitt, untereinander. Kein 3D, kein fixes
-     Element, nichts, was im Weg stünde. */
-  padding: clamp(0.75rem, 2.5vw, 2rem);
-}
+   Hier stand ein eigenes Polster auf `.hx-folge-seite`. Es ist weg, und das
+   ist kein Aufräumen, sondern ein gemessener Fehler (Lauf 76 / lokal, 3.8):
+   die Szene trägt BEIDE Klassen, und die Kurzform `padding` hier — später in
+   der Datei — setzte alle vier Seiten des Szenen-Polsters zurück, samt der
+   Reserve für Register, Marken und Einwilligungsleiste. Der Satz lief unter
+   die Reiter. Das Polster gehört `.hx-szene`, an einer Stelle. */
 .hx-folge-paar {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   aspect-ratio: 1.44 / 1;
   margin: 0 auto;
-  max-width: min(100%, calc((100dvh - 4rem) * 1.44));
+  /*
+   * `width`, nicht `max-width` — und das ist der Unterschied zwischen einem
+   * Papier, das die Bühne füllt, und einem, das sich nach seinem Text richtet.
+   *
+   * Gemessen (Teil Ω, Bühne): mit `max-width` stand das Papier auf seiner
+   * Inhaltsbreite. Solange die Sektionen Text trugen, fiel das nicht auf — der
+   * Text war breit genug. Der Umschlag trägt seine Marke aber ABSOLUT
+   * positioniert, also zählt sie für die Breite nicht mit: das Papier fiel bei
+   * 1920 px auf 934 px zusammen (60 % statt 97 %). Eine Bühne darf nicht davon
+   * abhängen, wie viel auf dem Blatt steht.
+   *
+   * Der Abzug in der Höhenrechnung ist gerechnet, nicht geschätzt: genau die
+   * Luft der Szene plus die Einwilligungsleiste.
+   */
+  width: min(100%, calc((100dvh - 2 * var(--szene-luft)) * 1.44));
   background: var(--papier);
   color: var(--tinte);
   box-shadow: 0 24px 48px -28px rgba(20, 18, 14, 0.4);
@@ -887,12 +759,36 @@
 /* In der Folge liegen beide Seiten im Fluss, nicht absolut übereinander. */
 .hx-folge-paar .hx-seite { position: relative; inset: auto; height: 100%; }
 
-@media (max-width: 819.98px), (max-height: 599.98px) {
+/*
+ * Gestapelt wird im HOCHFORMAT — nicht auf jedem kleinen Schirm.
+ *
+ * Die alte Bedingung stapelte auch bei `max-height: 599.98px`, also auf dem
+ * quer gehaltenen Telefon (844 x 390). Dort ist die Doppelseite aber genau
+ * richtig: 1,44 zu 1 bei 390 px Höhe sind 561 px Breite, und die hat ein
+ * Telefon quer. Gestapelt wurde da also gescrollt, wo nebeneinander gepasst
+ * hätte. Die Form entscheidet, ob zwei Spalten Platz haben — nicht die Größe.
+ */
+@media (max-aspect-ratio: 1/1) {
   .hx-folge-paar {
     grid-template-columns: 1fr;
     aspect-ratio: auto;
   }
   .hx-folge-paar .hx-seite { min-height: 78dvh; }
+
+  /*
+   * Im Hochformat kosten zwei 44-px-Griffe 88 der 390 px Bildbreite — das
+   * Papier bliebe bei 77 % (Teil Ω verlangt 92 %). Also liegen die Streifen
+   * hier AUF dem Rand des Papiers, wie die Griffe eines Registerbuchs über die
+   * Blattkante stehen, und der Satzspiegel hält seinen Text von ihnen frei.
+   * Das Papier reicht damit von Kante zu Kante.
+   */
+  .hx-szene { padding-inline: 0; }
+  /* Der Reiter ist breiter als sein Maß: er trägt im Hochformat noch 0,45 rem
+     Polster je Seite. Der Satzspiegel hält deshalb 1,2 rem mehr frei als den
+     nackten Streifen — sonst liefe die erste Zeile unter den Griff. */
+  .hx-folge-paar .hx-seite {
+    padding-inline: calc(max(var(--reiter-breite), var(--marken-breite)) + 1.2rem);
+  }
 }
 
 /* ————————————————— Der knappe Satzspiegel unter 430 px Höhe ————————————————— */
@@ -930,7 +826,14 @@
    * Rand ist ein Aushang.
    */
   .hx-wurzel { --rand: 0.7rem; }
-  .hx-buehne { padding: 0.4rem; }
+  /* Vier Einzelwerte, keine Kurzform: die Kurzform hatte hier die Reserve für
+     Register, Marken und Einwilligungsleiste zurückgesetzt (Lauf 76, 3.8) —
+     genau in der Lage, in der die Streifen 44 px breit sind. */
+  .hx-szene {
+    padding: 0.4rem;
+    padding-right: calc(0.4rem + var(--reiter-breite));
+    padding-left: calc(0.4rem + var(--marken-breite));
+  }
 }
 
 /* ————————————————— Das Verzeichnis (X6) ————————————————— */
@@ -1268,3 +1171,313 @@
   min-height: 44px;
   border-radius: 0;
 }
+
+/* ————————————————— X8 · Die Häuser als Kapitel ————————————————— */
+
+/*
+ * Die eingezäunte Ausnahme vom Schwarz-Weiß-Gesetz: NUR auf Kapitel-Seiten
+ * (`data-haus`) gelten Papier und Tinte des Hauses. Die Variablen setzt die
+ * Heftseite inline aus `house_themes`; alles außerhalb dieser Regeln bleibt
+ * beim Ton der Doppelseite. Die Schrift des Hauses spricht in Schlagzeile,
+ * Vorspann und Zitat — Kolumnentitel, Folio und Wege bleiben in der
+ * Heftschrift: das Kapitel gehört dem Haus, das Heft gehört PAWN.
+ */
+.hx-seite[data-haus] {
+  background: var(--haus-papier, var(--papier));
+  color: var(--haus-tinte, var(--tinte));
+}
+.hx-seite[data-haus] .hx-schlagzeile,
+.hx-seite[data-haus] .hx-vorspann,
+.hx-seite[data-haus] .hx-haus-zitat {
+  font-family: var(--haus-schrift, Fraunces, Georgia, serif);
+}
+
+/* Das Zitat eines Hauses — die große Kursive des Kapitels. */
+.hx-haus-zitat {
+  margin: 0;
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(1.4rem, 2.6vw, 2.4rem);
+  line-height: 1.2;
+}
+
+/* Der Name als Bild, wenn das Haus (noch) kein Foto hat: Tinte auf Papier,
+   gedreht wie ein Buchrücken. Kein grauer Platzhalter, kein Symbolbild. */
+.hx-haus-namensplatte {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.hx-haus-namensplatte span {
+  font-family: var(--haus-schrift, Fraunces, Georgia, serif);
+  font-size: clamp(2.2rem, 6vw, 5rem);
+  line-height: 1;
+  transform: rotate(-90deg);
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/*
+ * Die Platte des Kapitels — und die Übergangsart als Bildbehandlung.
+ *
+ * `uebergangsart` beschreibt auf der Hausseite den Seitenübergang. Im Heft
+ * gehört der Übergang dem Wendel; die Art wird deshalb zur Form, in der die
+ * Bilder des Hauses auf dem Papier stehen. Vier Behandlungen, alle statisch —
+ * gedruckt sähe es genauso aus:
+ *
+ *   fade      das Bild löst sich zum Rand hin ins Papier auf
+ *   iris      das Bild steht in einer Ellipse, wie hinter einer Blende
+ *   schnitt   harte Kante, bewusst versetzt — der Offset-Schatten des Hefts
+ *   wisch     eine Papier-Schräge läuft über die untere Kante
+ */
+.hx-haus-platte {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.hx-haus-platte img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.hx-haus-platte[data-uebergang="fade"] img {
+  -webkit-mask-image: radial-gradient(120% 120% at 50% 45%, #000 55%, transparent 98%);
+  mask-image: radial-gradient(120% 120% at 50% 45%, #000 55%, transparent 98%);
+}
+.hx-haus-platte[data-uebergang="iris"] {
+  inset: clamp(1.2rem, 4%, 2.5rem);
+}
+.hx-haus-platte[data-uebergang="iris"] img {
+  -webkit-clip-path: ellipse(46% 44% at 50% 50%);
+  clip-path: ellipse(46% 44% at 50% 50%);
+}
+.hx-haus-platte[data-uebergang="schnitt"] {
+  inset: clamp(1.4rem, 5%, 3rem) clamp(1.4rem, 5%, 3rem) clamp(2.2rem, 7%, 4rem) clamp(1rem, 3%, 2rem);
+  box-shadow: 6px 6px 0 var(--haus-tinte, var(--tinte));
+}
+.hx-haus-platte[data-uebergang="wisch"] img {
+  -webkit-clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%);
+}
+
+/* Die Produktreihe eines Kapitels — dieselben Zeilen wie das Inhaltsverzeichnis. */
+.hx-inhalt-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+
+/* ————————————————— Z4 · Feinschliff, gemessen ————————————————— */
+
+/*
+ * Das Marken-Band hing eingefahren um seine Wortbreite links AUS DEM BILD
+ * (gemessen: 126 px bei englischen, ~104 px bei deutschen Beschriftungen —
+ * die Mechanik schiebt es um die eigene Breite hinaus, und die hängt am
+ * Wort). Unsichtbar war es ohnehin; jetzt ist es auch geometrisch weg:
+ * die Leiste beschneidet, was links über sie hinaussteht. Beim Zeigen
+ * fährt das Band unverändert ein — dann liegt es ganz in der Leiste.
+ */
+.hx-marken {
+  overflow: clip;
+}
+
+/*
+ * Wo das Blatt flacher ist als sein Satz, wird der Satzspiegel rollbar —
+ * statt beschnitten. Gemessen bei 844 × 390: das Inhaltsverzeichnis verlor
+ * seine obersten Zeilen an die Blattkante, das Folio stand in der letzten
+ * Zeile, und auf den Weltseiten ragte der Kicker aus der Seite (7–150 px).
+ *
+ * `justify-content: center` mit übergroßem Inhalt macht den Anfang
+ * unerreichbar — deshalb flex-start plus die Auto-Margen: passt der Inhalt,
+ * zentrieren sie ihn wie zuvor; passt er nicht, rollt er vom Anfang an.
+ */
+@media (max-width: 819.98px), (max-height: 599.98px) {
+  .hx-satz {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    justify-content: flex-start;
+  }
+  .hx-satz > :first-child { margin-top: auto; }
+  .hx-satz > :last-child { margin-bottom: auto; }
+}
+
+
+/* ————————————————— Der Umschlag (Teil Ω) ————————————————— */
+
+/*
+ * Die Wortmarke monumental über den Bund.
+ *
+ * Derselbe Handel wie bei `PlatteBund`: das Band ist doppelt so breit wie seine
+ * Seite und an die Bundkante geschoben, der Text darin mittig. Links steht
+ * damit die linke Hälfte des Wortes, rechts die rechte — zusammen EIN Wort,
+ * dessen Mitte genau im Bund sitzt.
+ *
+ * `z-index: 0` hält sie unter Kopf und Fuß (die stehen auf 2): der Umschlag
+ * behält seine Kolumne und seinen einen Weg, auch wenn die Marke die ganze
+ * Seite nimmt.
+ */
+.hx-cover-marke {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.hx-cover-band {
+  position: absolute;
+  /* Nicht in der Mitte: darunter stehen drei Zeilen Haltung. */
+  top: 42%;
+  width: 200%;
+  display: flex;
+  justify-content: center;
+  transform: translateY(-50%);
+}
+.hx-cover-band[data-lage="links"] { left: 0; }
+.hx-cover-band[data-lage="rechts"] { right: 0; }
+
+/*
+ * Zwei Klassen tief, damit der Schnitt des Umschlags die Grundform der Marke
+ * überstimmt, ohne `!important`: die Komponente bringt ihre Tailwind-Klasse mit
+ * (eine Klasse), diese Regel hat zwei. Die Marke selbst wird NICHT nachgebaut —
+ * sie bringt den Bauern als SVG mit, das ist Designgesetz.
+ */
+.hx-cover-band .hx-cover-wort {
+  font-family: Fraunces, Georgia, serif;
+  font-weight: 200;
+  font-size: clamp(5rem, 16vw, 13rem);
+  line-height: 0.82;
+  color: var(--tinte);
+}
+
+/*
+ * Der Bauer atmet: 1 -> 1,035 in 5,5 s.
+ *
+ * Nur `transform` (Bewegungsgesetz). Die Verschiebung aus der Komponente
+ * (`translateY(0.06em)`, ihr Sitz auf der Grundlinie) muss in jedem Bild
+ * mitgeschrieben werden — eine Animation ersetzt die ganze Eigenschaft, nicht
+ * einen Teil davon.
+ */
+@keyframes hx-atem {
+  0%, 100% { transform: translateY(0.06em) scale(1); }
+  50% { transform: translateY(0.06em) scale(1.035); }
+}
+.hx-cover-wort svg {
+  transform-origin: 50% 86%;
+  animation: hx-atem 5.5s var(--kurve-standard) infinite;
+}
+
+/* Drei Zeilen Haltung, unten am Satz. `margin-top: auto` schlägt das
+   `justify-content: center` des Satzspiegels — der Umschlag trägt sein
+   Versprechen unter der Marke, nicht mitten hinein. */
+.hx-cover-haltung {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(0.95rem, 1.45vw, 1.2rem);
+  line-height: 1.4;
+}
+.hx-cover-haltung p { margin: 0; }
+
+/*
+ * Im Hochformat liegen die beiden Seiten UNTEREINANDER — ein halbes Wort über
+ * dem Bund ergibt dann keinen Sinn mehr. Die Marke steht deshalb ganz auf der
+ * ERSTEN Seite, und die Haltung mit ihrem Weg folgt auf der zweiten.
+ *
+ * Gemessen (390 x 844): mit der Marke auf der zweiten Seite war die erste, die
+ * man beim Aufschlagen sieht, leer — ein Umschlag, der nichts zeigt.
+ */
+@media (max-aspect-ratio: 1/1) {
+  /*
+   * Der Umschlag ist im Hochformat EINE Seite.
+   *
+   * Gestapelt läge sonst die halbe Marke auf einem Blatt und die Haltung mit
+   * dem einen Weg auf dem nächsten — das erste Bild wäre ein Umschlag ohne
+   * Versprechen und ohne Eingang, beides eine Rollbewegung entfernt. Die linke
+   * Seite trägt hier nichts als ihre Hälfte des Wortes; sie fällt weg, und die
+   * rechte zeigt die Marke ganz.
+   */
+  .hx-folge-paar .hx-seite[data-lage="links"]:has(.hx-cover-marke) { display: none; }
+  /*
+   * Und sie steht IM SATZ, nicht darüber.
+   *
+   * Gemessen (390 x 844): absolut gesetzt reservierte die Marke keinen Platz,
+   * und die drei Zeilen Haltung liefen mitten durch das Wort. Nebeneinander
+   * ist die Marke ein Hintergrund über beide Blätter; untereinander ist sie
+   * die erste Stufe des Satzes und schiebt die Haltung vor sich her.
+   */
+  .hx-cover-marke { position: static; overflow: visible; }
+  .hx-cover-band {
+    position: static;
+    width: 100%;
+    transform: none;
+  }
+  .hx-cover-band[data-lage="links"] { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hx-cover-wort svg { animation: none; }
+}
+
+/* ————————————————— Wege und Marken (Teil B5) ————————————————— */
+
+/*
+ * Der Abstand am Weg wächst beim Zeigen von 14 auf 24 px.
+ *
+ * B5 schreibt „gap 14 -> 24 px". Bewegt wird hier trotzdem `transform`, nicht
+ * `gap` — und das ist kein Ungehorsam, sondern das ältere der beiden Gesetze:
+ * animiert werden nur `transform` und `opacity`. Ein wachsender `gap` ist eine
+ * Layout-Animation; sie zwingt den Browser in jedem Bild zu einer neuen
+ * Zeilenrechnung. Sichtbar ist das Ergebnis dasselbe: der Pfeil rückt um
+ * 10 px ab, der Abstand IST damit 24 px.
+ */
+.hx-pfad { gap: 14px; }
+.hx-pfad-pfeil { transition: transform var(--dauer-hover) var(--kurve-standard); }
+.hx-pfad:hover .hx-pfad-pfeil,
+.hx-pfad:focus-visible .hx-pfad-pfeil { transform: translateX(10px); }
+
+/*
+ * Marken und Reiter am Blattrand: sie fahren aus, und das ist ihre Bedienung —
+ * daran ändert B5 nichts. Aus den Tokens kommt jetzt nur die Zeit: die feine
+ * Kurve für kleine Dinge, in der kurzen Dauer.
+ */
+.hx-marke-band,
+.hx-reiter { transition: transform var(--dauer-mikro) var(--kurve-fein); }
+
+
+/* ————————————————— Wege und Marken (Teil B5) ————————————————— */
+
+/*
+ * Der Abstand am Weg wächst beim Zeigen von 14 auf 24 px.
+ *
+ * B5 schreibt „gap 14 -> 24 px". Bewegt wird hier trotzdem `transform`, nicht
+ * `gap` — und das ist kein Ungehorsam, sondern das ältere der beiden Gesetze:
+ * animiert werden nur `transform` und `opacity`. Ein wachsender `gap` ist eine
+ * Layout-Animation; sie zwingt den Browser in jedem Bild zu einer neuen
+ * Zeilenrechnung. Sichtbar ist das Ergebnis dasselbe: der Pfeil rückt um
+ * 10 px ab, der Abstand IST damit 24 px.
+ */
+.hx-pfad { gap: 14px; }
+.hx-pfad-pfeil { transition: transform var(--dauer-hover) var(--kurve-standard); }
+.hx-pfad:hover .hx-pfad-pfeil,
+.hx-pfad:focus-visible .hx-pfad-pfeil { transform: translateX(10px); }
+
+/*
+ * Marken und Reiter am Blattrand: sie fahren aus, und das ist ihre Bedienung —
+ * daran ändert B5 nichts. Aus den Tokens kommt jetzt nur die Zeit: die feine
+ * Kurve für kleine Dinge, in der kurzen Dauer.
+ */
+.hx-marke-band,
+.hx-reiter { transition: transform var(--dauer-mikro) var(--kurve-fein); }
+/*
+ * Hier stand das Z-Sandwich (Teil B4). Es ist gemessen zurückgenommen —
+ * die Begründung steht bei der Marke in `spreads/index.tsx`, damit sie dort
+ * liegt, wo jemand sie wieder bauen wollte.
+ */

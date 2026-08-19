@@ -281,6 +281,7 @@ nicht.)
 | **Verantwortlich** | Daouda |
 | **Termin** | offen — an die Datenfrage gebunden, nicht an ein Datum. Ein weiterer Lauf ohne sie misst wieder nichts. |
 | **Betroffen** | `/heft/…`, `/verzeichnis/…`, `/werk/…`. Die Landing `/` und alle Kundenseiten davor bleiben unberührt — das Heft liegt auf eigenen Adressen und ist nicht indexiert. Das Risiko ist damit eingezäunt. |
+| **Erledigt (19.08.2026)** | **Gegenstandslos durch den Szenen-Umbau** (`docs/heft-architektur-audit.md`): der Wendel und seine Blattgeometrie (0,72 · 320 px · 430-px-Regel) sind ausgebaut, die Doppelseite ist eine Kompositionsfläche, keine Navigationseinheit mehr. Die Kontrollen **X.blatt** und **X.dreh** sind mit ihrem Messgegenstand aus `messen.ts`/`lauf.ts` entfernt; die Rechnungs-Tests (`einzelseite.spec.ts`) sind mit der Regel gegangen. Was an ihrer Stelle zu messen ist (Szenen-Geometrie, Schritt-Verhalten), gehört in einen neuen Auftrag, nicht in die alte Kontrolle. |
 
 ### A2 · X9 — die Kasse ist unverkauft erprobt, nicht durchgekauft
 

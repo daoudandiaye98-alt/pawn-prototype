@@ -57,7 +57,7 @@ export interface Breite {
    * Werden hier Trefferflächen (3.5) gemessen?
    *
    * Nicht überall sinnvoll. Am Schreibtisch bedient die Maus, dort gilt die
-   * 44-px-Regel nicht. Und im HOCHFORMAT auf dem Telefon zeigt das Heft keine
+   * 44-px-Regel nicht. Und im Hochformat auf dem Telefon zeigte das alte Heft keine
    * Bedienung mehr, sondern den Dreh-Hinweis — Flächen dort zu vergrößern
    * hieße, einen Bildschirm zu polieren, den niemand mehr sieht. Gemessen wird
    * deshalb dort, wo mit dem Finger wirklich bedient wird: quer auf dem Telefon
@@ -87,25 +87,25 @@ export interface SeitenZiel {
 export const PRODUKT_SLUG = "obara-rope-jacket";
 export const HAUS_SLUG = "obara";
 
-/** Der Umschlag — die erste Doppelseite der Hülle (X5, Sektion „umschlag"). */
-export const HEFT_PFAD = "/heft/umschlag";
+/** Der Umschlag — seit X1 die Startseite: `/` IST das Heft. */
+export const HEFT_PFAD = "/";
 
 /** Das erste Blatt des Katalogs (X6). */
 export const VERZEICHNIS_PFAD = "/verzeichnis/1";
 
 export const SEITEN: SeitenZiel[] = [
-  { name: "halle", pfad: "/" },
+  /*
+   * X1 — der Umschalttag hat diese Liste umgeschrieben. Die Halle, die alte
+   * Boutique und die alten Werk-/Hausseiten sind gelöscht; ihre Adressen
+   * antworten mit 301 und sind kein Messziel mehr — eine Weiterleitung hat
+   * keine Geometrie. Gemessen wird, was ausgeliefert wird: das Heft auf `/`,
+   * das Verzeichnis, das Werk, das Haus-Kapitel (X8) und die Kasse.
+   */
+  { name: "umschlag", pfad: HEFT_PFAD },
   // Teil M — das Ausgabe-Heft. Gehört zum öffentlichen Frontend, also in die Messung.
   { name: "ausgabe", pfad: "/ausgabe/001" },
-  { name: "boutique", pfad: "/shop" },
-  { name: "werk", pfad: `/product/${PRODUKT_SLUG}` },
-  { name: "haus", pfad: `/designer/${HAUS_SLUG}` },
-  /*
-   * Teil X — die Hülle. Sie war bisher NICHT in dieser Liste, und deshalb hat
-   * kein Lauf je etwas über sie gesagt: weder über die Doppelseiten noch über
-   * den Dreh-Hinweis, der nur hier lebt. Das war die eigentliche Lücke.
-   */
-  { name: "huelle", pfad: HEFT_PFAD },
+  { name: "haus-kapitel", pfad: `/haus/${HAUS_SLUG}` },
+  { name: "kasse", pfad: "/kasse" },
   /*
    * Teil X6 — das Verzeichnis. Eigene Zeile und nicht mit der Hülle erledigt:
    * es ist die einzige Heftseite, die aus Daten entsteht, die einzige mit einem
@@ -117,36 +117,12 @@ export const SEITEN: SeitenZiel[] = [
    * Teil X7 — das Werk als Doppelseite. Dieselbe Ware wie die alte Werkseite
    * darüber, damit beide Fassungen an denselben Zahlen gemessen werden.
    *
-   * Sie ist zugleich die einzige Heftadresse, die den Dreh-Hinweis NIE zeigen
-   * darf (`NIE_SPERREN`): ein Kaufweg, der im Hochformat am Bildschirmrand
-   * endet, ist kein Kaufweg. Ohne diese Zeile stünde diese Regel im Code, ohne
-   * dass je jemand nachgesehen hätte.
-   *
    * Gegen eine lokale Vorschau ist sie `nicht_pruefbar`: das Heft erreicht dort
    * seine Datenschicht nicht, also gibt es die Doppelseite nicht. Genau dafür
    * ist die Hüllen-Regel da.
    */
   { name: "werk-heft", pfad: `/werk/${PRODUKT_SLUG}` },
 ];
-
-/**
- * Adressen, auf denen der Dreh-Hinweis im Hochformat erwartet wird.
- *
- * Jede Heftadresse bittet ums Drehen — das Verzeichnis also auch. Zwei Adressen
- * sind ausdrücklich ausgenommen und dürfen ihn NIE zeigen (X9 die Kasse, X7 die
- * Werkseite); die stehen in `NIE_SPERREN` in `src/heft/drehhinweis.tsx`.
- */
-export const DREH_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD];
-
-/**
- * Wo ein Heft-Blatt steht — für X.blatt.
- *
- * Nicht dieselbe Liste wie `DREH_ERWARTET`: der Dreh-Hinweis steht nur auf der
- * Hülle, ein Blatt trägt jede Heft-Adresse. Die Werkseite gehört dazu, seit sie
- * mit X7 eine Doppelseite im Heft ist. Verglichen wird mit `startsWith`, damit
- * `/verzeichnis/3` und `/werk/<slug>` mitgemeint sind.
- */
-export const BLATT_ERWARTET = [HEFT_PFAD, VERZEICHNIS_PFAD, "/werk/"];
 
 /** Absichtlich ungültig — für 4.5. */
 export const UNSINN_PFAD = "/diese-seite-gibt-es-nicht-4d9f21";

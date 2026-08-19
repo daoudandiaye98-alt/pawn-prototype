@@ -28,7 +28,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { ROUTEN } from "../routen.js";
+import { ROUTEN, UMZUEGE } from "../routen.js";
 
 /**
  * Eine Adresse aus dem Register in einen Regex-Ausdruck übersetzen.
@@ -48,6 +48,28 @@ function alsMuster(route) {
   return `^/${ausdruck}/?$`;
 }
 
+/**
+ * Ein Umzug als Weiterleitungs-Regel: `:name` wird gefangen und im Ziel wieder
+ * eingesetzt. 301, weil die alten Adressen dauerhaft umgezogen sind (X1).
+ */
+function alsUmzug(u) {
+  const teile = u.von.split("/").filter((t) => t.length > 0);
+  const namen = [];
+  const ausdruck = teile
+    .map((t) => {
+      if (t.startsWith(":")) { namen.push(t.slice(1)); return "([^/]+)"; }
+      return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    })
+    .join("/");
+  let ziel = u.nach;
+  namen.forEach((n, i) => { ziel = ziel.replace(`:${n}`, `$${i + 1}`); });
+  return {
+    src: teile.length === 0 ? "^/$" : `^/${ausdruck}/?$`,
+    status: 301,
+    headers: { Location: ziel },
+  };
+}
+
 export function baueVercelJson() {
   return {
     /*
@@ -60,6 +82,9 @@ export function baueVercelJson() {
       /* Erst die echten Dateien: Bündel, Bilder, Schriften, robots.txt. Ohne
          diese Zeile bekäme jede davon die Hülle statt ihres Inhalts. */
       { handle: "filesystem" },
+      /* Dann die Umzüge (X1): 301 gewinnt gegen die 200-Regel derselben
+         Adresse, weil Vercel die Liste von oben abarbeitet. */
+      ...UMZUEGE.map(alsUmzug),
       /* Jede bekannte Adresse: die Hülle, Status 200 wie bisher. */
       ...ROUTEN.map((r) => ({ src: alsMuster(r), dest: "/index.html" })),
       /* Alles Übrige: dieselbe Hülle, aber ehrlich beschriftet. `no-store`, weil
