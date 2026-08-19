@@ -633,8 +633,23 @@ export async function messeTrefferflaechen(
        * unter einem halben ist der Unterschied keiner, den ein Finger merkt.
        */
       if (Math.min(r.width, r.height) < min - 0.5) {
+        /*
+         * DIAGNOSE (temporär, wird zurückgenommen): Lauf 76/77 maßen auf der
+         * Vercel-Vorschau bei 768/844 Reiter 29 px und Marken 7 px — Werte,
+         * die zu keinem CSS-Zustand des Codes passen und sich lokal nicht
+         * reproduzieren. Für jeden Treffer druckt die Sonde den Rechenweg:
+         * display des Elements, flex-basis des ersten Kindes, die aufgelöste
+         * Streifen-Variable und den Media-Query-Stand.
+         */
+        const kind = el.firstElementChild;
+        const wurzel = document.querySelector(".hx-wurzel");
+        const diag = " {" + cs.display
+          + "; basis " + (kind ? getComputedStyle(kind).flexBasis : "kein Kind")
+          + "; reiter-var " + (wurzel ? (getComputedStyle(wurzel).getPropertyValue("--reiter-breite") || "leer") : "keine Wurzel")
+          + "; mq " + (matchMedia("(max-width: 819.98px), (max-height: 599.98px)").matches ? "ja" : "nein")
+          + "; vw " + document.documentElement.clientWidth + "}";
         treffer.push({
-          auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“",
+          auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“" + diag,
           b: Math.round(r.width), h: Math.round(r.height),
         });
       }
