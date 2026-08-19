@@ -71,7 +71,7 @@ export const V = "/verzeichnis";
  * `/werk/<slug>` und nicht `/product/<slug>`: die alte Werkseite ist eine eigene
  * Seite mit eigenem Gerüst, das Werk im Heft ist eine Doppelseite. Solange beide
  * existieren, nimmt das Heft nur Adressen, die es vorher nicht gab — dieselbe
- * Regel wie bei den `/heft/…`-Sektionen. `drehhinweis.tsx` kennt diesen Pfad
+ * Regel wie bei den Sektionen. Der Szenen-Renderer kennt diesen Pfad
  * schon: eine Werkseite wird nie ins Querformat gezwungen.
  */
 export const werkPfad = (slug: string) => `/werk/${slug}`;

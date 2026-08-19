@@ -13,12 +13,12 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, BLATT_ERWARTET, DREH_ERWARTET, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
   VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
 import { ausnahmeFuer, abgelaufen } from "./ausnahmen";
 import {
-  messeBlattgeometrie, messeDrehHinweis, messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
+  messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
   messeLayout, messeTrefferflaechen, type Befund,
 } from "./messen";
 
@@ -315,8 +315,9 @@ async function seiteMessen(
     };
     await mitUhr("3.8", () => messeLayout(page, seite.pfad, breite.breite));
     await mitUhr("3.5", () => messeTrefferflaechen(page, seite.pfad, breite));
-    await mitUhr("X.dreh", () => messeDrehHinweis(page, seite.pfad, breite, DREH_ERWARTET));
-    await mitUhr("X.blatt", () => messeBlattgeometrie(page, seite.pfad, breite, BLATT_ERWARTET));
+    /* X.dreh und X.blatt sind mit dem Szenen-Umbau ausgebaut: ihr
+       Messgegenstand (Dreh-Hinweis, Blattgeometrie des Wendels) existiert
+       nicht mehr. Siehe README, Ausnahme A1 (erledigt). */
     await mitUhr("3.10", () => messeKnopfVerdeckung(page, seite.pfad, breite.breite));
     await mitUhr("5.x", () => messeKopfdaten(page, seite.pfad, breite.breite));
     await mitUhr("3.4", () => messeFokus(page, seite.pfad, breite.breite));

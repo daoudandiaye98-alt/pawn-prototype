@@ -1,11 +1,11 @@
 /**
  * X9 — der Beileger.
  *
- * **Warum eine eigene Fläche und kein Blatt.** Das Heft blättert; die Kasse
- * nicht. Wer mitten im Bezahlen steht, soll nicht wenden, nicht das Gerät
- * drehen und nichts suchen müssen. `/kasse` steht deshalb schon länger in
- * `NIE_SPERREN` (`drehhinweis.tsx`) — diese Datei ist das, wofür der Eintrag
- * gemacht wurde: ein loses Blatt, das aus dem Heft fällt.
+ * **Warum eine eigene Fläche und keine Szene.** Das Heft blättert; die Kasse
+ * nicht. Wer mitten im Bezahlen steht, soll nicht wenden und nichts suchen
+ * müssen: ein loses Blatt, das aus dem Heft fällt. (Die frühere Drehsperre
+ * samt `NIE_SPERREN` ist mit dem Szenen-Umbau gegangen — Hochformat ist
+ * überall ein Format, keine Sperre mehr.)
  *
  * **Die eine Stelle ohne gestalterische Freiheit.** Die letzte Schaltfläche
  * heißt „Zahlungspflichtig bestellen". Nicht „Kaufen", nicht „Jetzt kaufen",
