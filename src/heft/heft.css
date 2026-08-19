@@ -180,15 +180,24 @@
  * über einem Verlauf. Ein kleines Feld in Papierweiß macht daraus 21:1,
  * unabhängig davon, was die Platte dort gerade zeigt, und sieht aus wie eine
  * gedruckte Marke auf einem Bild.
+ *
+ * **Warum hier ZWEI Plattennamen stehen.** Gemessen (Lauf 82, erster Lauf mit
+ * echten Daten auf dem Haus-Kapitel): das Folio „26" stand schwarz auf einem
+ * dunklen Haus-Bild — 1,19:1 statt 4,5. Die Regel kannte nur `.hx-platte`, das
+ * Kapitel bringt aber seine eigene Platte mit (`.hx-haus-platte`, X8). Eine
+ * Schutzregel, die den halben Bestand nicht kennt, schützt nicht.
  */
 .hx-seite:has(.hx-platte) .hx-kopf > *,
-.hx-seite:has(.hx-platte) .hx-fuss > * {
+.hx-seite:has(.hx-platte) .hx-fuss > *,
+.hx-seite:has(.hx-haus-platte) .hx-kopf > *,
+.hx-seite:has(.hx-haus-platte) .hx-fuss > * {
   background: var(--papier);
   color: var(--tinte);
   padding: 0.25rem 0.5rem;
 }
 /* Der Kolumnentitel dehnt sich sonst über die halbe Seite als weißer Balken. */
-.hx-seite:has(.hx-platte) .hx-kolumne { flex: 0 1 auto; }
+.hx-seite:has(.hx-platte) .hx-kolumne,
+.hx-seite:has(.hx-haus-platte) .hx-kolumne { flex: 0 1 auto; }
 
 .hx-kopf-aussen { opacity: 0.9; }
 /* Die Wortmarke im Kopf: eine Nummer über der Zeile, damit der Bauer nicht

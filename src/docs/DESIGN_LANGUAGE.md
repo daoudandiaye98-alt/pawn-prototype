@@ -13,7 +13,7 @@ One organism. Every screen a projection of the same DNA.
 | `--oxblood` | decision | **single decision per view** |
 | `--gold` | accolade | verified / awarded — rare |
 | `--radius` | `0` | no rounded corners, anywhere |
-| `--ease-pawn` | `cubic-bezier(.2,.7,.2,1)` | the only easing |
+| Kurven | `--kurve-standard`, `--kurve-fein`, `--kurve-dramatisch` | die einzigen drei (Teil B0, `src/styles/bewegung.css`). `--ease-pawn` ist nur noch ein Deckname für `--kurve-dramatisch`. |
 | `--dur-micro` `--dur-reveal` | 180ms / 520ms | the only two durations |
 
 ## Type scale (locked)

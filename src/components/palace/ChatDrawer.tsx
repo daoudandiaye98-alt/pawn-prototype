@@ -99,7 +99,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     <>
       <div className={`fixed inset-0 z-[70] bg-black/25 backdrop-blur-[2px] transition-opacity duration-500 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} onClick={onClose} />
       <aside className={`fixed right-0 top-0 z-[80] flex h-full w-[min(420px,94vw)] flex-col border-l border-[rgba(0,0,0,.18)] bg-white transition-transform duration-700 ${open ? "translate-x-0" : "translate-x-full"}`}
-        style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}>
+        style={{ transitionTimingFunction: "var(--kurve-fein)" }}>
         <header className="flex items-center justify-between border-b border-[rgba(0,0,0,.18)] px-6 py-5">
           <div className="flex items-center gap-3">
             <PawnFigurSvg className="h-9 w-[27px] shrink-0" />

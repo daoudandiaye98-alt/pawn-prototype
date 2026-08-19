@@ -40,6 +40,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { type Doppelseite, nummerFuerPfad, pfadFuerNummer } from "./doppelseiten";
 import { Register, type FilterGruppe } from "./register";
 import { Marken } from "./marken";
+import { auftreten } from "@/styles/auftritt";
+import "@/styles/auftritt.css";
 import "./heft.css";
 
 export interface HeftProps {
@@ -191,6 +193,25 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
   }, [schritt]);
 
   /*
+   * Der Auftritt (Teil B2).
+   *
+   * Er hängt an der aufgeschlagenen Szene, nicht an einem Beobachter: die
+   * Szene IST sichtbar, sobald sie die aufgeschlagene ist — ein
+   * IntersectionObserver hätte hier nichts zu beobachten und wäre genau die
+   * Sorte Zusatzmechanik, die der Architektur-Audit ausgebaut hat.
+   *
+   * `requestAnimationFrame`: nach dem Zeichnen, damit die Elemente da sind, und
+   * vor dem nächsten Bild, damit niemand sie ungestaffelt aufblitzen sieht.
+   */
+  const raumRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const szene = raumRef.current?.querySelector<HTMLElement>(".hx-szene:not([hidden])");
+    if (!szene || !hier) return;
+    const b = requestAnimationFrame(() => auftreten(szene, hier.schluessel));
+    return () => cancelAnimationFrame(b);
+  }, [hier]);
+
+  /*
    * Gezeichnet werden die Szene und ihre Nachbarn: die Nachbarn unsichtbar und
    * `inert`, damit ihre Bilder schon geladen sind, wenn der Schritt kommt —
    * ohne dass eine Vorlesehilfe oder die Tabulatortaste sie findet. Alles
@@ -205,9 +226,9 @@ export function Heft({ bauen, titel, suchePfad, filter }: HeftProps) {
       {/* Die eine `h1` je Adresse (X12) — Titel der aufgeschlagenen Szene. */}
       <h1 className="hx-titel">{hier?.titel ?? titel}</h1>
 
-      <div className="hx-tisch">
+      <div className="hx-tisch" ref={buehne}>
         <div className="hx-korn" aria-hidden />
-        <div className="hx-szenenraum" ref={buehne} role="group" aria-label={titel}>
+        <div className="hx-szenenraum" ref={raumRef} role="group" aria-label={titel}>
           {fenster.map((n) => {
             const s = seiten[n - 1];
             return (

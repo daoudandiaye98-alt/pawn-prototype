@@ -54,7 +54,7 @@
     --sidebar-ring: 0 0% 100%;
 
     /* Motion — harder */
-    --ease-pawn: cubic-bezier(0.76, 0, 0.18, 1);
+    --ease-pawn: var(--kurve-dramatisch);
     --dur-micro: 250ms;
     --dur-reveal: 600ms;
 

@@ -128,7 +128,7 @@ export function Platte({ handle, world, refCode, plateNumber, personalLine, imag
   const anstieg = (an: boolean, y = 18) => ({
     opacity: an ? 1 : 0,
     transform: an ? "translateY(0)" : `translateY(${y}px)`,
-    transition: "opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1)",
+    transition: "opacity .9s var(--kurve-fein), transform .9s var(--kurve-fein)",
   });
 
   return (

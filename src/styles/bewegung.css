@@ -1,0 +1,104 @@
+/**
+ * Teil B0 — das Bewegungs-Fundament. Drei Kurven, sonst keine.
+ *
+ * Es gibt im gesamten Frontend genau drei Easing-Kurven. Eine Bewegung, die
+ * eine vierte braucht, ist falsch entworfen — nicht zu wenig ausgestattet.
+ * Die Werte sind an neverland.agency gemessen, nicht geraten.
+ *
+ * **Warum eine eigene Datei und nicht `index.css`.** Dieses Modul soll später
+ * als Bibliothek nach Oroboros wandern können. Es hängt an nichts: keine
+ * Klasse, keine Komponente, kein Namensraum — nur Zahlen an der Wurzel.
+ *
+ * **Zwei Gesetze gelten für alles, was diese Werte benutzt, und werden nicht an
+ * jeder Stelle wiederholt:**
+ *
+ *   1. Bewegt werden nur `transform` und `opacity`. Kein `left`, kein `width`,
+ *      kein `filter`. (Bestehendes Gate aus X12.)
+ *   2. Bei „Bewegung reduzieren" fällt JEDE Choreografie auf eine 200-ms-Blende
+ *      zurück — nicht auf eine kürzere Choreografie.
+ *
+ * Die Durchsetzung von Gesetz 1 ist die Prüfstand-Kontrolle; die von Gesetz 2
+ * steht am Ende dieser Datei und gilt damit global.
+ */
+
+:root {
+  /* ————— Kurven — gemessen an neverland.agency ————— */
+
+  /** UI-Alltag: Knöpfe, Felder, alles, was nur bestätigen soll. */
+  --kurve-standard: cubic-bezier(.4, 0, .2, 1);
+  /** Cursor und kleine Dinge: schnell heraus, langer Auslauf. */
+  --kurve-fein: cubic-bezier(.22, .61, .36, 1);
+  /** Blätter, Szenen, Vorhang: schwer anfahrend, schwer haltend. */
+  --kurve-dramatisch: cubic-bezier(.77, 0, .175, 1);
+
+  /* ————— Dauern ————— */
+
+  /** Cursor-Größe, Farbe — unter der Wahrnehmungsschwelle für „Warten". */
+  --dauer-mikro: 200ms;
+  /** Wege, gap-Animationen. */
+  --dauer-hover: 600ms;
+  /** Tags, Karten einzeln. */
+  --dauer-block: 700ms;
+  /** Blattwende, Szenenwechsel. */
+  --dauer-szene: 1100ms;
+
+  /* ————— Staffelung ————— */
+
+  /** Wort für Wort. */
+  --staffel-wort: 100ms;
+  /** Zeichen für Zeichen — nur Schlagzeilen, nie Fließtext. */
+  --staffel-zeichen: 10ms;
+  /** Karten, Kacheln. */
+  --staffel-karte: 50ms;
+
+  /* ————— Nachziehen ————— */
+
+  /**
+   * Weiches Folgen je Bild: `wert += (ziel - wert) * lerp`.
+   *
+   * Keine CSS-Eigenschaft, sondern eine Zahl für JavaScript — sie steht
+   * trotzdem hier, weil sie zur selben Formel gehört. Wer sie ändert, ändert
+   * das Gewicht der ganzen Site, und das soll an EINER Stelle passieren.
+   */
+  --lerp: 0.077;
+}
+
+/*
+ * Gesetz 2, in zwei Schritten — global das Sichere, genau das Genaue.
+ *
+ * GLOBAL wird nur die DAUER gedeckelt. Alles andere hier zu erzwingen wäre
+ * gefährlich: ein `animation-name` auf `*` würde Elemente animieren, die nie
+ * eine Animation hatten. Mein erster Entwurf tat genau das.
+ *
+ * Die Choreografien selbst (Teil B1/B2) tragen die Kennzeichnung
+ * `[data-auftritt]`. Für sie — und nur für sie — wird die Bewegung durch eine
+ * reine Blende ERSETZT. Das ist die Zusage aus B0: keine kürzere Choreografie,
+ * sondern keine.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: var(--dauer-mikro) !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: var(--dauer-mikro) !important;
+    transition-delay: 0ms !important;
+  }
+
+  /*
+   * `!important`: eine Barrierefreiheits-Zusage, die eine spätere, spezifischere
+   * Regel versehentlich überschreiben kann, ist keine Zusage.
+   */
+  [data-auftritt],
+  [data-auftritt] * {
+    animation-name: bewegung-blende !important;
+    transform: none !important;
+  }
+}
+
+/** Die eine Ersatzbewegung. Sie verschiebt nichts. */
+@keyframes bewegung-blende {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

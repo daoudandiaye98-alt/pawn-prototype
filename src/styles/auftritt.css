@@ -1,0 +1,59 @@
+/**
+ * Teil B2 — das Auftritts-Gesetz.
+ *
+ * Eine Doppelseite kommt an, und dann läuft IMMER dieselbe Choreografie:
+ * Kicker, Schlagzeile wortweise, Zeilen gestaffelt, Bilder atmen ein. Sie steht
+ * hier als CSS und nicht in JavaScript, weil der Browser Animationen besser
+ * abspielt als jede Schleife, die wir schreiben könnten — JavaScript verteilt
+ * nur die Verzögerungen (`--verzug`) und setzt das Merkmal.
+ *
+ * Die Zahlen kommen ALLE aus `bewegung.css`. Hier steht keine einzige.
+ *
+ * Das Merkmal heißt `data-auftritt`, und darauf greift die
+ * „Bewegung reduzieren"-Regel in `bewegung.css`: dort wird die ganze
+ * Choreografie durch eine reine Blende ersetzt. Deshalb muss jedes Element
+ * dieser Datei das Merkmal tragen — nicht eine Klasse.
+ */
+
+/** Von unten herein. Der Alltag: Kicker, Wörter, Zeilen, Karten. */
+@keyframes auftritt-hebt {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+/**
+ * Bilder atmen ein, sie ploppen nicht.
+ *
+ * 1.06 und nicht 1.2: ein Bild, das sichtbar schrumpft, wirkt wie ein Zoom aus
+ * einer Diaschau. Sechs Prozent sieht man nicht als Bewegung, man spürt sie als
+ * Ankommen.
+ */
+@keyframes auftritt-atmet {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 1; transform: none; }
+}
+
+[data-auftritt="hebt"] {
+  animation: auftritt-hebt var(--dauer-block) var(--kurve-standard) var(--verzug, 0ms) both;
+}
+
+/*
+ * Zeilen und Karten laufen schneller aus als der Kicker: sie sind viele, und
+ * viele lange Bewegungen nebeneinander werden zu Brei. `--kurve-fein` ist die
+ * Kurve für kleine Dinge — schnell los, weich an.
+ */
+[data-auftritt="hebt"][data-auftritt-teil] {
+  animation-duration: var(--dauer-hover);
+  animation-timing-function: var(--kurve-fein);
+}
+
+[data-auftritt="atmet"] {
+  animation: auftritt-atmet var(--dauer-szene) var(--kurve-dramatisch) var(--verzug, 0ms) both;
+}
+
+/*
+ * Ein Bild bewegt sich nur, wenn es sich innerhalb seines Rahmens bewegen darf.
+ * Ohne diese Zeile ragt die 6-%-Vergrößerung über die Blattkante hinaus — und
+ * das wäre ein Anschnitt, den der Prüfstand zu Recht meldet (3.8).
+ */
+[data-auftritt-rahmen] { overflow: hidden; }
