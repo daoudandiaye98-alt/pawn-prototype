@@ -476,6 +476,22 @@
 }
 .hx-marke-band:hover,
 .hx-marke-band:focus-visible { transform: translateX(0); }
+/*
+ * Fokus = Invertierung (Designgesetz), nicht nur das Einfahren.
+ *
+ * Gemessen (Lauf 76, Kontrolle 3.4): am Telefon ist das Band schon
+ * eingefahren — der einzige Fokus-Hinweis, die Bewegung, entfällt dort, und
+ * der Tastaturfokus war unsichtbar. Die Umkehrung gilt an jeder Breite; ein
+ * voller Korb (schon umgekehrt) kehrt sich zurück.
+ */
+.hx-marke-band:focus-visible {
+  background: var(--tinte);
+  color: var(--papier);
+}
+.hx-marke-band[data-voll]:focus-visible {
+  background: var(--papier);
+  color: var(--tinte);
+}
 /* Ein gefüllter Korb kehrt sich um — er fährt aber nicht aus, sonst läge er
    über dem Papier (derselbe Fehler wie beim Reiter). */
 .hx-marke-band[data-voll] {
@@ -589,6 +605,17 @@
   background: var(--tinte);
   color: var(--papier);
 }
+/* Fokus = Invertierung — dieselbe Messung wie bei den Marken (Lauf 76, 3.4):
+   am Telefon ist der Reiter schon ausgefahren, die Bewegung zeigt dort nichts.
+   Der aktuelle Reiter ist bereits umgekehrt und kehrt sich zurück. */
+.hx-reiter:focus-visible {
+  background: var(--tinte);
+  color: var(--papier);
+}
+.hx-reiter[data-hier]:focus-visible {
+  background: var(--papier);
+  color: var(--tinte);
+}
 /* Genau so breit wie der sichtbare Streifen, abzüglich der Randlinie darin. */
 .hx-reiter-zahl {
   flex: 0 0 calc(var(--reiter-breite) - 1.5px);
@@ -644,12 +671,14 @@
 /* ————————————————— Die Kompositionsfläche ————————————————— */
 
 /* Historischer Name aus dem zweiten Weg des Wendels — heute das EINE Layout
-   der Szene: zwei Spalten breit, gestapelt schmal. */
-.hx-folge-seite {
-  /* Eine Doppelseite je Abschnitt, untereinander. Kein 3D, kein fixes
-     Element, nichts, was im Weg stünde. */
-  padding: clamp(0.75rem, 2.5vw, 2rem);
-}
+   der Szene: zwei Spalten breit, gestapelt schmal.
+
+   Hier stand ein eigenes Polster auf `.hx-folge-seite`. Es ist weg, und das
+   ist kein Aufräumen, sondern ein gemessener Fehler (Lauf 76 / lokal, 3.8):
+   die Szene trägt BEIDE Klassen, und die Kurzform `padding` hier — später in
+   der Datei — setzte alle vier Seiten des Szenen-Polsters zurück, samt der
+   Reserve für Register, Marken und Einwilligungsleiste. Der Satz lief unter
+   die Reiter. Das Polster gehört `.hx-szene`, an einer Stelle. */
 .hx-folge-paar {
   position: relative;
   display: grid;
@@ -708,7 +737,15 @@
    * Rand ist ein Aushang.
    */
   .hx-wurzel { --rand: 0.7rem; }
-  .hx-szene { padding: 0.4rem; }
+  /* Vier Einzelwerte, keine Kurzform: die Kurzform hatte hier die Reserve für
+     Register, Marken und Einwilligungsleiste zurückgesetzt (Lauf 76, 3.8) —
+     genau in der Lage, in der die Streifen 44 px breit sind. */
+  .hx-szene {
+    padding: 0.4rem;
+    padding-right: calc(0.4rem + var(--reiter-breite));
+    padding-left: calc(0.4rem + var(--marken-breite));
+    padding-bottom: calc(0.4rem + var(--pawn-einwilligung, 0px));
+  }
 }
 
 /* ————————————————— Das Verzeichnis (X6) ————————————————— */

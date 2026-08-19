@@ -395,9 +395,27 @@ const MESSE_LAYOUT = `(() => {
     if (ausgeparkt(r)) { ausgeparkteAnzahl++; continue; }
     if (r.right > feld + 1) schuldige.push({ auswahl: wegSelektor(el), rechts: Math.round(r.right) });
     if (r.right > feld + 1 || r.left < -1) {
+      /*
+       * Erklärt ist ein Überstand, wenn ein Vorfahr seinen waagerechten
+       * Überlauf REGELT — rollbar (auto/scroll) oder beschneidend
+       * (hidden/clip). In beiden Fällen kann dort nichts sichtbar aus dem
+       * Sichtfeld ragen: entweder erreicht man es durch Rollen, oder die
+       * Schere des Vorfahren schneidet es ab, bevor der Fensterrand es
+       * könnte. Der Vorfahr selbst bleibt gemessen — ragt SEIN Kasten
+       * hinaus, fällt er.
+       *
+       * Gemessen (Lauf 76): die eingefahrenen Marken — Schubladen, die
+       * .hx-marken seit Z4 beschneidet — fielen als Anschnitt, während das
+       * gleich gebaute Griffregister durch sein overflow-y: auto
+       * entschuldigt war. Zwei gleich unsichtbare Zustände, zwei Urteile —
+       * das war ein Fehler des Messgeräts, nicht der Seite.
+       *
+       * (Dieser Block lebt in einem Template-Literal — deshalb hier keine
+       * Backticks.)
+       */
       let erklaert = false;
       for (let k = el.parentElement; k; k = k.parentElement) {
-        if (/(auto|scroll)/.test(getComputedStyle(k).overflowX)) { erklaert = true; break; }
+        if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(k).overflowX)) { erklaert = true; break; }
       }
       if (!erklaert) anschnitte.push({ auswahl: wegSelektor(el), links: Math.round(r.left), rechts: Math.round(r.right) });
     }
