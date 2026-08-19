@@ -132,3 +132,42 @@ Behoben: verschwundene Gegenstände werden jetzt als solche benannt, mit der
 Frage an den Menschen, ob die Zusage an einem neuen Ort weitergilt oder
 absichtlich entfallen ist. **Rot bleibt es** — eine Zusage, deren Gegenstand
 verschwindet, geht nie stillschweigend durch.
+
+### Nachtrag zu Phase B — die Wache schlug an rechtmäßigem Code an
+
+Beim Pushen des Phase-B-Commits blockierte `wache.sh` **mich selbst**. Der Push
+ging auf den Arbeitszweig; das Wort `main` stand nur in einer Diagnose-Ausgabe
+(`origin/main`) desselben Befehls. Die erste Fassung durchsuchte den ganzen
+Befehlsstring nach dem Wort — nicht das Ziel des Pushes.
+
+Beim Reparieren blockierte sie dreimal weiter: das Bearbeiten ihrer selbst, die
+Testliste und die Protokoll-Tabelle — jedes Mal, weil die Muster dort als
+**Daten** vorkommen.
+
+**Nicht aufgeweicht, sondern enger gefasst.** Betrachtet wird jetzt nur der
+`git push`-Abschnitt bis zum nächsten Trenner, und darin nur das **Ziel** des
+Refspec.
+
+Vorgeführt, 20 von 20 richtig:
+
+| Muss blocken | Exit | Darf durch | Exit |
+|---|---|---|---|
+| `git push --force origin main` | 2 | `git push --force-with-lease origin HEAD:claude/…` | 0 |
+| `git push -f origin main` | 2 | `git rev-parse origin/main; git push --force-with-lease origin HEAD:claude/…` | 0 |
+| `git push --force-with-lease origin HEAD:main` | 2 | `echo origin/main && git push -f origin claude/…` | 0 |
+| `git push --force origin +main` | 2 | `git push -u origin claude/mein-zweig` | 0 |
+| `git push --force origin refs/heads/main` | 2 | `git push origin main` (ohne force) | 0 |
+| `git push -f origin master` | 2 | `git log origin/main --oneline` | 0 |
+| `npm test && git push --force origin main` | 2 | `rm /tmp/scratch.log` | 0 |
+| `rm -rf src/pages` | 2 | `git status` | 0 |
+| `rm supabase/migrations/x.sql` | 2 | `npm run build` | 0 |
+| `rm vercel.json` | 2 | | |
+| `supabase db reset` | 2 | | |
+
+Die drei rechten Einträge der ersten drei Zeilen sind genau die Fälle, die die
+alte Fassung falsch blockiert hat.
+
+**Bauart-Grenze, jetzt im Kopf der Datei dokumentiert:** alle vier Wachen prüfen
+flachen Text. Ein Befehl, der ein Muster nur als Daten trägt, schlägt trotzdem
+an. Das ist die sichere Richtung — lieber einmal zu viel fragen. Sauber lösen
+hieße, die Shell zu parsen; dafür ist der Preis zu hoch.

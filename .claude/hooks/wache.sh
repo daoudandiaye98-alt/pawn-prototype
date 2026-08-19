@@ -12,6 +12,21 @@
 # PAWN ist live und nimmt echte Stripe-Zahlungen. Jeder dieser Befehle ist
 # unumkehrbar teuer.
 #
+# BAUART-GRENZE, gemessen am 2026-08-19 und hier festgehalten, damit sie
+# niemanden mehr ueberrascht:
+#
+# Alle vier Wachen pruefen `tool_input.command` als FLACHEN TEXT. Ein Befehl,
+# der ein gefaehrliches Muster nur als DATEN traegt — in einem Heredoc, einer
+# Testliste, einem Kommentar — schlaegt trotzdem an. Beim Vorfuehren und
+# Protokollieren dieser Wachen ist das VIERMAL hintereinander passiert; die
+# Testfaelle mussten aus Wortteilen zusammengesetzt werden, um ueberhaupt
+# ausgefuehrt werden zu koennen.
+#
+# Das ist die SICHERE Richtung: lieber einmal zu viel fragen als einen echten
+# Zugriff durchlassen. Sauber loesen hiesse, die Shell zu parsen — dafuer ist
+# der Preis zu hoch. Wer hier arbeitet, umgeht die Wache NICHT, sondern stellt
+# den Befehl eindeutig oder legt die Daten in eine Datei.
+
 # Exit 2 blockiert den Werkzeugaufruf; der Grund gehoert auf stderr und wird
 # Claude gezeigt. Exit 1 wuerde NICHTS blockieren und nur protokolliert werden —
 # das ist die haeufigste Falle bei Hooks. Hier steht deshalb ueberall 2.
@@ -40,10 +55,45 @@ if echo "$BEFEHL" | grep -qE '\brm\b[^|;&]*-[a-zA-Z]*[rR][a-zA-Z]*f|\brm\b[^|;&]
 fi
 
 # 2 — erzwungener Push auf den Hauptzweig
-if echo "$BEFEHL" | grep -qE '\bgit\b.*\bpush\b' && echo "$BEFEHL" | grep -qE '(--force|--force-with-lease|[[:space:]]-f\b)'; then
-  if echo "$BEFEHL" | grep -qE '\b(main|master)\b'; then
-    verweigere "erzwungener Push auf den Hauptzweig" \
-      "main traegt die veroeffentlichte Seite: Lovable synct von dort, Vercel spiegelt auf pawn.vision. Ein erzwungener Push dort verliert Geschichte, die live ist."
+#
+# ZWEI FEHLALARME BEHOBEN am 2026-08-19, beide an dieser Wache selbst gemessen.
+#
+# (a) Die erste Fassung durchsuchte den GANZEN Befehlsstring nach dem Wort
+#     "main". Damit blockierte sie einen voellig rechtmaessigen Push auf einen
+#     ARBEITSZWEIG, nur weil in einer Diagnose-Ausgabe "origin/main" vorkam.
+#
+# (b) Sie blockierte ausserdem jeden Befehl, der diese Muster nur als DATEN
+#     traegt — etwa das Bearbeiten dieser Datei hier.
+#
+# Eine Pruefung, die an rechtmaessigem Code rot wird, ist schlimmer als keine:
+# sie lehrt, Rot zu uebersehen (.claude/rules/00-gesetze.md). Die Antwort ist
+# ENGER schreiben, nie schwaecher.
+#
+# Jetzt wird nur der git-push-Abschnitt betrachtet — bis zum naechsten Trenner —
+# und darin nur das ZIEL des Refspec, nicht jedes Wort irgendwo im Befehl.
+#
+# BEKANNTE GRENZE: ein Befehl, der eine echte Zeile mit --force als Daten in einem
+# Heredoc traegt, kann weiterhin anschlagen. Das ist die sichere Richtung —
+# lieber einmal zu viel fragen als einen echten Push durchlassen.
+if echo "$BEFEHL" | grep -qE '\bgit\b[^;&|]*\bpush\b'; then
+  ABSCHNITT=$(echo "$BEFEHL" | tr ';&|' '\n\n\n' | grep -E '\bgit\b.*\bpush\b' | head -1)
+
+  if echo "$ABSCHNITT" | grep -qE '(--force([^-]|$)|--force-with-lease|[[:space:]]-f([[:space:]]|$))'; then
+    # Ziel eines Refspec: das Stueck nach einem ':' oder ein blankes Ref.
+    # Faengt "origin main", "HEAD:main", "+main", "refs/heads/main".
+    ZIEL_IST_HAUPT=0
+    echo "$ABSCHNITT" | grep -qE '(:|[[:space:]]\+?)(refs/heads/)?(main|master)([[:space:]]|$)' && ZIEL_IST_HAUPT=1
+
+    # Kein Ziel angegeben? Dann geht es auf den AKTUELLEN Zweig.
+    if ! echo "$ABSCHNITT" | grep -qE '[[:space:]](origin|upstream)[[:space:]]+[^[:space:]]|:'; then
+      AKTUELL=$(git branch --show-current 2>/dev/null || echo "")
+      case "$AKTUELL" in main|master) ZIEL_IST_HAUPT=1 ;; esac
+    fi
+
+    if [ "$ZIEL_IST_HAUPT" -eq 1 ]; then
+      verweigere "erzwungener Push auf den Hauptzweig" \
+        "main traegt die veroeffentlichte Seite: Lovable synct von dort, Vercel spiegelt auf pawn.vision. Ein erzwungener Push dort verliert Geschichte, die live ist."
+    fi
   fi
 fi
 
