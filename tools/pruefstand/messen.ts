@@ -641,12 +641,25 @@ export async function messeTrefferflaechen(
          * display des Elements, flex-basis des ersten Kindes, die aufgelöste
          * Streifen-Variable und den Media-Query-Stand.
          */
-        const kind = el.firstElementChild;
-        const wurzel = document.querySelector(".hx-wurzel");
-        const diag = " {" + cs.display
-          + "; basis " + (kind ? getComputedStyle(kind).flexBasis : "kein Kind")
-          + "; reiter-var " + (wurzel ? (getComputedStyle(wurzel).getPropertyValue("--reiter-breite") || "leer") : "keine Wurzel")
-          + "; mq " + (matchMedia("(max-width: 819.98px), (max-height: 599.98px)").matches ? "ja" : "nein")
+        /*
+         * Runde 2: die Computed Styles waren korrekt (flex, basis 42.5px,
+         * var 44px), aber das Rect maß die HALBE Breite bei voller Höhe —
+         * die Signatur einer Projektion. offsetWidth ignoriert Transforms;
+         * dazu der erste Vorfahr, der eine trägt.
+         */
+        const eigen = el as HTMLElement;
+        let verdreht = "kein Transform";
+        for (let k: HTMLElement | null = eigen; k; k = k.parentElement) {
+          const t = getComputedStyle(k).transform;
+          if (t && t !== "none") {
+            verdreht = k.tagName.toLowerCase()
+              + (k.className && typeof k.className === "string" ? "." + k.className.trim().split(/\s+/).slice(0, 2).join(".") : "")
+              + " → " + t.slice(0, 60);
+            break;
+          }
+        }
+        const diag = " {layout " + eigen.offsetWidth + "×" + eigen.offsetHeight
+          + "; " + verdreht
           + "; vw " + document.documentElement.clientWidth + "}";
         treffer.push({
           auswahl: el.tagName.toLowerCase() + " „" + ((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24) + "“" + diag,
