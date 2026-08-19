@@ -27,3 +27,9 @@ tsconfig.node.tsbuildinfo
 
 # Teil P — Messartefakte des Prüfstands sind Ergebnisse, kein Quellcode.
 tools/pruefstand/artefakte/
+
+# Turm v2 — Messartefakte des Harness sind Ergebnisse, kein Quellcode.
+# Die Aufnahmen aus sicht.sh entstehen bei jedem Lauf neu; der Befund gehört in
+# den PR-Kommentar, nicht als Binaerdatei in die Geschichte.
+.claude/sicht/
+.claude/hook-lauf.log

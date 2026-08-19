@@ -1,0 +1,79 @@
+{
+  "hinweis": "Die harten Zusagen. Jede Zeile ist ein Mangel, den ein Mensch nach einem Merge gefunden hat. Neue Zeile nur zusammen mit einer echten Kontrolle in scripts/verify/regressionen.mjs — eine Zusage ohne Pruefung ist eine Karteileiche. Siehe .claude/rules/00-gesetze.md.",
+  "zusagen": [
+    {
+      "id": "Z1",
+      "zusage": "Jeder Menuepunkt ist erreichbar — kein Navigationsziel endet auf der 404.",
+      "beleg": "cb89bbf (die 404-Ersatzseite wurde der angeforderten Adresse zugeschrieben); PR #179 arbeitet weiter an der echten 404",
+      "pruefung": "wege",
+      "params": {
+        "routen": "src/App.tsx",
+        "navigation": [
+          "src/components/palace/PalaceHeader.tsx",
+          "src/components/pawn/StudioShell.tsx",
+          "src/components/pawn/AdminShell.tsx",
+          "src/components/pawn/PortalShell.tsx",
+          "src/components/pawn/PublicHeader.tsx"
+        ]
+      }
+    },
+    {
+      "id": "Z2",
+      "zusage": "Kein Plan zeigt ein schwarzes Loch — jede Beispielflaeche faellt am Ende auf das hinterlegte Plan-Bild zurueck.",
+      "beleg": "cf21692 (Maison-Bild von kaputten Beispielen verdeckt), 878836d (Plan-Bilder fuellen die Beispielflaeche), 00e8637 (Beispiele nur mit ausdruecklicher Freigabe)",
+      "pruefung": "planPlatzhalter",
+      "params": {
+        "datei": "src/pages/studio/StudioPlan.tsx",
+        "plaene": ["haus", "atelier", "maison"],
+        "bilder": [
+          "src/assets/teil-o/plan-haus.webp",
+          "src/assets/teil-o/plan-atelier.webp",
+          "src/assets/teil-o/plan-maison.webp"
+        ]
+      }
+    },
+    {
+      "id": "Z3",
+      "zusage": "Jeder deutsche Sprachschluessel hat eine englische Entsprechung — und die Typ-Fessel, die das erzwingt, bleibt stehen.",
+      "beleg": "66acaf8 („Kunst“ hiess auf Englisch „Type“ statt „Art“), a0f597d (Sprachgesetz durchsetzen)",
+      "pruefung": "sprachschluessel",
+      "params": {
+        "datei": "src/lib/i18n.tsx",
+        "fessel": "const en: Record<keyof typeof de, string>"
+      }
+    },
+    {
+      "id": "Z4",
+      "zusage": "Kein Upload nach designer-media speichert eine Adresse mit Ablaufdatum — Werkbilder laufen nie ab.",
+      "beleg": "61e0204 (rehost() und drei Upload-Stellen speicherten signierte Adressen mit 365 Tagen; alle Bilder waeren nach einem Jahr gebrochen)",
+      "pruefung": "keineAblaufendenAdressen",
+      "params": {
+        "eimer": "designer-media",
+        "orte": ["src", "supabase/functions"],
+        "begruendung": "Eng auf designer-media begrenzt. mediathek, campaign-assets, taste-uploads und model-pool bleiben absichtlich privat und signiert — siehe 61e0204: „mediathek bleibt bewusst privat“."
+      }
+    },
+    {
+      "id": "Z5",
+      "zusage": "Auf der Werkseite wird kein Werk beschnitten — der Rahmen traegt das natuerliche Verhaeltnis des Werks.",
+      "beleg": "f76a994 Teil T2 („Das Werk bestimmt seinen Rahmen“ — vorher object-cover, das bei Kunst und Interior das Werk zerschneidet)",
+      "pruefung": "werkNichtBeschnitten",
+      "params": {
+        "datei": "src/pages/ProductDetail.tsx",
+        "marker": ["werk-rein", "werk-raus"],
+        "verlangt": "object-contain",
+        "verboten": "object-cover"
+      }
+    },
+    {
+      "id": "Z6",
+      "zusage": "Der Preisfilter steht beim Oeffnen auf der vollen Spanne — er blendet nie Bestand aus, den niemand ausgeblendet hat.",
+      "beleg": "7f3155e (der einzelne „bis“-Regler konnte mit seinem Anfangswert Bestand ausblenden)",
+      "pruefung": "preisfilterVoll",
+      "params": {
+        "datei": "src/pages/Shop.tsx",
+        "zustand": "preisSpanne"
+      }
+    }
+  ]
+}
