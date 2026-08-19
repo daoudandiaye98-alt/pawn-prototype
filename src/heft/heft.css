@@ -520,7 +520,9 @@
  * Kante und das Wort beginnt dahinter, außerhalb des Bildes.
  */
 .hx-marke-kurz {
-  flex: 0 0 calc(var(--marken-breite) - 1.5px);
+  /* `width` statt `flex-basis: calc(var(...))` — siehe `.hx-reiter-zahl`. */
+  flex: 0 0 auto;
+  width: calc(var(--marken-breite) - 1.5px);
   text-align: center;
   letter-spacing: 0;
 }
@@ -631,9 +633,26 @@
   background: var(--papier);
   color: var(--tinte);
 }
-/* Genau so breit wie der sichtbare Streifen, abzüglich der Randlinie darin. */
+/*
+ * Genau so breit wie der sichtbare Streifen, abzüglich der Randlinie darin.
+ *
+ * `width` und `flex: 0 0 auto` — NICHT `flex-basis: calc(var(...))`.
+ *
+ * Gemessen (Läufe 76-79): auf dem Prüfstand-Browser (Chromium 131) war der
+ * eingefahrene Reiter 29 px statt 58 px breit und die Marke 7 px statt 44 px.
+ * Die Sonde hat es eingekreist: kein Transform, keine falsche Variable —
+ * `getComputedStyle` meldete brav 42,5 px, die Layoutbreite war trotzdem die
+ * des Inhalts („01" plus Polster). Dieses Chromium wertet ein `calc()` mit
+ * eigener Eigenschaft in `flex-basis` beim Layout als `auto` aus.
+ *
+ * Das ist kein Messfehler, den man beim Messgerät lässt: wer mit einem
+ * älteren Browser kommt, SIEHT diesen zusammengefallenen Streifen — und der
+ * Griff wäre dort unter der 44-px-Regel. Über `width` gesetzt gilt dieselbe
+ * Zahl überall.
+ */
 .hx-reiter-zahl {
-  flex: 0 0 calc(var(--reiter-breite) - 1.5px);
+  flex: 0 0 auto;
+  width: calc(var(--reiter-breite) - 1.5px);
   text-align: center;
   font-variant-numeric: tabular-nums;
   opacity: 0.6;
