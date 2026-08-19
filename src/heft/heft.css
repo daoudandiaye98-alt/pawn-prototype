@@ -504,9 +504,8 @@
   text-transform: uppercase;
   text-decoration: none;
   white-space: nowrap;
-  /* Nur transform wird bewegt (X12). */
+  /* Nur transform wird bewegt (X12). Zeit und Kurve: Teil B5, weiter unten. */
   transform: translateX(calc(-100% + var(--marken-breite)));
-  transition: transform 180ms ease;
 }
 .hx-marke-band:hover,
 .hx-marke-band:focus-visible { transform: translateX(0); }
@@ -633,7 +632,6 @@
   white-space: nowrap;
   /* Nur transform wird bewegt. Die Breite bleibt, wie sie ist. */
   transform: translateX(calc(100% - var(--reiter-breite)));
-  transition: transform 180ms ease;
 }
 .hx-reiter:hover,
 .hx-reiter:focus-visible { transform: translateX(0); }
@@ -1369,7 +1367,7 @@
 }
 .hx-cover-wort svg {
   transform-origin: 50% 86%;
-  animation: hx-atem 5.5s ease-in-out infinite;
+  animation: hx-atem 5.5s var(--kurve-standard) infinite;
 }
 
 /* Drei Zeilen Haltung, unten am Satz. `margin-top: auto` schlägt das
@@ -1428,11 +1426,58 @@
   .hx-cover-wort svg { animation: none; }
 }
 
-/* Der Pfeil am Weg — der Abstand wächst beim Zeigen (Teil Ω). */
+/* ————————————————— Wege und Marken (Teil B5) ————————————————— */
+
+/*
+ * Der Abstand am Weg wächst beim Zeigen von 14 auf 24 px.
+ *
+ * B5 schreibt „gap 14 -> 24 px". Bewegt wird hier trotzdem `transform`, nicht
+ * `gap` — und das ist kein Ungehorsam, sondern das ältere der beiden Gesetze:
+ * animiert werden nur `transform` und `opacity`. Ein wachsender `gap` ist eine
+ * Layout-Animation; sie zwingt den Browser in jedem Bild zu einer neuen
+ * Zeilenrechnung. Sichtbar ist das Ergebnis dasselbe: der Pfeil rückt um
+ * 10 px ab, der Abstand IST damit 24 px.
+ */
 .hx-pfad { gap: 14px; }
-.hx-pfad-pfeil { transition: transform 180ms ease; }
+.hx-pfad-pfeil { transition: transform var(--dauer-hover) var(--kurve-standard); }
 .hx-pfad:hover .hx-pfad-pfeil,
 .hx-pfad:focus-visible .hx-pfad-pfeil { transform: translateX(10px); }
-@media (prefers-reduced-motion: reduce) {
-  .hx-pfad-pfeil { transition: none; }
-}
+
+/*
+ * Marken und Reiter am Blattrand: sie fahren aus, und das ist ihre Bedienung —
+ * daran ändert B5 nichts. Aus den Tokens kommt jetzt nur die Zeit: die feine
+ * Kurve für kleine Dinge, in der kurzen Dauer.
+ */
+.hx-marke-band,
+.hx-reiter { transition: transform var(--dauer-mikro) var(--kurve-fein); }
+
+
+/* ————————————————— Wege und Marken (Teil B5) ————————————————— */
+
+/*
+ * Der Abstand am Weg wächst beim Zeigen von 14 auf 24 px.
+ *
+ * B5 schreibt „gap 14 -> 24 px". Bewegt wird hier trotzdem `transform`, nicht
+ * `gap` — und das ist kein Ungehorsam, sondern das ältere der beiden Gesetze:
+ * animiert werden nur `transform` und `opacity`. Ein wachsender `gap` ist eine
+ * Layout-Animation; sie zwingt den Browser in jedem Bild zu einer neuen
+ * Zeilenrechnung. Sichtbar ist das Ergebnis dasselbe: der Pfeil rückt um
+ * 10 px ab, der Abstand IST damit 24 px.
+ */
+.hx-pfad { gap: 14px; }
+.hx-pfad-pfeil { transition: transform var(--dauer-hover) var(--kurve-standard); }
+.hx-pfad:hover .hx-pfad-pfeil,
+.hx-pfad:focus-visible .hx-pfad-pfeil { transform: translateX(10px); }
+
+/*
+ * Marken und Reiter am Blattrand: sie fahren aus, und das ist ihre Bedienung —
+ * daran ändert B5 nichts. Aus den Tokens kommt jetzt nur die Zeit: die feine
+ * Kurve für kleine Dinge, in der kurzen Dauer.
+ */
+.hx-marke-band,
+.hx-reiter { transition: transform var(--dauer-mikro) var(--kurve-fein); }
+/*
+ * Hier stand das Z-Sandwich (Teil B4). Es ist gemessen zurückgenommen —
+ * die Begründung steht bei der Marke in `spreads/index.tsx`, damit sie dort
+ * liegt, wo jemand sie wieder bauen wollte.
+ */

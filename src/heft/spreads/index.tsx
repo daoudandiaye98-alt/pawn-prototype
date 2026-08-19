@@ -658,6 +658,23 @@ function CoverMarke({ lage }: { lage: "links" | "rechts" }) {
   return (
     <div className="hx-cover-marke" aria-hidden>
       <span className="hx-cover-band" data-lage={lage}>
+        {/*
+          Teil B4 — das Z-Sandwich ist ZURÜCKGENOMMEN, und zwar gemessen.
+
+          Gebaut waren drei Ebenen derselben Marke: Grund, ein vergrößerter
+          Bauer darüber, das „P" beschnitten darauf. Die Malreihenfolge stimmte
+          (Beweis durch Einfärben: über dem „P" gewann die vordere Ebene). Nur
+          traf sie nichts: die Silhouette des Bauern berührt die Buchstabenform
+          bei keiner Größe — der Schnitt seiner Fläche mit der Schrift war 0 px,
+          von 1,9 bis 2,9 unverändert. Zwischen „P" und „W" steht Weißraum, und
+          in den läuft der Bauer hinein, statt sich mit den Buchstaben zu
+          verschränken. Ohne Berührung gibt es keine Tiefe, nur eine größere
+          Figur an derselben Stelle.
+
+          Bezahlt hätte man dafür mit einem echten Befund: drei Kopien
+          desselben Wortes am selben Ort meldet der Prüfstand als überlappenden
+          Text (3.8, Anteil 1,0 auf allen Breiten) — und damit hat er recht.
+        */}
         <PawnWordmark className="hx-cover-wort" />
       </span>
     </div>
