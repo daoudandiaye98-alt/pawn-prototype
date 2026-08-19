@@ -14,7 +14,28 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const lies = (p) => readFileSync(join(WURZEL, p), "utf8");
+/**
+ * Liest eine Datei — und unterscheidet den Fall, dass sie GAR NICHT MEHR
+ * EXISTIERT, von einem inhaltlichen Bruch.
+ *
+ * Belegt am 2026-08-19: PR #181 loeschte Shop.tsx, ProductDetail.tsx und
+ * PalaceHeader.tsx. Die Kontrollen Z1, Z5 und Z6 stuerzten daraufhin mit
+ * "Kontrolle abgestuerzt: ENOENT" ab. Das ist die falsche Auskunft: ein
+ * Absturz sagt "die Pruefung ist kaputt", waehrend in Wahrheit der
+ * GEGENSTAND der Zusage verschwunden ist. Zwei sehr verschiedene Lagen, die
+ * sehr verschiedene Antworten verlangen.
+ *
+ * Rot bleibt es in beiden Faellen — eine Zusage, deren Gegenstand
+ * verschwindet, darf NIE stillschweigend durchgehen. Aber der Mensch muss am
+ * Text ablesen koennen, ob er reparieren oder entscheiden muss.
+ */
+class GegenstandWeg extends Error {
+  constructor(pfad) { super(pfad); this.pfad = pfad; this.gegenstandWeg = true; }
+}
+const lies = (p) => {
+  try { return readFileSync(join(WURZEL, p), "utf8"); }
+  catch (e) { if (e.code === "ENOENT") throw new GegenstandWeg(p); throw e; }
+};
 
 /** Alle Dateien unter einem Ordner, gefiltert nach Endung. */
 function dateien(ordner, endungen = [".ts", ".tsx"]) {
@@ -60,7 +81,9 @@ function wege({ routen, navigation }) {
 
   const tot = [];
   for (const datei of navigation) {
-    if (!existsSync(join(WURZEL, datei))) return nein(`Navigationsdatei fehlt: ${datei}`);
+    // Fehlt die Navigationsdatei, ist der Gegenstand weg, nicht die Zusage
+    // gebrochen — dieselbe Unterscheidung wie in lies().
+    if (!existsSync(join(WURZEL, datei))) throw new GegenstandWeg(datei);
     const text = lies(datei);
     const zeilen = text.split("\n");
     zeilen.forEach((zeile, i) => {
@@ -235,7 +258,20 @@ for (const z of zusagen) {
   if (!fn) ergebnis = nein(`keine Kontrolle namens „${z.pruefung}“ — die Zusage ist eine Karteileiche`);
   else {
     try { ergebnis = fn(z.params ?? {}); }
-    catch (e) { ergebnis = nein(`Kontrolle abgestuerzt: ${e.message}`); }
+    catch (e) {
+      if (e.gegenstandWeg) {
+        ergebnis = nein(
+          `GEGENSTAND VERSCHWUNDEN — ${e.pfad} existiert nicht mehr.\n` +
+          `      Diese Zusage ist nicht gebrochen, sie ist gegenstandslos geworden.\n` +
+          `      Ein Mensch muss entscheiden: gilt sie an einem neuen Ort weiter\n` +
+          `      (dann params in .claude/regressionen.json umbiegen), oder wurde das\n` +
+          `      Merkmal absichtlich entfernt (dann die Zusage mit Grund und Datum\n` +
+          `      streichen)? Bis dahin bleibt sie rot — eine Zusage, deren Gegenstand\n` +
+          `      verschwindet, geht nie stillschweigend durch.`);
+      } else {
+        ergebnis = nein(`Kontrolle abgestuerzt: ${e.message}`);
+      }
+    }
   }
   if (ergebnis.ok) { bestanden++; console.log(`  ✓ ${z.id} · ${z.zusage}`); }
   else {
