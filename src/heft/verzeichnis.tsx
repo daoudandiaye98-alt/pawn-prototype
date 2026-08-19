@@ -183,7 +183,7 @@ interface Zeile {
   product_dna: Record<string, unknown> | null;
   size_variants: unknown;
   allow_custom_requests: boolean | null;
-  designers: { id: string; slug: string; brand_name: string; kauf_freigeschaltet: boolean | null } | null;
+  designers: { id: string; slug: string; brand_name: string; verkaufsbereit: boolean | null } | null;
 }
 
 /** Die Größen eines Stücks — aus `size_variants`, ohne leere Einträge. */
@@ -206,13 +206,23 @@ export function useVerzeichnisWerke() {
         .from("products")
         .select(
           "id, slug, name, price, world, image_url, description, product_dna, size_variants,"
-          + " allow_custom_requests, designers ( id, slug, brand_name, kauf_freigeschaltet )",
+          + " allow_custom_requests, designers ( id, slug, brand_name, verkaufsbereit )",
         )
         .eq("status", "published")
         .order("created_at", { ascending: false })
         .limit(HOECHSTZAHL);
       if (abgebrochen) return;
       if (error) {
+        /*
+         * Der Satz für den Leser bleibt. Aber der Grund darf nicht mehr
+         * verschwinden: hier wurde `error` weggeworfen, und deshalb sah das
+         * Haus wie ein Leitungsproblem aus, während in Wahrheit eine Spalte
+         * falsch hieß (PostgREST 400, PostgreSQL 42703). Diagnostizierbar war
+         * das nur von außen, mit einer nachgestellten Anfrage.
+         *
+         * Ein Fehler, der niemandem etwas sagt, kostet mehr als er verschweigt.
+         */
+        console.error("[Verzeichnis] Abfrage gescheitert:", error.message, error.details ?? "");
         setFehler("Das Verzeichnis lässt sich gerade nicht laden. Die Stücke sind da, die Leitung nicht.");
         setLaedt(false);
         return;
@@ -231,9 +241,13 @@ export function useVerzeichnisWerke() {
               id: z.designers.id,
               slug: z.designers.slug,
               name: z.designers.brand_name,
-              /* Dieselbe Wahrheit wie auf der alten Werkseite: nur `false`
-                 sperrt. Fehlt die Spalte, wird nicht stillschweigend gesperrt. */
-              kannVerkaufen: z.designers.kauf_freigeschaltet !== false,
+              /* Nur `false` sperrt. Fehlt der Wert, wird nicht stillschweigend
+                 gesperrt.
+
+                 Die Spalte heißt `verkaufsbereit`. Hier stand
+                 `kauf_freigeschaltet` — eine Spalte, die es in der Datenbank
+                 nicht gibt; siehe die Fehlerbehandlung oben. */
+              kannVerkaufen: z.designers.verkaufsbereit !== false,
             }
             : null,
           beschreibung: z.description,

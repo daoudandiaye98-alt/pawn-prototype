@@ -109,7 +109,6 @@
    */
   padding-block: var(--szene-luft);
   padding-inline: max(var(--reiter-breite), var(--marken-breite));
-  padding-bottom: calc(var(--szene-luft) + var(--pawn-einwilligung, 0px));
 }
 .hx-szene[hidden] { display: none; }
 .hx-szene .hx-folge-paar { margin: auto; }
@@ -128,6 +127,17 @@
   display: grid;
   grid-template-rows: auto 1fr auto;
   padding: var(--rand);
+  /*
+   * Solange die Einwilligungsleiste steht, rückt der FUSS über sie — das Papier
+   * bleibt in voller Größe.
+   *
+   * Vorher nahm die Leiste sich Platz von der ganzen Bühne: das Füllungs-Gate
+   * fiel schon bei 1280 (88,4 % statt 92,3 %), und quer auf dem Telefon kostete
+   * sie ein Viertel des Hefts (72,1 % statt 95,9 %). Jetzt liegt sie auf dem
+   * unteren Blattrand — auf Papier, das ohnehin leer ist — und nur der eine Weg
+   * und das Folio weichen ihr aus. Verdeckt wird damit nichts, was man braucht.
+   */
+  padding-bottom: calc(var(--rand) + var(--pawn-einwilligung, 0px));
   box-sizing: border-box;
   font-family: Outfit, system-ui, sans-serif;
 }
@@ -733,7 +743,7 @@
    * Der Abzug in der Höhenrechnung ist gerechnet, nicht geschätzt: genau die
    * Luft der Szene plus die Einwilligungsleiste.
    */
-  width: min(100%, calc((100dvh - 2 * var(--szene-luft) - var(--pawn-einwilligung, 0px)) * 1.44));
+  width: min(100%, calc((100dvh - 2 * var(--szene-luft)) * 1.44));
   background: var(--papier);
   color: var(--tinte);
   box-shadow: 0 24px 48px -28px rgba(20, 18, 14, 0.4);
@@ -816,7 +826,6 @@
     padding: 0.4rem;
     padding-right: calc(0.4rem + var(--reiter-breite));
     padding-left: calc(0.4rem + var(--marken-breite));
-    padding-bottom: calc(0.4rem + var(--pawn-einwilligung, 0px));
   }
 }
 

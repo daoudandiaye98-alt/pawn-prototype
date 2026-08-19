@@ -102,3 +102,24 @@ export function folios(nummer: number): { links: number | null; rechts: number |
   const links = 2 * nummer - 2;
   return links < 2 ? { links: null, rechts: null } : { links, rechts: links + 1 };
 }
+
+/**
+ * Gehört diese Adresse dem Heft?
+ *
+ * Eine kleine Wahrheit an einer Stelle, weil zwei sie brauchen: das Heft selbst
+ * und die Einwilligungsleiste, die nur auf dem Umschlag stehen soll. Die Liste
+ * spiegelt die Routen, die in `App.tsx` auf `HeftRoute` zeigen — geprüft von
+ * `src/__tests__/heft-adressen.spec.ts`, damit sie nicht auseinanderlaufen.
+ */
+const HEFT_SEKTIONEN = [
+  "/", "/inhalt", "/kuratierter-raum", "/drei-welten", "/mode", "/interior",
+  "/kunst", "/haeuser", "/deine-dna", "/frag-pawn", "/fuer-designer",
+] as const;
+
+const HEFT_PRAEFIXE = ["/verzeichnis/", "/werk/", "/haus/"] as const;
+
+export function istHeftAdresse(pfad: string): boolean {
+  const sauber = pfad.length > 1 ? pfad.replace(/\/+$/, "") : pfad;
+  return (HEFT_SEKTIONEN as readonly string[]).includes(sauber)
+    || HEFT_PRAEFIXE.some((v) => sauber.startsWith(v));
+}
