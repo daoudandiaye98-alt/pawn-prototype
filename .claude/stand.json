@@ -1,49 +1,40 @@
 {
-  "aktualisiert": "2026-08-18",
-  "branch": "claude/der-turm-v2-agent-harness-ibwwlw",
+  "aktualisiert": "2026-09-08",
+  "branch": "claude/pawn-vision-frontend-rollback-m6z4xl",
   "offene_prs": [
     {
-      "nr": 179,
-      "titel": "K7 — die echte 404, und die Sonde ist ersetzt",
-      "status": "Entwurf, offen, Basis main — fasst den Prüfstand an",
-      "blockiert_durch": "nichts — wartet auf Daoudas Durchsicht"
-    },
-    {
       "nr": 0,
-      "titel": "Turm v2 — der Agent Harness",
-      "status": "Entwurf, offen. Nur CLAUDE.md und .gitignore geändert, alles Übrige ist neu. Nichts gelöscht.",
+      "titel": "Rücknahme des Magazin-Formats — das Frontend von vor Teil M1 ist zurück",
+      "status": "Entwurf, offen, Basis main. src/ auf 4b7073d zurückgesetzt; sechs Nicht-Magazin-Reparaturen bewusst behalten.",
       "blockiert_durch": "wartet auf Daoudas Durchsicht"
     }
   ],
   "merge_reihenfolge": [
-    "179 zuerst — er sitzt auf ec53fac und ändert den Prüfstand, auf den sicht.sh aufsetzt",
-    "danach der Turm-v2-Zweig. Umgekehrt gäbe es einen Konflikt in tools/pruefstand/"
+    "Dieser Zweig zuerst und allein — er fasst src/ als Ganzes an. Jeder andere offene Zweig auf src/ bekommt sonst einen Konflikt, der Datei für Datei aufgelöst werden muss.",
+    "PR #179 (K7) und der Turm-v2-Zweig sind mit 0f8834b bereits in main; ihre Punkte aus der alten Merge-Reihenfolge sind erledigt."
   ],
   "wartet_auf_mensch": [
-    "RUECKKANAL TOT — Daouda, das ist der wichtigste Punkt. Diese Sitzung erreicht api.github.com nicht: JEDE Anfrage endet mit derselben 403 vom Anthropic-Vermittler, sogar api.github.com/zen, das GitHub ohne jede Anmeldung mit 200 beantwortet. Es ist KEIN GitHub-Problem und KEINE Frage von App-Berechtigungen. So behebst du es auf dem iPad: 1) claude.ai/code oeffnen und mit deinem Anthropic-Konto anmelden. 2) Die Aufforderung 'connect GitHub' befolgen und die Claude-GitHub-App neu autorisieren. 3) Danach eine NEUE Sitzung in pawn-prototype starten — die laufende bekommt den Zugriff nicht zurueck. Alternative am Rechner mit Terminal: 'gh auth login', dann '/web-setup' in der Claude-Code-CLI. Beleg: docs sagen woertlich 'App installation enables PR webhooks for Auto-fix; it is not a session-level access control' — deshalb kommen weiter Webhook-Ereignisse an, waehrend die API sperrt.",
-    "FOLGE FUER DIE ROUTINEN: '/schedule checks for either form of access and prompts you to run /web-setup if neither is configured' (code.claude.com/docs/en/claude-code-on-the-web). Solange der Rueckkanal tot ist, laesst sich keine der zwei Routinen aus routinen/ scharf schalten. Erst Zugriff, dann Routinen.",
-    "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen; sie sind sonst alle aktiv und dürfen ohne Rückfrage schreiben.",
-    "Der Prüfstand ist auf JEDEM Zweig rot, auch auf main. 14x Kontrolle 4.7 (Seitengewicht über 3 MB, getrieben vom 2.421 kB grossen index.js) und 1x Kontrolle 4.5 (erfundene Adresse antwortet 200 statt 404 — daran arbeitet PR #179). Solange das so bleibt, lehrt der Check, Rot zu übersehen. Entweder das Bundle aufteilen oder die Schwelle in pruefstand.config.ts begründet anheben.",
-    "Ein 16. Gate flackert: Kontrolle 3.3 an der Wortmarke bei 844 px, gemessen 1.92 statt 3. Exakt der Wert, den PR #178 als behoben gemeldet hat. Derselbe Code lief einmal mit, einmal ohne diesen Befund — der harte Schnitt aus #178 deckt den Fall nicht ab, in dem die Marke über dem Kopfbild steht. Braucht MEHRFACHES Nachmessen, nicht einmaliges.",
-    "Der Arbeitsordner ist in Claude Code nicht als vertrauenswürdig bestätigt — die permissions.allow-Einträge aus .claude/settings.json werden deshalb ignoriert. Einmal interaktiv den Vertrauensdialog bestätigen.",
+    "DIE ENTSCHEIDUNG IST GEFALLEN: Das Magazin-Format ist zurückgenommen. src/ steht wieder auf dem Stand vom 16.08. vor 5d7e9da. Wer das Magazin je wiederhaben will, findet es vollständig in der Git-Geschichte zwischen 5d7e9da und 0f8834b — nichts davon ist verloren, es ist nur nicht mehr eingehängt.",
+    "BEWUSST BEHALTEN, weil sie nichts mit dem Magazin zu tun haben und zwei davon Geld betreffen: (1) der Warenkorb zeigt echte Produktfotos statt gezeichneter Silhouetten, (2) die Bestellbestätigung sieht wirklich in der Datenbank nach statt Erfolg zu behaupten, (3) der Korb hält echte Stücke — die Werkseite wurde dafür neu auf korb.ts gezogen, (4) der Cookie-Banner ist eine Leiste mit zwei gleichwertigen Knöpfen (DSGVO), (5) an 19 Stellen ist der Tastatur-Rahmen zurück, (6) die Route /wie-pawn-ki-nutzt, die vorher tot war.",
+    "NICHT ANGEFASST: supabase/functions (das Welt-Wissen der KI aus Q4b bleibt), .claude/, scripts/verify, tools/pruefstand, routinen/. Daouda hat das ausdrücklich so entschieden.",
+    "Der Prüfstand misst wieder Halle, Boutique, Werk, Haus und Ausgabe. Die alte Warnung 'Kontrolle 4.5 antwortet 200 statt 404' ist erledigt: vercel.json wird aus routen.js erzeugt und kennt 96 Adressen plus 404-Auffang.",
+    "OFFEN GEBLIEBEN: Kontrolle 4.7 (Seitengewicht). index.js liegt jetzt bei 2.930 kB — mehr als die 2.421 kB von damals, weil das Magazin sein eigenes Bündel hatte und alles wieder im Haupt-Bündel liegt. Solange die Schwelle bei 3 MB steht, lehrt der Prüfstand Rot zu übersehen. Entweder das Bündel aufteilen oder die Schwelle begründet anheben.",
+    "GELÖSCHT, weil sie auf gelöschte Dateien zeigte: src/__tests__/spalten-gibt-es.spec.ts (prüfte, dass das Verzeichnis nur Spalten abfragt, die es gibt — Y3.3). Der Gedanke ist gut und fehlt jetzt. Wer ihn zurückholen will, richtet ihn auf Shop.tsx und DesignerPage.tsx.",
     "Entscheidung am 2026-09-14: bleibt der Skill pawn-kontext? Er hat die Eval-Latte nicht genommen (+0,5 statt deutlich). Zahlen und Trigger-Tabelle in .claude/metrik.md.",
-    "Offen: soll Zusage Z4 weiter gefasst werden als nur designer-media? Heute deckt sie genau das, was 61e0204 versprochen hat — mediathek und campaign-assets bleiben absichtlich signiert."
+    "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen."
   ],
   "letzter_pruefstand": {
-    "datum": "2026-08-17",
-    "bestanden": 1115,
-    "gefallen": 16,
-    "quelle": "GitHub-Action gegen die Vercel-Vorschau. 14x Kontrolle 4.7 (Seitengewicht) und 1x 4.5 (404) bestehen auch auf PR #179 und main. Das 16. ist 3.3 an der Wortmarke bei 844px mit 1.92 — der Wert, den PR #178 als behoben gemeldet hat. Flackert. Gehoert nicht diesem PR."
+    "datum": "2026-09-08",
+    "ergebnis": "sicht.sh lokal: 16 von 16 Aufnahmen, angesehen. 24 Hüllen (kein Netz zur Datenbank in diesem Container) — echte Zahlen liefert nur die GitHub-Action gegen die Vercel-Vorschau."
   },
-  "naechster_zug": "Der Harness steht und ist vorgeführt. Der nächste echte Zug ist KEIN weiteres Werkzeug, sondern die erste Zahl: sobald ein Mensch nach einem Merge etwas findet, löst das Ritual aus .claude/rules/00-gesetze.md aus — Zeile in regressionen.json UND Kontrolle in scripts/verify/, einmal rot vorgeführt. Nach vier Wochen prüfen, ob die Nachfunde gegenüber der Grundlinie sinken (27 Fix-Commits in den letzten 200). Sinken sie nicht, misst das System das Falsche; dann liegt die Arbeit in regressionen.json, nicht in mehr Werkzeugen. Die drei Routinen aus v1 — Regressionsnacht, Deploy-Choreograf, Morgenbrief — bleiben ungebaut, bis diese zwei vier Wochen gelaufen sind.",
+  "naechster_zug": "Daouda sieht sich die Seite auf der Vercel-Vorschau an — vor allem einen echten Kauf: Werkseite → in den Korb → Korb → Kasse. Das ist der einzige Weg, den diese Sitzung nicht selbst beweisen konnte, und genau dort lag der Fehler, den Z7 jetzt festnagelt. Danach die offene Frage zum Seitengewicht (4.7) entscheiden: Bündel aufteilen oder Schwelle begründet anheben.",
   "nicht_pruefbar": [
-    "Der Prüfstand-Lauf auf 05671e8 ist rot, konnte aber NICHT gelesen werden: nach dem Fortsetzen der Sitzung war der GitHub-Zugriff weg (API antwortet 403, 'GitHub access is not enabled for this session'). Der Commit änderte nur .claude/metrik.md — keine Datei, die ins Bundle geht. Erwartet werden dieselben 15 bzw. 16 bekannten Gates. Wer es prüfen kann: ein Mensch im Actions-Reiter, oder eine Sitzung mit GitHub-Zugriff.",
-    "Gelernt: Git-Remote (push/fetch) bleibt nach einem Resume erreichbar, die GitHub-API nicht. Webhook-Ereignisse kommen trotzdem an — man SIEHT also, was am PR passiert, kann aber nicht antworten. Die Routine 02-pr-waechter braucht deshalb zwingend eine eigene, aktive GitHub-Verbindung.",
-    "Ab 2026-08-18 00:00 fielen in dieser Sitzung nacheinander aus: die github-MCP-Werkzeuge, die GitHub-API (403), das Edit-Werkzeug und zuletzt send_later. Damit endet die Beobachtung von PR #180 durch den Agenten — es kann kein neues Check-in gesetzt und nichts mehr am PR kommentiert werden. Zwei Kommentare bleiben ungeschrieben: zu den roten Laeufen auf 05671e8 und 57d30f6. Beide Commits aendern KEINE Datei, die ins Bundle geht (nur .claude/metrik.md bzw. .claude/hooks/tor.sh und stand.json); die gefallenen Gates gehoeren nicht diesem PR. Wer weitermacht: eine neue Sitzung mit GitHub-Zugriff, oder Daouda im Actions-Reiter."
+    "Die Seiten holen ihre Inhalte aus Supabase; dieser Container erreicht es nicht. Auf allen 16 Aufnahmen sind die Werkraster und Textspalten deshalb leer. Das ist ein Artefakt der Umgebung, KEIN Befund — aber es heißt auch: über Inhalte, Bilder und alles, was aus der Datenbank kommt, sagt dieser Lauf nichts. Das muss ein Mensch oder die GitHub-Action gegen die echte Vorschau prüfen.",
+    "Der Korb-Weg (Z7) ist statisch geprüft und durch Tests gedeckt, aber in dieser Sitzung nie mit einer echten Datenbank durchgeklickt worden. Ein Kauf von Hand — Werkseite, in den Korb, Kasse — ist der Beweis, der hier fehlt."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-08-18",
+    "datum": "2026-09-08",
     "bestanden": 3,
     "gefallen": 0
   },

@@ -29,27 +29,11 @@ export const ROUTEN = [
   "/mode",
   "/interior",
   "/kunst",
-  "/kuratierter-raum",
-  "/drei-welten",
-  "/haeuser",
-  "/deine-dna",
-  "/frag-pawn",
-  "/fuer-designer",
   "/neu",
   "/auth",
   "/dna",
   "/designers",
   "/ausgabe",
-  "/ausgabe/001",
-  "/ausgabe/001/:seite",
-  "/heft",
-  "/heft/:sektion",
-  "/inhalt",
-  "/verzeichnis",
-  "/verzeichnis/:seite",
-  "/werk/:slug",
-  "/haus/:slug",
-  "/haus/:slug/:blatt",
   "/vision",
   "/preise",
   "/preise/maison",
@@ -75,7 +59,6 @@ export const ROUTEN = [
   "/presse/:slug",
   "/cart",
   "/checkout",
-  "/kasse",
   "/order/success",
   "/account",
   "/admin",
@@ -149,7 +132,7 @@ export const ROUTEN = [
  * Schleife baut: `/index.html` trägt einen Punkt.
  */
 /**
- * X1 — die fünf Umzüge. Alte Adressen, die eine neue haben, antworten mit 301:
+ * Die Umzüge. Alte Adressen, die eine neue haben, antworten mit 301:
  * für den Menschen unsichtbar, für die Suchmaschine die Ansage, den Eintrag
  * umzuschreiben statt doppelt zu führen.
  *
@@ -163,14 +146,18 @@ export const ROUTEN = [
  * und gewinnt.
  */
 export const UMZUEGE = [
-  { von: "/shop", nach: "/verzeichnis/1" },
-  { von: "/product/:slug", nach: "/werk/:slug" },
-  { von: "/designer/:slug", nach: "/haus/:slug" },
-  { von: "/heft", nach: "/" },
-  /* Der Umschlag hieß `/heft/umschlag` — sein Ziel ist `/`, nicht `/umschlag`.
-     Die eigene Zeile VOR der Musterzeile, damit sie zuerst greift. */
-  { von: "/heft/umschlag", nach: "/" },
-  { von: "/heft/:sektion", nach: "/:sektion" },
+  /*
+   * Zurzeit leer, und das ist Absicht.
+   *
+   * Hier standen die Umzüge des Magazin-Umbaus (/shop → /verzeichnis/1,
+   * /product/:slug → /werk/:slug, /designer/:slug → /haus/:slug, /heft/*).
+   * Mit der Rücknahme des Magazins gibt es die Zieladressen nicht mehr — eine
+   * 301 auf eine tote Adresse ist schlimmer als gar keine. Die alten Adressen
+   * sind wieder die echten und stehen in ROUTEN.
+   *
+   * Die Mechanik bleibt: sobald es wieder einen echten Umzug gibt, genügt eine
+   * Zeile hier, und `tools/vercel-routen.mjs` schreibt die 301-Regel.
+   */
 ];
 
 export function istPlattformOderDatei(pfad) {
@@ -183,12 +170,12 @@ export function istPlattformOderDatei(pfad) {
  * Passt die Adresse auf eine echte Route?
  *
  * Ein `:name`-Abschnitt passt auf genau einen nicht-leeren Abschnitt. Mehr
- * Musterkunst braucht es nicht — im Heft gibt es keine verschachtelten
- * Platzhalter und kein `*` außer dem Auffang.
+ * Musterkunst braucht es nicht — es gibt keine verschachtelten Platzhalter
+ * und kein `*` außer dem Auffang.
  *
  * Ob es das Stück hinter `/werk/<slug>` wirklich gibt, weiß erst die Datenbank.
  * Das ist eine andere Frage als diese: hier geht es darum, ob die ADRESSE eine
- * Form hat, die das Heft kennt. Eine Form ohne Inhalt beantwortet die Seite
+ * Form hat, die die Seite kennt. Eine Form ohne Inhalt beantwortet die Seite
  * selbst — eine Form, die es nicht gibt, beantwortet der Server mit 404.
  */
 export function istBekannteRoute(pfad) {

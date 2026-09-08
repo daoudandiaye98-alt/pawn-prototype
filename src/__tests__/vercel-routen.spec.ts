@@ -56,32 +56,33 @@ describe("vercel.json", () => {
     expect(regel!.status, `${pfad} fiele in den 404-Auffang`).toBeUndefined();
   });
 
-  it.each(UMZUEGE.map((u: { von: string; nach: string }) => [u.von, u.nach]))(
-    "%s zieht mit 301 nach %s um", (von: string, nach: string) => {
-      /* „mode" als Beispielabschnitt, nicht ein Fantasiewort: beim
-         Sektions-Umzug ist das Ziel wörtlich (`/mode`), und nur ein echter
-         Sektionsname landet auf einer bekannten Adresse. `/heft/erfunden`
-         → `/erfunden` → 404 ist gewollt — ein Umzug adelt keine erfundene
-         Adresse. */
-      const pfad = von.replace(/:[^/]+/g, "mode");
-      const regel = ersteRegel(pfad);
-      expect(regel?.status, `${pfad} bekäme keinen 301`).toBe(301);
-      const ziel = (regel!.headers as Record<string, string>).Location
-        .replace(/\$\d+/g, "mode");
-      expect(ziel).toBe(nach.replace(/:[^/]+/g, "mode"));
-      // Ein Umzug in eine tote Adresse wäre eine 301 in die 404.
-      expect(istBekannteRoute(ziel), `${ziel} ist keine bekannte Adresse`).toBe(true);
+  /*
+   * Solange es keinen Umzug gibt, gibt es hier nichts zu prüfen — aber die
+   * Wache bleibt stehen. Wer eine Zeile in UMZUEGE schreibt, bekommt sie sofort
+   * geprüft, ohne diesen Test erst wieder erfinden zu müssen.
+   */
+  if (UMZUEGE.length > 0) {
+    it.each(UMZUEGE.map((u: { von: string; nach: string }) => [u.von, u.nach]))(
+      "%s zieht mit 301 nach %s um", (von: string, nach: string) => {
+        const pfad = von.replace(/:[^/]+/g, "mode");
+        const regel = ersteRegel(pfad);
+        expect(regel?.status, `${pfad} bekäme keinen 301`).toBe(301);
+        const ziel = (regel!.headers as Record<string, string>).Location
+          .replace(/\$\d+/g, "mode");
+        expect(ziel).toBe(nach.replace(/:[^/]+/g, "mode"));
+        // Ein Umzug in eine tote Adresse wäre eine 301 in die 404.
+        expect(istBekannteRoute(ziel), `${ziel} ist keine bekannte Adresse`).toBe(true);
+      });
+  } else {
+    it("führt zurzeit keine Umzüge — und schreibt darum auch keine 301", () => {
+      expect(erzeugt.routes.some((r: { status?: number }) => r.status === 301)).toBe(false);
     });
-
-  it("der Umschlag-Umzug greift vor der Sektions-Musterzeile", () => {
-    const regel = ersteRegel("/heft/umschlag");
-    expect((regel!.headers as Record<string, string>).Location).toBe("/");
-  });
+  }
 
   it.each([
     ["/diese-seite-gibt-es-nicht-4d9f21"],
     ["/mode/gibtesnicht"],
-    ["/werk/eins/zwei"],
+    ["/product/eins/zwei"],
     ["/studio/gibtesnicht"],
   ])("%s bekommt 404", (pfad: string) => {
     const regel = ersteRegel(pfad);
