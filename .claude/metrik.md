@@ -137,3 +137,50 @@ Fokus-Unterdrückung."
 **Die Lehre:** der Prüfer hat nicht die Aussage widerlegt, sondern über eine
 falsche Zahl einen echten Fehler gefunden. Ein Agent ist niemals sein eigener
 Prüfer — hier ist der belegte Fall dazu.
+
+---
+
+## 2026-09-08 · Der falsche grüne Haken
+
+PR #182 wurde um 21:04 gemerged. Der Check war grün. Der Lauf dahinter sagte:
+
+```
+Gates: 1 bestanden · 0 gefallen · 1103 nicht prüfbar
+```
+
+**Eine von 1104 Kontrollen war gemessen.** Auf dem Runner scheiterte die
+Namensauflösung zu Supabase, jede Seite war eine leere Hülle. Die Hüllen-Regel
+hat richtig gehandelt — sie wertete nichts. Nur sah „0 gefallen" von einem
+gemessenen Gate im Check genauso aus wie „0 gefallen" von 1104.
+
+**Das ist die teuerste Sorte Fehler in diesem Harness.** Der ganze Turm ist
+gegen falsches Grün gebaut: die Hüllen-Regel, das Zählen der NEUEN Aufnahmen in
+`sicht.sh`, die Ausnahmen mit Wecker. Alle fangen ihren Fall. Keiner fing
+diesen, weil das Urteil am Ende nur noch eine Zahl ansah — die gefallenen — und
+nie fragte, wie viele überhaupt betrachtet wurden.
+
+Behoben mit `tools/pruefstand/urteil.ts`: unterschreitet der messbare Anteil
+`MINDESTANTEIL_MESSBAR`, hat der Lauf **kein Urteil** und endet mit 1. Wache in
+`src/__tests__/kein-urteil.spec.ts`, geschrieben auf den echten Zahlen der Läufe
+91 und 92. Einmal rot vorgeführt, indem die Schwelle auf 0,0005 gesenkt wurde —
+also genau so weit, dass Lauf 92 wieder durchginge:
+
+```
+× Lauf 92 — der falsche grüne Haken, an dem das hier hängt
+× Lauf 91 war genauso blind — nur zufällig rot
+✓ (die übrigen fünf)
+Tests  2 failed | 5 passed (7)
+```
+
+### Nachfunde durch den Menschen: 0. Nachfunde durch die Maschine: 3.
+
+| Fund | Wer |
+|---|---|
+| Drei Fokus-Rahmen fielen beim Zurücksetzen mit heraus | Subagent `pruefer`, über eine falsche Zahl im Bericht |
+| Kontrolle 4.5 war seit Wochen ein falsches Rot — acht verworfene Fassungen, die letzte war richtig | Prüfstand-Lauf 91, plus der nie ausgeführte Test aus dem eigenen README |
+| Ein Lauf, der nichts gemessen hat, meldete grün | Prüfstand-Lauf 92 — gegen sich selbst |
+
+**Die Lehre aus allen dreien ist dieselbe:** jeder Fund kam daher, dass eine
+Zahl nicht zur Behauptung passte, und jemand nachgerechnet hat statt zu nicken.
+Zweimal war das Messgerät kaputt, nicht der Code. Ein Harness misst am Ende
+nicht nur das Produkt — er muss sich selbst messen.

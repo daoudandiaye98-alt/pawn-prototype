@@ -267,6 +267,33 @@ ist. Geblieben ist, was unabhängig davon trägt: `routen.js` als einzige Adress
 `tools/vercel-routen.mjs` als Erzeuger von `vercel.json` und zwei Wachen
 (`src/__tests__/routen.spec.ts`, `src/__tests__/vercel-routen.spec.ts`).
 
+## Kein Urteil ohne Messung (seit 08.09.2026)
+
+Lauf 92 auf PR #182 meldete **grün**:
+
+```
+Gates: 1 bestanden · 0 gefallen · 1103 nicht prüfbar
+```
+
+Auf dem Runner scheiterte die Namensauflösung zu Supabase; jede Seite war eine leere Hülle.
+Die Hüllen-Regel hat dabei richtig gehandelt — sie wertete nichts. Nur sah „0 gefallen" von
+EINEM gemessenen Gate im Check genauso aus wie „0 gefallen" von 1104. **Der PR wurde auf
+diesem grünen Haken gemerged.**
+
+Rot wird untersucht. Grün wird geglaubt. Ein Prüfstand, der grün meldet, ohne gemessen zu
+haben, ist deshalb schlimmer als einer, der rot meldet.
+
+Seitdem gilt: Unterschreitet der messbare Anteil `MINDESTANTEIL_MESSBAR` (heute 50 %), hat
+der Lauf **kein Urteil** — weder bestanden noch gefallen — und endet mit 1. Die Regel steht
+in `urteil.ts` (eigene Datei, damit ein Test sie ohne Browser importieren kann), die Schwelle
+in `pruefstand.config.ts`, die Wache in `src/__tests__/kein-urteil.spec.ts` — auf den echten
+Zahlen der Läufe 91 und 92, nicht auf erfundenen.
+
+Wer diesen Lauf grün haben will, behebt die Ursache. Meist erreicht der Runner die
+Datenschicht nicht; im Protokoll steht dann „HÜLLE" mit dem Grund je Anfrage. **Die Schwelle
+zu senken ist keine Behebung** — sie ist bewusst niedrig genug, dass einzelne Hüllen den Lauf
+nicht kippen, und fängt nur den Totalausfall.
+
 ## Dokumentierte Ausnahmen
 
 Eine Kontrolle darf auf REVIEW stehen und trotzdem ausgeliefert werden — aber nur als

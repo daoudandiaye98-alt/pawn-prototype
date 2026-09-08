@@ -13,9 +13,10 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, MINDESTANTEIL_MESSBAR, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
   VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
+import { urteilenOhneMessung } from "./urteil";
 import { ausnahmeFuer, abgelaufen } from "./ausnahmen";
 import {
   messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
@@ -711,6 +712,21 @@ async function haupt() {
     if (liste.length > 60) {
       process.stderr.write(`  … ${liste.length - 60} weitere, vollständig in bericht.json\n`);
     }
+  }
+
+  const urteil = urteilenOhneMessung(
+    { bestanden: bericht.gates.bestanden, gefallen, nicht_pruefbar: bericht.gates.nicht_pruefbar },
+    !!NUR_KONTROLLEN,
+  );
+  if (!urteil.messbarGenug) {
+    process.stderr.write(
+      `\nKEIN URTEIL — nur ${urteil.gemessen} von ${urteil.gesamt} Gates messbar `
+      + `(${(urteil.anteil * 100).toFixed(1)} %, gefordert ${(MINDESTANTEIL_MESSBAR * 100).toFixed(0)} %).\n`
+      + `Dieser Lauf sagt nichts über den Zweig — weder Gutes noch Schlechtes.\n`
+      + `Häufigste Ursache: der Runner erreicht die Datenschicht nicht, dann ist jede Seite\n`
+      + `eine leere Hülle. Im Protokoll steht dann „HÜLLE" mit dem Grund je Anfrage.\n`,
+    );
+    process.exit(1);
   }
 
   process.exit(gefallen > 0 ? 1 : 0);
