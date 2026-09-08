@@ -34,13 +34,23 @@ export interface Ausnahme {
 }
 
 export const AUSNAHMEN: Ausnahme[] = [
-  {
-    kontrolle: "4.5",
-    name: "K7 · erfundene Adressen antworten mit 200",
-    termin: "X11 — Vorrendern der bekannten Routen löst die Statusfrage strukturell",
-    /* Gesetzt am 18.08.2026, Reihenfolge: Q4b → X8 → X1+X11. Zwei Wochen. */
-    wecker: "2026-09-01",
-  },
+  /*
+   * Zurzeit keine — und das ist das Ergebnis einer Messung, kein Aufräumen.
+   *
+   * Hier stand die Ausnahme "4.5 · K7 · erfundene Adressen antworten mit 200"
+   * mit Wecker 2026-09-01. Am 08.09.2026 wurde der Test ausgeführt, den das
+   * README seit dem 18.08. als offenen Punkt führte, auf der ungesperrten
+   * Produktion:
+   *
+   *   curl -I https://pawn.vision/diese-seite-gibt-es-nicht-4d9f21
+   *   HTTP/2 404 · x-pawn-404: vercel-json
+   *
+   * Das Gate besteht. Die Ausnahme ist damit erledigt und wird gelöscht, wie es
+   * der Kopf dieser Datei verlangt; als Protokoll steht sie mit Datum im README,
+   * Abschnitt K7. Was sie entschuldigte, war nie ein Fehler im Code, sondern die
+   * Unfähigkeit der gesperrten Vorschau, ihn zu messen — dafür ist `lauf.ts` jetzt
+   * zuständig, das 4.5 hinter der Sperre als `nicht_pruefbar` führt.
+   */
 ];
 
 /** Die Ausnahme zu einem Befund — oder null, wenn keine greift. */

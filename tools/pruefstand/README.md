@@ -233,17 +233,33 @@ Geprüft und ausgeschlossen: Root Directory ist nicht gesetzt (also Repo-Stamm, 
 lag richtig); Vite ist kein Ausschlussgrund, Routing-Middleware gibt es auch ohne Next.js;
 alle anderen Seiten wurden im selben Lauf normal geliefert, der Umbau hat nichts beschädigt.
 
-**Was NICHT gemessen ist:** ob es auf pawn.vision anders aussieht. Die Vorschau ist durch
-Deployment Protection gesperrt, der Prüfstand kommt mit `x-vercel-protection-bypass` hinein.
-Ob diese Schicht vor dem Routing sitzt und autorisierte Anfragen an Middleware und `routes`
-vorbei ausliefert, ist eine Hypothese — sie passt zu allem Beobachteten, ist aber ungeprüft.
-Der Test dazu ist ein Befehl auf der ungesperrten Produktion:
+### GEMESSEN AM 08.09.2026 — die Lösung trägt, die Vorschau kann sie nicht sehen
+
+Die obige Hypothese ist beantwortet. Der Befehl, den dieser Abschnitt seit dem 18.08. als
+offenen Test führte, wurde ausgeführt:
 
     curl -I https://pawn.vision/diese-seite-gibt-es-nicht-4d9f21
+    HTTP/2 404
+    cache-control: no-store
+    x-pawn-404: vercel-json
 
-`404` und `x-pawn-404: vercel-json` hieße: die Lösung trägt, nur die gesperrte Vorschau kann
-sie nicht messen. `200` hieße: sie ist wirkungslos und `vercel.json` gehört auf die einfache
-`rewrites`-Form zurück.
+**Der 404 aus `vercel.json` funktioniert.** Er hat die ganze Zeit funktioniert. Was ihn
+verdeckte, ist die Deployment Protection: sie sitzt VOR dem Routing und liefert autorisierte
+Anfragen an `routes` vorbei aus. Auf der gesperrten Vorschau antwortet dieselbe Adresse mit
+200 und ohne Spur — mit demselben `vercel.json`, das auf der Produktion 404 antwortet.
+
+Was das kostet, sei benannt: **acht gebaute Fassungen wurden verworfen, weil die Vorschau
+ihnen nicht antworten konnte.** Sieben Middleware-Varianten und ein `routes`-Ansatz — und
+der letzte war richtig. Die Messung war das Problem, nicht der Code. Genau davor warnt das
+Gesetz: eine Prüfung, die an rechtmäßigem Code rot wird, ist schlimmer als keine.
+
+`lauf.ts` wertet 4.5 deshalb seit dem 08.09. hinter der Sperre als `nicht_pruefbar` statt
+als `gefallen` — eng gefasst: nur wenn ein Bypass-Geheimnis im Spiel ist UND die Spur fehlt.
+Auf einem ungesperrten Ziel urteilt die Kontrolle unverändert hart.
+
+**Bleibt offen:** ob `vercel.json` je auf die einfache `rewrites`-Form zurück soll. Nein —
+sie kann keinen Statuscode setzen; die `routes`-Form ist die einzige, die es kann, und sie
+ist bewiesen.
 
 `middleware.ts` und `@vercel/functions` sind entfernt — sieben Fassungen lang haben sie
 nichts getan, und eine tote zweite Fassung derselben Sache ist genau das, was hier verboten
