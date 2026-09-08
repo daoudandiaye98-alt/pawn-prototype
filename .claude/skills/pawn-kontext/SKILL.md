@@ -7,11 +7,38 @@ description: Das Betriebswissen über PAWN — welche Datenbank die echte ist, w
 
 ## Die eine Regel, die dich am häufigsten rettet
 
-> **Löst der Datenbank-Name nicht auf, prüfe zuerst das Lovable-Guthaben.**
+> **Löst der Datenbank-Name nicht auf, ist das Projekt pausiert — nicht das Netz.**
 
-`rnakubexbqfgfciynqpt.supabase.co` antwortet nicht mehr? Das ist fast nie ein
-Netzproblem und fast immer ein aufgebrauchtes Lovable-Guthaben — die verwaltete
-Instanz wird dann pausiert. Erst das prüfen, dann alles andere.
+`rnakubexbqfgfciynqpt.supabase.co` antwortet nicht mehr? Dann ist es fast nie ein
+Netzproblem. Eine pausierte verwaltete Instanz verliert ihren DNS-Eintrag, und
+genau so sieht es aus. Zwei Ursachen, in dieser Reihenfolge prüfen:
+
+1. **Supabase-Projektgrenze.** Zu viele aktive Projekte im Supabase-Konto — das
+   älteste oder inaktivste wird pausiert. *Belegter Fall vom 08.09.2026: genau
+   das ist passiert, PAWN war das Opfer.* Behebung: im Supabase-Dashboard
+   entweder PAWN wieder starten oder ein anderes Projekt pausieren.
+2. **Lovable-Guthaben aufgebraucht.** Auch dann wird die verwaltete Instanz
+   pausiert.
+
+**So misst du es in zehn Sekunden, statt zu raten** — der Unterschied zwischen
+„mein Netz spinnt" und „den Namen gibt es nicht":
+
+```bash
+getent hosts supabase.co                        # löst auf  → dein DNS ist gesund
+getent hosts rnakubexbqfgfciynqpt.supabase.co   # löst NICHT auf → Projekt pausiert
+```
+
+Löst der erste auf und der zweite nicht, ist die Sache entschieden. Dasselbe
+misst der Schritt `Datenhost auflösen` in `.github/workflows/pruefstand.yml` bei
+jedem Lauf — er läuft mit `continue-on-error`, seine **Ausgabe** zählt, nicht
+sein Haken.
+
+**Was du dabei nie tun sollst:** dem Frontend die Schuld geben. Am 08.09. lag
+vier Stunden vorher ein großer Merge — der war es nicht. Ein Frontend kann keinen
+DNS-Eintrag löschen.
+
+**Nach dem Wiederanschalten dauert es Minuten**, bis der Name wieder auflöst.
+Einmal messen, dann warten, nicht hektisch weitersuchen.
 
 ## Was wo live geht
 

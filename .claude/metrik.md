@@ -259,3 +259,29 @@ Dieser Diagnose-Schritt stammt aus einer früheren Sitzung und hatte bis heute
 nie etwas gefangen. Heute hat er den Unterschied zwischen „irgendwas mit dem
 Netz" und „der Name ist weg" gemacht — in zwei Zeilen. **Das ist der Beleg für
 den Wert einer Komponente, den das Ausmisten alle vier Wochen sucht.**
+
+### Die Ursache war eine andere als die Regel sagte — und das ist der Fund
+
+Daouda hat es aufgeklärt: **zu viele aktive Projekte im Supabase-Konto.** Das
+Konto pausiert dann eines, und PAWN war das Opfer. Er hat es wieder gestartet.
+
+Die Regel im Skill sagte „prüfe zuerst das Lovable-Guthaben". Das war **richtig
+in der Richtung** — pausierte verwaltete Instanz — und **falsch in der Ursache**.
+Sie hätte einen Agenten ins Lovable-Konto geschickt, wo nichts zu finden gewesen
+wäre, statt ins Supabase-Dashboard.
+
+Gesetz 2: *Frag nicht, warum er scheitert — frag, welche Fähigkeit fehlt.* Die
+fehlende Fähigkeit war nicht „mehr Sorgfalt", sondern eine Regel, die BEIDE
+Ursachen kennt und sagt, wie man sie in zehn Sekunden auseinanderhält. Die Regel
+steht jetzt so im Skill, mit dem Messbefehl:
+
+```bash
+getent hosts supabase.co                        # löst auf  → dein DNS ist gesund
+getent hosts rnakubexbqfgfciynqpt.supabase.co   # löst NICHT auf → Projekt pausiert
+```
+
+Das ist kein „besserer Prompt", sondern eine Datei, die den nächsten Ausfall
+schneller beendet. Und es ist der zweite Beleg an einem Abend dafür, dass
+`pawn-kontext` mehr wert ist, als die Eval gemessen hat: sie prüfte
+Richtigkeit bei ruhiger Recherche — hier zählte, wie schnell jemand im richtigen
+Dashboard landet.
