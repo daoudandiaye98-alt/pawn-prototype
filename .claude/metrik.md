@@ -221,3 +221,41 @@ Und der Gegenbeweis, dass es nicht die Rücknahme war: `src/integrations/supabas
 wurde in der gesamten Magazin-Zeit nie angefasst, das ausgelieferte Bündel zeigt
 auf dieselbe Projektkennung, und beide gescheiterten Läufe liegen **vor** dem
 Merge um 21:04.
+
+### Der Beweis ohne Browser — und die Regel, die im echten Lauf griff
+
+Lauf 94 (08.09., 21:23) hat beides geliefert.
+
+**Erstens, die neue Regel bei der Arbeit.** Genau der Fall, der zwei Stunden
+vorher noch als grüner Haken durchging:
+
+```
+Gates: 1 bestanden · 0 gefallen · 1106 nicht prüfbar
+
+KEIN URTEIL — nur 1 von 1107 Gates messbar (0.1 %, gefordert 50 %).
+Dieser Lauf sagt nichts über den Zweig — weder Gutes noch Schlechtes.
+##[error]Process completed with exit code 1.
+```
+
+Vom Vorführen im Test zum Greifen im echten Lauf, am selben Abend.
+
+**Zweitens, der Ausfall ohne jeden Zweifel.** Der Schritt „Datenhost auflösen"
+in `pruefstand.yml` misst auf Betriebssystem-Ebene, ohne Browser — er lief mit
+`continue-on-error`, seine Ausgabe zählt, nicht sein Haken:
+
+```
+— getent —
+keine Auflösung
+— HTTP —
+000
+kein Verbindungsaufbau
+```
+
+**Der DNS-Name existiert nicht mehr.** Kein Browserproblem, kein Proxy, kein
+Container, keine langsame Datenbank — der Name ist aus dem DNS verschwunden.
+Genau das passiert, wenn eine verwaltete Instanz pausiert wird.
+
+Dieser Diagnose-Schritt stammt aus einer früheren Sitzung und hatte bis heute
+nie etwas gefangen. Heute hat er den Unterschied zwischen „irgendwas mit dem
+Netz" und „der Name ist weg" gemacht — in zwei Zeilen. **Das ist der Beleg für
+den Wert einer Komponente, den das Ausmisten alle vier Wochen sucht.**
