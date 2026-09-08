@@ -184,3 +184,40 @@ Tests  2 failed | 5 passed (7)
 Zahl nicht zur Behauptung passte, und jemand nachgerechnet hat statt zu nicken.
 Zweimal war das Messgerät kaputt, nicht der Code. Ein Harness misst am Ende
 nicht nur das Produkt — er muss sich selbst messen.
+
+---
+
+## 2026-09-08 · Der Ausfall — und der Skill, der ihn in einer Zeile benannte
+
+Daouda meldet: keine Häuser, Google-Anmeldung tot. Die verwaltete
+Supabase-Instanz antwortet nicht.
+
+**Der Skill `pawn-kontext` hat das in seiner ersten Zeile beantwortet**, noch vor
+jeder Suche:
+
+> Löst der Datenbank-Name nicht auf, prüfe zuerst das Lovable-Guthaben. Das ist
+> fast nie ein Netzproblem und fast immer ein aufgebrauchtes Guthaben — die
+> verwaltete Instanz wird dann pausiert.
+
+Ohne diese Zeile wäre die naheliegende Vermutung DNS, Vercel oder — am
+teuersten — die Rücknahme gewesen, die vier Stunden vorher gemerged wurde. Der
+Skill hat den Suchraum sofort auf die richtige Stelle verengt.
+
+**Das gehört in die Entscheidung am 2026-09-14.** `pawn-kontext` hat die
+Eval-Latte nicht genommen (+0,5 statt deutlich) und stand zur Löschung an. Hier
+ist der belegte Fall, den die Eval nicht messen konnte: sie maß *Richtigkeit*
+bei ruhiger Recherche, nicht *Zeit bis zur richtigen Vermutung im Ausfall*. Das
+ist der Unterschied zwischen einem Nachschlagewerk und einem Notfallblatt.
+
+Belege für den Ausfall, dreifach:
+
+| Beleg | Ergebnis |
+|---|---|
+| GitHub-Runner, Läufe 91 und 92 | `net::ERR_NAME_NOT_RESOLVED` auf `rnakubexbqfgfciynqpt.supabase.co` |
+| `select 1` über die Lovable-API | `499 request_cancelled` — auch die einfachste Abfrage hängt |
+| Daouda auf pawn.vision | keine Häuser, keine Anmeldung |
+
+Und der Gegenbeweis, dass es nicht die Rücknahme war: `src/integrations/supabase/`
+wurde in der gesamten Magazin-Zeit nie angefasst, das ausgelieferte Bündel zeigt
+auf dieselbe Projektkennung, und beide gescheiterten Läufe liegen **vor** dem
+Merge um 21:04.
