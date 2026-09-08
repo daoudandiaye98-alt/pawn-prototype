@@ -430,18 +430,54 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
      */
     const koepfe = unsinn?.headers() ?? {};
     const spur = koepfe["x-pawn-404"];
+
+    /*
+     * Hinter der Vorschau-Sperre ist 4.5 NICHT PRÜFBAR — gemessen, nicht vermutet.
+     *
+     * Am 08.09.2026 auf der ungesperrten Produktion, mit demselben `vercel.json`,
+     * das die Vorschau ausliefert:
+     *
+     *   curl -I https://pawn.vision/diese-seite-gibt-es-nicht-4d9f21
+     *   HTTP/2 404
+     *   x-pawn-404: vercel-json
+     *
+     * Der 404 aus `vercel.json` TRÄGT also. Auf der gesperrten Vorschau
+     * antwortet dieselbe Adresse mit 200 und ohne Spur: die Deployment
+     * Protection sitzt vor dem Routing und liefert autorisierte Anfragen an
+     * `routes` vorbei aus. Genau die Hypothese, die im README, Abschnitt K7
+     * („Was NICHT gemessen ist") stand — jetzt beantwortet.
+     *
+     * Damit war die alte Fassung eine Prüfung, die an rechtmäßigem Code rot
+     * wurde: acht gebaute Fassungen wurden verworfen, weil die Vorschau ihnen
+     * nicht antworten KONNTE. Eine solche Prüfung lehrt, Rot zu übersehen —
+     * das ist schlimmer als keine.
+     *
+     * Deshalb: fehlt hinter der Sperre die Spur, ist der Befund `nicht_pruefbar`
+     * und nicht `gefallen`. Die Aussage bleibt eng — auf einem ungesperrten Ziel
+     * (pawn.vision) urteilt 4.5 unverändert hart, und eine VORHANDENE Spur wird
+     * auch hinter der Sperre normal gewertet.
+     */
+    const hinterDerSperre = !!BYPASS && !spur;
+
     befunde.push({
       kontrolle: "4.5", gate: true,
-      status: status === 404 && zurueck ? "bestanden" : "gefallen",
+      status: hinterDerSperre
+        ? "nicht_pruefbar"
+        : (status === 404 && zurueck ? "bestanden" : "gefallen"),
       seite: UNSINN_PFAD, breite: 1280,
       gemessen: `Status ${status}, Weg zurück ${zurueck ? "vorhanden" : "fehlt"}`,
       schwelle: "Status 404 und ein Weg zurück",
       notiz: [
         spur
           ? `Spur x-pawn-404: „${spur}" — der 404 wurde gesetzt.`
-          : "Keine Kopfzeile x-pawn-404: niemand hat den Statuscode gesetzt. "
-            + "K7 ist dokumentierte Ausnahme — siehe README, Abschnitt Dokumentierte Ausnahmen.",
-        status === 200
+          : hinterDerSperre
+            ? "Keine Kopfzeile x-pawn-404 — und dieses Ziel steht hinter der "
+              + "Vorschau-Sperre, die vor dem Routing sitzt. Der Statuscode ist hier "
+              + "nicht messbar, weder als bestanden noch als gefallen. Gemessen auf der "
+              + "ungesperrten Produktion am 08.09.2026: Status 404 mit x-pawn-404: "
+              + "vercel-json — der 404 trägt. Siehe README, Abschnitt K7."
+            : "Keine Kopfzeile x-pawn-404: niemand hat den Statuscode gesetzt.",
+        status === 200 && !hinterDerSperre
           ? "Die Adresse antwortet mit 200. Bei einer SPA mit Rewrite ist das die Hülle — für "
             + "Suchmaschinen ist eine erfundene Adresse damit eine gültige Seite."
           : null,

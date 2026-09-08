@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useParams, BrowserRouter, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
-import { Suspense, lazy, useEffect } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
 import { captureReferralCode } from "@/features/referral";
 import { captureLeadRef } from "@/features/acquisition/leadAttribution";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -21,36 +21,10 @@ import AdminWerbung from "./pages/admin/AdminWerbung.tsx";
 import AdminAktionen from "./pages/admin/AdminAktionen.tsx";
 
 
+import Index from "./pages/Index.tsx";
 import DNA from "./pages/DNA.tsx";
 import Designers from "./pages/Designers.tsx";
 import Ausgabe from "./pages/Ausgabe.tsx";
-// Teil M — das Heft lädt als eigenes Bündel: es soll das Haupt-Bündel nicht wachsen
-// lassen (M9), und wer nie blättert, lädt den Mechanismus nie.
-const AusgabeHeft = lazy(() => import("./pages/AusgabeHeft.tsx"));
-// Teil X2 — die eine Hülle des Magazins. Eigenes Bündel, damit das
-// Haupt-Bündel nicht wächst (X11: der Umzug muss leichter machen, nicht
-// schwerer).
-/*
- * X1 — die Umzüge. Die alten Adressen sterben nicht wortlos: serverseitig
- * beantwortet `vercel.json` sie mit 301 (siehe UMZUEGE in `routen.js`), und
- * diese drei Helfer tun dasselbe für Klicks innerhalb der App, wo kein Server
- * dazwischen liegt. Beide lesen dieselbe Zuordnung: alt → neu, eine Zeile je
- * Umzug, nichts Berechnetes.
- */
-function WerkUmzug() {
-  const { slug } = useParams();
-  return <Navigate to={`/werk/${slug}`} replace />;
-}
-function HausUmzug() {
-  const { slug } = useParams();
-  return <Navigate to={`/haus/${slug}`} replace />;
-}
-function SektionUmzug() {
-  const { sektion } = useParams();
-  return <Navigate to={sektion === "umschlag" ? "/" : `/${sektion}`} replace />;
-}
-
-const HeftRoute = lazy(() => import("./heft/HeftRoute.tsx"));
 import Vision from "./pages/Vision.tsx";
 import Preise from "./pages/Preise.tsx";
 import PreiseMaison from "./pages/PreiseMaison.tsx";
@@ -100,12 +74,17 @@ import AdminMessages from "./pages/admin/AdminMessages.tsx";
 import AdminPayments from "./pages/admin/AdminPayments.tsx";
 import AdminDesigners from "./pages/admin/AdminDesigners.tsx";
 import AdminPosting from "./pages/admin/AdminPosting.tsx";
+import Shop from "./pages/Shop.tsx";
+import ProductDetail from "./pages/ProductDetail.tsx";
 import Cart from "./pages/Cart.tsx";
 import Checkout from "./pages/Checkout.tsx";
-import Kasse from "./heft/kasse.tsx";
 import DesignersIndex from "./pages/DesignersIndex.tsx";
+import DesignerPage from "./pages/DesignerPage.tsx";
 import Account from "./pages/Account.tsx";
 import Auth from "./pages/Auth.tsx";
+import Mode from "./pages/palace/Mode.tsx";
+import Interior from "./pages/palace/Interior.tsx";
+import Kunst from "./pages/palace/Kunst.tsx";
 import Neu from "./pages/palace/Neu.tsx";
 import Kontakt from "./pages/Kontakt.tsx";
 import Presse from "./pages/Presse.tsx";
@@ -172,77 +151,21 @@ const App = () => (
               <LeadCapture />
               <Routes>
 
-                {/*
-                  X1 — der Umschalttag. `/` ist der Umschlag des Hefts; die alte
-                  Landing ist gelöscht, nicht versteckt. Die Welten sind ab hier
-                  Heftsektionen auf ihren endgültigen Adressen — die alten
-                  Weltseiten sind mit ihr gegangen.
-                */}
-                <Route path="/" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/mode" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/interior" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/kunst" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/kuratierter-raum" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/drei-welten" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/haeuser" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/deine-dna" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/frag-pawn" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/fuer-designer" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
+                <Route path="/" element={<Index />} />
+                <Route path="/mode" element={<Mode />} />
+                <Route path="/interior" element={<Interior />} />
+                <Route path="/kunst" element={<Kunst />} />
                 <Route path="/neu" element={<Neu />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/dna" element={<DNA />} />
                 <Route path="/designers" element={<Designers />} />
                 <Route path="/ausgabe" element={<Ausgabe />} />
-                {/* Teil M1 — das Heft. Vorerst nur der Wendel; /ausgabe bleibt unberührt. */}
-                <Route path="/ausgabe/001" element={<Suspense fallback={null}><AusgabeHeft /></Suspense>} />
-                <Route path="/ausgabe/001/:seite" element={<Suspense fallback={null}><AusgabeHeft /></Suspense>} />
-                {/*
-                  Teil X2 — die eine Hülle. EINE Komponente für alle
-                  Heft-Adressen: der Router bildet Adresse → Doppelseiten-Index
-                  ab, statt Adresse → Seitenkomponente. Deshalb steht hier
-                  mehrfach dasselbe Element und kein Dutzend Seiten.
-
-                  Schritt 1 nimmt nur Adressen, die es vorher nicht gab. `/`,
-                  `/mode` und `/shop` ziehen mit Schritt 3 ein — bis dahin
-                  bleibt die Seite für Kundinnen unverändert benutzbar.
-
-                  Eigenes Bündel (X11): wer nie blättert, lädt den Wendel nie.
-                */}
-                {/* Das Brücken-Heft ist Geschichte: `/heft/…` zieht auf die
-                    endgültigen Adressen um — serverseitig als 301, hier für
-                    Klicks in der App. */}
-                <Route path="/heft" element={<Navigate to="/" replace />} />
-                {/*
-                  Die elf redaktionellen Sektionen (X5). Sie liegen unter `/heft/…`,
-                  weil `/mode`, `/interior` und `/kunst` heute lebende Kundenseiten
-                  sind — sie werden mit X1 abgelöst, nicht vorher. Ein Platzhalter
-                  statt elf Zeilen: die Zuordnung Adresse → Doppelseite steht in
-                  `heft/spreads/index.tsx`, nicht hier.
-                */}
-                <Route path="/heft/:sektion" element={<SektionUmzug />} />
-                <Route path="/inhalt" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/verzeichnis" element={<Navigate to="/verzeichnis/1" replace />} />
-                <Route path="/verzeichnis/:seite" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                {/*
-                  Ein Werk ist eine Doppelseite im selben Heft (X7) — deshalb
-                  dieselbe Route und keine eigene Seite. Seit X1 ist `/werk/…`
-                  die einzige Werkadresse; `/product/…` zieht per 301 um.
-                */}
-                <Route path="/werk/:slug" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                {/*
-                  Ein Haus ist ein Kapitel im selben Heft (X8): Auftakt unter
-                  `/haus/…`, die Baustein-Doppelseiten dahinter zählen Blätter.
-                  Seit X1 ist das die einzige Hausadresse; `/designer/…` zieht
-                  per 301 um.
-                */}
-                <Route path="/haus/:slug" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
-                <Route path="/haus/:slug/:blatt" element={<Suspense fallback={null}><HeftRoute /></Suspense>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/preise" element={<Preise />} />
                 <Route path="/preise/maison" element={<PreiseMaison />} />
                 <Route path="/about" element={<Vision />} />
                 <Route path="/designers/all" element={<DesignersIndex />} />
-                <Route path="/designer/:slug" element={<HausUmzug />} />
+                <Route path="/designer/:slug" element={<DesignerPage />} />
                 <Route path="/apply" element={<ApplyLanding />} />
                 <Route path="/apply/form" element={<Apply />} />
                 <Route path="/start" element={<Start />} />
@@ -257,23 +180,21 @@ const App = () => (
                   Die Seite gab es schon (`src/pages/WiePawnKiNutzt.tsx`), die
                   Route nicht: die Datenschutzerklärung verlinkt seit Teil AP3
                   auf `/wie-pawn-ki-nutzt`, und dort stand die „Seite nicht
-                  gefunden"-Ansicht. Gefunden hat es die Link-Prüfung, die zu
-                  K7 gehört — vorher fiel es niemandem auf, weil ein toter Link
-                  in dieser Anwendung mit Status 200 antwortete.
+                  gefunden"-Ansicht. Gefunden hat es die Link-Prüfung
+                  (`src/__tests__/routen.spec.ts`) — vorher fiel es niemandem
+                  auf, weil ein toter Link in dieser Anwendung mit Status 200
+                  antwortete.
                 */}
                 <Route path="/wie-pawn-ki-nutzt" element={<WiePawnKiNutzt />} />
                 <Route path="/vertrag-kuendigen" element={<VertragKuendigen />} />
                 <Route path="/kontakt" element={<Kontakt />} />
-                <Route path="/shop" element={<Navigate to="/verzeichnis/1" replace />} />
+                <Route path="/shop" element={<Shop />} />
                 {/* Teil S — die persönliche Ausgabe der Boutique. */}
                 <Route path="/boutique" element={<DeineBoutique />} />
-                <Route path="/product/:slug" element={<WerkUmzug />} />
+                <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/presse/:slug" element={<Presse />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
-                {/* X9 — der Beileger. Die Kasse im Heft, mit den Pflichtangaben
-                    und der Schaltflaeche, die § 312j Abs. 3 BGB verlangt. */}
-                <Route path="/kasse" element={<Kasse />} />
                 <Route path="/order/success" element={<OrderConfirmation />} />
                 <Route path="/account" element={<Account />} />
 

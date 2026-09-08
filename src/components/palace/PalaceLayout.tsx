@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { PalaceHeader } from "./PalaceHeader";
 import { BuilderBar, BuilderToggle } from "./BuilderMode";
-import { Editable } from "./Editable";
+import { Editable, useContentValue } from "./Editable";
 import { useSiteContent } from "@/lib/siteContent";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { PawnWordmark } from "@/components/pawn/PawnWordmark";
@@ -22,25 +23,24 @@ export function FooterLegalRow() {
     { label: t("footer.legal.barrierefreiheit"), to: "/barrierefreiheit" },
   ];
   return (
-    /*
-     * Prüfstand 3.5 — die sechs Einträge waren 16 px hoch und „AGB" 28 px breit.
-     * Jeder trägt jetzt `trefferflaeche` (44 × 44 px Polster); die Schrift bleibt
-     * unverändert klein, die Unterstreichung sitzt auf dem inneren <span> und
-     * bleibt damit am Wort. Das Polster der Zeile selbst schrumpft von py-5 auf
-     * py-1, sonst wäre die Rechtszeile plötzlich 84 px hoch.
-     */
-    <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-0 border-t-[1.5px] border-black px-6 py-1 text-[0.6rem] uppercase tracking-[0.28em] text-black md:px-14">
+    <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 border-t-[1.5px] border-black px-6 py-5 text-[0.6rem] uppercase tracking-[0.28em] text-black md:px-14">
       {links.map((l) => (
-        <Link key={l.to} to={l.to} className="trefferflaeche">
-          <span className="unterstrich">{l.label}</span>
+        <Link key={l.to} to={l.to} className="border-b border-transparent transition-colors hover:border-black">
+          {l.label}
         </Link>
       ))}
-      <button type="button" onClick={reopen} className="trefferflaeche uppercase tracking-[0.28em]">
-        <span className="unterstrich">{t("footer.legal.cookies")}</span>
+      <button
+        type="button"
+        onClick={reopen}
+        className="border-b border-transparent uppercase tracking-[0.28em] transition-colors hover:border-black"
+      >
+        {t("footer.legal.cookies")}
       </button>
     </div>
   );
 }
+
+const FOOTER_COLUMN_KEYS = ["footer_col_haeuser", "footer_col_fuer_sie", "footer_col_fuer_designer", "footer_col_haus"] as const;
 
 const DEFAULT_SEO = {
   de: { title: "PAWN — kuratierte Ausstellung für unabhängige Designer", description: "PAWN kuratiert Mode, Interior und Kunst unabhängiger Designer — jedes Stück mit Herkunft, jedes Haus mit eigener Handschrift." },
@@ -50,67 +50,107 @@ const DEFAULT_SEO = {
 /**
  * PalaceLayout — final black/white system.
  */
-export function PalaceLayout({
-  children, transparentHeader = true, showBreadcrumbs = true, title, description, image, imageAlt, seoType,
-}: {
-  children: ReactNode;
-  transparentHeader?: boolean;
-  showBreadcrumbs?: boolean;
-  title?: string;
-  description?: string;
-  /**
-   * Teil K5 — das Bild, das beim Teilen erscheint. Seiten mit einem Werk
-   * (Produkt, Haus) reichen ihr eigenes durch; ohne Angabe steht das
-   * PAWN-Blatt aus `public/og.png`.
-   */
-  image?: string;
-  imageAlt?: string;
-  seoType?: "website" | "article" | "product";
-}) {
-  void transparentHeader;
+export function PalaceLayout({ children, transparentHeader = true, showBreadcrumbs = true, title, description }: { children: ReactNode; transparentHeader?: boolean; showBreadcrumbs?: boolean; title?: string; description?: string }) {
+  const headerVariant = transparentHeader && !showBreadcrumbs ? "transparent-on-hero" : "solid";
   const { locale, t } = useI18n();
   const ausgabeNummer = useSiteContent("ausgabe_nummer");
+  const colTitleHaeuser = useContentValue(FOOTER_COLUMN_KEYS[0], "Häuser");
+  const colTitleFuerSie = useContentValue(FOOTER_COLUMN_KEYS[1], "Für Sie");
+  const colTitleFuerDesigner = useContentValue(FOOTER_COLUMN_KEYS[2], "Für Designer");
+  const colTitleHaus = useContentValue(FOOTER_COLUMN_KEYS[3], "Haus");
+  const resolvedColTitles = [colTitleHaeuser, colTitleFuerSie, colTitleFuerDesigner, colTitleHaus];
   return (
     <div className="palace min-h-screen bg-white text-black">
-      <Seo
-        title={title ?? DEFAULT_SEO[locale].title}
-        description={description ?? DEFAULT_SEO[locale].description}
-        image={image}
-        imageAlt={imageAlt}
-        type={seoType}
-      />
+      <Seo title={title ?? DEFAULT_SEO[locale].title} description={description ?? DEFAULT_SEO[locale].description} />
       <JsonLd data={organizationLd()} />
       {/* Teil L2 — Sprunglink: erstes fokussierbares Element, sichtbar nur per Tastatur. */}
       <a href="#inhalt" className="skip-link">{t("a11y.skipToContent")}</a>
       <BuilderBar />
-      {/*
-        X1 — die Kopfzeile ist gelöscht, nicht versteckt. Die verbliebenen
-        Palace-Seiten (Rechtstexte, Konto, Preise, Vision …) tragen dieselbe
-        stille Kopfform wie der Beileger: die Wortmarke, ein Weg zurück auf
-        den Umschlag, sonst nichts. Die Navigation der Site ist das Heft.
-      */}
-      <div className="mx-auto w-full max-w-[1600px] px-6 pt-8 md:px-14">
-        {/* Dieselbe 44-px-Trefffläche wie in der Kasse (3.5, gemessen). */}
-        <Link to="/" className="trefferflaeche inline-flex" aria-label="Zurück auf den Umschlag">
-          <PawnWordmark className="h-6 text-black" />
-        </Link>
-      </div>
-      {showBreadcrumbs && <Breadcrumbs />}
+      <PalaceHeader variant={headerVariant} />
+      {showBreadcrumbs && <div className="pt-[68px] md:pt-[76px]"><Breadcrumbs /></div>}
       <main id="inhalt">{children}</main>
       <footer className="border-t-[1.5px] border-black bg-white">
         {/*
-          X1 — der Spalten-Fuß ist mit der Kopfzeile gegangen. Was bleibt, ist
-          das, was bleiben MUSS: die Rechtszeile (Teil L1) — vier Rechtstexte,
-          Barrierefreiheit, Cookie-Einstellungen. Sie ist keine Navigation,
-          sie ist die Erreichbarkeitspflicht, und sie bleibt auf jeder
-          Palace-Seite stehen.
+          Teil R5 — die große Wortmarke stand mit `leading-none` in einem Kasten
+          ohne unteres Polster: der Bauer ragt um 0,06em unter die Grundlinie und
+          wurde von der Trennlinie darunter abgeschnitten. Jetzt hat die Zeile
+          Höhe (1.12) und der Kasten unten Luft — die Marke steht vollständig da.
+          Zugleich eine Nummer kleiner gesetzt, damit sie auf dem Telefon nicht
+          den halben Bildschirm einnimmt.
         */}
+        <div className="mx-auto max-w-[1600px] px-6 pb-6 pt-16 md:px-14 md:pb-8">
+          <PawnWordmark
+            className="block w-full text-center text-black"
+            style={{ fontSize: "clamp(4.5rem, 12vw, 12rem)", lineHeight: 1.12 }}
+          />
+        </div>
+        <div className="mx-auto grid max-w-[1600px] grid-cols-2 gap-0 border-t-[1.5px] border-black md:grid-cols-4">
+          {[
+            {
+              title: "Häuser",
+              links: [
+                { label: "Mode", to: "/mode" },
+                { label: "Interior", to: "/interior" },
+                { label: "Kunst", to: "/kunst" },
+                { label: "Designer", to: "/designers" },
+              ],
+            },
+            {
+              title: "Für Sie",
+              links: [
+                { label: "Neu", to: "/neu" },
+                { label: "DNA", to: "/dna" },
+                { label: "Warenkorb", to: "/cart" },
+              ],
+            },
+            {
+              title: "Für Designer",
+              links: [
+                { label: "Bewerben", to: "/apply" },
+                { label: "Pläne", to: "/preise" },
+                { label: "Studio", to: "/studio" },
+                { label: "Copilot", to: "/studio/copilot" },
+                { label: "Kampagnen", to: "/studio/kampagnen" },
+              ],
+            },
+            {
+              title: "Haus",
+              links: [
+                { label: "Vision", to: "/vision" },
+                { label: "Kontakt", to: "/kontakt" },
+                { label: "Versand", to: "/versand" },
+                { label: "AGB", to: "/agb" },
+                { label: "Impressum", to: "/impressum" },
+              ],
+            },
+          ].map((col, i) => (
+            <div
+              key={col.title}
+              className={`${i > 0 ? "border-l-[1.5px] border-black" : ""} px-6 py-8`}
+            >
+              <p className="text-[0.6rem] uppercase tracking-[0.42em] text-black">{resolvedColTitles[i]}</p>
+              <ul className="mt-4 space-y-2">
+                {col.links.map((l) => (
+                  <li key={l.label}>
+                    <Link
+                      to={l.to}
+                      className="inline-block border-b border-transparent text-[0.85rem] text-black transition-colors hover:border-black"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        {/* Teil L1 — Rechtszeile auf jeder Seite: vier Rechtstexte + Barrierefreiheit + Cookie-Einstellungen. */}
         <FooterLegalRow />
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-3 px-6 py-4 text-[0.6rem] uppercase tracking-[0.42em] text-black md:flex-row md:items-center md:justify-between md:px-14">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-3 border-t-[1.5px] border-black px-6 py-8 text-[0.6rem] uppercase tracking-[0.42em] text-black md:flex-row md:items-center md:justify-between md:px-14">
           <span>
             <Editable contentKey="footer_line_1">PAWN · Kuratierte Ausstellung</Editable> · Ausgabe {ausgabeNummer}
           </span>
-          <span>© {new Date().getFullYear()}</span>
+          <span>© {new Date().getFullYear()} — Für Designer <a href="/apply" className="uline text-black">bewerben</a></span>
         </div>
       </footer>
       <BuilderToggle />

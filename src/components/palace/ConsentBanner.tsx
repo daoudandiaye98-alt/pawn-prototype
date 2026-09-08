@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useConsent } from "@/lib/consent";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { istHeftAdresse } from "@/heft/doppelseiten";
 
 /**
  * Teil K1 — die Einwilligung ist eine Leiste, kein Fenster über dem Hauptweg.
@@ -26,22 +25,7 @@ import { istHeftAdresse } from "@/heft/doppelseiten";
  */
 export function ConsentBanner() {
   const { bannerOpen, setConsent, decided, setOpenSettings, value } = useConsent();
-  const { pathname } = useLocation();
 
-  /*
-   * Im Heft steht sie NUR auf dem Umschlag.
-   *
-   * Eine Leiste, die mitten im Heft aufschlägt, unterbricht das Lesen an einer
-   * Stelle, an der niemand mit ihr gerechnet hat. Der Umschlag ist der Eingang;
-   * dort gehört sie hin. Außerhalb des Hefts (Studio, Verwaltung, Rechtstexte)
-   * bleibt sie unverändert überall.
-   *
-   * Was das kostet, sei gesagt: wer über einen tiefen Verweis mitten ins Heft
-   * kommt, sieht sie dort nicht. Verloren geht dabei nichts — ohne Einwilligung
-   * bleibt Google Consent Mode auf `denied`, es wird also nichts gesetzt, was
-   * einer Einwilligung bedürfte.
-   */
-  const imHeftAberNichtAufDemUmschlag = istHeftAdresse(pathname) && pathname !== "/";
 
   /**
    * Die Höhe steht nicht im Stylesheet, weil sie vom Text und von der Breite
@@ -70,7 +54,7 @@ export function ConsentBanner() {
   const zustimmen = useCallback(() => setConsent("accepted"), [setConsent]);
   const nurNotwendig = useCallback(() => setConsent("essential"), [setConsent]);
 
-  if (!bannerOpen || imHeftAberNichtAufDemUmschlag) return null;
+  if (!bannerOpen) return null;
 
   /** Beide Knöpfe tragen exakt dieselben Klassen. Wer hier eine hervorhebt, bricht die Wahl. */
   const knopf = "min-h-[44px] flex-1 justify-center border-[1.5px] border-black bg-white text-black hover:bg-black hover:text-white md:flex-none md:min-w-[190px]";

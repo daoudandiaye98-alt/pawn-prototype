@@ -216,6 +216,38 @@ function preisfilterVoll({ datei, zustand }) {
 
 // ————————————————————————————————————————————————————————————————
 
+// ————————————————————————————————————————————————————————————————
+// Z7 — der Korb haelt echte Stuecke
+//
+// Der Korb speichert nur Kennung und Groesse; die Angaben zum Stueck holt er
+// sich beim Anzeigen aus dem Bestand des Ladens (`src/store/cart.tsx`,
+// `productById.get`). Dieser Bestand kommt aus `src/core/seed/products.ts`,
+// und der ist mit Absicht leer. Ein Stueck aus der Datenbank stand darin nie:
+// die Zeile wurde geschrieben, fand ihr Stueck nicht und fiel heraus. Wer auf
+// „In den Korb" tippte, sah eine Bestaetigung und danach einen leeren Korb.
+//
+// `useInDenKorb` meldet das Stueck vorher an. Diese Kontrolle ist so eng wie
+// die Zusage: sie prueft NUR, dass die Werkseite diesen Weg nimmt und nicht
+// wieder den alten `cart.add`. Sie sagt nichts ueber andere Seiten und nichts
+// darueber, ob der Korb sonst richtig rechnet — dafuer gibt es die Tests in
+// `src/core/__tests__/korb.echte-stuecke.spec.ts`.
+// ————————————————————————————————————————————————————————————————
+function korbHaeltEchteStuecke({ datei }) {
+  const text = lies(datei);
+  if (!/useInDenKorb\s*\(/.test(text))
+    return nein(`${datei}: ruft useInDenKorb() nicht mehr auf — das Stueck wird nicht mehr angemeldet`);
+
+  // Nur echte Aufrufe, keine Erwaehnung im Kommentar.
+  const zeilen = text.split("\n");
+  const alterWeg = zeilen.findIndex((z) => {
+    const ohneKommentar = z.replace(/^\s*(\*|\/\/).*$/, "");
+    return /\bcart\.add\s*\(/.test(ohneKommentar);
+  });
+  if (alterWeg !== -1)
+    return nein(`${datei}:${alterWeg + 1}: nimmt wieder cart.add( — die Zeile landet im Korb ohne das Stueck`);
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -223,6 +255,7 @@ const PRUEFUNGEN = {
   keineAblaufendenAdressen,
   werkNichtBeschnitten,
   preisfilterVoll,
+  korbHaeltEchteStuecke,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
