@@ -137,3 +137,151 @@ Fokus-Unterdrückung."
 **Die Lehre:** der Prüfer hat nicht die Aussage widerlegt, sondern über eine
 falsche Zahl einen echten Fehler gefunden. Ein Agent ist niemals sein eigener
 Prüfer — hier ist der belegte Fall dazu.
+
+---
+
+## 2026-09-08 · Der falsche grüne Haken
+
+PR #182 wurde um 21:04 gemerged. Der Check war grün. Der Lauf dahinter sagte:
+
+```
+Gates: 1 bestanden · 0 gefallen · 1103 nicht prüfbar
+```
+
+**Eine von 1104 Kontrollen war gemessen.** Auf dem Runner scheiterte die
+Namensauflösung zu Supabase, jede Seite war eine leere Hülle. Die Hüllen-Regel
+hat richtig gehandelt — sie wertete nichts. Nur sah „0 gefallen" von einem
+gemessenen Gate im Check genauso aus wie „0 gefallen" von 1104.
+
+**Das ist die teuerste Sorte Fehler in diesem Harness.** Der ganze Turm ist
+gegen falsches Grün gebaut: die Hüllen-Regel, das Zählen der NEUEN Aufnahmen in
+`sicht.sh`, die Ausnahmen mit Wecker. Alle fangen ihren Fall. Keiner fing
+diesen, weil das Urteil am Ende nur noch eine Zahl ansah — die gefallenen — und
+nie fragte, wie viele überhaupt betrachtet wurden.
+
+Behoben mit `tools/pruefstand/urteil.ts`: unterschreitet der messbare Anteil
+`MINDESTANTEIL_MESSBAR`, hat der Lauf **kein Urteil** und endet mit 1. Wache in
+`src/__tests__/kein-urteil.spec.ts`, geschrieben auf den echten Zahlen der Läufe
+91 und 92. Einmal rot vorgeführt, indem die Schwelle auf 0,0005 gesenkt wurde —
+also genau so weit, dass Lauf 92 wieder durchginge:
+
+```
+× Lauf 92 — der falsche grüne Haken, an dem das hier hängt
+× Lauf 91 war genauso blind — nur zufällig rot
+✓ (die übrigen fünf)
+Tests  2 failed | 5 passed (7)
+```
+
+### Nachfunde durch den Menschen: 0. Nachfunde durch die Maschine: 3.
+
+| Fund | Wer |
+|---|---|
+| Drei Fokus-Rahmen fielen beim Zurücksetzen mit heraus | Subagent `pruefer`, über eine falsche Zahl im Bericht |
+| Kontrolle 4.5 war seit Wochen ein falsches Rot — acht verworfene Fassungen, die letzte war richtig | Prüfstand-Lauf 91, plus der nie ausgeführte Test aus dem eigenen README |
+| Ein Lauf, der nichts gemessen hat, meldete grün | Prüfstand-Lauf 92 — gegen sich selbst |
+
+**Die Lehre aus allen dreien ist dieselbe:** jeder Fund kam daher, dass eine
+Zahl nicht zur Behauptung passte, und jemand nachgerechnet hat statt zu nicken.
+Zweimal war das Messgerät kaputt, nicht der Code. Ein Harness misst am Ende
+nicht nur das Produkt — er muss sich selbst messen.
+
+---
+
+## 2026-09-08 · Der Ausfall — und der Skill, der ihn in einer Zeile benannte
+
+Daouda meldet: keine Häuser, Google-Anmeldung tot. Die verwaltete
+Supabase-Instanz antwortet nicht.
+
+**Der Skill `pawn-kontext` hat das in seiner ersten Zeile beantwortet**, noch vor
+jeder Suche:
+
+> Löst der Datenbank-Name nicht auf, prüfe zuerst das Lovable-Guthaben. Das ist
+> fast nie ein Netzproblem und fast immer ein aufgebrauchtes Guthaben — die
+> verwaltete Instanz wird dann pausiert.
+
+Ohne diese Zeile wäre die naheliegende Vermutung DNS, Vercel oder — am
+teuersten — die Rücknahme gewesen, die vier Stunden vorher gemerged wurde. Der
+Skill hat den Suchraum sofort auf die richtige Stelle verengt.
+
+**Das gehört in die Entscheidung am 2026-09-14.** `pawn-kontext` hat die
+Eval-Latte nicht genommen (+0,5 statt deutlich) und stand zur Löschung an. Hier
+ist der belegte Fall, den die Eval nicht messen konnte: sie maß *Richtigkeit*
+bei ruhiger Recherche, nicht *Zeit bis zur richtigen Vermutung im Ausfall*. Das
+ist der Unterschied zwischen einem Nachschlagewerk und einem Notfallblatt.
+
+Belege für den Ausfall, dreifach:
+
+| Beleg | Ergebnis |
+|---|---|
+| GitHub-Runner, Läufe 91 und 92 | `net::ERR_NAME_NOT_RESOLVED` auf `rnakubexbqfgfciynqpt.supabase.co` |
+| `select 1` über die Lovable-API | `499 request_cancelled` — auch die einfachste Abfrage hängt |
+| Daouda auf pawn.vision | keine Häuser, keine Anmeldung |
+
+Und der Gegenbeweis, dass es nicht die Rücknahme war: `src/integrations/supabase/`
+wurde in der gesamten Magazin-Zeit nie angefasst, das ausgelieferte Bündel zeigt
+auf dieselbe Projektkennung, und beide gescheiterten Läufe liegen **vor** dem
+Merge um 21:04.
+
+### Der Beweis ohne Browser — und die Regel, die im echten Lauf griff
+
+Lauf 94 (08.09., 21:23) hat beides geliefert.
+
+**Erstens, die neue Regel bei der Arbeit.** Genau der Fall, der zwei Stunden
+vorher noch als grüner Haken durchging:
+
+```
+Gates: 1 bestanden · 0 gefallen · 1106 nicht prüfbar
+
+KEIN URTEIL — nur 1 von 1107 Gates messbar (0.1 %, gefordert 50 %).
+Dieser Lauf sagt nichts über den Zweig — weder Gutes noch Schlechtes.
+##[error]Process completed with exit code 1.
+```
+
+Vom Vorführen im Test zum Greifen im echten Lauf, am selben Abend.
+
+**Zweitens, der Ausfall ohne jeden Zweifel.** Der Schritt „Datenhost auflösen"
+in `pruefstand.yml` misst auf Betriebssystem-Ebene, ohne Browser — er lief mit
+`continue-on-error`, seine Ausgabe zählt, nicht sein Haken:
+
+```
+— getent —
+keine Auflösung
+— HTTP —
+000
+kein Verbindungsaufbau
+```
+
+**Der DNS-Name existiert nicht mehr.** Kein Browserproblem, kein Proxy, kein
+Container, keine langsame Datenbank — der Name ist aus dem DNS verschwunden.
+Genau das passiert, wenn eine verwaltete Instanz pausiert wird.
+
+Dieser Diagnose-Schritt stammt aus einer früheren Sitzung und hatte bis heute
+nie etwas gefangen. Heute hat er den Unterschied zwischen „irgendwas mit dem
+Netz" und „der Name ist weg" gemacht — in zwei Zeilen. **Das ist der Beleg für
+den Wert einer Komponente, den das Ausmisten alle vier Wochen sucht.**
+
+### Die Ursache war eine andere als die Regel sagte — und das ist der Fund
+
+Daouda hat es aufgeklärt: **zu viele aktive Projekte im Supabase-Konto.** Das
+Konto pausiert dann eines, und PAWN war das Opfer. Er hat es wieder gestartet.
+
+Die Regel im Skill sagte „prüfe zuerst das Lovable-Guthaben". Das war **richtig
+in der Richtung** — pausierte verwaltete Instanz — und **falsch in der Ursache**.
+Sie hätte einen Agenten ins Lovable-Konto geschickt, wo nichts zu finden gewesen
+wäre, statt ins Supabase-Dashboard.
+
+Gesetz 2: *Frag nicht, warum er scheitert — frag, welche Fähigkeit fehlt.* Die
+fehlende Fähigkeit war nicht „mehr Sorgfalt", sondern eine Regel, die BEIDE
+Ursachen kennt und sagt, wie man sie in zehn Sekunden auseinanderhält. Die Regel
+steht jetzt so im Skill, mit dem Messbefehl:
+
+```bash
+getent hosts supabase.co                        # löst auf  → dein DNS ist gesund
+getent hosts rnakubexbqfgfciynqpt.supabase.co   # löst NICHT auf → Projekt pausiert
+```
+
+Das ist kein „besserer Prompt", sondern eine Datei, die den nächsten Ausfall
+schneller beendet. Und es ist der zweite Beleg an einem Abend dafür, dass
+`pawn-kontext` mehr wert ist, als die Eval gemessen hat: sie prüfte
+Richtigkeit bei ruhiger Recherche — hier zählte, wie schnell jemand im richtigen
+Dashboard landet.

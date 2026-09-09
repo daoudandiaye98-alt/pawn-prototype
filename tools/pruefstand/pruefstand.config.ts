@@ -157,5 +157,28 @@ export const SCHWELLEN = {
  */
 export const RUHE_MS = 4300;
 
+/**
+ * Wie viel eines Laufs mindestens messbar sein muss, damit er ein Urteil ist.
+ *
+ * **Der belegte Fehler.** Am 08.09.2026 meldete Lauf 92 auf PR #182 GRÜN:
+ *
+ *   Gates: 1 bestanden · 0 gefallen · 1103 nicht prüfbar
+ *
+ * Auf dem Runner scheiterte die Namensauflösung zu Supabase; jede Seite war
+ * eine leere Hülle, und die Hüllen-Regel hat richtig gehandelt — sie wertete
+ * nichts. Nur: „0 gefallen" von EINEM gemessenen Gate sieht im Check genauso
+ * aus wie „0 gefallen" von 1104. Der PR wurde auf diesem grünen Haken
+ * gemerged.
+ *
+ * Ein Prüfstand, der grün meldet, ohne gemessen zu haben, ist schlimmer als
+ * einer, der rot meldet: Rot wird untersucht, Grün wird geglaubt.
+ *
+ * Deshalb: Unterschreitet der messbare Anteil diese Schwelle, hat der Lauf
+ * KEIN URTEIL — weder bestanden noch gefallen — und endet mit 1. Der Wert ist
+ * bewusst niedrig: er soll den Totalausfall fangen, nicht einzelne Hüllen.
+ * Ein Teillauf (`--kontrollen`) ist ausgenommen, der misst absichtlich wenig.
+ */
+export const MINDESTANTEIL_MESSBAR = 0.5;
+
 /** Chromium-Pfad, falls die Umgebung einen mitbringt (Container, CI). */
 export const CHROMIUM_PFAD = process.env.PRUEFSTAND_CHROMIUM ?? undefined;

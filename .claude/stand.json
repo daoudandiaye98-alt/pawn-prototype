@@ -1,41 +1,47 @@
 {
-  "aktualisiert": "2026-09-08",
+  "aktualisiert": "2026-09-09",
   "branch": "claude/pawn-vision-frontend-rollback-m6z4xl",
   "offene_prs": [
     {
       "nr": 0,
-      "titel": "Rücknahme des Magazin-Formats — das Frontend von vor Teil M1 ist zurück",
-      "status": "Entwurf, offen, Basis main. src/ auf 4b7073d zurückgesetzt; sechs Nicht-Magazin-Reparaturen bewusst behalten.",
-      "blockiert_durch": "wartet auf Daoudas Durchsicht"
+      "titel": "Kein Urteil ohne Messung — der Prüfstand darf nicht grün melden, ohne gemessen zu haben",
+      "status": "Entwurf, offen, Basis main. Nur tools/pruefstand/ und ein neuer Test. Kein Frontend-Code.",
+      "blockiert_durch": "wartet auf Daoudas Durchsicht — vor allem die Schwelle MINDESTANTEIL_MESSBAR = 0.5"
     }
   ],
   "merge_reihenfolge": [
-    "Dieser Zweig zuerst und allein — er fasst src/ als Ganzes an. Jeder andere offene Zweig auf src/ bekommt sonst einen Konflikt, der Datei für Datei aufgelöst werden muss.",
-    "PR #179 (K7) und der Turm-v2-Zweig sind mit 0f8834b bereits in main; ihre Punkte aus der alten Merge-Reihenfolge sind erledigt."
+    "PR #182 (Rücknahme des Magazins) ist am 08.09. um 21:04 GEMERGED und live. Erledigt.",
+    "Dieser Zweig steht allein und fasst nur den Prüfstand an — keine Konflikte zu erwarten."
   ],
   "wartet_auf_mensch": [
-    "DIE ENTSCHEIDUNG IST GEFALLEN: Das Magazin-Format ist zurückgenommen. src/ steht wieder auf dem Stand vom 16.08. vor 5d7e9da. Wer das Magazin je wiederhaben will, findet es vollständig in der Git-Geschichte zwischen 5d7e9da und 0f8834b — nichts davon ist verloren, es ist nur nicht mehr eingehängt.",
-    "BEWUSST BEHALTEN, weil sie nichts mit dem Magazin zu tun haben und zwei davon Geld betreffen: (1) der Warenkorb zeigt echte Produktfotos statt gezeichneter Silhouetten, (2) die Bestellbestätigung sieht wirklich in der Datenbank nach statt Erfolg zu behaupten, (3) der Korb hält echte Stücke — die Werkseite wurde dafür neu auf korb.ts gezogen, (4) der Cookie-Banner ist eine Leiste mit zwei gleichwertigen Knöpfen (DSGVO), (5) der Tastatur-Rahmen ist an 17 Stellen in 14 Dateien zurück, (6) die Route /wie-pawn-ki-nutzt, die vorher tot war.",
-    "NICHT ANGEFASST: supabase/functions (das Welt-Wissen der KI aus Q4b bleibt), .claude/, scripts/verify, tools/pruefstand, routinen/. Daouda hat das ausdrücklich so entschieden.",
-    "Der Prüfstand misst wieder Halle, Boutique, Werk, Haus und Ausgabe. Die alte Warnung 'Kontrolle 4.5 antwortet 200 statt 404' ist erledigt: vercel.json wird aus routen.js erzeugt und kennt 96 Adressen plus 404-Auffang.",
-    "OFFEN GEBLIEBEN: Kontrolle 4.7 (Seitengewicht). index.js liegt jetzt bei 2.930 kB — mehr als die 2.421 kB von damals, weil das Magazin sein eigenes Bündel hatte und alles wieder im Haupt-Bündel liegt. Solange die Schwelle bei 3 MB steht, lehrt der Prüfstand Rot zu übersehen. Entweder das Bündel aufteilen oder die Schwelle begründet anheben.",
-    "GELÖSCHT, weil sie auf gelöschte Dateien zeigte: src/__tests__/spalten-gibt-es.spec.ts (prüfte, dass das Verzeichnis nur Spalten abfragt, die es gibt — Y3.3). Der Gedanke ist gut und fehlt jetzt. Wer ihn zurückholen will, richtet ihn auf Shop.tsx und DesignerPage.tsx.",
-    "Entscheidung am 2026-09-14: bleibt der Skill pawn-kontext? Er hat die Eval-Latte nicht genommen (+0,5 statt deutlich). Zahlen und Trigger-Tabelle in .claude/metrik.md.",
+    "AUSFALL AUF DER ECHTEN SEITE — das Dringendste. Keine Häuser, keine Google-Anmeldung. URSACHE ZWEIFELSFREI: der DNS-Name rnakubexbqfgfciynqpt.supabase.co EXISTIERT NICHT MEHR. Gemessen auf dem GitHub-Runner (offenes Netz, ohne Browser, Schritt 'Datenhost auflösen' in pruefstand.yml): 'getent hosts' antwortet 'keine Auflösung', 'curl' antwortet mit Code 000 'kein Verbindungsaufbau'. Das ist kein Browser-, Proxy- oder Container-Problem und keine langsame Datenbank — der Name ist aus dem DNS verschwunden. Genau das passiert, wenn eine verwaltete Supabase-Instanz pausiert oder gelöscht wird. ERSTE REGEL AUS pawn-kontext: Lovable-Guthaben prüfen. lovable.dev, Workspace 'Daouda's Lovable' (Plan pro), Projekt pawn-archive-muse / 81416573-4f0e-4ff7-a863-43988a85e8d2. Den Kontostand kann kein Agent lesen: get_workspace gibt keinen zurück, das Supabase-MCP antwortet 'You do not have permission'. SOLANGE DAS SO IST, IST PAWN FÜR BESUCHER LEER — kein Kauf ist möglich, keine Anmeldung.",
+    "NICHT VON DER RÜCKNAHME VERURSACHT — belegt, damit niemand in die falsche Richtung sucht: (a) src/integrations/supabase/ wurde in der GANZEN Magazin-Zeit nicht angefasst (git diff 4b7073d 0f8834b ist dort leer), die Rücknahme konnte dort also nichts kaputtmachen; (b) das ausgelieferte Bündel auf pawn.vision zeigt weiterhin auf rnakubexbqfgfciynqpt, die Kennung stimmt; (c) der Ausfall war VOR dem Merge da — Lauf 91 um 20:49 und Lauf 92 um 21:03 scheiterten beide, der Merge war um 21:04. Läufe 86/87 am 19.08. liefen noch sauber; die Datenbank ist irgendwann zwischen dem 19.08. und heute ausgefallen.",
+    "DAS MAGAZIN IST ZURÜCKGENOMMEN UND LIVE. Verifiziert auf pawn.vision am 08.09. um 21:10: / und /shop und /product/<slug> antworten mit 200, /verzeichnis/1 mit 404, eine erfundene Adresse mit 404. Das ausgelieferte Bündel enthält 'YOUR MOVE' und 'Boutique durchsuchen' und KEINE Magazin-Zeichenketten (Wendel, Satzspiegel, Umschlag, verzeichnis/1 je 0 Treffer).",
+    "DRINGEND FÜR DAOUDA — DER KAUF IST NIE DURCHGEKLICKT WORDEN. Werkseite auf pawn.vision öffnen, 'In den Korb', dann in den Korb sehen und zur Kasse gehen. Genau dort lag der Fehler, den Zusage Z7 jetzt festnagelt: der Korb bestätigte und blieb leer. Statisch geprüft und durch Tests gedeckt — aber nie mit echter Datenbank von Hand durchgespielt. Das ist der wichtigste offene Punkt.",
+    "PR #182 wurde auf einem LEEREN GRÜNEN HAKEN gemerged: Lauf 92 meldete 'Gates: 1 bestanden · 0 gefallen · 1103 nicht prüfbar' — er hatte 1 von 1104 Kontrollen gemessen, weil der Runner Supabase nicht auflösen konnte. Das ist kein Vorwurf, sondern der Grund für diesen Zweig: der Prüfstand sagt jetzt KEIN URTEIL statt grün. Der Merge selbst ist dadurch nicht falsch — der Code ist über tsc, 175 Tests, verify.sh und die Live-Prüfung oben gedeckt —, aber er war ungeprüft, wo er geprüft aussah.",
+    "URSACHE UNGEKLÄRT: Warum erreichte der GitHub-Runner in den Läufen 91 und 92 'rnakubexbqfgfciynqpt.supabase.co' nicht (net::ERR_NAME_NOT_RESOLVED)? Läufe 86/87 am 19.08. hatten das Problem nicht. Ich konnte es von hier nicht klären — dieser Container erreicht Supabase ebenfalls nicht (eingeschränktes Netz), und das Supabase-MCP-Werkzeug antwortet mit 'You do not have permission'. WENN das Supabase-Projekt pausiert wäre, wäre pawn.vision leer — das muss Daouda im Supabase-Dashboard nachsehen.",
+    "OFFEN GEBLIEBEN: Kontrolle 4.7 (Seitengewicht). index.js liegt bei 2.930 kB statt 2.421 kB, weil das Magazin ein eigenes Bündel hatte und jetzt alles im Haupt-Bündel liegt. Die Schwelle steht bei 3 MB — das ist knapp. Kein Lauf konnte es bisher messen. Entweder das Bündel aufteilen (Studio und Verwaltung per lazy import) oder die Schwelle begründet anheben.",
+    "GELÖSCHT, weil sie auf gelöschte Dateien zeigte: src/__tests__/spalten-gibt-es.spec.ts (prüfte, dass nur Spalten abgefragt werden, die es gibt — Y3.3). Der Gedanke ist gut und fehlt jetzt. Wer ihn zurückholen will, richtet ihn auf Shop.tsx und DesignerPage.tsx.",
+    "Entscheidung am 2026-09-14: bleibt der Skill pawn-kontext? Er hat die Eval-Latte nicht genommen (+0,5 statt deutlich). Zahlen in .claude/metrik.md.",
     "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen."
   ],
   "letzter_pruefstand": {
-    "datum": "2026-09-08",
-    "ergebnis": "sicht.sh lokal: 16 von 16 Aufnahmen, angesehen. 24 Hüllen (kein Netz zur Datenbank in diesem Container) — echte Zahlen liefert nur die GitHub-Action gegen die Vercel-Vorschau."
+    "datum": "2026-09-09",
+    "bestanden": 1,
+    "gefallen": 0,
+    "nicht_pruefbar": 1103,
+    "urteil": "KEIN URTEIL — nur 1 von 1104 Gates messbar (0,1 %). Lauf 97 auf 3a3005c. Der Runner erreicht die Datenbank nicht, jede Seite ist eine leere Hülle. Die Zahlen 1/0 sagen NICHTS über den Zweig — genau dafür gibt es seit dem 08.09. die Regel in tools/pruefstand/urteil.ts, die hier greift und den Lauf zu Recht rot enden lässt."
   },
-  "naechster_zug": "Daouda sieht sich die Seite auf der Vercel-Vorschau an — vor allem einen echten Kauf: Werkseite → in den Korb → Korb → Kasse. Das ist der einzige Weg, den diese Sitzung nicht selbst beweisen konnte, und genau dort lag der Fehler, den Z7 jetzt festnagelt. Danach die offene Frage zum Seitengewicht (4.7) entscheiden: Bündel aufteilen oder Schwelle begründet anheben.",
+  "naechster_zug": "ZUERST Daouda: einen echten Kauf auf pawn.vision durchklicken (Werkseite → Korb → Kasse) und im Supabase-Dashboard nachsehen, ob das Projekt läuft. DANN diesen Zweig durchsehen: die Schwelle MINDESTANTEIL_MESSBAR = 0.5 ist die einzige Zahl, die eine Meinung braucht. DANACH die Frage zum Seitengewicht (4.7) entscheiden, sobald ein Lauf sie wirklich gemessen hat.",
   "nicht_pruefbar": [
-    "Die Seiten holen ihre Inhalte aus Supabase; dieser Container erreicht es nicht. Auf allen 16 Aufnahmen sind die Werkraster und Textspalten deshalb leer. Das ist ein Artefakt der Umgebung, KEIN Befund — aber es heißt auch: über Inhalte, Bilder und alles, was aus der Datenbank kommt, sagt dieser Lauf nichts. Das muss ein Mensch oder die GitHub-Action gegen die echte Vorschau prüfen.",
-    "Der Korb-Weg (Z7) ist statisch geprüft und durch Tests gedeckt, aber in dieser Sitzung nie mit einer echten Datenbank durchgeklickt worden. Ein Kauf von Hand — Werkseite, in den Korb, Kasse — ist der Beweis, der hier fehlt.",
-    "Der Prüfer hat diesen Bericht gegen den Code gehalten: 15 von 16 Behauptungen bestätigt. WIDERLEGT wurde die Zahl '19 Stellen' beim Tastatur-Rahmen — es waren 14, und beim Nachzählen kam heraus, dass drei Reparaturen (Index.tsx 1x, ProductDetail.tsx 2x) beim Zurücksetzen verlorengegangen waren. Nachgetragen, jetzt 17 in 14 Dateien, fokus-waechter.mjs grün. Der Prüfer hat also über eine falsche Zahl einen echten Fehler gefunden — der belegte Fall dafür, warum ein Agent nie sein eigener Prüfer ist."
+    "Der Kauf-Weg auf der echten Seite. Siehe oben — der wichtigste offene Punkt.",
+    "Alles, was aus Supabase kommt: Werke, Bilder, Häuser, Texte. Weder dieser Container noch die letzten zwei Prüfstand-Läufe erreichten die Datenbank.",
+    "Ob das Supabase-Projekt gesund ist. Von hier nicht feststellbar (kein Netz, keine MCP-Berechtigung).",
+    "Kontrolle 4.7 (Seitengewicht) auf der echten Vorschau — noch nie gemessen seit der Rücknahme."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-08",
+    "datum": "2026-09-09",
     "bestanden": 3,
     "gefallen": 0
   },
