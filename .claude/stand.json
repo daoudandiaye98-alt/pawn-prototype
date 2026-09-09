@@ -1,5 +1,5 @@
 {
-  "aktualisiert": "2026-09-08",
+  "aktualisiert": "2026-09-09",
   "branch": "claude/pawn-vision-frontend-rollback-m6z4xl",
   "offene_prs": [
     {
@@ -26,8 +26,11 @@
     "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen."
   ],
   "letzter_pruefstand": {
-    "datum": "2026-09-08",
-    "ergebnis": "Lauf 92: 1 bestanden, 0 gefallen, 1103 NICHT PRÜFBAR. Kein Urteil — der Runner erreichte Supabase nicht. Genau dieser Lauf ist der Anlass für den aktuellen Zweig."
+    "datum": "2026-09-09",
+    "bestanden": 1,
+    "gefallen": 0,
+    "nicht_pruefbar": 1103,
+    "urteil": "KEIN URTEIL — nur 1 von 1104 Gates messbar (0,1 %). Lauf 97 auf 3a3005c. Der Runner erreicht die Datenbank nicht, jede Seite ist eine leere Hülle. Die Zahlen 1/0 sagen NICHTS über den Zweig — genau dafür gibt es seit dem 08.09. die Regel in tools/pruefstand/urteil.ts, die hier greift und den Lauf zu Recht rot enden lässt."
   },
   "naechster_zug": "ZUERST Daouda: einen echten Kauf auf pawn.vision durchklicken (Werkseite → Korb → Kasse) und im Supabase-Dashboard nachsehen, ob das Projekt läuft. DANN diesen Zweig durchsehen: die Schwelle MINDESTANTEIL_MESSBAR = 0.5 ist die einzige Zahl, die eine Meinung braucht. DANACH die Frage zum Seitengewicht (4.7) entscheiden, sobald ein Lauf sie wirklich gemessen hat.",
   "nicht_pruefbar": [
@@ -38,8 +41,9 @@
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-08",
-    "ergebnis": "3 von 3 bestanden · Typen grün · 175 Tests grün · 7 von 7 Zusagen"
+    "datum": "2026-09-09",
+    "bestanden": 3,
+    "gefallen": 0
   },
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
