@@ -7,6 +7,12 @@
       "titel": "Teil H — Das Heft zieht ein (Zweig 1: Einzug, Hülle, Adressen)",
       "status": "Entwurf, offen, Basis main. H1–H5 und H7 sind drin; H4 liegt als Datei (nichts angewandt, nichts ausgeliefert). Bündel −745,76 kB.",
       "blockiert_durch": "1. Daoudas Sicht-Freigabe auf der Vercel-Vorschau. 2. Die vier Migrationen müssen VOR dem Merge über Lovable laufen."
+    },
+    {
+      "nr": 185,
+      "titel": "Fix: ein Prüfstandslauf, der nichts gesehen hat, meldet nicht mehr grün",
+      "status": "Entwurf, offen, Basis main. Zweig claude/pruefstand-kein-urteil. Unabhängig von #184: #184 fasst pruefstand.config.ts an, #185 lauf.ts und den Workflow — kein Überlapp. Kann vor oder nach #184 mergen.",
+      "blockiert_durch": "nichts — wartet nur auf Durchsicht. Gefunden wurde der Mangel an Lauf #104 dieses Zweigs: der Check meldete grün über 673 ungemessenen Gates."
     }
   ],
   "merge_reihenfolge": [
@@ -16,7 +22,8 @@
     "4. PR #184 nach main mergen. Lovable synct, Vercel spiegelt auf pawn.vision.",
     "5. pawn-chat über Lovable ausliefern (Code liegt im Merge: page_context.heft, /werk/-Links, mode stilfoto).",
     "6. Danach Zweig 2 (claude/heft03-foto): das Stilfoto auf /deine-dna/foto und das Bild in „Frag PAWN\" — beides braucht die ausgelieferte Function.",
-    "7. H6 (Freistellen) als eigener PR, aber VOR dem Umschalttag: ohne product_dna.heft.cutout_url steht kein Werk auf der Bühne."
+    "7. H6 (Freistellen) als eigener PR, aber VOR dem Umschalttag: ohne product_dna.heft.cutout_url steht kein Werk auf der Bühne.",
+    "PR #185 (Prüfstand: kein Urteil) hängt an nichts und blockiert nichts. Am sinnvollsten VOR #184, dann sagt der erste Lauf von #184 nach dem Merge selbst, ob er etwas gesehen hat."
   ],
   "wartet_auf_mensch": [
     "SICHT-FREIGABE: Die Vercel-Vorschau von PR #184 ansehen. Dieser Container erreicht Supabase nicht und rendert mit 1 Bild pro Sekunde — über echte Häuser, echte Bilder und die Ruhe der Bewegung sagt mein Lauf NICHTS. Prüfen: Eröffnung ~5,8 s und ruhig · echte Häuser auf den Bühnen · ein Werk anklicken (Adresse muss auf /werk/<slug> springen, Zurück-Taste schließt das Fenster) · Tasche → Stripe-Kasse öffnet (Testmodus reicht, kein Kauf) · Konsole ohne Fehler · 390 px und iPad.",
@@ -24,7 +31,8 @@
     "EDGE FUNCTION: pawn-chat ist geändert, aber NICHT ausgeliefert. Nach dem Merge über Lovable deployen — sonst zeigen die Karten im Chat weiter auf /product/<slug> (läuft über eine 301) und mode stilfoto gibt es nicht.",
     "ENTSCHEIDUNGEN, die Daouda in dieser Sitzung getroffen hat: D1 Vision-Text bleibt der Text des Hefts (site_content vision_* wird nicht gelesen) · D3 Häuser nach house_number · D6 der VORSCHAU-Stempel ist weg, der Regler „Papier & Bewegung\" bleibt · D7 ein geöffnetes Werk schreibt seine Adresse.",
     "H6 (Freistellen) ist noch nicht gebaut. Die Regel der Bühne ist hart: aufgestellt wird nur, was freigestellt ist (product_dna.heft.cutout_url). Ohne die Freistell-Function und einen einmaligen Lauf über alle veröffentlichten Werke stehen die Bühnen leer — mit einem ehrlichen Leerzustand, aber leer. Das muss vor dem Umschalttag passieren.",
-    "OFFEN GEBLIEBEN aus der letzten Schicht, jetzt erledigt: Kontrolle 4.7 (Seitengewicht). index.js liegt bei 2.184,66 kB statt 2.930,42 kB. Die Schwelle von 3 MB musste nicht angehoben werden."
+    "OFFEN GEBLIEBEN aus der letzten Schicht, jetzt erledigt: Kontrolle 4.7 (Seitengewicht). index.js liegt bei 2.184,66 kB statt 2.930,42 kB. Die Schwelle von 3 MB musste nicht angehoben werden.",
+    "OFFENE URSACHE (aus PR #185): Warum löst der GitHub-Rechner rnakubexbqfgfciynqpt.supabase.co nicht auf? #185 macht die Blindheit nur sichtbar, statt sie als Erfolg zu verkaufen — behoben ist sie damit nicht. Drei Verdächtige, keiner geprüft: das Supabase-Projekt pausiert, eine Netzsperre der Organisation, oder DNS auf dem Runner. Solange das offen ist, ist der einzige Beweis über echte Daten ein Mensch auf der Vorschau."
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-10",
