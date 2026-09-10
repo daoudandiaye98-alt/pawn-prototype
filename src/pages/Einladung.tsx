@@ -90,7 +90,7 @@ export default function Einladung() {
   }, [refCode]);
 
   if (loading) return null;
-  if (notFound || !invitation) return <Navigate to="/apply" replace />;
+  if (notFound || !invitation) return <Navigate to="/fuer-designer/2" replace />;
 
   const seatsTaken = foundingCount ?? 0;
   const plateImages = Array.isArray(invitation.plate_images) ? invitation.plate_images.filter(Boolean) : [];

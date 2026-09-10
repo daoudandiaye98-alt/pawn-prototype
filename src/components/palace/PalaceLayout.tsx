@@ -92,21 +92,21 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
                 { label: "Mode", to: "/mode" },
                 { label: "Interior", to: "/interior" },
                 { label: "Kunst", to: "/kunst" },
-                { label: "Designer", to: "/designers" },
+                { label: "Designer", to: "/haeuser" },
               ],
             },
             {
               title: "Für Sie",
               links: [
-                { label: "Neu", to: "/neu" },
-                { label: "DNA", to: "/dna" },
-                { label: "Warenkorb", to: "/cart" },
+                { label: "Neu", to: "/ausgewaehlt" },
+                { label: "DNA", to: "/deine-dna" },
+                { label: "Warenkorb", to: "/tasche" },
               ],
             },
             {
               title: "Für Designer",
               links: [
-                { label: "Bewerben", to: "/apply" },
+                { label: "Bewerben", to: "/fuer-designer/2" },
                 { label: "Pläne", to: "/preise" },
                 { label: "Studio", to: "/studio" },
                 { label: "Copilot", to: "/studio/copilot" },
@@ -150,7 +150,7 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
           <span>
             <Editable contentKey="footer_line_1">PAWN · Kuratierte Ausstellung</Editable> · Ausgabe {ausgabeNummer}
           </span>
-          <span>© {new Date().getFullYear()} — Für Designer <a href="/apply" className="uline text-black">bewerben</a></span>
+          <span>© {new Date().getFullYear()} — Für Designer <a href="/fuer-designer/2" className="uline text-black">bewerben</a></span>
         </div>
       </footer>
       <BuilderToggle />

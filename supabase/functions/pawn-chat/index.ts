@@ -45,7 +45,7 @@ Wenn du empfehlen kannst, nenne 2-3 konkrete Namen aus dem Kontext, den du bekom
 const DEFAULT_HOUSE_STYLE_LAW = "Sag, was ist — nie, was etwas nicht ist. Kurz, konkret, in der bestehenden PAWN-Stimme. Keine Marketing-Floskeln, keine Verneinungen als Stilmittel.";
 
 // Ehrlichkeitsgesetz (Teil 37/AP1, 36c): nie erfundene Empfehlungen. Gilt unabhängig vom Kontext für jede Antwort.
-const CATALOG_HONESTY_LAW = "Empfiehl niemals ein Produkt, eine Marke oder ein Stück, das nicht wörtlich in deinem Kontext oben genannt wurde — auch nicht als vages Beispiel. Ohne echte Katalog-Grundlage: keine generische Umschreibung, sondern in einem Satz ehrlich sagen, dass es dafür aktuell nichts Passendes gibt, und einen konkreten nächsten Schritt anbieten (Wunschliste, /designers entdecken, oder — im Studio-Kontext eines Hauses — Offene Türen).";
+const CATALOG_HONESTY_LAW = "Empfiehl niemals ein Produkt, eine Marke oder ein Stück, das nicht wörtlich in deinem Kontext oben genannt wurde — auch nicht als vages Beispiel. Ohne echte Katalog-Grundlage: keine generische Umschreibung, sondern in einem Satz ehrlich sagen, dass es dafür aktuell nichts Passendes gibt, und einen konkreten nächsten Schritt anbieten (Wunschliste, /haeuser entdecken, oder — im Studio-Kontext eines Hauses — Offene Türen).";
 // Sprachgesetz (Teil 20/21, überschreibbar via ai_config.voice_law): gilt zusätzlich, wenn PAWN über die Person selbst spricht (DNA-Gespräch).
 const DEFAULT_VOICE_LAW = "Schreibe für Menschen, die unsicher sind und Angst haben, etwas falsch zu verstehen. Kein wertendes Wort ohne sofortige Auflösung im selben Satz. Konkret schlägt abstrakt. Kurze Sätze. Kein Fachjargon, keine Prozentzahlen im Fließtext. Jede Behauptung bekommt eine Zeile woran ich das sehe. Scharf zur Sache, nie zur Person. Autorität kommt aus Konkretheit, nicht aus Ton. Über den Körper spricht PAWN nur über Kleidung: Proportion, Passform, Schwerpunkt, Wirkung von Schnitten — nie über den Körper selbst als Mangel. Ungefragt fällt kein Wort zu Figur, Größe oder Gewicht. Fragt jemand ausdrücklich nach Passform, antwortet PAWN sachlich über Schnitte und ihre Wirkung — nie mit dem Wort „kaschieren“ als Prämisse. Keine Aussagen zu Abnehmen, Diät oder Idealmaßen, auch nicht auf Nachfrage.";
 
@@ -399,26 +399,29 @@ async function queryBrandKnowledge(
 function detectNavAction(text: string, all: { designers: DBDesigner[]; products: DBProduct[] }): Action | null {
   const t = text.toLowerCase();
   // Explicit intents
-  if (/\b(dna|geschmack|profil)\b/.test(t)) return { type: "navigate", path: "/dna", label: "Zu deiner DNA" };
-  if (/\b(warenkorb|bag|cart|tasche)\b/.test(t)) return { type: "navigate", path: "/cart", label: "Zum Warenkorb" };
-  if (/\b(neu|neuheit|newest|latest)\b/.test(t)) return { type: "navigate", path: "/neu", label: "Was neu ist" };
+  /* Teil H — die Adressen des Hefts. Die alten (/dna, /cart, /neu, /designers,
+     /designer/:slug, /product/:slug) antworten zwar weiter mit 301, aber ein Link,
+     der erst umgeleitet wird, ist eine halbe Antwort. */
+  if (/\b(dna|geschmack|profil)\b/.test(t)) return { type: "navigate", path: "/deine-dna", label: "Zu deiner DNA" };
+  if (/\b(warenkorb|bag|cart|tasche)\b/.test(t)) return { type: "navigate", path: "/tasche", label: "Zu deiner Tasche" };
+  if (/\b(neu|neuheit|newest|latest)\b/.test(t)) return { type: "navigate", path: "/ausgewaehlt", label: "Was neu ist" };
   if (detectNavIntent(text)) {
     if (/\bmode\b|kleidung/.test(t)) return { type: "navigate", path: "/mode", label: "Zur Welt Mode" };
     if (/\binterior\b|raum|wohn/.test(t)) return { type: "navigate", path: "/interior", label: "Zur Welt Interior" };
     if (/\bkunst\b|wand/.test(t)) return { type: "navigate", path: "/kunst", label: "Zur Welt Kunst" };
-    if (/designer(:innen)?( übersicht| overview)?/.test(t)) return { type: "navigate", path: "/designers", label: "Zur Designer-Übersicht" };
+    if (/designer(:innen)?( übersicht| overview)?|h(ä|ae)user/.test(t)) return { type: "navigate", path: "/haeuser", label: "Zu unseren Häusern" };
   }
   // Fuzzy designer match
   for (const d of all.designers) {
     if (d.brand_name && fuzzyIncludes(t, d.brand_name)) {
-      return { type: "navigate", path: `/designer/${d.slug}`, label: `Zur Kollektion von ${d.brand_name}` };
+      return { type: "navigate", path: `/haus/${d.slug}`, label: `Zum Haus ${d.brand_name}` };
     }
   }
   // Fuzzy product match (needs nav intent to avoid false positives)
   if (detectNavIntent(text)) {
     for (const p of all.products) {
       if (p.name && fuzzyIncludes(t, p.name)) {
-        return { type: "navigate", path: `/product/${p.slug}`, label: `Zu „${p.name}"` };
+        return { type: "navigate", path: `/werk/${p.slug}`, label: `Zu „${p.name}"` };
       }
     }
   }
@@ -730,6 +733,102 @@ async function handleErstePartie(
   });
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Teil H — mode "stilfoto": PAWN liest ein Foto und BEOBACHTET.
+ *
+ * Der Unterschied, der hier alles entscheidet: eine Beobachtung ist "warmer
+ * Unterton, helle Augen". Eine Bewertung waere "steht dir gut" oder "wirkt
+ * juenger". Das Zweite tut PAWN nicht — nicht als Ton, sondern als Schema: das
+ * Modell darf nur die Felder unten fuellen, und keines davon hat Platz fuer ein
+ * Urteil ueber einen Menschen.
+ *
+ * Ohne Konto wird NICHTS gespeichert: keine Zeile, kein Bild, kein Signal. Die
+ * Antwort geht zurueck und ist danach weg. Mit Konto landet allein der Befund in
+ * kunden_stil.foto_befund — nie das Foto.
+ * ──────────────────────────────────────────────────────────────────────────── */
+const STILFOTO_SCHEMA: Record<string, { felder: string; blick: string }> = {
+  mode: {
+    felder: `{"hautton": "hell|mittel|tief", "unterton": "warm|kuehl|neutral", "augenfarbe": "kurz, ein Wort", "haarfarbe": "kurz, ein Wort", "farben_passen": ["3-5 Farbnamen"], "farben_meiden": ["2-3 Farbnamen"]}`,
+    blick: "Lies Hautton, Unterton, Augen- und Haarfarbe. Leite daraus ab, welche Farben neben diesem Gesicht ruhig wirken und welche es ueberstrahlen.",
+  },
+  interior: {
+    felder: `{"licht": "kurz, z. B. weiches Nordlicht", "boden": "kurz", "wandton": "kurz", "vorhandenes": ["3-5 Dinge, die im Raum stehen"]}`,
+    blick: "Lies Licht, Boden, Wandton und was im Raum schon steht. Beschreibe den Raum, nicht den Geschmack der Person.",
+  },
+  kunst: {
+    felder: `{"freie_flaeche": "kurz, z. B. 2 m breit ueber dem Sofa", "licht": "kurz", "umgebung": "kurz", "farben": ["3-5 Farbnamen der Umgebung"]}`,
+    blick: "Lies die freie Wandflaeche, das Licht, die Umgebung und die Farben daneben.",
+  },
+};
+
+/** Ein data:-Bild darf 2 MB nicht ueberschreiten — sonst kostet ein Gast beliebig viel. */
+function bildZuGross(url: string, maxBytes = 2 * 1024 * 1024): boolean {
+  if (!url.startsWith("data:")) return false;
+  const base64 = url.slice(url.indexOf(",") + 1);
+  return Math.floor((base64.length * 3) / 4) > maxBytes;
+}
+
+async function handleStilfoto(
+  admin: ReturnType<typeof createClient> | null,
+  user_id: string | null,
+  bild: string,
+  welt: string,
+): Promise<Response> {
+  const antwort = (payload: Record<string, unknown>, status = 200) =>
+    new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+  const w = STILFOTO_SCHEMA[welt] ? welt : "mode";
+  if (!bild) return antwort({ reply: "Ich brauche ein Bild, um etwas zu sehen.", befund: null });
+  if (bildZuGross(bild)) {
+    return antwort({ reply: "Das Bild ist zu groß. Zwei Megabyte reichen mir völlig.", befund: null, zu_gross: true });
+  }
+
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) return antwort({ reply: "Ich kann gerade nicht hinsehen. Versuch es später noch einmal.", befund: null });
+
+  const system = [
+    "Du liest ein Foto für PAWN und BESCHREIBST, was zu sehen ist.",
+    "Du bewertest nie einen Menschen, seinen Körper, sein Alter, sein Aussehen oder seinen Geschmack.",
+    "Keine Komplimente, keine Ratschläge, keine Vermutungen über Herkunft, Geschlecht oder Gesundheit.",
+    "Antworte AUSSCHLIESSLICH mit diesem JSON-Objekt, ohne Text davor oder danach:",
+    STILFOTO_SCHEMA[w].felder,
+    "Was du nicht sicher siehst, lässt du weg — ein fehlendes Feld ist besser als ein geratenes.",
+  ].join(" ");
+
+  let befund: Record<string, unknown> | null = null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: [{ type: "text", text: STILFOTO_SCHEMA[w].blick }, { type: "image_url", image_url: { url: bild } }] },
+        ],
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const roh = data.choices?.[0]?.message?.content;
+      if (typeof roh === "string") befund = JSON.parse(roh) as Record<string, unknown>;
+    }
+  } catch { befund = null; }
+
+  if (!befund) return antwort({ reply: "Ich konnte auf dem Bild nichts Verlässliches erkennen.", befund: null });
+
+  /* Ohne Konto: die Antwort geht zurueck, gespeichert wird nichts. */
+  if (user_id && admin) {
+    await admin.from("kunden_stil").upsert(
+      { user_id, welt: w, foto_befund: befund, quelle: "heft-foto" },
+      { onConflict: "user_id" },
+    ).then(() => {}, () => {});
+  }
+  return antwort({ reply: "", befund, welt: w, gespeichert: !!user_id });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -737,8 +836,19 @@ Deno.serve(async (req) => {
       messages: Msg[]; session_id?: string; probe?: boolean;
       image_url?: string; image_urls?: string[]; image_paths?: string[];
       persist_thread?: boolean;
-      page_context?: { route?: string; product_slug?: string };
-      mode?: "erste_partie";
+      /* Teil H — das Heft reicht mit, wo der Kunde steht und was es ueber ihn schon weiss.
+         Nichts davon wird gespeichert; es faerbt nur diese eine Antwort. */
+      page_context?: {
+        route?: string; product_slug?: string;
+        heft?: {
+          route?: string; seite?: string;
+          stil?: { welt?: string; richtung?: string; form?: string };
+          frag?: { was?: string; anlass?: string; rahmen?: string };
+        };
+      };
+      mode?: "erste_partie" | "stilfoto";
+      /* stilfoto: die Welt, aus der gelesen wird (mode | interior | kunst). */
+      welt?: string;
       partie_aktion?: string; schwerpunkte_gewaehlt?: string[]; automatik_zustimmung?: boolean;
     };
 
@@ -790,6 +900,12 @@ Deno.serve(async (req) => {
     // eigener Zustand in designers.onboarding_state) — läuft komplett getrennt vom freien Gespräch.
     if (body.mode === "erste_partie") {
       return await handleErstePartie(admin, user_id, body);
+    }
+
+    /* Teil H — das Bilderquiz des Hefts. Eigener Ablauf, eigenes Schema, kein
+       Gespraech: hinein geht ein Bild und eine Welt, heraus kommt ein Befund. */
+    if (body.mode === "stilfoto") {
+      return await handleStilfoto(admin, user_id, imageUrls[0] ?? "", String(body.welt ?? "mode"));
     }
 
     let extracted: Extracted = {};
@@ -891,7 +1007,7 @@ Deno.serve(async (req) => {
           const wantedTerms = new Set(top3.map((r) => r.term.toLowerCase()));
           const matches = cand.products.filter((p) => (p as unknown as { tags?: string[] }).tags?.some((tag) => wantedTerms.has(tag.toLowerCase()))).slice(0, 2);
           for (const p of matches) {
-            trendCards.push({ kind: "product", title: p.name, subtitle: p.world ?? undefined, href: `/product/${p.slug}`, reason: "Gerade im Aufwärtstrend." });
+            trendCards.push({ kind: "product", title: p.name, subtitle: p.world ?? undefined, href: `/werk/${p.slug}`, reason: "Gerade im Aufwärtstrend." });
           }
           trendReplyPrefix = `Aktuell im Aufwärtstrend in ${worldForTrends}: ${top3.map((r) => r.term).join(", ")}.`;
         }
@@ -934,14 +1050,14 @@ Deno.serve(async (req) => {
           for (const { p, matched } of scored) {
             cards.push({
               kind: "product", title: p.name, subtitle: p.world ?? undefined,
-              href: `/product/${p.slug}`,
+              href: `/werk/${p.slug}`,
               reason: matched.length ? `Trifft auf ${matched.slice(0, 3).join(", ")}.` : "Passt zur Welt.",
             });
           }
           const names = scored.map(({ p }) => p.name).join(", ");
           contextHint = `Echte Katalog-Treffer mit Begründung (nutze NUR diese Namen, erfinde keine weiteren): ${names}.`;
         } else if (catalogIntent || queryTerms.length) {
-          contextHint = "KEIN AUSREICHENDER KATALOG-TREFFER: Sag in einem Satz ehrlich, dass es dafür aktuell nichts ausreichend Passendes gibt, und biete konkret einen nächsten Schritt an (Wunschliste, /designers entdecken). Erfinde kein Produkt und keine Marke.";
+          contextHint = "KEIN AUSREICHENDER KATALOG-TREFFER: Sag in einem Satz ehrlich, dass es dafür aktuell nichts ausreichend Passendes gibt, und biete konkret einen nächsten Schritt an (Wunschliste, /haeuser entdecken). Erfinde kein Produkt und keine Marke.";
         }
       }
 
@@ -1034,8 +1150,24 @@ Deno.serve(async (req) => {
         }
       } catch { /* soft */ }
     }
+    /* Teil H — «HEFT»: wo der Kunde gerade steht und was er im Bilderquiz schon
+       gewaehlt hat. Das ersetzt keine Katalog-Grundlage (CATALOG_HONESTY_LAW gilt
+       unveraendert), es sagt PAWN nur, mit wem er spricht. */
+    if (pc?.heft) {
+      const h = pc.heft;
+      const stil = [h.stil?.welt, h.stil?.richtung, h.stil?.form].filter(Boolean).join(" · ");
+      const frag = [h.frag?.was, h.frag?.anlass, h.frag?.rahmen].filter(Boolean).join(" · ");
+      const teile = [
+        `«HEFT» Der Kunde steht im Heft auf ${h.route ?? pc.route ?? "einer Doppelseite"}${h.seite ? ` (${h.seite})` : ""}.`,
+        stil ? `Seine Linie aus dem Bilderquiz: ${stil}.` : "Seine Linie ist noch nicht gewaehlt.",
+        frag ? `Er hat vorher angetippt: ${frag}.` : "",
+        "Sprich zu dieser Linie, ohne sie vorzulesen. Nenne nie eine Adresse, die nicht im Heft steht.",
+      ].filter(Boolean);
+      pageContextHint = [pageContextHint, teile.join(" ")].filter(Boolean).join(" ");
+    }
+
     // DNA-Seite: das Ziel wird beiläufig herauskitzeln, nie abgefragt (Teil 21b).
-    if (pc?.route === "/dna") {
+    if (pc?.route === "/dna" || pc?.route === "/deine-dna" || pc?.route?.startsWith("/deine-dna/")) {
       const zielHint = typeof (memory.preferences as { ziel?: unknown }).ziel === "string"
         ? `Ihr Ziel, in eigenen Worten: "${(memory.preferences as { ziel: string }).ziel}". Beziehe dich darauf, wenn es passt.`
         : "Ihr Ziel ist noch nicht bekannt. Stelle beiläufig EINE der Fragen, die zählen (wohin will sie/er, was möchte sie/er ausstrahlen, wo fühlt sie/er sich unwohl, was trägt sie/er zu wichtigen Anlässen) — nie als Formular, höchstens eine Frage pro Antwort, immer als Teil eines echten Gesprächs.";
@@ -1043,7 +1175,8 @@ Deno.serve(async (req) => {
     }
 
     // Sprachgesetz gilt zusätzlich, sobald PAWN im Gespräch über die Person selbst urteilt (DNA-Seite).
-    const voiceLaw = admin && pc?.route === "/dna" ? await loadVoiceLaw(admin) : "";
+    const istDnaSeite = pc?.route === "/dna" || pc?.route === "/deine-dna" || !!pc?.route?.startsWith("/deine-dna/");
+    const voiceLaw = admin && istDnaSeite ? await loadVoiceLaw(admin) : "";
 
     // Teil 39 AP6 — Zwei-Register-Gesetz: sobald es um Geld, Fehler oder Verträge geht, wechselt
     // PAWN von der Bühnen-Erzählstimme in klaren Bedienungs-Ton — ein Satz, was ist, ein Satz,
@@ -1190,7 +1323,7 @@ Deno.serve(async (req) => {
       // Ziel herauskitzeln: auf der DNA-Seite, wenn ein zielartiger Satz fällt,
       // in den eigenen Worten der Person festhalten (Teil 21b). Überschreibt nur
       // bei neuem Treffer — eine manuelle Änderung bleibt sonst bestehen.
-      if (pc?.route === "/dna" && lastUser) {
+      if (istDnaSeite && lastUser) {
         const zielMatch = lastUser.match(/(ich (?:will|möchte|würde gerne|wünsche mir)[^.!?\n]{3,100})/i);
         if (zielMatch) nextPrefs.ziel = zielMatch[1].trim().slice(0, 160);
       }

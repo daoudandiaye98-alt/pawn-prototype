@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Magazine,reading,parseRoute,routeHash,addCart,purchaseMode,orderedBlocks,blockKinds} from './model.mjs';
+import {counts,houses,products} from './data.mjs';
+import {renderers,blocksHTML} from './views.mjs';
+const finish=m=>{for(let i=0;i<100&&m.status!=='ready';i++)m.tick(.1);};
+test('scroll remains inside the active category',()=>{const m=new Magazine({section:'mode',index:0},true);assert.equal(m.step(-1,2),false);assert.equal(m.step(1,2),true);finish(m);assert.deepEqual(m.route,{section:'mode',index:1});assert.equal(m.step(1,2),false);});
+test('house journey remembers exact source display',()=>{const m=new Magazine({section:'mode',index:1},true);m.house('noir');finish(m);assert.equal(reading(m.route),true);m.step(1,3);finish(m);m.back();finish(m);assert.deepEqual(m.route,{section:'mode',index:1});});
+test('last menu selection wins during a page turn',()=>{const m=new Magazine({section:'mode',index:0},true);m.go({section:'dna',index:0});m.tick(.8);m.go({section:'vision',index:0});m.go({section:'kunst',index:1});finish(m);assert.deepEqual(m.route,{section:'kunst',index:1});assert.equal(m.pose().read,0);});
+test('book posture endpoints preserve the open book',()=>{const m=new Magazine({section:'mode',index:0},true);m.go({section:'vision',index:0});finish(m);assert.deepEqual(m.pose(),{lay:1,open:1,fold:0,read:1,leaf:0});m.go({section:'interior',index:0});finish(m);assert.deepEqual(m.pose(),{lay:1,open:1,fold:1,read:0,leaf:0});});
+test('invalid deep links recover and page indexes clamp',()=>{assert.deepEqual(parseRoute('#/unknown/7',counts,houses),{section:'entdecken',index:0});assert.equal(parseRoute('#/mode/99',counts,houses).index,1);assert.equal(parseRoute('#/haus/drape/-2',counts,houses).index,0);const r={section:'haus',slug:'drape',index:2};assert.deepEqual(parseRoute(routeHash(r),counts,houses),r);});
+test('inquiries and sold out works cannot enter cart',()=>{assert.equal(purchaseMode(products.art),'inquiry');assert.equal(purchaseMode(products.noir),'soldout');assert.throws(()=>addCart([],products.art));assert.throws(()=>addCart([],products.noir,'M'));});
+test('size validation, separate variants and stock limit',()=>{assert.throws(()=>addCart([],products.dress));let c=addCart([],products.dress,'S');c=addCart(c,products.dress,'M');c=addCart(c,products.dress,'S');assert.deepEqual(c.map(r=>[r.size,r.qty]),[['S',2],['M',1]]);assert.throws(()=>addCart(c,products.dress,'L'));});
+test('all eight existing house block kinds have a renderer',()=>{assert.deepEqual(Object.keys(renderers).sort(),[...blockKinds].sort());const input=[{kind:'editorial_text',position:2,content:{heading:'Second',text:'Hello'}},{kind:'zitat',position:1,content:{quote:'First'}}];assert.equal(orderedBlocks(input)[0].kind,'zitat');assert.equal(input[0].position,2);assert.ok(blocksHTML(input).indexOf('First')<blocksHTML(input).indexOf('Second'));});
+test('editable copy is escaped before it enters a spread',()=>{const html=blocksHTML([{kind:'editorial_text',position:0,content:{heading:'<script>',text:'<img onerror="x"> & story'}}]);assert.ok(!html.includes('<script>'));assert.ok(html.includes('&lt;script&gt;'));});
+

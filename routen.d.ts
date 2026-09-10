@@ -19,6 +19,12 @@ export declare const ROUTEN: readonly string[];
 /** Adressen, die nie durch die Middleware laufen sollen (Dateien, Plattform). */
 export declare function istPlattformOderDatei(pfad: string): boolean;
 
+/**
+ * Platzhalter, die eine Seite zählen und darum nur Ziffern nehmen.
+ * Ohne diese Regel bekäme `/mode/gibtesnicht` eine 200 statt der 404 (Kontrolle 4.5).
+ */
+export declare const ZAEHLENDE_PLATZHALTER: readonly string[];
+
 /** Passt die Adresse auf eine echte Route? */
 /** X1 — die Umzüge: alte Adresse → neue, 301 im Netz, Navigate in der App. */
 export declare const UMZUEGE: readonly { von: string; nach: string }[];

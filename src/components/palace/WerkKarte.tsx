@@ -50,7 +50,7 @@ export function WerkKarte({
 
   return (
     <Link
-      to={`/product/${werk.slug}`}
+      to={`/werk/${werk.slug}`}
       data-werk-id={schluessel}
       onClick={() => { merkeHallenstand(); merkeAbflug(schluessel, bildFeld.current); }}
       className="group block"

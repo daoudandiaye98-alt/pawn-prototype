@@ -39,7 +39,7 @@ export function RoleGate({ role, fallback, children }: Props) {
     // Teil R9 — ein Haus gehört ins Studio, nicht auf die alte Portal-Attrappe.
     return <Navigate to="/studio" replace state={{ from: location }} />;
   }
-  return <Navigate to={fallback ?? "/account"} replace state={{ from: location }} />;
+  return <Navigate to={fallback ?? "/konto"} replace state={{ from: location }} />;
 }
 
 /** Banner shown inside owner/designer surfaces when accessed anonymously. */

@@ -6,14 +6,14 @@ import { useAuth } from "@/lib/auth";
 import { LanguageToggle } from "./LanguageToggle";
 
 const NAV = [
-  { label: "Women", to: "/shop?gender=women" },
-  { label: "Men", to: "/shop?gender=men" },
-  { label: "Unisex", to: "/shop?gender=unisex" },
-  { label: "Designers", to: "/designers" },
-  { label: "DNA", to: "/dna" },
-  { label: "Clothing", to: "/shop?cat=clothing" },
-  { label: "Accessories", to: "/shop?cat=accessories" },
-  { label: "Für Designer", to: "/apply" },
+  { label: "Women", to: "/suche?gender=women" },
+  { label: "Men", to: "/suche?gender=men" },
+  { label: "Unisex", to: "/suche?gender=unisex" },
+  { label: "Designers", to: "/haeuser" },
+  { label: "DNA", to: "/deine-dna" },
+  { label: "Clothing", to: "/suche?cat=clothing" },
+  { label: "Accessories", to: "/suche?cat=accessories" },
+  { label: "Für Designer", to: "/fuer-designer/2" },
 ];
 
 /**
@@ -80,13 +80,13 @@ export function PublicHeader() {
           <button className="hidden opacity-70 hover:opacity-100 sm:block" aria-label="Search">
             <Search className="h-4 w-4" strokeWidth={1.3} />
           </button>
-          <Link to={user ? "/account" : "/auth"} className="opacity-70 hover:opacity-100" aria-label={user ? "Account" : "Sign in"}>
+          <Link to={user ? "/konto" : "/auth"} className="opacity-70 hover:opacity-100" aria-label={user ? "Account" : "Sign in"}>
             <User className="h-4 w-4" strokeWidth={1.3} />
           </Link>
-          <Link to="/account" className="hidden opacity-70 hover:opacity-100 sm:block" aria-label="Wishlist">
+          <Link to="/konto/2" className="hidden opacity-70 hover:opacity-100 sm:block" aria-label="Wishlist">
             <Heart className="h-4 w-4" strokeWidth={1.3} />
           </Link>
-          <Link to="/cart" className="relative opacity-80 hover:opacity-100" aria-label="Bag">
+          <Link to="/tasche" className="relative opacity-80 hover:opacity-100" aria-label="Bag">
             <ShoppingBag className="h-4 w-4" strokeWidth={1.3} />
             {count > 0 && (
               <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center bg-foreground px-1 text-[0.55rem] font-medium text-background">

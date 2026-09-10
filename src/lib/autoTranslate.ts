@@ -85,7 +85,10 @@ function collect(root: Node): { nodes: Text[]; attrs: Array<[Element, string, st
       if (isTranslatable(base) && !skipNode(t)) nodes.push(t);
     } else if (current.nodeType === Node.ELEMENT_NODE) {
       const el = current as Element;
-      if (!SKIP_TAGS.has(el.tagName) || el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+      /* `skipNode` galt bisher nur fuer Text. Ein Bereich mit data-no-translate bekam
+         seine aria-labels trotzdem uebersetzt — im CSS3D-Baum des Hefts heisst das: der
+         Uebersetzer fasst Knoten an, die einer Bewegung gehoeren. Jetzt gilt dieselbe Regel. */
+      if ((!SKIP_TAGS.has(el.tagName) || el.tagName === "INPUT" || el.tagName === "TEXTAREA") && !skipNode(el)) {
         for (const attr of ATTRS) {
           const stored = originalAttr.get(el)?.get(attr);
           const val = stored ?? el.getAttribute(attr) ?? "";

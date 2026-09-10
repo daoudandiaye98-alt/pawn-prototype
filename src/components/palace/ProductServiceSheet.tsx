@@ -60,7 +60,7 @@ export function ProductServiceSheet({
       const { data, error } = await supabase.functions.invoke("pawn-chat", {
         body: {
           messages: [...messages, { role: "user", content: q }],
-          page_context: { route: `/product/${productSlug}`, product_slug: productSlug },
+          page_context: { route: `/werk/${productSlug}`, product_slug: productSlug },
         },
       });
       if (error) throw error;
@@ -106,7 +106,7 @@ export function ProductServiceSheet({
             ) : !passtResult.fruehzustand?.erreicht ? (
               <div className="border-[1.5px] border-black p-4">
                 <p className="text-sm text-black/70">{t("product.passt.fruehzustand")}</p>
-                <Link to="/dna" className="mt-2 inline-block text-[0.62rem] uppercase tracking-[0.24em] text-black underline decoration-1 underline-offset-4 hover:no-underline">
+                <Link to="/deine-dna" className="mt-2 inline-block text-[0.62rem] uppercase tracking-[0.24em] text-black underline decoration-1 underline-offset-4 hover:no-underline">
                   {t("product.passt.zurDna")}
                 </Link>
               </div>
@@ -117,7 +117,7 @@ export function ProductServiceSheet({
                 {!passtResult.passt && passtResult.alternative_slug && (
                   <div className="mt-3 border-t border-black/15 pt-3">
                     <p className="text-xs text-black/60">{passtResult.alternative_grund}</p>
-                    <Link to={`/product/${passtResult.alternative_slug}`} className="mt-2 inline-block text-[0.62rem] uppercase tracking-[0.24em] text-black underline decoration-1 underline-offset-4 hover:no-underline">
+                    <Link to={`/werk/${passtResult.alternative_slug}`} className="mt-2 inline-block text-[0.62rem] uppercase tracking-[0.24em] text-black underline decoration-1 underline-offset-4 hover:no-underline">
                       {t("product.passt.alternative")}
                     </Link>
                   </div>

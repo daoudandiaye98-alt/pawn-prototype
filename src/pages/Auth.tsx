@@ -8,7 +8,7 @@ import { useAuthForm } from "@/features/auth/useAuthForm";
 function homeForRoles(roles: string[]) {
   if (roles.includes("admin")) return "/admin";
   if (roles.includes("designer")) return "/studio";
-  return "/account";
+  return "/konto";
 }
 
 // Return-to-Flow: /start (First Move) schickt hierher, wenn jemand mit bestehendem Zugang auf
@@ -79,7 +79,7 @@ export default function Auth() {
             <p className="palace-eyebrow">{t("auth.registerAs")}</p>
             <div className="mt-3 flex items-center justify-center gap-6 text-[0.75rem] uppercase tracking-[0.28em]">
               <span className="border-b border-[#000000] pb-1 text-[#000000]">{t("auth.asCustomer")}</span>
-              <Link to="/apply" className="text-black/60 hover:text-[#000000]">{t("auth.asDesigner")} →</Link>
+              <Link to="/fuer-designer/2" className="text-black/60 hover:text-[#000000]">{t("auth.asDesigner")} →</Link>
             </div>
             <p className="mt-3 text-[0.7rem] text-black/60">{t("auth.designerHint")}</p>
           </div>

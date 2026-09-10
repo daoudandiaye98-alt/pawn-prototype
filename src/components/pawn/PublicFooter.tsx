@@ -28,16 +28,16 @@ export function PublicFooter() {
           links={[
             { label: "Women", to: "/shop?gender=women" },
             { label: "Men", to: "/shop?gender=men" },
-            { label: "Designers", to: "/designers" },
-            { label: "Bag", to: "/cart" },
+            { label: "Designers", to: "/haeuser" },
+            { label: "Bag", to: "/tasche" },
           ]}
         />
         <FooterCol
           title="Platform"
           links={[
-            { label: "Apply as designer", to: "/apply" },
+            { label: "Apply as designer", to: "/fuer-designer/2" },
             { label: "Designer studio", to: "/studio" },
-            { label: "Style DNA", to: "/dna" },
+            { label: "Style DNA", to: "/deine-dna" },
             { label: "Admin hub", to: "/admin" },
           ]}
         />
@@ -59,11 +59,11 @@ export function PublicFooter() {
           <span>© {new Date().getFullYear()} PAWN.</span>
           <div className="flex flex-wrap items-center gap-5 text-[0.62rem] uppercase tracking-[0.32em]">
             {/* Teil Q — die Boutique gehört auch in den Fuß: von jeder Seite ein Weg dorthin. */}
-            <Link to="/shop" className="hover:text-foreground">Boutique</Link>
+            <Link to="/suche" className="hover:text-foreground">Boutique</Link>
             <span className="opacity-30">·</span>
             <Link to="/auth" className="hover:text-foreground">Login</Link>
             <span className="opacity-30">·</span>
-            <Link to="/apply" className="hover:text-foreground">Für Designer</Link>
+            <Link to="/fuer-designer/2" className="hover:text-foreground">Für Designer</Link>
             <span className="opacity-30">·</span>
             <CookieSettingsLink />
             <span className="opacity-30">·</span>
