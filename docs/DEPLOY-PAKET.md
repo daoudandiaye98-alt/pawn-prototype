@@ -1,87 +1,94 @@
 # Deploy-Paket — eine Liste, eine Reihenfolge
 
-Stand: PR #165 (Zweig `claude/pawn-prototype-admin-structure-o4p87a`).
+Stand: PR #184 (Zweig `claude/heft-frontend-integration-0bjnzf`, Teil H — „Das Heft zieht ein").
 
-Alles, was in diesem Zweig steckt und **nicht** über Git allein live geht, steht
-hier in genau der Reihenfolge, in der es angewandt werden muss. Nichts davon
-passiert automatisch: Migrationen und Edge Functions gehen nur über den
-Lovable-Agenten.
+Alles, was in diesem Zweig steckt und **nicht** über Git allein live geht, steht hier in
+genau der Reihenfolge, in der es angewandt werden muss. Nichts davon passiert automatisch:
+Migrationen und Edge Functions gehen nur über den Lovable-Agenten.
 
-**Die eine Regel für die Reihenfolge:** erst die Datenbank, dann die Functions.
-Eine Function, die auf eine noch nicht existierende Tabelle greift, scheitert
+**Die eine Regel für die Reihenfolge:** erst die Datenbank, dann der Merge, dann die
+Functions. Eine Function, die auf eine noch nicht existierende Tabelle greift, scheitert
 sauber — aber sie scheitert.
+
+**Und davor die Regel aus Teil Y:** Vor dem Merge steht Daoudas Sicht-Freigabe auf der
+Vercel-Vorschau. Die Checkliste steht im PR.
+
+---
+
+## Schritt 0 — Ansehen, bevor irgendetwas angewandt wird
+
+Die Vorschau von PR #184 öffnen und durchgehen:
+
+| | Was | Warum genau das |
+|---|---|---|
+| ☐ | Eröffnung ruhig, ungefähr 5,8 s | Der Container, in dem gebaut wurde, rendert 1 Bild pro Sekunde. Über Bewegung sagt der Bau nichts. |
+| ☐ | Echte Häuser auf den Bühnen | Der Bau hat nur Beispielzeilen gesehen. |
+| ☐ | Ein Werk anklicken | Die Adresse muss auf `/werk/<slug>` springen, die Zurück-Taste muss das Fenster schließen. |
+| ☐ | Tasche → Stripe-Kasse öffnet | Testmodus reicht, kein Kauf. Das ist der Weg, an dem Geld hängt. |
+| ☐ | Konsole ohne Fehler | |
+| ☐ | 390 px und iPad | |
+
+Findet sich dabei ein Mangel: **Ritual.** Zeile in `.claude/regressionen.json`, Kontrolle
+in `scripts/verify/`, einmal rot vorgeführt. Reparieren allein zählt nicht als erledigt.
 
 ---
 
 ## Schritt 1 — Migrationen, in dieser Reihenfolge
 
+Alle vier sind **additiv**: keine bestehende Spalte wird gelöscht, kein bestehender
+Constraint verschärft. Jede Datei trägt im Kopf, aus welcher Quelle unter
+`src/heft03/sql/` sie kommt.
+
 | # | Datei | Was sie tut | Reversibel |
 |---|---|---|---|
-| 1 | `supabase/migrations/20260926090000_plan_beispiel_freigabe.sql` | `plan_beispiel` auf `media_assets` und `video_assets`, `designers.intern` mit Backfill, drei Trigger (interne Häuser ausgeschlossen, nur Admins setzen Beispiele) | ja — Spalten und Trigger einzeln entfernbar |
-| 2 | `supabase/migrations/20260927090000_rochade_warteschlange.sql` | Vier Tabellen der langen Rochade (`rochade_auftraege`, `rochade_seiten`, `rochade_kandidaten`, `rochade_bilder`), RLS, vier RPCs, ein pg_cron-Job (`rochade-aufraeumen`, alle 10 Minuten) | ja — nur neue Objekte, nichts Bestehendes wird verändert |
+| 1 | `20260928090000_heft_sichten.sql` | Sichten `heft_produkte` und `heft_haeuser` mit `security_invoker`, Spaltenmaske, `grant select` an anon | ja — `drop view` |
+| 2 | `20260928100000_heft_kunden_stil.sql` | Tabelle `kunden_stil` (Welt, Richtung, Form, Für-wen, Foto-Befund), RLS auf die eigene Zeile, Touch-Trigger | ja — `drop table` |
+| 3 | `20260928110000_heft_masse_raum.sql` | Spalte `customer_measurements.raum jsonb` | ja — `drop column` |
+| 4 | `20260928120000_heft_product_dna.sql` | Check-Constraint auf `product_dna.heft` (Höhe zwischen 1,2 und 3,4) | ja — `drop constraint` |
 
-Hinweis zu Datei 1: Sie hieß im Zweig zuerst `20260814140000_*` und wäre damit
-**mitten zwischen** bereits angewandten Migrationen gelandet. Umbenannt auf
-`20260926090000_*`, damit sie hinten in der Reihe steht. Wer die alte Datei noch
-irgendwo liegen hat: die ist dieselbe, nur unter altem Namen.
+**Warum Nummer 1 nicht warten sollte.** Die Policy `designers public read` steht auf
+`USING (published = true)` und hat **keine Spaltenmaske** — jeder Besucher der Seite kann
+heute `stripe_account_id` und `stripe_customer_id` der Häuser lesen. Das Heft fragt diese
+Spalten nicht ab (Zusage Z10 hält das fest), aber die Lücke selbst schließt erst die Sicht.
 
-Beide Migrationen sind additiv. Keine bestehende Spalte wird gelöscht, kein
-bestehender Constraint verschärft.
+**Warum Nummer 2 vor dem Umschalttag da sein muss.** Ohne `kunden_stil` bleibt das
+Bilderquiz im Gerät: Wer sich anmeldet, findet seine Linie am nächsten Tag am Telefon
+nicht wieder. `user_memory` hilft nicht — es erlaubt Kunden kein INSERT.
 
----
+## Schritt 2 — `types.ts` neu erzeugen
 
-## Schritt 2 — Edge Functions, in dieser Reihenfolge
+Erst jetzt möglich, und nötig: die heutige Fassung ist älter als die letzten Migrationen
+und kennt weder `kunden_stil` noch `customer_measurements.raum` noch
+`designers.kauf_freigeschaltet`.
 
-| # | Function | Warum |
-|---|---|---|
-| 1 | `haus-rochade` | **Offen seit PR #163.** Speichert Werkbilder als Bucket-Pfad statt als 365-Tage-URL. Ohne diesen Deploy laufen alle über die Rochade importierten Werkbilder nach einem Jahr ab. Braucht keine der neuen Tabellen — kann als Erstes raus. |
-| 2 | `rochade-import` | **Neu.** Der Arbeiter der langen Rochade. Braucht Migration 2. |
+## Schritt 3 — PR #184 nach `main` mergen
 
-Die Dateien unter `supabase/functions/_shared/` (`rochadeSicherheit.ts`,
-`rochadeAdapter.ts`, `rochadeBild.ts`, `rochadeDeutung.ts`,
-`rochadeTrockenlauf.ts`, `rochade.test.ts`, `rochade-fixtures/*`) sind kein
-eigener Deploy — sie werden mit den beiden Functions oben mitgebündelt.
+Lovable synct, Vercel spiegelt auf pawn.vision. Ab diesem Moment ist das Heft das
+öffentliche Frontend und die 18 Umzüge sind scharf.
 
-### Was `rochade-import` braucht
+## Schritt 4 — `pawn-chat` ausliefern
 
-- **Secrets:** `ANTHROPIC_API_KEY` (für die Deutung, Schritt 5),
-  `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (für den Selbstaufruf).
-  Alle drei existieren bereits — nichts Neues anzulegen.
-- **Bucket:** `designer-media`, existiert.
-- **Ohne `ANTHROPIC_API_KEY`** läuft der Import trotzdem durch: die Werke landen
-  am Lichttisch, nur ohne Welt-Zuordnung. Es steht dann ein Satz dazu da.
+Der Code liegt im Merge, die laufende Fassung ist noch die alte. Bis zum Deploy:
 
----
+- zeigen die Karten im Chat auf `/product/<slug>` — das läuft über eine 301 statt direkt,
+- kennt der Chat den Heft-Kontext nicht (er weiß nicht, auf welcher Seite jemand steht),
+- gibt es `mode: "stilfoto"` nicht, und das Foto in „Deine DNA" bleibt ohne Antwort.
 
-## Schritt 3 — nach dem Deploy prüfen
-
-1. `/studio/werke/rochade` öffnen, eine eigene Seite eintragen, Häkchen setzen,
-   „Seite holen". Der Stand muss sich alle sechs Sekunden bewegen.
-2. `select public.rochade_aufraeumen();` einmal von Hand — muss ein JSON mit
-   fünf Zählern zurückgeben, alle 0 bei frischem Stand.
-3. `select * from cron.job where jobname = 'rochade-aufraeumen';` — eine Zeile.
-4. `/admin/archiv` öffnen: die Sektion „Plan-Beispiele" muss erscheinen und je
-   Video eine Stufe setzen lassen.
+Nichts davon ist kaputt, alles davon ist halb.
 
 ---
 
-## Was NICHT deployt werden muss
+## Was danach kommt
 
-Alles Übrige in diesem Zweig ist Frontend und geht über Git von selbst live:
-Boutique-Weg und Preis-Schieber (Teil Q1–Q3), der Welten-Gleichstand (Q4b,
-inklusive Werkzertifikat — das PDF wird im Browser gebaut), der Lichttisch
-`/studio/werke/rochade`, und die Anpassungen an `/studio/plan`, `/shop`,
-`/product/*`, `/studio/auszahlung`, `/studio/werke/neu`.
+| Was | Warum es noch nicht hier steht |
+|---|---|
+| Zweig 2 (`claude/heft03-foto`) | Das Stilfoto auf `/deine-dna/foto` und das Bild in „Frag PAWN" brauchen die ausgelieferte Function aus Schritt 4. |
+| **H6 — Freistellen** | Muss **vor dem Umschalttag** fertig sein. Die Regel der Bühne ist hart: aufgestellt wird nur, was freigestellt ist (`product_dna.heft.cutout_url`). Ohne die Freistell-Function und einen einmaligen Lauf über alle veröffentlichten Werke stehen die Bühnen leer — mit einem ehrlichen Leerzustand, aber leer. |
 
 ---
 
-## Offen für einen späteren Deploy (nicht Teil dieses Pakets)
+## Frühere Pakete
 
-Aus dem Welten-Gleichstand bleibt dreierlei liegen, weil es in Edge Functions
-sitzt und ohne Not keinen Credit kosten soll:
-
-- Kunst-/Möbel-Duktus und Preisorientierung in `studio-ai` / `pawn-chat`
-- Neue Inszenierungen („Werk im Raum", „Möbel im Raum") in `generate-staging-shot`
-- Kunst-/Interior-Vokabular in `classify-term` und den Kuratierungs-Prompts
-
-Details stehen in `docs/welten-gleichstand-luecken.md`.
+Die Migrationen aus PR #165 (`20260926090000_plan_beispiel_freigabe`,
+`20260927090000_rochade_warteschlange`) sind angewandt und stehen nicht mehr in dieser
+Liste. Wer sie nachlesen will, findet sie in der Git-Geschichte dieser Datei.

@@ -243,6 +243,93 @@ function taschePruefungLaeuft({ test, datei }) {
   return OK;
 }
 
+// ————————————————————————————————————————————————————————————————
+// Z8 — das Heft startet genau einmal
+//
+// Der Prototyp bringt eine Selbststart-Sicherung mit. Im Projekt startet die
+// Huelle; beides zusammen ergaebe ZWEI Hefte — das zweite mit Beispielhaeusern,
+// also mit erfundenen Marken auf einer Seite mit echten Zahlungen. Die Sicherung
+// darf nicht zurueckkommen, und die Huelle muss die Fahne setzen.
+// ————————————————————————————————————————————————————————————————
+function heftStartetEinmal({ modul, huelle }) {
+  const app = lies(modul);
+  // Nur echte Aufrufe zaehlen, kein Wort im Kommentar.
+  const zeile = app.split("\n").findIndex((z) => {
+    const ohneKommentar = z.replace(/^\s*(\*|\/\/).*$/, "");
+    return /__pawnBoot[\s\S]*startHeft\s*\(/.test(ohneKommentar);
+  });
+  if (zeile !== -1) return nein(`${modul}:${zeile + 1}: startet sich selbst — neben dem Heft der Huelle stuende ein zweites mit Beispieldaten`);
+  if (!/startHeft\s*\(/.test(lies(huelle))) return nein(`${huelle}: ruft startHeft() nicht mehr — dann startet gar kein Heft`);
+  if (!/__pawnBoot/.test(lies(huelle))) return nein(`${huelle}: setzt __pawnBoot nicht mehr — der zweite Boden gegen ein zweites Heft fehlt`);
+  return OK;
+}
+
+// ————————————————————————————————————————————————————————————————
+// Z9 — kein Link auf eine umgezogene Adresse
+//
+// Geprueft werden nur Ziele, die WIRKLICH umziehen: die Liste kommt aus
+// routen.js › UMZUEGE, nicht aus einer zweiten Aufzaehlung hier. Und nur echte
+// Linkziele (to="…", href="…", `/x/${…}`), nicht jedes Vorkommen der
+// Zeichenkette — sonst wuerde die Kontrolle an Kommentaren rot und lehrte,
+// Rot zu uebersehen.
+// ————————————————————————————————————————————————————————————————
+function keineUmgezogenenLinks({ orte, ausnahmen = [] }) {
+  const umzuege = umzuegeAusRoutenJs();
+  if (!umzuege.length) return nein("routen.js fuehrt keine Umzuege mehr — die Zusage haengt in der Luft");
+
+  const treffer = [];
+  for (const ort of orte) {
+    for (const datei of dateien(ort)) {
+      const rel = datei.slice(WURZEL.length + 1);
+      if (ausnahmen.some((a) => rel === a || rel.startsWith(a + "/"))) continue;
+      const text = readFileSync(datei, "utf8");
+      text.split("\n").forEach((zeile, i) => {
+        if (/^\s*(\*|\/\/)/.test(zeile)) return;
+        for (const u of umzuege) {
+          const muster = u.von.includes(":")
+            ? new RegExp("[\"'`]" + u.von.replace(/:[^/]+/, "") + "\\$\\{")
+            : new RegExp("(to|href)=[\"{]`?" + u.von + "[\"'`]");
+          if (muster.test(zeile)) treffer.push(`${rel}:${i + 1} → ${u.von} (zieht nach ${u.nach})`);
+        }
+      });
+    }
+  }
+  return treffer.length === 0
+    ? OK
+    : nein(`${treffer.length} Link(s) laufen ueber eine 301 statt direkt:\n      ${treffer.slice(0, 8).join("\n      ")}`);
+}
+
+/** Die Umzugstabelle aus routen.js lesen, ohne sie zu importieren (dies ist ein Skript). */
+function umzuegeAusRoutenJs() {
+  const t = lies("routen.js");
+  const block = t.slice(t.indexOf("export const UMZUEGE"));
+  return [...block.matchAll(/\{\s*von:\s*"([^"]+)",\s*nach:\s*"([^"]+)"\s*\}/g)].map((m) => ({ von: m[1], nach: m[2] }));
+}
+
+// ————————————————————————————————————————————————————————————————
+// Z10 — keine Stripe-Spalte im oeffentlichen Heft
+//
+// Zwei Orte, eine Zusage: die Auswahlliste, mit der das Heft heute liest, und
+// die Sicht, die anon spaeter bekommt. Beide duerfen die Spalte nicht kennen.
+// ————————————————————————————————————————————————————————————————
+function keineStripeSpalten({ datei, migration, verboten }) {
+  const quelle = lies(datei);
+  const block = quelle.slice(quelle.indexOf("export const SPALTEN"), quelle.indexOf("};", quelle.indexOf("export const SPALTEN")));
+  if (!block.includes("designers:")) return nein(`${datei}: die Spaltenmaske SPALTEN ist nicht mehr auffindbar`);
+  for (const wort of verboten) {
+    if (block.includes(wort)) return nein(`${datei}: SPALTEN enthaelt „${wort}“ — anon laese damit eine Spalte, die ihn nichts angeht`);
+  }
+  if (!existsSync(join(WURZEL, migration))) return nein(`${migration} fehlt — die Sicht, die die Luecke schliesst, ist weg`);
+  /* Ohne Kommentare: die Migration ERKLAERT die Luecke ("gibt anon auch stripe_*"), und
+     eine Kontrolle, die daran rot wird, lehrt nur, Rot zu uebersehen. Geprueft wird, was
+     die Datenbank ausfuehrt. */
+  const sicht = lies(migration).replace(/--[^\n]*/g, "");
+  for (const wort of verboten) {
+    if (wort !== "user_id" && sicht.includes(wort)) return nein(`${migration}: die Sicht listet „${wort}“ — sie waere keine Maske mehr`);
+  }
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -251,6 +338,9 @@ const PRUEFUNGEN = {
   werkNichtBeschnittenCss,
   preisfilterOffen,
   taschePruefungLaeuft,
+  heftStartetEinmal,
+  keineUmgezogenenLinks,
+  keineStripeSpalten,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

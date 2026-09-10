@@ -91,6 +91,53 @@
         "test": "src/heft03/tasche.test.mjs",
         "datei": "src/heft03/views.mjs"
       }
+    },
+    {
+      "id": "Z8",
+      "zusage": "Das Heft startet genau einmal — nie ein zweites daneben, nie mit Beispieldaten.",
+      "beleg": "Teil H. app.js trug am Ende eine Sicherung, die das Heft selbst mit demoQuelle() startete, falls keine index.html es tat. Im Projekt ruft HeftRoute03.tsx startHeft(); die Sicherung haette ein ZWEITES Heft mit Beispielhaeusern ueber das echte gelegt — mit erfundenen Marken auf der Buehne einer Seite, die echte Zahlungen entgegennimmt.",
+      "pruefung": "heftStartetEinmal",
+      "params": {
+        "modul": "src/heft03/app.js",
+        "huelle": "src/heft03/HeftRoute03.tsx"
+      }
+    },
+    {
+      "id": "Z9",
+      "zusage": "Kein Link in der Seite zeigt auf eine umgezogene Adresse — jeder Klick geht direkt, nicht ueber eine 301.",
+      "beleg": "Teil H. 18 Adressen sind umgezogen (/dna, /designers, /cart, /shop, /account, /apply, /product/:slug, /designer/:slug …). Serverseitig antworten sie mit 301; ein Link, der erst umgeleitet wird, kostet eine Anfrage und verliert Abfrageparameter. 30 Dateien mussten dafuer angefasst werden — ohne Kontrolle schleicht sich die naechste zurueck.",
+      "pruefung": "keineUmgezogenenLinks",
+      "params": {
+        "orte": [
+          "src/components",
+          "src/features",
+          "src/pages",
+          "src/lib",
+          "src/store"
+        ],
+        "ausnahmen": [
+          "src/App.tsx",
+          "src/heft03"
+        ],
+        "begruendung": "App.tsx fuehrt die Umzuege selbst als <Navigate> und muss die alten Adressen darum nennen. src/heft03 ist das Heft; seine routen.mjs traegt die Umzugstabelle."
+      }
+    },
+    {
+      "id": "Z10",
+      "zusage": "Das oeffentliche Heft liest keine Stripe-Spalte und keine fremde Kontospalte.",
+      "beleg": "docs/heft03/backend-inventar.md: die Policy „designers public read“ (USING published = true) gibt anon ALLE Spalten der Tabelle, auch stripe_account_id und stripe_customer_id — es gibt keine Spaltenmaske. Das Heft schuetzt sich mit einer eigenen Auswahlliste (quelle.mjs SPALTEN) und, sobald sie angewandt ist, mit den Sichten aus der Migration heft_sichten.",
+      "pruefung": "keineStripeSpalten",
+      "params": {
+        "datei": "src/heft03/quelle.mjs",
+        "migration": "supabase/migrations/20260928090000_heft_sichten.sql",
+        "verboten": [
+          "stripe_",
+          "user_id",
+          "email",
+          "iban",
+          "application_fee"
+        ]
+      }
     }
   ]
 }

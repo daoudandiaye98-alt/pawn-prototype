@@ -115,6 +115,24 @@ export default function HeftRoute03() {
        für den Fall, dass jemand sie beim nächsten Abgleich zurückholt. */
     (globalThis as { __pawnBoot?: boolean }).__pawnBoot = true;
 
+    /*
+     * Eine Datenbank, die NICHT antwortet, ist schlimmer als eine, die scheitert: der
+     * Fehlerpfad unten greift erst bei einer Absage. Haengt die Anfrage, stuende „Eine
+     * Welt entfaltet sich" beliebig lange da. Nach 20 Sekunden sagt das Heft darum selbst,
+     * was los ist — und bietet den einen Knopf an, der hilft.
+     */
+    const geduld = window.setTimeout(() => {
+      if (abgebrochen || heftRef.current) return;
+      const laden = document.getElementById("loading");
+      if (!laden || laden.hidden) return;
+      laden.textContent = "Das Heft braucht heute ungewöhnlich lange. ";
+      const knopf = document.createElement("button");
+      knopf.className = "outline";
+      knopf.textContent = "Noch einmal versuchen";
+      knopf.onclick = () => location.reload();
+      laden.appendChild(knopf);
+    }, 20000);
+
     void (async () => {
       try {
         await aufstellen();
@@ -225,6 +243,7 @@ export default function HeftRoute03() {
         return;
       }
       heftRef.current = heft;
+      window.clearTimeout(geduld);
       setRoute({ ...heft.route() });
       setBereit(true);
 
@@ -255,6 +274,7 @@ export default function HeftRoute03() {
 
     return () => {
       abgebrochen = true;
+      window.clearTimeout(geduld);
       heftRef.current?.stop();
       heftRef.current = null;
       for (const b of blaetter) b.remove();

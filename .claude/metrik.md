@@ -13,6 +13,22 @@ vorgeführt. Ohne beides gilt der Fehler als nicht erledigt.
 | Datum | PR | Nachfunde | Was | Zusage/Kontrolle daraus |
 |---|---|---|---|---|
 | 2026-08-17 | — | — | Turm v2 gebaut. Grundlinie: 6 Zusagen, jede rot vorgeführt. Ab hier wird gezählt. | Z1–Z6 |
+| 2026-09-08 | #182 | 1 | Der Prüfer fand beim Zurücknehmen des Magazins drei verlorene Fokus-Rahmen. | Z7 |
+| 2026-09-10 | #184 | 0 (offen) | Teil H — das Heft zieht ein. Sechs Fehler wurden vor dem Merge gefunden, alle beim Ansehen im Browser mit Datenbank-Zeilen, keiner im Quelltext. Drei alte Zusagen sind mit ihren Seiten umgezogen, drei neue kamen dazu. | Z5/Z6/Z7 umgezogen · Z8–Z10 neu, je rot vorgeführt |
+
+## Was Teil H über die Kennzahl sagt
+
+Die sechs Fehler dieses Zweigs sind **keine** Nachfunde: gefunden hat sie der Agent,
+vor dem Merge, mit `referenz/probe-echt.html` in einem echten Browser. Genau das ist,
+was Gesetz 4 („gib dem Agenten Augen") erreichen sollte — und es hat gewirkt, weil
+`fixtures/zeilen.mjs` Zeilen in der **Form** der echten Tabellen liefert. Vier der sechs
+Fehler (`undefined` in der Suche, das Haus ohne Theme, der Absturz auf „Für Designer",
+die synchrone Bildadresse) waren im Quelltext unsichtbar und in den Beispieldaten
+ebenfalls — sie zeigen sich nur, wenn eine Produkt-Id eine UUID ist und kein Wort.
+
+Die Lehre für die nächste Schicht: **Beispieldaten, die zu freundlich sind, verstecken
+Fehler.** Eine Fixture, die aussieht wie die Datenbank, ist mehr wert als hundert Zeilen
+Prosa über die Datenbank.
 
 ## Grundlinie, gegen die gemessen wird
 
