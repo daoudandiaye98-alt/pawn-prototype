@@ -46,7 +46,11 @@ jq -r '
   (if (.wartet_auf_mensch | length) == 0 then "  nichts" else (.wartet_auf_mensch[] | "  · \(.)") end),
   "",
   "Letzter verify.sh hier: \(.letzter_verify.datum // "nie") — \(.letzter_verify.bestanden // "?") von \(((.letzter_verify.bestanden // 0) + (.letzter_verify.gefallen // 0))) bestanden",
-  "Letzter Pruefstand (GitHub-Action, echte Vorschau): \(.letzter_pruefstand.datum // "nie") — \(.letzter_pruefstand.bestanden // "?") bestanden, \(.letzter_pruefstand.gefallen // "?") gefallen",
+  # `nicht_pruefbar` steht hier, seit Lauf #104 „1 bestanden, 0 gefallen" meldete
+  # und dabei 673 Gates gar nicht gemessen hatte. Ohne die dritte Zahl liest die
+  # naechste Schicht in der ERSTEN Zeile des Briefings ein Bestanden, wo nichts
+  # gemessen wurde — derselbe Fehler wie beim gruenen Haken, nur eine Ebene hoeher.
+  "Letzter Pruefstand (GitHub-Action, echte Vorschau): \(.letzter_pruefstand.datum // "nie") — \(.letzter_pruefstand.bestanden // "?") bestanden, \(.letzter_pruefstand.gefallen // "?") gefallen\(if (.letzter_pruefstand.nicht_pruefbar // 0) > 0 then ", \(.letzter_pruefstand.nicht_pruefbar) NICHT PRUEFBAR" else "" end)",
   (if (.nicht_pruefbar // []) | length > 0 then "", "NICHT PRUEFBAR:", (.nicht_pruefbar[] | "  · \(.)") else empty end),
   "",
   "NAECHSTER ZUG: \(.naechster_zug)"
