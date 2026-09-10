@@ -4,7 +4,137 @@
       "handle": "filesystem"
     },
     {
+      "src": "^/dna/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/deine-dna"
+      }
+    },
+    {
+      "src": "^/designers/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/haeuser"
+      }
+    },
+    {
+      "src": "^/designers/all/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/haeuser"
+      }
+    },
+    {
+      "src": "^/boutique/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/ausgewaehlt"
+      }
+    },
+    {
+      "src": "^/neu/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/ausgewaehlt"
+      }
+    },
+    {
+      "src": "^/cart/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/tasche"
+      }
+    },
+    {
+      "src": "^/checkout/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/tasche"
+      }
+    },
+    {
+      "src": "^/account/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/konto"
+      }
+    },
+    {
+      "src": "^/shop/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/suche"
+      }
+    },
+    {
+      "src": "^/verzeichnis/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/suche"
+      }
+    },
+    {
+      "src": "^/apply/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/fuer-designer/2"
+      }
+    },
+    {
+      "src": "^/about/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/vision"
+      }
+    },
+    {
+      "src": "^/kuratierter-raum/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/vision"
+      }
+    },
+    {
+      "src": "^/drei-welten/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/haeuser"
+      }
+    },
+    {
+      "src": "^/ausgabe/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/"
+      }
+    },
+    {
+      "src": "^/inhalt/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/"
+      }
+    },
+    {
+      "src": "^/product/([^/]+)/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/werk/$1"
+      }
+    },
+    {
+      "src": "^/designer/([^/]+)/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/haus/$1"
+      }
+    },
+    {
       "src": "^/$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/ausgewaehlt/?$",
       "dest": "/index.html"
     },
     {
@@ -12,7 +142,15 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/mode/[0-9]+/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/interior/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/interior/[0-9]+/?$",
       "dest": "/index.html"
     },
     {
@@ -20,11 +158,95 @@
       "dest": "/index.html"
     },
     {
-      "src": "^/neu/?$",
+      "src": "^/kunst/[0-9]+/?$",
       "dest": "/index.html"
     },
     {
-      "src": "^/auth/?$",
+      "src": "^/haeuser/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/haeuser/[0-9]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/haus/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/haus/[^/]+/[0-9]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/werk/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/welt/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/richtung/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/form/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/linie/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/foto/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/massband/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/privacy/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/frag-pawn/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/vision/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/vision/[0-9]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/fuer-designer/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/fuer-designer/[0-9]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/suche/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/konto/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/konto/[0-9]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/tasche/?$",
       "dest": "/index.html"
     },
     {
@@ -36,11 +258,71 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/designers/all/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/boutique/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/neu/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/cart/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/checkout/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/account/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/shop/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/verzeichnis/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/apply/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/about/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/kuratierter-raum/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/drei-welten/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/ausgabe/?$",
       "dest": "/index.html"
     },
     {
-      "src": "^/vision/?$",
+      "src": "^/inhalt/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/product/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/designer/[^/]+/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/auth/?$",
       "dest": "/index.html"
     },
     {
@@ -49,22 +331,6 @@
     },
     {
       "src": "^/preise/maison/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/about/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/designers/all/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/designer/[^/]+/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/apply/?$",
       "dest": "/index.html"
     },
     {
@@ -116,35 +382,11 @@
       "dest": "/index.html"
     },
     {
-      "src": "^/shop/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/boutique/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/product/[^/]+/?$",
-      "dest": "/index.html"
-    },
-    {
       "src": "^/presse/[^/]+/?$",
       "dest": "/index.html"
     },
     {
-      "src": "^/cart/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/checkout/?$",
-      "dest": "/index.html"
-    },
-    {
       "src": "^/order/success/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/account/?$",
       "dest": "/index.html"
     },
     {

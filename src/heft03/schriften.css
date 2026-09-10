@@ -1,0 +1,76 @@
+/* Die Schriften des Hefts, unter dem Namen, den style.css benutzt.
+ *
+ * Das Heft schreibt `Playfair` (nicht `Playfair Display`) — der Prototyp lud die Schnitte
+ * über vendor-schriften.css. Im Projekt kommen dieselben Schnitte aus @fontsource; hier
+ * bekommen sie zusätzlich den kurzen Namen. Ohne diese Datei fällt jede Überschrift des
+ * Hefts auf Georgia zurück.
+ *
+ * Sechs Regeln, weil style.css alle drei Gewichte in beiden Lagen benutzt: 400 (22x kursiv,
+ * die Lesetexte), 500 (Überschriften, Wortmarke) und 600. Fehlt ein Schnitt, rechnet der
+ * Browser ihn sich schief — eine synthetisch geneigte Serifenschrift ist genau das, was
+ * eine Doppelseite billig aussehen lässt.
+ *
+ * `font-display: swap`: der Text steht sofort und wird nachgezogen. Bei einem Heft, dessen
+ * Eröffnung 5,8 s dauert, wäre unsichtbarer Text die schlechtere Wahl.
+ */
+
+@font-face {
+  font-family: 'Playfair';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-500-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-600-italic.woff2') format('woff2');
+}
+
+/* style.css nennt an einigen Stellen auch 'Playfair Display' in 400 — main.tsx lädt von
+   dieser Familie nur 500 bis 700. Der fehlende Schnitt kommt hier dazu, damit derselbe
+   Text nicht je nach Regel anders aussieht. */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/playfair-display/files/playfair-display-latin-400-italic.woff2') format('woff2');
+}

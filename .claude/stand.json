@@ -1,51 +1,81 @@
 {
   "aktualisiert": "2026-09-10",
-  "branch": "claude/pruefstand-kein-urteil",
+  "branch": "claude/heft-frontend-integration-0bjnzf",
   "offene_prs": [
     {
       "nr": 185,
       "titel": "Fix: ein Prüfstandslauf, der nichts gesehen hat, meldet nicht mehr grün",
-      "status": "Entwurf, offen, Basis main. DIESER Zweig. Drei Dateien: tools/pruefstand/urteil.ts (neu, die Rechnung), lauf.ts (Rückgabewert 3), .github/workflows/pruefstand.yml (fängt 3 ab → Warnung, bleibt grün), .claude/hooks/briefing.sh (die dritte Zahl in der ersten Zeile jeder Sitzung). Wache: src/__tests__/pruefstand-urteil.spec.ts, 9 Tests, zweimal rot vorgeführt.",
+      "status": "Entwurf, offen, Basis main. Zweig claude/pruefstand-kein-urteil. main ist hereingemergt, der stand.json-Konflikt ist aufgelöst (Fassung von Teil H übernommen, wie in #184 vermerkt). Sechs Dateien: urteil.ts (neu), lauf.ts, pruefstand.yml, briefing.sh, pruefstand-urteil.spec.ts, stand.json.",
       "blockiert_durch": "nichts — wartet nur auf Durchsicht."
-    },
-    {
-      "nr": 184,
-      "titel": "Teil H — Das Heft zieht ein (Zweig 1)",
-      "status": "Entwurf, offen, Basis main. Zweig claude/heft-frontend-integration-0bjnzf. Dort liegt die VOLLSTÄNDIGE Übergabe zu Teil H — diese Datei hier deckt nur #185 ab.",
-      "blockiert_durch": "Daoudas Sicht-Freigabe auf der Vorschau und die vier Migrationen über Lovable."
     }
   ],
   "merge_reihenfolge": [
-    "1. PR #185 zuerst (dieser Zweig). Er hängt an nichts. Danach sagt jeder Prüfstandslauf selbst, ob er etwas gesehen hat — auch der von #184.",
-    "2. Dann die Kette von Teil H: Sicht-Freigabe → vier Migrationen über Lovable → types.ts → Merge #184 → pawn-chat ausliefern. Sie steht vollständig in der stand.json von #184.",
-    "ACHTUNG beim zweiten Merge: beide Zweige fassen .claude/stand.json an. Die Fassung von #184 ist die neuere und umfassendere — sie nennt #185 schon. Im Konflikt ihre nehmen."
+    "ERLEDIGT: PR #184 (Teil H) ist am 10.09. gemergt — b4d51c4 auf main. Lovable synct, Vercel spiegelt auf pawn.vision.",
+    "OFFEN 1: PR #185 mergen (hängt an nichts).",
+    "OFFEN 2 — DRINGEND, weil #184 schon durch ist: die vier Migrationen unter supabase/migrations/20260928* über den Lovable-Agenten anwenden. Sie liegen als Dateien auf main, aber eine Datei ist keine angewandte Migration. Reihenfolge: heft_sichten, heft_kunden_stil, heft_masse_raum, heft_product_dna. Alle vier additiv.",
+    "OFFEN 3: types.ts neu erzeugen lassen (kennt heute kein kunden_stil — siehe unten).",
+    "OFFEN 4: pawn-chat über Lovable ausliefern (Code liegt seit dem Merge auf main).",
+    "OFFEN 5: H6 (Freistellen) als eigener PR, VOR dem Umschalttag — ohne product_dna.heft.cutout_url steht kein Werk auf der Bühne.",
+    "OFFEN 6: Zweig 2 (Stilfoto) — braucht die ausgelieferte pawn-chat."
   ],
   "wartet_auf_mensch": [
-    "DURCHSICHT #185: Der Prüfstand meldete grün über 673 ungemessenen Gates (Lauf #104). Ursache: Chromium auf dem Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf. Je Gate war das ehrlich (eine Hülle zählt als 'nicht prüfbar'), nur das Gesamturteil kannte den Zustand nicht.",
-    "DIE URSACHE BLEIBT OFFEN und ist das Wichtigere: WARUM findet der GitHub-Rechner den Supabase-Namen nicht? #185 macht die Blindheit sichtbar, behebt sie nicht. Drei Verdächtige, keiner geprüft: Projekt pausiert, Netzsperre der Organisation, DNS auf dem Runner. Der erste ist in fünf Sekunden auszuschließen — lädt pawn.vision normal? Das kann nur ein Mensch sehen; dieser Container hat denselben blinden Fleck.",
-    "FOLGE, solange das hält: kein Werkzeug dieses Projekts hat das Heft je mit echten Häusern gesehen. Weder der Container, noch der Prüfstand, noch der Prüfer. Der einzige Beweis über echte Daten ist ein Mensch auf der Vorschau — bei #184 vor allem: ein Werk anklicken und die Tasche bis zur Stripe-Kasse."
+    "SIND DIE MIGRATIONEN GELAUFEN? Das ist die erste Frage dieser Schicht. Beleg gegen: src/integrations/supabase/types.ts auf main kennt kunden_stil NICHT (0 Treffer) und wurde seit dem Merge nicht neu erzeugt. Ein Agent kann die Datenbank von hier nicht sehen — nur Daouda oder der Lovable-Agent. WAS OHNE SIE PASSIERT, geordnet nach Schwere: (1) Die Lücke bleibt offen — die Policy „designers public read“ gibt anon weiter stripe_account_id und stripe_customer_id. Das Heft liest sie nicht (Zusage Z10), aber die Lücke schließt erst heft_sichten. (2) Das Bilderquiz bleibt im Gerät: kunden_stil fehlt, stil.laden() gibt null, nach dem Login wird nichts übernommen. (3) Interior/Kunst-Maße landen nur als Satz in room_note, nicht strukturiert in raum — der Rückfall dafür ist eingebaut und greift. KAPUTT IST NICHTS: jeder dieser drei Wege fällt bewusst zurück. Halb ist alles drei.",
+    "pawn-chat ist NICHT ausgeliefert. Bis dahin zeigen die Chat-Karten auf /product/<slug> — das läuft über eine 301 und funktioniert, ist aber ein Umweg. mode stilfoto gibt es noch nicht.",
+    "DIE SICHT-FREIGABE: #184 ist gemergt. Falls der Kauf-Weg (Werk → Tasche → Stripe) und das Anklicken eines Werks auf der Vorschau NICHT von Hand geprüft wurden, sind sie jetzt auf pawn.vision ungeprüft live. Das ist keine Schuldzuweisung, sondern die Lücke, die offen bleibt: kein Werkzeug dieses Projekts hat diese zwei Wege je mit echten Daten gesehen. Nachholen lohnt auch jetzt noch.",
+    "OFFENE URSACHE: Warum löst der GitHub-Rechner rnakubexbqfgfciynqpt.supabase.co nicht auf? Drei Verdächtige, keiner geprüft: Projekt pausiert, Netzsperre der Organisation, DNS auf dem Runner. Der erste ist in fünf Sekunden auszuschließen — lädt pawn.vision normal? Jetzt, nach dem Merge, ist das ohnehin die erste Frage.",
+    "DAS BRIEFING SAGT BIS ZUM MERGE VON #185 DIE HALBE WAHRHEIT: auf main steht noch die alte Zeile „1 bestanden, 0 gefallen“ ohne die ungemessenen. Die Reparatur liegt in #185. Genau die Reihenfolge, vor der ich gewarnt hatte, ist eingetreten — #184 zuerst. Kein Schaden, aber bis #185 durch ist, liest jede Sitzung eine Zahl, die nach Erfolg aussieht.",
+    "H6 (Freistellen) ist nicht gebaut. Die Regel der Bühne ist hart: aufgestellt wird nur, was freigestellt ist. Ohne die Function und einen einmaligen Lauf über alle veröffentlichten Werke stehen die Bühnen leer — mit ehrlichem Leerzustand, aber leer. Das ist der nächste Bauauftrag."
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-10",
-    "lauf": "GitHub-Action #108, Job 103042874248, Kopf 449890f (dieser Zweig)",
+    "lauf": "GitHub-Action #109, Job 103043536040, Kopf 10ea26a (zuvor #104 auf 42c1dc0 — gleiches Bild)",
+    "ergebnis": "1 bestanden · 0 gefallen · 673 NICHT PRÜFBAR",
+    "warum": "Der Check ist gruen, hat aber fast nichts gemessen. Chromium auf dem Runner loest rnakubexbqfgfciynqpt.supabase.co nicht auf (net::ERR_NAME_NOT_RESOLVED, 24 Anfragen je Seite). Die Vorschau selbst laedt — die Sperre wird per VERCEL_AUTOMATION_BYPASS_SECRET aufgehoben —, aber sie laedt als HUELLE ohne Inhalte. Der Pruefstand zaehlt eine Huelle bewusst als 'nicht pruefbar' statt als 'bestanden' (lauf.ts:543-545) — das ist je Gate ehrlich. Nur das Gesamturteil wird dadurch gruen, obwohl 673 von 674 Gates blind blieben.",
+    "nicht_von_diesem_zweig": "Der Diagnoseschritt 'Datenhost aufloesen' steht seit b517fa1 auf main — die Frage ist aelter als Teil H. Der Eintrag der letzten Schicht lautete bereits '? bestanden, ? gefallen'.",
+    "folge": "Die GitHub-Action ist damit KEIN Beweis ueber echte Daten. Ueber Haeuser, Bilder, Buehnen und den Kaufweg sagt sie so wenig wie dieser Container. Der einzige Beweis ist Daoudas Blick auf die Vorschau von Hand.",
+    "offene_frage": "Soll ein blinder Lauf (Gates fast alle 'nicht pruefbar') weiter gruen melden duerfen? Ein Check, der gruen meldet, ohne gemessen zu haben, lehrt Gruen zu glauben — das Gegenstueck zu dem Fehler, den .claude/rules/00-gesetze.md beschreibt. Eine Schwelle ('unter N gemessenen Gates ist der Lauf kein Urteil') waere die Reparatur. NICHT in diesem Zweig gebaut: sie aendert das Tor fuer JEDEN PR, das ist Daoudas Entscheidung.",
     "bestanden": 1,
     "gefallen": 0,
-    "nicht_pruefbar": 1103,
-    "urteil": "KEIN URTEIL — 1 von 1104 Gates messbar (0,1 %, nötig 50 %)",
-    "warum": "Chromium auf dem Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf (net::ERR_NAME_NOT_RESOLVED, 39 bis 60 Anfragen je Seite). Die Vorschau lädt — die Sperre hebt VERCEL_AUTOMATION_BYPASS_SECRET auf —, aber sie lädt als Hülle ohne Inhalte. Der Check ist grün und sagt es jetzt selbst; vor diesem PR hätte er nur grün gemeldet."
+    "nicht_pruefbar": 673,
+    "vergleich": "Derselbe Zustand, zwei Verhalten — der Beleg für PR #185: Lauf #109 auf diesem Zweig (ohne Schwelle) meldet grün und sagt NICHTS dazu. Lauf #108 auf dem Zweig von #185 (mit Schwelle) meldet bei 1 von 1104 messbaren Gates „KEIN URTEIL“ plus Warnung am PR — ebenfalls grün, aber nicht mehr stumm. Nach dem Merge von #185 verhält sich auch dieser Zweig so.",
+    "hinweis_briefing": "ACHTUNG beim Lesen des Sitzungsstarts: briefing.sh zeigt auf DIESEM Zweig nur „1 bestanden, 0 gefallen“ und verschweigt die 673 ungemessenen — das sieht wie ein Erfolg aus. Die dritte Zahl in die Zeile zu bringen ist Teil von PR #185 (.claude/hooks/briefing.sh). Wird #185 wie empfohlen ZUERST gemergt, erledigt sich das. Wird #184 zuerst gemergt, steht die halbe Wahrheit bis dahin im Briefing."
   },
-  "naechster_zug": "PR #185 durchsehen und mergen — er hängt an nichts. Danach die Kette von Teil H (#184), deren stand.json die Reihenfolge vollständig führt. Und die eine Frage klären, die die Ursache der Blindheit von drei Verdächtigen auf zwei eingrenzt: lädt pawn.vision gerade normal?",
+  "naechster_zug": "Erstens: lädt pawn.vision normal, und sind die vier Migrationen gelaufen? Teil H ist seit b4d51c4 live, die Migrationen liegen nur als Dateien vor. Zweitens: PR #185 mergen, dann sagt das Briefing wieder die ganze Wahrheit. Drittens: pawn-chat ausliefern. Viertens: H6 bauen, vor dem Umschalttag.",
   "nicht_pruefbar": [
-    "DIE SCHWELLE IST BEWIESEN, DIE URSACHE NICHT. Bewiesen: Lauf #106 und #108 auf diesem Zweig melden 'KEIN URTEIL — Nur 1 von 1104 Gates messbar (0,1 %, nötig 50 %)', Check grün, Warnung am PR; lokal zusätzlich mit echtem Browser Rückgabewert 3 erzwungen. Nicht geprüft: warum die Namensauflösung scheitert.",
-    "DER VERGLEICH, der den PR begründet — zwei Läufe, dieselbe Blindheit, zwei Verhalten: #109 auf dem Zweig von Teil H (ohne Schwelle) meldet '1 bestanden · 0 gefallen · 673 nicht prüfbar' und sagt nichts dazu. #108 hier (mit Schwelle) meldet dasselbe plus 'KEIN URTEIL' plus Warnung. Nach dem Merge verhält sich auch Teil H so."
+    "ECHTE DATEN: Dieser Container erreicht Supabase nicht. Alles, was ich über Inhalte, Bilder und Häuser sagen kann, kommt aus fixtures/zeilen.mjs — Zeilen in der FORM der echten Tabellen, nicht die echten Zeilen. Sechs Fehler habe ich damit gefunden; ob es einen siebten gibt, zeigt erst die Vorschau. NACHTRAG 20:44 UTC: Die Blindheit ist NICHT vorübergehend. Lauf #106 scheiterte erneut an net::ERR_NAME_NOT_RESOLVED, 39 bis 60 Anfragen je Seite, 1103 von 1104 Gates nicht prüfbar. Zwei Läufe, zwei Zweige, dasselbe Bild — kein Zufall, sondern ein Zustand.",
+    "BEWEGUNG: Der Browser hier rendert mit 1 Bild pro Sekunde (Software-Renderer, kein GPU). Die Eröffnung, die auf echter Hardware 5,8 s dauert, braucht hier ~29 s. Über Flüssigkeit, Blätterruhe und die Zusage „ein DEIN ZUG je Seite\" sagt dieser Lauf nichts.",
+    "BILDADRESSEN: quelle.heft() signiert alle Bildadressen in einer Runde, bevor die Adapter sie synchron lesen. Ob die echten products.image_url blanke Bucket-Pfade oder fertige URLs sind, konnte ich nicht sehen — beide Wege sind abgedeckt, aber geprüft ist keiner.",
+    "DIE SICHTEN: supabaseQuelle läuft mit sichten:false, weil es heft_produkte und heft_haeuser noch nicht gibt. Ob der eingebettete Join products→designers über die Sicht funktioniert (PostgREST muss die FK-Beziehung erkennen), zeigt sich erst nach der Migration. heftAusZeilen() fällt zur Not auf haeuserNachId zurück.",
+    "DIE EDGE FUNCTION: Deno ist in diesem Container nicht vorhanden. pawn-chat ist nur auf Syntax geprüft (tsc --noResolve). Ob mode stilfoto läuft, zeigt der erste Aufruf nach dem Deploy.",
+    "KAUF VON HAND: Der Weg Werk → Tasche → Stripe ist durch Tests gedeckt (tasche.test.mjs, Zusage Z7) und im Browser mit Fixture-Zeilen durchgeklickt, aber nie mit einer echten Datenbank bis zur Kasse. Dieser Beweis fehlt weiter — er ist der wichtigste Punkt der Sicht-Freigabe.",
+    "DER PRÜFER (10.09., gegen 18 Behauptungen dieses Berichts): 17 bestätigt, 0 widerlegt, 1 nicht prüfbar. Nicht prüfbar war allein der CI-Stand — der Subagent hat keinen GitHub-Zugriff; die Hauptsitzung hat ihn gesehen (check_suite.completed auf 154f2bd ohne Fehler, PR #184 mergeable_state clean). Er hat die vier neuen Kontrollen NICHT geglaubt, sondern zwei davon in einer Kopie rot vorgeführt: Z8 fiel, als er die Selbststart-Zeile in app.js wieder einsetzte, Z10 fiel, als er stripe_account_id in SPALTEN.designers schrieb. Eine Abweichung fand er: sein eigener Baulauf maß 2.184,71 kB, der Bericht nennt 2.184,66 kB — Rundungsrauschen zwischen zwei Bauläufen, die Richtung (−745 kB) steht."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
     "datum": "2026-09-10",
-    "bestanden": 3,
+    "bestanden": 4,
     "gefallen": 0
   },
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
+  },
+  "heft03": {
+    "was_es_ist": "src/heft03 ist das öffentliche Frontend. app.js › startHeft() ist der einzige Einstieg, quelle.mjs der einzige Weg nach außen, routen.mjs die einzige Adressquelle. src/heft03/LIESMICH.md erklärt den Ordner; docs/heft03/INTEGRATION.md ist der Vertrag.",
+    "funktionen": {
+      "Umschlag und Welten": "data.mjs › heftFuellen + displays · Slogan aus site_content (landing.*) über quelle.texte()",
+      "Suche": "extra-views.mjs › searchToolbar + presentation.mjs › searchProducts · /suche",
+      "Werkseite": "views.mjs › productView (Seitenfenster) · Welt-Felder über views.mjs › weltAngaben",
+      "Passform": "beratung.mjs › passform() — portiert aus features/fit/measurements.ts, rechnet gegen die Maßtabelle",
+      "Tasche und Kasse": "views.mjs › cartView · app.js › checkout() → create-checkout, eine Zahlung je Haus · Zusage Z7 in tasche.test.mjs",
+      "Anfrage": "quelle.anfrage → HeftRoute03 › funktionen.anfrage → createCustomRequestThread",
+      "Merkliste": "quelle.merkliste → wishlists",
+      "Konto": "extra-views.mjs Konto/1–5 · Bestellungen über konto.bestellungen(), Anfragen über konto.anfragen(), Rechnung über konto.rechnung()",
+      "DNA": "beratung.mjs + extra-views.mjs · /deine-dna/* · Alles löschen über quelle.vergessen() (löscht auch auf dem Server)",
+      "Frag PAWN": "extra-views.mjs › pawnChat → quelle.chat → pawn-chat",
+      "Häuser": "views.mjs › readView (3 Blätter) · Theme über presentation.mjs › housePresentation",
+      "Für Designer": "views.mjs › readView + applicationView · Verträge über quelle.vertraege() → contract_versions",
+      "Seitenbesuche": "HeftRoute03 › funktionen.signal → record_page_visit + add_dwell_seconds",
+      "Noch nicht gebaut": "Stilfoto (/deine-dna/foto) und Bild in Frag PAWN — Zweig 2. Freistellen — H6, eigener PR."
+    }
   }
 }

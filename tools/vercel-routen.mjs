@@ -28,7 +28,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { ROUTEN, UMZUEGE } from "../routen.js";
+import { ROUTEN, UMZUEGE, ZAEHLENDE_PLATZHALTER } from "../routen.js";
 
 /**
  * Eine Adresse aus dem Register in einen Regex-Ausdruck übersetzen.
@@ -41,7 +41,12 @@ function alsMuster(route) {
   const teile = route.split("/").filter((t) => t.length > 0);
   if (teile.length === 0) return "^/$";
   const ausdruck = teile
-    .map((t) => (t.startsWith(":") ? "[^/]+" : t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+    .map((t) => {
+      if (!t.startsWith(":")) return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      /* Ein Platzhalter, der eine Seite zaehlt, nimmt nur Ziffern — sonst bekaeme
+         /mode/gibtesnicht eine 200 statt der 404. Siehe routen.js. */
+      return ZAEHLENDE_PLATZHALTER.includes(t.slice(1)) ? "[0-9]+" : "[^/]+";
+    })
     .join("/");
   /* Der abschließende Schrägstrich ist erlaubt: /mode und /mode/ sind dieselbe
      Seite, und ein 404 für die Schreibweise mit Strich wäre eine Falle. */

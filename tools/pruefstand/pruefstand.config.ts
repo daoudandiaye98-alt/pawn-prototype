@@ -87,23 +87,25 @@ export const HAUS_SLUG = "obara";
 /** Die Halle — die Startseite. */
 export const HALLE_PFAD = "/";
 
-/** Die Boutique — der Katalog. */
-export const BOUTIQUE_PFAD = "/shop";
+/** Die Suche — der Katalog des Hefts. */
+export const BOUTIQUE_PFAD = "/suche";
 
 export const SEITEN: SeitenZiel[] = [
   /*
-   * Die Rücknahme des Magazins hat diese Liste zurückgeschrieben. Gemessen
-   * wird wieder, was ausgeliefert wird: die Halle, die Boutique, das Werk,
-   * das Haus — und die Ausgabe. Die Heft-Adressen (`/verzeichnis/1`,
-   * `/werk/:slug`, `/haus/:slug`, `/kasse`) gibt es nicht mehr; sie zu messen
-   * hieße, 404 zu messen und Rot zu lehren, das niemand mehr liest.
+   * Teil H — gemessen wird, was ausgeliefert wird. Seit dem Einzug des Hefts
+   * sind das seine Adressen; `/shop`, `/product/:slug`, `/designer/:slug` und
+   * `/ausgabe/001` antworten mit 301 bzw. 404. Sie zu messen hieße, einen Umzug
+   * zu messen und Rot zu lehren, das niemand mehr liest.
+   *
+   * Sechs Seiten statt fünf: die Tasche kommt dazu, weil an ihr Geld hängt und
+   * sie die einzige Fläche ist, die vom Heft direkt zu Stripe führt.
    */
   { name: "halle", pfad: HALLE_PFAD },
-  { name: "boutique", pfad: BOUTIQUE_PFAD },
-  { name: "werk", pfad: `/product/${PRODUKT_SLUG}` },
-  { name: "haus", pfad: `/designer/${HAUS_SLUG}` },
-  // Die Ausgabe gehört zum öffentlichen Frontend, also in die Messung.
-  { name: "ausgabe", pfad: "/ausgabe/001" },
+  { name: "suche", pfad: BOUTIQUE_PFAD },
+  { name: "werk", pfad: `/werk/${PRODUKT_SLUG}` },
+  { name: "haus", pfad: `/haus/${HAUS_SLUG}` },
+  { name: "welt-mode", pfad: "/mode" },
+  { name: "tasche", pfad: "/tasche" },
 ];
 
 /** Absichtlich ungültig — für 4.5. */

@@ -36,7 +36,7 @@ export function ProductCard({ product, recommendationId }: { product: ProductVie
   return (
     <Link
       ref={ref}
-      to={`/product/${product.slug}`}
+      to={`/werk/${product.slug}`}
       className="group block"
       data-recommendation-id={recommendationId}
     >

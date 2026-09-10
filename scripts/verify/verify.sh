@@ -15,8 +15,8 @@ cd "$(dirname "$0")/../.."
 
 MODUS="${1:-schnell}"
 case "$MODUS" in
-  schnell) PRUEFUNGEN=(tsc tests regression) ;;
-  voll)    PRUEFUNGEN=(tsc tests regression build sicht) ;;
+  schnell) PRUEFUNGEN=(tsc tests heft regression) ;;
+  voll)    PRUEFUNGEN=(tsc tests heft regression build sicht) ;;
   *) echo "Aufruf: verify.sh [schnell|voll]" >&2; exit 64 ;;
 esac
 
@@ -47,10 +47,27 @@ tests() {
   return 1
 }
 
+# Die 27 Tests des Hefts laufen unter node:test, nicht unter Vitest — sie kommen
+# unveraendert aus dem Prototyp und sollen es bleiben, damit ein Abgleich mit ihm
+# eine Sache von `diff` bleibt. Zwei Laeufer, ein Tor.
+heft() {
+  local ausgabe ende
+  ausgabe=$(npm run test:heft 2>&1); ende=$?
+  if [ $ende -eq 0 ]; then
+    echo "  $(echo "$ausgabe" | grep -E '^# pass' | tail -1 | xargs) von $(echo "$ausgabe" | grep -E '^# tests' | tail -1 | sed 's/# tests //')"
+    echo "HEFT: 1/1 · FEHLER: keine"
+    return 0
+  fi
+  echo "$ausgabe" | grep -E "not ok|AssertionError|error:" | head -20
+  echo "HEFT: 0/1 · FEHLER: Heft-Tests rot"
+  return 1
+}
+
 for p in "${PRUEFUNGEN[@]}"; do
   case "$p" in
     tsc)        fuehre tsc        scripts/verify/tsc.sh ;;
     tests)      fuehre tests      tests ;;
+    heft)       fuehre heft       heft ;;
     regression) fuehre regression scripts/verify/regression.sh ;;
     build)      fuehre build      scripts/verify/build.sh ;;
     sicht)      fuehre sicht      scripts/verify/sicht.sh ;;

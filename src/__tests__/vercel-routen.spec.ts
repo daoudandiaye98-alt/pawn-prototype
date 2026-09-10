@@ -18,13 +18,26 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ROUTEN, UMZUEGE, istBekannteRoute } from "../../routen.js";
+import { ROUTEN, UMZUEGE, ZAEHLENDE_PLATZHALTER, istBekannteRoute } from "../../routen.js";
 import { baueVercelJson } from "../../tools/vercel-routen.mjs";
 
 const erzeugt = baueVercelJson();
 /* Über das Arbeitsverzeichnis, nicht über `import.meta.url`: im Testlauf ist
    das keine `file:`-Adresse, und `readFileSync` nimmt sie dann nicht an. */
 const eingecheckt = JSON.parse(readFileSync(resolve(process.cwd(), "vercel.json"), "utf8"));
+
+/**
+ * Ein Muster in eine echte Adresse verwandeln.
+ *
+ * `:seite` und `:blatt` zaehlen Doppelseiten und nehmen nur Ziffern (siehe routen.js) —
+ * mit „beispiel" bekaemen sie zu Recht eine 404, und diese Wache haette den Umbau
+ * angezeigt, statt ihn zu pruefen.
+ */
+function alsAdresse(route: string): string {
+  return route.replace(/:([^/]+)/g, (_, name: string) =>
+    ZAEHLENDE_PLATZHALTER.includes(name) ? "2" : "beispiel",
+  );
+}
 
 /** Die erste Regel, die greift — so, wie Vercel die Liste von oben abarbeitet. */
 function ersteRegel(pfad: string) {
@@ -49,8 +62,7 @@ describe("vercel.json", () => {
   const zieht = (route: string) => UMZUEGE.some((u: { von: string }) => u.von === route);
 
   it.each(ROUTEN.filter((r) => !zieht(r)).map((r) => [r]))("%s bekommt 200, nicht den Auffang", (route: string) => {
-    // `:name` durch einen echten Abschnitt ersetzen — so kommt die Adresse an.
-    const pfad = route.replace(/:[^/]+/g, "beispiel");
+    const pfad = alsAdresse(route);
     const regel = ersteRegel(pfad);
     expect(regel, `keine Regel trifft ${pfad}`).toBeDefined();
     expect(regel!.status, `${pfad} fiele in den 404-Auffang`).toBeUndefined();
@@ -64,12 +76,12 @@ describe("vercel.json", () => {
   if (UMZUEGE.length > 0) {
     it.each(UMZUEGE.map((u: { von: string; nach: string }) => [u.von, u.nach]))(
       "%s zieht mit 301 nach %s um", (von: string, nach: string) => {
-        const pfad = von.replace(/:[^/]+/g, "mode");
+        const pfad = von.replace(/:[^/]+/g, "beispiel");
         const regel = ersteRegel(pfad);
         expect(regel?.status, `${pfad} bekäme keinen 301`).toBe(301);
         const ziel = (regel!.headers as Record<string, string>).Location
-          .replace(/\$\d+/g, "mode");
-        expect(ziel).toBe(nach.replace(/:[^/]+/g, "mode"));
+          .replace(/\$\d+/g, "beispiel");
+        expect(ziel).toBe(nach.replace(/:[^/]+/g, "beispiel"));
         // Ein Umzug in eine tote Adresse wäre eine 301 in die 404.
         expect(istBekannteRoute(ziel), `${ziel} ist keine bekannte Adresse`).toBe(true);
       });
@@ -81,7 +93,11 @@ describe("vercel.json", () => {
 
   it.each([
     ["/diese-seite-gibt-es-nicht-4d9f21"],
+    /* Eine Welt hat so viele Doppelseiten, wie es Haeuser gibt — die Nummer ist echt,
+       ein Wort dahinter nicht. Genau dafuer nehmen zaehlende Platzhalter nur Ziffern. */
     ["/mode/gibtesnicht"],
+    ["/haus/lind/erstes"],
+    ["/deine-dna/gibtesnicht"],
     ["/product/eins/zwei"],
     ["/studio/gibtesnicht"],
   ])("%s bekommt 404", (pfad: string) => {

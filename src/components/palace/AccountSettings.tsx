@@ -266,7 +266,7 @@ function DatenschutzSection() {
         label="Was PAWN sich merkt"
         description="Kleine Notizen aus Gesprächen — einsehbar und einzeln löschbar unter Deine DNA."
         action={
-          <a href="/dna" className="text-[0.68rem] uppercase tracking-[0.22em] underline decoration-1 underline-offset-4 hover:no-underline">
+          <a href="/deine-dna" className="text-[0.68rem] uppercase tracking-[0.22em] underline decoration-1 underline-offset-4 hover:no-underline">
             Ansehen →
           </a>
         }

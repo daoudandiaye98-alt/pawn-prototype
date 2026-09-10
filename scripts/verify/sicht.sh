@@ -20,7 +20,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 
-SEITEN="${SICHT_SEITEN:-halle,boutique,werk,haus}"
+# Teil H — dieselben Namen wie in tools/pruefstand/pruefstand.config.ts › SEITEN.
+SEITEN="${SICHT_SEITEN:-halle,suche,werk,haus}"
 BREITEN="${SICHT_BREITEN:-390,768,1280,1920}"
 PORT="${SICHT_PORT:-4173}"
 DATUM=$(date +%Y-%m-%d)

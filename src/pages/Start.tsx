@@ -15,5 +15,5 @@ export default function Start() {
   const lead = params.get("lead");
   if (!lead) return <FirstMove />;
   const welt = params.get("welt");
-  return <Navigate to={welt ? `/apply?welt=${encodeURIComponent(welt)}` : "/apply"} replace />;
+  return <Navigate to={welt ? `/apply/form?welt=${encodeURIComponent(welt)}` : "/apply/form"} replace />;
 }

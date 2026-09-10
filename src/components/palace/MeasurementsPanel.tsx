@@ -121,7 +121,7 @@ export function MeasurementsPanel({ className }: { className?: string }) {
                 Maße löschen
               </button>
             )}
-            <Link to="/shop" className="text-[0.62rem] uppercase tracking-[0.24em] text-black/60 underline underline-offset-4 hover:text-black">
+            <Link to="/suche" className="text-[0.62rem] uppercase tracking-[0.24em] text-black/60 underline underline-offset-4 hover:text-black">
               Passende Stücke ansehen →
             </Link>
           </div>
