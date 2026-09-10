@@ -22,7 +22,7 @@ import {massZeile} from './store.mjs';
 // Rückgabe: {go, route, state, refresh, stop}. Die Hülle (React) hält die Kopf-/Fußzeile, das Heft die Bühne.
 // ---------------------------------------------------------------------------
 export async function startHeft(optionen={}){
-const quelle=optionen.quelle||demoQuelle();
+let quelle=optionen.quelle||demoQuelle();
 const adresse=adressen(optionen.adresse||'hash',optionen.basis||'');
 const auf=optionen.auf||{};
 if(optionen.assets)assetBasis(optionen.assets);
@@ -30,7 +30,21 @@ const zustimmungMelden=()=>{if(auf.zustimmung)auf.zustimmung(state.consent);};
 const hoerer=[];
 const hoeren=(ziel,typ,fn,opt)=>{ziel.addEventListener(typ,fn,opt);hoerer.push([ziel,typ,fn,opt]);};
 // Erst die Daten, dann das Heft: Sektionen und Häuser hängen davon ab.
-const heft=await quelle.heft();
+// NOTBETRIEB-MARKE — Vorschau-Betrieb, wenn die Quelle schweigt.
+// Antwortet sie nicht binnen 6 Sekunden oder gar nicht, zeigt das Heft seine
+// Beispielausgabe statt einer toten Ladeseite. Kauf, Anfrage und Konto sind dann
+// gesperrt, weil demoQuelle auf alles mit {fehler:'vorschau'} antwortet.
+let heft=null,notbetrieb=false;
+try{
+ heft=await Promise.race([
+  Promise.resolve(quelle.heft()),
+  new Promise((_,ab)=>setTimeout(()=>ab(new Error('Die Quelle hat nicht geantwortet.')),6000))
+ ]);
+}catch(fehler){
+ notbetrieb=true;
+ try{auf.fehler&&auf.fehler(Object.assign(fehler,{art:'quelle-weg'}));}catch(_){}
+}
+if(notbetrieb){quelle=demoQuelle();heft=await quelle.heft();}
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -40,6 +54,29 @@ const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNo
 if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!optionen.zustimmung;
 const nav=new Magazine(adresse.lesen(),reduced.matches);
 if(quelle.art!=='demo')state.vorschau=false;
+state.notbetrieb=notbetrieb;
+if(notbetrieb){
+ if(!document.getElementById('vorschau-streifen')){
+  const streifen=document.createElement('div');
+  streifen.id='vorschau-streifen';
+  streifen.setAttribute('role','status');
+  streifen.textContent='Vorschau-Ausgabe \u2014 die Werke der H\u00e4user werden gerade gewartet und sind in K\u00fcrze wieder da.';
+  streifen.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#f4efe6;color:#2a2521;border-bottom:1px solid #d9d0c2;font:500 10px/1.6 Inter,system-ui,sans-serif;letter-spacing:1.4px;text-transform:uppercase;text-align:center;padding:9px 16px;pointer-events:none';
+  document.body.appendChild(streifen);
+ }
+ // Alle 60 Sekunden still nachfassen. Ist die Datenbank zurueck, laedt die Seite neu —
+ // aber nur, wenn gerade niemand liest oder tippt.
+ if(optionen.quelle){
+  const wieder=setInterval(async()=>{
+   try{
+    await optionen.quelle.heft();
+    clearInterval(wieder);
+    const tippt=/^(INPUT|TEXTAREA)$/.test(document.activeElement&&document.activeElement.tagName||'');
+    if(!tippt&&!document.querySelector('#drawer.open'))location.reload();
+   }catch(_){}
+  },60000);
+ }
+}
 let world,paging=null,raf=null,dirty=true,lastTime=0,uiKey='',displayKey='',speed=1,fold=1,angle=0,activeProduct=null,lastFocus=null,toastTimer,wheelSum=0,wheelTime=0,wheelLock=0,applicationStep=0,applicationValues={},pointerStart;
 const drawer=$('drawer');
 // Flacher Lesemodus, wenn die Doppelseite keine Fläche hätte (Handy quer, Hochformat-Tablet) oder kein 3D läuft.
