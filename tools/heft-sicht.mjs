@@ -1,11 +1,31 @@
+#!/usr/bin/env node
 /**
- * Augen für das Heft: die Probe mit Zeilen in Datenbankform (fixtures/zeilen.mjs) in einem
- * echten Browser. Nicht Teil des Baus — ein Werkzeug für die Sitzung.
+ * Augen für das Heft — mit Zeilen in Datenbankform.
  *
- * WICHTIG: Dieser Container rendert mit 1 Bild/Sekunde (Software-Renderer, kein GPU).
- * Die Eröffnung braucht dadurch ~29 s statt 5,8 s. Die Lesestrecken werden deshalb mit
+ * `scripts/verify/sicht.sh` fotografiert den gebauten Stand. Das ist richtig, hilft hier
+ * aber nicht: Dieser Container erreicht Supabase nicht, das Heft bekommt keine Häuser und
+ * bleibt auf dem Ladefeld stehen. Über Bühne, Doppelseiten und Seitenfenster sagt so ein
+ * Lauf nichts.
+ *
+ * Dieses Werkzeug nimmt stattdessen `src/heft03/referenz/probe-echt.html`: das Heft mit
+ * `fixtures/zeilen.mjs`, also Zeilen in der FORM der echten Tabellen — echte Spaltennamen,
+ * UUIDs als Ids, `product_dna` mit Welt-Feldern, ein Haus mit `house_theme`, eines ohne.
+ * Genau daran sind in Teil H sechs Fehler aufgefallen, die im Quelltext unsichtbar waren
+ * und in den Beispieldaten ebenfalls.
+ *
+ * Voraussetzung: der Entwicklungsserver läuft.
+ *
+ *   npx vite --host 127.0.0.1 --port 8080 --strictPort &
+ *   PRUEFSTAND_CHROMIUM=$(find /opt/pw-browsers -type f -name chrome | head -1) \
+ *     node tools/heft-sicht.mjs
+ *
+ * Die Aufnahmen landen unter /tmp/heft-probe (oder $ZIEL). ANSEHEN, nicht zählen.
+ *
+ * WICHTIG — was dieser Lauf NICHT kann: Dieser Container rendert mit etwa einem Bild pro
+ * Sekunde (Software-Renderer, kein GPU). Die Eröffnung, die auf echter Hardware 5,8 s
+ * dauert, braucht hier rund 29 s. Die Lesestrecken werden deshalb mit
  * `reducedMotion:'reduce'` aufgenommen — dann setzt das Heft die Doppelseite sofort.
- * Über Bewegungsqualität sagt dieser Lauf NICHTS; das misst nur echte Hardware.
+ * Über Flüssigkeit und Blätterruhe sagt dieser Lauf nichts; das misst nur echte Hardware.
  */
 import {chromium} from 'playwright';
 const ZIEL=process.env.ZIEL||'/tmp/heft-probe';

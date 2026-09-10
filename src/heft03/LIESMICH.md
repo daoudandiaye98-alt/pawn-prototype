@@ -41,6 +41,15 @@ const heft = await startHeft({
 
 **H1 ist erledigt:** `heft.d.ts` beschreibt die Schnittstellen für die React-Hülle (Ambient-Deklarationen auf `@/heft03/…`; die `.mjs` selbst werden nicht typgeprüft). `npm run test:heft` steht in `package.json` und läuft als eigene Prüfung `heft` in `scripts/verify/verify.sh schnell` und `voll`.
 
+**Das Heft mit eigenen Augen sehen** (ohne Datenbank, mit Zeilen in Datenbankform):
+
+```bash
+npx vite --host 127.0.0.1 --port 8080 --strictPort &
+PRUEFSTAND_CHROMIUM=$(find /opt/pw-browsers -type f -name chrome | head -1) node tools/heft-sicht.mjs
+```
+
+Öffnet `referenz/probe-echt.html` in einem echten Browser und legt 16 Aufnahmen ab. In Teil H sind daran sechs Fehler aufgefallen, die im Quelltext unsichtbar waren. `scripts/verify/sicht.sh` kann das nicht ersetzen: es fotografiert den gebauten Stand, und ohne Netz zur Datenbank bleibt das Heft dort auf dem Ladefeld stehen.
+
 **Regel der Bühne:** Aufgestellt wird nur, was freigestellt ist (`product_dna.heft.cutout_url`). Werke ohne Freistellung erscheinen in Suche, Hausseite und Seitenfenster — nie als Foto auf der Bühne. Deshalb ist die Freistell-Function (H6) Pflicht vor dem Umschalttag.
 
 Alles Weitere: `docs/heft03/AUFTRAG-INTEGRATION.md`.
