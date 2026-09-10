@@ -1,41 +1,47 @@
 {
-  "aktualisiert": "2026-09-08",
-  "branch": "claude/pawn-vision-frontend-rollback-m6z4xl",
+  "aktualisiert": "2026-09-10",
+  "branch": "claude/pruefstand-kein-urteil",
   "offene_prs": [
     {
-      "nr": 0,
-      "titel": "Rücknahme des Magazin-Formats — das Frontend von vor Teil M1 ist zurück",
-      "status": "Entwurf, offen, Basis main. src/ auf 4b7073d zurückgesetzt; sechs Nicht-Magazin-Reparaturen bewusst behalten.",
-      "blockiert_durch": "wartet auf Daoudas Durchsicht"
+      "nr": 185,
+      "titel": "Fix: ein Prüfstandslauf, der nichts gesehen hat, meldet nicht mehr grün",
+      "status": "Entwurf, offen, Basis main. DIESER Zweig. Drei Dateien: tools/pruefstand/urteil.ts (neu, die Rechnung), lauf.ts (Rückgabewert 3), .github/workflows/pruefstand.yml (fängt 3 ab → Warnung, bleibt grün), .claude/hooks/briefing.sh (die dritte Zahl in der ersten Zeile jeder Sitzung). Wache: src/__tests__/pruefstand-urteil.spec.ts, 9 Tests, zweimal rot vorgeführt.",
+      "blockiert_durch": "nichts — wartet nur auf Durchsicht."
+    },
+    {
+      "nr": 184,
+      "titel": "Teil H — Das Heft zieht ein (Zweig 1)",
+      "status": "Entwurf, offen, Basis main. Zweig claude/heft-frontend-integration-0bjnzf. Dort liegt die VOLLSTÄNDIGE Übergabe zu Teil H — diese Datei hier deckt nur #185 ab.",
+      "blockiert_durch": "Daoudas Sicht-Freigabe auf der Vorschau und die vier Migrationen über Lovable."
     }
   ],
   "merge_reihenfolge": [
-    "Dieser Zweig zuerst und allein — er fasst src/ als Ganzes an. Jeder andere offene Zweig auf src/ bekommt sonst einen Konflikt, der Datei für Datei aufgelöst werden muss.",
-    "PR #179 (K7) und der Turm-v2-Zweig sind mit 0f8834b bereits in main; ihre Punkte aus der alten Merge-Reihenfolge sind erledigt."
+    "1. PR #185 zuerst (dieser Zweig). Er hängt an nichts. Danach sagt jeder Prüfstandslauf selbst, ob er etwas gesehen hat — auch der von #184.",
+    "2. Dann die Kette von Teil H: Sicht-Freigabe → vier Migrationen über Lovable → types.ts → Merge #184 → pawn-chat ausliefern. Sie steht vollständig in der stand.json von #184.",
+    "ACHTUNG beim zweiten Merge: beide Zweige fassen .claude/stand.json an. Die Fassung von #184 ist die neuere und umfassendere — sie nennt #185 schon. Im Konflikt ihre nehmen."
   ],
   "wartet_auf_mensch": [
-    "DIE ENTSCHEIDUNG IST GEFALLEN: Das Magazin-Format ist zurückgenommen. src/ steht wieder auf dem Stand vom 16.08. vor 5d7e9da. Wer das Magazin je wiederhaben will, findet es vollständig in der Git-Geschichte zwischen 5d7e9da und 0f8834b — nichts davon ist verloren, es ist nur nicht mehr eingehängt.",
-    "BEWUSST BEHALTEN, weil sie nichts mit dem Magazin zu tun haben und zwei davon Geld betreffen: (1) der Warenkorb zeigt echte Produktfotos statt gezeichneter Silhouetten, (2) die Bestellbestätigung sieht wirklich in der Datenbank nach statt Erfolg zu behaupten, (3) der Korb hält echte Stücke — die Werkseite wurde dafür neu auf korb.ts gezogen, (4) der Cookie-Banner ist eine Leiste mit zwei gleichwertigen Knöpfen (DSGVO), (5) der Tastatur-Rahmen ist an 17 Stellen in 14 Dateien zurück, (6) die Route /wie-pawn-ki-nutzt, die vorher tot war.",
-    "NICHT ANGEFASST: supabase/functions (das Welt-Wissen der KI aus Q4b bleibt), .claude/, scripts/verify, tools/pruefstand, routinen/. Daouda hat das ausdrücklich so entschieden.",
-    "Der Prüfstand misst wieder Halle, Boutique, Werk, Haus und Ausgabe. Die alte Warnung 'Kontrolle 4.5 antwortet 200 statt 404' ist erledigt: vercel.json wird aus routen.js erzeugt und kennt 96 Adressen plus 404-Auffang.",
-    "OFFEN GEBLIEBEN: Kontrolle 4.7 (Seitengewicht). index.js liegt jetzt bei 2.930 kB — mehr als die 2.421 kB von damals, weil das Magazin sein eigenes Bündel hatte und alles wieder im Haupt-Bündel liegt. Solange die Schwelle bei 3 MB steht, lehrt der Prüfstand Rot zu übersehen. Entweder das Bündel aufteilen oder die Schwelle begründet anheben.",
-    "GELÖSCHT, weil sie auf gelöschte Dateien zeigte: src/__tests__/spalten-gibt-es.spec.ts (prüfte, dass das Verzeichnis nur Spalten abfragt, die es gibt — Y3.3). Der Gedanke ist gut und fehlt jetzt. Wer ihn zurückholen will, richtet ihn auf Shop.tsx und DesignerPage.tsx.",
-    "Entscheidung am 2026-09-14: bleibt der Skill pawn-kontext? Er hat die Eval-Latte nicht genommen (+0,5 statt deutlich). Zahlen und Trigger-Tabelle in .claude/metrik.md.",
-    "Die zwei Routinen aus routinen/ einmal von Hand im Web anlegen — Routinen sind nicht versionierbar. Beim Anlegen ALLE Connectors bis auf GitHub entfernen."
+    "DURCHSICHT #185: Der Prüfstand meldete grün über 673 ungemessenen Gates (Lauf #104). Ursache: Chromium auf dem Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf. Je Gate war das ehrlich (eine Hülle zählt als 'nicht prüfbar'), nur das Gesamturteil kannte den Zustand nicht.",
+    "DIE URSACHE BLEIBT OFFEN und ist das Wichtigere: WARUM findet der GitHub-Rechner den Supabase-Namen nicht? #185 macht die Blindheit sichtbar, behebt sie nicht. Drei Verdächtige, keiner geprüft: Projekt pausiert, Netzsperre der Organisation, DNS auf dem Runner. Der erste ist in fünf Sekunden auszuschließen — lädt pawn.vision normal? Das kann nur ein Mensch sehen; dieser Container hat denselben blinden Fleck.",
+    "FOLGE, solange das hält: kein Werkzeug dieses Projekts hat das Heft je mit echten Häusern gesehen. Weder der Container, noch der Prüfstand, noch der Prüfer. Der einzige Beweis über echte Daten ist ein Mensch auf der Vorschau — bei #184 vor allem: ein Werk anklicken und die Tasche bis zur Stripe-Kasse."
   ],
   "letzter_pruefstand": {
-    "datum": "2026-09-08",
-    "ergebnis": "sicht.sh lokal: 16 von 16 Aufnahmen, angesehen. 24 Hüllen (kein Netz zur Datenbank in diesem Container) — echte Zahlen liefert nur die GitHub-Action gegen die Vercel-Vorschau."
+    "datum": "2026-09-10",
+    "lauf": "GitHub-Action #108, Job 103042874248, Kopf 449890f (dieser Zweig)",
+    "bestanden": 1,
+    "gefallen": 0,
+    "nicht_pruefbar": 1103,
+    "urteil": "KEIN URTEIL — 1 von 1104 Gates messbar (0,1 %, nötig 50 %)",
+    "warum": "Chromium auf dem Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf (net::ERR_NAME_NOT_RESOLVED, 39 bis 60 Anfragen je Seite). Die Vorschau lädt — die Sperre hebt VERCEL_AUTOMATION_BYPASS_SECRET auf —, aber sie lädt als Hülle ohne Inhalte. Der Check ist grün und sagt es jetzt selbst; vor diesem PR hätte er nur grün gemeldet."
   },
-  "naechster_zug": "Daouda sieht sich die Seite auf der Vercel-Vorschau an — vor allem einen echten Kauf: Werkseite → in den Korb → Korb → Kasse. Das ist der einzige Weg, den diese Sitzung nicht selbst beweisen konnte, und genau dort lag der Fehler, den Z7 jetzt festnagelt. Danach die offene Frage zum Seitengewicht (4.7) entscheiden: Bündel aufteilen oder Schwelle begründet anheben.",
+  "naechster_zug": "PR #185 durchsehen und mergen — er hängt an nichts. Danach die Kette von Teil H (#184), deren stand.json die Reihenfolge vollständig führt. Und die eine Frage klären, die die Ursache der Blindheit von drei Verdächtigen auf zwei eingrenzt: lädt pawn.vision gerade normal?",
   "nicht_pruefbar": [
-    "Die Seiten holen ihre Inhalte aus Supabase; dieser Container erreicht es nicht. Auf allen 16 Aufnahmen sind die Werkraster und Textspalten deshalb leer. Das ist ein Artefakt der Umgebung, KEIN Befund — aber es heißt auch: über Inhalte, Bilder und alles, was aus der Datenbank kommt, sagt dieser Lauf nichts. Das muss ein Mensch oder die GitHub-Action gegen die echte Vorschau prüfen.",
-    "Der Korb-Weg (Z7) ist statisch geprüft und durch Tests gedeckt, aber in dieser Sitzung nie mit einer echten Datenbank durchgeklickt worden. Ein Kauf von Hand — Werkseite, in den Korb, Kasse — ist der Beweis, der hier fehlt.",
-    "Der Prüfer hat diesen Bericht gegen den Code gehalten: 15 von 16 Behauptungen bestätigt. WIDERLEGT wurde die Zahl '19 Stellen' beim Tastatur-Rahmen — es waren 14, und beim Nachzählen kam heraus, dass drei Reparaturen (Index.tsx 1x, ProductDetail.tsx 2x) beim Zurücksetzen verlorengegangen waren. Nachgetragen, jetzt 17 in 14 Dateien, fokus-waechter.mjs grün. Der Prüfer hat also über eine falsche Zahl einen echten Fehler gefunden — der belegte Fall dafür, warum ein Agent nie sein eigener Prüfer ist."
+    "DIE SCHWELLE IST BEWIESEN, DIE URSACHE NICHT. Bewiesen: Lauf #106 und #108 auf diesem Zweig melden 'KEIN URTEIL — Nur 1 von 1104 Gates messbar (0,1 %, nötig 50 %)', Check grün, Warnung am PR; lokal zusätzlich mit echtem Browser Rückgabewert 3 erzwungen. Nicht geprüft: warum die Namensauflösung scheitert.",
+    "DER VERGLEICH, der den PR begründet — zwei Läufe, dieselbe Blindheit, zwei Verhalten: #109 auf dem Zweig von Teil H (ohne Schwelle) meldet '1 bestanden · 0 gefallen · 673 nicht prüfbar' und sagt nichts dazu. #108 hier (mit Schwelle) meldet dasselbe plus 'KEIN URTEIL' plus Warnung. Nach dem Merge verhält sich auch Teil H so."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-08",
+    "datum": "2026-09-10",
     "bestanden": 3,
     "gefallen": 0
   },
