@@ -64,7 +64,7 @@ export default function Preise() {
       });
   }, []);
 
-  const ctaHref = isDesigner ? "/studio/plan" : "/apply";
+  const ctaHref = isDesigner ? "/studio/plan" : "/fuer-designer/2";
   const ctaLabel = isDesigner ? t("preise.cta.myPlan") : t("preise.cta.apply");
 
   return (

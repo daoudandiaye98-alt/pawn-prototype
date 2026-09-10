@@ -434,7 +434,7 @@ export default function StudioStueckNeu() {
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link to={`/studio/produkte?edit=${product.id}`} className="border-[1.5px] border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] text-background hover:bg-black">{t("studio.stueckNeu.live.addDetails")}</Link>
-                <Link to={`/product/${product.slug}`} className="border border-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">{t("studio.stueckNeu.live.viewPiece")}</Link>
+                <Link to={`/werk/${product.slug}`} className="border border-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-foreground hover:text-background">{t("studio.stueckNeu.live.viewPiece")}</Link>
                 <Link to="/studio/produkte" className="border border-border px-4 py-2 text-[0.65rem] uppercase tracking-[0.24em] hover:bg-muted">{t("studio.stueckNeu.live.toCollection")}</Link>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">

@@ -59,7 +59,7 @@ export default function PreiseMaison() {
     t("preise.box.rankGrowth"),
   ] : [];
 
-  const ctaHref = isDesigner ? "/studio/plan" : "/apply";
+  const ctaHref = isDesigner ? "/studio/plan" : "/fuer-designer/2";
   const ctaLabel = isDesigner ? t("preise.cta.myPlan") : t("preise.cta.apply");
 
   return (

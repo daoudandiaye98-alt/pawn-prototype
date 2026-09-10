@@ -49,7 +49,7 @@ export default function Kontakt() {
             <p className="mt-3 text-[0.9rem]">Wir melden uns per E-Mail an <b>{email}</b>.</p>
             <div className="mt-6 flex gap-3">
               <Button asChild variant="editorial" size="chip"><a href="/">Zur Ausstellung</a></Button>
-              <Button asChild variant="editorial" size="chip"><a href="/neu">Neuheiten sehen</a></Button>
+              <Button asChild variant="editorial" size="chip"><a href="/ausgewaehlt">Neuheiten sehen</a></Button>
             </div>
           </div>
         ) : (

@@ -396,7 +396,7 @@ export default function StudioOverview() {
         <p className="text-[0.62rem] uppercase tracking-[0.28em] text-muted-foreground">{t("studio.overview.noAccess")}</p>
         <h2 className="mt-3 font-serif text-3xl">{t("studio.overview.noAccess.title")}</h2>
         <p className="mt-4 text-sm text-muted-foreground">{t("studio.overview.noAccess.body")}</p>
-        <Link to="/apply" className="al-knopf-primaer mt-6">{t("studio.overview.noAccess.cta")}</Link>
+        <Link to="/fuer-designer/2" className="al-knopf-primaer mt-6">{t("studio.overview.noAccess.cta")}</Link>
       </div>
     </StudioShell>
   );

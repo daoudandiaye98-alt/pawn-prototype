@@ -62,7 +62,7 @@ export function CustomerGenomeCard({ className }: { className?: string }) {
           <ul className="mt-2 space-y-3">
             {houseMatches.map(({ dna, text }) => (
               <li key={dna.slug}>
-                <Link to={`/designer/${dna.slug}`} className="text-sm text-black underline decoration-1 underline-offset-4 hover:no-underline">
+                <Link to={`/haus/${dna.slug}`} className="text-sm text-black underline decoration-1 underline-offset-4 hover:no-underline">
                   {dna.brandName}
                 </Link>
                 <p className="mt-0.5 text-sm text-black/70">{text}</p>

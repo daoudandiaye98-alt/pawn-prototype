@@ -58,7 +58,7 @@ export function PasstDas({ productSlug, productName }: { productSlug: string; pr
         <p className="text-sm text-black/70">
           Noch zu früh, um das zu sagen — wische durch ein paar Stücke, erzähl mir von dir, oder lade ein Bild hoch. Dann weiß ich mehr.
         </p>
-        <Link to="/dna" className="mt-2 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
+        <Link to="/deine-dna" className="mt-2 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
           Zur DNA →
         </Link>
       </div>
@@ -72,7 +72,7 @@ export function PasstDas({ productSlug, productName }: { productSlug: string; pr
       {!result.passt && result.alternative_slug && (
         <div className="mt-4 border-t border-black/15 pt-3">
           <p className="text-xs text-black/60">{result.alternative_grund}</p>
-          <Link to={`/product/${result.alternative_slug}`} className="mt-2 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
+          <Link to={`/werk/${result.alternative_slug}`} className="mt-2 inline-block editorial-eyebrow text-black underline decoration-1 underline-offset-4 hover:no-underline">
             Stattdessen ansehen →
           </Link>
         </div>

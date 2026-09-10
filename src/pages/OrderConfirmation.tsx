@@ -120,7 +120,7 @@ export default function OrderConfirmation() {
           </p>
         )}
         <div className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button asChild variant="editorial" size="chip"><Link to="/account">Bestellungen ansehen</Link></Button>
+          <Button asChild variant="editorial" size="chip"><Link to="/konto/3">Bestellungen ansehen</Link></Button>
           <Button asChild variant="editorial" size="chip"><Link to="/">Weiter entdecken</Link></Button>
         </div>
       </section>

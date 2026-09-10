@@ -898,7 +898,7 @@ function SuccessState({ slug, brandName, reducedMotion, t }: { slug: string; bra
       <p className="mt-3 text-sm text-black/70">pawn.vision/designer/{slug}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button asChild variant="outline" size="chip">
-          <Link to={`/designer/${slug}`}>{t("start.success.viewHouse")}</Link>
+          <Link to={`/haus/${slug}`}>{t("start.success.viewHouse")}</Link>
         </Button>
         <Button asChild variant="editorial" size="chip">
           <Link to="/studio">{t("start.success.toStudio")}</Link>

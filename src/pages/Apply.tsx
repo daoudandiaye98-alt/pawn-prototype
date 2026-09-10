@@ -482,7 +482,7 @@ const Apply = () => {
     <div style={{ background: COL.grund, color: COL.schrift, minHeight: "100vh", fontFamily: SANS, fontWeight: 300 }}>
       <header style={{ maxWidth: 720, margin: "0 auto", padding: "20px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link
-          to="/apply"
+          to="/fuer-designer/2"
           style={{ fontFamily: MONO, fontSize: 10, letterSpacing: ".19em", textTransform: "uppercase", color: COL.sekundaer, textDecoration: "none" }}
         >
           {t("apply.backToOverview")}

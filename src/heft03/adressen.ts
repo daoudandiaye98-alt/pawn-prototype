@@ -42,25 +42,3 @@ export function istHeftAdresse(pfad: string): boolean {
   const stamm = rein.split("/").filter(Boolean)[0];
   return !!stamm && STAEMME.includes(stamm);
 }
-
-/**
- * Die alten Adressen und ihre neuen. Dieselbe Zuordnung steht in `routen.mjs › UMZUEGE`
- * (für das Heft) und in `routen.js › UMZUEGE` (für die 301-Regeln in `vercel.json`).
- * Hier steht sie ein drittes Mal, weil `App.tsx` sie als `<Navigate>` braucht und weder
- * das eine noch das andere Modul im Haupt-Bündel liegen soll — die Wache vergleicht alle
- * drei.
- */
-export const UMZUEGE_HEFT: Record<string, string> = {
-  "/dna": "/deine-dna",
-  "/designers": "/haeuser",
-  "/designers/all": "/haeuser",
-  "/boutique": "/ausgewaehlt",
-  "/neu": "/ausgewaehlt",
-  "/cart": "/tasche",
-  "/checkout": "/tasche",
-  "/account": "/konto",
-  "/shop": "/suche",
-  "/apply": "/fuer-designer/2",
-  "/about": "/vision",
-  "/ausgabe": "/",
-};
