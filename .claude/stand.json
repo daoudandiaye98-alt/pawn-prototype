@@ -11,7 +11,7 @@
     {
       "nr": 185,
       "titel": "Fix: ein Prüfstandslauf, der nichts gesehen hat, meldet nicht mehr grün",
-      "status": "Entwurf, offen, Basis main. Zweig claude/pruefstand-kein-urteil. Unabhängig von #184: #184 fasst pruefstand.config.ts an, #185 lauf.ts und den Workflow — kein Überlapp. Kann vor oder nach #184 mergen.",
+      "status": "Entwurf, offen, Basis main. Zweig claude/pruefstand-kein-urteil. Unabhängig von #184: #184 fasst pruefstand.config.ts an, #185 lauf.ts und den Workflow — kein Überlapp. Kann vor oder nach #184 mergen. BEWIESEN auf dem echten Runner: Lauf #106 (Job 103040434389) meldet „KEIN URTEIL — Nur 1 von 1104 Gates messbar (0,1 %, nötig 50 %)“, Check grün, Warnung am PR. Der Rückgabewert 3 wird sauber abgefangen. Derselbe Lauf hat auch einen Mangel im Satz gezeigt — er band sein Verb an die falsche Zahl (Commit 449890f).",
       "blockiert_durch": "nichts — wartet nur auf Durchsicht. Gefunden wurde der Mangel an Lauf #104 dieses Zweigs: der Check meldete grün über 673 ungemessenen Gates."
     }
   ],
@@ -45,7 +45,7 @@
   },
   "naechster_zug": "Daouda sieht sich die Vercel-Vorschau von PR #184 an — vor allem: ein Werk anklicken und die Adresse beobachten, und die Tasche bis zur Stripe-Kasse. Das sind die zwei Wege, die diese Sitzung nicht selbst beweisen konnte. Danach die vier Migrationen über Lovable, dann mergen.",
   "nicht_pruefbar": [
-    "ECHTE DATEN: Dieser Container erreicht Supabase nicht. Alles, was ich über Inhalte, Bilder und Häuser sagen kann, kommt aus fixtures/zeilen.mjs — Zeilen in der FORM der echten Tabellen, nicht die echten Zeilen. Sechs Fehler habe ich damit gefunden; ob es einen siebten gibt, zeigt erst die Vorschau.",
+    "ECHTE DATEN: Dieser Container erreicht Supabase nicht. Alles, was ich über Inhalte, Bilder und Häuser sagen kann, kommt aus fixtures/zeilen.mjs — Zeilen in der FORM der echten Tabellen, nicht die echten Zeilen. Sechs Fehler habe ich damit gefunden; ob es einen siebten gibt, zeigt erst die Vorschau. NACHTRAG 20:44 UTC: Die Blindheit ist NICHT vorübergehend. Lauf #106 scheiterte erneut an net::ERR_NAME_NOT_RESOLVED, 39 bis 60 Anfragen je Seite, 1103 von 1104 Gates nicht prüfbar. Zwei Läufe, zwei Zweige, dasselbe Bild — kein Zufall, sondern ein Zustand.",
     "BEWEGUNG: Der Browser hier rendert mit 1 Bild pro Sekunde (Software-Renderer, kein GPU). Die Eröffnung, die auf echter Hardware 5,8 s dauert, braucht hier ~29 s. Über Flüssigkeit, Blätterruhe und die Zusage „ein DEIN ZUG je Seite\" sagt dieser Lauf nichts.",
     "BILDADRESSEN: quelle.heft() signiert alle Bildadressen in einer Runde, bevor die Adapter sie synchron lesen. Ob die echten products.image_url blanke Bucket-Pfade oder fertige URLs sind, konnte ich nicht sehen — beide Wege sind abgedeckt, aber geprüft ist keiner.",
     "DIE SICHTEN: supabaseQuelle läuft mit sichten:false, weil es heft_produkte und heft_haeuser noch nicht gibt. Ob der eingebettete Join products→designers über die Sicht funktioniert (PostgREST muss die FK-Beziehung erkennen), zeigt sich erst nach der Migration. heftAusZeilen() fällt zur Not auf haeuserNachId zurück.",
