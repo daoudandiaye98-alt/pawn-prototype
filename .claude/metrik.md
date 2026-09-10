@@ -65,3 +65,75 @@ NOTHING` in der Kassenmigration). Gemessen wurde also **Richtigkeit**, nicht
 etwas gefangen? Wenn nein, fliegt er raus — sein Inhalt liegt gesichert in
 `.claude/archiv/CLAUDE.md.vor-turm-v2`, und die nicht ableitbaren Teile stehen
 ohnehin in `CLAUDE.md` und `.claude/rules/edge-functions.md`.
+
+---
+
+## 2026-09-08 · Die Rücknahme des Magazins
+
+Daouda hat den gesamten Magazin-Umbau zurückgenommen — nicht wegen eines
+einzelnen Mangels, sondern als Produktentscheidung. Zurückgesetzt wurde `src/`
+auf `4b7073d`, den letzten Stand vor `5d7e9da` („Teil M1 — der Wendel").
+
+**Was die Rücknahme über den Harness sagt.** Vier Wochen Arbeit an einer Form,
+die am Ende ganz verworfen wurde. Kein Test, keine Kontrolle und kein Prüfstand
+hätte das verhindert — sie messen, ob das Gebaute hält, nicht ob es gewollt ist.
+Das ist keine Lücke im Harness, sondern seine Grenze. Die Lehre gehört nicht in
+`regressionen.json`, sondern in den `kreuzverhoer`-Skill: ein Umbau dieser Größe
+gehört vor dem ersten Commit auf den Tisch, nicht nach dem dreißigsten.
+
+**Was der Harness dabei gefangen hat** — und das ist die Zahl, die zählt:
+
+| Fund | Wer hat ihn gefunden |
+|---|---|
+| `/wie-pawn-ki-nutzt` war ein toter Link aus der Datenschutzerklärung — die Seite gab es, die Route nicht | `src/__tests__/routen.spec.ts` |
+| Der Korb hielt keine echten Stücke: „In den Korb" bestätigte, der Korb blieb leer | beim Umbau gefunden (`7f90b64`), bei der Rücknahme durch `korb.ts` gehalten |
+| Prüfstand und `sicht.sh` zeigten auf gelöschte Heft-Adressen | beim Zurücksetzen aufgefallen, sofort umgehängt |
+
+Beide Frontend-Funde stammen aus der Magazin-Zeit und sind **nicht** mit
+zurückgenommen worden. Der zweite ist jetzt als Zusage **Z7** festgenagelt und
+einmal rot vorgeführt.
+
+**Nachfunde durch den Menschen bei dieser Runde: 0** (die Rücknahme selbst ist
+kein Nachfund, sondern ein Richtungswechsel).
+
+### Z7 — die Vorführung in Rot, als Mitschnitt
+
+Das Gesetz verlangt, dass eine neue Kontrolle **einmal rot vorgeführt** wird,
+sonst ist sie behauptet und nicht bewiesen. Der Prüfer hat zu Recht angemerkt,
+dass die Vorführung selbst nirgends im Repo lag. Hier ist sie.
+
+Herbeigeführt, indem der Aufruf `inDenKorb({…}, size)` in
+`src/pages/ProductDetail.tsx` testweise wieder durch `cart.add(product, size)`
+ersetzt wurde — also genau der Rückfall, den die Zusage verbietet:
+
+```
+  ✓ Z6 · Der Preisfilter steht beim Oeffnen auf der vollen Spanne …
+  ✗ Z7 · Wer auf „In den Korb" tippt, findet das Stueck auch im Korb …
+      src/pages/ProductDetail.tsx:270: nimmt wieder cart.add( — die Zeile landet im Korb ohne das Stueck
+      Beleg: 7f3155e-Nachfolge: der Bestand aus src/core/seed/products.ts ist mit
+      Absicht leer, deshalb fiel jede Korbzeile fuer ein echtes Datenbank-Stueck
+      beim Anzeigen heraus (src/store/cart.tsx, productById.get).
+REGRESSION: 6/7 · FEHLER: Z7
+```
+
+Nach dem Zurücknehmen des Rückfalls: `REGRESSION: 7/7 · FEHLER: keine`.
+
+### Was der Prüfer an diesem Bericht widerlegt hat
+
+Behauptung 4e lautete „an ~19 Stellen ist der Tastatur-Rahmen zurück". Gemessen
+waren es **14**. Die 19 stammten aus der Commit-Nachricht von `b517fa1` und
+waren abgeschrieben, nicht nachgezählt — genau die Sorte Zahl, die ein Bericht
+ungeprüft weiterträgt.
+
+Beim Nachzählen kam heraus, dass die Differenz kein Rundungsfehler war, sondern
+ein **echter Verlust**: `b517fa1` hatte auch in `src/pages/Index.tsx` (1×) und
+`src/pages/ProductDetail.tsx` (2×) den Fokus-Rahmen zurückgegeben. Beide Dateien
+wurden bei der Rücknahme als Ganzes auf `4b7073d` zurückgesetzt — die drei
+Reparaturen fielen dabei mit heraus. Sie sind nachgetragen; damit stehen 17
+Entfernungen in 14 Dateien, deckungsgleich mit `b517fa1`.
+`tools/pruefstand/fokus-waechter.mjs` bestätigt: „keine unbeantwortete
+Fokus-Unterdrückung."
+
+**Die Lehre:** der Prüfer hat nicht die Aussage widerlegt, sondern über eine
+falsche Zahl einen echten Fehler gefunden. Ein Agent ist niemals sein eigener
+Prüfer — hier ist der belegte Fall dazu.

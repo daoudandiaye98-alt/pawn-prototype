@@ -49,15 +49,15 @@ describe("Welche Adresse die Middleware durchlässt", () => {
   });
 
   it("erkennt Adressen mit Platzhalter", () => {
-    expect(istBekannteRoute("/werk/leinenmantel")).toBe(true);
     expect(istBekannteRoute("/product/leinenmantel")).toBe(true);
     expect(istBekannteRoute("/designer/haus-eins")).toBe(true);
-    expect(istBekannteRoute("/verzeichnis/3")).toBe(true);
+    expect(istBekannteRoute("/presse/eroeffnung")).toBe(true);
+    expect(istBekannteRoute("/einladung/abc123")).toBe(true);
   });
 
   it("nimmt einen Platzhalter nicht für mehrere Abschnitte", () => {
-    /* `/werk/:slug` ist EIN Abschnitt. Zwei sind eine andere Adresse. */
-    expect(istBekannteRoute("/werk/haus/leinenmantel")).toBe(false);
+    /* `/product/:slug` ist EIN Abschnitt. Zwei sind eine andere Adresse. */
+    expect(istBekannteRoute("/product/haus/leinenmantel")).toBe(false);
   });
 
   it("erkennt erfundene Adressen", () => {

@@ -57,11 +57,8 @@ export interface Breite {
    * Werden hier Trefferflächen (3.5) gemessen?
    *
    * Nicht überall sinnvoll. Am Schreibtisch bedient die Maus, dort gilt die
-   * 44-px-Regel nicht. Und im Hochformat auf dem Telefon zeigte das alte Heft keine
-   * Bedienung mehr, sondern den Dreh-Hinweis — Flächen dort zu vergrößern
-   * hieße, einen Bildschirm zu polieren, den niemand mehr sieht. Gemessen wird
-   * deshalb dort, wo mit dem Finger wirklich bedient wird: quer auf dem Telefon
-   * und auf dem Tablet.
+   * 44-px-Regel nicht. Gemessen wird deshalb dort, wo mit dem Finger wirklich
+   * bedient wird: quer auf dem Telefon und auf dem Tablet.
    */
   trefferflaechen: boolean;
 }
@@ -73,8 +70,8 @@ export const BREITEN: Breite[] = [
   { name: "768", breite: 768, hoehe: 1024, eingabe: "finger", trefferflaechen: true },
   { name: "1280", breite: 1280, hoehe: 900, eingabe: "maus", trefferflaechen: false },
   { name: "1920", breite: 1920, hoehe: 1080, eingabe: "maus", trefferflaechen: false },
-  // Neu: das Telefon nach dem Drehen. Das ist die Lage, in der das Heft
-  // gelesen und bedient wird — vorher hat sie niemand gemessen.
+  // Das Telefon nach dem Drehen. Eine echte Lage, die vor Teil P niemand
+  // gemessen hat — sie bleibt in der Reihe, auch ohne das Magazin.
   { name: "844 quer", breite: 844, hoehe: 390, eingabe: "finger", trefferflaechen: true },
 ];
 
@@ -87,41 +84,26 @@ export interface SeitenZiel {
 export const PRODUKT_SLUG = "obara-rope-jacket";
 export const HAUS_SLUG = "obara";
 
-/** Der Umschlag — seit X1 die Startseite: `/` IST das Heft. */
-export const HEFT_PFAD = "/";
+/** Die Halle — die Startseite. */
+export const HALLE_PFAD = "/";
 
-/** Das erste Blatt des Katalogs (X6). */
-export const VERZEICHNIS_PFAD = "/verzeichnis/1";
+/** Die Boutique — der Katalog. */
+export const BOUTIQUE_PFAD = "/shop";
 
 export const SEITEN: SeitenZiel[] = [
   /*
-   * X1 — der Umschalttag hat diese Liste umgeschrieben. Die Halle, die alte
-   * Boutique und die alten Werk-/Hausseiten sind gelöscht; ihre Adressen
-   * antworten mit 301 und sind kein Messziel mehr — eine Weiterleitung hat
-   * keine Geometrie. Gemessen wird, was ausgeliefert wird: das Heft auf `/`,
-   * das Verzeichnis, das Werk, das Haus-Kapitel (X8) und die Kasse.
+   * Die Rücknahme des Magazins hat diese Liste zurückgeschrieben. Gemessen
+   * wird wieder, was ausgeliefert wird: die Halle, die Boutique, das Werk,
+   * das Haus — und die Ausgabe. Die Heft-Adressen (`/verzeichnis/1`,
+   * `/werk/:slug`, `/haus/:slug`, `/kasse`) gibt es nicht mehr; sie zu messen
+   * hieße, 404 zu messen und Rot zu lehren, das niemand mehr liest.
    */
-  { name: "umschlag", pfad: HEFT_PFAD },
-  // Teil M — das Ausgabe-Heft. Gehört zum öffentlichen Frontend, also in die Messung.
+  { name: "halle", pfad: HALLE_PFAD },
+  { name: "boutique", pfad: BOUTIQUE_PFAD },
+  { name: "werk", pfad: `/product/${PRODUKT_SLUG}` },
+  { name: "haus", pfad: `/designer/${HAUS_SLUG}` },
+  // Die Ausgabe gehört zum öffentlichen Frontend, also in die Messung.
   { name: "ausgabe", pfad: "/ausgabe/001" },
-  { name: "haus-kapitel", pfad: `/haus/${HAUS_SLUG}` },
-  { name: "kasse", pfad: "/kasse" },
-  /*
-   * Teil X6 — das Verzeichnis. Eigene Zeile und nicht mit der Hülle erledigt:
-   * es ist die einzige Heftseite, die aus Daten entsteht, die einzige mit einem
-   * Raster aus zwölf Einträgen und die einzige, an deren Blattrand Schalter
-   * hängen (die Filterreiter). Genau daran fällt eine Messung, wenn sie fällt.
-   */
-  { name: "verzeichnis", pfad: VERZEICHNIS_PFAD },
-  /*
-   * Teil X7 — das Werk als Doppelseite. Dieselbe Ware wie die alte Werkseite
-   * darüber, damit beide Fassungen an denselben Zahlen gemessen werden.
-   *
-   * Gegen eine lokale Vorschau ist sie `nicht_pruefbar`: das Heft erreicht dort
-   * seine Datenschicht nicht, also gibt es die Doppelseite nicht. Genau dafür
-   * ist die Hüllen-Regel da.
-   */
-  { name: "werk-heft", pfad: `/werk/${PRODUKT_SLUG}` },
 ];
 
 /** Absichtlich ungültig — für 4.5. */
@@ -169,8 +151,9 @@ export const SCHWELLEN = {
  *
  * Sie muss über der längsten Eröffnung liegen, die eine Seite abspielt — sonst
  * misst man eine Fläche, die noch darüber liegt, und nennt das Ergebnis einen
- * Befund. Längster Fall heute: die Eröffnung des Hefts mit 3900 ms
- * (`src/features/heft/Eroeffnung.tsx`, ENDE_MS).
+ * Befund. Der Wert stammt aus der Magazin-Zeit (längste Eröffnung 3900 ms) und
+ * bleibt bewusst stehen: zu lange warten macht die Messung langsam, zu kurz
+ * warten macht sie falsch.
  */
 export const RUHE_MS = 4300;
 

@@ -24,7 +24,11 @@
       "pruefung": "planPlatzhalter",
       "params": {
         "datei": "src/pages/studio/StudioPlan.tsx",
-        "plaene": ["haus", "atelier", "maison"],
+        "plaene": [
+          "haus",
+          "atelier",
+          "maison"
+        ],
         "bilder": [
           "src/assets/teil-o/plan-haus.webp",
           "src/assets/teil-o/plan-atelier.webp",
@@ -49,7 +53,10 @@
       "pruefung": "keineAblaufendenAdressen",
       "params": {
         "eimer": "designer-media",
-        "orte": ["src", "supabase/functions"],
+        "orte": [
+          "src",
+          "supabase/functions"
+        ],
         "begruendung": "Eng auf designer-media begrenzt. mediathek, campaign-assets, taste-uploads und model-pool bleiben absichtlich privat und signiert — siehe 61e0204: „mediathek bleibt bewusst privat“."
       }
     },
@@ -60,7 +67,10 @@
       "pruefung": "werkNichtBeschnitten",
       "params": {
         "datei": "src/pages/ProductDetail.tsx",
-        "marker": ["werk-rein", "werk-raus"],
+        "marker": [
+          "werk-rein",
+          "werk-raus"
+        ],
         "verlangt": "object-contain",
         "verboten": "object-cover"
       }
@@ -73,6 +83,15 @@
       "params": {
         "datei": "src/pages/Shop.tsx",
         "zustand": "preisSpanne"
+      }
+    },
+    {
+      "id": "Z7",
+      "zusage": "Wer auf „In den Korb“ tippt, findet das Stueck auch im Korb — die Werkseite meldet es vorher im Bestand an.",
+      "beleg": "7f3155e-Nachfolge: der Bestand aus src/core/seed/products.ts ist mit Absicht leer, deshalb fiel jede Korbzeile fuer ein echtes Datenbank-Stueck beim Anzeigen heraus (src/store/cart.tsx, productById.get). Behoben mit src/features/commerce/korb.ts; beim Ruecknehmen des Magazins am 2026-09-08 musste die Werkseite erneut darauf gezogen werden.",
+      "pruefung": "korbHaeltEchteStuecke",
+      "params": {
+        "datei": "src/pages/ProductDetail.tsx"
       }
     }
   ]
