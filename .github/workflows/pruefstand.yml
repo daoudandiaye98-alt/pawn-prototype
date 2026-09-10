@@ -234,6 +234,43 @@ jobs:
           fi
 
           if [ "$ende" -eq 0 ]; then exit 0; fi
+
+          # ── 3 = gelaufen, aber nichts gesehen ────────────────────────────
+          #
+          # Belegt an Lauf #104 (10.09.2026): der Check meldete grün und hatte
+          # „1 bestanden · 0 gefallen · 673 nicht prüfbar" gemessen. Chromium auf
+          # dem Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf; die
+          # Seiten kommen als Hülle an, und eine Hülle zählt (zu Recht) als
+          # „nicht prüfbar". Null gefallene Gates hieß damit: grün. Ein Häkchen
+          # über 673 ungemessenen Prüfungen.
+          #
+          # Nicht rot: die Ursache liegt in der Umgebung, nicht im Zweig. Ein
+          # Check, der unabhängig vom Inhalt rot ist, wird weggeklickt — genau
+          # der Fehler, den dieser Workflow beim Vorschau-Geheimnis schon
+          # einmal gemacht hat. Deshalb eine Warnung, die im PR sichtbar steht,
+          # und ein Lauf, der nichts mehr behauptet.
+          #
+          # Die Schwelle und ihre Begründung: tools/pruefstand/urteil.ts,
+          # geprüft in src/__tests__/pruefstand-urteil.spec.ts.
+          if [ "$ende" -eq 3 ]; then
+            echo "::warning::Prüfstand ohne Urteil — zu wenige Gates waren messbar. Dieser Lauf sagt über den Zweig NICHTS."
+            {
+              echo "### Prüfstand: kein Urteil"
+              echo ""
+              echo "Der Lauf ist durch, aber er hat zu wenig gesehen — die Statuszeile oben"
+              echo "nennt die Zahlen. Ein grüner Haken wäre hier eine Falschaussage, ein rotes"
+              echo "Kreuz auch: gemessen wurde nichts, weder Gutes noch Schlechtes."
+              echo ""
+              echo "Häufigste Ursache: der Browser erreicht die Datenbank nicht"
+              echo "(\`net::ERR_NAME_NOT_RESOLVED\` auf supabase.co). Dann laden die Seiten als"
+              echo "Hülle, und jede Kontrolle, die Inhalte braucht, ist „nicht prüfbar\"."
+              echo ""
+              echo "Solange das so ist, ist der einzige Beweis über echte Daten ein Mensch auf"
+              echo "der Vorschau."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
           if [ "$GATET" = "ja" ]; then exit "$ende"; fi
 
           echo "::warning::Gefallene Gates auf pawn.vision — NICHT auf diesem Zweig."

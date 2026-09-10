@@ -17,6 +17,7 @@ import {
   VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
 import { ausnahmeFuer, abgelaufen } from "./ausnahmen";
+import { urteilsfaehig, KEIN_URTEIL } from "./urteil";
 import {
   messeFokus, messeKnopfVerdeckung, messeKontrast, messeKopfdaten,
   messeLayout, messeTrefferflaechen, type Befund,
@@ -623,9 +624,18 @@ async function haupt() {
     (b) => ausnahmeFuer(b.kontrolle, heute)!,
   ))];
 
+  /*
+   * Trägt dieser Lauf überhaupt ein Urteil? Steht VOR der Statuszeile, damit
+   * die Antwort in derselben Zeile steht wie die Zahlen — wer nur das Protokoll
+   * überfliegt, soll nicht erst drei Zeilen weiter erfahren, dass die Zahlen
+   * nichts bedeuten. Begründung und belegter Fall: `urteil.ts`.
+   */
+  const faehig = urteilsfaehig(bericht.gates);
+
   process.stderr.write(
     `\n${zielName} · ${ziel.adresse}\n`
     + (NUR_KONTROLLEN ? `TEILLAUF — nur ${NUR_KONTROLLEN.join(", ")}\n` : "")
+    + (faehig.urteil ? "" : `KEIN URTEIL — ${faehig.grund}\n`)
     + `Gates: ${bericht.gates.bestanden} bestanden · ${gefallen} gefallen · `
     + `${bericht.gates.nicht_pruefbar} nicht prüfbar`
     + (aktiveAusnahmen.length > 0
@@ -713,7 +723,16 @@ async function haupt() {
     }
   }
 
-  process.exit(gefallen > 0 ? 1 : 0);
+  /*
+   * Die Reihenfolge ist Absicht: ein gefallenes Gate schlägt „kein Urteil".
+   *
+   * Wer trotz halbblindem Lauf etwas Gefallenes GESEHEN hat, hat einen Befund —
+   * und ein Befund ist immer eine Aussage, auch wenn daneben vieles ungemessen
+   * blieb. Umgekehrt wäre es falsch: „kein Urteil" würde einen echten Fund
+   * verschlucken.
+   */
+  if (gefallen > 0) process.exit(1);
+  process.exit(faehig.urteil ? 0 : KEIN_URTEIL);
 }
 
 void haupt();
