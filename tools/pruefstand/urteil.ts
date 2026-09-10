@@ -97,7 +97,13 @@ export function urteilsfaehig(gates: Gatezahlen): Urteilsfaehigkeit {
       gesamt,
       anteil,
       grund:
-        `Nur ${gemessen} von ${gesamt} ${gesamt === 1 ? "Gate war" : "Gates waren"} messbar `
+        /* Ohne Verb — Absicht, nicht Nachlässigkeit. Die erste Fassung band es an
+           `gesamt` und schrieb auf dem Runner „Nur 1 von 1104 Gates WAREN
+           messbar": das Subjekt ist die 1, also „war". Die Beugung hängt aber an
+           BEIDEN Zahlen (0 nimmt im Deutschen den Plural, 1 den Singular), und
+           jede Regel dafür wäre eine weitere Stelle, an der ein Satz falsch
+           klingen kann. „messbar" trägt sich allein. */
+        `Nur ${gemessen} von ${gesamt} ${gesamt === 1 ? "Gate" : "Gates"} messbar `
         + `(${(anteil * 100).toFixed(1)} %, nötig ${(MINDESTANTEIL * 100).toFixed(0)} %). `
         + (gates.nicht_pruefbar === 1
           ? `Das übrige blieb „nicht prüfbar"`

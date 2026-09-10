@@ -58,13 +58,25 @@ describe("Trägt der Lauf ein Urteil?", () => {
   });
 
   it("schreibt die Einzahl richtig — der Satz wird gelesen, nicht geparst", () => {
-    /* Aufgefallen beim Vorführen: „Nur 0 von 1 Gates waren messbar. Die übrigen 1
-       blieben …". Ein Satz, der falsch klingt, wird überlesen wie eine Zahl ohne
-       Quelle. */
-    const u = urteilsfaehig({ bestanden: 0, gefallen: 0, nicht_pruefbar: 1 });
-    expect(u.grund).toContain("0 von 1 Gate war messbar");
-    expect(u.grund).toContain("Das übrige blieb");
-    expect(u.grund).not.toContain("Gates waren");
+    /* Zweimal aufgefallen, beide Male am echten Satz und nicht im Diff:
+       1. lokal: „Die übrigen 1 blieben …"
+       2. auf dem Runner (Lauf #106): „Nur 1 von 1104 Gates WAREN messbar" —
+          das Subjekt ist die 1, also „war".
+       Das Verb ist darum ganz weg: es hinge an beiden Zahlen, und jede
+       Beugungsregel wäre eine weitere Stelle, die falsch klingen kann. */
+    const einer = urteilsfaehig({ bestanden: 0, gefallen: 0, nicht_pruefbar: 1 });
+    expect(einer.grund).toContain("0 von 1 Gate messbar");
+    expect(einer.grund).toContain("Das übrige blieb");
+
+    const runner = urteilsfaehig({ bestanden: 1, gefallen: 0, nicht_pruefbar: 1103 });
+    expect(runner.grund).toContain("1 von 1104 Gates messbar");
+    expect(runner.grund).toContain("Die übrigen 1103");
+
+    // Kein Satz trägt noch ein gebeugtes Verb, an dem er falsch werden könnte.
+    for (const u of [einer, runner]) {
+      expect(u.grund).not.toContain("waren messbar");
+      expect(u.grund).not.toContain("war messbar");
+    }
   });
 
   it("urteilt nicht über einen Lauf ohne ein einziges Gate", () => {
