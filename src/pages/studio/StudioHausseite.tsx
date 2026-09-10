@@ -234,12 +234,12 @@ export default function StudioHausseite() {
           {t("studio.hausseite.intro")}
         </p>
         <div className="flex items-center gap-2">
-          <a href={`/designer/${designer.slug}`} target="_blank" rel="noopener noreferrer"
+          <a href={`/haus/${designer.slug}`} target="_blank" rel="noopener noreferrer"
             className="flex min-h-[36px] items-center gap-1.5 border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
             {t("studio.hausseite.liveView")} <ExternalLink className="h-3 w-3" />
           </a>
           {/* Teil U1.1 — der Einstieg in den Auftritt-Modus: die echte Hausseite, bearbeitbar. */}
-          <a href={`/designer/${designer.slug}?auftritt=1`} target="_blank" rel="noopener noreferrer"
+          <a href={`/haus/${designer.slug}?auftritt=1`} target="_blank" rel="noopener noreferrer"
             className="flex min-h-[36px] items-center gap-1.5 border border-border px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:border-foreground">
             {t("studio.hausseite.auftrittBearbeiten")} <Pencil className="h-3 w-3" />
           </a>

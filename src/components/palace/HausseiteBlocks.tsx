@@ -129,7 +129,7 @@ function ShopLink({ product, mediaAssetId }: { product?: BlockProductLite; media
   if (!product) return null;
   return (
     <Link
-      to={`/product/${product.slug}`}
+      to={`/werk/${product.slug}`}
       onClick={() => { if (mediaAssetId) void supabase.rpc("bump_media_metric" as never, { p_media_asset_id: mediaAssetId, p_metric: "shop_clicks" } as never); }}
       className="house-accent mt-3 inline-flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.2em] hover:underline"
     >
@@ -429,7 +429,7 @@ export function HausseiteBlocks({
               <section key={b.id} className="house-hair house-reveal house-gap-y border-b px-6 md:px-14" style={{ ...staggerStyle, ...abstandStyle(c.abstand) }}>
                 <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
                   {items.map((p, i) => (
-                    <Link key={p.id} to={`/product/${p.slug}`} className="group block" style={gestaffelt ? { transitionDelay: `${i * 60}ms` } : undefined}>
+                    <Link key={p.id} to={`/werk/${p.slug}`} className="group block" style={gestaffelt ? { transitionDelay: `${i * 60}ms` } : undefined}>
                       {p.image_url && <MediaImg src={p.image_url} alt={p.name} className="house-media aspect-[4/5] w-full object-cover" loading="lazy" />}
                       <p className="house-serif mt-3 text-[1rem]">{p.name}</p>
                       <p className="house-accent palace-eyebrow mt-1">{formatPrice(p.price, locale)}</p>

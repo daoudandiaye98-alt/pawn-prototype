@@ -1,6 +1,5 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { SearchOverlay } from "./SearchOverlay";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { ChatDrawer } from "./ChatDrawer";
@@ -32,7 +31,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
    */
   const NAV_HAUPT = [
     { label: t("nav.start"), to: "/", end: true, Ikone: IkoneStart },
-    { label: t("nav.boutique"), to: "/shop", Ikone: IkoneBoutique },
+    { label: t("nav.boutique"), to: "/suche", Ikone: IkoneBoutique },
     { label: t("nav.vision"), to: "/vision", Ikone: IkoneVision },
   ];
   /**
@@ -43,13 +42,13 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
    * die Rolle, nicht die Bezeichnung der Bestehenden.
    */
   const NAV_MEHR = [
-    { label: t("nav.deineBoutique"), to: "/boutique", Ikone: IkoneDeineBoutique },
+    { label: t("nav.deineBoutique"), to: "/ausgewaehlt", Ikone: IkoneDeineBoutique },
     { label: t("nav.mode"), to: "/mode", Ikone: IkoneMode },
     { label: t("nav.interior"), to: "/interior", Ikone: IkoneInterior },
     { label: t("nav.kunst"), to: "/kunst", Ikone: IkoneKunst },
-    { label: t("nav.haeuser"), to: "/designers", Ikone: IkoneHaeuser },
-    { label: t("nav.dna"), to: "/dna", Ikone: IkoneDna },
-    { label: t("nav.forDesigners"), to: "/apply", Ikone: IkoneFuerDesigner },
+    { label: t("nav.haeuser"), to: "/haeuser", Ikone: IkoneHaeuser },
+    { label: t("nav.dna"), to: "/deine-dna", Ikone: IkoneDna },
+    { label: t("nav.forDesigners"), to: "/fuer-designer/2", Ikone: IkoneFuerDesigner },
   ];
 
   const navigate = useNavigate();
@@ -57,7 +56,6 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
   const [chatOpen, setChatOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -152,14 +150,16 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
             Suche — kein Rahmen ohne Inhalt und kein Inhalt ohne Rahmen.
             Keine eigene linke Linie: die Zelle davor bringt sie mit.
           */}
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
+          {/* Die Suche lebt jetzt im Heft (/suche) und hat dort eine eigene Doppelseite
+              mit Filtern. Ein zweites Suchfenster in der Kopfzeile waere ein zweiter Ort
+              fuer dieselbe Frage. */}
+          <Link
+            to="/suche"
             className={`flex min-w-0 flex-1 items-center gap-3 px-4 text-left transition-colors duration-200 hover:bg-black hover:text-white md:px-5 ${text}`}
           >
             <PawnSearchIcon className="h-5 w-5 shrink-0" />
             <span className="truncate text-[0.62rem] uppercase tracking-[0.3em] opacity-70">{t("nav.suche")}</span>
-          </button>
+          </Link>
 
           <div className="flex items-stretch">
             {/* Frag PAWN — solid black cell with blinking dot */}
@@ -200,10 +200,10 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
                         {isAdmin ? "Kurator:in" : isDesigner ? "Atelier" : isApplicant ? "Bewerbung" : "Sammlung"}
                       </p>
                     </div>
-                    <MenuItem to="/account" onClick={() => setAccountOpen(false)}>{t("nav.account")}</MenuItem>
-                    <MenuItem to="/dna" onClick={() => setAccountOpen(false)}>{t("nav.dna")}</MenuItem>
+                    <MenuItem to="/konto" onClick={() => setAccountOpen(false)}>{t("nav.account")}</MenuItem>
+                    <MenuItem to="/deine-dna" onClick={() => setAccountOpen(false)}>{t("nav.dna")}</MenuItem>
                     {isDesigner && <MenuItem to="/studio" onClick={() => setAccountOpen(false)}>{t("nav.myStudio")}</MenuItem>}
-                    {!isDesigner && isApplicant && <MenuItem to="/apply" onClick={() => setAccountOpen(false)}>{t("nav.applicationStatus")}</MenuItem>}
+                    {!isDesigner && isApplicant && <MenuItem to="/fuer-designer/2" onClick={() => setAccountOpen(false)}>{t("nav.applicationStatus")}</MenuItem>}
                     {isAdmin && <MenuItem to="/admin" onClick={() => setAccountOpen(false)}>{t("nav.adminCockpit")}</MenuItem>}
                     <button
                       type="button"
@@ -227,7 +227,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
 
             {/* Cart cell */}
             <Link
-              to="/cart"
+              to="/tasche"
               aria-label={`Warenkorb${cartCount > 0 ? ` (${cartCount})` : ""}`}
               className={`flex items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white ${border} ${text}`}
             >
@@ -313,9 +313,9 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
         <div className="space-y-2 border-t border-[rgba(0,0,0,.18)] px-8 py-6">
           {user ? (
             <>
-              <Link to="/account" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.account")}</Link>
+              <Link to="/konto" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.account")}</Link>
               {isDesigner && <Link to="/studio" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.myStudio")}</Link>}
-              {!isDesigner && isApplicant && <Link to="/apply" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.applicationStatus")}</Link>}
+              {!isDesigner && isApplicant && <Link to="/fuer-designer/2" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.applicationStatus")}</Link>}
               {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.adminCockpit")}</Link>}
               <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-black/70">{t("nav.logout")}</button>
             </>
@@ -335,7 +335,6 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
 
 
       <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

@@ -176,75 +176,157 @@ function keineAblaufendenAdressen({ eimer, orte }) {
 // object-cover nicht fuehren. Kacheln und Kopfbilder anderswo duerfen
 // weiterhin beschneiden — das ist Absicht.
 // ————————————————————————————————————————————————————————————————
-function werkNichtBeschnitten({ datei, marker, verlangt, verboten }) {
-  const text = lies(datei);
-  const klassen = [...text.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)]
-    .map((m) => ({ wert: m[1] ?? m[2] ?? "", index: m.index }))
-    .filter((k) => marker.some((mk) => k.wert.includes(mk)));
+// ————————————————————————————————————————————————————————————————
+// Z5 — kein Werk wird beschnitten
+//
+// Frueher eine Klassenpruefung an ProductDetail.tsx. Die Seite ist mit Teil H ins
+// Heft gezogen; der Rahmen des Werks steht jetzt als CSS-Regel. Eng gehalten: nur
+// die Regeln, die genau diese Wahl treffen — object-fit anderswo geht die Zusage
+// nichts an.
+// ————————————————————————————————————————————————————————————————
+function werkNichtBeschnittenCss({ datei, wahl, verlangt, verboten }) {
+  const text = lies(datei).replace(/\s+/g, "");
+  const nadel = wahl.replace(/\s+/g, "");
+  const regeln = [];
+  let i = text.indexOf(nadel);
+  while (i !== -1) {
+    const auf = text.indexOf("{", i);
+    const zu = text.indexOf("}", auf);
+    if (auf === -1 || zu === -1) break;
+    regeln.push(text.slice(auf + 1, zu));
+    i = text.indexOf(nadel, zu);
+  }
+  if (regeln.length === 0) return nein(`${datei}: keine Regel fuer „${wahl}“ mehr — die Zusage haengt in der Luft`);
 
-  if (klassen.length === 0)
-    return nein(`${datei}: kein Rahmen mit ${marker.join("/")} mehr gefunden — die Zusage haengt in der Luft`);
-
-  const schlecht = klassen
-    .filter((k) => !k.wert.includes(verlangt) || k.wert.includes(verboten))
-    .map((k) => `Zeile ${text.slice(0, k.index).split("\n").length}: „${k.wert.trim().slice(0, 80)}“`);
-
+  const schlecht = regeln.filter((r) => !r.includes(verlangt.replace(/\s+/g, "")) || r.includes(verboten.replace(/\s+/g, "")));
   return schlecht.length === 0
     ? OK
-    : nein(`der Rahmen des Werks beschneidet (${verlangt} fehlt oder ${verboten} steht da):\n      ${schlecht.join("\n      ")}`);
+    : nein(`der Rahmen des Werks beschneidet — ${schlecht.length} Regel(n) ohne ${verlangt}: ${schlecht[0].slice(0, 90)}`);
 }
 
 // ————————————————————————————————————————————————————————————————
-// Z6 — der Preisfilter steht auf der vollen Spanne
+// Z6 — der Preisfilter blendet nichts aus, was niemand ausgeblendet hat
 //
-// Der Anfangszustand muss `null` sein, und `null` muss auf die volle
-// Spanne abbilden. Ein Anfangswert wie [0, 50] waere genau der alte Fehler.
+// Im Heft ist der Filter ein Formularfeld, kein Regler: „Preis bis" startet leer
+// und faellt damit auf die volle Spanne zurueck. Ein fester Vorgabewert waere
+// genau der alte Fehler in neuer Form.
 // ————————————————————————————————————————————————————————————————
-function preisfilterVoll({ datei, zustand }) {
+function preisfilterOffen({ datei, feld }) {
   const text = lies(datei);
-  const start = new RegExp(`useState<\\[number,\\s*number\\]\\s*\\|\\s*null>\\(\\s*null\\s*\\)`);
-  const deklaration = new RegExp(`\\[${zustand},\\s*set[A-Za-z]*\\]\\s*=\\s*useState[^;]*;`);
-  const d = text.match(deklaration);
-  if (!d) return nein(`${datei}: der Zustand „${zustand}“ ist nicht mehr auffindbar`);
-  if (!start.test(d[0]))
-    return nein(`${datei}: „${zustand}“ startet nicht mehr auf null, sondern: ${d[0].trim().slice(0, 120)}`);
-
-  if (!/:\s*\[preisVon,\s*preisBis\]/.test(text))
-    return nein(`${datei}: null bildet nicht mehr auf die volle Spanne [preisVon, preisBis] ab`);
+  const treffer = text.match(new RegExp(`<label>[^<]*<input name="${feld}"[^>]*>`));
+  if (!treffer) return nein(`${datei}: das Feld „${feld}“ ist nicht mehr auffindbar — die Zusage haengt in der Luft`);
+  const wert = treffer[0].match(/value='\+?([^+>]*)/);
+  if (!/route\.max\|\|''/.test(treffer[0]))
+    return nein(`${datei}: „${feld}“ startet nicht mehr leer, sondern: ${(wert && wert[1]) || treffer[0].slice(0, 100)}`);
   return OK;
 }
 
 // ————————————————————————————————————————————————————————————————
+// Z7 — was in die Tasche gelegt wird, ist auch darin zu sehen
+//
+// Diese Zusage laesst sich nicht am Quelltext ablesen: der belegte Fehler war eine
+// Zeile, die im Korb lag und beim Anzeigen still herausfiel. Sie wird deshalb
+// LAUFEND geprueft (src/heft03/tasche.test.mjs, Teil von `npm run test:heft`).
+// Diese Kontrolle stellt nur sicher, dass es diese Pruefung noch gibt und dass sie
+// auf die Tasche zeigt — eine geloeschte Pruefung ist eine gebrochene Zusage.
+// ————————————————————————————————————————————————————————————————
+function taschePruefungLaeuft({ test, datei }) {
+  if (!existsSync(join(WURZEL, test))) return nein(`${test} fehlt — die Zusage wird nicht mehr geprueft`);
+  const t = lies(test);
+  if (!/cartView/.test(t)) return nein(`${test} prueft die Tasche (cartView) nicht mehr`);
+  if (!/checkoutLines/.test(t)) return nein(`${test} prueft den Betrag der Kasse nicht mehr`);
+  const skripte = JSON.parse(lies("package.json")).scripts || {};
+  if (!/test:heft/.test(lies("scripts/verify/verify.sh")) || !skripte["test:heft"])
+    return nein("npm run test:heft laeuft nicht mehr in verify.sh — die Pruefung waere da, aber niemand fuehrt sie aus");
+  if (!/products\[r\.id\]/.test(lies(datei)))
+    return nein(`${datei}: cartView schlaegt das Stueck nicht mehr in der Liste des Hefts nach`);
+  return OK;
+}
 
 // ————————————————————————————————————————————————————————————————
-// Z7 — der Korb haelt echte Stuecke
+// Z8 — das Heft startet genau einmal
 //
-// Der Korb speichert nur Kennung und Groesse; die Angaben zum Stueck holt er
-// sich beim Anzeigen aus dem Bestand des Ladens (`src/store/cart.tsx`,
-// `productById.get`). Dieser Bestand kommt aus `src/core/seed/products.ts`,
-// und der ist mit Absicht leer. Ein Stueck aus der Datenbank stand darin nie:
-// die Zeile wurde geschrieben, fand ihr Stueck nicht und fiel heraus. Wer auf
-// „In den Korb" tippte, sah eine Bestaetigung und danach einen leeren Korb.
-//
-// `useInDenKorb` meldet das Stueck vorher an. Diese Kontrolle ist so eng wie
-// die Zusage: sie prueft NUR, dass die Werkseite diesen Weg nimmt und nicht
-// wieder den alten `cart.add`. Sie sagt nichts ueber andere Seiten und nichts
-// darueber, ob der Korb sonst richtig rechnet — dafuer gibt es die Tests in
-// `src/core/__tests__/korb.echte-stuecke.spec.ts`.
+// Der Prototyp bringt eine Selbststart-Sicherung mit. Im Projekt startet die
+// Huelle; beides zusammen ergaebe ZWEI Hefte — das zweite mit Beispielhaeusern,
+// also mit erfundenen Marken auf einer Seite mit echten Zahlungen. Die Sicherung
+// darf nicht zurueckkommen, und die Huelle muss die Fahne setzen.
 // ————————————————————————————————————————————————————————————————
-function korbHaeltEchteStuecke({ datei }) {
-  const text = lies(datei);
-  if (!/useInDenKorb\s*\(/.test(text))
-    return nein(`${datei}: ruft useInDenKorb() nicht mehr auf — das Stueck wird nicht mehr angemeldet`);
-
-  // Nur echte Aufrufe, keine Erwaehnung im Kommentar.
-  const zeilen = text.split("\n");
-  const alterWeg = zeilen.findIndex((z) => {
+function heftStartetEinmal({ modul, huelle }) {
+  const app = lies(modul);
+  // Nur echte Aufrufe zaehlen, kein Wort im Kommentar.
+  const zeile = app.split("\n").findIndex((z) => {
     const ohneKommentar = z.replace(/^\s*(\*|\/\/).*$/, "");
-    return /\bcart\.add\s*\(/.test(ohneKommentar);
+    return /__pawnBoot[\s\S]*startHeft\s*\(/.test(ohneKommentar);
   });
-  if (alterWeg !== -1)
-    return nein(`${datei}:${alterWeg + 1}: nimmt wieder cart.add( — die Zeile landet im Korb ohne das Stueck`);
+  if (zeile !== -1) return nein(`${modul}:${zeile + 1}: startet sich selbst — neben dem Heft der Huelle stuende ein zweites mit Beispieldaten`);
+  if (!/startHeft\s*\(/.test(lies(huelle))) return nein(`${huelle}: ruft startHeft() nicht mehr — dann startet gar kein Heft`);
+  if (!/__pawnBoot/.test(lies(huelle))) return nein(`${huelle}: setzt __pawnBoot nicht mehr — der zweite Boden gegen ein zweites Heft fehlt`);
+  return OK;
+}
+
+// ————————————————————————————————————————————————————————————————
+// Z9 — kein Link auf eine umgezogene Adresse
+//
+// Geprueft werden nur Ziele, die WIRKLICH umziehen: die Liste kommt aus
+// routen.js › UMZUEGE, nicht aus einer zweiten Aufzaehlung hier. Und nur echte
+// Linkziele (to="…", href="…", `/x/${…}`), nicht jedes Vorkommen der
+// Zeichenkette — sonst wuerde die Kontrolle an Kommentaren rot und lehrte,
+// Rot zu uebersehen.
+// ————————————————————————————————————————————————————————————————
+function keineUmgezogenenLinks({ orte, ausnahmen = [] }) {
+  const umzuege = umzuegeAusRoutenJs();
+  if (!umzuege.length) return nein("routen.js fuehrt keine Umzuege mehr — die Zusage haengt in der Luft");
+
+  const treffer = [];
+  for (const ort of orte) {
+    for (const datei of dateien(ort)) {
+      const rel = datei.slice(WURZEL.length + 1);
+      if (ausnahmen.some((a) => rel === a || rel.startsWith(a + "/"))) continue;
+      const text = readFileSync(datei, "utf8");
+      text.split("\n").forEach((zeile, i) => {
+        if (/^\s*(\*|\/\/)/.test(zeile)) return;
+        for (const u of umzuege) {
+          const muster = u.von.includes(":")
+            ? new RegExp("[\"'`]" + u.von.replace(/:[^/]+/, "") + "\\$\\{")
+            : new RegExp("(to|href)=[\"{]`?" + u.von + "[\"'`]");
+          if (muster.test(zeile)) treffer.push(`${rel}:${i + 1} → ${u.von} (zieht nach ${u.nach})`);
+        }
+      });
+    }
+  }
+  return treffer.length === 0
+    ? OK
+    : nein(`${treffer.length} Link(s) laufen ueber eine 301 statt direkt:\n      ${treffer.slice(0, 8).join("\n      ")}`);
+}
+
+/** Die Umzugstabelle aus routen.js lesen, ohne sie zu importieren (dies ist ein Skript). */
+function umzuegeAusRoutenJs() {
+  const t = lies("routen.js");
+  const block = t.slice(t.indexOf("export const UMZUEGE"));
+  return [...block.matchAll(/\{\s*von:\s*"([^"]+)",\s*nach:\s*"([^"]+)"\s*\}/g)].map((m) => ({ von: m[1], nach: m[2] }));
+}
+
+// ————————————————————————————————————————————————————————————————
+// Z10 — keine Stripe-Spalte im oeffentlichen Heft
+//
+// Zwei Orte, eine Zusage: die Auswahlliste, mit der das Heft heute liest, und
+// die Sicht, die anon spaeter bekommt. Beide duerfen die Spalte nicht kennen.
+// ————————————————————————————————————————————————————————————————
+function keineStripeSpalten({ datei, migration, verboten }) {
+  const quelle = lies(datei);
+  const block = quelle.slice(quelle.indexOf("export const SPALTEN"), quelle.indexOf("};", quelle.indexOf("export const SPALTEN")));
+  if (!block.includes("designers:")) return nein(`${datei}: die Spaltenmaske SPALTEN ist nicht mehr auffindbar`);
+  for (const wort of verboten) {
+    if (block.includes(wort)) return nein(`${datei}: SPALTEN enthaelt „${wort}“ — anon laese damit eine Spalte, die ihn nichts angeht`);
+  }
+  if (!existsSync(join(WURZEL, migration))) return nein(`${migration} fehlt — die Sicht, die die Luecke schliesst, ist weg`);
+  /* Ohne Kommentare: die Migration ERKLAERT die Luecke ("gibt anon auch stripe_*"), und
+     eine Kontrolle, die daran rot wird, lehrt nur, Rot zu uebersehen. Geprueft wird, was
+     die Datenbank ausfuehrt. */
+  const sicht = lies(migration).replace(/--[^\n]*/g, "");
+  for (const wort of verboten) {
+    if (wort !== "user_id" && sicht.includes(wort)) return nein(`${migration}: die Sicht listet „${wort}“ — sie waere keine Maske mehr`);
+  }
   return OK;
 }
 
@@ -253,9 +335,12 @@ const PRUEFUNGEN = {
   planPlatzhalter,
   sprachschluessel,
   keineAblaufendenAdressen,
-  werkNichtBeschnitten,
-  preisfilterVoll,
-  korbHaeltEchteStuecke,
+  werkNichtBeschnittenCss,
+  preisfilterOffen,
+  taschePruefungLaeuft,
+  heftStartetEinmal,
+  keineUmgezogenenLinks,
+  keineStripeSpalten,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

@@ -12,8 +12,8 @@ export function useProductPrevNext(currentSlug: string): { prev: Link | null; ne
   const p = idx > 0 ? list[idx - 1] : null;
   const n = idx < list.length - 1 ? list[idx + 1] : null;
   return {
-    prev: p ? { to: `/product/${p.slug}`, label: p.name } : null,
-    next: n ? { to: `/product/${n.slug}`, label: n.name } : null,
+    prev: p ? { to: `/werk/${p.slug}`, label: p.name } : null,
+    next: n ? { to: `/werk/${n.slug}`, label: n.name } : null,
   };
 }
 
@@ -26,7 +26,7 @@ export function useDesignerPrevNext(currentSlug: string): { prev: Link | null; n
   const p = idx > 0 ? list[idx - 1] : null;
   const n = idx < list.length - 1 ? list[idx + 1] : null;
   return {
-    prev: p ? { to: `/designer/${p.slug}`, label: p.name } : null,
-    next: n ? { to: `/designer/${n.slug}`, label: n.name } : null,
+    prev: p ? { to: `/haus/${p.slug}`, label: p.name } : null,
+    next: n ? { to: `/haus/${n.slug}`, label: n.name } : null,
   };
 }

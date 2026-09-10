@@ -26,21 +26,56 @@
 /** Alle Routen, in der Reihenfolge aus `App.tsx`. Ohne den Auffang `*`. */
 export const ROUTEN = [
   "/",
+  "/ausgewaehlt",
   "/mode",
+  "/mode/:seite",
   "/interior",
+  "/interior/:seite",
   "/kunst",
-  "/neu",
-  "/auth",
+  "/kunst/:seite",
+  "/haeuser",
+  "/haeuser/:seite",
+  "/haus/:slug",
+  "/haus/:slug/:blatt",
+  "/werk/:slug",
+  "/deine-dna",
+  "/deine-dna/welt",
+  "/deine-dna/richtung",
+  "/deine-dna/form",
+  "/deine-dna/linie",
+  "/deine-dna/foto",
+  "/deine-dna/massband",
+  "/deine-dna/privacy",
+  "/frag-pawn",
+  "/vision",
+  "/vision/:seite",
+  "/fuer-designer",
+  "/fuer-designer/:seite",
+  "/suche",
+  "/konto",
+  "/konto/:seite",
+  "/tasche",
   "/dna",
   "/designers",
+  "/designers/all",
+  "/boutique",
+  "/neu",
+  "/cart",
+  "/checkout",
+  "/account",
+  "/shop",
+  "/verzeichnis",
+  "/apply",
+  "/about",
+  "/kuratierter-raum",
+  "/drei-welten",
   "/ausgabe",
-  "/vision",
+  "/inhalt",
+  "/product/:slug",
+  "/designer/:slug",
+  "/auth",
   "/preise",
   "/preise/maison",
-  "/about",
-  "/designers/all",
-  "/designer/:slug",
-  "/apply",
   "/apply/form",
   "/start",
   "/einladung/:refCode",
@@ -53,14 +88,8 @@ export const ROUTEN = [
   "/wie-pawn-ki-nutzt",
   "/vertrag-kuendigen",
   "/kontakt",
-  "/shop",
-  "/boutique",
-  "/product/:slug",
   "/presse/:slug",
-  "/cart",
-  "/checkout",
   "/order/success",
-  "/account",
   "/admin",
   "/admin/dna",
   "/admin/products",
@@ -146,18 +175,24 @@ export const ROUTEN = [
  * und gewinnt.
  */
 export const UMZUEGE = [
-  /*
-   * Zurzeit leer, und das ist Absicht.
-   *
-   * Hier standen die Umzüge des Magazin-Umbaus (/shop → /verzeichnis/1,
-   * /product/:slug → /werk/:slug, /designer/:slug → /haus/:slug, /heft/*).
-   * Mit der Rücknahme des Magazins gibt es die Zieladressen nicht mehr — eine
-   * 301 auf eine tote Adresse ist schlimmer als gar keine. Die alten Adressen
-   * sind wieder die echten und stehen in ROUTEN.
-   *
-   * Die Mechanik bleibt: sobald es wieder einen echten Umzug gibt, genügt eine
-   * Zeile hier, und `tools/vercel-routen.mjs` schreibt die 301-Regel.
-   */
+  { von: "/dna", nach: "/deine-dna" },
+  { von: "/designers", nach: "/haeuser" },
+  { von: "/designers/all", nach: "/haeuser" },
+  { von: "/boutique", nach: "/ausgewaehlt" },
+  { von: "/neu", nach: "/ausgewaehlt" },
+  { von: "/cart", nach: "/tasche" },
+  { von: "/checkout", nach: "/tasche" },
+  { von: "/account", nach: "/konto" },
+  { von: "/shop", nach: "/suche" },
+  { von: "/verzeichnis", nach: "/suche" },
+  { von: "/apply", nach: "/fuer-designer/2" },
+  { von: "/about", nach: "/vision" },
+  { von: "/kuratierter-raum", nach: "/vision" },
+  { von: "/drei-welten", nach: "/haeuser" },
+  { von: "/ausgabe", nach: "/" },
+  { von: "/inhalt", nach: "/" },
+  { von: "/product/:slug", nach: "/werk/:slug" },
+  { von: "/designer/:slug", nach: "/haus/:slug" },
 ];
 
 export function istPlattformOderDatei(pfad) {
@@ -187,7 +222,25 @@ function zerlege(pfad) {
   return pfad.split("/").filter((t) => t.length > 0);
 }
 
+/**
+ * Platzhalter, die eine SEITE zaehlen, nehmen nur Ziffern.
+ *
+ * Das Heft hat je Welt so viele Doppelseiten, wie es Haeuser gibt — die Zahl steht
+ * erst zur Laufzeit fest, die Adressen koennen darum nicht einzeln aufgezaehlt werden.
+ * Waere `/mode/:seite` ein beliebiger Abschnitt, bekaeme `/mode/gibtesnicht` eine 200,
+ * und genau das ist der Fehler, fuer den K7 gebaut wurde (Kontrolle 4.5).
+ *
+ * Deshalb: ein Platzhalter mit einem dieser Namen passt nur auf Ziffern. Dieselbe Regel
+ * steht in `tools/vercel-routen.mjs`; `src/__tests__/heft03-adressen.spec.ts` haelt beide
+ * gegeneinander.
+ */
+export const ZAEHLENDE_PLATZHALTER = ["seite", "blatt"];
+
 function passt(muster, teile) {
   if (muster.length !== teile.length) return false;
-  return muster.every((m, i) => (m.startsWith(":") ? teile[i].length > 0 : m === teile[i]));
+  return muster.every((m, i) => {
+    if (!m.startsWith(":")) return m === teile[i];
+    if (ZAEHLENDE_PLATZHALTER.includes(m.slice(1))) return /^[0-9]+$/.test(teile[i]);
+    return teile[i].length > 0;
+  });
 }

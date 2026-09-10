@@ -41,7 +41,7 @@ export default function Presse() {
           setData({ ...d, designer: d.designers });
           const texts = await fetchShareKitTexts();
           if (!alive) return;
-          const link = `${window.location.origin}/product/${d.slug}`;
+          const link = `${window.location.origin}/werk/${d.slug}`;
           setCaption(buildCaption(texts.caption_template, {
             brand: d.designers.brand_name, name: d.name, price: formatPrice(d.price), link,
           }));
@@ -92,7 +92,7 @@ export default function Presse() {
           </button>
         </div>
 
-        <Link to={`/product/${data.slug}`} className="mt-8 inline-block border border-border px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:border-foreground">
+        <Link to={`/werk/${data.slug}`} className="mt-8 inline-block border border-border px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:border-foreground">
           Zum Stück im Shop
         </Link>
       </div>

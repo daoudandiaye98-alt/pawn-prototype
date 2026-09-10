@@ -86,7 +86,7 @@ export function DynamicBanner({
             </cite>
           </blockquote>
           <Link
-            to={`/designer/${pick.slug}`}
+            to={`/haus/${pick.slug}`}
             className="mt-10 inline-block whitespace-nowrap border border-[rgba(255,255,255,.6)] px-6 py-3 text-[0.65rem] uppercase tracking-[0.32em] text-[#FFFFFF] transition-colors duration-500 hover:bg-[#FFFFFF] hover:text-[#000000]"
           >
             Zum Atelier von {pick.brand_name} →

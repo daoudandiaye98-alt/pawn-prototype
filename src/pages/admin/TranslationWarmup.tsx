@@ -9,8 +9,8 @@ import { toast } from "sonner";
  * Besucher:innen sehen später sofort Englisch, ohne Wartezeit.
  */
 const ROUTES = [
-  "/", "/shop", "/mode", "/interior", "/kunst", "/designers", "/dna",
-  "/cart", "/auth", "/apply", "/kontakt", "/versand", "/presse",
+  "/", "/suche", "/mode", "/interior", "/kunst", "/haeuser", "/deine-dna",
+  "/tasche", "/auth", "/fuer-designer", "/kontakt", "/versand", "/presse",
   "/agb", "/datenschutz", "/impressum", "/widerruf",
 ];
 
