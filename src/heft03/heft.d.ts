@@ -62,6 +62,8 @@ interface HeftProdukt {
 
 /** Ein Haus im Heft-Modell (aus `adapters.mjs › houseFromRow`). */
 interface HeftHaus {
+  /** echte designer_id — nur für Signale, nie angezeigt */
+  id?: string;
   slug: string;
   name: string;
   number: string;

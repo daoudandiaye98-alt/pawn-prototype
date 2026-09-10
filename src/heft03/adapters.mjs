@@ -82,7 +82,8 @@ export function houseFromRow(designer,blocks=[],theme=null,produkte=[],{bild=ide
  const archetyp=designer.brand_dna?.archetyp||'editorial';
  const t=theme?themeFromRow(theme):null;
  return {
-  slug:designer.slug,name:text(designer.brand_name),
+  // id nur für Signale (record_page_visit braucht die echte designer_id) — angezeigt wird sie nie.
+  id:designer.id,slug:designer.slug,name:text(designer.brand_name),
   number:designer.house_number!=null?String(designer.house_number).padStart(2,'0'):'—',
   world,location:[designer.location,designer.country].filter(Boolean).join(', '),
   title:text(designer.collection_title),intro:text(designer.story),manifesto:text(designer.manifesto),

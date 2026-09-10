@@ -225,7 +225,8 @@ function studioState(slug){
  if(!s.products)s.products=[...h.products];
  return s;
 }
-function studio(slug=nav.route.section==='haus'?nav.route.slug:'drape'){
+function studio(slug=nav.route.section==='haus'?nav.route.slug:Object.keys(houses)[0]){
+ if(!houses[slug])return;
  const h=houses[slug],t=housePresentation(slug,state),eigen=studioState(slug);
  const bloecke=eigen.blocks.map((b,i)=>'<li'+(b.on?'':' class="aus"')+'><button type="button" data-block-toggle="'+i+'" aria-pressed="'+(b.on?'true':'false')+'">'+(b.on?'●':'○')+'</button><span>'+(BLOCK_NAMEN[b.kind]||b.kind)+'</span><button type="button" data-block-up="'+i+'" '+(i===0?'disabled':'')+' aria-label="nach oben">↑</button><button type="button" data-block-down="'+i+'" '+(i===eigen.blocks.length-1?'disabled':'')+' aria-label="nach unten">↓</button></li>').join('');
  const arbeiten=Object.values(products).filter(p=>p.house===slug||h.products.includes(p.id)).map(p=>'<button type="button" class="werk-wahl'+(eigen.products.includes(p.id)?' an':'')+'" data-prod-toggle="'+p.id+'"><img src="'+p.image+'" alt=""><span>'+p.name+'</span></button>').join('');

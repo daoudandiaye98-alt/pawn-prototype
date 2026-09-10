@@ -1,4 +1,0 @@
-/* Die vier Schriftschnitte der Vorschau. Liegen getrennt, damit style.css ohne Änderung in ein Projekt
-   umziehen kann, das seine Schriften selbst mitbringt (im echten Projekt: @fontsource/playfair-display, @fontsource/inter).
-   Familiennamen bleiben in beiden Welten gleich: Inter und Playfair. */
-@font-face{font-family:Inter;src:url('./vendor/inter-latin-400-normal.woff2')}@font-face{font-family:Inter;src:url('./vendor/inter-latin-500-normal.woff2');font-weight:500}@font-face{font-family:Playfair;src:url('./vendor/playfair-display-latin-500-normal.woff2');font-weight:500}@font-face{font-family:Playfair;src:url('./vendor/playfair-display-latin-500-italic.woff2');font-style:italic;font-weight:500}

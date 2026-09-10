@@ -14,6 +14,7 @@
 //   signal(art,daten)                          → void   (ansehen|merken|kaufen|quiz — Geschmackssignale)
 //   konto.aktuell() → {id,name,email}|null · konto.anmelden() · konto.abmelden() · konto.bestellungen() → [{datum,status,stuecke,summe}]
 //   bild(url) → ladbare Adresse (Storage-Pfade signieren/transformieren)
+// funktionen.signieren(urls) → {url: signierteUrl} — einmal je Heft-Ladung, weil die Adapter bild() synchron rufen.
 import {demoHeft} from './data.mjs';
 import {heftAusZeilen,checkoutLines,cartByHouse,stilToRow,stilFromRow,orderFromRow} from './adapters.mjs';
 
@@ -80,7 +81,17 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
     alle.length?client.from('media_assets').select(SPALTEN.media).in('designer_id',alle).eq('kind','bild').neq('review_status','abgelehnt').limit(600):{data:[]},
     collection?client.from('collection_items').select(SPALTEN.items).eq('collection_id',collection.id).order('sort'):{data:[]}
    ]);
-   return heftAusZeilen({products:products||[],designers:designers||[],blocks:blocks||[],themes:themes||[],media:media||[],collection:collection||null,items:items||[]},{bild});
+   // Bildadressen einmal auflösen, bevor die Adapter sie lesen: adapters.mjs ruft bild(url)
+   // SYNCHRON, das Signieren einer Storage-Adresse ist asynchron. Ohne diesen Schritt bliebe
+   // jeder blanke Bucket-Pfad ein totes Bild. Eine Runde für alle Adressen, nicht eine je Bild.
+   const roh=new Set(),merke=v=>{if(typeof v==='string'&&v)roh.add(v);};
+   for(const p of products||[]){merke(p.image_url);merke(p.product_dna&&p.product_dna.heft&&p.product_dna.heft.cutout_url);}
+   for(const d of designers||[]){merke(d.hero_image_url);merke(d.avatar_url);merke(d.banner_url);merke(d.portrait_url);merke(d.atelier_image_url);}
+   for(const m of media||[]){merke(m.url);merke(m.thumb_url);}
+   let karte={};
+   if(funktionen.signieren&&roh.size){try{karte=await funktionen.signieren([...roh])||{};}catch(e){karte={};}}
+   const bildAufgeloest=u=>bild(karte[u]||u);
+   return heftAusZeilen({products:products||[],designers:designers||[],blocks:blocks||[],themes:themes||[],media:media||[],collection:collection||null,items:items||[]},{bild:bildAufgeloest});
   },
   async chat({messages=[],bilder=[],kontext={},session_id=sitzung()}={}){
    const {data,error}=await client.functions.invoke('pawn-chat',{body:{messages,session_id,image_urls:bilder.length?bilder:undefined,page_context:{route:kontext.route||'/frag-pawn',product_slug:kontext.product_slug,heft:kontext}}});
@@ -94,7 +105,10 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    if(gruppen.length>1)return {fehler:'mixed_cart',text:'Jedes Haus versendet selbst — bitte ein Haus nach dem anderen bestellen.'};
    const items=checkoutLines(cart,products);
    if(!items.length)return {fehler:'leer',text:'Die Tasche ist leer.'};
-   const {data,error}=await client.functions.invoke('create-checkout',{body:{items,customer_email:email||undefined,locale,success_url:adressen.erfolg,cancel_url:adressen.abbruch}});
+   // Das bezahlte Haus reist mit: nach der Rückkehr wird genau dessen Tasche geleert,
+   // nicht die ganze — was bei einem anderen Haus liegt, bleibt liegen.
+   const erfolg=adressen.erfolg?adressen.erfolg+(adressen.erfolg.includes('?')?'&':'?')+'haus='+encodeURIComponent(gruppen[0]||''):undefined;
+   const {data,error}=await client.functions.invoke('create-checkout',{body:{items,customer_email:email||undefined,locale,success_url:erfolg,cancel_url:adressen.abbruch}});
    if(error)return {fehler:'netz',text:fehlerText(error)};
    if(data?.error)return {fehler:data.error,fehlt:data.fehlt||[],text:data.message||''};
    return {url:data?.url,id:data?.id};

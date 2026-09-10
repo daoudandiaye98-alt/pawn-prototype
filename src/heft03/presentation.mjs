@@ -7,9 +7,15 @@ export const themes={
  archiv:{label:'Archiv',paper:'#dedfdc',ink:'#1f2826',accent:'#354943',architecture:'frame',font:'Inter'}
 };
 export const defaults={drape:'editorial',noir:'archiv',forme:'atelier',traces:'galerie'};
+// defaults kennt nur die vier Beispielhäuser. Ein echtes Haus bringt seinen Archetyp
+// (brand_dna.archetyp) und meist ein eigenes house_theme mit — ohne diesen Rückfall stünde
+// die Doppelseite eines echten Hauses ohne Papier, ohne Tinte und ohne Schrift da.
 export function housePresentation(slug,state){
- const custom=state.presentations?.[slug]||{},preset=themes[custom.theme||defaults[slug]];
- return {schemaVersion:1,houseSlug:slug,theme:custom.theme||defaults[slug],...preset,...custom};
+ const haus=houses[slug]||{};
+ const custom=state.presentations?.[slug]||{};
+ const grund=custom.theme||defaults[slug]||haus.archetyp||'editorial';
+ const preset=themes[grund]||themes.editorial;
+ return {schemaVersion:1,houseSlug:slug,theme:grund,...preset,...(haus.theme||{}),...custom};
 }
 // Die Blockfolge und die Auswahl der Arbeiten gehören dem Haus. Beides ist
 // hier lokal editierbar und wird beim Export in den bestehenden Vertrag übersetzt.
