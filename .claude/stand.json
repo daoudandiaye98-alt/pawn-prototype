@@ -1,6 +1,6 @@
 {
   "aktualisiert": "2026-09-10",
-  "branch": "claude/heft-frontend-integration-0bjnzf",
+  "branch": "claude/stand-nach-den-merges",
   "offene_prs": [],
   "merge_reihenfolge": [
     "ERLEDIGT am 10.09.: PR #184 (Teil H, b4d51c4) und PR #185 (Prüfstand: kein Urteil, 5efb9de) sind beide auf main. Lovable synct, Vercel spiegelt auf pawn.vision.",
