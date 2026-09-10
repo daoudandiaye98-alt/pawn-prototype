@@ -61,9 +61,12 @@ function rememberHash(route,ersetzen=false){adresse.schreiben(route,ersetzen);if
 function closeMenu(){$('main-nav').classList.remove('open');$('menu-toggle').setAttribute('aria-expanded','false');}
 function resetFold(){fold=1;$('fold').value='100';$('fold-value').textContent='100 %';}
 let weiterTimer=null,prefetchKey='',pendingPush=true;
+// Ein Seitenfenster kann aus zwei Gründen zugehen: der Mensch schließt es (dann führt die
+// Adresse zurück auf die Bühne) oder die Route wechselt ohnehin (dann steht die neue Adresse schon).
+let schliesstStill=false;
 function go(route,push=true){
  if(route.section==='suche')route={...route,index:clamp(route.index,0,searchCount(route)-1)};
- if(drawer.open)drawer.close();closeMenu();resetFold();
+ if(drawer.open){schliesstStill=true;drawer.close();}closeMenu();resetFold();
  // Läuft gerade ein Blatt, wird die Route nur vorgemerkt; frame() startet sie, sobald das Blatt liegt.
  if(nav.status==='turn'){nav.go(route);pendingPush=push;invalidate();return;}
  const from={...nav.route};
@@ -71,6 +74,9 @@ function go(route,push=true){
  if(reduced.matches){while(nav.status!=='ready')nav.tick(10);}
  else if(nav.status==='turn'&&nav.target&&reading(from)&&reading(nav.target))startPaging(from,nav.target,1);
  wheelLock=performance.now()+2200/speed;invalidate();
+ // Eine Adresse kann ein Werk oder die Tasche mitbringen (/werk/<slug>, /tasche) — auch
+ // mitten in der Sitzung, wenn React Router hierher navigiert. Vorher tat das nur der Start.
+ if(route.werk)product(route.werk);else if(route.tasche)cart();
 }
 function house(slug){if(!reading(nav.route))nav.origin={...nav.route};go({section:'haus',slug,index:0});}
 function returnDisplay(){go(nav.origin||{section:nav.route.section==='haus'?houses[nav.route.slug].world:'entdecken',index:0});}
@@ -195,7 +201,14 @@ function showDrawer(html){
  if(!drawer.open)drawer.showModal();
  drawer.scrollTop=0;invalidate();
 }
-function product(id){if(!products[id])return;activeProduct=id;showDrawer(productView(products[id],state));quelle.signal('ansehen',{product:products[id]});}
+// Ein geöffnetes Werk hat seine eigene Adresse (/werk/<slug>): Teilen, Zurück-Taste und die
+// Produktangaben für Suchmaschinen hängen daran. Steht sie schon (Aufruf von außen), wird nicht
+// noch einmal geschrieben.
+function product(id){if(!products[id])return;activeProduct=id;
+ const mitWerk={...nav.route,werk:id};
+ if(!adresse.gleich(mitWerk))rememberHash(mitWerk);
+ nav.route.werk=id;
+ showDrawer(productView(products[id],state));quelle.signal('ansehen',{product:products[id]});}
 function cart(){activeProduct=null;showDrawer(cartView(state));}
 function account(){go({section:'konto',index:0});}
 function saved(){go({section:'konto',index:1});}
@@ -498,7 +511,12 @@ function updateCart(){$('cart-count').textContent=state.cart.reduce((n,r)=>n+r.q
 $('menu-toggle').onclick=()=>{const open=$('main-nav').classList.toggle('open');$('menu-toggle').setAttribute('aria-expanded',String(open));};
 $('search-open').onclick=search;$('account-open').onclick=account;$('cart-open').onclick=cart;
 $('close-drawer').onclick=()=>drawer.close();
-drawer.addEventListener('close',()=>{lastFocus?.focus({preventScroll:true});wheelLock=performance.now()+500;invalidate();});
+drawer.addEventListener('close',()=>{
+ // Zu heißt zurück auf die Bühne — mit replaceState, sonst pendelt die Zurück-Taste
+ // zwischen offenem und geschlossenem Fenster statt eine Seite zurückzugehen.
+ if(schliesstStill)schliesstStill=false;
+ else if(nav.route.werk||nav.route.tasche){const {werk,tasche,...ohne}=nav.route;nav.route=ohne;if(!adresse.gleich(ohne))rememberHash(ohne,true);}
+ lastFocus?.focus({preventScroll:true});wheelLock=performance.now()+500;invalidate();});
 drawer.addEventListener('click',e=>{if(e.target===drawer&&e.clientX<drawer.getBoundingClientRect().left)drawer.close();});
 $('previous').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('return-display').onclick=returnDisplay;
 $('scene-action').onclick=()=>{const c=displays[sections[nav.route.section][nav.route.index]];if(c.inquiry)inquiry(c.inquiry);else if(c.product)product(c.product);else go({section:c.section,index:0});};
@@ -552,9 +570,14 @@ try{
 kontoLaden();
 return {
  go,route:()=>nav.route,state,refresh:readRefresh,quelle,kontoLaden,
+ // Nach bezahlter Kasse: die Stücke dieses Hauses aus der Tasche nehmen. Muss hier stehen —
+ // store.mjs schreibt nur den Zustand weg und kennt weder Fenster noch die Zahl im Kopf.
+ tascheLeeren(haus){state.cart=haus?state.cart.filter(r=>!products[r.id]||products[r.id].house!==haus):[];updateCart();readRefresh();},
  stop(){for(const [z,t,f,o] of hoerer)z.removeEventListener(t,f,o);for(const k of [...document.body.classList])if(/^(is-|ohne-3d)/.test(k))document.body.classList.remove(k);delete document.body.dataset.section;delete document.body.dataset.page;delete document.body.dataset.motion;if(raf)cancelAnimationFrame(raf);raf=null;clearTimeout(blasenTimer);clearTimeout(weiterTimer);clearTimeout(toastTimer);if(world?.dispose)world.dispose();world=null;}
 };
 }
 
-// Sicherung für eine veraltet zwischengespeicherte index.html, die app.js noch direkt lädt: dann startet die Vorschau selbst.
-if(!globalThis.__pawnBoot)setTimeout(()=>{if(!globalThis.__pawnHeft)startHeft({quelle:demoQuelle()}).then(h=>{globalThis.__pawnHeft=h;window.pawnHeft=h;}).catch(e=>console.error(e));},0);
+// HINWEIS FÜR DEN NÄCHSTEN ABGLEICH MIT DEM PROTOTYP: Hier stand eine Sicherung, die das Heft
+// selbst mit Beispieldaten startete, falls keine index.html es tat. Im Projekt ruft HeftRoute03.tsx
+// startHeft() — die Sicherung hätte ein ZWEITES Heft mit Beispieldaten danebengestellt.
+// Sie bleibt draußen. Siehe LIESMICH.md.

@@ -26,12 +26,20 @@ const heft = await startHeft({
 | `public/heft/assets/` | Bilder, Filme, `cutouts.json` |
 | `docs/heft03/` | `INTEGRATION.md` (Vertrag), `AUFTRAG-INTEGRATION.md` (Auftrag Teil H), `backend-inventar.md` (Ist-Zustand des Backends), `REVISION-03.md` (was sich zuletzt geändert hat) |
 
+**Was in dieser Fassung ANDERS ist als im Prototyp** — bitte beim nächsten Abgleich nicht zurückholen:
+
+1. `app.js` hat am Ende **keine Selbststart-Sicherung** mehr (`if(!globalThis.__pawnBoot)…`). Im Projekt ruft `HeftRoute03.tsx` `startHeft()`; die Sicherung hätte ein zweites Heft mit Beispieldaten danebengestellt. Der Import `demoQuelle` in Zeile 10 bleibt — er ist die Standardquelle.
+2. `app.js › go()` öffnet am Ende ein Werk bzw. die Tasche, wenn die Route sie trägt. Vorher tat das nur der Start; eine Navigation zu `/werk/<slug>` mitten in der Sitzung landete auf der Bühne ohne Werk.
+3. `app.js › product()` schreibt die Adresse `/werk/<slug>`, das Schließen des Fensters führt zurück auf die Bühne (`replaceState`). Damit stimmen Teilen-Links, Zurück-Taste und die Produktangaben für Suchmaschinen.
+4. `app.js` gibt zusätzlich `tascheLeeren(haus)` zurück — nach bezahlter Kasse.
+5. `schriften.css` ist neu: das Heft schreibt `Playfair`, `@fontsource` registriert `Playfair Display`. Die Datei gibt denselben Schnitten den kurzen Namen, in 400/500/600 je aufrecht und kursiv.
+
 **Zwei Dinge sind beim Kopieren schon erledigt** (H1 Punkt 2 und 3):
 
 1. `style.css` enthält keine `@font-face`-Regeln mehr. Die Schriften kommen aus `@fontsource/playfair-display` und `@fontsource/inter`; die Familiennamen im Heft heißen `Playfair` und `Inter` — falls `@fontsource` andere Namen registriert, **einen** Alias in `index.css` setzen, nicht das Heft ändern.
 2. `dreiD.mjs` importiert hier `three` und `three/examples/jsm/renderers/CSS3DRenderer.js` aus dem npm-Paket (Repo hat `three@0.160`, dieselbe Fassung wie die Vorschau). Keine andere Datei kennt Three.js.
 
-**Offen aus H1:** `heft.d.ts` schreiben, `npm run test:heft` in `package.json` und in `scripts/verify/verify.sh schnell` eintragen.
+**H1 ist erledigt:** `heft.d.ts` beschreibt die Schnittstellen für die React-Hülle (Ambient-Deklarationen auf `@/heft03/…`; die `.mjs` selbst werden nicht typgeprüft). `npm run test:heft` steht in `package.json` und läuft als eigene Prüfung `heft` in `scripts/verify/verify.sh schnell` und `voll`.
 
 **Regel der Bühne:** Aufgestellt wird nur, was freigestellt ist (`product_dna.heft.cutout_url`). Werke ohne Freistellung erscheinen in Suche, Hausseite und Seitenfenster — nie als Foto auf der Bühne. Deshalb ist die Freistell-Function (H6) Pflicht vor dem Umschalttag.
 
