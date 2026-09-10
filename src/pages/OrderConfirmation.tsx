@@ -49,6 +49,7 @@ export default function OrderConfirmation() {
   /* `null` = wird noch nachgesehen. Kein Vorab-Erfolg, kein Vorab-Fehler. */
   const [bestellung, setBestellung] = useState<Bestellstand | null>(null);
   const cleared = useRef(false);
+  const bezahltParam = houseKey ? `?bezahlt=${encodeURIComponent(houseKey)}` : "";
 
   // Nach der Zahlung nur die Stücke des bezahlten Hauses entfernen — was noch bei anderen
   // Häusern liegt, bleibt im Warenkorb.
@@ -120,8 +121,10 @@ export default function OrderConfirmation() {
           </p>
         )}
         <div className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button asChild variant="editorial" size="chip"><Link to="/konto/3">Bestellungen ansehen</Link></Button>
-          <Button asChild variant="editorial" size="chip"><Link to="/">Weiter entdecken</Link></Button>
+          {/* `?bezahlt=` sagt dem Heft, welches Haus bezahlt ist — nur dessen Stücke gehen
+              aus der Tasche. Was bei einem anderen Haus liegt, bleibt liegen. */}
+          <Button asChild variant="editorial" size="chip"><Link to={`/konto/3${bezahltParam}`}>Bestellungen ansehen</Link></Button>
+          <Button asChild variant="editorial" size="chip"><Link to={`/${bezahltParam}`}>Weiter entdecken</Link></Button>
         </div>
       </section>
     </PalaceLayout>

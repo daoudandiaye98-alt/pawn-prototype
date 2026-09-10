@@ -140,11 +140,21 @@ interface HeftQuelle {
     setzen(productId: string, an: boolean): Promise<{ ok: boolean }>;
   };
   signal(art: string, daten?: Record<string, unknown>): Promise<void>;
+  /** Texte, die im Admin gepflegt werden (`site_content`): Schlüssel → Text. */
+  texte?(): Promise<Record<string, string>>;
+  /** Die heute geltenden Vertragsfassungen für Schritt 5 der Bewerbung. */
+  vertraege?(): Promise<{ id: string; titel: string; url: string; art: string }[]>;
+  /** „Alles löschen" — auch auf dem Server, nicht nur auf diesem Gerät. */
+  vergessen?(): Promise<{ ok: boolean; fehler?: string; nurGeraet?: boolean }>;
   konto: {
     aktuell(): Promise<{ id: string; name: string; email: string; member_number?: number | null } | null>;
     anmelden(): Promise<void>;
     abmelden(): Promise<void>;
     bestellungen(): Promise<Record<string, unknown>[]>;
+    /** Die eigenen Fäden zu den Häusern (`message_threads`). */
+    anfragen?(): Promise<Record<string, unknown>[]>;
+    /** Signierte Adresse der Rechnung, gültig eine Stunde. */
+    rechnung?(orderId: string): Promise<string | null>;
   };
 }
 

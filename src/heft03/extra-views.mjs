@@ -59,11 +59,18 @@ export function gespraechErgebnis(state){
  const satz='Du suchst '+({'Ein Kleidungsstück':'ein Kleidungsstück','Etwas für meinen Raum':'etwas für deinen Raum','Ein Kunstwerk':'ein Kunstwerk'}[fr.was])+' — '+fr.anlass.charAt(0).toLowerCase()+fr.anlass.slice(1)+(max?', bis '+max.toLocaleString('de-DE')+' €':', Rahmen offen')+'.';
  return {welt,max,treffer,weiter,satz};
 }
+// Anfragen aus der Quelle (message_threads): eine Zeile je Faden zu einem Haus.
+const ANFRAGE_STAND={open:'offen',offen:'offen',answered:'beantwortet',closed:'abgeschlossen'};
+export function anfrageZeilen(anfragen){
+ if(!anfragen||!anfragen.length)return '';
+ return '<ul class="anfragen">'+anfragen.slice(0,8).map(a=>'<li><small>'+esc(a.datum)+(a.haus?' · '+esc(a.haus):'')+' · '+esc(ANFRAGE_STAND[a.stand]||a.stand)+'</small><strong>'+esc(a.betreff)+'</strong>'+(a.werkSlug?'<button class="text-link" data-werk-slug="'+esc(a.werkSlug)+'">'+esc(a.werk)+' ansehen <span aria-hidden="true">↗</span></button>':'')+'</li>').join('')+'</ul>';
+}
+
 // Bestellungen aus der Quelle (orders): eine Zeile je Bestellung, Stücke aus items.
 const STATUS={pending:'Offen',paid:'Bezahlt',failed:'Fehlgeschlagen',refunded:'Erstattet',expired:'Abgelaufen',new:'Neu',in_progress:'In Arbeit',packed:'Verpackt',shipped:'Unterwegs',delivered:'Angekommen'};
 export function bestellZeilen(orders){
  if(!orders||!orders.length)return '';
- return '<ul class="bestellungen">'+orders.slice(0,6).map(o=>'<li><small>'+esc(o.datum)+' · '+esc(STATUS[o.versand]||STATUS[o.status]||o.status)+(o.nummer?' · '+esc(o.nummer):'')+'</small><strong>'+o.stuecke.map(esc).join(', ')+'</strong><span>'+money(o.summe)+(o.tracking?' · Sendung '+esc(o.tracking):'')+'</span></li>').join('')+'</ul>';
+ return '<ul class="bestellungen">'+orders.slice(0,6).map(o=>'<li><small>'+esc(o.datum)+' · '+esc(STATUS[o.versand]||STATUS[o.status]||o.status)+(o.nummer?' · '+esc(o.nummer):'')+'</small><strong>'+o.stuecke.map(esc).join(', ')+'</strong><span>'+money(o.summe)+(o.tracking?' · Sendung '+esc(o.tracking):'')+'</span>'+(o.nummer?'<button class="text-link" data-rechnung="'+esc(o.id)+'">Rechnung '+esc(o.nummer)+' <span aria-hidden="true">↓</span></button>':'')+'</li>').join('')+'</ul>';
 }
 // Die Antwort auf einen freien Satz: aus der Quelle (pawn-chat), sonst der Regelsatz des Hefts.
 export function antwortHtml(state){
@@ -130,7 +137,8 @@ export function extendedView(route,state){
   if(i===3)return spreadVoll(asset('anfrage-brief.webp'),'Eine Gestalterin schreibt am Werktisch im Nachmittagslicht',
    tag('MEIN PAWN / ANFRAGEN')+'<h1>Schreib<br><em>dem Haus.</em></h1>'
    +'<p class="body-copy lead">Auftragsarbeiten beginnen mit einer Nachricht an den Menschen, der sie macht.</p>'
-   +pawnSagt('Noch keine Anfrage. Öffne ein Stück und tipp „Beim Haus anfragen“.')
+   +anfrageZeilen(state.requests)
+   +((state.requests||[]).length?'':pawnSagt('Noch keine Anfrage. Öffne ein Stück und tipp „Beim Haus anfragen“.'))
    +zug('DEIN ZUG','Auftragsarbeiten ansehen','Kunst, die im Gespräch entsteht.','data-route="kunst"'),{welt:'dna',rechts:false});
   if(i===4)return page(
    tag('MEIN PAWN / EINSTELLUNGEN')+'<h1>Zugang,<br><em>Angaben, Gedächtnis.</em></h1><p class="body-copy">Dein Name, deine E-Mail — und was PAWN sich merken darf.</p>'

@@ -120,3 +120,70 @@ export function urteil(stil={},produkt){
 }
 
 export const bildVon=name=>asset(name);
+
+// ————————————————————————————————————————————————————————————————
+// Passform aus der echten Maßtabelle.
+//
+// Portiert aus src/features/fit/measurements.ts (Teil der alten Werkseite). Die
+// Faustregel davor las nur den Brustumfang und riet eine Größe aus vier festen
+// Stufen — sie kannte die Maßtabelle des Hauses gar nicht. Ein Haus, das in
+// Zentimetern misst, wurde damit ignoriert, und die Zahl im Seitenfenster war
+// eine Vermutung mit sicherem Auftreten.
+//
+// Hier wird gerechnet: Umfangszeilen (Brust, Taille, Hüfte) als Umfang des
+// Stücks, Längenzeilen (Schulter, Innenbein) als direkter Vergleich. Wie viel
+// Luft angenehm ist, sagt der gewählte Fall.
+// ————————————————————————————————————————————————————————————————
+
+/** Wie viel Luft (Zentimeter) zwischen Körper und Stück angenehm ist. */
+export const SPIELRAUM={eng:{min:0,max:8},gerade:{min:3,max:14},weit:{min:8,max:30}};
+
+/** Welche Zeile der Maßtabelle welchem Körpermaß entspricht. */
+const ZEILE_ZU_MASS=[
+ {muster:/brust/i,schluessel:'chest_cm',art:'umfang'},
+ {muster:/taille/i,schluessel:'waist_cm',art:'umfang'},
+ {muster:/(h(ü|ue)ft|bund)/i,schluessel:'hip_cm',art:'umfang'},
+ {muster:/schulter/i,schluessel:'shoulder_cm',art:'laenge'},
+ {muster:/(innenbein|schritt)/i,schluessel:'inseam_cm',art:'laenge'},
+];
+
+const zahl=v=>{if(v==null)return null;const n=Number(String(v).replace(',','.'));return Number.isFinite(n)&&n>0?n:null;};
+
+/**
+ * Körpermaße gegen die Maßtabelle des Stücks. Gibt {moeglich, groessen[], beste} zurück.
+ * `moeglich:false` heißt: es fehlt etwas — dann behauptet das Heft nichts.
+ */
+export function passform(masse={},produkt){
+ const tabelle=produkt&&produkt.measurements,groessen=(produkt&&produkt.sizes)||[];
+ if(!tabelle||!Array.isArray(tabelle.rows)||!tabelle.rows.length||!groessen.length)return {moeglich:false,groessen:[],beste:null};
+
+ const passende=ZEILE_ZU_MASS.map(z=>{
+  const zeile=tabelle.rows.find(r=>z.muster.test(r));
+  const koerper=zahl(masse[z.schluessel]);
+  return zeile&&koerper?{zeile,koerper,art:z.art}:null;
+ }).filter(Boolean);
+ if(!passende.length)return {moeglich:false,groessen:[],beste:null};
+
+ const band=SPIELRAUM[masse.fit_preference]||SPIELRAUM.gerade;
+ const ergebnis=groessen.map(groesse=>{
+  let schlimmste=null,irgendeinWert=false;
+  for(const r of passende){
+   const stueck=zahl(tabelle.values&&tabelle.values[r.zeile]&&tabelle.values[r.zeile][groesse]);
+   if(stueck===null)continue;
+   irgendeinWert=true;
+   const luft=Math.round((stueck-r.koerper)*10)/10;
+   const grenze=r.art==='laenge'?{min:-2,max:4}:band;
+   let stufe='passt',abstand=0;
+   if(luft<grenze.min){stufe='knapp';abstand=grenze.min-luft;}
+   else if(luft>grenze.max){stufe='weit';abstand=luft-grenze.max;}
+   const wo=r.zeile.toLowerCase();
+   const grund=stufe==='passt'?r.zeile+' '+(luft>=0?'+':'')+luft+' cm Spielraum'
+    :stufe==='knapp'?'zu knapp an der '+wo+' ('+luft+' cm)'
+    :'sehr weit an der '+wo+' (+'+luft+' cm)';
+   if(!schlimmste||abstand>schlimmste.abstand)schlimmste={stufe,grund,abstand};
+  }
+  if(!irgendeinWert||!schlimmste)return {groesse,stufe:'unbekannt',grund:'Für diese Größe fehlen Maße.'};
+  return {groesse,stufe:schlimmste.stufe,grund:schlimmste.grund};
+ });
+ return {moeglich:true,groessen:ergebnis,beste:ergebnis.find(r=>r.stufe==='passt')||null};
+}

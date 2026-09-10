@@ -34,7 +34,7 @@ const heft=await quelle.heft();
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const state={saved:[],cart:[],orders:[],style:'',consent:null,pawnNote:null,denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',fitProduct:null};
+const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:null,denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',fitProduct:null};
 // Was mit Zustimmung gespeichert wurde, kommt zurück.
 {const alt=laden();if(alt&&alt.consent===true)Object.assign(state,alt,{denkt:false,message:'',reference:''});}
 if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!optionen.zustimmung;
@@ -216,7 +216,15 @@ function search(){go({section:'suche',index:0});}
 function inquiry(id){
  const p=products[id];showDrawer('<p class="eyebrow">ANFRAGE AN '+houses[p.house].name+'</p><h2 id="dialog-title">'+p.name+'</h2><p>Erzähle dem Haus, was du dir vorstellst.</p><form data-inquiry-form><label>Deine E-Mail<input type="email" name="email" required></label><label>Deine Nachricht<textarea name="message" rows="6" minlength="15" required placeholder="Wunsch, Format oder eine Frage zur Arbeit"></textarea></label><button class="solid" type="submit">Anfrage prüfen</button></form><p class="small-note">In dieser Vorschau wird keine Nachricht verschickt.</p>');
 }
-function apply(){applicationStep=0;showDrawer(applicationView(applicationStep,applicationValues));}
+function apply(){
+ applicationStep=0;showDrawer(applicationView(applicationStep,applicationValues));
+ // Einmal je Sitzung: die geltenden Fassungen aus contract_versions. Kommt nichts,
+ // bleibt Schritt 5, was er war — eine Ansicht ohne Zustimmung.
+ if(!applicationValues.__vertraege&&quelle.vertraege)quelle.vertraege().then(v=>{
+  if(!v||!v.length)return;applicationValues.__vertraege=v;
+  if(drawer.open)showDrawer(applicationView(applicationStep,applicationValues));
+ },()=>{});
+}
 const BLOCK_NAMEN={auftakt:'Auftakt',editorial_text:'Geschichte',zitat:'Zitat',produktreihe:'Arbeiten',lookbook_streifen:'Lookbook',banner_seitlich:'Banner seitlich',banner_vollbreite:'Banner vollbreite',ueberlappend:'Überlagert'};
 function studioState(slug){
  const h=houses[slug];
@@ -317,7 +325,7 @@ async function anfrageSenden(data){
 }
 // Bewerbung: die sechs Schritte des Hefts → Felder von submit-application.
 async function bewerbungSenden(){
- const v=applicationValues,werte={email:v.email,password:v.password,displayName:v.name,brandName:v.brand||v.brandName,legalName:v.legalName,location:v.location,country:v.country,website:v.website,instagram:v.instagram,story:v.story,tags:[v.world].filter(Boolean),productionStatus:v.production,acceptedContractIds:v.contracts?[v.contracts]:[]};
+ const v=applicationValues,werte={email:v.email,password:v.password,displayName:v.name,brandName:v.brand||v.brandName,legalName:v.legalName,location:v.location,country:v.country,website:v.website,instagram:v.instagram,story:v.story,tags:[v.world].filter(Boolean),productionStatus:v.production,acceptedContractIds:v.contracts?String(v.contracts).split(',').filter(Boolean):[]};
  const antwort=await quelle.bewerbung(werte);
  if(antwort?.vorschau){showDrawer('<p class="eyebrow">BEWERBUNG / GESTALTUNGSVORSCHAU</p><h2 id="dialog-title">Ein neues Kapitel.</h2><p>Du hast den Bewerbungsablauf vollständig durchgespielt. Deine Angaben wurden nicht eingereicht.</p><button class="solid" data-route="fuer-designer">Zurück zu Für Designer ↗</button>');return;}
  if(!antwort?.ok){toast(antwort?.fehler||antwort?.error||'Die Bewerbung kam nicht durch.');return;}
@@ -329,8 +337,10 @@ async function kontoLaden(){
   const k=await quelle.konto.aktuell();
   if(!k)return;
   state.profile={name:k.name,email:k.email,id:k.id};if(state.consent===null)state.consent=true;
-  const [merk,stil,masse,orders]=await Promise.all([quelle.merkliste.laden(),quelle.stil.laden(),quelle.masse.laden(),quelle.konto.bestellungen?quelle.konto.bestellungen():[]]);
+  const [merk,stil,masse,orders,anfragen]=await Promise.all([quelle.merkliste.laden(),quelle.stil.laden(),quelle.masse.laden(),
+   quelle.konto.bestellungen?quelle.konto.bestellungen():[],quelle.konto.anfragen?quelle.konto.anfragen():[]]);
   if(Array.isArray(orders))state.orders=orders;
+  if(Array.isArray(anfragen))state.requests=anfragen;
   if(Array.isArray(merk))state.saved=[...new Set([...merk.filter(id=>products[id]),...state.saved])];
   if(stil&&stil.stil&&Object.keys(stil.stil).length){state.stil={...stil.stil,...state.stil};if(stil.fuerWen)state.measurements.fuerWen=state.measurements.fuerWen||stil.fuerWen;}
   if(masse)for(const [k2,v] of Object.entries(masse))if(v!=null&&state.measurements[k2]===undefined)state.measurements[k2]=String(v);
@@ -439,8 +449,17 @@ hoeren(document,'click',e=>{
  if(b.hasAttribute('data-consent-ja')){state.consent=true;speichern(state);zustimmungMelden();blaseWeg();toast('PAWN merkt sich das — auf diesem Gerät.');readRefresh();begleiterTakt();return;}
  if(b.hasAttribute('data-consent-nein')){state.consent=false;vergessen();zustimmungMelden();blaseWeg();begleiterTakt();return;}
  if(b.hasAttribute('data-konto')){chatSchliessen();go({section:'konto',index:0});return;}
- if(b.hasAttribute('data-clear-memory')){vergessen();state.style='';state.saved=[];state.goal='';state.pawnNote=null;state.stil={};state.frag={};state.foto='';state.message='';state.measurements={};state.fitProduct=null;state.reference='';state.consent=false;readRefresh();toast('Vorschau-Erinnerungen gelöscht.');}
+ if(b.hasAttribute('data-clear-memory')){
+  // Erst der Server, dann das Gerät. Nur zu vergessen, was hier liegt, wäre eine
+  // halbe Löschung — und die schlimmere, weil sie sich wie eine ganze anfühlt.
+  quelle.vergessen&&quelle.vergessen().then(r=>{if(r&&r.ok===false)toast(r.fehler||'Auf dem Server blieb etwas stehen.');},()=>toast('Auf dem Server blieb etwas stehen.'));
+  vergessen();state.style='';state.saved=[];state.goal='';state.pawnNote=null;state.stil={};state.frag={};state.foto='';state.message='';state.measurements={};state.fitProduct=null;state.reference='';state.consent=false;readRefresh();toast('Vorschau-Erinnerungen gelöscht.');}
  if(b.hasAttribute('data-export')){const blob=new Blob([JSON.stringify({scope:'PAWN Gestaltungsvorschau',style:state.style,goal:state.goal,measurements:state.measurements,saved:state.saved,consent:state.consent},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pawn-vorschau-dna.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);toast('Deine Vorschau-DNA wurde exportiert.');}
+ if(b.dataset.rechnung){
+  const id=b.dataset.rechnung;
+  quelle.konto.rechnung?quelle.konto.rechnung(id).then(u=>{if(u)open(u,'_blank','noopener');else toast('Die Rechnung ließ sich nicht öffnen.');},()=>toast('Die Rechnung ließ sich nicht öffnen.')):toast('Die Rechnung ließ sich nicht öffnen.');
+  return;}
+ if(b.dataset.werkSlug){const p2=Object.values(products).find(x=>x.slug===b.dataset.werkSlug);if(p2){drawer.close();product(p2.id);}return;}
  if(b.hasAttribute('data-reset-search'))go({section:'suche',index:0});
  if(b.hasAttribute('data-logout')){state.profile=null;quelle.konto.abmelden().catch(()=>{});readRefresh();toast('Abgemeldet.');}
  if(b.hasAttribute('data-dna-privacy'))go({section:'dna',index:7});

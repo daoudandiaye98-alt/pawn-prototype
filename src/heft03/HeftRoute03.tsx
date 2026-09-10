@@ -202,7 +202,18 @@ export default function HeftRoute03() {
             if (r.section === "haus" && r.slug) besuchZaehlen("designer", datenRef.current?.houses?.[r.slug]?.id);
           },
           zustimmung: (wert: boolean | null) => {
-            if (wert !== null) setConsentRef.current(wert ? "accepted" : "essential");
+            if (wert === null) return;
+            setConsentRef.current(wert ? "accepted" : "essential");
+            /* Wer angemeldet ist, entscheidet fuer sein Konto, nicht fuer dieses Geraet:
+               sonst waere dieselbe Antwort am Telefon wieder offen. profiles traegt die
+               drei Felder schon (useAuth().profile.consent). */
+            const u = userRef.current;
+            if (u) {
+              void supabase
+                .from("profiles")
+                .update({ consent_personalization: wert, consent_memory: wert, consent_analytics: wert })
+                .eq("id", u.id);
+            }
           },
           kauf: () => track("anfrage_gesendet", { schritt: "kasse" }),
           fehler: (e: unknown) => console.error("[heft03]", e),
@@ -220,6 +231,26 @@ export default function HeftRoute03() {
       /* Zurück aus der Kasse: nur die Stücke des bezahlten Hauses gehen aus der Tasche. */
       const bezahlt = new URLSearchParams(location.search).get("bezahlt");
       if (bezahlt) heft.tascheLeeren(bezahlt);
+
+      /*
+       * Der Umschlag trägt Daoudas Worte, nicht die des Prototyps — sofern er
+       * welche gesetzt hat. `site_content` ist die Fläche, die er im Admin pflegt
+       * (`landing.*`); was dort leer ist, bleibt beim Text des Hefts.
+       *
+       * Die Vision-Seiten bleiben ausdrücklich beim Heft-Text (Entscheidung D1).
+       */
+      const texte = await quelle.texte?.();
+      if (texte && !abgebrochen) {
+        const hero = daten.displays?.hero;
+        const setze = (feld: "kicker" | "title" | "text", schluessel: string) => {
+          const wert = texte[schluessel];
+          if (hero && typeof wert === "string" && wert.trim()) hero[feld] = wert;
+        };
+        setze("kicker", "landing.cover_kicker");
+        setze("title", "landing.cover_claim");
+        setze("text", "landing.cover_text");
+        if (texte["landing.cover_kicker"] || texte["landing.cover_claim"] || texte["landing.cover_text"]) heft.refresh();
+      }
     }
 
     return () => {

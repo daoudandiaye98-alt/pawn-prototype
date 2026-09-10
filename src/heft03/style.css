@@ -1044,3 +1044,14 @@ blockquote cite{display:block;font:400 11px Inter,sans-serif;letter-spacing:.16e
 /* Konto › Bestellungen: Zeilen aus der Quelle */
 .bestellungen{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid #d6cfc3}.bestellungen li{display:grid;gap:4px;padding:12px 0;border-bottom:1px solid #d6cfc3}.bestellungen small{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6a6053}.bestellungen strong{font-family:'Playfair Display',Georgia,serif;font-weight:500;font-size:19px;letter-spacing:-.2px}.bestellungen span{font-size:13px;color:#655e54}
 .tasche-haus{margin-top:18px}.tasche-haus>.eyebrow{font-size:10px;letter-spacing:2px;color:#6a6053;margin:0 0 8px}.tasche-haus+.tasche-haus{border-top:1px solid #d6cfc3;padding-top:14px}
+
+/* Die gepflegten Welt-Angaben im Seitenfenster (views.mjs › weltAngaben). Eine Zeile je
+   Feld, Beschriftung leise, Wert lesbar — dieselbe Anmutung wie die Bewerbungs-Übersicht. */
+.welt-felder{margin:10px 0 0}.welt-felder>div{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid #e7ded1}
+.welt-felder>div:last-child{border-bottom:0}.welt-felder dt{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#8a785d;min-width:104px;flex-shrink:0}
+.welt-felder dd{margin:0;font-size:12px;line-height:1.6;color:#5f584c;overflow-wrap:anywhere}
+.anfragen,.vertragsliste{list-style:none;padding:0;margin:22px 0}
+.anfragen li{padding:14px 0;border-bottom:1px solid #ded4c6;display:flex;flex-direction:column;gap:5px}
+.anfragen small{font-size:10px;letter-spacing:1px;color:#8d7c64}.anfragen strong{font-size:14px;font-weight:500}
+.vertragsliste li{padding:10px 0;border-bottom:1px solid #ded4c6;font-size:13px}
+.vertragsliste a{color:inherit}

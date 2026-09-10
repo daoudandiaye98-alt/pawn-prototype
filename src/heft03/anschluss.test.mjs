@@ -6,7 +6,7 @@ import {heftAusZeilen,productFromRow,themeFromRow,checkoutLines,cartByHouse,stil
 import {heftFuellen,demoWiederherstellen,products,houses,sections,displays,counts,kuration} from './data.mjs';
 import {pfadAusRoute,routeAusPfad,alleAdressen,UMZUEGE} from './routen.mjs';
 import {kuratiere} from './kuration.mjs';
-import {urteil} from './beratung.mjs';
+import {urteil,passform} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
 import {chatAntwort,SPALTEN,demoQuelle} from './quelle.mjs';
 import {readView} from './views.mjs';
@@ -124,4 +124,24 @@ test('demoQuelle antwortet auf alles, ohne nach außen zu gehen',async()=>{
  assert.equal(await q.chat({}),null);
  assert.equal((await q.kasse({})).fehler,'vorschau');
  assert.equal((await q.anfrage({})).vorschau,true);
+});
+
+test('Passform rechnet gegen die Maßtabelle des Hauses, nicht gegen eine Faustregel',()=>{
+ const p=productFromRow(zeilen.products[0]);
+ // Die Fixture-Zeile hat rows ['Brustumfang', …] mit Werten je Größe.
+ assert.ok(p.measurements.rows.length,'die Maßtabelle ist angekommen');
+
+ const eng=passform({chest_cm:'92',fit_preference:'eng'},p);
+ const weit=passform({chest_cm:'92',fit_preference:'weit'},p);
+ assert.equal(eng.moeglich,true);
+ assert.equal(weit.moeglich,true);
+ // Derselbe Körper, anderer Fall — das muss zu einer anderen Größe führen,
+ // sonst rechnet die Passform den Spielraum gar nicht mit.
+ assert.notEqual(eng.beste?.groesse,weit.beste?.groesse,'der gewählte Fall verschiebt die Größe');
+ assert.match(eng.groessen[0].grund,/cm/,'die Begründung nennt Zentimeter, keine Vermutung');
+
+ // Ohne Maße wird nichts behauptet.
+ assert.equal(passform({},p).moeglich,false);
+ // Ohne Maßtabelle ebenso.
+ assert.equal(passform({chest_cm:'92'},{...p,measurements:{rows:[],values:{}}}).moeglich,false);
 });

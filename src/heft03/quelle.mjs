@@ -13,6 +13,8 @@
 //   merkliste.laden()/merkliste.setzen(productId,an)
 //   signal(art,daten)                          → void   (ansehen|merken|kaufen|quiz — Geschmackssignale)
 //   konto.aktuell() → {id,name,email}|null · konto.anmelden() · konto.abmelden() · konto.bestellungen() → [{datum,status,stuecke,summe}]
+//   konto.anfragen() → [{id,betreff,haus,werk,stand,datum}] · konto.rechnung(orderId) → signierte URL | null
+//   texte() → {schluessel: text} aus site_content · vertraege() → [{id,titel,url}] · vergessen() → {ok} (loescht serverseitig)
 //   bild(url) → ladbare Adresse (Storage-Pfade signieren/transformieren)
 // funktionen.signieren(urls) → {url: signierteUrl} — einmal je Heft-Ladung, weil die Adapter bild() synchron rufen.
 import {demoHeft} from './data.mjs';
@@ -34,7 +36,10 @@ export function demoQuelle(){
   masse:{laden:nichts,speichern:kein},
   merkliste:{laden:nichts,setzen:kein},
   signal:nichts,
-  konto:{aktuell:nichts,anmelden:nichts,abmelden:nichts,bestellungen:async()=>[]}
+  texte:async()=>({}),
+  vertraege:async()=>[],
+  vergessen:kein,
+  konto:{aktuell:nichts,anmelden:nichts,abmelden:nichts,bestellungen:async()=>[],anfragen:async()=>[],rechnung:nichts}
  };
 }
 
@@ -48,7 +53,10 @@ export const SPALTEN={
  collections:'id,number,title,subtitle,is_active',
  items:'collection_id,product_slug,world,sort',
  masse:'height_cm,shoulder_cm,chest_cm,waist_cm,hip_cm,inseam_cm,foot_cm,fit_preference,room_note',
- stil:'welt,richtung,form,fuer_wen,foto_befund'
+ stil:'welt,richtung,form,fuer_wen,foto_befund',
+ anfragen:'id,subject,category,status,last_message_at,product_id,designer_id,products:product_id(slug,name),designers:designer_id(slug,brand_name)',
+ texte:'key,value',
+ vertraege:'id,kind,version,title,url,effective_from'
 };
 
 /** Chat-Antwort von pawn-chat → Heft: Karten-Links (/werk/<slug>, alt /product/<slug>) werden zu Slugs. */
@@ -145,6 +153,33 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    async laden(){const u=await nutzer();if(!u)return null;const {data}=await client.from('wishlists').select('product_id').eq('user_id',u.id);return (data||[]).map(r=>r.product_id);},
    async setzen(productId,an){const u=await nutzer();if(!u)return {ok:false,anmelden:true};const {error}=an?await client.from('wishlists').insert({user_id:u.id,product_id:productId}):await client.from('wishlists').delete().eq('user_id',u.id).eq('product_id',productId);return error?{ok:false,fehler:fehlerText(error)}:{ok:true};}
   },
+  /** Texte, die Daouda im Admin pflegt (site_content). Nur was gesetzt ist, ueberschreibt das Heft. */
+  async texte(){
+   const {data}=await client.from('site_content').select(SPALTEN.texte);
+   return Object.fromEntries((data||[]).filter(r=>r&&r.key&&r.value).map(r=>[r.key,String(r.value)]));
+  },
+  /** Die geltenden Vertragsfassungen fuer Schritt 5 der Bewerbung. */
+  async vertraege(){
+   const {data}=await client.from('contract_versions').select(SPALTEN.vertraege).in('kind',['designer','designer_terms']).is('effective_to',null).order('kind');
+   return (data||[]).map(r=>({id:r.id,titel:r.title||r.kind,url:r.url||'',art:r.kind}));
+  },
+  /**
+   * „Alles loeschen" — und zwar wirklich, nicht nur auf diesem Geraet.
+   * Das Geraetegedaechtnis raeumt das Heft selbst (store.mjs); hier faellt, was auf dem Server liegt.
+   */
+  async vergessen(){
+   const u=await nutzer();if(!u)return {ok:true,nurGeraet:true};
+   const wege=[
+    client.from('kunden_stil').delete().eq('user_id',u.id),
+    client.from('customer_measurements').delete().eq('user_id',u.id),
+    client.from('style_references').delete().eq('user_id',u.id),
+    client.from('user_memory').update({preferences:{},facts:[],updated_at:new Date().toISOString()}).eq('user_id',u.id)
+   ];
+   const ergebnis=await Promise.allSettled(wege);
+   client.from('domain_events').insert({type:'ai.memory_deleted',user_id:u.id,payload:{quelle:'heft'}}).then(()=>{},()=>{});
+   const fehler=ergebnis.filter(r=>r.status==='rejected'||r.value?.error);
+   return fehler.length?{ok:false,fehler:'Nicht alles ließ sich löschen.'}:{ok:true};
+  },
   async signal(art,daten={}){
    if(art==='ansehen'&&daten.product?.id)client.rpc('bump_product_view',{p_product_id:daten.product.id}).then(()=>{},()=>{});
    if(funktionen.signal)funktionen.signal(art,daten);
@@ -153,6 +188,23 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    async aktuell(){const u=await nutzer();if(!u)return null;const {data}=await client.from('profiles').select('display_name,member_number').eq('id',u.id).maybeSingle();return {id:u.id,email:u.email||'',name:data?.display_name||u.email?.split('@')[0]||'',member_number:data?.member_number??null};},
    async anmelden(){if(funktionen.anmelden)return funktionen.anmelden();},
    async bestellungen(){const u=await nutzer();if(!u)return [];const {data}=await client.from('orders').select('id,created_at,status,fulfillment_status,amount_total,items,tracking_number,invoice_number').eq('user_id',u.id).order('created_at',{ascending:false}).limit(20);return (data||[]).map(orderFromRow);},
+   /** Die eigenen Faeden zu den Haeusern — dieselbe Abfrage wie useMyRequestThreads. */
+   async anfragen(){
+    const u=await nutzer();if(!u)return [];
+    const {data}=await client.from('message_threads').select(SPALTEN.anfragen).eq('created_by',u.id).order('last_message_at',{ascending:false}).limit(20);
+    return (data||[]).map(r=>({
+     id:r.id,betreff:r.subject||'Anfrage',stand:r.status||'offen',
+     datum:r.last_message_at?new Date(r.last_message_at).toLocaleDateString('de-DE'):'',
+     haus:r.designers?.brand_name||'',hausSlug:r.designers?.slug||'',
+     werk:r.products?.name||'',werkSlug:r.products?.slug||''
+    }));
+   },
+   /** Die Rechnung liegt im privaten Eimer; die Adresse gilt eine Stunde. */
+   async rechnung(orderId){
+    if(!orderId)return null;
+    const {data,error}=await client.storage.from('invoices').createSignedUrl(orderId+'.pdf',3600);
+    return error?null:(data&&data.signedUrl)||null;
+   },
    async abmelden(){await client.auth.signOut();}
   }
  };

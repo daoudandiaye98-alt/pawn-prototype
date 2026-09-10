@@ -2,7 +2,7 @@ import {products,houses,media,asset,labels} from './data.mjs';
 import {housePresentation,houseBlocks,houseProducts} from './presentation.mjs';
 import {orderedBlocks,purchaseMode} from './model.mjs';
 import {pawnSagt} from './extra-views.mjs';
-import {urteil} from './beratung.mjs';
+import {urteil,passform} from './beratung.mjs';
 export const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const money=n=>n==null?'Preis auf Anfrage':new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
 const btn=(text,attrs='',cls='text-link')=>'<button class="'+cls+'" '+attrs+'>'+text+' <span aria-hidden="true">↗</span></button>';
@@ -148,7 +148,13 @@ export function readView(route,state){
  return '';
 }
 // Der Passform-Assistent: aus hinterlegten Maßen wird eine Größe, aus der Linie ein Urteil.
+//
+// Erst die echte Rechnung gegen die Maßtabelle des Hauses (beratung.mjs › passform).
+// Nur wenn ein Haus keine Tabelle pflegt, greift die alte Faustregel aus dem
+// Brustumfang — sie ist eine Vermutung und wird unten auch so benannt.
 export function groesseAus(m={},p){
+ const f=passform(m,p);
+ if(f.moeglich&&f.beste)return f.beste.groesse;
  if(!p.sizes?.length||!m.chest_cm)return null;
  const brust=Number(m.chest_cm),fall=m.fit_preference||'gerade';
  let idx=brust<88?0:brust<96?1:brust<104?2:3;
@@ -161,11 +167,19 @@ export function groesseAus(m={},p){
 }
 export function passformAssistent(p,state){
  const m=state.measurements||{},st=state.stil||{},u=urteil(st,p),groesse=groesseAus(m,p);
+ const f=passform(m,p);
  let inhalt='';
  if(p.sizes?.length){
+  // Mit Maßtabelle steht da, WORAN es liegt — „Brust +6 cm Spielraum" statt einer Zahl ohne Begründung.
+  const begruendung=f.moeglich&&f.beste?f.beste.grund
+   :m.chest_cm?'geschätzt aus Brust '+esc(m.chest_cm)+' cm'+(m.fit_preference?', Fall „'+esc(m.fit_preference)+'“':''):'';
+  const knapp=f.moeglich?f.groessen.filter(g=>g.stufe!=='passt'&&g.stufe!=='unbekannt'):[];
   inhalt+=groesse
-   ?'<p class="passform-satz"><strong>Deine Größe: '+groesse+'</strong> — aus Brust '+esc(m.chest_cm)+' cm'+(m.fit_preference?', Fall „'+esc(m.fit_preference)+'“':'')+'.</p><button class="solid" type="button" data-groesse="'+groesse+'">Größe '+groesse+' übernehmen</button>'
-   :'<p class="passform-satz">Hinterleg deine Maße einmal — dann steht hier deine Größe.</p><button class="solid" type="button" data-goto="dna:6">Maße hinterlegen</button>';
+   ?'<p class="passform-satz"><strong>Deine Größe: '+groesse+'</strong>'+(begruendung?' — '+esc(begruendung):'')+'.</p><button class="solid" type="button" data-groesse="'+groesse+'">Größe '+groesse+' übernehmen</button>'
+     +(knapp.length?'<p class="small-note">'+knapp.map(g=>esc(g.groesse)+': '+esc(g.grund)).join(' · ')+'</p>':'')
+   :f.moeglich
+    ?'<p class="passform-satz">Keine Größe liegt in deinem Spielraum. '+esc((f.groessen.find(g=>g.stufe!=='unbekannt')||{}).grund||'')+'</p><button class="text-link" type="button" data-goto="dna:6">Maße prüfen <span aria-hidden="true">↗</span></button>'
+    :'<p class="passform-satz">Hinterleg deine Maße einmal — dann steht hier deine Größe.</p><button class="solid" type="button" data-goto="dna:6">Maße hinterlegen</button>';
  }else if(p.world==='interior'){
   inhalt+='<p class="passform-satz">'+(state.foto?'Dein Raumfoto liegt vor. Im verbundenen System prüft PAWN hier Maß und Licht.':'Lade ein Foto von deinem Raum hoch — PAWN prüft, ob das Stück hineinpasst.')+'</p>'+(state.foto?'':'<button class="solid" type="button" data-goto="dna:4">Raumfoto hinzufügen</button>');
  }else{
@@ -174,9 +188,38 @@ export function passformAssistent(p,state){
  const urteilHtml=u?'<p class="passform-urteil '+(u.ja===true?'ja':u.ja===false?'nein':'')+'"><small>STEHT MIR DAS?</small>'+esc(u.text)+'</p>':'';
  return '<section class="passform"><p class="eyebrow">PASSFORM-ASSISTENT</p>'+inhalt+urteilHtml+(u&&u.ja!=null?'':'<button class="text-link" type="button" data-style-check="'+p.id+'">Meine Linie prüfen <span aria-hidden="true">↗</span></button>')+'</section>';
 }
+/**
+ * Die Angaben, die ein Haus je Welt pflegt (`product_dna`, siehe src/lib/weltFelder.ts).
+ * Ohne sie stand im Seitenfenster nur „Material & Pflege" mit einem Satz — bei einem
+ * Kunstwerk also weder Technik noch Auflage noch Signatur, obwohl das Haus sie gepflegt hat.
+ * Ein Feld ohne Wert erscheint nicht; erfunden wird nichts.
+ */
+const WELT_FELDER={
+ mode:[['groesse','Größe'],['passform','Passform'],['material','Material'],['farbe','Farbe'],['pflege','Pflege']],
+ interior:[['masse','Maße'],['gewicht','Gewicht'],['material','Material'],['oberflaeche','Oberfläche'],['farbe','Farbe'],['fertigung','Fertigung'],['lieferzeit','Lieferzeit'],['montage','Montage'],['pflege','Pflege'],['belastbarkeit','Belastbarkeit']],
+ kunst:[['technik','Technik'],['medium','Medium'],['masse','Maße'],['jahr','Jahr'],['auflage','Auflage'],['signatur','Signatur'],['rahmung','Rahmung'],['traeger','Träger'],['zustand','Zustand']]
+};
+const WELT_TITEL={mode:'Material & Pflege',interior:'Maße & Material',kunst:'Technik & Auflage'};
+
+/** Die gepflegten Welt-Felder eines Werks als Beschreibungsliste — oder nichts. */
+export function weltAngaben(p){
+ const felder=(p.dna&&p.dna.felder)||{},liste=WELT_FELDER[p.world]||WELT_FELDER.mode;
+ const zeilen=liste.map(([k,label])=>{const v=felder[k];return v&&typeof v==='string'&&v.trim()?[label,v.trim()]:null;}).filter(Boolean);
+ const d=p.details||{};
+ if(d.dimensions&&(d.dimensions.w||d.dimensions.h||d.dimensions.l))
+  zeilen.push(['Abmessungen',[d.dimensions.w&&d.dimensions.w+' cm breit',d.dimensions.h&&d.dimensions.h+' cm hoch',d.dimensions.l&&d.dimensions.l+' cm tief'].filter(Boolean).join(' · ')]);
+ if(d.made_in)zeilen.push(['Gefertigt in',d.made_in]);
+ if(d.edition)zeilen.push(['Edition',d.edition]);
+ if(d.care&&!zeilen.some(z=>z[0]==='Pflege'))zeilen.push(['Pflege',d.care]);
+ if(d.sustainability)zeilen.push(['Nachhaltigkeit',d.sustainability]);
+ if(!zeilen.length)return '';
+ return '<details><summary>'+(WELT_TITEL[p.world]||'Angaben')+'</summary><dl class="welt-felder">'
+  +zeilen.map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl></details>';
+}
+
 export function productView(p,state){
  const h=houses[p.house],mode=purchaseMode(p);
- return '<div class="drawer-photo">'+img(p.image,p.name)+'</div>'+tag('HAUS '+h.number+' / '+labels[p.world])+'<h2 id="dialog-title">'+p.name+'</h2><button class="designer-link" data-house="'+h.slug+'">Von '+h.name+' · Das Haus besuchen ↗</button><p class="price">'+money(p.price)+'</p><p>'+p.description+'</p><form data-cart-form data-id="'+p.id+'">'+(p.sizes.length?'<fieldset><legend>Größe wählen</legend><div class="sizes">'+p.sizes.map(s=>'<label><input type="radio" name="size" value="'+s+'" '+(mode==='cart'?'required':'disabled')+'><span>'+s+'</span></label>').join('')+'</div></fieldset>':'')+'<p class="availability">'+p.lead+'</p>'+(mode==='cart'?'<button class="solid" type="submit">In die Tasche</button>':mode==='inquiry'?'<button class="solid" type="button" data-inquiry="'+p.id+'">Beim Haus anfragen</button>':'<button class="solid" type="button" disabled>Zurzeit vergriffen</button><button class="outline" type="button" data-inquiry="'+p.id+'">Beim Haus anfragen</button>')+'</form>'+passformAssistent(p,state)+'<button class="save-button" data-save="'+p.id+'">'+(state.saved.includes(p.id)?'♥ Gemerkt':'♡ Stück merken')+'</button><details><summary>Material & Pflege</summary><p>'+p.material+'.</p></details><details><summary>Versand & Rückgabe</summary><p>'+p.lead+'. Jedes Haus versendet selbst — die Konditionen stehen an der Bestellung.</p></details>'+(state.vorschau!==false?'<p class="small-note">Vorschau — es wird nichts bestellt, nichts gesendet.</p>':'');
+ return '<div class="drawer-photo">'+img(p.image,p.name)+'</div>'+tag('HAUS '+h.number+' / '+labels[p.world])+'<h2 id="dialog-title">'+p.name+'</h2><button class="designer-link" data-house="'+h.slug+'">Von '+h.name+' · Das Haus besuchen ↗</button><p class="price">'+money(p.price)+'</p><p>'+p.description+'</p><form data-cart-form data-id="'+p.id+'">'+(p.sizes.length?'<fieldset><legend>Größe wählen</legend><div class="sizes">'+p.sizes.map(s=>'<label><input type="radio" name="size" value="'+s+'" '+(mode==='cart'?'required':'disabled')+'><span>'+s+'</span></label>').join('')+'</div></fieldset>':'')+'<p class="availability">'+p.lead+'</p>'+(mode==='cart'?'<button class="solid" type="submit">In die Tasche</button>':mode==='inquiry'?'<button class="solid" type="button" data-inquiry="'+p.id+'">Beim Haus anfragen</button>':'<button class="solid" type="button" disabled>Zurzeit vergriffen</button><button class="outline" type="button" data-inquiry="'+p.id+'">Beim Haus anfragen</button>')+'</form>'+passformAssistent(p,state)+'<button class="save-button" data-save="'+p.id+'">'+(state.saved.includes(p.id)?'♥ Gemerkt':'♡ Stück merken')+'</button>'+(weltAngaben(p)||(p.material?'<details><summary>Material & Pflege</summary><p>'+esc(p.material)+'.</p></details>':''))+'<details><summary>Versand & Rückgabe</summary><p>'+p.lead+'. Jedes Haus versendet selbst — die Konditionen stehen an der Bestellung.</p></details>'+(state.vorschau!==false?'<p class="small-note">Vorschau — es wird nichts bestellt, nichts gesendet.</p>':'');
 }
 export function cartView(state){
  const cart=(state.cart||[]).filter(r=>products[r.id]);
@@ -197,7 +240,16 @@ export function applicationView(step,values){
  if(step===1)content='<fieldset><legend>In welcher Welt arbeitest du?</legend>'+['Mode','Interior','Kunst'].map(s=>'<label class="choice"><input name="world" type="radio" value="'+s+'" required '+(values.world===s?'checked':'')+'>'+s+'</label>').join('')+'</fieldset>';
  if(step===2)content='<label>Name deines Hauses<input name="brand" required value="'+v('brand')+'"></label><label>Stadt<input name="city" required value="'+v('city')+'"></label><label>Land<input name="country" required value="'+v('country')+'"></label>';
  if(step===3)content='<label>Was macht deine Arbeit aus?<textarea name="story" rows="5" minlength="30" required>'+v('story')+'</textarea></label><label>Portfolio-Link<input name="portfolio" type="url" placeholder="https://" value="'+v('portfolio')+'"></label><label>Bilder deiner Arbeit<input type="file" name="portfolioFiles" accept="image/*" multiple></label><p class="small-note">Mindestens 30 Zeichen. Dateien werden hier nur ausgewählt und nicht hochgeladen.</p>';
- if(step===4)content='<h3>Ein gemeinsamer Rahmen.</h3><p>Im bestehenden Ablauf werden an dieser Stelle die aktuellen Vereinbarungen geladen und bestätigt.</p><label class="choice"><input type="checkbox" name="review" required '+(values.review?'checked':'')+'> Ich habe diesen Vorschau-Schritt angesehen.</label><p class="small-note">Dies ist keine rechtliche Zustimmung und kein Vertragsabschluss.</p>';
+ if(step===4){
+  // Die geltenden Fassungen kommen aus contract_versions (quelle.vertraege()).
+  // Ohne sie bleibt der Schritt, was er im Prototyp war: eine Ansicht, kein Abschluss.
+  const v2=values.__vertraege||[];
+  content=v2.length
+   ?'<h3>Ein gemeinsamer Rahmen.</h3><p>Diese Fassungen gelten heute. Lies sie, bevor du zustimmst.</p>'
+     +'<ul class="vertragsliste">'+v2.map(k=>'<li><a href="'+esc(k.url||'#')+'" target="_blank" rel="noopener noreferrer">'+esc(k.titel)+' ↗</a></li>').join('')+'</ul>'
+     +'<label class="choice"><input type="checkbox" name="contracts" value="'+esc(v2.map(k=>k.id).join(','))+'" required '+(values.contracts?'checked':'')+'> Ich habe die Vereinbarungen gelesen und stimme ihnen zu.</label>'
+   :'<h3>Ein gemeinsamer Rahmen.</h3><p>Die geltenden Vereinbarungen konnten gerade nicht geladen werden. Du kannst weitergehen — vor dem Abschluss bekommst du sie noch einmal.</p><label class="choice"><input type="checkbox" name="review" required '+(values.review?'checked':'')+'> Verstanden.</label>';
+ }
  if(step===5)content='<dl class="review-list">'+[['Name','name'],['E-Mail','email'],['Welt','world'],['Haus','brand'],['Stadt','city'],['Land','country'],['Arbeit','story'],['Portfolio','portfolio']].map(([label,n])=>'<div><dt>'+label+'</dt><dd>'+v(n)+'</dd></div>').join('')+'</dl><p class="small-note">Alles bleibt in dieser geöffneten Vorschau. Es wird nichts an PAWN gesendet.</p>';
  return tag('FÜR DESIGNER / BEWERBUNG')+'<h2 id="dialog-title">'+applicationSteps[step]+'.</h2><div class="step-track">'+applicationSteps.map((s,i)=>'<span class="'+(i===step?'active':'')+'">'+(i+1)+'</span>').join('')+'</div><p class="small-note">Schritt '+(step+1)+' von 6</p><form data-application>'+content+'<div class="form-actions">'+(step?'<button type="button" class="outline" data-apply-back>Zurück</button>':'')+'<button class="solid" type="submit">'+(step===5?'Vorschau abschließen':'Weiter ↗')+'</button></div></form>';
 }
