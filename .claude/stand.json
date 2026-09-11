@@ -12,11 +12,14 @@
     "OFFEN 5: Zweig 2 (Stilfoto auf /deine-dna/foto, Bild in „Frag PAWN“) — braucht die ausgelieferte pawn-chat."
   ],
   "wartet_auf_mensch": [
-    "DIE ERSTE FRAGE DIESER SCHICHT: Lädt pawn.vision normal, und stehen Häuser auf den Bühnen? Das Heft ist seit b4d51c4 das öffentliche Frontend. Ein Blick beantwortet mehreres zugleich — ob der Sync durch ist, ob die Bildadressen stimmen, und ob das Supabase-Projekt überhaupt erreichbar ist.",
-    "SIND DIE MIGRATIONEN GELAUFEN? Beleg dagegen: src/integrations/supabase/types.ts kennt kunden_stil nicht (0 Treffer) und wurde seit dem Merge nicht neu erzeugt. Ein Agent sieht die Datenbank von hier nicht. WAS OHNE SIE HALB BLEIBT, nach Schwere: (1) Die Policy „designers public read“ gibt anon weiter stripe_account_id und stripe_customer_id — das Heft liest sie nicht (Zusage Z10), aber die Lücke schließt erst heft_sichten. Das ist Sicherheit, nicht Komfort. (2) Das Bilderquiz bleibt im Gerät; nach dem Login wird nichts übernommen. (3) Interior/Kunst-Maße bleiben Freitext in room_note. KAPUTT IST NICHTS — alle drei fallen bewusst zurück.",
-    "DIE SICHT-FREIGABE WAR BEDINGUNG IM PR UND IST JETZT GESCHICHTE. Falls der Kauf-Weg (Werk → Tasche → Stripe) und das Anklicken eines Werks nicht von Hand durchgeklickt wurden, sind sie ungeprüft live. Kein Werkzeug dieses Projekts hat sie je mit echten Daten gesehen: drei Prüfstandsläufe waren blind (siehe nicht_pruefbar). Kein Vorwurf, sondern die Lücke, die offen bleibt — Nachholen lohnt auch jetzt.",
-    "OFFENE URSACHE: Warum löst der GitHub-Rechner rnakubexbqfgfciynqpt.supabase.co nicht auf? #185 macht die Blindheit sichtbar, behebt sie nicht. Drei Verdächtige, keiner geprüft: Projekt pausiert, Netzsperre der Organisation, DNS auf dem Runner. Lädt pawn.vision normal, fällt der erste weg.",
-    "ENTSCHEIDUNGEN vom 10.09.: D1 Vision-Text bleibt der des Hefts · D3 Häuser nach house_number · D6 VORSCHAU-Stempel weg, Regler „Papier & Bewegung“ bleibt · D7 ein geöffnetes Werk schreibt seine Adresse."
+    "DIE ERSTE FRAGE: Wer spielt die 160 Migrationen? Drei Wege in docs/teil-k/umzug-stand.md Abschnitt 3. Ohne Entscheidung steht Teil A.",
+    "DER TEUERSTE PUNKT: Der Stripe-Webhook zeigt auf die tote Adresse. Eine echte Zahlung wuerde heute bezahlt, aber nicht verbucht. Neue Adresse: https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/stripe-webhook",
+    "17 GEHEIMNISSE neu setzen — vollstaendige Liste in docs/teil-k/umzug-stand.md Abschnitt 6. Nie im Code, nie in .env, nie im PR.",
+    "VERCEL-VARIABLEN erst NACH dem Schema umstellen (Production und Preview). Sonst tauscht pawn.vision den Vorschau-Betrieb gegen eine Quelle, die auf jede Tabelle mit 404 antwortet — und der Notbetrieb greift dann nicht, weil eine Antwort kommt.",
+    ".env IST VERSIONIERT und enthaelt die alte Kennung. Ich kann sie nicht anfassen (Schutzregel dieser Umgebung, ich habe sie nicht gelesen). Eine versionierte .env widerspricht CLAUDE.md.",
+    "ALLE KONTEN SIND WEG — im Auftrag steht das nirgends. Leeres auth.users, 20 der 160 Migrationen haengen daran. Kein alter Zugang funktioniert, profiles/orders/message_threads sind leer. Stripe kennt seine Kunden weiter, die Datenbank nicht mehr.",
+    "ZWEI PUNKTE ZUM VORSCHAU-BETRIEB offen (PR #187): die 6-Sekunden-Frist trifft auch eine langsame Leitung, und der Streifen sagt nicht, dass die Haeuser Beispiele sind.",
+    "NUR NOCH .env traegt die alte Kennung an lebender Stelle (plus Protokolle und Migrationen, die absichtlich bleiben). Ich kann sie nicht anfassen."
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-10",

@@ -50,7 +50,7 @@ fi
 # 3 — Datenbank zuruecksetzen
 if echo "$BEFEHL" | grep -qE '\bsupabase\b.*\b(db[[:space:]]+reset|reset)\b|\bDROP[[:space:]]+(TABLE|SCHEMA|DATABASE)\b|\bTRUNCATE\b'; then
   verweigere "Zugriff, der Produktionsdaten vernichtet" \
-    "Die Datenbank ist die echte Produktionsdatenbank (Projekt rnakubexbqfgfciynqpt) mit echten Bestellungen. Schema-Aenderungen laufen als Migration ueber den Lovable-Agenten, nie von hier."
+    "Die Datenbank ist die echte Produktionsdatenbank (Projekt cnxtdcifkrdxvajaikxq) mit echten Bestellungen. Schema-Aenderungen laufen als Migration ueber den Lovable-Agenten, nie von hier."
 fi
 
 # 4 — Migrationen und die SPA-Weiterleitung

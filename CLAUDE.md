@@ -48,7 +48,7 @@ fortgeschrieben. Eine Sitzung, die den Stand nicht fortschreibt, ist nicht ferti
 
 ## Stack und was wo live geht
 - Vite + React + TypeScript + Tailwind. Backend: Lovable Cloud (managed
-  Supabase, Projekt `rnakubexbqfgfciynqpt`).
+  Supabase, Projekt `cnxtdcifkrdxvajaikxq`).
 - **Frontend:** Push auf `main` → Lovable synct und deployt, Vercel spiegelt auf
   pawn.vision. Frontend-Arbeit über Git ist der günstige Kanal.
 - **Edge Functions (`supabase/functions/*`):** Code ändern ja — **Deploy nur
