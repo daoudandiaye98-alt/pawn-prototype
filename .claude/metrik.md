@@ -15,6 +15,7 @@ vorgeführt. Ohne beides gilt der Fehler als nicht erledigt.
 | 2026-08-17 | — | — | Turm v2 gebaut. Grundlinie: 6 Zusagen, jede rot vorgeführt. Ab hier wird gezählt. | Z1–Z6 |
 | 2026-09-08 | #182 | 1 | Der Prüfer fand beim Zurücknehmen des Magazins drei verlorene Fokus-Rahmen. | Z7 |
 | 2026-09-10 | #184 | 0 (offen) | Teil H — das Heft zieht ein. Sechs Fehler wurden vor dem Merge gefunden, alle beim Ansehen im Browser mit Datenbank-Zeilen, keiner im Quelltext. Drei alte Zusagen sind mit ihren Seiten umgezogen, drei neue kamen dazu. | Z5/Z6/Z7 umgezogen · Z8–Z10 neu, je rot vorgeführt |
+| 2026-09-11 | #184/#190 | **3** | Daouda hat auf der laufenden Seite drei Mängel gefunden: F1 beim Laden blitzt links ein unformatierter Textblock auf · F2 die Blätteranimation blättert eine weiße Seite · F3 „Unsere Häuser" → Welt auswählen → die Anwendung hängt. Alle drei im Browser gesehen, keiner im Quelltext, keiner von einer Kontrolle gefangen. | Z14 (F3) und Z15 (F1), je rot vorgeführt · F2 ohne Zusage: im Container nicht nachstellbar |
 
 ## Was Teil H über die Kennzahl sagt
 
@@ -153,3 +154,35 @@ Fokus-Unterdrückung."
 **Die Lehre:** der Prüfer hat nicht die Aussage widerlegt, sondern über eine
 falsche Zahl einen echten Fehler gefunden. Ein Agent ist niemals sein eigener
 Prüfer — hier ist der belegte Fall dazu.
+
+---
+
+## 2026-09-11 · Drei Nachfunde, und was sie über die Kontrollen sagen
+
+Die Zahl springt von 0 auf **3**. Das ist keine Verschlechterung des Harness,
+sondern das erste Mal, dass ein Mensch die Seite nach einem großen Merge
+gründlich angesehen hat. Alle drei Mängel sind **nur am Bild** zu sehen:
+
+| Fund | Warum keine Kontrolle ihn gefangen hat |
+|---|---|
+| F1 · unformatiertes Aufblitzen | Ein Zustand von wenigen Millisekunden zwischen „DOM da" und „CSS da". Kein Test sieht ihn, `sicht.sh` fotografiert erst die fertige Seite. |
+| F2 · weiße Seite beim Blättern | Braucht eine aufgeschlagene Doppelseite. Im Container existiert nach 40 Scroll-Schritten kein `.spread` im DOM — das Blatt lässt sich hier nicht umblättern. |
+| F3 · Häuser → Welt → hängt | Brauchte eine **leere** Datenbank. Die Beispieldaten haben in jeder Welt ein Haus, also war `haeuserDerWelt[0]` dort immer da. Die Fixture war zu freundlich — dieselbe Lehre wie bei Teil H, eine Ebene tiefer. |
+
+F3 ist jetzt mechanisch gedeckt: `anschluss.test.mjs` rendert **jede** Doppelseite
+**jeder** Sektion mit leeren Daten. Das ist die Kontrolle, die gefehlt hat.
+
+### Was die rote Vorführung diesmal gefangen hat
+
+Beide neuen Kontrollen waren in ihrer **ersten** Fassung zu weich, und beide
+Male hat erst der rote Lauf es gezeigt:
+
+- **Z14** schloss jede Zeile mit einem Fragezeichen aus — und ließ damit genau
+  Daoudas Fehler durch. Ich brach den Wächter in `views.mjs`, die Kontrolle blieb
+  grün. Sie sucht jetzt den **Wächter**, nicht das Fehlen des Zugriffs.
+- **Z15** ließ ein beliebiges `setTimeout` irgendwo in der Datei als Obergrenze
+  gelten. Ich nahm die Obergrenze heraus, die Kontrolle blieb grün. Sie sucht
+  jetzt im Rumpf von `blattGeladen`.
+
+Das ist der ganze Zweck des Rituals: *eine Prüfung, die nicht rot vorgeführt
+wurde, ist behauptet und nicht bewiesen.* Hier sind zwei belegte Fälle.

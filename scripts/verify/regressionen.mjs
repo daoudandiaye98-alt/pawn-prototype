@@ -423,6 +423,79 @@ function nurWegweiser({ orte, adressen, ausnahmen = [] }) {
     : nein(`${treffer.length} Stelle(n) nennen eine Adresse, die nur noch weiterleitet:\n      ${treffer.slice(0, 8).join("\n      ")}`);
 }
 
+// ————————————————————————————————————————————————————————————————
+// Z14 — keine Doppelseite stuerzt ab, weil die Welt leer ist
+//
+// Belegter Fehler (F3, von Daouda auf der laufenden Seite gefunden): auf der
+// Haeuser-Doppelseite eine Welt anwaehlen — und nichts ging mehr, kein Blaettern,
+// keine Rueckkehr. Die Ursache war eine einzige Zeile in views.mjs, die
+// haeuserDerWelt[0].name las, OHNE zu fragen, ob es ein Haus gibt. Auf der neuen,
+// noch leeren Datenbank gibt es keines.
+//
+// Wie Z7: das laesst sich nicht am Quelltext ablesen, nur am Lauf. Die laufende
+// Pruefung steht in anschluss.test.mjs und rendert JEDE Doppelseite JEDER Sektion
+// mit leeren Daten. Diese Kontrolle stellt sicher, dass es sie noch gibt und dass
+// sie ausgefuehrt wird — eine geloeschte Pruefung ist eine gebrochene Zusage.
+// ————————————————————————————————————————————————————————————————
+function leereWeltStuerztNicht({ test, datei }) {
+  if (!existsSync(join(WURZEL, test))) return nein(`${test} fehlt — die Zusage wird nicht mehr geprueft`);
+  const t = lies(test);
+  if (!/leeren?\s+Daten|null\s+Haeusern/i.test(t))
+    return nein(`${test} rendert die Doppelseiten nicht mehr mit leeren Daten`);
+  if (!/Object\.entries\(SEKTIONEN\)/.test(t))
+    return nein(`${test} geht nicht mehr ueber ALLE Sektionen — ein Einzelfall ist keine Zusage`);
+  const skripte = JSON.parse(lies("package.json")).scripts || {};
+  if (!/test:heft/.test(lies("scripts/verify/verify.sh")) || !skripte["test:heft"])
+    return nein("npm run test:heft laeuft nicht mehr in verify.sh — die Pruefung waere da, aber niemand fuehrt sie aus");
+  // Und die Stelle selbst. Gesucht wird der WAECHTER, nicht das Fehlen des Zugriffs:
+  // die erste Fassung dieser Kontrolle schloss jede Zeile mit einem Fragezeichen aus
+  // und liess damit genau den belegten Fehler durch. Einmal rot vorgefuehrt, daran
+  // aufgefallen, und deshalb steht es jetzt so: haeuserDerWelt[0] muss als Frage
+  // dastehen, bevor irgendwer seinen Namen liest.
+  const v = lies(datei);
+  if (!/haeuserDerWelt\[0\]\s*\r?\n?\s*\?/.test(v))
+    return nein(`${datei}: es wird nicht mehr gefragt, OB es ein Haus gibt, bevor haeuserDerWelt[0] gelesen wird`);
+  return OK;
+}
+
+// ————————————————————————————————————————————————————————————————
+// Z15 — das Geruest des Hefts wird erst sichtbar, wenn seine Gestaltung da ist
+//
+// Belegter Fehler (F1, von Daouda auf der laufenden Seite gesehen und in einer
+// Aufnahme gehabt): kurz vor dem Umschlag stand links das nackte Geruest —
+// Wortmarke, Menue, „Tasche 0", Hero-Text, alles linksbuendig und ohne Gestaltung.
+// Die Huelle haengt ihre Stylesheets zur Laufzeit ein; zwischen „DOM ist da" und
+// „CSS ist da" zeichnet der Browser ungestaltet.
+//
+// Die Kontrolle prueft die DREI Teile, ohne die die Reparatur nicht haelt — das
+// Verstecken, das Aufheben, und die Obergrenze. Ohne Obergrenze waere eine nie
+// ladende Datei ein dauerhaft unsichtbares Heft; das waere schlimmer als das
+// Aufblitzen. Die Obergrenze wird IM Warter gesucht, nicht irgendwo in der Datei:
+// die erste Fassung liess ein beliebiges setTimeout gelten und blieb deshalb gruen,
+// als die Grenze weg war. Einmal rot vorgefuehrt, daran aufgefallen.
+// ————————————————————————————————————————————————————————————————
+function geruestErstNachGestaltung({ huelle, warter = "blattGeladen" }) {
+  const h = lies(huelle);
+  if (!/visibility:\s*["']hidden["']/.test(h))
+    return nein(`${huelle}: das Geruest startet nicht mehr versteckt — es blitzt wieder ungestaltet auf`);
+  if (!/visibility\s*=\s*["']{2}/.test(h))
+    return nein(`${huelle}: nichts hebt das Versteck wieder auf — das Heft blieb unsichtbar`);
+  if (!new RegExp(`${warter}\\(`).test(h))
+    return nein(`${huelle}: das Aufheben haengt nicht mehr am Laden der Stylesheets (${warter} fehlt)`);
+  // Nur der Rumpf des Warters, von seiner Deklaration bis zur naechsten auf
+  // Spaltenposition 0 — so zaehlt kein fremdes setTimeout der Datei mit.
+  const ab = h.indexOf(`function ${warter}`);
+  if (ab < 0) return nein(`${huelle}: ${warter} ist keine eigene Funktion mehr — die Obergrenze ist nicht mehr pruefbar`);
+  const rest = h.slice(ab + 1);
+  const bis = rest.search(/\n(?:function|const|export|class)\s/);
+  const rumpf = bis < 0 ? rest : rest.slice(0, bis);
+  if (!/frist\s*=\s*\d+/.test(rumpf))
+    return nein(`${huelle}: ${warter} hat keine Obergrenze in Millisekunden mehr — laedt ein Stylesheet nie, bleibt das Heft fuer immer unsichtbar`);
+  if (!/setTimeout/.test(rumpf))
+    return nein(`${huelle}: ${warter} setzt keine Uhr mehr — die Obergrenze stuende da, ohne je zu greifen`);
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -437,6 +510,8 @@ const PRUEFUNGEN = {
   vorschauNurWennWeg,
   nurEinWaechter,
   nurWegweiser,
+  leereWeltStuerztNicht,
+  geruestErstNachGestaltung,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
