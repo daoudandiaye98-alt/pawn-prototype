@@ -29,6 +29,13 @@
       "when": 1789169018841,
       "tag": "0003_part51_kauf_freigeschaltet_und_plan_beispiel",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789169049326,
+      "tag": "0004_heft_sichten_stil_raum_dna",
+      "breakpoints": true
     }
   ]
 }

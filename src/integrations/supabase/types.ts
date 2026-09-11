@@ -334,6 +334,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_budget_ledger_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_config: {
@@ -611,6 +618,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "campaigns_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "campaigns_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -771,6 +792,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "credits_ledger_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cultural_currents: {
@@ -863,6 +891,7 @@ export type Database = {
           height_cm: number | null
           hip_cm: number | null
           inseam_cm: number | null
+          raum: Json | null
           room_note: string | null
           shoulder_cm: number | null
           updated_at: string
@@ -877,6 +906,7 @@ export type Database = {
           height_cm?: number | null
           hip_cm?: number | null
           inseam_cm?: number | null
+          raum?: Json | null
           room_note?: string | null
           shoulder_cm?: number | null
           updated_at?: string
@@ -891,6 +921,7 @@ export type Database = {
           height_cm?: number | null
           hip_cm?: number | null
           inseam_cm?: number | null
+          raum?: Json | null
           room_note?: string | null
           shoulder_cm?: number | null
           updated_at?: string
@@ -1018,6 +1049,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_automations_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_billing_profiles: {
@@ -1089,6 +1127,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_billing_profiles_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_brand_dna: {
@@ -1146,6 +1191,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: true
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designer_brand_dna_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -1243,6 +1295,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_onboarding_sessions_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_opportunities: {
@@ -1320,6 +1379,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_opportunities_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_page_blocks: {
@@ -1356,6 +1422,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designer_page_blocks_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -1397,6 +1470,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: true
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designer_payout_profiles_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -1727,6 +1807,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "edition_participants_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "edition_participants_edition_id_fkey"
             columns: ["edition_id"]
             isOneToOne: false
@@ -1996,6 +2083,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "house_milestones_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       house_models: {
@@ -2044,6 +2138,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_models_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -2096,6 +2197,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "house_settings_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       house_signatures: {
@@ -2129,6 +2237,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_signatures_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -2200,6 +2315,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_themes_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -2479,6 +2601,42 @@ export type Database = {
         }
         Relationships: []
       }
+      kunden_stil: {
+        Row: {
+          created_at: string
+          form: string | null
+          foto_befund: Json | null
+          fuer_wen: string | null
+          quelle: string
+          richtung: string | null
+          updated_at: string
+          user_id: string
+          welt: string | null
+        }
+        Insert: {
+          created_at?: string
+          form?: string | null
+          foto_befund?: Json | null
+          fuer_wen?: string | null
+          quelle?: string
+          richtung?: string | null
+          updated_at?: string
+          user_id: string
+          welt?: string | null
+        }
+        Update: {
+          created_at?: string
+          form?: string | null
+          foto_befund?: Json | null
+          fuer_wen?: string | null
+          quelle?: string
+          richtung?: string | null
+          updated_at?: string
+          user_id?: string
+          welt?: string | null
+        }
+        Relationships: []
+      }
       media_assets: {
         Row: {
           advertises_text: string | null
@@ -2565,6 +2723,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "media_assets_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "media_assets_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -2623,6 +2795,20 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_threads_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_threads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
             referencedColumns: ["id"]
           },
           {
@@ -2954,6 +3140,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partie_zuege_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pawn_signals: {
@@ -3017,6 +3210,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_usage_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -3135,6 +3335,20 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_shot_requests_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_shot_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
             referencedColumns: ["id"]
           },
           {
@@ -3294,6 +3508,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -3396,6 +3617,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "referrals_referrer_designer_id_fkey"
+            columns: ["referrer_designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       site_content: {
@@ -3477,6 +3705,20 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staging_requests_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staging_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
             referencedColumns: ["id"]
           },
           {
@@ -3687,6 +3929,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "video_assets_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       wishlists: {
@@ -3709,6 +3958,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "wishlists_product_id_fkey"
             columns: ["product_id"]
@@ -3765,7 +4021,143 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      heft_haeuser: {
+        Row: {
+          atelier_caption: string | null
+          atelier_image_url: string | null
+          avatar_url: string | null
+          banner_url: string | null
+          brand_dna: Json | null
+          brand_name: string | null
+          collection_title: string | null
+          country: string | null
+          hero_image_url: string | null
+          house_number: number | null
+          id: string | null
+          instagram: string | null
+          is_featured: boolean | null
+          location: string | null
+          manifesto: string | null
+          page_published_at: string | null
+          plan: Database["public"]["Enums"]["designer_plan"] | null
+          portrait_url: string | null
+          published: boolean | null
+          quote: string | null
+          quote_role: string | null
+          slug: string | null
+          status: string | null
+          story: string | null
+          tags: string[] | null
+          verkaufsbereit: boolean | null
+          website: string | null
+        }
+        Insert: {
+          atelier_caption?: string | null
+          atelier_image_url?: string | null
+          avatar_url?: string | null
+          banner_url?: string | null
+          brand_dna?: Json | null
+          brand_name?: string | null
+          collection_title?: string | null
+          country?: string | null
+          hero_image_url?: string | null
+          house_number?: number | null
+          id?: string | null
+          instagram?: string | null
+          is_featured?: boolean | null
+          location?: string | null
+          manifesto?: string | null
+          page_published_at?: string | null
+          plan?: Database["public"]["Enums"]["designer_plan"] | null
+          portrait_url?: string | null
+          published?: boolean | null
+          quote?: string | null
+          quote_role?: string | null
+          slug?: string | null
+          status?: string | null
+          story?: string | null
+          tags?: string[] | null
+          verkaufsbereit?: boolean | null
+          website?: string | null
+        }
+        Update: {
+          atelier_caption?: string | null
+          atelier_image_url?: string | null
+          avatar_url?: string | null
+          banner_url?: string | null
+          brand_dna?: Json | null
+          brand_name?: string | null
+          collection_title?: string | null
+          country?: string | null
+          hero_image_url?: string | null
+          house_number?: number | null
+          id?: string | null
+          instagram?: string | null
+          is_featured?: boolean | null
+          location?: string | null
+          manifesto?: string | null
+          page_published_at?: string | null
+          plan?: Database["public"]["Enums"]["designer_plan"] | null
+          portrait_url?: string | null
+          published?: boolean | null
+          quote?: string | null
+          quote_role?: string | null
+          slug?: string | null
+          status?: string | null
+          story?: string | null
+          tags?: string[] | null
+          verkaufsbereit?: boolean | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      heft_produkte: {
+        Row: {
+          care_instructions: string | null
+          created_at: string | null
+          description: string | null
+          designer_id: string | null
+          designer_note: string | null
+          edition_info: string | null
+          height_cm: number | null
+          id: string | null
+          image_url: string | null
+          inventory_mode: Database["public"]["Enums"]["inventory_mode"] | null
+          lead_time_days: number | null
+          length_cm: number | null
+          made_in: string | null
+          material_composition: Json | null
+          measurements: Json | null
+          name: string | null
+          price: number | null
+          product_dna: Json | null
+          size_variants: Json | null
+          slug: string | null
+          status: Database["public"]["Enums"]["product_status"] | null
+          stock_quantity: number | null
+          sustainability_note: string | null
+          tags: string[] | null
+          vat_rate: number | null
+          width_cm: number | null
+          world: Database["public"]["Enums"]["product_world"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_application_note: {
