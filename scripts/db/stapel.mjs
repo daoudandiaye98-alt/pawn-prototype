@@ -93,14 +93,28 @@ function sqlFuer(eintraege) {
     `-- ══════════════════════════════════════════════════════════════\n`
     + `-- ${datei}\n`
     + `-- ══════════════════════════════════════════════════════════════\n${sql.trimEnd()}\n`);
-  const zeilen = eintraege
+  // DIE LETZTE DATEI BLEIBT HIER AUSSEN VOR. `apply_migration` schreibt ihre Zeile
+  // selbst (der Name, den --name liefert, ist ihrer). Wuerde der Stapel sie auch
+  // einfuegen, liefe apply_migration danach in einen Schluessel-Konflikt und der
+  // ganze Stapel faellt zurueck. Gemessen am Verhalten des Werkzeugs, nicht geraten.
+  const selbst = eintraege.slice(0, -1);
+  const zeilen = selbst
     .map(({ datei }) => `    ('${version(datei)}', '${kennung(datei)}')`)
     .join(",\n");
-  const buch = `\n-- Buchhaltung: eine Zeile je Datei, Version aus dem Dateinamen.\n`
+  const buch = selbst.length === 0 ? "" :
+      `\n-- Buchhaltung: eine Zeile je Datei AUSSER der letzten — die schreibt\n`
+    + `-- apply_migration selbst aus dem uebergebenen Namen.\n`
     + `insert into supabase_migrations.schema_migrations (version, name)\n`
     + `  values\n${zeilen}\n`
     + `  on conflict (version) do nothing;\n`;
-  return teile.join("\n") + buch;
+  // Der Rueckweg hinterlaesst seine eigene Zeile (Version 00000000000000). Sie
+  // gehoert zu keiner Datei und wuerde in der Abnahme als FREMD auftauchen. Der
+  // erste Stapel raeumt sie weg — eng, nur diese eine Version.
+  const aufraeumen = eintraege === ersterStapel
+    ? `\n-- Die Zeile des Rueckwegs gehoert zu keiner Datei.\n`
+      + `delete from supabase_migrations.schema_migrations where version = '00000000000000';\n`
+    : "";
+  return teile.join("\n") + aufraeumen + buch;
 }
 
 const RUECKWEG = `-- Der Rückweg. Vorführen, nicht behaupten.
@@ -115,6 +129,7 @@ grant all on schema public to postgres;
 delete from supabase_migrations.schema_migrations;`;
 
 const stapel = stapeln();
+const ersterStapel = stapel[0];
 const arg = (name) => {
   const i = process.argv.indexOf(name);
   return i < 0 ? null : process.argv[i + 1];
