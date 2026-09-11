@@ -14,6 +14,9 @@
 //   signal(art,daten)                          → void   (ansehen|merken|kaufen|quiz — Geschmackssignale)
 //   konto.aktuell() → {id,name,email}|null · konto.anmelden() · konto.abmelden() · konto.bestellungen() → [{datum,status,stuecke,summe}]
 //   konto.anfragen() → [{id,betreff,haus,werk,stand,datum}] · konto.rechnung(orderId) → signierte URL | null
+//   zugang.anmelden({email,passwort}) · zugang.registrieren({email,passwort,wiederholung,name}) ·
+//   zugang.google({ziel})            → {ok}|{fehler} — die Zugang-Doppelseite (Teil L5). Die Huelle
+//                                      haelt supabase.auth; das Heft kennt nur diesen Port.
 //   texte() → {schluessel: text} aus site_content · vertraege() → [{id,titel,url}] · vergessen() → {ok} (loescht serverseitig)
 //   bild(url) → ladbare Adresse (Storage-Pfade signieren/transformieren)
 // funktionen.signieren(urls) → {url: signierteUrl} — einmal je Heft-Ladung, weil die Adapter bild() synchron rufen.
@@ -39,7 +42,14 @@ export function demoQuelle(){
   texte:async()=>({}),
   vertraege:async()=>[],
   vergessen:kein,
-  konto:{aktuell:nichts,anmelden:nichts,abmelden:nichts,bestellungen:async()=>[],anfragen:async()=>[],rechnung:nichts}
+  konto:{aktuell:nichts,anmelden:nichts,abmelden:nichts,bestellungen:async()=>[],anfragen:async()=>[],rechnung:nichts},
+  // In der Vorschau gibt es kein Konto anzulegen. Ein Formular, das heimlich nichts tut,
+  // waere schlimmer als eines, das sagt, dass es nicht kann.
+  zugang:{
+   async anmelden(){return {fehler:'vorschau'};},
+   async registrieren(){return {fehler:'vorschau'};},
+   async google(){return {fehler:'vorschau'};}
+  }
  };
 }
 
@@ -217,7 +227,9 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    if(funktionen.signal)funktionen.signal(art,daten);
   },
   konto:{
-   async aktuell(){const u=await nutzer();if(!u)return null;const {data}=await client.from('profiles').select('display_name,member_number').eq('id',u.id).maybeSingle();return {id:u.id,email:u.email||'',name:data?.display_name||u.email?.split('@')[0]||'',member_number:data?.member_number??null};},
+   async aktuell(){const u=await nutzer();if(!u)return null;const {data}=await client.from('profiles').select('display_name,member_number').eq('id',u.id).maybeSingle();/* Die Rollen kommen aus der Huelle, nicht aus einer zweiten Abfrage: useAuth() hat sie
+       ohnehin schon geladen. Die Zugang-Doppelseite zeigt damit die Tuer, die passt. */
+    return {id:u.id,email:u.email||'',name:data?.display_name||u.email?.split('@')[0]||'',member_number:data?.member_number??null,rollen:(funktionen.rollen?.())||[]};},
    async anmelden(){if(funktionen.anmelden)return funktionen.anmelden();},
    async bestellungen(){const u=await nutzer();if(!u)return [];const {data}=await client.from('orders').select('id,created_at,status,fulfillment_status,amount_total,items,tracking_number,invoice_number').eq('user_id',u.id).order('created_at',{ascending:false}).limit(20);return (data||[]).map(orderFromRow);},
    /** Die eigenen Faeden zu den Haeusern — dieselbe Abfrage wie useMyRequestThreads. */
@@ -238,6 +250,15 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
     return error?null:(data&&data.signedUrl)||null;
    },
    async abmelden(){await client.auth.signOut();}
+  },
+  /* Anmelden, Registrieren und Google liegen in der React-Huelle, nicht hier: dort lebt
+     supabase.auth samt Sitzung, dort steht der Vergleich der beiden Passwoerter
+     (features/auth/registrieren.ts), und dort weiss man, welche Tuer die Rolle oeffnet.
+     Das Heft kennt nur diese drei Fragen und die Antwort {ok} oder {fehler}. */
+  zugang:{
+   async anmelden(d){return (await funktionen.zugang?.anmelden?.(d))??{fehler:'Anmelden ist hier nicht eingerichtet.'};},
+   async registrieren(d){return (await funktionen.zugang?.registrieren?.(d))??{fehler:'Registrieren ist hier nicht eingerichtet.'};},
+   async google(d){return (await funktionen.zugang?.google?.(d))??{fehler:'Google ist hier nicht eingerichtet.'};}
   }
  };
 }

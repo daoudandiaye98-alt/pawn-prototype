@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { registrieren } from "@/features/auth/registrieren";
 
 /**
  * Die eine Auth-Implementierung hinter /auth (Login-Vollseite) und dem Zugang-Schritt in
@@ -36,23 +37,21 @@ export function useAuthForm(opts: { initialMode?: AuthMode; onSuccess?: (mode: A
 
   async function submit(e?: { preventDefault?: () => void }) {
     e?.preventDefault?.();
-    // Vor signUp, nicht danach: ein angelegtes Konto mit vertipptem Passwort
-    // bekommt man nicht mehr los. Nur die Wiederholung wird geleert — das erste
-    // Feld bleibt stehen, sonst tippt man beide Male neu.
-    if (mode === "up" && password !== passwordRepeat) {
-      setPasswordRepeat("");
-      toast.error(t("auth.passwordMismatch"));
-      return;
-    }
+    // Der Vergleich der beiden Passwoerter steht in features/auth/registrieren.ts —
+    // dieselbe Funktion, die auch die Zugang-Doppelseite im Heft ruft. Er faellt VOR
+    // signUp: ein angelegtes Konto mit vertipptem Passwort bekommt man nicht mehr los.
     setBusy(true);
-    const { error } =
+    const { fehler } =
       mode === "in"
-        ? await signInWithPassword(email.trim(), password)
-        : await signUp(email.trim(), password, displayName.trim() || email.split("@")[0]);
+        ? await signInWithPassword(email.trim(), password).then((r) => ({ fehler: r.error }))
+        : await registrieren(signUp, { email, passwort: password, wiederholung: passwordRepeat, name: displayName }, t("auth.passwordMismatch"));
     setBusy(false);
+    // Nur die Wiederholung wird geleert, wenn sie nicht passte — das erste Feld
+    // bleibt stehen, sonst tippt man beide Male neu.
+    if (fehler === t("auth.passwordMismatch")) { setPasswordRepeat(""); toast.error(fehler); return; }
     setPassword("");
     setPasswordRepeat("");
-    if (error) { toast.error(error); return; }
+    if (fehler) { toast.error(fehler); return; }
     if (mode === "up") toast.success(opts.checkEmailMessage ?? "Prüfe deine E-Mail zur Bestätigung.");
     opts.onSuccess?.(mode);
   }
