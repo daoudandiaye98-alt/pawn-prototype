@@ -17,6 +17,7 @@
   ],
   "merge_reihenfolge": [
     "MAIN IST WEITERGEZOGEN: #187, #188 und #189 sind gemergt (main steht auf 23a2df7). Dieser Zweig hat main hereingeholt — notbetrieb.mjs, rls-anon.mjs und docs/teil-k/ liegen jetzt hier.",
+    "L13 UND L12 SIND GEBAUT (PR #190): Anklopfen an /auth/v1/health statt 6-Sekunden-Uhr, und RoleGate ist der einzige Waechter. Neue Zusagen Z11 und Z12, beide einmal rot vorgefuehrt. REGRESSION: 12/12.",
     "TEIL L LAEUFT. Der Auftrag setzt die deploy-choreografie AUSDRUECKLICH und BEGRENZT aus: nur fuer die Migrationen des Erstaufbaus auf cnxtdcifkrdxvajaikxq. Danach gilt sie unveraendert weiter.",
     "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
     "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
@@ -57,7 +58,7 @@
     "vergleich": "Derselbe Zustand, zwei Verhalten — der Beleg für PR #185: Lauf #109 auf diesem Zweig (ohne Schwelle) meldet grün und sagt NICHTS dazu. Lauf #108 auf dem Zweig von #185 (mit Schwelle) meldet bei 1 von 1104 messbaren Gates „KEIN URTEIL“ plus Warnung am PR — ebenfalls grün, aber nicht mehr stumm. Nach dem Merge von #185 verhält sich auch dieser Zweig so.",
     "hinweis_briefing": "ACHTUNG beim Lesen des Sitzungsstarts: briefing.sh zeigt auf DIESEM Zweig nur „1 bestanden, 0 gefallen“ und verschweigt die 673 ungemessenen — das sieht wie ein Erfolg aus. Die dritte Zahl in die Zeile zu bringen ist Teil von PR #185 (.claude/hooks/briefing.sh). Wird #185 wie empfohlen ZUERST gemergt, erledigt sich das. Wird #184 zuerst gemergt, steht die halbe Wahrheit bis dahin im Briefing."
   },
-  "naechster_zug": "L1 ist angehalten und gemeldet. Ohne Daoudas Entscheidung zu acquisition_leads geht davon nichts weiter. Der Bau laeuft derweil auf dem Teil, der die Datenbank nicht braucht: L13 (Anklopfen an /auth/v1/health statt 6-Sekunden-Frist), L12 (RoleGate als einziger Entscheider), dann L5-L11 (Zugang-Doppelseite im Heft, Anmelden und Registrieren getrennt, Passwort-Wiederholung, zwei Publikumstueren, /auth wird Weiterleitung auf /konto) als eigener PR, danach L15 und L16.",
+  "naechster_zug": "L1 ist angehalten und gemeldet — ohne Daoudas Entscheidung zu acquisition_leads geht davon nichts weiter. L13 und L12 liegen in PR #190. Als naechstes L5-L11 (Zugang-Doppelseite im Heft, Anmelden und Registrieren getrennt, Passwort-Wiederholung, zwei Publikumstueren, /auth wird Weiterleitung auf /konto, merge_anon_session traegt kunden_stil und wishlists) als EIGENER PR, danach L15 (Freistellen) und L16 (heft.d.ts).",
   "nicht_pruefbar": [
     "DIE MIGRATIONSKETTE IST JETZT PRUEFBAR, und sie ist rot: scripts/verify/migrationen-kette.mjs meldet vier Tabellen, die geaendert werden, bevor sie angelegt werden. Das war vorher nicht sichtbar — der Erstaufbau lief 13 Stapel weit, bevor es auffiel.",
     "DREI BLINDE PRÜFSTANDSLÄUFE, belegt: #104 (1 von 674 messbar), #106 und #108 (1 von 1104). Chromium auf dem GitHub-Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf (net::ERR_NAME_NOT_RESOLVED, 24 bis 60 Anfragen je Seite). Die Vorschau lädt — die Sperre hebt VERCEL_AUTOMATION_BYPASS_SECRET auf —, aber als Hülle ohne Inhalte. Seit #185 sagt der Lauf das selbst („KEIN URTEIL“, Warnung am PR, Check bleibt grün); vorher meldete er nur grün.",
@@ -68,7 +69,7 @@
     "DER PRÜFER (10.09., 18 Behauptungen zu Teil H): 17 bestätigt, 0 widerlegt, 1 nicht prüfbar (der CI-Stand — er hat keinen GitHub-Zugriff). Er hat zwei der neuen Kontrollen in einer Kopie rot vorgeführt und die Bündelzahl selbst nachgemessen."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": "2026-09-11 — 4 von 4 bestanden. Zusaetzlich neu: KETTE 0/1 (echt rot, absichtlich nicht im Tor).",
+  "letzter_verify": "2026-09-11 — VERIFY 4/4, REGRESSION 12/12, test:heft 39/39. KETTE 0/1 (echt rot, absichtlich nicht im Tor). RLS nicht pruefbar (kein Schluessel in der Umgebung).",
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },
