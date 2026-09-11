@@ -2,8 +2,23 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// ——— Übergang, September 2026 ———————————————————————————————————————————
+// Das alte Projekt `rnakubexbqfgfciynqpt` existiert nicht mehr (NXDOMAIN, kein
+// DNS-Eintrag). Solange `.env` und die Vercel-Variablen noch darauf zeigen,
+// biegt dieser Block auf das neue Projekt um. Er hebt sich selbst auf: sobald
+// VITE_SUPABASE_URL auf das neue Projekt zeigt, greift wieder die Umgebung.
+// Wenn die Variablen umgestellt sind, gehören diese Zeilen gelöscht.
+const TOTES_PROJEKT = 'rnakubexbqfgfciynqpt';
+const UEBERGANG_URL = 'https://cnxtdcifkrdxvajaikxq.supabase.co';
+const UEBERGANG_KEY = 'sb_publishable_EkgztIIvI3ckMzcF0EKwLg_VgmV-eyk';
+
+const ROH_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const UMBIEGEN = !ROH_URL || ROH_URL.includes(TOTES_PROJEKT);
+
+const SUPABASE_URL = UMBIEGEN ? UEBERGANG_URL : ROH_URL;
+const SUPABASE_PUBLISHABLE_KEY = UMBIEGEN
+  ? UEBERGANG_KEY
+  : (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string);
 
 
 function isNewSupabaseApiKey(value: string): boolean {

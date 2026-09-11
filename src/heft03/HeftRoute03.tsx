@@ -66,7 +66,7 @@ function stylesheet(href: string): HTMLLinkElement {
 export default function HeftRoute03() {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { value: consent, setConsent } = useConsent();
 
   const heftRef = useRef<Griff | null>(null);
@@ -306,6 +306,35 @@ export default function HeftRoute03() {
       heft.refresh();
     }
   }, [user, bereit]);
+
+  /* ——— Der Weg nach hinten. Wer eine Rolle hat, sieht im Kopf des Hefts eine Tür:
+         Admin → das Cockpit, Designer → das Studio. Wer keine hat, sieht nichts.
+         React hängt sie an die Werkzeugleiste des Gerüsts und nimmt sie wieder mit;
+         der CSS3D-Baum unter #reader-layer bleibt unberührt. ——— */
+  useEffect(() => {
+    if (!bereit) return;
+    const leiste = document.querySelector(".utilities");
+    if (!leiste) return;
+    const ziel = roles.includes("admin")
+      ? { href: "/admin", text: "Cockpit" }
+      : roles.includes("designer")
+        ? { href: "/studio", text: "Studio" }
+        : null;
+    if (!ziel) return;
+    const a = document.createElement("a");
+    a.id = "cockpit-open";
+    a.href = ziel.href;
+    a.textContent = ziel.text + " \u2197";
+    a.style.cssText = "font-size:11px;white-space:nowrap;text-decoration:none;color:inherit;border-bottom:1px solid currentColor;padding-bottom:2px";
+    a.onclick = (e) => {
+      e.preventDefault();
+      navigateRef.current(ziel.href);
+    };
+    leiste.insertBefore(a, leiste.firstChild);
+    return () => {
+      a.remove();
+    };
+  }, [roles, bereit]);
 
   /* ——— Eine Zustimmung, zwei Anzeigen: die Sprechblase des Hefts und die Leiste. ——— */
   useEffect(() => {
