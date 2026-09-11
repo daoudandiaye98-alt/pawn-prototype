@@ -13,7 +13,7 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, EIGENE_ABBRUECHE, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
   VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
 import { ausnahmeFuer, abgelaufen } from "./ausnahmen";
@@ -197,7 +197,11 @@ async function seiteMessen(
   page.on("requestfailed", (r) => {
     const zeile = `${r.url().slice(0, 90)} — ${r.failure()?.errorText}`;
     fehlgeschlagen.push(zeile);
-    if (DATEN_HOSTS.some((h) => r.url().includes(h))) datenFehler.push(zeile);
+    const fehlertext = r.failure()?.errorText ?? "";
+    // Ein Abbruch, den das Heft selbst ausloest, ist kein fehlender Datensatz.
+    // Siehe EIGENE_ABBRUECHE in pruefstand.config.ts — belegt an Lauf #150.
+    const eigen = EIGENE_ABBRUECHE.some((a) => r.url().includes(a.pfad) && fehlertext === a.fehler);
+    if (!eigen && DATEN_HOSTS.some((h) => r.url().includes(h))) datenFehler.push(zeile);
   });
   page.on("response", async (r) => {
     try {

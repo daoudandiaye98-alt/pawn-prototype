@@ -126,6 +126,31 @@ export const UNSINN_PFAD = "/diese-seite-gibt-es-nicht-4d9f21";
  */
 export const DATEN_HOSTS = ["supabase.co"];
 
+/**
+ * Anfragen, die das Heft SELBST abbricht — sie sind kein Beweis, dass Daten fehlen.
+ *
+ * BELEGT am 2026-09-11, Lauf #150 auf Zweig claude/teil-m-kette: der Lauf meldete
+ * „KEIN URTEIL — nur 1 von 1052 Gates messbar". Die EINE fehlgeschlagene Anfrage je
+ * Seite war jedes Mal dieselbe:
+ *
+ *   https://<projekt>.supabase.co/auth/v1/health — net::ERR_ABORTED
+ *
+ * Das ist das Anklopfen aus src/heft03/notbetrieb.mjs (Teil L13). Es bricht nach
+ * seiner Frist selbst ab — genau dafuer ist es gebaut. Der Huellen-Waechter sah
+ * darin „Anfrage an den Datenhost fehlgeschlagen" und entwertete jede Seite.
+ *
+ * Damit war der Pruefstand ab L13 dauerhaft blind, und zwar durch eigenen Code,
+ * nicht durch ein kaputtes Netz. Eine Messung, die sich selbst entwertet, ist so
+ * wertlos wie eine, die gruen meldet, ohne gemessen zu haben.
+ *
+ * ENG geschrieben: nur dieser eine Pfad, nur ein Abbruch. Schlaegt das Anklopfen
+ * mit einem ECHTEN Transportfehler fehl (DNS, Verbindung abgewiesen), zaehlt es
+ * weiter als Huelle — dann ist die Datenbank wirklich nicht zu erreichen.
+ */
+export const EIGENE_ABBRUECHE = [
+  { pfad: "/auth/v1/health", fehler: "net::ERR_ABORTED" },
+];
+
 export const SCHWELLEN = {
   /** 3.3 — WCAG. Klein: unter 24 px, bzw. unter 18,66 px wenn fett. */
   kontrast_klein: 4.5,
