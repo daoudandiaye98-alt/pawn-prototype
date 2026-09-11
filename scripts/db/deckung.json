@@ -52,6 +52,19 @@
         "20260801090000"
       ],
       "grund": "Dieselbe Form wie 20260729052933, und derselbe Grund: `alter type public.page_block_kind add value 'ueberlappend'` — den Typ legt aber erst 20260729093000_hausseite_bausteine.sql an, also SPAETER. An seiner Stelle nicht spielbar. Die identische Anweisung steht in 20260801090000_hausseite_ueberlappend.sql, dort hinter dem Typ. Sie traegt IF NOT EXISTS, liefe also auch zweimal ohne Schaden — nur eben nicht zu frueh."
+    },
+    "20260810093133": {
+      "art": "anweisung",
+      "gedeckt_von": [
+        "20260825090000"
+      ],
+      "weglassen": [
+        {
+          "text": "create index if not exists brand_knowledge_kategorie_idx on public.brand_knowledge (kategorie, active, approved, created_at desc);",
+          "warum": "Der Index liest brand_knowledge.active — diese Spalte legt aber erst 20260821090000_brand_knowledge_teil33.sql an, also SPAETER in der Abspielordnung. An dieser Stelle nicht spielbar (42703). Dieselbe Zeile steht Zeichen fuer Zeichen in 20260825090000_wissen_wirtschaft_teil38.sql, und die laeuft nach der Spalte. Sie traegt IF NOT EXISTS, liefe also auch zweimal ohne Schaden — nur eben nicht zu frueh."
+        }
+      ],
+      "grund": "Nur diese eine Index-Zeile ist gedeckt. Der ganze Rest der Datei ist ihr eigener und laeuft — sie ist die groesste Lovable-Sammelmigration der Kette (26 Anweisungen, Teil 38 AP1 bis AP6)."
     }
   }
 }
