@@ -5,11 +5,24 @@
     {
       "nr": 187,
       "titel": "Doku: Befund zum Vorschau-Betrieb",
-      "status": "Draft, Checks gruen",
-      "blockiert_durch": "nichts — wartet auf Daoudas Entscheidung zu den zwei Punkten"
+      "status": "Draft, Checks gruen, nur .claude/stand.json",
+      "blockiert_durch": "Daoudas Entscheidung: Text des Streifens und 6-Sekunden-Frist"
+    },
+    {
+      "nr": 188,
+      "titel": "Teil K: Stand des Umzugs, K1 und K3",
+      "status": "Draft, Checks gruen (messen success 12:56); Doku + scripts/verify/rls-anon.mjs + verify.sh",
+      "blockiert_durch": "DIE Entscheidung: wer spielt die 160 Migrationen? Drei Wege in docs/teil-k/umzug-stand.md Abschnitt 3."
+    },
+    {
+      "nr": 189,
+      "titel": "K7, K10, K13: Vorschau-Betrieb aufraeumen und pruefbar machen",
+      "status": "Draft, Checks gruen (messen success 12:25); Code in src/heft03/. verify 4/4, 36 Tests, tsc 0, pruefer 15/15",
+      "blockiert_durch": "nichts — nur Ansehen"
     }
   ],
   "merge_reihenfolge": [
+    "MERGE-REIHENFOLGE der drei offenen PRs: #189 zuerst (Code, unabhaengig). Dann #187 und #188 — beide aendern .claude/stand.json, der zweite Merge gibt einen Konflikt in genau dieser Datei. Immer die NEUERE Fassung nehmen, nicht mischen.",
     "K1 IST ERLEDIGT (Commit f42a17d, PR #188): sieben Dateien zeigen jetzt auf cnxtdcifkrdxvajaikxq. Was absichtlich stehen blieb und warum, steht in docs/teil-k/umzug-stand.md Abschnitt 5b — nicht noch einmal greppen.",
     "BERICHTIGTE REGEL: pawn-kontext und routinen/01-waechter.md sagten beide, ein nicht aufloesender Datenbank-Name sei 'fast immer das Lovable-Guthaben'. Falsch — ein pausiertes Projekt loest weiter auf, ein GELOESCHTES verschwindet aus dem DNS. NXDOMAIN ist das Zeichen, das beides trennt. Genau diese Luecke hat drei Pruefstandslaeufe blind laufen lassen.",
     "K3 IST GEBAUT (Commit ecb137f): scripts/verify/rls-anon.mjs misst mit dem anon-Schluessel gegen die echte Datenbank, als Pruefung `rls` in verify.sh schnell UND voll. Sie sagt heute ehrlich KEIN URTEIL (24 nicht pruefbar, Schema fehlt) — sobald die Migrationen liegen, traegt sie. Einmal rot vorgefuehrt.",
