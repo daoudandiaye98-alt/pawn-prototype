@@ -1,5 +1,5 @@
 {
-  "aktualisiert": "2026-09-10",
+  "aktualisiert": "2026-09-11",
   "branch": "claude/stand-nach-den-merges",
   "offene_prs": [],
   "merge_reihenfolge": [
@@ -42,7 +42,7 @@
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-10",
+    "datum": "2026-09-11",
     "bestanden": 4,
     "gefallen": 0
   },
