@@ -226,6 +226,12 @@
         ],
         "begruendung": "Zwei unveraenderbare Altbestaende, und beide zu aendern ist durch wache.sh blockiert und nuetzt nichts, weil die Werte in der Git-Geschichte stehen. Eine Pruefung, die daran dauerhaft rot steht, lehrt nur, Rot zu uebersehen. 1) 20260721221200: ai_config.jarvis_cron_secret, 64 Stellen Hex. Inzwischen aus der Datenbank geloescht (20260930110000). 2) 20260709092523: der anon-JWT des GELOESCHTEN alten Projekts rnakubexbqfgfciynqpt, im Kopf des Nachtjobs. Der Schluessel ist wertlos, weil das Projekt nicht mehr existiert, und der Job ist abgeschaltet (20260930100000) — aber die Zeile bleibt in der Datei."
       }
+    },
+    {
+      "id": "Z17",
+      "zusage": "Die Migrationskette ist gegen eine leere Datenbank spielbar — jede doppelte Anlage ist in scripts/db/deckung.json benannt.",
+      "beleg": "Belegt am 11.09.2026 mitten im Abspielen gegen cnxtdcifkrdxvajaikxq: `42P07: relation \"staging_requests\" already exists` bei 20260729052933. Das war keine Ausnahme, sondern eine Form — der Lovable-Agent hatte am 29.07. drei Repo-Dateien in EINER Migration gebuendelt angewandt, und dieselben Dateien liegen zusaetzlich einzeln im Ordner, zwei davon mit SPAETEREM Datum. Einmal alle gesucht statt eine nach der anderen anzulaufen: FUENF Stellen, nicht eine (20260729052933, 20260731090000, 20260802090000, 20260803090000, 20260905090000). Drei der Buendel tragen GRANTs, die in den spaeteren Einzeldateien fehlen, darunter `GRANT SELECT ON public.house_themes TO anon` und ein `revoke all on function public.recompute_house_milestones(uuid) from public` — haette man die Buendel uebersprungen statt der Einzeldateien, waere genau das Loch zurueckgekommen, das M7 zugemacht hat. Einmal rot vorgefuehrt, zweifach: eine Deckung entfernt (VERIFY: 4/5 · FEHLER: kette) und eine Deckung eingetragen, die nichts deckt (eine Karteileiche waere schlimmer als keine Deckung, weil sie eine Datei stumm schaltet, die gar nichts doppelt).",
+      "pruefung": "jedeDoppelungIstGedeckt"
     }
   ]
 }

@@ -1,0 +1,38 @@
+{
+  "WAS_DAS_IST": "Fünf Migrationen legen Dinge an, die eine ANDERE Migration der Kette schon angelegt hat. Beim Abspielen bricht die Kette dort mit 42P07 (Tabelle existiert schon) oder 42710 (Policy existiert schon). Diese Tabelle sagt für jede dieser Versionen, was schon gedeckt ist und von wem — damit der Lauf reproduzierbar ist und nicht von dem abhängt, was eine Sitzung gerade im Kopf hat.",
+  "WOHER_DAS_KOMMT": "Der Lovable-Agent hat am 29.07.2026 drei Repo-Dateien in EINER Migration gebündelt angewandt (20260729052933, die Abschnitte tragen die Dateinamen im Kommentar). Dieselben Dateien liegen aber auch einzeln im Ordner, zwei davon mit SPÄTEREM Datum. Dasselbe am 10.08. mit rate_limit_hits. Die Datenbank kannte also nur den Bündel-Stand; der Ordner kennt beide. Gefunden beim Abspielen gegen die echte Datenbank am 11.09.2026, nicht durch Nachdenken.",
+  "DIE_REGEL": "Gedeckt wird immer die ÄRMERE Fassung. Drei der Bündel-Migrationen tragen zusätzliche GRANTs (darunter `GRANT SELECT ... TO anon` auf house_themes und house_milestones, ohne die eine veröffentlichte Hausseite ihre eigene Welt nicht lesen kann) und einen REVOKE, die in den späteren Einzeldateien FEHLEN. Wer stattdessen die Bündel überspringt, verliert diese Rechte still. Deshalb laufen die Bündel, und die Einzeldateien werden nur gebucht.",
+  "KEINE_DATEI_WIRD_GEAENDERT": "Die Migrationen selbst bleiben unangetastet (CLAUDE.md Regel 2). Diese Tabelle wirkt nur auf das, was scripts/db/stapel.mjs an die Datenbank druckt.",
+  "versionen": {
+    "20260729052933": {
+      "art": "abschnitte",
+      "weglassen": [
+        "20260726141711_staging_templates.sql",
+        "20260726172947_content_begleiter.sql"
+      ],
+      "gedeckt_von": ["20260726141711", "20260726172947"],
+      "grund": "Das Bündel trägt drei Abschnitte. Die ersten zwei sind wörtlich die beiden genannten Dateien, die in der Abspielordnung VORHER liegen und schon gelaufen sind — ihr Abschnitt 1 würde an CREATE TABLE public.staging_requests scheitern. Abschnitt 3 (house_themes) läuft, denn nur er trägt die drei GRANTs."
+    },
+    "20260731090000": {
+      "art": "ganz",
+      "gedeckt_von": ["20260729052933"],
+      "grund": "Ganz enthalten in Abschnitt 3 von 20260729052933 — und zwar ärmer: dort stehen zusätzlich GRANT SELECT ON public.house_themes TO anon, GRANT SELECT/INSERT/UPDATE/DELETE TO authenticated und GRANT ALL TO service_role, die in dieser Datei fehlen. Anweisung für Anweisung nachgezählt: 10 gegen 7."
+    },
+    "20260802090000": {
+      "art": "ganz",
+      "gedeckt_von": ["20260729053012"],
+      "grund": "Ganz enthalten in 20260729053012 — und zwar ärmer: dort stehen zusätzlich die drei GRANTs auf public.house_milestones und `revoke all on function public.recompute_house_milestones(uuid) from public`. Ohne das Bündel wäre diese Funktion für PUBLIC aufrufbar, also genau das Loch, das M7 zugemacht hat. Anweisung für Anweisung nachgezählt: 11 gegen 7."
+    },
+    "20260803090000": {
+      "art": "anweisung",
+      "weglassen_text": "CREATE POLICY \"public reads media of active houses\" ON public.media_assets FOR SELECT\n  TO anon, authenticated\n  USING (\n    EXISTS (SELECT 1 FROM public.designers d WHERE d.id = media_assets.designer_id AND d.status = 'active')\n  );",
+      "gedeckt_von": ["20260729053041"],
+      "grund": "Nur diese EINE Policy ist doppelt, Zeichen für Zeichen gleich wie in 20260729053041. Der ganze Rest der Datei ist ihr eigener und läuft."
+    },
+    "20260905090000": {
+      "art": "ganz",
+      "gedeckt_von": ["20260810093249"],
+      "grund": "Ganz enthalten in 20260810093249 Zeile 79 bis 93: Tabelle rate_limit_hits, ihr Index, RLS, der REVOKE, die zwei GRANTs und die ai_config-Zeile pawn_chat_rate_limits. Diese Datei trägt nichts Eigenes."
+    }
+  }
+}

@@ -75,6 +75,49 @@ const version = (datei) => datei.slice(0, datei.indexOf("_"));
 const kennung = (datei) => datei.replace(/\.sql$/, "");
 
 /**
+ * DIE DECKUNG — siehe scripts/db/deckung.json.
+ *
+ * Fuenf Migrationen legen Dinge an, die eine ANDERE Migration der Kette schon
+ * angelegt hat. Die Kette bricht dort mit 42P07 oder 42710. Belegt am 11.09.2026
+ * beim Abspielen gegen die echte Datenbank: `42P07: relation "staging_requests"
+ * already exists`. Gefunden wurden alle fuenf auf einen Schlag mit
+ * scripts/db/doppelungen.mjs — die Pruefung, die eine sechste kuenftig selbst faengt.
+ *
+ * KEINE MIGRATION WIRD GEAENDERT. Die Deckung wirkt nur auf das, was hier gedruckt
+ * wird. Gedeckt ist immer die AERMERE Fassung: drei der Buendel-Migrationen tragen
+ * GRANTs, die in den spaeteren Einzeldateien fehlen.
+ */
+const DECKUNG = JSON.parse(
+  readFileSync(join(WURZEL, "scripts/db/deckung.json"), "utf8")).versionen;
+
+/** Was von einer Datei wirklich an die Datenbank geht. Leer = nur buchen. */
+function wirksam(datei, sql) {
+  const d = DECKUNG[version(datei)];
+  if (!d) return sql;
+  if (d.art === "ganz") return "";
+  if (d.art === "abschnitte") {
+    // Das Buendel tragt seine Abschnittsgrenzen selbst: `-- Datei N: <dateiname>`.
+    const stellen = [...sql.matchAll(/^-- Datei \d+: (\S+)$/gm)];
+    if (!stellen.length) throw new Error(`${datei}: keine Abschnittsmarken gefunden`);
+    let aus = "";
+    for (const [i, m] of stellen.entries()) {
+      const bis = i + 1 < stellen.length ? stellen[i + 1].index : sql.length;
+      if (!d.weglassen.includes(m[1])) aus += sql.slice(m.index, bis);
+    }
+    if (!aus.trim()) throw new Error(`${datei}: die Deckung laesst nichts uebrig`);
+    return aus;
+  }
+  if (d.art === "anweisung") {
+    const t = d.weglassen_text;
+    const treffer = sql.split(t).length - 1;
+    if (treffer !== 1)
+      throw new Error(`${datei}: der zu deckende Text kommt ${treffer}x vor, erwartet genau 1x`);
+    return sql.replace(t, "-- (diese Anweisung ist gedeckt, siehe scripts/db/deckung.json)");
+  }
+  throw new Error(`${datei}: unbekannte Deckungsart ${d.art}`);
+}
+
+/**
  * Was schon liegt, wird nicht nochmal gedruckt — `--ohne <datei>`.
  *
  * WARUM: ein Lauf ueber 33 Stapel ueberlebt keine Sitzung zwangslaeufig. Ohne diesen
@@ -97,7 +140,8 @@ function stapeln() {
   const stapel = [];
   let laufend = [];
   for (const d of dateien) {
-    const sql = readFileSync(join(WURZEL, ORDNER, d), "utf8");
+    const roh = readFileSync(join(WURZEL, ORDNER, d), "utf8");
+    const sql = wirksam(d, roh);
     if (mussAlleinLaufen(sql)) {
       if (laufend.length) { stapel.push(laufend); laufend = []; }
       stapel.push([{ datei: d, sql, allein: true }]);
@@ -112,18 +156,35 @@ function stapeln() {
   return stapel;
 }
 
+/**
+ * WELCHE DATEI GIBT DEM STAPEL SEINEN NAMEN. Normalerweise die letzte — ihre Zeile
+ * schreibt apply_migration selbst. Eine GANZ GEDECKTE Datei schickt aber gar kein SQL
+ * mehr; sie darf den Namen nicht tragen, sonst ginge ein Stapel an die Datenbank, der
+ * nur aus Kommentaren besteht. Der Name ist deshalb die letzte Datei mit echtem SQL.
+ */
+function nameStelle(eintraege) {
+  for (let i = eintraege.length - 1; i >= 0; i--)
+    if (eintraege[i].sql.trim() !== "") return i;
+  throw new Error("Stapel ohne eine einzige Datei mit eigenem SQL — Stapelgrenzen pruefen");
+}
+
 /** Die SQL eines Stapels, fertig für apply_migration. */
 function sqlFuer(eintraege) {
   // WOERTLICH, mit Kommentaren. Eine knappe Fassung haette 18 % gespart und dafuer
   // einen eigenen Kommentar-Entferner ueber Funktionsrumpf und Zeichenkette laufen
   // lassen. 18 % rechtfertigen dieses Risiko nicht. Gemessen, dann verworfen.
-  const teile = eintraege.map(({ datei, sql }) =>
-    `-- ${datei}\n${sql.trimEnd()}\n`);
+  const teile = eintraege.map(({ datei, sql }) => {
+    const d = DECKUNG[version(datei)];
+    if (sql.trim() === "")
+      return `-- ${datei}\n-- GANZ GEDECKT von ${d.gedeckt_von.join(", ")} — kein SQL.\n`
+           + `-- ${d.grund.replace(/\n/g, "\n-- ")}\n`;
+    return `-- ${datei}${d ? "  (teilweise gedeckt, siehe scripts/db/deckung.json)" : ""}\n${sql.trimEnd()}\n`;
+  });
   // DIE LETZTE DATEI BLEIBT HIER AUSSEN VOR. `apply_migration` schreibt ihre Zeile
   // selbst (der Name, den --name liefert, ist ihrer). Wuerde der Stapel sie auch
   // einfuegen, liefe apply_migration danach in einen Schluessel-Konflikt und der
   // ganze Stapel faellt zurueck. Gemessen am Verhalten des Werkzeugs, nicht geraten.
-  const selbst = eintraege.slice(0, -1);
+  const selbst = eintraege.filter((_, i) => i !== nameStelle(eintraege));
   const zeilen = selbst
     .map(({ datei }) => `    ('${version(datei)}', '${kennung(datei)}')`)
     .join(",\n");
@@ -193,7 +254,7 @@ if (nr !== null) {
   if (arg("--name") !== null) {
     // Der Name entscheidet, welche Version apply_migration selbst schreibt — und
     // das ist die LETZTE Datei des Stapels, damit die Reihenfolge stimmt.
-    console.log(kennung(stapel[i].at(-1).datei));
+    console.log(kennung(stapel[i][nameStelle(stapel[i])].datei));
   } else {
     console.log(sqlFuer(stapel[i]));
   }
@@ -210,6 +271,8 @@ for (const [i, s] of stapel.entries()) {
   console.log(`Stapel ${String(i + 1).padStart(3)} · ${String(s.length).padStart(2)} Datei(en)`
     + ` · ${String(Math.round(bytes / 1024)).padStart(3)} kB`
     + (s[0].allein ? "  ALLEIN (ALTER TYPE)" : "")
-    + `\n            ${s.map((e) => e.datei).join("\n            ")}`);
+    + `\n            ${s.map((e) => e.datei + (DECKUNG[version(e.datei)]
+        ? (e.sql.trim() === "" ? "   [ganz gedeckt, nur Buchung]" : "   [teils gedeckt]") : ""))
+        .join("\n            ")}`);
 }
 console.log(`\nSTAPEL: ${stapel.length} · DATEIEN: ${dateien} · ALLEIN: ${allein}`);

@@ -12,6 +12,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const lies = (p) => readFileSync(join(WURZEL, p), "utf8");
@@ -540,6 +541,22 @@ function keinGeheimnisInMigration({ ordner, ausnahmen = [] }) {
   return OK;
 }
 
+/**
+ * Z17 — die Kette ist spielbar. Die Umsetzung liegt in scripts/db/doppelungen.mjs,
+ * weil sie dort auch von Hand aufgerufen wird, wenn jemand mitten im Lauf steht.
+ * Hier steht nur der Aufruf: eine Umsetzung, zwei Tueren, keine Kopie.
+ */
+function jedeDoppelungIstGedeckt() {
+  try {
+    execFileSync("node", [join(WURZEL, "scripts/db/doppelungen.mjs")],
+      { cwd: WURZEL, encoding: "utf8", stdio: "pipe" });
+    return OK;
+  } catch (e) {
+    const letzte = String(e.stdout || "").trim().split("\n").pop() || e.message;
+    return nein(letzte);
+  }
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -557,6 +574,7 @@ const PRUEFUNGEN = {
   leereWeltStuerztNicht,
   geruestErstNachGestaltung,
   keinGeheimnisInMigration,
+  jedeDoppelungIstGedeckt,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

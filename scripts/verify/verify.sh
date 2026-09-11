@@ -54,6 +54,8 @@ kette() {
   # Der Stapel-Drucker gehoert zur Kette: ohne ihn ist der Erstaufbau nicht
   # fortsetzbar. Belegt am 11.09.2026 — ich habe ihn committet, ohne ihn laufen zu
   # lassen, und vier Funktionen fehlten. Eine Zeile verhindert das kuenftig.
+  # Die Doppelungen in der Kette prueft Z17 im Regressions-Lauf (scripts/db/
+  # doppelungen.mjs). Nicht hier doppelt — eine Umsetzung, ein Aufruf.
   local druck
   druck=$(node scripts/db/stapel.mjs --liste 2>&1 | tail -1)
   if ! printf '%s' "$druck" | grep -q '^STAPEL: [0-9]'; then
