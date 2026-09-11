@@ -23,11 +23,21 @@
     },
     "20260803090000": {
       "art": "anweisung",
-      "weglassen_text": "CREATE POLICY \"public reads media of active houses\" ON public.media_assets FOR SELECT\n  TO anon, authenticated\n  USING (\n    EXISTS (SELECT 1 FROM public.designers d WHERE d.id = media_assets.designer_id AND d.status = 'active')\n  );",
       "gedeckt_von": [
         "20260729053041"
       ],
-      "grund": "Nur diese EINE Policy ist doppelt, Zeichen für Zeichen gleich wie in 20260729053041. Der ganze Rest der Datei ist ihr eigener und läuft."
+      "grund": "Zwei Anweisungen sind gedeckt. (1) Die Policy \"public reads media of active houses\" ist Zeichen fuer Zeichen dieselbe wie in 20260729053041. (2) Das Backfill auf media_assets.product_id ist in DIESER Datei fehlerhaft geschrieben und laeuft nirgends — 20260729053041 hat dasselbe Backfill korrekt als Unterabfrage und ist gelaufen. Der ganze Rest der Datei ist ihr eigener.",
+      "weglassen": [
+        {
+          "text": "CREATE POLICY \"public reads media of active houses\" ON public.media_assets FOR SELECT\n  TO anon, authenticated\n  USING (\n    EXISTS (SELECT 1 FROM public.designers d WHERE d.id = media_assets.designer_id AND d.status = 'active')\n  );",
+          "warum": "Zeichen fuer Zeichen dieselbe Policy wie in 20260729053041."
+        },
+        {
+          "text": "UPDATE public.media_assets ma\nSET product_id = (elem->>'product_id')::uuid\nFROM jsonb_array_elements(ma.usages) AS elem\nWHERE ma.product_id IS NULL\n  AND elem->>'type' = 'produkt'\n  AND elem->>'product_id' IS NOT NULL\n  AND (elem->>'product_id') ~ '^[0-9a-f-]{36}$';",
+          "warum": "Dieses Backfill KANN nicht laufen, in keiner Datenbank: ein UPDATE darf seine eigene Zieltabelle nicht in der FROM-Klausel nennen. Gemessen am 11.09.2026: 42P10: invalid reference to FROM-clause entry for table \"ma\". Dasselbe Backfill steht in 20260729053041 als gueltige Unterabfrage und ist dort gelaufen.",
+          "ersetzt_durch": "UPDATE public.media_assets ma\nSET product_id = sub.pid\nFROM (\n  SELECT m.id, (elem->>'product_id')::uuid AS pid\n  FROM public.media_assets m\n  CROSS JOIN LATERAL jsonb_array_elements(m.usages) AS elem\n  WHERE m.product_id IS NULL\n    AND elem->>'type' = 'produkt'\n    AND elem->>'product_id' IS NOT NULL\n    AND (elem->>'product_id') ~ '^[0-9a-f-]{36}$'\n) sub\nWHERE ma.id = sub.id AND ma.product_id IS NULL;"
+        }
+      ]
     },
     "20260905090000": {
       "art": "ganz",

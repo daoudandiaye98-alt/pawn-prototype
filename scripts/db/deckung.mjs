@@ -38,11 +38,14 @@ export function wirksam(datei, sql) {
     return aus;
   }
   if (d.art === "anweisung") {
-    const t = d.weglassen_text;
-    const treffer = sql.split(t).length - 1;
-    if (treffer !== 1)
-      throw new Error(`${datei}: der zu deckende Text kommt ${treffer}x vor, erwartet genau 1x`);
-    return sql.replace(t, "-- (diese Anweisung ist gedeckt, siehe scripts/db/deckung.json)");
+    let aus = sql;
+    for (const w of d.weglassen) {
+      const treffer = aus.split(w.text).length - 1;
+      if (treffer !== 1)
+        throw new Error(`${datei}: der zu deckende Text kommt ${treffer}x vor, erwartet genau 1x`);
+      aus = aus.replace(w.text, "-- (diese Anweisung ist gedeckt, siehe scripts/db/deckung.json)");
+    }
+    return aus;
   }
   throw new Error(`${datei}: unbekannte Deckungsart ${d.art}`);
 }

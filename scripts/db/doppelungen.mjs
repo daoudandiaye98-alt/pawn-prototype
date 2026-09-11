@@ -107,7 +107,19 @@ for (const [v, d] of Object.entries(DECKUNG)) {
     if (!quelle) { fehler.push(`${v}: gedeckt_von nennt ${q}, die Datei gibt es nicht`); continue; }
     for (const a of anweisungen(nachDatei.get(quelle))) woanders.add(a);
   }
-  const verloren = weg.filter((a) => !woanders.has(a));
+  // Manche Anweisung steht nicht woertlich woanders, sondern ist dort RICHTIG
+  // geschrieben. 20260803090000 enthaelt ein Backfill, das gar nicht laufen KANN
+  // (42P10: invalid reference to FROM-clause entry for table "ma") — dasselbe
+  // Backfill steht in 20260729053041 als gueltige Unterabfrage. deckung.json nennt
+  // den Ersatz, und geprueft wird, dass DER woanders steht.
+  const ersatz = new Set();
+  for (const w of (d.weglassen ?? []))
+    if (w && typeof w === "object" && w.ersetzt_durch)
+      for (const a of anweisungen(w.ersetzt_durch)) {
+        if (!woanders.has(a)) fehler.push(`${v}: der genannte Ersatz steht in keiner Quelldatei — „${a.slice(0, 60)}"`);
+        for (const b of anweisungen(w.text)) ersatz.add(b);
+      }
+  const verloren = weg.filter((a) => !woanders.has(a) && !ersatz.has(a));
   if (verloren.length)
     fehler.push(`${v}: ${verloren.length} Anweisung(en) gehen verloren, z. B. „${verloren[0].slice(0, 70)}"`);
 }
