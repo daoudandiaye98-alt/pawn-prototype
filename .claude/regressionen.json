@@ -138,6 +138,18 @@
           "application_fee"
         ]
       }
+    },
+    {
+      "id": "Z11",
+      "zusage": "Beispielhaeuser erscheinen nur, wenn die Datenbank wirklich weg ist — nie, weil sie langsam ist, und nie, weil ihr eine Tabelle fehlt.",
+      "beleg": "Teil L13. Vorher entschied allein eine Frist von 6 Sekunden (notbetrieb.mjs FRIST_MS, PR #189). Das ist zweimal falsch: eine langsame, aber lebende Datenbank landete in der Beispielausgabe, und eine erreichbare Datenbank mit fehlender Tabelle ebenso — dann standen Beispielhaeuser und Beispielpreise da, wo die Wahrheit „noch nichts da“ gewesen waere. Jetzt wird einmal an /auth/v1/health angeklopft; jede HTTP-Antwort, auch 401, schliesst den Vorschau-Betrieb aus. Die Frist bleibt nur als letzte Rettung gegen eine haengende Antwort, hoch auf 30 s.",
+      "pruefung": "vorschauNurWennWeg",
+      "params": {
+        "modul": "src/heft03/notbetrieb.mjs",
+        "start": "src/heft03/app.js",
+        "huelle": "src/heft03/HeftRoute03.tsx",
+        "begruendung": "Die Logik deckt anschluss.test.mjs ab. Hier wird die Verkabelung geprueft: dass das Anklopfen im laufenden Heft ueberhaupt stattfindet. Ohne diese Kontrolle koennte anklopfAdresse aus der Huelle fallen, ohne dass ein Test rot wird."
+      }
     }
   ]
 }

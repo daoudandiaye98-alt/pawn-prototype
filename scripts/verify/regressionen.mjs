@@ -330,6 +330,27 @@ function keineStripeSpalten({ datei, migration, verboten }) {
   return OK;
 }
 
+/* Z11 — Vorschau nur, wenn die Datenbank wirklich weg ist.
+   Die Logik selbst ist in anschluss.test.mjs belegt (drei Faelle, einmal rot
+   vorgefuehrt). Ungeprueft war bisher die VERKABELUNG: ob das Anklopfen im
+   laufenden Heft ueberhaupt stattfindet. Faellt anklopfAdresse aus der Huelle,
+   bleibt jeder Test gruen — und pawn.vision entscheidet wieder nach 6 Sekunden
+   Uhrzeit statt nach der Frage, ob jemand antwortet. Genau das wird hier geprueft. */
+function vorschauNurWennWeg({ modul, huelle, start }) {
+  const m = lies(modul);
+  if (!/export\s+async\s+function\s+anklopfen/.test(m)) return nein(`${modul}: anklopfen() ist weg — dann entscheidet wieder allein die Frist`);
+  if (!/\/auth\/v1\/health/.test(m)) return nein(`${modul}: es wird nicht mehr an /auth/v1/health angeklopft`);
+  if (!/o\.anklopfen\s*\?/.test(m)) return nein(`${modul}: quelleWaehlen liest den Anklopf-Befund nicht mehr`);
+
+  const a = lies(start);
+  if (!/anklopfen\(\s*optionen\.anklopfAdresse\s*\)/.test(a)) return nein(`${start}: startHeft klopft nicht mehr an`);
+  if (!/quelleWaehlen\([^)]*anklopfen\s*:/.test(a.replace(/\n/g, " "))) return nein(`${start}: der Befund wird nicht an quelleWaehlen weitergereicht`);
+
+  const h = lies(huelle);
+  if (!/anklopfAdresse\s*:/.test(h)) return nein(`${huelle}: die Huelle reicht keine Adresse zum Anklopfen durch — das Heft faellt auf die Frist zurueck`);
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -341,6 +362,7 @@ const PRUEFUNGEN = {
   heftStartetEinmal,
   keineUmgezogenenLinks,
   keineStripeSpalten,
+  vorschauNurWennWeg,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

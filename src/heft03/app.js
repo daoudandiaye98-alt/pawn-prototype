@@ -1,5 +1,5 @@
 import {Magazine,reading,key,routeHash,parseRoute,addCart,clamp} from './model.mjs';
-import {products,houses,displays,sections,labels,counts,asset,heftFuellen,ASSETS,assetBasis,buehnenfaehig} from './data.mjs';
+import {products,houses,displays,sections,labels,counts,asset,heftFuellen,ASSETS,assetBasis,buehnenfaehig,vorschauHinweis} from './data.mjs';
 import {createWorld} from './world.mjs';
 import {readView,productView,cartView,applicationView,productCard,esc,money} from './views.mjs';
 import {prepareCutouts,prepareBilder,cutouts} from './cutouts.mjs';
@@ -8,7 +8,7 @@ import {themes,housePresentation,searchProducts,searchCount,presentationExport,h
 import {kuratiere,kurationsNotiz} from './kuration.mjs';
 import {laden,speichern,vergessen} from './store.mjs';
 import {demoQuelle} from './quelle.mjs';
-import {quelleWaehlen} from './notbetrieb.mjs';
+import {quelleWaehlen,anklopfen} from './notbetrieb.mjs';
 import {adressen} from './routen.mjs';
 import {massZeile} from './store.mjs';
 
@@ -31,16 +31,21 @@ const zustimmungMelden=()=>{if(auf.zustimmung)auf.zustimmung(state.consent);};
 const hoerer=[];
 const hoeren=(ziel,typ,fn,opt)=>{ziel.addEventListener(typ,fn,opt);hoerer.push([ziel,typ,fn,opt]);};
 // Erst die Daten, dann das Heft: Sektionen und Häuser hängen davon ab.
-// NOTBETRIEB-MARKE — Vorschau-Betrieb, wenn die Quelle schweigt.
-// Antwortet sie nicht binnen 6 Sekunden oder gar nicht, zeigt das Heft seine
-// Beispielausgabe statt einer toten Ladeseite. Kauf, Anfrage und Konto sind dann
-// gesperrt, weil demoQuelle auf alles mit {fehler:'vorschau'} antwortet.
+// NOTBETRIEB-MARKE — Vorschau-Betrieb, wenn die DATENBANK WEG ist.
+// Nicht, wenn sie langsam ist, und nicht, wenn ihr eine Tabelle fehlt. Erst wird
+// einmal an optionen.anklopfAdresse + /auth/v1/health angeklopft: kommt keine
+// Antwort, gilt die Datenbank als weg und das Heft zeigt sofort seine Beispiel-
+// ausgabe statt einer toten Ladeseite. Kommt IRGENDEINE Antwort — auch 401 —,
+// gibt es keinen Vorschau-Betrieb, egal was die Datenabfrage danach sagt.
+// Kauf, Anfrage und Konto sind in der Vorschau gesperrt, weil demoQuelle auf
+// alles mit {fehler:'vorschau'} antwortet.
 // Die Entscheidung selbst steht in notbetrieb.mjs — dort ist sie ohne Browser prüfbar.
-const gewaehlt=await quelleWaehlen(quelle,demoQuelle);
+const klopfen=await anklopfen(optionen.anklopfAdresse);
+const gewaehlt=await quelleWaehlen(quelle,demoQuelle,{anklopfen:klopfen});
 const notbetrieb=gewaehlt.notbetrieb;
 quelle=gewaehlt.quelle;
 const heft=gewaehlt.heft;
-if(notbetrieb){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{art:'quelle-weg'}));}catch(_){}}
+if(gewaehlt.fehler){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{art:notbetrieb?'quelle-weg':'daten-weg'}));}catch(_){}}
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -61,7 +66,7 @@ if(notbetrieb){
   streifen=document.createElement('div');
   streifen.id='vorschau-streifen';
   streifen.setAttribute('role','status');
-  streifen.textContent='Vorschau-Ausgabe — die Werke der Häuser werden gerade gewartet und sind in Kürze wieder da.';
+  streifen.textContent=vorschauHinweis;
   document.body.appendChild(streifen);
  }
  // Der Streifen liegt fest oben — genau dort, wo auch der Kopf liegt. Ohne Ausgleich

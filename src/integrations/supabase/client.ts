@@ -48,6 +48,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Das Heft klopft vor dem Start einmal an SUPABASE_URL + '/auth/v1/health' an, um
+// zu unterscheiden: Datenbank weg (Beispielausgabe) oder Datenbank da, aber leer
+// (ehrliche Leerzustaende). Dafuer braucht es die Adresse, nicht nur den Client.
+export { SUPABASE_URL };
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   global: {
     fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),

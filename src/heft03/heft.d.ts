@@ -193,6 +193,14 @@ declare module "@/heft03/app.js" {
     quelle?: HeftQuelle;
     /** `'hash'` für die Vorschau (#/mode/1), `'pfad'` für pawn.vision (/mode) */
     adresse?: "hash" | "pfad";
+
+    /**
+     * Basis der Datenbank, z. B. `https://xyz.supabase.co`. Das Heft klopft vor dem
+     * Start einmal an `<basis>/auth/v1/health` an. Keine Antwort → Vorschau-Betrieb.
+     * Irgendeine Antwort, auch 401 → nie Vorschau-Betrieb. Fehlt die Adresse,
+     * entscheidet allein die Frist aus `notbetrieb.mjs`.
+     */
+    anklopfAdresse?: string;
     basis?: string;
     /** Basis der Heft-Bilder, im Projekt `/heft/assets/` */
     assets?: string;
