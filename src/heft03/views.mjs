@@ -97,9 +97,15 @@ export function readView(route,state){
    tag('UNSERE HÄUSER / '+labels[welt].toUpperCase())
    +'<h1>'+{mode:'Stoff.<br><em>Und Haltung.</em>',interior:'Objekte,<br><em>die Räume verändern.</em>',kunst:'Eine Geste.<br><em>Ein Gespräch.</em>'}[welt]+'</h1>'
    +'<p class="body-copy lead">'+{mode:'Kleidung mit einer eigenen Handschrift.',interior:'Objekte, die Räume verändern.',kunst:'Arbeiten, die im Gespräch entstehen.'}[welt]+'</p>'
-   +'<p class="feld-titel">'+(haeuserDerWelt.length===1?'Ein Haus. Tipp es an.':'Tipp ein Haus an')+'</p><div class="haus-zeilen">'+zeilen+'</div>'
+   +'<p class="feld-titel">'+(haeuserDerWelt.length===0?'Noch keines. Bald.':haeuserDerWelt.length===1?'Ein Haus. Tipp es an.':'Tipp ein Haus an')+'</p><div class="haus-zeilen">'+zeilen+'</div>'
    +'<button class="text-link leise" data-route="'+welt+'">Oder die Stücke auf der Bühne sehen <span aria-hidden="true">↗</span></button>'
-   +zug('DEIN ZUG',esc(haeuserDerWelt[0].name)+' betreten','Haus '+haeuserDerWelt[0].number+', '+esc(haeuserDerWelt[0].location)+'.','data-house="'+haeuserDerWelt[0].slug+'"'),
+   /* Teil M / F3: hier stand haeuserDerWelt[0].name ohne Frage, ob es ein Haus GIBT.
+      Steht die Welt noch leer — und sie steht leer, solange die Datenbank leer ist —,
+      warf diese Zeile, und mit ihr brach die ganze Doppelseite: kein Blaettern, keine
+      Rueckkehr. Der Leerzustand ist jetzt ehrlich statt erfunden. */
+   +(haeuserDerWelt[0]
+     ?zug('DEIN ZUG',esc(haeuserDerWelt[0].name)+' betreten','Haus '+haeuserDerWelt[0].number+', '+esc(haeuserDerWelt[0].location)+'.','data-house="'+haeuserDerWelt[0].slug+'"')
+     :zug('DEIN ZUG','Frag PAWN','Sag, was du suchst. Ich melde mich, wenn es einzieht.','data-chat')),
    {welt,rechts:false});
  }
  if(route.section==='vision'){

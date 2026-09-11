@@ -393,3 +393,32 @@ test('L11: die Merkliste wird nur ergaenzt, nie gekuerzt',()=>{
  const nichts=uebernahme({saved:[]},{saved:['p-9']});
  assert.deepEqual(nichts.merken,[],'was im Konto liegt, wird nie angefasst');
 });
+
+// ————————————————————————————————————————————————————————————————
+// Teil M / F3 — Jede Doppelseite muss auch dann rendern, wenn NICHTS da ist.
+//
+// Der Fehler, den das faengt, war live und ganz: auf /haeuser eine Welt anwaehlen und
+// die Anwendung hing — kein Blaettern, keine Rueckkehr. Ursache war views.mjs:102,
+// `haeuserDerWelt[0].name` ohne die Frage, ob es ein Haus GIBT.
+//
+// Warum kein Test ihn gefangen hat: jeder bestehende Rendertest laeuft mit
+// heftAusZeilen(zeilen) — also MIT Haeusern. Die echte Lage einer frischen Datenbank
+// ist null Haeuser, und genau die wurde nie gerendert.
+// ————————————————————————————————————————————————————————————————
+test('F3: jede Doppelseite rendert auch bei null Haeusern, null Werken, null Medien',()=>{
+ heftFuellen({products:{},houses:{},media:{},kuration:{slugs:[],title:''}});
+ try{
+  const zustand={saved:[],cart:[],orders:[],requests:[],stil:{},frag:{},measurements:{},profile:null};
+  const gebrochen=[];
+  for(const [abschnitt,seiten] of Object.entries(SEKTIONEN)){
+   for(let i=0;i<seiten.length;i++){
+    const r={section:abschnitt,index:i,q:''};
+    try{
+     const html=extendedView(r,zustand)??(reading(r)?readView(r,zustand):'');
+     if(typeof html!=='string')gebrochen.push(`${abschnitt}/${i}: liefert ${typeof html}`);
+    }catch(e){gebrochen.push(`${abschnitt}/${i}: ${e.message}`);}
+   }
+  }
+  assert.deepEqual(gebrochen,[],'diese Doppelseiten brechen ohne Daten');
+ }finally{demoWiederherstellen();}
+});

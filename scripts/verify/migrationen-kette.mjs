@@ -18,7 +18,7 @@ import { join } from 'node:path';
 
 // Zweites Argument nur fuer den Gegenbeweis: die Pruefung an einem geschlossenen
 // Ordner gruen zu zeigen. Ohne Argument der echte Ordner.
-const ORDNER = process.argv[2] || 'supabase/migrations';
+const ORDNER = process.argv.slice(2).find((a) => !a.startsWith('--')) || 'supabase/migrations';
 
 // Tabellen im Schema public, die nicht aus diesem Ordner stammen. Heute leer —
 // die Zeile bleibt als Ort fuer den Fall, dass es je eine gibt.
@@ -86,21 +86,66 @@ for (const datei of dateien) {
 // Zweite Runde nur fuer die Meldung: wird die Tabelle spaeter doch angelegt?
 for (const l of luecken) l.spaeter = angelegt.get(l.tabelle) ?? null;
 
-if (luecken.length === 0) {
+// Zwei Klassen, und der Unterschied entscheidet ueber Rot und Gruen.
+//
+//  A · NIE ANGELEGT — keine Datei erschafft die Tabelle. Der Erstaufbau kann das nicht
+//      heilen; es braucht eine neue Datei. Das ist rot.
+//  B · ZU SPAET ANGELEGT — die Datei existiert, sie steht nur hinter der ersten
+//      Aenderung. Eine frueh einsortierte Zweitanlage waere hier FALSCH: zwei der drei
+//      anlegenden Dateien schreiben `create table` OHNE `if not exists` und wuerden an
+//      einer bereits bestehenden Tabelle brechen. Aufgeloest wird das durch die
+//      Abspielordnung unten, nicht durch eine weitere Datei. Das ist gruen, aber benannt.
+const nie = luecken.filter((l) => !l.spaeter);
+const spaet = luecken.filter((l) => l.spaeter);
+
+/** Die Reihenfolge, in der der Erstaufbau spielen muss: jede Anlage vor ihrer ersten Aenderung. */
+function abspielordnung() {
+  const vorziehen = new Map(); // anlegende Datei -> Datei, vor die sie gehoert
+  for (const l of spaet) {
+    const bisher = vorziehen.get(l.spaeter);
+    if (!bisher || l.datei < bisher) vorziehen.set(l.spaeter, l.datei);
+  }
+  const raus = [];
+  for (const datei of dateien) {
+    for (const [anlage, vorDiese] of vorziehen) {
+      if (vorDiese === datei && !raus.includes(anlage)) raus.push(anlage);
+    }
+    if (!raus.includes(datei)) raus.push(datei);
+  }
+  return raus;
+}
+
+if (process.argv.includes("--ordnung")) {
+  for (const d of abspielordnung()) console.log(d);
+  process.exit(nie.length ? 1 : 0);
+}
+
+if (nie.length === 0 && spaet.length === 0) {
   console.log(`  ${dateien.length} Dateien, Kette geschlossen.`);
-  console.log('KETTE: 1/1 · FEHLER: keine');
+  console.log("KETTE: 1/1 · FEHLER: keine");
   process.exit(0);
 }
 
-console.log(`  ${dateien.length} Dateien geprueft, ${luecken.length} Luecke(n):`);
-for (const l of luecken) {
-  const wo = l.spaeter
-    ? `wird erst in ${l.spaeter} angelegt — zu spaet`
-    : 'wird von KEINER Datei angelegt';
-  console.log(`  · ${l.tabelle}`);
+console.log(`  ${dateien.length} Dateien geprueft.`);
+
+for (const l of nie) {
+  console.log(`  · ${l.tabelle} — wird von KEINER Datei angelegt`);
   console.log(`      geaendert in ${l.datei}`);
-  console.log(`      ${wo}`);
 }
-const namen = [...new Set(luecken.map((l) => l.tabelle))];
-console.log(`KETTE: 0/1 · FEHLER: ${namen.join(', ')}`);
+
+if (spaet.length) {
+  console.log(`  ${spaet.length} Aenderung(en) stehen vor ihrer Anlage. Aufgeloest durch die`);
+  console.log(`  Abspielordnung (scripts/verify/migrationen-kette.mjs --ordnung):`);
+  for (const l of spaet) {
+    console.log(`  · ${l.tabelle}: ${l.spaeter}`);
+    console.log(`      gehoert vor ${l.datei}`);
+  }
+}
+
+if (nie.length === 0) {
+  console.log(`KETTE: 1/1 · FEHLER: keine · VORZUZIEHEN: ${[...new Set(spaet.map((l) => l.tabelle))].join(", ")}`);
+  process.exit(0);
+}
+
+console.log(`KETTE: 0/1 · FEHLER: ${[...new Set(nie.map((l) => l.tabelle))].join(", ")}`);
 process.exit(1);

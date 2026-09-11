@@ -6,9 +6,6 @@ verify_jwt = false
 [functions.stripe-webhook-connect]
 verify_jwt = false
 
-[functions.seed-admin]
-verify_jwt = false
-
 [functions.seed-testaccounts]
 verify_jwt = false
 
