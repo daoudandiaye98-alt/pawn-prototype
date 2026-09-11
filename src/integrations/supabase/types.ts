@@ -1422,7 +1422,9 @@ export type Database = {
           image_usage_consent: boolean
           image_usage_consent_at: string | null
           instagram: string | null
+          intern: boolean
           is_featured: boolean
+          kauf_freigeschaltet: boolean
           location: string | null
           manifesto: string | null
           media_rights_granted_at: string | null
@@ -1482,7 +1484,9 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
+          intern?: boolean
           is_featured?: boolean
+          kauf_freigeschaltet?: boolean
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
@@ -1542,7 +1546,9 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
+          intern?: boolean
           is_featured?: boolean
+          kauf_freigeschaltet?: boolean
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
@@ -2484,6 +2490,7 @@ export type Database = {
           note: string | null
           origin: Database["public"]["Enums"]["media_origin"]
           performance: Json
+          plan_beispiel: string | null
           product_id: string | null
           review_note: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
@@ -2506,6 +2513,7 @@ export type Database = {
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
           performance?: Json
+          plan_beispiel?: string | null
           product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
@@ -2528,6 +2536,7 @@ export type Database = {
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
           performance?: Json
+          plan_beispiel?: string | null
           product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
@@ -3621,6 +3630,7 @@ export type Database = {
           designer_id: string
           id: string
           performance: Json
+          plan_beispiel: string | null
           premiere: boolean
           regisseur_verdict: Json | null
           rights_granted: boolean
@@ -3636,6 +3646,7 @@ export type Database = {
           designer_id: string
           id?: string
           performance?: Json
+          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
@@ -3651,6 +3662,7 @@ export type Database = {
           designer_id?: string
           id?: string
           performance?: Json
+          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
@@ -3871,6 +3883,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      ist_kauf_freigeschaltet: {
+        Args: { _designer_id: string }
         Returns: boolean
       }
       ist_verkaufsbereit: { Args: { _designer_id: string }; Returns: boolean }
