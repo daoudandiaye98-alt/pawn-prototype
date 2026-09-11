@@ -43,6 +43,13 @@
       "when": 1789169225434,
       "tag": "0005_rochade_warteschlange",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789169331618,
+      "tag": "0006_rechte_ist_kauf_freigeschaltet",
+      "breakpoints": true
     }
   ]
 }
