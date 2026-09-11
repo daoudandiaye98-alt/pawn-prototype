@@ -5,33 +5,33 @@
   "KEINE_DATEI_WIRD_GEAENDERT": "Die Migrationen selbst bleiben unangetastet (CLAUDE.md Regel 2). Diese Tabelle wirkt nur auf das, was scripts/db/stapel.mjs an die Datenbank druckt.",
   "versionen": {
     "20260729052933": {
-      "art": "abschnitte",
-      "weglassen": [
-        "20260726141711_staging_templates.sql",
-        "20260726172947_content_begleiter.sql"
-      ],
-      "gedeckt_von": ["20260726141711", "20260726172947"],
-      "grund": "Das Bündel trägt drei Abschnitte. Die ersten zwei sind wörtlich die beiden genannten Dateien, die in der Abspielordnung VORHER liegen und schon gelaufen sind — ihr Abschnitt 1 würde an CREATE TABLE public.staging_requests scheitern. Abschnitt 3 (house_themes) läuft, denn nur er trägt die drei GRANTs."
-    },
-    "20260731090000": {
       "art": "ganz",
-      "gedeckt_von": ["20260729052933"],
-      "grund": "Ganz enthalten in Abschnitt 3 von 20260729052933 — und zwar ärmer: dort stehen zusätzlich GRANT SELECT ON public.house_themes TO anon, GRANT SELECT/INSERT/UPDATE/DELETE TO authenticated und GRANT ALL TO service_role, die in dieser Datei fehlen. Anweisung für Anweisung nachgezählt: 10 gegen 7."
+      "gedeckt_von": [
+        "20260726141711",
+        "20260731090000"
+      ],
+      "grund": "Das Buendel ist an seiner Stelle UEBERHAUPT NICHT spielbar, und das ist kein Deckungs-, sondern ein Reihenfolgeproblem: seine Policy \"public reads current theme of published pages\" liest designers.page_published_at, und diese Spalte legt erst 20260729093000_hausseite_bausteine.sql an — also SPAETER. Gemessen am 11.09.2026: 42703: column d.page_published_at does not exist. Auch die alte Datenbank kann das Buendel so nie bekommen haben; dort muss die Spalte schon vorher von Hand existiert haben. Deshalb laufen die drei Einzeldateien, nicht das Buendel. Die drei GRANTs auf public.house_themes, die nur das Buendel traegt, holt 20260930120000_rechte_house_themes.sql nach — ohne sie koennte eine veroeffentlichte Hausseite ihre eigene Welt nicht lesen. Abschnitt 2 des Buendels (20260726172947_content_begleiter.sql) steht hier nicht unter gedeckt_von, weil er kein Objekt anlegt: er schreibt nur Zeilen mit ON CONFLICT DO NOTHING und liefe zweimal ohne Schaden. Gedeckt ist er trotzdem — die Datei ist schon gelaufen."
     },
     "20260802090000": {
       "art": "ganz",
-      "gedeckt_von": ["20260729053012"],
+      "gedeckt_von": [
+        "20260729053012"
+      ],
       "grund": "Ganz enthalten in 20260729053012 — und zwar ärmer: dort stehen zusätzlich die drei GRANTs auf public.house_milestones und `revoke all on function public.recompute_house_milestones(uuid) from public`. Ohne das Bündel wäre diese Funktion für PUBLIC aufrufbar, also genau das Loch, das M7 zugemacht hat. Anweisung für Anweisung nachgezählt: 11 gegen 7."
     },
     "20260803090000": {
       "art": "anweisung",
       "weglassen_text": "CREATE POLICY \"public reads media of active houses\" ON public.media_assets FOR SELECT\n  TO anon, authenticated\n  USING (\n    EXISTS (SELECT 1 FROM public.designers d WHERE d.id = media_assets.designer_id AND d.status = 'active')\n  );",
-      "gedeckt_von": ["20260729053041"],
+      "gedeckt_von": [
+        "20260729053041"
+      ],
       "grund": "Nur diese EINE Policy ist doppelt, Zeichen für Zeichen gleich wie in 20260729053041. Der ganze Rest der Datei ist ihr eigener und läuft."
     },
     "20260905090000": {
       "art": "ganz",
-      "gedeckt_von": ["20260810093249"],
+      "gedeckt_von": [
+        "20260810093249"
+      ],
       "grund": "Ganz enthalten in 20260810093249 Zeile 79 bis 93: Tabelle rate_limit_hits, ihr Index, RLS, der REVOKE, die zwei GRANTs und die ai_config-Zeile pawn_chat_rate_limits. Diese Datei trägt nichts Eigenes."
     }
   }
