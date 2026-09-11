@@ -138,6 +138,57 @@ Umgebung für mich gesperrt; ich habe sie nicht gelesen. Zwei Dinge dazu: sie is
 Eine versionierte `.env` widerspricht CLAUDE.md („nie in `.env`"). Das gehört auf
 Deine Liste.
 
+## 5b · K1 ist erledigt — was geändert wurde und was absichtlich stehen blieb
+
+**Geändert** (lebende Angaben, die sonst ins Leere zeigen):
+
+| Datei | was |
+|---|---|
+| `supabase/config.toml` | `project_id` |
+| `CLAUDE.md` | die Karte nennt das neue Projekt |
+| `.claude/hooks/wache.sh` | der Warntext vor dem Zurücksetzen der Datenbank |
+| `docs/heft03/backend-inventar.md` | Projekt und die 50 Function-Adressen |
+| `.github/workflows/pruefstand.yml` | die Auskunft „Datenhost auflösen" am Anfang jedes Laufs |
+| `.claude/skills/pawn-kontext/SKILL.md` | Adresse **und die Faustregel selbst**, siehe unten |
+| `routinen/01-waechter.md` | die drei Prüfungen (DNS, REST, Stripe-Webhook) **und die Diagnose** |
+
+### Die Faustregel dieses Projekts war falsch — das ist der eigentliche Fund
+
+`pawn-kontext` sagte bis heute:
+
+> „Löst der Datenbank-Name nicht auf, prüfe zuerst das Lovable-Guthaben. Das ist
+> fast nie ein Netzproblem und fast immer ein aufgebrauchtes Guthaben."
+
+Und die Wächter-Routine schrieb dieselbe Diagnose vor: *„Löst der Name NICHT auf,
+ist die erste Vermutung IMMER: das Lovable-Guthaben ist aufgebraucht."*
+
+Diesmal stimmte das nicht. Das Projekt war **gelöscht**, nicht pausiert — und
+genau dieser Unterschied hat drei Prüfstandsläufe (`#104`, `#106`, `#108`) eine
+Nacht lang gegen eine leere Hülle messen lassen, ohne dass jemand die richtige
+Frage stellte. Das eine Zeichen, das beides trennt, ist **NXDOMAIN**: ein
+pausiertes Projekt löst weiter auf und antwortet mit einem Fehler; ein gelöschtes
+verschwindet aus dem DNS. Beide Dateien fragen das jetzt zuerst.
+
+Nach Gesetz 2 ist das die richtige Antwort auf den Fehler: nicht ein besserer
+Prompt, sondern eine berichtigte Regel an der Stelle, an der die nächste Schicht
+sie liest.
+
+**Absichtlich stehen geblieben** — wer hier „aufräumt", falscht ein Protokoll:
+
+- `supabase/migrations/*` (zwei Treffer) — **eine Migration wird nie geändert**,
+  `wache.sh` blockiert es. Auch die Kopie `src/heft03/sql/01_heft_sichten.sql`
+  bleibt, damit sie nicht von ihrer Migration abweicht.
+- `tools/pruefstand/urteil.ts`, `src/__tests__/pruefstand-urteil.spec.ts`,
+  `.github/workflows/pruefstand.yml` Zeile 242 — die Kommentare, die festhalten,
+  **warum** es die Messschwelle gibt. Das ist der Beleg, nicht eine Adresse.
+- `.claude/stand.json`, `.claude/sicht/*/bericht.json`,
+  `tools/pruefstand/artefakte/bericht.json`, `.claude/archiv/*` — Messungen und
+  Übergaben von damals.
+- `docs/heft03/INTEGRATION.md`, `docs/heft03/AUFTRAG-INTEGRATION.md` — datierte
+  Momentaufnahmen („Stand: 10. September 2026", „Auftrag"). Eine Chronik wird
+  nicht umgeschrieben.
+- `.env` — für mich gesperrt, siehe oben. **Bleibt auf Deiner Liste.**
+
 ## 6 · Die Geheimnisse der Edge Functions — vollständige Liste
 
 Aus `grep -rn "Deno.env.get" supabase/functions/`, 50 Functions, sortiert und

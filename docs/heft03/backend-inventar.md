@@ -1,6 +1,6 @@
 # pawn.vision — Backend-Inventar für das öffentliche Kunden-Frontend
 
-Stand: Auszug des Repos unter `work/pawn-prototype/` (Supabase-Projekt `rnakubexbqfgfciynqpt`, Lovable Cloud).
+Stand: Auszug des Repos unter `work/pawn-prototype/` (Supabase-Projekt `cnxtdcifkrdxvajaikxq`, Lovable Cloud).
 Quelle für Spaltentypen: `src/integrations/supabase/types.ts` (generiert). Quelle für RLS: nur die 20 Migrationen im Auszug (`supabase/migrations/*.sql`) — die Basistabellen `products`, `orders`, `wishlists`, `customer_measurements`, `message_threads`, `messages`, `site_content`, `i18n_overrides`, `curated_collections`, `collection_items`, `pawn_signals`, `ai_sessions`, `ai_config` werden in **keiner** Migration des Auszugs angelegt. Für diese Tabellen steht unten „RLS nicht in Auszug"; die Aussage „anon liest" ist dann aus dem Frontend-Verhalten abgeleitet (Frontend ruft sie ausgeloggt auf), nicht aus einer Policy belegt.
 
 **Wichtige Unschärfe:** `types.ts` ist älter als die letzten Migrationen. Die Spalte `designers.kauf_freigeschaltet` (Migration `20260923090000`), die Tabelle `first_move_sessions` und die RPC `first_move_publish()` (Migration `20260921090000`) fehlen in `types.ts`. `src/heft/verzeichnis.tsx` kommentiert ausdrücklich, dass `kauf_freigeschaltet` in der Live-DB „nicht existiert" und liest stattdessen `verkaufsbereit`. Ob die 09/2026-Migrationen live sind, ist aus dem Auszug nicht entscheidbar.
@@ -217,7 +217,7 @@ Row: `id` · `name` · `zeitraum` · `worlds: string[]` · `nahe_haeuser: string
 
 ## 3. Edge Functions (öffentliches Frontend)
 
-Alle unter `https://rnakubexbqfgfciynqpt.supabase.co/functions/v1/<name>`, aufgerufen per `supabase.functions.invoke(name, {body})` — der Client sendet `apikey` (anon key) und `Authorization: Bearer <session-JWT oder anon key>`. `verify_jwt` ist per `supabase/config.toml` **nur** für `submit-contact`, `submit-application` (und Webhooks/Seeds) abgeschaltet; alle anderen verlangen einen gültigen JWT am Gateway — der anon key ist selbst ein JWT, ausgeloggte Aufrufe kommen also durch. Die Funktionen ermitteln `user_id` selbst durch Dekodieren von `sub` aus dem Bearer-Token (ohne Signaturprüfung, außer `merge-session`/`submit-application` via `auth.getClaims`). Kein Streaming — alle antworten mit einem JSON-Objekt. Fehler kommen fast immer als HTTP 200 mit `{ok:false|error, message}`.
+Alle unter `https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/<name>`, aufgerufen per `supabase.functions.invoke(name, {body})` — der Client sendet `apikey` (anon key) und `Authorization: Bearer <session-JWT oder anon key>`. `verify_jwt` ist per `supabase/config.toml` **nur** für `submit-contact`, `submit-application` (und Webhooks/Seeds) abgeschaltet; alle anderen verlangen einen gültigen JWT am Gateway — der anon key ist selbst ein JWT, ausgeloggte Aufrufe kommen also durch. Die Funktionen ermitteln `user_id` selbst durch Dekodieren von `sub` aus dem Bearer-Token (ohne Signaturprüfung, außer `merge-session`/`submit-application` via `auth.getClaims`). Kein Streaming — alle antworten mit einem JSON-Objekt. Fehler kommen fast immer als HTTP 200 mit `{ok:false|error, message}`.
 
 ### 3.1 `pawn-chat` (1236 Zeilen) — der Begleiter-Chat
 Auth: anon **oder** Session-JWT. Ohne `sub` → Rolle `customer`, kein Gedächtnis.
