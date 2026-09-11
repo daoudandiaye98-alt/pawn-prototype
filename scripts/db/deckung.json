@@ -65,6 +65,25 @@
         }
       ],
       "grund": "Nur diese eine Index-Zeile ist gedeckt. Der ganze Rest der Datei ist ihr eigener und laeuft — sie ist die groesste Lovable-Sammelmigration der Kette (26 Anweisungen, Teil 38 AP1 bis AP6)."
+    },
+    "20260810215321": {
+      "art": "anweisung",
+      "gedeckt_von": [
+        "20260912090000"
+      ],
+      "weglassen": [
+        {
+          "text": "CREATE FUNCTION public.get_lead_invitation(_ref_code text)\nRETURNS TABLE(handle text, world text, personal_line text, lead_type text, language text, plate_images jsonb, plate_number integer, plate_status text)\nLANGUAGE sql\nSTABLE SECURITY DEFINER\nSET search_path TO 'public'\nAS $function$\n  SELECT handle, world, personal_line, lead_type, language, plate_images, plate_number, plate_status\n  FROM public.acquisition_leads\n  WHERE ref_code = upper(trim(_ref_code))\n  LIMIT 1;\n$function$;",
+          "ersetzt_durch": "CREATE FUNCTION public.get_lead_invitation(_ref_code text)\nRETURNS TABLE (handle text, world text, personal_line text, lead_type text, language text)\nLANGUAGE sql\nSTABLE\nSECURITY DEFINER\nSET search_path TO 'public'\nAS $function$\n  SELECT handle, world, personal_line, lead_type, language\n  FROM public.acquisition_leads\n  WHERE ref_code = upper(trim(_ref_code))\n  LIMIT 1;\n$function$;",
+          "warum": "Diese Fassung liest acquisition_leads.ref_code und .language. ref_code legt erst 20260908090000 an, language erst 20260813090000 — beide SPAETER. Eine SQL-Funktion wird beim Anlegen aufgeloest, anders als eine plpgsql-Funktion, also bricht es hier wirklich. Zweiter, staerkerer Grund: haette es diese 8-spaltige Fassung je gegeben, waere 20260909090000 daran gescheitert — die Datei benutzt CREATE OR REPLACE mit nur 4 Spalten, und Postgres laesst die Rueckgabetabelle einer bestehenden Funktion nicht aendern (42P13). Die Endfassung der Kette steht in 20260912090000 mit fuenf Spalten; sie loescht die Funktion vorher ausdruecklich und begruendet das im Kopf mit genau diesem Satz."
+        },
+        {
+          "text": "GRANT EXECUTE ON FUNCTION public.get_lead_invitation(text) TO anon, authenticated, service_role;",
+          "ersetzt_durch": "GRANT EXECUTE ON FUNCTION public.get_lead_invitation(text) TO anon, authenticated;",
+          "warum": "Haengt an der Funktion: ohne sie gibt es nichts zu vergeben. 20260912090000 loescht die Funktion und legt sie neu an — damit sind die Rechte dort ohnehin neu gesetzt, auf anon und authenticated. service_role braucht kein EXECUTE-Recht, es umgeht RLS und Rechte."
+        }
+      ],
+      "grund": "Zwei Anweisungen gedeckt, beide zur Funktion get_lead_invitation. Der Rest der Datei — die drei plate_-Spalten und ihr Index — ist ihr eigener und laeuft."
     }
   }
 }
