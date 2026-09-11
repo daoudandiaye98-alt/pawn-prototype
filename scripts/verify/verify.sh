@@ -15,8 +15,8 @@ cd "$(dirname "$0")/../.."
 
 MODUS="${1:-schnell}"
 case "$MODUS" in
-  schnell) PRUEFUNGEN=(tsc tests heft regression rls) ;;
-  voll)    PRUEFUNGEN=(tsc tests heft regression rls build sicht) ;;
+  schnell) PRUEFUNGEN=(tsc tests heft regression kette rls) ;;
+  voll)    PRUEFUNGEN=(tsc tests heft regression kette rls build sicht) ;;
   *) echo "Aufruf: verify.sh [schnell|voll]" >&2; exit 64 ;;
 esac
 
@@ -45,6 +45,12 @@ fuehre() {
 
 # Was sieht ein Fremder? Misst mit dem anon-Schluessel gegen die echte Datenbank.
 # Ohne Zugang in der Umgebung meldet das Skript 3 — kein Urteil, kein Haken.
+# Ist supabase/migrations/ ueberhaupt abspielbar? Liest nur Dateien, kein Netz.
+# Stand bis heute absichtlich NICHT hier drin, weil sie echt rot war: acquisition_leads
+# wurde von keiner Datei angelegt. Seit 20260721230100_acquisition_leads_basis.sql ist
+# die Luecke zu, und eine gruene Pruefung gehoert ins Tor.
+kette() { node scripts/verify/migrationen-kette.mjs; }
+
 rls() { node scripts/verify/rls-anon.mjs; }
 
 tests() {
@@ -82,6 +88,7 @@ for p in "${PRUEFUNGEN[@]}"; do
     tests)      fuehre tests      tests ;;
     heft)       fuehre heft       heft ;;
     regression) fuehre regression scripts/verify/regression.sh ;;
+    kette)      fuehre kette      kette ;;
     rls)        fuehre rls        rls ;;
     build)      fuehre build      scripts/verify/build.sh ;;
     sicht)      fuehre sicht      scripts/verify/sicht.sh ;;

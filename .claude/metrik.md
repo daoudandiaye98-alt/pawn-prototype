@@ -15,6 +15,7 @@ vorgeführt. Ohne beides gilt der Fehler als nicht erledigt.
 | 2026-08-17 | — | — | Turm v2 gebaut. Grundlinie: 6 Zusagen, jede rot vorgeführt. Ab hier wird gezählt. | Z1–Z6 |
 | 2026-09-08 | #182 | 1 | Der Prüfer fand beim Zurücknehmen des Magazins drei verlorene Fokus-Rahmen. | Z7 |
 | 2026-09-10 | #184 | 0 (offen) | Teil H — das Heft zieht ein. Sechs Fehler wurden vor dem Merge gefunden, alle beim Ansehen im Browser mit Datenbank-Zeilen, keiner im Quelltext. Drei alte Zusagen sind mit ihren Seiten umgezogen, drei neue kamen dazu. | Z5/Z6/Z7 umgezogen · Z8–Z10 neu, je rot vorgeführt |
+| 2026-09-11 | #184/#190 | **3** | Daouda hat auf der laufenden Seite drei Mängel gefunden: F1 beim Laden blitzt links ein unformatierter Textblock auf · F2 die Blätteranimation blättert eine weiße Seite · F3 „Unsere Häuser" → Welt auswählen → die Anwendung hängt. Alle drei im Browser gesehen, keiner im Quelltext, keiner von einer Kontrolle gefangen. | Z14 (F3) und Z15 (F1), je rot vorgeführt · F2 ohne Zusage: im Container nicht nachstellbar |
 
 ## Was Teil H über die Kennzahl sagt
 
@@ -153,3 +154,76 @@ Fokus-Unterdrückung."
 **Die Lehre:** der Prüfer hat nicht die Aussage widerlegt, sondern über eine
 falsche Zahl einen echten Fehler gefunden. Ein Agent ist niemals sein eigener
 Prüfer — hier ist der belegte Fall dazu.
+
+---
+
+## 2026-09-11 · Drei Nachfunde, und was sie über die Kontrollen sagen
+
+Die Zahl springt von 0 auf **3**. Das ist keine Verschlechterung des Harness,
+sondern das erste Mal, dass ein Mensch die Seite nach einem großen Merge
+gründlich angesehen hat. Alle drei Mängel sind **nur am Bild** zu sehen:
+
+| Fund | Warum keine Kontrolle ihn gefangen hat |
+|---|---|
+| F1 · unformatiertes Aufblitzen | Ein Zustand von wenigen Millisekunden zwischen „DOM da" und „CSS da". Kein Test sieht ihn, `sicht.sh` fotografiert erst die fertige Seite. |
+| F2 · weiße Seite beim Blättern | Braucht eine aufgeschlagene Doppelseite. Im Container existiert nach 40 Scroll-Schritten kein `.spread` im DOM — das Blatt lässt sich hier nicht umblättern. |
+| F3 · Häuser → Welt → hängt | Brauchte eine **leere** Datenbank. Die Beispieldaten haben in jeder Welt ein Haus, also war `haeuserDerWelt[0]` dort immer da. Die Fixture war zu freundlich — dieselbe Lehre wie bei Teil H, eine Ebene tiefer. |
+
+F3 ist jetzt mechanisch gedeckt: `anschluss.test.mjs` rendert **jede** Doppelseite
+**jeder** Sektion mit leeren Daten. Das ist die Kontrolle, die gefehlt hat.
+
+### Was die rote Vorführung diesmal gefangen hat
+
+Beide neuen Kontrollen waren in ihrer **ersten** Fassung zu weich, und beide
+Male hat erst der rote Lauf es gezeigt:
+
+- **Z14** schloss jede Zeile mit einem Fragezeichen aus — und ließ damit genau
+  Daoudas Fehler durch. Ich brach den Wächter in `views.mjs`, die Kontrolle blieb
+  grün. Sie sucht jetzt den **Wächter**, nicht das Fehlen des Zugriffs.
+- **Z15** ließ ein beliebiges `setTimeout` irgendwo in der Datei als Obergrenze
+  gelten. Ich nahm die Obergrenze heraus, die Kontrolle blieb grün. Sie sucht
+  jetzt im Rumpf von `blattGeladen`.
+
+Das ist der ganze Zweck des Rituals: *eine Prüfung, die nicht rot vorgeführt
+wurde, ist behauptet und nicht bewiesen.* Hier sind zwei belegte Fälle.
+
+---
+
+## 2026-09-11 · Der Prüfstand war blind, und zwar durch eigenen Code
+
+Die härteste Lehre dieser Sitzung, und sie gehört hierher statt in `regressionen.json`,
+weil sie das Messwerkzeug selbst betrifft.
+
+Seit Teil L13 klopft das Heft an `/auth/v1/health`, um zu entscheiden, ob die
+Datenbank lebt — mit einer Frist und einem `AbortController`. Der Hüllen-Wächter des
+Prüfstands zählt jede fehlgeschlagene Anfrage an den Datenhost als „die Seite hat ihre
+Daten nicht bekommen" und setzt **alle** Befunde dieser Seite auf `nicht prüfbar`. Ein
+Abbruch, den das Heft selbst auslöst, sieht für ihn genauso aus.
+
+Ergebnis, gemessen an zwei Läufen auf demselben Zweig:
+
+| | #150 (`33ad2df`) | #151 (`eafefdd`) |
+|---|---|---|
+| bestanden | 1 | 649 |
+| gefallen | 0 | 119 |
+| nicht prüfbar | 1051 | 288 |
+| Urteil | KEIN URTEIL (0,1 % messbar) | gemessen |
+
+**Von 1 messbaren Gate auf 768.** Dazwischen liegen vier Zeilen.
+
+Das Werkzeug hat also nicht falsch gerechnet — es hat sich selbst entwertet, und zwar
+leise: der Check blieb grün, die Warnung „KEIN URTEIL" stand im Protokoll, und niemand
+hat sie gelesen. Seit `#185` sagt der Lauf wenigstens, dass er nichts weiß. Ohne `#185`
+wäre es eine dauerhaft grüne Lüge gewesen.
+
+**Die Lehre, und sie ist neu:** Gesetz 4 sagt „gib dem Agenten Augen". Es sagt nicht,
+was zu tun ist, wenn die Augen *zugehen*, ohne dass es jemand merkt. Ein Messwerkzeug
+braucht eine Messung über sich selbst — und die hat `#185` gebaut („unter N gemessenen
+Gates ist der Lauf kein Urteil"). Diese Schwelle ist das Einzige, was den Fehler
+überhaupt sichtbar gemacht hat. **Sie hat sich an genau einem Fall bezahlt, und zwar an
+diesem.** Beim nächsten Ausmisten ist das die Antwort auf die Frage „wann hat sie
+zuletzt etwas gefangen?"
+
+**Nachfunde durch einen Menschen: unverändert 3.** Dieser Fund ging auf das Konto des
+Werkzeugs, nicht auf das eines Menschen — aber er erklärt, warum Daouda drei Mängel
+finden musste, die kein Lauf gefangen hat. Vier Wochen lang hat nichts gemessen.

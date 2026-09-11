@@ -193,6 +193,25 @@
         ],
         "begruendung": "App.tsx deklariert die Route, Auth.tsx IST der Wegweiser. tueren.ts nennt /auth in der Zeile, die es ueberhaupt erst zum Wegweiser macht (sichererPfad weist /auth ab, sonst leitete die Seite auf sich selbst zurueck), und zugang.spec.ts prueft genau diese Zeile; heft03-adressen.spec prueft, dass /auth keine Heft-Adresse ist. Alle fuenf sind rechtmaessig — eine Kontrolle, die an rechtmaessigem Code rot wird, lehrt nur, Rot zu uebersehen. Gesucht wird nur die exakte Zeichenkette in Anfuehrungszeichen: /auth/v1/health, das notbetrieb.mjs zum Anklopfen braucht, trifft die Pruefung nicht."
       }
+    },
+    {
+      "id": "Z14",
+      "zusage": "Keine Doppelseite stuerzt ab, weil eine Welt noch leer ist — der Leerzustand ist ehrlich, nicht erfunden.",
+      "beleg": "F3, von Daouda auf der laufenden Seite gefunden (ANTWORT-AN-CODE.md, Abschnitt 4): „Unsere Haeuser\" -> eine Welt anwaehlen -> die Anwendung haengt, kein Blaettern, keine Rueckkehr. Nachgestellt mit leeren Daten: src/heft03/views.mjs las haeuserDerWelt[0].name, ohne zu fragen, ob es ein Haus gibt. Auf der neuen Datenbank gibt es keines, also warf die Zeile und riss die ganze Doppelseite mit. Repariert in views.mjs:106-108; die laufende Pruefung rendert jede Doppelseite jeder Sektion mit leeren Daten (src/heft03/anschluss.test.mjs). · Rot vorgefuehrt am 2026-09-11, zweimal: Waechter aus views.mjs entfernt, und die laufende Pruefung auf eine Sektion verengt. Die ERSTE Fassung dieser Kontrolle blieb bei Bruch 1 gruen (sie schloss jede Zeile mit Fragezeichen aus und liess damit genau den belegten Fehler durch) — erst die rote Vorfuehrung hat das gezeigt. Das ist der Grund, warum sie vorgefuehrt wird.",
+      "pruefung": "leereWeltStuerztNicht",
+      "params": {
+        "test": "src/heft03/anschluss.test.mjs",
+        "datei": "src/heft03/views.mjs"
+      }
+    },
+    {
+      "id": "Z15",
+      "zusage": "Das Geruest des Hefts wird erst sichtbar, wenn seine Gestaltung da ist — nie blitzt unformatierter Text auf.",
+      "beleg": "F1, von Daouda auf der laufenden Seite gesehen und in einer Aufnahme gehabt (ANTWORT-AN-CODE.md, Abschnitt 4): kurz vor dem Umschlag stand links das nackte Geruest, alles linksbuendig und ohne Gestaltung. Ursache: src/heft03/HeftRoute03.tsx haengt seine Stylesheets erst zur Laufzeit ein (stylesheet() -> document.head.appendChild), zwischen DOM und CSS zeichnet der Browser ungestaltet. Repariert in HeftRoute03.tsx:74-82 (blattGeladen mit Obergrenze), :182-187 (Aufheben nach dem Laden), :496 (Start versteckt). NICHT im Container bewiesen: die Messung unterscheidet die Fassung mit und ohne Reparatur nicht, weil vite preview das CSS von 127.0.0.1 sofort liefert und das Heft hier erst nach 12,7 s steht. Der Beweis ist Daoudas Blick auf die Vorschau. · Rot vorgefuehrt am 2026-09-11, dreimal: Versteck entfernt, Obergrenze entfernt, Uhr entfernt. Die ERSTE Fassung blieb beim zweiten Bruch gruen, weil sie ein beliebiges setTimeout der ganzen Datei gelten liess; sie sucht jetzt im Rumpf von blattGeladen.",
+      "pruefung": "geruestErstNachGestaltung",
+      "params": {
+        "huelle": "src/heft03/HeftRoute03.tsx"
+      }
     }
   ]
 }

@@ -60,6 +60,27 @@ const KOERPER_KLASSE = "is-intro";
 type Griff = HeftGriff;
 type Daten = typeof import("@/heft03/data.mjs");
 
+/**
+ * Erfüllt sich, wenn das Blatt geladen ist — oder spätestens nach `frist`.
+ *
+ * Teil M / F1: Das Gerüst steht im DOM, sobald React rendert; die Stylesheets hängen
+ * sich erst im Effekt darunter ein. Dazwischen zeichnete der Browser das nackte Gerüst —
+ * Wortmarke, Menü, „Tasche 0", Heldentext, alles linksbündig und ungestaltet. Nur ein
+ * Wimpernschlag, aber ein hässlicher, und er war in einer Aufnahme festgehalten.
+ *
+ * Die Frist ist kein Schmuck: ohne sie bliebe das Heft unsichtbar, wenn ein Blatt nie
+ * lädt. Lieber einen Moment ungestaltet als eine Seite, die sich nie öffnet.
+ */
+function blattGeladen(el: HTMLLinkElement, frist = 2000): Promise<void> {
+  return new Promise((fertig) => {
+    if (el.sheet) return fertig();
+    const ab = () => fertig();
+    el.addEventListener("load", ab, { once: true });
+    el.addEventListener("error", ab, { once: true });
+    window.setTimeout(ab, frist);
+  });
+}
+
 /** Ein Stylesheet, das nur solange gilt, wie das Heft offen ist. */
 function stylesheet(href: string): HTMLLinkElement {
   const el = document.createElement("link");
@@ -77,6 +98,8 @@ export default function HeftRoute03() {
   const { t } = useI18n();
   const { value: consent, setConsent } = useConsent();
 
+  /** Das Gerüst. Startet unsichtbar und wird es erst, wenn sein Stylesheet steht (F1). */
+  const geruestRef = useRef<HTMLDivElement | null>(null);
   const heftRef = useRef<Griff | null>(null);
   const datenRef = useRef<Daten | null>(null);
   /** Die Route, wie das Heft sie gerade sieht — nur für Titel und strukturierte Daten. */
@@ -155,6 +178,13 @@ export default function HeftRoute03() {
   useEffect(() => {
     let abgebrochen = false;
     const blaetter = [stylesheet(schriftenCss), stylesheet(heftCss)];
+
+    /* Teil M / F1: sichtbar erst, wenn die Gestaltung da ist. `visibility` und nicht
+       `display`, damit das Heft weiter messen kann (Streifenhöhe, ResizeObserver) —
+       eine Fläche mit display:none hat keine Maße. */
+    void Promise.all(blaetter.map((b) => blattGeladen(b))).then(() => {
+      if (!abgebrochen && geruestRef.current) geruestRef.current.style.visibility = "";
+    });
 
     /* Sagt der Selbststart-Sicherung im Prototyp, dass hier schon jemand startet. In der
        Repo-Fassung ist sie entfernt (siehe LIESMICH.md) — die Zeile ist der zweite Boden
@@ -460,7 +490,12 @@ export default function HeftRoute03() {
         />
       )}
       {/* Ab hier gehört das DOM dem Heft. React rendert es einmal und rührt es nicht mehr an. */}
-      <div data-heft03="" dangerouslySetInnerHTML={{ __html: GERUEST }} />
+      <div
+        ref={geruestRef}
+        data-heft03=""
+        style={{ visibility: "hidden" }}
+        dangerouslySetInnerHTML={{ __html: GERUEST }}
+      />
     </>
   );
 }
