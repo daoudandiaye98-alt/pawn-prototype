@@ -1422,7 +1422,6 @@ export type Database = {
           image_usage_consent: boolean
           image_usage_consent_at: string | null
           instagram: string | null
-          intern: boolean
           is_featured: boolean
           location: string | null
           manifesto: string | null
@@ -1483,7 +1482,6 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
-          intern?: boolean
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
@@ -1544,7 +1542,6 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
-          intern?: boolean
           is_featured?: boolean
           location?: string | null
           manifesto?: string | null
@@ -2441,7 +2438,6 @@ export type Database = {
           performance: Json
           product_id: string | null
           review_note: string | null
-          plan_beispiel: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
           rights_granted: boolean
           shows_synthetic_person: boolean
@@ -2464,7 +2460,6 @@ export type Database = {
           performance?: Json
           product_id?: string | null
           review_note?: string | null
-          plan_beispiel?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
           shows_synthetic_person?: boolean
@@ -2487,7 +2482,6 @@ export type Database = {
           performance?: Json
           product_id?: string | null
           review_note?: string | null
-          plan_beispiel?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
           rights_granted?: boolean
           shows_synthetic_person?: boolean
@@ -2614,6 +2608,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      model_kartei: {
+        Row: {
+          aktiv: boolean
+          erstellt_am: string
+          erzeugt_mit: string
+          ethnie: string
+          ethnie_label: string
+          geschlecht: string
+          gespiegelt_am: string | null
+          id: string
+          pfad: string | null
+          prompt: string | null
+          quelle_url: string
+        }
+        Insert: {
+          aktiv?: boolean
+          erstellt_am?: string
+          erzeugt_mit?: string
+          ethnie: string
+          ethnie_label: string
+          geschlecht: string
+          gespiegelt_am?: string | null
+          id?: string
+          pfad?: string | null
+          prompt?: string | null
+          quelle_url: string
+        }
+        Update: {
+          aktiv?: boolean
+          erstellt_am?: string
+          erzeugt_mit?: string
+          ethnie?: string
+          ethnie_label?: string
+          geschlecht?: string
+          gespiegelt_am?: string | null
+          id?: string
+          pfad?: string | null
+          prompt?: string | null
+          quelle_url?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -3305,317 +3341,6 @@ export type Database = {
           },
         ]
       }
-      rochade_auftraege: {
-        Row: {
-          befund: Json
-          created_at: string
-          designer_id: string
-          einwilligung_at: string
-          einwilligung_quelle: string
-          einwilligung_user: string
-          fehler: string | null
-          id: string
-          kontingent: Json
-          kontingent_erreicht: string | null
-          letzter_schritt_at: string
-          meldung: string | null
-          phase: string
-          plattform: string
-          quell_host: string
-          quell_url: string
-          status: string
-          updated_at: string
-          user_id: string
-          verbrauch: Json
-        }
-        Insert: {
-          befund?: Json
-          created_at?: string
-          designer_id: string
-          einwilligung_at: string
-          einwilligung_quelle?: string
-          einwilligung_user: string
-          fehler?: string | null
-          id?: string
-          kontingent?: Json
-          kontingent_erreicht?: string | null
-          letzter_schritt_at?: string
-          meldung?: string | null
-          phase?: string
-          plattform?: string
-          quell_host: string
-          quell_url: string
-          status?: string
-          updated_at?: string
-          user_id: string
-          verbrauch?: Json
-        }
-        Update: {
-          befund?: Json
-          created_at?: string
-          designer_id?: string
-          einwilligung_at?: string
-          einwilligung_quelle?: string
-          einwilligung_user?: string
-          fehler?: string | null
-          id?: string
-          kontingent?: Json
-          kontingent_erreicht?: string | null
-          letzter_schritt_at?: string
-          meldung?: string | null
-          phase?: string
-          plattform?: string
-          quell_host?: string
-          quell_url?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-          verbrauch?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rochade_auftraege_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      rochade_bilder: {
-        Row: {
-          auftrag_id: string
-          begonnen_at: string | null
-          breite: number | null
-          bytes: number | null
-          created_at: string
-          fehler: string | null
-          hoehe: number | null
-          id: string
-          inhalt_hash: string | null
-          kandidat_id: string
-          pfad: string | null
-          pfad_klein: string | null
-          quell_url: string
-          reihenfolge: number
-          status: string
-          updated_at: string
-          versuche: number
-        }
-        Insert: {
-          auftrag_id: string
-          begonnen_at?: string | null
-          breite?: number | null
-          bytes?: number | null
-          created_at?: string
-          fehler?: string | null
-          hoehe?: number | null
-          id?: string
-          inhalt_hash?: string | null
-          kandidat_id: string
-          pfad?: string | null
-          pfad_klein?: string | null
-          quell_url: string
-          reihenfolge?: number
-          status?: string
-          updated_at?: string
-          versuche?: number
-        }
-        Update: {
-          auftrag_id?: string
-          begonnen_at?: string | null
-          breite?: number | null
-          bytes?: number | null
-          created_at?: string
-          fehler?: string | null
-          hoehe?: number | null
-          id?: string
-          inhalt_hash?: string | null
-          kandidat_id?: string
-          pfad?: string | null
-          pfad_klein?: string | null
-          quell_url?: string
-          reihenfolge?: number
-          status?: string
-          updated_at?: string
-          versuche?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rochade_bilder_auftrag_id_fkey"
-            columns: ["auftrag_id"]
-            isOneToOne: false
-            referencedRelation: "rochade_auftraege"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rochade_bilder_kandidat_id_fkey"
-            columns: ["kandidat_id"]
-            isOneToOne: false
-            referencedRelation: "rochade_kandidaten"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      rochade_kandidaten: {
-        Row: {
-          angebotstyp: string | null
-          auftrag_id: string
-          beschreibung_text: string | null
-          created_at: string
-          designer_id: string
-          deutung: Json
-          fehler: string | null
-          gewaehlt: boolean
-          id: string
-          preis_cent: number | null
-          product_id: string | null
-          quell_url: string | null
-          roh: Json
-          schluessel: string
-          seite_id: string | null
-          sortierung: number
-          status: string
-          titel: string | null
-          updated_at: string
-          varianten: Json
-          verfuegbar: boolean | null
-          waehrung: string | null
-          welt: string | null
-          welt_felder: Json
-        }
-        Insert: {
-          angebotstyp?: string | null
-          auftrag_id: string
-          beschreibung_text?: string | null
-          created_at?: string
-          designer_id: string
-          deutung?: Json
-          fehler?: string | null
-          gewaehlt?: boolean
-          id?: string
-          preis_cent?: number | null
-          product_id?: string | null
-          quell_url?: string | null
-          roh?: Json
-          schluessel: string
-          seite_id?: string | null
-          sortierung?: number
-          status?: string
-          titel?: string | null
-          updated_at?: string
-          varianten?: Json
-          verfuegbar?: boolean | null
-          waehrung?: string | null
-          welt?: string | null
-          welt_felder?: Json
-        }
-        Update: {
-          angebotstyp?: string | null
-          auftrag_id?: string
-          beschreibung_text?: string | null
-          created_at?: string
-          designer_id?: string
-          deutung?: Json
-          fehler?: string | null
-          gewaehlt?: boolean
-          id?: string
-          preis_cent?: number | null
-          product_id?: string | null
-          quell_url?: string | null
-          roh?: Json
-          schluessel?: string
-          seite_id?: string | null
-          sortierung?: number
-          status?: string
-          titel?: string | null
-          updated_at?: string
-          varianten?: Json
-          verfuegbar?: boolean | null
-          waehrung?: string | null
-          welt?: string | null
-          welt_felder?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rochade_kandidaten_auftrag_id_fkey"
-            columns: ["auftrag_id"]
-            isOneToOne: false
-            referencedRelation: "rochade_auftraege"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rochade_kandidaten_designer_id_fkey"
-            columns: ["designer_id"]
-            isOneToOne: false
-            referencedRelation: "designers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rochade_kandidaten_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      rochade_seiten: {
-        Row: {
-          art: string
-          auftrag_id: string
-          begonnen_at: string | null
-          created_at: string
-          fehler: string | null
-          gefunden: number
-          http_status: number | null
-          id: string
-          status: string
-          updated_at: string
-          url: string
-          url_schluessel: string
-          versuche: number
-        }
-        Insert: {
-          art?: string
-          auftrag_id: string
-          begonnen_at?: string | null
-          created_at?: string
-          fehler?: string | null
-          gefunden?: number
-          http_status?: number | null
-          id?: string
-          status?: string
-          updated_at?: string
-          url: string
-          url_schluessel: string
-          versuche?: number
-        }
-        Update: {
-          art?: string
-          auftrag_id?: string
-          begonnen_at?: string | null
-          created_at?: string
-          fehler?: string | null
-          gefunden?: number
-          http_status?: number | null
-          id?: string
-          status?: string
-          updated_at?: string
-          url?: string
-          url_schluessel?: string
-          versuche?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rochade_seiten_auftrag_id_fkey"
-            columns: ["auftrag_id"]
-            isOneToOne: false
-            referencedRelation: "rochade_auftraege"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       site_content: {
         Row: {
           key: string
@@ -3848,7 +3573,6 @@ export type Database = {
           designer_id: string
           id: string
           performance: Json
-          plan_beispiel: string | null
           premiere: boolean
           regisseur_verdict: Json | null
           rights_granted: boolean
@@ -3864,7 +3588,6 @@ export type Database = {
           designer_id: string
           id?: string
           performance?: Json
-          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
@@ -3880,7 +3603,6 @@ export type Database = {
           designer_id?: string
           id?: string
           performance?: Json
-          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
@@ -4127,10 +3849,6 @@ export type Database = {
           previous_status: string
         }[]
       }
-      rochade_stand: {
-        Args: { p_auftrag: string }
-        Returns: Json
-      }
       slugify: { Args: { txt: string }; Returns: string }
       trend_momentum: {
         Args: { _world: string }
@@ -4222,12 +3940,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4251,11 +3969,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4276,11 +3994,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4301,11 +4019,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4318,11 +4036,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

@@ -19,6 +19,11 @@ import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { MediaImg } from "@/components/palace/MediaImg";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+// Die Rochade-Tabellen liegen noch nicht in den erzeugten Datenbanktypen.
+// Bis die Migration angewendet ist, laeuft der Zugriff ueber einen ungetypten Client.
+const db = supabase as unknown as SupabaseClient;
 import { toast } from "sonner";
 import { Check, RotateCcw } from "lucide-react";
 
@@ -92,7 +97,7 @@ export default function StudioRochade() {
 
   const ladeAuftrag = useCallback(async () => {
     if (!designer) return;
-    const { data } = await supabase.from("rochade_auftraege")
+    const { data } = await db.from("rochade_auftraege")
       .select("id, quell_url, quell_host, plattform, status, phase, meldung, kontingent_erreicht, befund")
       .eq("designer_id", designer.id)
       .not("status", "in", "(uebernommen,abgebrochen)")
@@ -101,12 +106,12 @@ export default function StudioRochade() {
   }, [designer]);
 
   const ladeStand = useCallback(async (id: string) => {
-    const { data } = await supabase.rpc("rochade_stand", { p_auftrag: id });
+    const { data } = await db.rpc("rochade_stand", { p_auftrag: id });
     if (data) setStand(data as unknown as Stand);
   }, []);
 
   const ladeKandidaten = useCallback(async (id: string) => {
-    const { data } = await supabase.from("rochade_kandidaten")
+    const { data } = await db.from("rochade_kandidaten")
       .select("id, titel, preis_cent, waehrung, welt, angebotstyp, welt_felder, deutung, gewaehlt, status, quell_url, fehler, rochade_bilder(pfad, reihenfolge, status)")
       .eq("auftrag_id", id).order("sortierung");
     const zeilen = (data ?? []) as unknown as (Kandidat & {
@@ -161,7 +166,7 @@ export default function StudioRochade() {
 
   const umschalten = async (k: Kandidat) => {
     setKandidaten((alt) => alt.map((x) => x.id === k.id ? { ...x, gewaehlt: !x.gewaehlt } : x));
-    const { error } = await supabase.from("rochade_kandidaten")
+    const { error } = await db.from("rochade_kandidaten")
       .update({ gewaehlt: !k.gewaehlt }).eq("id", k.id);
     if (error) {
       setKandidaten((alt) => alt.map((x) => x.id === k.id ? { ...x, gewaehlt: k.gewaehlt } : x));
@@ -173,7 +178,7 @@ export default function StudioRochade() {
     const betroffen = kandidaten.filter((k) => (nur ? nur(k) : true) && k.gewaehlt !== wert);
     if (!betroffen.length) return;
     setKandidaten((alt) => alt.map((x) => betroffen.some((b) => b.id === x.id) ? { ...x, gewaehlt: wert } : x));
-    await supabase.from("rochade_kandidaten").update({ gewaehlt: wert })
+    await db.from("rochade_kandidaten").update({ gewaehlt: wert })
       .in("id", betroffen.map((b) => b.id));
   };
 
