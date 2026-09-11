@@ -36,6 +36,13 @@
       "when": 1789169049326,
       "tag": "0004_heft_sichten_stil_raum_dna",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789169225434,
+      "tag": "0005_rochade_warteschlange",
+      "breakpoints": true
     }
   ]
 }
