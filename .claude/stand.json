@@ -1,13 +1,7 @@
 {
   "aktualisiert": "2026-09-11",
-  "branch": "claude/teil-l-konto",
+  "branch": "claude/teil-l-stand",
   "offene_prs": [
-    {
-      "nr": null,
-      "titel": "Teil L: das Konto zieht ins Heft nach main nachziehen (L5-L11, L16, Z13)",
-      "status": "Zweig claude/teil-l-konto, main hereingeholt, konfliktfrei",
-      "blockiert_durch": "nichts — nur Ansehen und Mergen. OHNE DIESEN MERGE IST DAS KONTO NICHT LIVE."
-    },
     {
       "nr": 183,
       "titel": "Kein Urteil ohne Messung — der Pruefstand darf nicht gruen melden, ohne gemessen zu haben",
@@ -16,11 +10,12 @@
     }
   ],
   "merge_reihenfolge": [
-    "ACHTUNG, DER WICHTIGSTE SATZ: #190 und #191 sind beide gemergt, ABER DAS KONTO IST NICHT AUF MAIN. #190 (teil-l-konto -> main) ging um 17:21:14 durch, #191 (konto-im-heft -> teil-l-konto) zwanzig Sekunden spaeter um 17:21:34 — also IN den Zweig, der gerade schon gemergt war. main traegt L1-Befund, L13 und L12; L5-L11, L16 und Z13 liegen auf claude/teil-l-konto und sind nicht live. Nichts ist verloren, es fehlt nur ein Merge.",
-    "DER NAECHSTE ZUG IST DESHALB EIN MERGE, KEIN BAU: claude/teil-l-konto -> main. Der Zweig hat main bereits hereingeholt, die Probe-Zusammenfuehrung meldete 0 Konfliktmarken, und im Unterschied liegt nichts unter supabase/, kein vercel.json und kein .env — 37 Dateien, reines Frontend.",
-    "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
+    "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. main = 22471bc. Gemergt: #187, #188, #189, #190, #191, #192. Nachgeprueft auf origin/main, nicht vermutet: src/features/auth/tueren.ts, src/features/auth/registrieren.ts, src/heft03/uebernahme.mjs liegen dort, und sections.konto beginnt mit 'zugang'.",
+    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten 'merged', aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind.",
+    "LIVE auf main: L5/L6 (Zugang-Doppelseite als erste Seite von /konto), L7 (Passwort-Wiederholung an EINER Stelle: features/auth/registrieren.ts), L8 (drei Publikumstueren), L9 (Google kehrt zurueck), L10 (/auth ist Wegweiser auf /konto), L11 (Uebernahme der Gastdaten), L12 (ein Waechter, drei entfernt), L13 (Anklopfen statt 6-Sekunden-Frist), L16 (heft.d.ts). Zusagen Z11, Z12, Z13 neu, alle einmal rot vorgefuehrt.",
+    "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen auf cnxtdcifkrdxvajaikxq. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
     "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
-    "DIE NEUE PRUEFUNG: scripts/verify/migrationen-kette.mjs. Rot am echten Ordner, gruen an einer geschlossenen Kopie — beide Richtungen vorgefuehrt. ABSICHTLICH NOCH NICHT in verify.sh schnell, weil sie heute echt rot ist und eine dauerhaft rote Pruefung im Tor lehrt, Rot zu uebersehen.",
+    "DIE NEUE PRUEFUNG: scripts/verify/migrationen-kette.mjs. Rot am echten Ordner, gruen an einer geschlossenen Kopie — beide Richtungen vorgefuehrt. ABSICHTLICH NOCH NICHT in verify.sh schnell, weil sie heute echt rot ist und eine dauerhaft rote Pruefung im Tor lehrt, Rot zu uebersehen. Verdrahten, sobald die Luecke zu ist.",
     "WIEDERAUFSETZEN OHNE RATEN: mcp Supabase list_migrations zeigt die 35 gelegten Dateien. Der Stapel-Drucker liegt im Scratchpad (stapel.py + stapel.json, 41 Stapel); Stapel 14 ist der naechste, danach der Sentinel zz_ende, dann die Abnahme, dann types.ts neu.",
     "L11 WEICHT AB, mit Begruendung: merge_anon_session KANN kunden_stil und wishlists nicht tragen. Beide haben user_id als Schluessel mit Fremdschluessel auf auth.users, jede Policy verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner der beiden. Ein Gast hat dort nie eine Zeile. Die Uebernahme passiert deshalb beim Anmelden im Heft (src/heft03/uebernahme.mjs). Der andere Weg waere eine neue anonyme Schreibflaeche auf der Zahlungsdatenbank — das braucht Daoudas Wort.",
     "DER RUECKWEG IST VORGEFUEHRT: drop schema public cascade + Historie leeren. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
@@ -56,7 +51,7 @@
     "vergleich": "Derselbe Zustand, zwei Verhalten — der Beleg für PR #185: Lauf #109 auf diesem Zweig (ohne Schwelle) meldet grün und sagt NICHTS dazu. Lauf #108 auf dem Zweig von #185 (mit Schwelle) meldet bei 1 von 1104 messbaren Gates „KEIN URTEIL“ plus Warnung am PR — ebenfalls grün, aber nicht mehr stumm. Nach dem Merge von #185 verhält sich auch dieser Zweig so.",
     "hinweis_briefing": "ACHTUNG beim Lesen des Sitzungsstarts: briefing.sh zeigt auf DIESEM Zweig nur „1 bestanden, 0 gefallen“ und verschweigt die 673 ungemessenen — das sieht wie ein Erfolg aus. Die dritte Zahl in die Zeile zu bringen ist Teil von PR #185 (.claude/hooks/briefing.sh). Wird #185 wie empfohlen ZUERST gemergt, erledigt sich das. Wird #184 zuerst gemergt, steht die halbe Wahrheit bis dahin im Briefing."
   },
-  "naechster_zug": "ERST MERGEN, DANN BAUEN: claude/teil-l-konto nach main, sonst bleibt das Konto im Heft unsichtbar. Danach warten zwei Entscheidungen auf Daouda — wie acquisition_leads entstehen soll (blockiert L1, L2, L3, L4, L18) und was L15 Freistellen tun soll (Auftragstext liegt nicht im Repo). Sobald acquisition_leads entschieden ist: Stapel 14 bis 41 zu Ende spielen, dann zz_ende, dann Abnahme, dann types.ts neu, dann L2/L18/L4/L3.",
+  "naechster_zug": "Zwei Entscheidungen von Daouda, sonst geht nichts weiter. ERSTENS acquisition_leads (blockiert L1, L2, L3, L4, L18): Weg A = neue Migration, Form aus der alten types.ts ableiten (58 Spalten minus das, was die 24 spaeteren Dateien selbst anlegen), nachpruefbar — Empfehlung. Weg B = Akquise beim Erstaufbau weglassen. ZWEITENS L15 Freistellen: der Auftragstext liegt nicht im Repo, raten waere schlimmer als fragen. Sobald A oder B steht: Stapel 14 bis 41 spielen, dann zz_ende, dann Abnahme, dann types.ts neu, dann L2/L18/L4/L3.",
   "nicht_pruefbar": [
     "NEU SICHTBAR: die Zugang-Doppelseite konnte zum ersten Mal ueberhaupt aufgenommen werden (.claude/sicht/2026-09-11/zugang--1280.png) — weil das Anklopfen aus L13 die Seite jetzt in den Vorschau-Betrieb schickt, statt sie auf dem Ladebild haengen zu lassen. Der Lesemodus auf dem Telefon (hinter 'Trotzdem hochkant lesen') ist weiter ungesehen: sicht.sh klickt nicht.",
     "DIE MIGRATIONSKETTE IST JETZT PRUEFBAR, und sie ist rot: scripts/verify/migrationen-kette.mjs meldet vier Tabellen, die geaendert werden, bevor sie angelegt werden. Das war vorher nicht sichtbar — der Erstaufbau lief 13 Stapel weit, bevor es auffiel.",
