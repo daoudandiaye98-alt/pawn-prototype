@@ -50,7 +50,11 @@ const GERUEST = (() => {
 /** Die Klassen, die das Heft am `<body>` setzt und `stop()` wieder abräumt. */
 const KOERPER_KLASSE = "is-intro";
 
-type Griff = Awaited<ReturnType<typeof import("@/heft03/app.js").startHeft>>;
+/* Der Griff kommt aus `heft.d.ts` (`interface HeftGriff`), nicht aus einer Ableitung über
+   `Awaited<ReturnType<…>>`. Der Unterschied ist nicht kosmetisch: die Ableitung war immer
+   wahr — sie beschrieb, was das Modul zufällig zurückgibt, und hätte jede Änderung daran
+   stillschweigend mitgemacht. Die Erklärung ist eine Zusage, gegen die `tsc` prüft. */
+type Griff = HeftGriff;
 type Daten = typeof import("@/heft03/data.mjs");
 
 /** Ein Stylesheet, das nur solange gilt, wie das Heft offen ist. */
@@ -116,10 +120,18 @@ export default function HeftRoute03() {
     (globalThis as { __pawnBoot?: boolean }).__pawnBoot = true;
 
     /*
-     * Eine Datenbank, die NICHT antwortet, ist schlimmer als eine, die scheitert: der
-     * Fehlerpfad unten greift erst bei einer Absage. Haengt die Anfrage, stuende „Eine
-     * Welt entfaltet sich" beliebig lange da. Nach 20 Sekunden sagt das Heft darum selbst,
-     * was los ist — und bietet den einen Knopf an, der hilft.
+     * Der Geduldsfaden. Für die schweigende DATENBANK ist er nicht mehr zuständig — die
+     * Frist in notbetrieb.mjs zieht nach 6 Sekunden und damit lange vorher.
+     *
+     * Wofür er noch da ist, und das ist kein Restposten: alles, was VOR oder NEBEN der
+     * Quelle hängen kann. Ein dynamisches Bündel (`import()`), das nie ankommt, weil das
+     * Netz mitten im Laden abbricht. Ein `startHeft`, das nach den Daten hängen bleibt —
+     * WebGL, das nicht startet, eine Schrift, die nie lädt. In all diesen Fällen stünde
+     * „Eine Welt entfaltet sich" beliebig lange da. Nach 20 Sekunden sagt das Heft darum
+     * selbst, was los ist, und bietet den einen Knopf an, der hilft.
+     *
+     * Die Uhr wird auf BEIDEN Wegen gestoppt: nach dem Aufstellen (unten) und im
+     * Aufräumpfad des Effekts — sonst schreibt sie in ein Ladefeld, das niemand mehr sieht.
      */
     const geduld = window.setTimeout(() => {
       if (abgebrochen || heftRef.current) return;
@@ -138,8 +150,12 @@ export default function HeftRoute03() {
         await aufstellen();
       } catch (e) {
         /* Kein Heft ist besser als eine weiße Seite: das Ladefeld bleibt stehen und sagt,
-           was los ist. Passiert, wenn die Datenbank nicht erreichbar ist — dann gibt es
-           keine Häuser, und Beispieldaten kommen hier nicht ersatzweise auf die Bühne. */
+           was los ist.
+           ACHTUNG, das hat sich geändert: die unerreichbare Datenbank landet hier NICHT
+           mehr. Seit dem Vorschau-Betrieb (notbetrieb.mjs) fängt `startHeft` sie selbst ab
+           und stellt die Beispielausgabe auf — sichtbar am Streifen, mit gesperrtem Kauf.
+           Hier kommt nur noch an, was das Aufstellen selbst zerbricht: ein Bündel, das
+           nicht geladen werden kann, ein fehlendes Gerüst, ein Fehler im Heft. */
         if (abgebrochen) return;
         console.error("[heft03]", e);
         const laden = document.getElementById("loading");
@@ -173,8 +189,16 @@ export default function HeftRoute03() {
         funktionen: {
           anmelden: () => navigateRef.current(`/auth?next=${encodeURIComponent(location.pathname + location.search)}`),
           /** Eine Runde für alle Bildadressen des Hefts. */
+          /*
+           * Das `null` bleibt ein `null`. Hier stand `?? u`, und das war der Fehler:
+           * `signiereMedia` gibt absichtlich `null` zurück, wenn eine Storage-Adresse
+           * sich nicht signieren lässt und auch keine eigene http-Adresse ist
+           * (`lib/media.ts:52`). Mit `?? u` kam statt der Auskunft „nicht signierbar"
+           * wieder der blanke Bucket-Pfad zurück — also eine Adresse, die der Browser
+           * nie laden kann. Der Löser in `quelle.mjs` unterscheidet jetzt beides.
+           */
           signieren: async (urls: string[]) => {
-            const paare = await Promise.all(urls.map(async (u) => [u, (await signiereMedia(u)) ?? u] as const));
+            const paare = await Promise.all(urls.map(async (u) => [u, await signiereMedia(u)] as const));
             return Object.fromEntries(paare);
           },
           /** Anfragen laufen über den Faden, den das Postfach des Hauses schon kennt. */

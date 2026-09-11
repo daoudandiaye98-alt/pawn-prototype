@@ -66,6 +66,38 @@ export function chatAntwort(data){
  return {reply:data.reply||'',treffer,action:data.action||null,session_id:data.session_id||null,rate_limited:!!data.rate_limited,image_terms:data.image_terms||[]};
 }
 
+/**
+ * Aus der Signaturkarte einen Bildleser machen, den die Adapter SYNCHRON rufen können.
+ *
+ * Der Fehler, den das behebt: vorher stand hier `bild(karte[u]||u)`. Gab es keine
+ * Signatur, kam der blanke Bucket-Pfad zurück — eine Adresse, die der Browser nie
+ * laden kann. Ergebnis: ein grauer Kasten an der Stelle eines Werks.
+ *
+ * Die Unterscheidung kommt aus der KARTE, nicht aus der Form der Adresse. Ein erster
+ * Versuch hier hat „trägt sich selbst" am Muster geraten (`^https?:|^/`) und dabei die
+ * Bilder des Hefts übersehen, die als `./assets/…` kommen — er hätte JEDES Bild geleert.
+ * `signiereMedia` weiß es besser und sagt es schon (`lib/media.ts:39` und `:52`):
+ *
+ *   Wert steht in der Karte und ist gesetzt → signiert, nimm die Signatur.
+ *   Wert steht in der Karte und ist `null`  → war eine Storage-Adresse und ließ sich
+ *                                             NICHT signieren → `null`. Kein totes Bild.
+ *   Wert steht nicht in der Karte           → war nie zum Signieren angemeldet
+ *                                             (`./assets/…` des Hefts) → unverändert.
+ *
+ * Scheiterte die ganze Runde, ist die Karte leer: dann wissen wir über keine Adresse
+ * etwas, und alles bleibt stehen. Alles zu leeren wäre schlimmer als ein Versuch zu laden.
+ *
+ * Folge, und so ist sie gewollt: `heftAusZeilen()` lässt Stücke ohne Bild weg. Ein Werk,
+ * das fehlt, ist ehrlicher als ein Werk, das kaputt dasteht.
+ */
+export function bildLoeser(karte,bild){
+ return u=>{
+  if(typeof u!=='string'||!u)return bild(u);
+  if(!Object.prototype.hasOwnProperty.call(karte,u))return bild(u);
+  return karte[u]?bild(karte[u]):null;
+ };
+}
+
 export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sichten=false}={}){
  if(!client)throw Error('supabaseQuelle braucht den supabase-js-Client.');
  // sichten:true liest die Spaltenmasken-Sichten aus sql/01_heft_sichten.sql statt der Tabellen (gleiche Spalten).
@@ -98,7 +130,7 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    for(const m of media||[]){merke(m.url);merke(m.thumb_url);}
    let karte={};
    if(funktionen.signieren&&roh.size){try{karte=await funktionen.signieren([...roh])||{};}catch(e){karte={};}}
-   const bildAufgeloest=u=>bild(karte[u]||u);
+   const bildAufgeloest=bildLoeser(karte,bild);
    return heftAusZeilen({products:products||[],designers:designers||[],blocks:blocks||[],themes:themes||[],media:media||[],collection:collection||null,items:items||[]},{bild:bildAufgeloest});
   },
   async chat({messages=[],bilder=[],kontext={},session_id=sitzung()}={}){
