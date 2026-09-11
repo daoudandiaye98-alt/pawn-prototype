@@ -41,6 +41,12 @@ CREATE POLICY "designer manages own page blocks" ON public.designer_page_blocks 
     OR EXISTS (SELECT 1 FROM public.designers d WHERE d.id = designer_page_blocks.designer_id AND d.user_id = auth.uid())
   );
 
+-- VORGEZOGEN 11.09.2026: diese Spalte stand UNTER der Policy, die sie liest.
+-- Postgres bricht dort mit 42703 ab (column d.page_published_at does not exist) —
+-- die Datei war nie spielbar. Nur die Reihenfolge innerhalb dieser Datei wurde
+-- geaendert, kein Wort am Inhalt: der Endzustand ist Zeichen fuer Zeichen derselbe.
+ALTER TABLE public.designers ADD COLUMN IF NOT EXISTS page_published_at timestamptz;
+
 -- Öffentlich sichtbar nur für Häuser, die ihre Bausteinseite bereits veröffentlicht haben —
 -- ohne Veröffentlichung bleibt der Entwurf privat, auch wenn Zeilen schon existieren.
 CREATE POLICY "public reads blocks of published pages" ON public.designer_page_blocks FOR SELECT
@@ -48,7 +54,6 @@ CREATE POLICY "public reads blocks of published pages" ON public.designer_page_b
     EXISTS (SELECT 1 FROM public.designers d WHERE d.id = designer_page_blocks.designer_id AND d.page_published_at IS NOT NULL)
   );
 
-ALTER TABLE public.designers ADD COLUMN IF NOT EXISTS page_published_at timestamptz;
 
 -- Seitlicher Banner je Produkt, aus der Mediathek gewählt (Teil 12c, Punkt 2).
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS banner_media_asset_id uuid REFERENCES public.media_assets(id) ON DELETE SET NULL;
