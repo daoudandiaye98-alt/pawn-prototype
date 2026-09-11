@@ -1795,6 +1795,54 @@ export type Database = {
         }
         Relationships: []
       }
+      first_move_sessions: {
+        Row: {
+          about_source: string | null
+          about_text: string | null
+          billing: Json
+          brand_name: string | null
+          country: string
+          created_at: string
+          location: string | null
+          rochade: Json
+          shipping_de_eu: boolean
+          step: string
+          updated_at: string
+          user_id: string
+          works: Json
+        }
+        Insert: {
+          about_source?: string | null
+          about_text?: string | null
+          billing?: Json
+          brand_name?: string | null
+          country?: string
+          created_at?: string
+          location?: string | null
+          rochade?: Json
+          shipping_de_eu?: boolean
+          step?: string
+          updated_at?: string
+          user_id: string
+          works?: Json
+        }
+        Update: {
+          about_source?: string | null
+          about_text?: string | null
+          billing?: Json
+          brand_name?: string | null
+          country?: string
+          created_at?: string
+          location?: string | null
+          rochade?: Json
+          shipping_de_eu?: boolean
+          step?: string
+          updated_at?: string
+          user_id?: string
+          works?: Json
+        }
+        Relationships: []
+      }
       generation_requests: {
         Row: {
           campaign_id: string
@@ -3781,6 +3829,7 @@ export type Database = {
           unique_visitors: number
         }[]
       }
+      first_move_publish: { Args: never; Returns: Json }
       generate_ref_code: { Args: never; Returns: string }
       get_attribution_stats: {
         Args: never
