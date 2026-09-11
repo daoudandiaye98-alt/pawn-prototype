@@ -201,6 +201,13 @@ declare module "@/heft03/app.js" {
      * entscheidet allein die Frist aus `notbetrieb.mjs`.
      */
     anklopfAdresse?: string;
+
+    /**
+     * Aus dem Heft hinaus auf eine React-Adresse (/admin, /studio). Über den Router,
+     * damit das Heft sauber abgeräumt wird. Ohne diese Angabe springt das Heft hart
+     * über `location.href` — richtig, aber langsam.
+     */
+    hinaus?(pfad: string): void;
     basis?: string;
     /** Basis der Heft-Bilder, im Projekt `/heft/assets/` */
     assets?: string;
@@ -229,6 +236,18 @@ declare module "@/heft03/quelle.mjs" {
       signal?(art: string, daten: Record<string, unknown>): void;
       /** Bildadressen einmalig signieren, bevor die Adapter sie synchron lesen */
       signieren?(urls: string[]): Promise<Record<string, string>>;
+      /** Die Rollen des angemeldeten Menschen. Die Hülle hat sie ohnehin — keine zweite Abfrage. */
+      rollen?(): readonly string[];
+      /**
+       * Teil L5 — was die Zugang-Doppelseite braucht. Das Heft kennt nur diese drei
+       * Fragen; `supabase.auth`, der Vergleich der beiden Passwörter und die Frage,
+       * welche Tür eine Rolle öffnet, liegen in der Hülle.
+       */
+      zugang?: {
+        anmelden?(d: { email: string; passwort: string }): Promise<{ ok?: boolean; fehler?: string }>;
+        registrieren?(d: { email: string; passwort: string; wiederholung: string; name?: string }): Promise<{ ok?: boolean; fehler?: string; bestaetigung?: string }>;
+        google?(d: { ziel?: string }): Promise<{ ok?: boolean; fehler?: string }>;
+      };
     };
     adressen?: { erfolg?: string; abbruch?: string };
     /** true liest die Spaltenmasken-Sichten aus sql/01 statt der Tabellen */

@@ -61,7 +61,7 @@ export function PublicFooter() {
             {/* Teil Q — die Boutique gehört auch in den Fuß: von jeder Seite ein Weg dorthin. */}
             <Link to="/suche" className="hover:text-foreground">Boutique</Link>
             <span className="opacity-30">·</span>
-            <Link to="/auth" className="hover:text-foreground">Login</Link>
+            <Link to="/konto" className="hover:text-foreground">Login</Link>
             <span className="opacity-30">·</span>
             <Link to="/fuer-designer/2" className="hover:text-foreground">Für Designer</Link>
             <span className="opacity-30">·</span>

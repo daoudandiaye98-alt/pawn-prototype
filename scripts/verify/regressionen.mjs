@@ -358,7 +358,7 @@ function vorschauNurWennWeg({ modul, huelle, start }) {
    Genau so ist die Luecke entstanden: drei Adressen hingen nur an ihm.
    Steht eine passende Zeile nicht auf EINER Zeile, wird die Pruefung rot statt
    still gruen — eine Kontrolle, die wegsieht, waere schlimmer als keine. */
-function nurEinWaechter({ datei, bereiche, waechter }) {
+function nurEinWaechter({ datei, bereiche, waechter, seiten }) {
   const zeilen = lies(datei).split("\n");
   const treffer = [];
   for (const [i, z] of zeilen.entries()) {
@@ -375,7 +375,52 @@ function nurEinWaechter({ datei, bereiche, waechter }) {
     if (t.zeile.includes(`<${waechter} `)) continue;
     return nein(`${datei}:${t.nr}: ${t.pfad} haengt an keinem ${waechter} — wer angemeldet ist, kommt hier rein, egal als was`);
   }
+
+  /* Und der dritte Waechter, der lange uebersehen wurde: elf Admin-Seiten hatten
+     ihren eigenen. `if (!user || !roles.includes("admin")) return <Navigate to="/auth">`
+     sagte das GEGENTEIL von RoleGate, der nicht Angemeldete bewusst durchlaesst.
+     Eine Seite darf niemanden wegen seiner Rolle wegschicken — das entscheidet
+     die Adresstabelle, nicht die Seite. */
+  for (const ordner of seiten ?? []) {
+    for (const f of dateien(ordner)) {
+      // `dateien()` liefert absolute Pfade, `lies()` haengt die Wurzel davor —
+      // deshalb hier direkt lesen und fuer die Meldung wieder kuerzen.
+      const kurz = f.slice(f.indexOf("src/"));
+      for (const [i, z] of readFileSync(f, "utf8").split("\n").entries()) {
+        if (z.includes("<Navigate") && z.includes("roles.includes")) {
+          return nein(`${kurz}:${i + 1}: die Seite schickt selbst wegen einer Rolle weg — das entscheidet ${waechter} in ${datei}, nicht die Seite`);
+        }
+      }
+    }
+  }
   return OK;
+}
+
+/* Z13 — eine Adresse, die nur noch weiterleitet, steht nirgends mehr im Code.
+   Warum das eine eigene Kontrolle braucht: keineUmgezogenenLinks (Z9) sucht nach
+   to=/href=. In src/pages/admin/TranslationWarmup.tsx stand "/auth" aber als
+   blosse Zeichenkette in einer Liste — und damit waermte PAWN fuer die englische
+   Fassung eine Weiterleitung statt der Zugang-Doppelseite. Kein Link, kein Fund,
+   kein Rot. Diese Pruefung sucht die Adresse als GANZE Zeichenkette, egal wo.
+   Eng gehalten: nur exakt "/auth" in Anfuehrungszeichen. /auth/v1/health, wie es
+   notbetrieb.mjs braucht, trifft sie nicht. */
+function nurWegweiser({ orte, adressen, ausnahmen = [] }) {
+  const treffer = [];
+  for (const ort of orte) {
+    for (const datei of dateien(ort, [".ts", ".tsx", ".js", ".mjs"])) {
+      const rel = datei.slice(WURZEL.length + 1);
+      if (ausnahmen.some((a) => rel === a)) continue;
+      readFileSync(datei, "utf8").split("\n").forEach((zeile, i) => {
+        if (/^\s*(\*|\/\/)/.test(zeile)) return;
+        for (const a of adressen) {
+          if (new RegExp("[\"'`]" + a + "[\"'`]").test(zeile)) treffer.push(`${rel}:${i + 1} → ${a}`);
+        }
+      });
+    }
+  }
+  return treffer.length === 0
+    ? OK
+    : nein(`${treffer.length} Stelle(n) nennen eine Adresse, die nur noch weiterleitet:\n      ${treffer.slice(0, 8).join("\n      ")}`);
 }
 
 const PRUEFUNGEN = {
@@ -391,6 +436,7 @@ const PRUEFUNGEN = {
   keineStripeSpalten,
   vorschauNurWennWeg,
   nurEinWaechter,
+  nurWegweiser,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

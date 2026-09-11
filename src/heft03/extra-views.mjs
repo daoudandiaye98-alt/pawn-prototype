@@ -123,6 +123,104 @@ export function pawnChat(state){
   +'<div class="chat-koerper">'+g.html
   +'</div><div class="chat-fuss">'+(state.consent===true?'':'<p class="konto-hinweis"><span>'+(state.consent===false?'PAWN vergisst das nach dem Schließen.':'Noch nichts gespeichert.')+'</span><button class="text-link" data-consent-ja>Merken erlauben <span aria-hidden="true">↗</span></button></p>')+'<button class="text-link" data-route="dna">Zur Stilberatung <span aria-hidden="true">↗</span></button><button class="text-link" data-route="frag-pawn">Ganze Seite <span aria-hidden="true">↗</span></button></div>';
 }
+// ————————————————————————————————————————————————————————————————
+// Teil L5 — Die Zugang-Doppelseite. Erste Seite von „Mein PAWN".
+//
+// Vorher lag der Zugang auf einer eigenen React-Seite (/auth) ausserhalb des
+// Hefts: wer sich anmelden wollte, fiel aus dem Heft heraus, sah eine andere
+// Gestaltung und kam an anderer Stelle wieder herein. Jetzt bleibt er im Heft.
+//
+// Anmelden und Registrieren sind ZWEI Ansichten, kein Formular mit Umschalter
+// mitten drin: beim Registrieren steht das Passwort zweimal da, beim Anmelden
+// einmal. Ein gemeinsames Formular haette entweder ein Feld versteckt oder beim
+// Anmelden nach einer Wiederholung gefragt.
+//
+// Zwei Publikumstueren: Kundschaft legt hier ein Konto an. Ein Haus bewirbt sich
+// — Haeuser werden kuratiert, nicht registriert. Das ist keine Bequemlichkeit,
+// das ist das Versprechen „Rang ist nie kaeuflich" an der Tuer.
+// ————————————————————————————————————————————————————————————————
+function feld(beschriftung,attrs){return '<label>'+beschriftung+'<input '+attrs+'></label>';}
+
+export function zugangSeite(state){
+ const z=state.zugang||{},p=state.profile;
+ const modus=z.modus==='registrieren'?'registrieren':'anmelden';
+ const publikum=z.publikum==='haus'?'haus':'kundschaft';
+ const meldung=z.fehler?'<p class="zugang-meldung" role="alert">'+esc(z.fehler)+'</p>'
+              :z.hinweis?'<p class="zugang-meldung leise" role="status">'+esc(z.hinweis)+'</p>':'';
+
+ // Schon angemeldet: keine zweite Anmeldemaske, sondern die Tuer, die zur Rolle passt.
+ if(p){
+  const rollen=p.rollen||[];
+  const tuer=rollen.includes('admin')?['Ins Cockpit','/admin','Das Innere von PAWN.']
+            :rollen.includes('designer')?['Ins Studio','/studio','Dein Haus, deine Werke.']:null;
+  return page(
+   tag('MEIN PAWN / ZUGANG')+'<div class="profile-cover">'+pawnGlyph()+'<h1>Du bist<br><em>angemeldet.</em></h1><p>'+esc(p.email||'')+'</p></div>',
+   tag('DEIN ZUGANG')
+   +'<h2>Willkommen,<br><em>'+esc(p.name||'du')+'.</em></h2>'
+   +'<p class="body-copy">Merkzettel, Bestellungen und deine Linie liegen hinter dieser Seite.</p>'
+   +link('01','Mein PAWN','Merkzettel, Bestellungen, Anfragen','data-page="1"')
+   +(tuer?link('02',tuer[0],tuer[2],'data-aussen="'+tuer[1]+'"'):'')
+   +'<div class="aktionsreihe">'+button('Abmelden','data-logout','outline')+'</div>',
+   'account-spread');
+ }
+
+ const tueren='<div class="wahlreihe zugang-publikum">'
+  +'<button class="wahl'+(publikum==='kundschaft'?' an':'')+'" data-zugang-publikum="kundschaft" aria-pressed="'+(publikum==='kundschaft'?'true':'false')+'">Ich sehe mich um</button>'
+  +'<button class="wahl'+(publikum==='haus'?' an':'')+'" data-zugang-publikum="haus" aria-pressed="'+(publikum==='haus'?'true':'false')+'">Ich bin ein Haus</button>'
+  +'</div>';
+
+ // Die Publikumswahl steht ÜBER dem Deckbild, nicht darunter. Erst unter ihm
+ // gebaut, dort sass sie auf der Fusslinie der Seite (.claude/sicht/2026-09-11/) —
+ // und die Seite laesst dem Bild seine Hoehe, egal was man ihm vorschreibt.
+ // Oben ist sie ohnehin richtiger: erst entscheiden, wer man ist, dann das Formular.
+ const links=tag('MEIN PAWN / ZUGANG')+tueren+'<div class="profile-cover">'+pawnGlyph()
+  +'<h1>Dein<br><em>Zugang.</em></h1>'
+  +'<p>Ein Platz im Magazin.<br>Merkzettel, Bestellungen, deine Linie — auch beim nächsten Öffnen.</p>'
+  +'</div>';
+
+ // Haeuser bewerben sich. Kein Formular, das so tut, als koenne man sich einkaufen.
+ if(publikum==='haus')return page(links,
+  tag('FÜR HÄUSER')
+  +'<h2>Häuser werden<br><em>eingeladen.</em></h2>'
+  +'<p class="body-copy">Ein Haus bekommt seinen Platz nicht durch ein Formular, sondern durch das, was es baut. Zeig uns deine Arbeit — wir melden uns.</p>'
+  +pawnSagt('Rang ist bei PAWN nie käuflich. Auch nicht der erste.')
+  +'<div class="aktionsreihe">'+button('Zur Bewerbung','data-route="fuer-designer"','solid')+'</div>'
+  +'<p class="small-note">Du hast schon einen Zugang? '+button('Anmelden','data-zugang-publikum="kundschaft"')+'</p>',
+  'account-spread');
+
+ const umschalter='<div class="wahlreihe zugang-modus">'
+  +'<button class="wahl'+(modus==='anmelden'?' an':'')+'" data-zugang-modus="anmelden" aria-pressed="'+(modus==='anmelden'?'true':'false')+'">Anmelden</button>'
+  +'<button class="wahl'+(modus==='registrieren'?' an':'')+'" data-zugang-modus="registrieren" aria-pressed="'+(modus==='registrieren'?'true':'false')+'">Konto anlegen</button>'
+  +'</div>';
+
+ const google='<div class="zugang-oder"><span>oder</span></div>'
+  +'<div class="aktionsreihe">'+button('Weiter mit Google','data-zugang-google','outline')+'</div>';
+
+ const rechts=modus==='registrieren'
+  ? tag('KONTO ANLEGEN')+umschalter
+    +'<h2>Trag dich<br><em>ein.</em></h2>'
+    +'<p class="body-copy">Zwei Minuten. Danach bleibt alles, was du dir merkst.</p>'
+    +meldung
+    +'<form data-zugang-form="registrieren" novalidate>'
+    +feld('Dein Name','name="name" autocomplete="name" maxlength="50" placeholder="Wie heißt du?"')
+    +feld('E-Mail','name="email" type="email" autocomplete="email" required placeholder="du@beispiel.de"')
+    +feld('Passwort','name="passwort" type="password" autocomplete="new-password" minlength="8" required')
+    +feld('Passwort wiederholen','name="wiederholung" type="password" autocomplete="new-password" minlength="8" required')
+    +'<button class="solid" type="submit"'+(z.laeuft?' disabled':'')+'>'+(z.laeuft?'Einen Moment …':'Konto anlegen')+'</button>'
+    +'</form>'+google
+  : tag('ANMELDEN')+umschalter
+    +'<h2>Willkommen<br><em>zurück.</em></h2>'
+    +'<p class="body-copy">Dein Merkzettel und deine Bestellungen warten.</p>'
+    +meldung
+    +'<form data-zugang-form="anmelden" novalidate>'
+    +feld('E-Mail','name="email" type="email" autocomplete="email" required placeholder="du@beispiel.de"')
+    +feld('Passwort','name="passwort" type="password" autocomplete="current-password" required')
+    +'<button class="solid" type="submit"'+(z.laeuft?' disabled':'')+'>'+(z.laeuft?'Einen Moment …':'Anmelden')+'</button>'
+    +'</form>'+google;
+
+ return page(links,rechts,'account-spread');
+}
+
 export function extendedView(route,state){
  const i=route.index;
  if(route.section==='suche'){
@@ -134,23 +232,24 @@ export function extendedView(route,state){
  if(route.section==='konto'){
   const n=state.saved.length,stueckZahl=n===1?'1 gemerktes Stück':n+' gemerkte Stücke',linie=(state.stil||{}).richtung;
   const dnaSeite=name=>sections.dna.indexOf(name);
-  if(i===3)return spreadVoll(asset('anfrage-brief.webp'),'Eine Gestalterin schreibt am Werktisch im Nachmittagslicht',
+  if(i===0)return zugangSeite(state);
+  if(i===4)return spreadVoll(asset('anfrage-brief.webp'),'Eine Gestalterin schreibt am Werktisch im Nachmittagslicht',
    tag('MEIN PAWN / ANFRAGEN')+'<h1>Schreib<br><em>dem Haus.</em></h1>'
    +'<p class="body-copy lead">Auftragsarbeiten beginnen mit einer Nachricht an den Menschen, der sie macht.</p>'
    +anfrageZeilen(state.requests)
    +((state.requests||[]).length?'':pawnSagt('Noch keine Anfrage. Öffne ein Stück und tipp „Beim Haus anfragen“.'))
    +zug('DEIN ZUG','Auftragsarbeiten ansehen','Kunst, die im Gespräch entsteht.','data-route="kunst"'),{welt:'dna',rechts:false});
-  if(i===4)return page(
+  if(i===5)return page(
    tag('MEIN PAWN / EINSTELLUNGEN')+'<h1>Zugang,<br><em>Angaben, Gedächtnis.</em></h1><p class="body-copy">Dein Name, deine E-Mail — und was PAWN sich merken darf.</p>'
-   +link('01','Was PAWN sich merkt','Sehen, ändern, löschen','data-dna-privacy')+link('02','Bestellungen','Deine Stücke und Anfertigungen','data-page="2"')
+   +link('01','Was PAWN sich merkt','Sehen, ändern, löschen','data-dna-privacy')+link('02','Bestellungen','Deine Stücke und Anfertigungen','data-page="3"')
    +'<p class="small-note">Adresse und Zahlung gibst du beim Bezahlen an — sie hängen an der Bestellung.</p>',
    tag('DEINE ANGABEN')+pawnSagt('Zwei Felder. Mehr brauche ich nicht.')+'<form data-profile-form><label>Dein Name<input name="name" maxlength="50" required value="'+esc(state.profile?.name||'')+'"></label><label>E-Mail<input name="email" type="email" required value="'+esc(state.profile?.email||'')+'"></label><button class="solid">Speichern</button></form>'
-   +'<div class="aktionsreihe">'+button('Zurück zu Mein PAWN','data-page="0"')+button('Abmelden','data-logout','outline')+'</div>');
-  if(i===1)return page(
+   +'<div class="aktionsreihe">'+button('Zurück zu Mein PAWN','data-page="1"')+button('Abmelden','data-logout','outline')+'</div>');
+  if(i===2)return page(
    tag('MEIN PAWN / MERKZETTEL')+'<h1>Deine<br><em>Auswahl.</em></h1><p class="body-copy">'+(n?'Stücke, bei denen du stehen geblieben bist. Tipp eines an, um es wieder zu öffnen.':'Noch nichts gemerkt. Tipp ein Stück an — ich merke es dir.')+'</p>'+pawnSagt('Jedes gemerkte Stück ist ein Beleg. Daraus lese ich deine Linie.')+'<img class="blatt-bild" src="'+asset('edit-tonleiter.webp')+'" alt="Sechs Papierproben in einer aufsteigenden Reihe">',
    tag('DEIN MERKZETTEL / '+stueckZahl.toUpperCase())+(n?'<div class="profile-saved">'+state.saved.map(productCard).join('')+'</div>':'<p class="tafel-legende">Drei Stücke, mit denen andere anfangen:</p><div class="fit-pieces drei merk-leer">'+kuratiere('edit',state).map(id=>'<button data-product="'+id+'"><img src="'+products[id].image+'" alt="'+esc(products[id].name)+'"><span>'+esc(products[id].name)+'</span></button>').join('')+'</div>')
    +(n?zug('DEIN ZUG',linie?'Steht mir das?':'Deine Linie lesen',linie?'Prüf deine Stücke gegen deine Linie.':'Vier Bilder, zwei Minuten.','data-goto="dna:'+(linie?'linie':'welt')+'"'):zug('DEIN ZUG','Mode entdecken','Merk dir dein erstes Stück.','data-route="mode"')));
-  if(i===2)return spreadVoll(asset('archetyp-editorial.webp'),'Ein Stapel Papier auf dunklem Holz',
+  if(i===3)return spreadVoll(asset('archetyp-editorial.webp'),'Ein Stapel Papier auf dunklem Holz',
    tag('MEIN PAWN / BESTELLUNGEN')+'<h1>Deine<br><em>Bestellungen.</em></h1>'
    +'<p class="body-copy lead">Jedes Stück, das du kaufst, bekommt hier seine Zeile.</p>'
    +bestellZeilen(state.orders)
@@ -161,7 +260,7 @@ export function extendedView(route,state){
    tag(state.profile?'WILLKOMMEN ZURÜCK':'ZUTRITT')
    +(state.profile
     ?'<h2>Willkommen zurück,<br><em>'+esc(state.profile.name||'du')+'.</em></h2>'
-     +link('01','Merkzettel',stueckZahl,'data-page="1"')+link('02','Deine DNA',linie?'Deine Linie: '+esc(linie)+((state.stil||{}).form?' & '+esc(state.stil.form):''):'Noch keine Linie','data-route="dna"')+link('03','Bestellungen','Deine Stücke und Anfertigungen','data-page="2"')+link('04','Anfragen','Im Dialog mit den Häusern','data-page="3"')+link('05','Einstellungen','Zugang, Angaben, Gedächtnis','data-page="4"')
+     +link('01','Merkzettel',stueckZahl,'data-page="2"')+link('02','Deine DNA',linie?'Deine Linie: '+esc(linie)+((state.stil||{}).form?' & '+esc(state.stil.form):''):'Noch keine Linie','data-route="dna"')+link('03','Bestellungen','Deine Stücke und Anfertigungen','data-page="3"')+link('04','Anfragen','Im Dialog mit den Häusern','data-page="4"')+link('05','Einstellungen','Zugang, Angaben, Gedächtnis','data-page="5"')
      +zug('DEIN ZUG',linie?'Ausgewählt für dich':'Deine Linie lesen',linie?'Drei Stücke nach deiner Linie.':'Vier Bilder, zwei Minuten.',linie?'data-goto="entdecken:1"':'data-goto="dna:welt"')
     :'<h2>Trag dich<br><em>ein.</em></h2><p class="body-copy">Merkzettel, Bestellungen, deine Linie — an einem Platz, auch beim nächsten Öffnen.</p><form data-profile-form><label>Dein Name<input name="name" autocomplete="given-name" maxlength="50" placeholder="Wie heißt du?" required></label><label>E-Mail<input name="email" type="email" autocomplete="email" placeholder="du@beispiel.de" required></label><button class="solid">Konto anlegen</button></form><p class="small-note">Vorschau — es wird nichts gesendet. Gespeichert wird nur auf diesem Gerät, wenn du es erlaubst.</p>'),
    'account-spread');

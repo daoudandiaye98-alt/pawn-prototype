@@ -153,8 +153,8 @@
     },
     {
       "id": "Z12",
-      "zusage": "Hinter /admin, /studio und /portal entscheidet EIN Waechter, wer hinein darf — RoleGate. Kein zweiter, der etwas anderes sagt.",
-      "beleg": "Teil L12. Drei Adressen — /portal, /portal/onboarding und /studio/onboarding — hingen allein an PortalGate, und PortalGate prueft keine Rolle: er laesst jeden Angemeldeten durch. Eine angemeldete Kundschaft kam damit nicht nach /studio/postfach (RoleGate schickte sie nach /konto), aber sehr wohl nach /portal und /studio/onboarding. Zwei Waechter, zwei Antworten fuer dieselbe Flaeche. PortalGate sitzt jetzt innerhalb eines RoleGate und beantwortet nur noch die Frage, ob ein Haus den Einzug abgeschlossen hat.",
+      "zusage": "Hinter /admin, /studio und /portal entscheidet EIN Waechter, wer hinein darf — RoleGate. Kein zweiter in der Adresstabelle, keiner in der Seite selbst.",
+      "beleg": "Teil L12. Drei Adressen — /portal, /portal/onboarding und /studio/onboarding — hingen allein an PortalGate, und PortalGate prueft keine Rolle: er laesst jeden Angemeldeten durch. Eine angemeldete Kundschaft kam damit nicht nach /studio/postfach (RoleGate schickte sie nach /konto), aber sehr wohl nach /portal und /studio/onboarding. Zwei Waechter, zwei Antworten fuer dieselbe Flaeche. PortalGate sitzt jetzt innerhalb eines RoleGate und beantwortet nur noch die Frage, ob ein Haus den Einzug abgeschlossen hat. Dazu kam ein DRITTER Waechter, elfmal: die Admin-Seiten AdminAkquise, AdminAktionen, AdminArchiv, AdminCampaigns, AdminEditionen, AdminFeldzug, AdminJarvis, AdminKI, AdminPosting, AdminTrends und AdminWerbung hatten je die Zeile if (!user || !roles.includes(\"admin\")) return <Navigate to=\"/auth\" replace />. Die sagt das GEGENTEIL von RoleGate, der nicht Angemeldete bewusst durchlaesst und einen Streifen darueberlegt. Damit galt der Durchlass auf elf Admin-Seiten nicht und auf den uebrigen schon — niemand konnte sagen, welche Regel gilt.",
       "pruefung": "nurEinWaechter",
       "params": {
         "datei": "src/App.tsx",
@@ -164,7 +164,34 @@
           "/portal"
         ],
         "waechter": "RoleGate",
-        "begruendung": "Reine Weiterleitungen (<Navigate>) brauchen keinen Waechter — sie fuehren auf eine Adresse, die selbst einen hat."
+        "begruendung": "Reine Weiterleitungen (<Navigate>) brauchen keinen Waechter — sie fuehren auf eine Adresse, die selbst einen hat. Der zweite Teil der Kontrolle sucht in den Seiten selbst nach <Navigate> in derselben Zeile wie roles.includes: so eng wie die Zusage, kein Wort breiter.",
+        "seiten": [
+          "src/pages/admin",
+          "src/pages/studio",
+          "src/pages/portal"
+        ]
+      }
+    },
+    {
+      "id": "Z13",
+      "zusage": "Eine Adresse, die nur noch weiterleitet, steht nirgends mehr im Code — auch nicht als blosse Zeichenkette in einer Liste.",
+      "beleg": "Teil L10. /auth ist seit dem Umzug des Zugangs ins Heft nur noch ein Wegweiser auf /konto. Die internen Links waren umgestellt, aber in src/pages/admin/TranslationWarmup.tsx stand \"/auth\" als blosse Zeichenkette in ROUTES — der Liste, mit der PAWN die englische Fassung vorwaermt. Damit waermte es eine Weiterleitung statt der Zugang-Doppelseite, und deren Saetze kaemen nie ins Uebersetzungsgedaechtnis. Z9 hat es nicht gefunden, weil Z9 nach to= und href= sucht. Gefunden hat es der Subagent pruefer, gegen einen Bericht, der die Vollstaendigkeit behauptet hatte.",
+      "pruefung": "nurWegweiser",
+      "params": {
+        "orte": [
+          "src"
+        ],
+        "adressen": [
+          "/auth"
+        ],
+        "ausnahmen": [
+          "src/App.tsx",
+          "src/pages/Auth.tsx",
+          "src/__tests__/heft03-adressen.spec.ts",
+          "src/features/auth/tueren.ts",
+          "src/__tests__/zugang.spec.ts"
+        ],
+        "begruendung": "App.tsx deklariert die Route, Auth.tsx IST der Wegweiser. tueren.ts nennt /auth in der Zeile, die es ueberhaupt erst zum Wegweiser macht (sichererPfad weist /auth ab, sonst leitete die Seite auf sich selbst zurueck), und zugang.spec.ts prueft genau diese Zeile; heft03-adressen.spec prueft, dass /auth keine Heft-Adresse ist. Alle fuenf sind rechtmaessig — eine Kontrolle, die an rechtmaessigem Code rot wird, lehrt nur, Rot zu uebersehen. Gesucht wird nur die exakte Zeichenkette in Anfuehrungszeichen: /auth/v1/health, das notbetrieb.mjs zum Anklopfen braucht, trifft die Pruefung nicht."
       }
     }
   ]

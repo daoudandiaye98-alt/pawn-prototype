@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { sichererPfad } from "@/features/auth/tueren";
 
 
 export type Role = "customer" | "designer" | "designer_applicant" | "admin";
@@ -20,7 +21,8 @@ interface AuthContextValue {
   loading: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ error?: string }>;
-  signInWithGoogle: () => Promise<{ error?: string }>;
+  /** @param ziel eigener Pfad, an den Google zurueckkehren soll. Ohne Angabe: wo der Besucher gerade steht. */
+  signInWithGoogle: (ziel?: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   hasRole: (role: Role) => boolean;
 }
@@ -123,15 +125,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? { error: error.message } : {};
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${window.location.origin}/`,
-    },
-  });
-  return error ? { error: error.message } : {};
-}, []);
+  // Teil L9: Google brachte jeden auf die Startseite zurueck — wer aus der Tasche
+  // heraus anmeldete, stand danach im Heft ganz vorne und musste alles wiederfinden.
+  // Jetzt kehrt er dorthin zurueck, wo er stand. `sichererPfad` laesst nur eigene,
+  // relative Pfade durch: ein //fremder.host im Ziel waere ein offenes Redirect.
+  const signInWithGoogle = useCallback(async (ziel?: string) => {
+    const hier = window.location.pathname + window.location.search;
+    const zurueck = sichererPfad(ziel) ?? sichererPfad(hier) ?? "/";
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}${zurueck}`,
+      },
+    });
+    return error ? { error: error.message } : {};
+  }, []);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();

@@ -12,6 +12,8 @@ import {chatAntwort,SPALTEN,demoQuelle,bildLoeser} from './quelle.mjs';
 import {readView} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
+import {sections as SEKTIONEN,counts as ZAEHLER} from './data.mjs';
+import {uebernahme} from './uebernahme.mjs';
 
 test('Zeilen → Heft: nur zeigbare, veröffentlichte Stücke aktiver, veröffentlichter Häuser',()=>{
  const h=heftAusZeilen(zeilen);
@@ -290,4 +292,104 @@ test('Bildlöser: ein Werk ohne ladbares Bild kommt nicht auf die Bühne',()=>{
  const h=heftAusZeilen(zeilen,{bild:loese});
  assert.ok(!h.products['p-1'],'p-1 hatte keine ladbare Adresse und fehlt');
  assert.ok(h.products['p-2'],'die übrigen Werke stehen weiter');
+});
+
+// ————————————————————————————————————————————————————————————————
+// L5 — Der Zugang zieht ins Heft. Vorher lag er auf einer eigenen React-Seite
+// ausserhalb: wer sich anmelden wollte, fiel aus dem Heft heraus, sah eine andere
+// Gestaltung und kam an anderer Stelle wieder herein.
+//
+// Die neue Seite steht VORNE in der Sektion — damit ruecken alle anderen um eins.
+// Genau daran sind solche Umbauten sonst gestorben: ein „data-page" zeigt danach
+// auf die falsche oder auf gar keine Seite, und niemand merkt es.
+// ————————————————————————————————————————————————————————————————
+const leererZustand=()=>({saved:[],cart:[],orders:[],requests:[],stil:{},frag:{},measurements:{},profile:null});
+
+test('L5: die Zugang-Doppelseite ist die erste Seite von Mein PAWN',()=>{
+ assert.equal(SEKTIONEN.konto[0],'zugang');
+ assert.equal(ZAEHLER.konto,SEKTIONEN.konto.length,'die Zahl der Seiten zaehlt mit');
+
+ const html=extendedView({section:'konto',index:0},leererZustand());
+ assert.ok(html.includes('data-zugang-form="anmelden"'),'Anmelden ist die Voreinstellung');
+ assert.ok(!html.includes('data-zugang-form="registrieren"'),'und Registrieren ist eine EIGENE Ansicht, kein zweites Formular daneben');
+ assert.ok(html.includes('data-zugang-google'),'der Google-Weg steht daneben');
+ assert.ok(html.includes('data-zugang-publikum="haus"'),'und die zweite Publikumstuer');
+});
+
+test('L5: Registrieren ist die zweite Ansicht — und verlangt das Passwort zweimal',()=>{
+ const html=extendedView({section:'konto',index:0},{...leererZustand(),zugang:{modus:'registrieren'}});
+ assert.ok(html.includes('data-zugang-form="registrieren"'));
+ assert.ok(!html.includes('data-zugang-form="anmelden"'),'zwei Ansichten, nie beide gleichzeitig');
+ assert.equal((html.match(/type="password"/g)||[]).length,2,'Passwort und Wiederholung');
+ assert.ok(html.includes('name="wiederholung"'));
+
+ // Haeuser bewerben sich. Ein Formular, das so tut, als koenne man sich einkaufen,
+ // waere ein Bruch der Zusage „Rang ist nie kaeuflich".
+ const haus=extendedView({section:'konto',index:0},{...leererZustand(),zugang:{publikum:'haus'}});
+ assert.ok(!haus.includes('data-zugang-form'),'fuer ein Haus gibt es hier kein Anmeldeformular');
+ assert.ok(haus.includes('data-route="fuer-designer"'),'sondern den Weg zur Bewerbung');
+});
+
+test('L5: wer angemeldet ist, sieht die Tuer seiner Rolle statt einer zweiten Anmeldemaske',()=>{
+ const kunde=extendedView({section:'konto',index:0},{...leererZustand(),profile:{name:'Mina',email:'m@x.de',rollen:[]}});
+ assert.ok(!kunde.includes('data-zugang-form'),'keine Anmeldemaske fuer Angemeldete');
+ assert.ok(kunde.includes('data-logout'));
+ assert.ok(!kunde.includes('data-aussen'),'Kundschaft hat keine Tuer nach draussen');
+
+ const haus=extendedView({section:'konto',index:0},{...leererZustand(),profile:{name:'DRAPÉ',email:'d@x.de',rollen:['designer']}});
+ assert.ok(haus.includes('data-aussen="/studio"'),'ein Haus geht ins Studio');
+ const cockpit=extendedView({section:'konto',index:0},{...leererZustand(),profile:{name:'D',email:'a@x.de',rollen:['admin','designer']}});
+ assert.ok(cockpit.includes('data-aussen="/admin"'),'Admin schlaegt Designer');
+});
+
+test('L5: kein Verweis in Mein PAWN zeigt nach dem Umbau ins Leere',()=>{
+ const letzte=SEKTIONEN.konto.length-1;
+ const zustand={...leererZustand(),profile:{name:'Mina',email:'m@x.de',rollen:[]}};
+ const gesehen=new Set();
+ for(let i=0;i<SEKTIONEN.konto.length;i++){
+  const html=extendedView({section:'konto',index:i},zustand);
+  assert.ok(typeof html==='string'&&html.length>100,'Seite '+i+' rendert');
+  for(const m of html.matchAll(/data-page="(\d+)"/g)){
+   const ziel=Number(m[1]);
+   assert.ok(ziel>=0&&ziel<=letzte,'Seite '+i+' verweist auf data-page='+ziel+', es gibt aber nur 0 bis '+letzte);
+   gesehen.add(ziel);
+  }
+ }
+ // Die Verweise muessen die verschobenen Seiten treffen, nicht die alten Zahlen.
+ assert.ok(gesehen.has(1),'„Mein PAWN" ist jetzt Seite 1');
+ assert.ok(gesehen.has(2),'der Merkzettel Seite 2');
+ assert.ok(gesehen.has(5),'die Einstellungen Seite 5');
+});
+
+// ————————————————————————————————————————————————————————————————
+// L11 — Was der Gast gesammelt hat, geht beim Anmelden nicht verloren.
+//
+// Der Auftrag verlangte das ueber merge_anon_session. Das geht nicht: kunden_stil
+// hat user_id als Primaerschluessel, wishlists user_id NOT NULL, jede Policy
+// verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner
+// der beiden. Ein Gast hat dort nie eine Zeile — die Funktion koennte nur Zeilen
+// zusammenfuehren, die es nicht geben kann. Die Uebergabe passiert deshalb beim
+// Anmelden im Heft, ohne neue anonyme Schreibrechte auf der Datenbank.
+// ————————————————————————————————————————————————————————————————
+
+test('L11: die Gast-Linie geht mit — aber ueberschreibt nie eine, die schon da ist',()=>{
+ const gast={stil:{welt:'mode',richtung:'Klar'},saved:[]};
+
+ const leeresKonto=uebernahme(gast,{stil:null,saved:[]});
+ assert.deepEqual(leeresKonto.stil,{welt:'mode',richtung:'Klar'},'ein leeres Konto bekommt die Gast-Linie');
+
+ const gepflegt=uebernahme(gast,{stil:{welt:'kunst',richtung:'Geste'},saved:[]});
+ assert.equal(gepflegt.stil,null,'ein Gast-Durchlauf am fremden Rechner ersetzt keine gepflegte Linie');
+
+ assert.equal(uebernahme({stil:{},saved:[]},{stil:null,saved:[]}).stil,null,'nichts mitgebracht, nichts zu schreiben');
+ assert.equal(uebernahme().stil,null,'und ohne Angaben faellt gar nichts an');
+});
+
+test('L11: die Merkliste wird nur ergaenzt, nie gekuerzt',()=>{
+ const e=uebernahme({saved:['p-1','p-2','p-3']},{saved:['p-2']});
+ assert.deepEqual(e.merken,['p-1','p-3'],'nur was fehlt, geht hinauf');
+
+ // Loeschen ist eine Handlung, die ein Mensch tut — nicht ein Nebeneffekt des Anmeldens.
+ const nichts=uebernahme({saved:[]},{saved:['p-9']});
+ assert.deepEqual(nichts.merken,[],'was im Konto liegt, wird nie angefasst');
 });
