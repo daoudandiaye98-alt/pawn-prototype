@@ -8,6 +8,13 @@
       "when": 1789168009968,
       "tag": "0000_rechte_zunageln",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789168119664,
+      "tag": "0001_anon_leserechte",
+      "breakpoints": true
     }
   ]
 }

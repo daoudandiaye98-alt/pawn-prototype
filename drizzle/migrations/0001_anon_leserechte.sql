@@ -1,0 +1,16 @@
+GRANT SELECT ON public.ai_config TO anon;
+GRANT SELECT ON public.collection_items TO anon;
+GRANT SELECT ON public.contract_versions TO anon;
+GRANT SELECT ON public.cultural_currents TO anon;
+GRANT SELECT ON public.curated_collections TO anon;
+GRANT SELECT ON public.designer_page_blocks TO anon;
+GRANT SELECT ON public.designers TO anon;
+GRANT SELECT ON public.fashion_ontology TO anon;
+GRANT SELECT ON public.house_milestones TO anon;
+GRANT SELECT ON public.house_themes TO anon;
+GRANT SELECT ON public.i18n_overrides TO anon;
+GRANT SELECT ON public.media_assets TO anon;
+GRANT SELECT ON public.products TO anon;
+GRANT SELECT ON public.site_content TO anon;
+GRANT SELECT ON public.ui_translations TO anon;
+GRANT SELECT ON public.video_assets TO anon;
