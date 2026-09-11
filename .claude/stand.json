@@ -1,38 +1,21 @@
 {
-  "aktualisiert": "2026-09-10",
-  "branch": "claude/heft-frontend-integration-0bjnzf",
-  "offene_prs": [
-    {
-      "nr": 184,
-      "titel": "Teil H — Das Heft zieht ein (Zweig 1: Einzug, Hülle, Adressen)",
-      "status": "Entwurf, offen, Basis main. H1–H5 und H7 sind drin; H4 liegt als Datei (nichts angewandt, nichts ausgeliefert). Bündel −745,76 kB.",
-      "blockiert_durch": "1. Daoudas Sicht-Freigabe auf der Vercel-Vorschau. 2. Die vier Migrationen müssen VOR dem Merge über Lovable laufen."
-    },
-    {
-      "nr": 185,
-      "titel": "Fix: ein Prüfstandslauf, der nichts gesehen hat, meldet nicht mehr grün",
-      "status": "Entwurf, offen, Basis main. Zweig claude/pruefstand-kein-urteil. Unabhängig von #184: #184 fasst pruefstand.config.ts an, #185 lauf.ts und den Workflow — kein Überlapp. Kann vor oder nach #184 mergen. BEWIESEN auf dem echten Runner: Lauf #106 (Job 103040434389) meldet „KEIN URTEIL — Nur 1 von 1104 Gates messbar (0,1 %, nötig 50 %)“, Check grün, Warnung am PR. Der Rückgabewert 3 wird sauber abgefangen. Derselbe Lauf hat auch einen Mangel im Satz gezeigt — er band sein Verb an die falsche Zahl (Commit 449890f).",
-      "blockiert_durch": "nichts — wartet nur auf Durchsicht. Gefunden wurde der Mangel an Lauf #104 dieses Zweigs: der Check meldete grün über 673 ungemessenen Gates."
-    }
-  ],
+  "aktualisiert": "2026-09-11",
+  "branch": "claude/stand-nach-den-merges",
+  "offene_prs": [],
   "merge_reihenfolge": [
-    "1. Daouda sieht sich die Vercel-Vorschau von PR #184 an (Checkliste steht im PR). Ohne Sicht-Freigabe geht nichts weiter.",
-    "2. Die vier Migrationen über den Lovable-Agenten anwenden, in dieser Reihenfolge: 20260928090000_heft_sichten, 20260928100000_heft_kunden_stil, 20260928110000_heft_masse_raum, 20260928120000_heft_product_dna. Alle vier sind additiv — keine Spalte wird gelöscht, kein Constraint verschärft.",
-    "3. types.ts neu erzeugen lassen (danach kennt es kunden_stil, raum und kauf_freigeschaltet).",
-    "4. PR #184 nach main mergen. Lovable synct, Vercel spiegelt auf pawn.vision.",
-    "5. pawn-chat über Lovable ausliefern (Code liegt im Merge: page_context.heft, /werk/-Links, mode stilfoto).",
-    "6. Danach Zweig 2 (claude/heft03-foto): das Stilfoto auf /deine-dna/foto und das Bild in „Frag PAWN\" — beides braucht die ausgelieferte Function.",
-    "7. H6 (Freistellen) als eigener PR, aber VOR dem Umschalttag: ohne product_dna.heft.cutout_url steht kein Werk auf der Bühne.",
-    "PR #185 (Prüfstand: kein Urteil) hängt an nichts und blockiert nichts. Am sinnvollsten VOR #184, dann sagt der erste Lauf von #184 nach dem Merge selbst, ob er etwas gesehen hat."
+    "ERLEDIGT am 10.09.: PR #184 (Teil H, b4d51c4) und PR #185 (Prüfstand: kein Urteil, 5efb9de) sind beide auf main. Lovable synct, Vercel spiegelt auf pawn.vision.",
+    "OFFEN 1 — DRINGEND: die vier Migrationen supabase/migrations/20260928* über den Lovable-Agenten anwenden. Sie liegen als Dateien auf main; eine Datei ist keine angewandte Migration. Reihenfolge: heft_sichten, heft_kunden_stil, heft_masse_raum, heft_product_dna. Alle vier additiv — keine Spalte wird gelöscht, kein Constraint verschärft.",
+    "OFFEN 2: types.ts neu erzeugen lassen (kennt heute kein kunden_stil).",
+    "OFFEN 3: pawn-chat über Lovable ausliefern — der Code liegt seit dem Merge auf main, ausgeliefert ist er nicht.",
+    "OFFEN 4: H6 (Freistellen) bauen, eigener PR. Die Regel der Bühne ist hart: aufgestellt wird nur, was freigestellt ist (product_dna.heft.cutout_url). Ohne die Function und einen einmaligen Lauf über alle veröffentlichten Werke stehen die Bühnen leer — ehrlicher Leerzustand, aber leer.",
+    "OFFEN 5: Zweig 2 (Stilfoto auf /deine-dna/foto, Bild in „Frag PAWN“) — braucht die ausgelieferte pawn-chat."
   ],
   "wartet_auf_mensch": [
-    "SICHT-FREIGABE: Die Vercel-Vorschau von PR #184 ansehen. Dieser Container erreicht Supabase nicht und rendert mit 1 Bild pro Sekunde — über echte Häuser, echte Bilder und die Ruhe der Bewegung sagt mein Lauf NICHTS. Prüfen: Eröffnung ~5,8 s und ruhig · echte Häuser auf den Bühnen · ein Werk anklicken (Adresse muss auf /werk/<slug> springen, Zurück-Taste schließt das Fenster) · Tasche → Stripe-Kasse öffnet (Testmodus reicht, kein Kauf) · Konsole ohne Fehler · 390 px und iPad.",
-    "MIGRATIONEN: Die vier Dateien unter supabase/migrations/20260928* müssen VOR dem Merge über Lovable laufen. heft_sichten schließt eine echte Lücke: die Policy „designers public read\" gibt heute jedem Besucher auch stripe_account_id und stripe_customer_id. Das Heft schützt sich schon mit seiner eigenen Auswahlliste (Zusage Z10), aber die Lücke selbst schließt erst die Sicht.",
-    "EDGE FUNCTION: pawn-chat ist geändert, aber NICHT ausgeliefert. Nach dem Merge über Lovable deployen — sonst zeigen die Karten im Chat weiter auf /product/<slug> (läuft über eine 301) und mode stilfoto gibt es nicht.",
-    "ENTSCHEIDUNGEN, die Daouda in dieser Sitzung getroffen hat: D1 Vision-Text bleibt der Text des Hefts (site_content vision_* wird nicht gelesen) · D3 Häuser nach house_number · D6 der VORSCHAU-Stempel ist weg, der Regler „Papier & Bewegung\" bleibt · D7 ein geöffnetes Werk schreibt seine Adresse.",
-    "H6 (Freistellen) ist noch nicht gebaut. Die Regel der Bühne ist hart: aufgestellt wird nur, was freigestellt ist (product_dna.heft.cutout_url). Ohne die Freistell-Function und einen einmaligen Lauf über alle veröffentlichten Werke stehen die Bühnen leer — mit einem ehrlichen Leerzustand, aber leer. Das muss vor dem Umschalttag passieren.",
-    "OFFEN GEBLIEBEN aus der letzten Schicht, jetzt erledigt: Kontrolle 4.7 (Seitengewicht). index.js liegt bei 2.184,66 kB statt 2.930,42 kB. Die Schwelle von 3 MB musste nicht angehoben werden.",
-    "OFFENE URSACHE (aus PR #185): Warum löst der GitHub-Rechner rnakubexbqfgfciynqpt.supabase.co nicht auf? #185 macht die Blindheit nur sichtbar, statt sie als Erfolg zu verkaufen — behoben ist sie damit nicht. Drei Verdächtige, keiner geprüft: das Supabase-Projekt pausiert, eine Netzsperre der Organisation, oder DNS auf dem Runner. Solange das offen ist, ist der einzige Beweis über echte Daten ein Mensch auf der Vorschau."
+    "DIE ERSTE FRAGE DIESER SCHICHT: Lädt pawn.vision normal, und stehen Häuser auf den Bühnen? Das Heft ist seit b4d51c4 das öffentliche Frontend. Ein Blick beantwortet mehreres zugleich — ob der Sync durch ist, ob die Bildadressen stimmen, und ob das Supabase-Projekt überhaupt erreichbar ist.",
+    "SIND DIE MIGRATIONEN GELAUFEN? Beleg dagegen: src/integrations/supabase/types.ts kennt kunden_stil nicht (0 Treffer) und wurde seit dem Merge nicht neu erzeugt. Ein Agent sieht die Datenbank von hier nicht. WAS OHNE SIE HALB BLEIBT, nach Schwere: (1) Die Policy „designers public read“ gibt anon weiter stripe_account_id und stripe_customer_id — das Heft liest sie nicht (Zusage Z10), aber die Lücke schließt erst heft_sichten. Das ist Sicherheit, nicht Komfort. (2) Das Bilderquiz bleibt im Gerät; nach dem Login wird nichts übernommen. (3) Interior/Kunst-Maße bleiben Freitext in room_note. KAPUTT IST NICHTS — alle drei fallen bewusst zurück.",
+    "DIE SICHT-FREIGABE WAR BEDINGUNG IM PR UND IST JETZT GESCHICHTE. Falls der Kauf-Weg (Werk → Tasche → Stripe) und das Anklicken eines Werks nicht von Hand durchgeklickt wurden, sind sie ungeprüft live. Kein Werkzeug dieses Projekts hat sie je mit echten Daten gesehen: drei Prüfstandsläufe waren blind (siehe nicht_pruefbar). Kein Vorwurf, sondern die Lücke, die offen bleibt — Nachholen lohnt auch jetzt.",
+    "OFFENE URSACHE: Warum löst der GitHub-Rechner rnakubexbqfgfciynqpt.supabase.co nicht auf? #185 macht die Blindheit sichtbar, behebt sie nicht. Drei Verdächtige, keiner geprüft: Projekt pausiert, Netzsperre der Organisation, DNS auf dem Runner. Lädt pawn.vision normal, fällt der erste weg.",
+    "ENTSCHEIDUNGEN vom 10.09.: D1 Vision-Text bleibt der des Hefts · D3 Häuser nach house_number · D6 VORSCHAU-Stempel weg, Regler „Papier & Bewegung“ bleibt · D7 ein geöffnetes Werk schreibt seine Adresse."
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-10",
@@ -48,19 +31,18 @@
     "vergleich": "Derselbe Zustand, zwei Verhalten — der Beleg für PR #185: Lauf #109 auf diesem Zweig (ohne Schwelle) meldet grün und sagt NICHTS dazu. Lauf #108 auf dem Zweig von #185 (mit Schwelle) meldet bei 1 von 1104 messbaren Gates „KEIN URTEIL“ plus Warnung am PR — ebenfalls grün, aber nicht mehr stumm. Nach dem Merge von #185 verhält sich auch dieser Zweig so.",
     "hinweis_briefing": "ACHTUNG beim Lesen des Sitzungsstarts: briefing.sh zeigt auf DIESEM Zweig nur „1 bestanden, 0 gefallen“ und verschweigt die 673 ungemessenen — das sieht wie ein Erfolg aus. Die dritte Zahl in die Zeile zu bringen ist Teil von PR #185 (.claude/hooks/briefing.sh). Wird #185 wie empfohlen ZUERST gemergt, erledigt sich das. Wird #184 zuerst gemergt, steht die halbe Wahrheit bis dahin im Briefing."
   },
-  "naechster_zug": "Daouda sieht sich die Vercel-Vorschau von PR #184 an — vor allem: ein Werk anklicken und die Adresse beobachten, und die Tasche bis zur Stripe-Kasse. Das sind die zwei Wege, die diese Sitzung nicht selbst beweisen konnte. Danach die vier Migrationen über Lovable, dann mergen.",
+  "naechster_zug": "pawn.vision öffnen — lädt es, stehen echte Häuser auf den Bühnen? Dann die vier Migrationen über Lovable anwenden (sie liegen nur als Dateien auf main), types.ts neu erzeugen, pawn-chat ausliefern. Danach H6 (Freistellen) bauen: ohne Freistellung stehen die Bühnen am Umschalttag leer.",
   "nicht_pruefbar": [
-    "ECHTE DATEN: Dieser Container erreicht Supabase nicht. Alles, was ich über Inhalte, Bilder und Häuser sagen kann, kommt aus fixtures/zeilen.mjs — Zeilen in der FORM der echten Tabellen, nicht die echten Zeilen. Sechs Fehler habe ich damit gefunden; ob es einen siebten gibt, zeigt erst die Vorschau. NACHTRAG 20:44 UTC: Die Blindheit ist NICHT vorübergehend. Lauf #106 scheiterte erneut an net::ERR_NAME_NOT_RESOLVED, 39 bis 60 Anfragen je Seite, 1103 von 1104 Gates nicht prüfbar. Zwei Läufe, zwei Zweige, dasselbe Bild — kein Zufall, sondern ein Zustand.",
-    "BEWEGUNG: Der Browser hier rendert mit 1 Bild pro Sekunde (Software-Renderer, kein GPU). Die Eröffnung, die auf echter Hardware 5,8 s dauert, braucht hier ~29 s. Über Flüssigkeit, Blätterruhe und die Zusage „ein DEIN ZUG je Seite\" sagt dieser Lauf nichts.",
-    "BILDADRESSEN: quelle.heft() signiert alle Bildadressen in einer Runde, bevor die Adapter sie synchron lesen. Ob die echten products.image_url blanke Bucket-Pfade oder fertige URLs sind, konnte ich nicht sehen — beide Wege sind abgedeckt, aber geprüft ist keiner.",
-    "DIE SICHTEN: supabaseQuelle läuft mit sichten:false, weil es heft_produkte und heft_haeuser noch nicht gibt. Ob der eingebettete Join products→designers über die Sicht funktioniert (PostgREST muss die FK-Beziehung erkennen), zeigt sich erst nach der Migration. heftAusZeilen() fällt zur Not auf haeuserNachId zurück.",
-    "DIE EDGE FUNCTION: Deno ist in diesem Container nicht vorhanden. pawn-chat ist nur auf Syntax geprüft (tsc --noResolve). Ob mode stilfoto läuft, zeigt der erste Aufruf nach dem Deploy.",
-    "KAUF VON HAND: Der Weg Werk → Tasche → Stripe ist durch Tests gedeckt (tasche.test.mjs, Zusage Z7) und im Browser mit Fixture-Zeilen durchgeklickt, aber nie mit einer echten Datenbank bis zur Kasse. Dieser Beweis fehlt weiter — er ist der wichtigste Punkt der Sicht-Freigabe.",
-    "DER PRÜFER (10.09., gegen 18 Behauptungen dieses Berichts): 17 bestätigt, 0 widerlegt, 1 nicht prüfbar. Nicht prüfbar war allein der CI-Stand — der Subagent hat keinen GitHub-Zugriff; die Hauptsitzung hat ihn gesehen (check_suite.completed auf 154f2bd ohne Fehler, PR #184 mergeable_state clean). Er hat die vier neuen Kontrollen NICHT geglaubt, sondern zwei davon in einer Kopie rot vorgeführt: Z8 fiel, als er die Selbststart-Zeile in app.js wieder einsetzte, Z10 fiel, als er stripe_account_id in SPALTEN.designers schrieb. Eine Abweichung fand er: sein eigener Baulauf maß 2.184,71 kB, der Bericht nennt 2.184,66 kB — Rundungsrauschen zwischen zwei Bauläufen, die Richtung (−745 kB) steht."
+    "DREI BLINDE PRÜFSTANDSLÄUFE, belegt: #104 (1 von 674 messbar), #106 und #108 (1 von 1104). Chromium auf dem GitHub-Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf (net::ERR_NAME_NOT_RESOLVED, 24 bis 60 Anfragen je Seite). Die Vorschau lädt — die Sperre hebt VERCEL_AUTOMATION_BYPASS_SECRET auf —, aber als Hülle ohne Inhalte. Seit #185 sagt der Lauf das selbst („KEIN URTEIL“, Warnung am PR, Check bleibt grün); vorher meldete er nur grün.",
+    "FOLGE, und das ist der wichtigste Satz dieser Übergabe: kein Werkzeug dieses Projekts hat das Heft je mit echten Häusern gesehen. Nicht der Entwicklungscontainer (kein Netz zur Datenbank, 1 Bild/Sekunde), nicht der Prüfstand (blind), nicht der Prüfer (liest Code, keine Seite). Der einzige Beweis über echte Daten ist ein Mensch auf pawn.vision.",
+    "DER KAUF-WEG: Werk → Tasche → Stripe ist durch Tests gedeckt (tasche.test.mjs, Zusage Z7) und im Browser mit Fixture-Zeilen durchgeklickt — nie mit einer echten Datenbank bis zur Kasse. Dieser Beweis fehlt weiter, und er betrifft Geld.",
+    "DIE SICHTEN: supabaseQuelle läuft mit sichten:false. Ob der eingebettete Join products→designers über heft_produkte funktioniert (PostgREST muss die FK-Beziehung erkennen), zeigt sich erst nach der Migration. heftAusZeilen() fällt zur Not auf haeuserNachId zurück.",
+    "DIE EDGE FUNCTION: Deno ist im Container nicht vorhanden. pawn-chat ist nur auf Syntax geprüft. Ob mode stilfoto läuft, zeigt der erste Aufruf nach dem Deploy.",
+    "DER PRÜFER (10.09., 18 Behauptungen zu Teil H): 17 bestätigt, 0 widerlegt, 1 nicht prüfbar (der CI-Stand — er hat keinen GitHub-Zugriff). Er hat zwei der neuen Kontrollen in einer Kopie rot vorgeführt und die Bündelzahl selbst nachgemessen."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-10",
+    "datum": "2026-09-11",
     "bestanden": 4,
     "gefallen": 0
   },
