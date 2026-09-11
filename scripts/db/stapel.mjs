@@ -47,6 +47,11 @@ import { fileURLToPath } from "node:url";
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const ORDNER = "supabase/migrations";
 const JE_STAPEL = Number(process.env.STAPEL_GROESSE || 8);
+// OBERGRENZE IN ZEICHEN, und sie ist keine Schaetzung: die Ausgabe eines Werkzeugs
+// wird oberhalb von ~32 kB abgeschnitten und in eine Datei ausgelagert. Gemessen am
+// 11.09.2026 — ein Stapel von 38 kB kam nicht mehr durch, einer von 17 kB schon.
+// Ein Stapel, den der Agent nicht lesen kann, kann er auch nicht anwenden.
+const JE_ZEICHEN = Number(process.env.STAPEL_ZEICHEN || 20000);
 
 /** Die abspielbare Reihenfolge — aus der Prüfung, nicht aus einem sort. */
 function ordnung() {
@@ -98,6 +103,8 @@ function stapeln() {
       stapel.push([{ datei: d, sql, allein: true }]);
       continue;
     }
+    const bisher = laufend.reduce((n, e) => n + e.sql.length, 0);
+    if (laufend.length && bisher + sql.length > JE_ZEICHEN) { stapel.push(laufend); laufend = []; }
     laufend.push({ datei: d, sql, allein: false });
     if (laufend.length >= JE_STAPEL) { stapel.push(laufend); laufend = []; }
   }

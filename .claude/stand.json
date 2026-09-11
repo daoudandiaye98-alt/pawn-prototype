@@ -104,24 +104,29 @@
     "was_er_selbst_gemessen_hat": "Die Spaltenrechnung 59/44/15 eigenstaendig nachgerechnet · die Kette in einer Kopie ohne die Basis-Datei rot vorgefuehrt (Exit 1, FEHLER: acquisition_leads) · --ordnung auf Vollstaendigkeit geprueft (163 Zeilen, sort -u ebenfalls 163) · seed-admin aus `git show HEAD~1` gelesen und den fehlenden Auth-Check sowie das hartcodierte Passwort bestaetigt · has_role in einer frueher sortierten Migration gefunden"
   },
   "erstaufbau": {
-    "WO_ES_STEHT": "Stapel 1 von 33 liegt. Die Datenbank traegt gerade NUR diese vier Migrationen — pawn.vision ist in diesem Zustand tot, nicht nur teilweise kaputt. Der Lauf MUSS zu Ende gebracht werden, ein Abbruch hier ist schlechter als der Ausgangszustand.",
+    "WO_ES_STEHT": "12 von 167 Versionen liegen (Stand 22:40 UTC). Die Kette laeuft, das Verfahren ist bewiesen, und sie ist jederzeit fortsetzbar — scripts/db/stapel.mjs --ohne kennt, was schon liegt. ABER: die Seite kommt dadurch NICHT zurueck, und das ist der Punkt, der die Eile aus der Sache nimmt. Sie braucht ausserdem die Speicher-Eimer (M5) und den Deploy von ~49 Edge Functions — und der kann nur ueber Daouda laufen. Die Kette fertigzuspielen macht pawn.vision also nicht wieder lebendig; sie ist eine Voraussetzung, nicht der letzte Schritt.",
     "wie_fortsetzen": [
-      "1. node scripts/db/stapel.mjs --liste     — Uebersicht: 33 Stapel, 168 Dateien, 9 allein",
-      "2. node scripts/db/stapel.mjs --stapel N  — die SQL fuer Stapel N",
-      "3. node scripts/db/stapel.mjs --name N    — der Name fuer apply_migration (die LETZTE Datei des Stapels)",
-      "4. mcp Supabase apply_migration mit genau diesem Namen und dieser SQL, WOERTLICH",
-      "5. bricht ein Stapel, ist nichts davon angekommen (apply_migration ist transaktional) — anhalten und den Bruch benennen, nicht reparieren",
-      "6. am Ende die Abfrage aus dem Kopf von scripts/db/abnahme.mjs laufen lassen, Ergebnis als JSON ablegen, dann node scripts/db/abnahme.mjs <datei>",
-      "7. danach types.ts neu erzeugen (mcp Supabase generate_typescript_types)"
+      "1. Die gelegten Versionen holen:  select version from supabase_migrations.schema_migrations order by version;",
+      "2. Sie in eine Datei schreiben, eine je Zeile, z. B. /tmp/gelegt.txt",
+      "3. node scripts/db/stapel.mjs --liste --ohne /tmp/gelegt.txt   — was noch fehlt",
+      "4. node scripts/db/stapel.mjs --name 1 --ohne /tmp/gelegt.txt  — der Name fuer apply_migration",
+      "5. node scripts/db/stapel.mjs --stapel 1 --ohne /tmp/gelegt.txt — die SQL, WOERTLICH uebernehmen",
+      "6. mcp Supabase apply_migration mit genau diesem Namen und dieser SQL",
+      "7. Version(en) an /tmp/gelegt.txt anhaengen, zurueck zu 4. Bei einem Bruch: anhalten und benennen.",
+      "8. Am Ende: Abfrage aus dem Kopf von scripts/db/abnahme.mjs, Ergebnis als JSON, dann node scripts/db/abnahme.mjs <datei>",
+      "9. Danach types.ts neu erzeugen (mcp Supabase generate_typescript_types)"
     ],
-    "naechster_stapel": 2,
+    "naechster_stapel": 1,
     "was_gemessen_ist": "Rueckweg vorgefuehrt und gemessen: 0 Tabellen, 0 Funktionen, 0 Enums in public; die 2 Konten im auth-Schema haben ueberlebt; 0 Cronjobs. Danach Stapel 1: 4 Migrationen.",
-    "drei_fallen_die_sonst_zeit_kosten": [
+    "woertlich_nicht_knapp": "Stapel 1 ging kommentarfrei an die Datenbank, bevor das entschieden war. Ab Stapel 2 WOERTLICH. Eine knappe Fassung haette 18 % Umfang gespart und dafuer einen eigenen Kommentar-Entferner ueber jeden Funktionsrumpf und jede Zeichenkette laufen lassen — gemessen, dann verworfen. abnahme.mjs vergleicht deshalb kommentarfrei auf beiden Seiten.",
+    "warum_es_durch_den_agenten_laeuft": "apply_migration nimmt nur SQL im Aufruf, keinen Dateipfad. execute_sql ist nur lesend (gemessen: 'cannot execute ... in a read-only transaction'). 511 kB SQL muessen also durch die Ausgabe des Agenten, jedes Zeichen zweimal — lesen und schreiben. Es gibt keinen Dateiweg, und das ist der eigentliche Preis dieses Schrittes.",
+    "was_der_lauf_wirklich_kostet": "Gemessen, nicht geschaetzt: 511 kB SQL, und jedes Zeichen laeuft ZWEIMAL durch die Ausgabe des Agenten — einmal beim Lesen, einmal beim Schreiben in apply_migration. Dazu die harte Grenze: eine Werkzeugausgabe ueber ~32 kB wird abgeschnitten, deshalb sind die Stapel auf 20 kB begrenzt (STAPEL_ZEICHEN). Das ergibt 40 Stapel, rund 80 Werkzeugaufrufe. Zwoelf Migrationen haben acht Durchlaeufe gebraucht.",
+    "die_alternative_die_daouda_entscheiden_muss": "DER LOVABLE-AGENT hat direkten Zugang zu genau diesem Projekt und hat die Dateien aus dem Git-Abgleich. Er kann die Kette OHNE Abschreiben anwenden — in Minuten statt Stunden, und ohne das Risiko, dass ein Zeichen auf dem Weg verlorengeht. Das kostet Guthaben, deshalb entscheidet es kein Agent. Die Regel deploy-choreografie war fuer den Erstaufbau schriftlich ausgesetzt, damit es OHNE Guthaben geht — die Aussetzung ist also eine Erlaubnis, kein Gebot. Wenn Guthaben da ist, ist Lovable der bessere Weg.",
+    "vier_fallen_die_sonst_zeit_kosten": [
       "DIE ABNAHME DES AUFTRAGS IST SO NICHT ERFUELLBAR: Version 20260811090000 traegt ZWEI Dateien (part47_befund1_antworten und style_references). schema_migrations.version ist Primaerschluessel. 168 Dateien ergeben hoechstens 167 Zeilen. Umbenennen ist verboten (wache.sh, CLAUDE.md Regel 2). Die Abnahme rechnet deshalb gegen VERSIONEN und benennt die Doppelung.",
       "apply_migration schreibt seine EIGENE Historienzeile aus dem uebergebenen Namen. Die LETZTE Datei eines Stapels darf deshalb nicht in der Buchhaltung des Stapels stehen, sonst Schluessel-Konflikt und der ganze Stapel faellt zurueck. stapel.mjs beruecksichtigt das.",
-      "DIE KETTE LEGT DEN KAPUTTEN NACHTJOB SELBST WIEDER AN: 20260709092523 (Stelle 25 der Abspielordnung) legt compute-trends-daily mit der Adresse des geloeschten alten Projekts an. Abgeschaltet wird er erst von 20260930100000 in Stapel 33. Wer die Kette ohne diese Datei spielt, holt den Job zurueck."
-    ],
-    "woertlich_nicht_knapp": "Stapel 1 ging kommentarfrei an die Datenbank, bevor das entschieden war. Ab Stapel 2 WOERTLICH. Eine knappe Fassung haette 18 % Umfang gespart und dafuer einen eigenen Kommentar-Entferner ueber jeden Funktionsrumpf und jede Zeichenkette laufen lassen — gemessen, dann verworfen. abnahme.mjs vergleicht deshalb kommentarfrei auf beiden Seiten.",
-    "warum_es_durch_den_agenten_laeuft": "apply_migration nimmt nur SQL im Aufruf, keinen Dateipfad. execute_sql ist nur lesend (gemessen: 'cannot execute ... in a read-only transaction'). 511 kB SQL muessen also durch die Ausgabe des Agenten, jedes Zeichen zweimal — lesen und schreiben. Es gibt keinen Dateiweg, und das ist der eigentliche Preis dieses Schrittes."
+      "DIE KETTE LEGT DEN KAPUTTEN NACHTJOB SELBST WIEDER AN: 20260709092523 (Stelle 25 der Abspielordnung) legt compute-trends-daily mit der Adresse des geloeschten alten Projekts an. Abgeschaltet wird er erst von 20260930100000 in Stapel 33. Wer die Kette ohne diese Datei spielt, holt den Job zurueck.",
+      "DER RUECKWEG WAR UNVOLLSTAENDIG, und das hat den zweiten Stapel zerrissen: storage.objects liegt NICHT im Schema public, `drop schema public cascade` nimmt seine Policies also nicht mit. Fehler war 42710 'policy \"applicant upload own folder\" already exists'. Gemessen: 17 Policies, alle aus PAWNs Migrationen, keine eine Supabase-Vorgabe. Der Rueckweg in stapel.mjs nimmt sie jetzt mit."
+    ]
   }
 }
