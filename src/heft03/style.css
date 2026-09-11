@@ -1075,7 +1075,9 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .zugang-meldung{margin:14px 0 0;padding:11px 14px;border-left:2px solid var(--welt);
  background:#0000000a;font:400 13px/1.5 Inter,sans-serif;color:#3a352d}
 .zugang-meldung.leise{border-left-color:#c3baa9}
-.zugang-publikum{margin-top:22px}
+/* Die Publikumswahl sitzt ueber dem Deckbild — darunter stand sie auf der
+   Fusslinie der Seite. Gesehen in .claude/sicht/2026-09-11/, nicht vermutet. */
+.zugang-publikum{margin:14px 0 18px}
 .zugang-modus{margin:0 0 22px}
 /* „oder" zwischen Passwort und Google: eine Linie, kein Kasten. */
 .zugang-oder{display:flex;align-items:center;gap:14px;margin:26px 0 4px}

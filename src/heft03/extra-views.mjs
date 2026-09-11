@@ -169,10 +169,14 @@ export function zugangSeite(state){
   +'<button class="wahl'+(publikum==='haus'?' an':'')+'" data-zugang-publikum="haus" aria-pressed="'+(publikum==='haus'?'true':'false')+'">Ich bin ein Haus</button>'
   +'</div>';
 
- const links=tag('MEIN PAWN / ZUGANG')+'<div class="profile-cover">'+pawnGlyph()
+ // Die Publikumswahl steht ÜBER dem Deckbild, nicht darunter. Erst unter ihm
+ // gebaut, dort sass sie auf der Fusslinie der Seite (.claude/sicht/2026-09-11/) —
+ // und die Seite laesst dem Bild seine Hoehe, egal was man ihm vorschreibt.
+ // Oben ist sie ohnehin richtiger: erst entscheiden, wer man ist, dann das Formular.
+ const links=tag('MEIN PAWN / ZUGANG')+tueren+'<div class="profile-cover">'+pawnGlyph()
   +'<h1>Dein<br><em>Zugang.</em></h1>'
   +'<p>Ein Platz im Magazin.<br>Merkzettel, Bestellungen, deine Linie — auch beim nächsten Öffnen.</p>'
-  +'</div>'+tueren;
+  +'</div>';
 
  // Haeuser bewerben sich. Kein Formular, das so tut, als koenne man sich einkaufen.
  if(publikum==='haus')return page(links,
