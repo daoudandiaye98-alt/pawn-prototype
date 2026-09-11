@@ -1,43 +1,25 @@
 {
   "aktualisiert": "2026-09-11",
-  "branch": "claude/teil-k-heft-nachlese",
-  "offene_prs": [
-    {
-      "nr": 187,
-      "titel": "Doku: Befund zum Vorschau-Betrieb",
-      "status": "Draft, nur .claude/stand.json",
-      "blockiert_durch": "Daoudas Entscheidung: Text des Streifens und 6-Sekunden-Frist"
-    },
-    {
-      "nr": 188,
-      "titel": "Teil K: der geprüfte Stand des Umzugs",
-      "status": "Draft, nur Doku (docs/teil-k/umzug-stand.md)",
-      "blockiert_durch": "DIE Entscheidung: wer spielt die 160 Migrationen? Drei Wege in Abschnitt 3 der Datei."
-    },
-    {
-      "nr": 189,
-      "titel": "K7, K10, K13: den Vorschau-Betrieb aufräumen und prüfbar machen",
-      "status": "Draft, Code in src/heft03/",
-      "blockiert_durch": "nichts — nur Ansehen"
-    }
-  ],
+  "branch": "claude/heft-frontend-integration-0bjnzf",
+  "offene_prs": [],
   "merge_reihenfolge": [
-    "ZUERST DIESE DATEI UND docs/teil-k/umzug-stand.md LESEN (liegt auf Zweig claude/teil-k-datenbank-und-nachlese, PR #188). Dort steht der ganze geprüfte Stand des Datenbankumzugs.",
-    "DIE ALTE DATENBANK IST WEG (NXDOMAIN), nicht unerreichbar. Damit ist die offene Ursache der drei blinden Prüfstandsläufe beantwortet: nicht der Runner, keine Netzsperre, kein DNS — das Projekt existiert nicht mehr. Neu: cnxtdcifkrdxvajaikxq, AUS DIESEM CONTAINER ERREICHBAR (401 ohne Schlüssel).",
-    "GESTOPPT, WARTET AUF DAOUDA: 3 von 160 Migrationen liegen auf dem neuen Projekt. Die deploy-choreografie verbietet dem Agenten das Ausführen von Migrationen; der Auftrag Teil K verlangt es. Diesen Widerspruch löst kein Agent. Gemessener Nebenbefund: apply_migration trägt als version den Zeitpunkt des Aufrufs ein statt des Dateinamens — genau der Schaden, vor dem der Auftrag warnt.",
-    "MERGE-REIHENFOLGE der drei offenen PRs: #189 (Code, unabhängig) kann zuerst. #187 und #188 ändern beide .claude/stand.json — beim zweiten Merge entsteht ein Konflikt in dieser Datei, der von Hand aufzulösen ist (immer die NEUERE Fassung nehmen, nicht mischen).",
-    "DANACH, in dieser Reihenfolge: Migrationen → types.ts neu erzeugen → Vercel-Variablen umstellen (NICHT vorher!) → 50 Edge Functions über Lovable → K14 (sichten:true) → K15/H6 Freistellen.",
-    "ERLEDIGT, NICHT NOCH EINMAL BAUEN: K8, K9, K11, K12 (seit PR #184, Fundstellen in docs/teil-k/umzug-stand.md Abschnitt 4) und seit PR #189 auch K7, K10, K13."
+    "ERLEDIGT: PR #184 (Teil H, b4d51c4), PR #185 (Prüfstand: kein Urteil, 5efb9de) und PR #186 (Übergabe berichtigt, d472a35) sind auf main.",
+    "AUSSERDEM AUF MAIN, ohne PR direkt gepusht: e9d88d9 „Heft: Vorschau-Betrieb, wenn die Datenbank nicht antwortet“ (aus einer zweiten Sitzung, 11.09. 01:15). Steht unten unter notbetrieb — geprüft, nicht angefasst.",
+    "OFFEN 1 — DRINGEND: die vier Migrationen supabase/migrations/20260928* über den Lovable-Agenten anwenden. Sie liegen als Dateien auf main; eine Datei ist keine angewandte Migration. Reihenfolge: heft_sichten, heft_kunden_stil, heft_masse_raum, heft_product_dna. Alle vier additiv — keine Spalte wird gelöscht, kein Constraint verschärft.",
+    "OFFEN 2: types.ts neu erzeugen lassen (kennt heute kein kunden_stil).",
+    "OFFEN 3: pawn-chat über Lovable ausliefern — der Code liegt seit dem Merge auf main, ausgeliefert ist er nicht.",
+    "OFFEN 4: H6 (Freistellen) bauen, eigener PR. Die Regel der Bühne ist hart: aufgestellt wird nur, was freigestellt ist (product_dna.heft.cutout_url). Ohne die Function und einen einmaligen Lauf über alle veröffentlichten Werke stehen die Bühnen leer. SEIT e9d88d9 MIT NEUER FOLGE: antwortet die Quelle nicht, zeigt das Heft stattdessen die Beispielausgabe — leer sieht man also nur, wenn die Datenbank antwortet und nichts freigestellt ist.",
+    "OFFEN 5: Zweig 2 (Stilfoto auf /deine-dna/foto, Bild in „Frag PAWN“) — braucht die ausgelieferte pawn-chat."
   ],
   "wartet_auf_mensch": [
-    "DIE ERSTE FRAGE: Wer spielt die 160 Migrationen? Drei Wege in docs/teil-k/umzug-stand.md Abschnitt 3. Ohne Entscheidung steht Teil A von Teil K.",
-    "DER TEUERSTE PUNKT: Der Stripe-Webhook zeigt auf die tote Adresse. Eine echte Zahlung würde heute bezahlt, aber nicht verbucht. Neu: https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/stripe-webhook",
-    "17 GEHEIMNISSE neu setzen — vollständige Liste in docs/teil-k/umzug-stand.md Abschnitt 6. Nie im Code, nie in .env, nie im PR.",
-    "VERCEL-VARIABLEN erst NACH dem Schema umstellen (Production und Preview). Sonst tauscht pawn.vision den Vorschau-Betrieb gegen eine Quelle, die auf jede Tabelle mit 404 antwortet — und der Notbetrieb greift dann NICHT, weil eine Antwort kommt.",
-    ".env IST VERSIONIERT und enthält die alte Kennung. Ich kann sie nicht anfassen (Schutzregel dieser Umgebung; ich habe sie nicht gelesen). Eine versionierte .env widerspricht CLAUDE.md.",
-    "ALLE KONTEN SIND WEG — im Auftrag steht das nirgends. Leeres auth.users, 20 der 160 Migrationen hängen daran. Kein alter Zugang funktioniert; profiles, orders, message_threads sind leer. Stripe kennt seine Kunden weiter, die Datenbank nicht mehr.",
-    "ZWEI PUNKTE ZUM VORSCHAU-BETRIEB (PR #187): die 6-Sekunden-Frist trifft auch eine langsame Leitung, nicht nur einen Ausfall. Und der Streifen sagt nicht, dass die Häuser Beispiele sind. Beides absichtlich NICHT geändert.",
-    "KLEINE GESTALTERISCHE ENTSCHEIDUNG aus PR #189: gesperrte Knöpfe im Vorschau-Betrieb sind durchgestrichen (kein Grau, keine Opacity — die Design-Gesetze lassen wenig anderes). Umwerfbar."
+    "DIE ERSTE FRAGE: Wer spielt die 160 Migrationen? Drei Wege in docs/teil-k/umzug-stand.md Abschnitt 3. Ohne Entscheidung steht Teil A.",
+    "DER TEUERSTE PUNKT: Der Stripe-Webhook zeigt auf die tote Adresse. Eine echte Zahlung wuerde heute bezahlt, aber nicht verbucht. Neue Adresse: https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/stripe-webhook",
+    "17 GEHEIMNISSE neu setzen — vollstaendige Liste in docs/teil-k/umzug-stand.md Abschnitt 6. Nie im Code, nie in .env, nie im PR.",
+    "VERCEL-VARIABLEN erst NACH dem Schema umstellen (Production und Preview). Sonst tauscht pawn.vision den Vorschau-Betrieb gegen eine Quelle, die auf jede Tabelle mit 404 antwortet — und der Notbetrieb greift dann nicht, weil eine Antwort kommt.",
+    ".env IST VERSIONIERT und enthaelt die alte Kennung. Ich kann sie nicht anfassen (Schutzregel dieser Umgebung, ich habe sie nicht gelesen). Eine versionierte .env widerspricht CLAUDE.md.",
+    "ALLE KONTEN SIND WEG — im Auftrag steht das nirgends. Leeres auth.users, 20 der 160 Migrationen haengen daran. Kein alter Zugang funktioniert, profiles/orders/message_threads sind leer. Stripe kennt seine Kunden weiter, die Datenbank nicht mehr.",
+    "ZWEI PUNKTE ZUM VORSCHAU-BETRIEB offen (PR #187): die 6-Sekunden-Frist trifft auch eine langsame Leitung, und der Streifen sagt nicht, dass die Haeuser Beispiele sind.",
+    "NUR NOCH .env traegt die alte Kennung an lebender Stelle (plus Protokolle und Migrationen, die absichtlich bleiben). Ich kann sie nicht anfassen."
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-10",
@@ -53,10 +35,9 @@
     "vergleich": "Derselbe Zustand, zwei Verhalten — der Beleg für PR #185: Lauf #109 auf diesem Zweig (ohne Schwelle) meldet grün und sagt NICHTS dazu. Lauf #108 auf dem Zweig von #185 (mit Schwelle) meldet bei 1 von 1104 messbaren Gates „KEIN URTEIL“ plus Warnung am PR — ebenfalls grün, aber nicht mehr stumm. Nach dem Merge von #185 verhält sich auch dieser Zweig so.",
     "hinweis_briefing": "ACHTUNG beim Lesen des Sitzungsstarts: briefing.sh zeigt auf DIESEM Zweig nur „1 bestanden, 0 gefallen“ und verschweigt die 673 ungemessenen — das sieht wie ein Erfolg aus. Die dritte Zahl in die Zeile zu bringen ist Teil von PR #185 (.claude/hooks/briefing.sh). Wird #185 wie empfohlen ZUERST gemergt, erledigt sich das. Wird #184 zuerst gemergt, steht die halbe Wahrheit bis dahin im Briefing."
   },
-  "naechster_zug": "Auf die Migrations-Entscheidung warten (docs/teil-k/umzug-stand.md Abschnitt 3). Solange OHNE Datenbank baubar: scripts/verify/rls-anon.mjs für K3 schreiben (laufen kann es erst nach dem Schema), K15/H6 Freistellen als Code, K16 (merge_anon_session), K1 (alte Kennung in 20 Dateien ersetzen, ausser .env und den Migrationen — eine Migration wird nie geändert). NICHT umschalten, bevor das Schema steht.",
+  "naechster_zug": "Zwei Dinge, in dieser Reihenfolge. ERSTENS die vier Migrationen über Lovable anwenden, types.ts neu erzeugen, pawn-chat ausliefern — das kann kein Agent. ZWEITENS die zwei Punkte unter notbetrieb entscheiden (6-Sekunden-Schwelle, Text des Streifens). DANACH H6 (Freistellen) als eigener PR: ohne cutout_url steht auf den Bühnen nichts Echtes.",
   "nicht_pruefbar": [
-    "NEU UND GUT: der neue Datenbank-Host ist AUS DIESEM CONTAINER erreichbar. Sobald das Schema steht, kann der Prüfstand erstmals wirklich messen — der Satz „kein Werkzeug dieses Projekts hat das Heft je mit echten Daten gesehen“ fällt dann weg. Bis dahin gilt er.",
-    "DER VORSCHAU-BETRIEB IST VON HIER NUR HALB PRÜFBAR. Gesehen und gemessen wurde er im Browser gegen den gebauten Stand (Streifen 35 px bei 1280, 51 px bei 390; Tasche und Konto gesperrt) — der Container erreicht die Datenbank nicht und fällt selbst hinein, das ist der ideale Prüfstand dafür. NICHT prüfbar bleibt der Normalfall: ob die 6 Sekunden auf einer echten Leitung reichen, zeigt nur ein Mensch auf pawn.vision.",
+    "DER NOTBETRIEB SELBST IST VON HIER NICHT PRÜFBAR. Ob die 6 Sekunden auf einer echten Leitung reichen und wie der Streifen auf dem Handy sitzt, zeigt nur ein Mensch auf pawn.vision. Der Container hat kein Netz zur Datenbank — hier fällt das Heft IMMER in den Notbetrieb, ein lokaler Screenshot beweist deshalb nichts über den Normalfall.",
     "DREI BLINDE PRÜFSTANDSLÄUFE, belegt: #104 (1 von 674 messbar), #106 und #108 (1 von 1104). Chromium auf dem GitHub-Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf (net::ERR_NAME_NOT_RESOLVED, 24 bis 60 Anfragen je Seite). Die Vorschau lädt — die Sperre hebt VERCEL_AUTOMATION_BYPASS_SECRET auf —, aber als Hülle ohne Inhalte. Seit #185 sagt der Lauf das selbst („KEIN URTEIL“, Warnung am PR, Check bleibt grün); vorher meldete er nur grün.",
     "FOLGE, und das ist der wichtigste Satz dieser Übergabe: kein Werkzeug dieses Projekts hat das Heft je mit echten Häusern gesehen. Nicht der Entwicklungscontainer (kein Netz zur Datenbank, 1 Bild/Sekunde), nicht der Prüfstand (blind), nicht der Prüfer (liest Code, keine Seite). Der einzige Beweis über echte Daten ist ein Mensch auf pawn.vision.",
     "DER KAUF-WEG: Werk → Tasche → Stripe ist durch Tests gedeckt (tasche.test.mjs, Zusage Z7) und im Browser mit Fixture-Zeilen durchgeklickt — nie mit einer echten Datenbank bis zur Kasse. Dieser Beweis fehlt weiter, und er betrifft Geld.",
@@ -91,5 +72,21 @@
       "Seitenbesuche": "HeftRoute03 › funktionen.signal → record_page_visit + add_dwell_seconds",
       "Noch nicht gebaut": "Stilfoto (/deine-dna/foto) und Bild in Frag PAWN — Zweig 2. Freistellen — H6, eigener PR."
     }
+  },
+  "notbetrieb": {
+    "was": "e9d88d9 auf main, live: antwortet quelle.heft() nicht binnen 6 Sekunden oder mit Fehler, schaltet startHeft() auf demoQuelle um, hängt den Streifen #vorschau-streifen oben an und fasst alle 60 Sekunden nach; kommt die Datenbank zurück, lädt die Seite neu (nur wenn niemand tippt und kein Fenster offen ist).",
+    "geprueft_und_in_ordnung": [
+      "KAUF IST WIRKLICH GESPERRT: quelle.mjs:32 demoQuelle.kasse() gibt {fehler:'vorschau'} — app.js:339 lässt genau diesen Fehler still, es wird nichts an Stripe geschickt.",
+      "ANFRAGE LÜGT NICHT: quelle.mjs:33 liefert {ok:true,vorschau:true}; app.js:359-360 schreibt dann „Nur eine Prüfung der Ansicht. Es wurde keine Nachricht gesendet.“ — der Besucher wird nicht in dem Glauben gelassen, seine Nachricht sei unterwegs.",
+      "BEWERBUNG LÜGT NICHT: app.js:367 sagt „Deine Angaben wurden nicht eingereicht.“",
+      "DIE VORSCHAU-NOTIZ ERSCHEINT: app.js:56 setzt state.vorschau nur auf false, wenn die Quelle NICHT demo ist — im Notbetrieb bleibt sie true, also stehen in Werkfenster und Tasche die Zeilen „Vorschau — es wird nichts bestellt, nichts gesendet.“ (views.mjs:222, 233).",
+      "DIE MESSSCHWELLE AUS #185 IST NICHT AUSGEHEBELT. Erste Sorge, geprüft und verworfen: huelleMarkieren() in tools/pruefstand/lauf.ts:153 hängt an fehlgeschlagenen Netz-Anfragen (requestfailed an DATEN_HOSTS, Zeile 200), nicht am leeren Aussehen der Seite. Die Anfragen an supabase.co scheitern im Notbetrieb genauso — die Seiten bleiben „nicht prüfbar“, der Lauf sagt weiter KEIN URTEIL. Kein falsches Grün über Beispieldaten.",
+      "verify.sh schnell auf main: VERIFY 4/4, REGRESSION 10/10. Z8 bleibt grün und das ist richtig: Z8 deckt die Zusage „nur EIN Heft“ (keine Selbststart-Sicherung neben der Hülle), nicht die Frage, aus welcher Quelle das eine Heft liest."
+    ],
+    "zwei_punkte_fuer_daouda": [
+      "DIE 6 SEKUNDEN TREFFEN AUCH EINE LANGSAME LEITUNG, nicht nur einen Ausfall. app.js:37-41 ist ein Promise.race gegen eine Uhr — warum die Antwort ausbleibt, unterscheidet es nicht. Ein Besucher mit schlechtem Mobilfunk kann also die Beispielausgabe sehen, obwohl die Datenbank läuft. Bis zum nächsten Nachfassen (60 s) oder bis er neu lädt. Die Entscheidung ist: Schwelle höher, oder nur bei echtem Netzfehler umschalten, oder so lassen.",
+      "DER STREIFEN SAGT NICHT, DASS DIE HÄUSER BEISPIELE SIND. Sein Text: „Vorschau-Ausgabe — die Werke der Häuser werden gerade gewartet und sind in Kürze wieder da.“ Auf der Bühne stehen dabei DRAPÉ, NOIR, FORME und TRACES mit Preisen von 160 bis 720 €. Der Satz, der es sagen würde, liegt ungenutzt im Repo: data.mjs:39 demoNotice = „Gestaltungsvorschau · Beispielhäuser und Beispielpreise“. Das Design-Gesetz verlangt bei Leerzuständen Ehrlichkeit und keine Fake-Daten — hier ist es eine Frage der Beschriftung, und sie ist deine."
+    ],
+    "nicht_angefasst": "Ich habe an e9d88d9 keine Zeile geändert. Der Notbetrieb ist eine Produktentscheidung, und die trifft Daouda."
   }
 }

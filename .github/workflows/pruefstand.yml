@@ -92,9 +92,9 @@ jobs:
       # oben, damit man bei einer Hülle sofort sieht, ob es am Netz lag.
       - name: Datenhost auflösen
         run: |
-          echo "— getent —";  getent hosts rnakubexbqfgfciynqpt.supabase.co || echo "keine Auflösung"
+          echo "— getent —";  getent hosts cnxtdcifkrdxvajaikxq.supabase.co || echo "keine Auflösung"
           echo "— HTTP —";    curl -s -o /dev/null -w "%{http_code}\n" --max-time 15 \
-            https://rnakubexbqfgfciynqpt.supabase.co/rest/v1/ || echo "kein Verbindungsaufbau"
+            https://cnxtdcifkrdxvajaikxq.supabase.co/rest/v1/ || echo "kein Verbindungsaufbau"
         continue-on-error: true
 
       # ————————————————— Das Ziel bestimmen —————————————————

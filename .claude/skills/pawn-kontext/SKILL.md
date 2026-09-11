@@ -7,11 +7,24 @@ description: Das Betriebswissen über PAWN — welche Datenbank die echte ist, w
 
 ## Die eine Regel, die dich am häufigsten rettet
 
-> **Löst der Datenbank-Name nicht auf, prüfe zuerst das Lovable-Guthaben.**
+> **Löst der Datenbank-Name nicht auf, ist es nie das Netz — aber auch nicht
+> immer das Guthaben. Prüfe, ob es das Projekt noch GIBT.**
 
-`rnakubexbqfgfciynqpt.supabase.co` antwortet nicht mehr? Das ist fast nie ein
-Netzproblem und fast immer ein aufgebrauchtes Lovable-Guthaben — die verwaltete
-Instanz wird dann pausiert. Erst das prüfen, dann alles andere.
+`cnxtdcifkrdxvajaikxq.supabase.co` antwortet nicht mehr? Zwei Ursachen, in dieser
+Reihenfolge:
+
+1. **Gibt es das Projekt noch?** `getent hosts <ref>.supabase.co` → **NXDOMAIN**
+   heißt: gelöscht. Ein pausiertes Projekt löst weiter auf und antwortet mit
+   einem Fehler; ein gelöschtes verschwindet aus dem DNS.
+2. **Ist das Lovable-Guthaben aufgebraucht?** Dann wird die verwaltete Instanz
+   pausiert — der Name löst auf, die Antwort bleibt aus.
+
+**Diese Regel stand hier bis zum 11.09.2026 falsch herum.** Sie sagte, es sei
+„fast immer das Guthaben". Am 10.09. verschwand das alte Projekt
+`rnakubexbqfgfciynqpt` aus dem DNS, und drei Prüfstandsläufe (#104, #106, #108)
+haben eine ganze Nacht lang gegen eine leere Hülle gemessen, weil niemand den
+Unterschied zwischen „pausiert" und „gelöscht" abgefragt hat. NXDOMAIN ist das
+eine Zeichen, das beides trennt.
 
 ## Was wo live geht
 
