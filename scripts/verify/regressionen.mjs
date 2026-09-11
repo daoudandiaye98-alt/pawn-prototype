@@ -516,7 +516,17 @@ function keinGeheimnisInMigration({ ordner, ausnahmen = [] }) {
   // zusammen, nie eines allein: eine uuid in einer Spalte ist kein Geheimnis, und das
   // Wort „key" steht in jeder zweiten Zeile dieses Repos.
   const wort = /secret|token|passwor[dt]|api[_-]?key|private[_-]?key/i;
-  const wert = /['"][0-9a-f]{32,}['"]|['"][A-Za-z0-9+/]{40,}={0,2}['"]/;
+  // DREI FORMEN. Die dritte ist spaeter dazugekommen, weil die Kontrolle ohne sie ein
+  // Loch genau an der wichtigsten Stelle hatte: ein JWT enthaelt PUNKTE, und das
+  // Base64-Muster ohne Punkte ging daran vorbei. In einem Supabase-Repo ist der JWT die
+  // haeufigste Geheimnisform ueberhaupt. Gefunden am 11.09.2026, beim Lesen von
+  // 20260709092523 — dort steht der anon-JWT des alten Projekts im Klartext, und Z16
+  // blieb gruen.
+  const wert = new RegExp(
+    ["['\"][0-9a-f]{32,}['\"]",                                   // Hex-Geheimnis
+     "['\"][A-Za-z0-9+/]{40,}={0,2}['\"]",                        // Base64
+     "eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}", // JWT
+    ].join("|"));
   const funde = [];
   for (const d of dateien) {
     if (ausnahmen.includes(d)) continue;

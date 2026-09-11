@@ -216,14 +216,15 @@
     {
       "id": "Z16",
       "zusage": "Keine Migration bringt ein Geheimnis im Klartext mit — ab hier nach vorn, ausnahmslos.",
-      "beleg": "M8 aus Auftrag Teil M. supabase/migrations/20260721221200_jarvis_wissen_postfach_dna.sql Zeile 6 setzt ai_config.jarvis_cron_secret mit einem 64-stelligen Wert im Klartext. Wer das Repo liest, liest ihn mit. Aus der Git-Geschichte ist er nicht herausloeschbar, und die Datei zu aendern ist mechanisch blockiert (wache.sh) — deshalb ist SIE die eine dokumentierte Ausnahme und die Zusage gilt nach vorn. Die Zeile ist inzwischen aus der Datenbank geloescht (20260930110000), gemessen: 0 Treffer. BEFUND dazu: pawn-jarvis liest das Geheimnis aus Deno.env.get('JARVIS_CRON_SECRET'), NICHT aus ai_config — den ai_config-Schluessel liest im ganzen Repo niemand. Ob das Function-Geheimnis denselben Wert traegt, kann nur Daouda sehen; traegt es ihn, muss er getauscht werden.",
+      "beleg": "M8 aus Auftrag Teil M. supabase/migrations/20260721221200_jarvis_wissen_postfach_dna.sql Zeile 6 setzt ai_config.jarvis_cron_secret mit einem 64-stelligen Wert im Klartext. Wer das Repo liest, liest ihn mit. Aus der Git-Geschichte ist er nicht herausloeschbar, und die Datei zu aendern ist mechanisch blockiert (wache.sh) — deshalb ist SIE die eine dokumentierte Ausnahme und die Zusage gilt nach vorn. Die Zeile ist inzwischen aus der Datenbank geloescht (20260930110000), gemessen: 0 Treffer. BEFUND dazu: pawn-jarvis liest das Geheimnis aus Deno.env.get('JARVIS_CRON_SECRET'), NICHT aus ai_config — den ai_config-Schluessel liest im ganzen Repo niemand. Ob das Function-Geheimnis denselben Wert traegt, kann nur Daouda sehen; traegt es ihn, muss er getauscht werden. · ERWEITERT am 11.09.2026: die Kontrolle hatte ein Loch genau an der wichtigsten Stelle. Ein JWT enthaelt PUNKTE, und das Base64-Muster ohne Punkte ging daran vorbei — in einem Supabase-Repo ist der JWT die haeufigste Geheimnisform ueberhaupt. Gefunden beim Lesen von 20260709092523 waehrend des Erstaufbaus, nicht durch Nachdenken. Das Muster kennt jetzt drei Formen: Hex, Base64 und JWT. Einmal rot vorgefuehrt, indem die Ausnahme entfernt wurde — sie findet den echten JWT in Zeile 16.",
       "pruefung": "keinGeheimnisInMigration",
       "params": {
         "ordner": "supabase/migrations",
         "ausnahmen": [
-          "20260721221200_jarvis_wissen_postfach_dna.sql"
+          "20260721221200_jarvis_wissen_postfach_dna.sql",
+          "20260709092523_092fc55e-a0d2-4453-be92-a386b60ee50a.sql"
         ],
-        "begruendung": "Unveraenderbarer Altbestand: die Datei zu aendern ist durch wache.sh blockiert und nuetzt nichts, weil der Wert in der Git-Geschichte steht. Eine Pruefung, die daran dauerhaft rot steht, lehrt nur, Rot zu uebersehen."
+        "begruendung": "Zwei unveraenderbare Altbestaende, und beide zu aendern ist durch wache.sh blockiert und nuetzt nichts, weil die Werte in der Git-Geschichte stehen. Eine Pruefung, die daran dauerhaft rot steht, lehrt nur, Rot zu uebersehen. 1) 20260721221200: ai_config.jarvis_cron_secret, 64 Stellen Hex. Inzwischen aus der Datenbank geloescht (20260930110000). 2) 20260709092523: der anon-JWT des GELOESCHTEN alten Projekts rnakubexbqfgfciynqpt, im Kopf des Nachtjobs. Der Schluessel ist wertlos, weil das Projekt nicht mehr existiert, und der Job ist abgeschaltet (20260930100000) — aber die Zeile bleibt in der Datei."
       }
     }
   ]
