@@ -496,6 +496,40 @@ function geruestErstNachGestaltung({ huelle, warter = "blattGeladen" }) {
   return OK;
 }
 
+// ————————————————————————————————————————————————————————————————
+// Z16 — kein Geheimnis im Klartext in einer Migration
+//
+// Belegter Fehler: 20260721221200_jarvis_wissen_postfach_dna.sql, Zeile 6, setzt
+// ai_config.jarvis_cron_secret mit einem 64-stelligen Wert im Klartext. Wer das Repo
+// lesen kann, liest ihn mit — und aus der Git-Geschichte ist er nicht mehr
+// herausloeschbar.
+//
+// DIESE DATEI IST DIE EINE DOKUMENTIERTE AUSNAHME, und zwar mit Absicht: sie zu
+// aendern ist mechanisch blockiert (wache.sh) und wuerde nichts nuetzen. Die Zusage
+// gilt ab hier nach vorn — KEINE NEUE Migration bringt je wieder ein Geheimnis mit.
+// Eine Pruefung, die an unveraenderbarem Altbestand dauerhaft rot steht, lehrt nur,
+// Rot zu uebersehen.
+// ————————————————————————————————————————————————————————————————
+function keinGeheimnisInMigration({ ordner, ausnahmen = [] }) {
+  const dateien = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort();
+  // Gesucht wird ein langer Zufallswert in der Naehe eines Geheimnis-Wortes — beides
+  // zusammen, nie eines allein: eine uuid in einer Spalte ist kein Geheimnis, und das
+  // Wort „key" steht in jeder zweiten Zeile dieses Repos.
+  const wort = /secret|token|passwor[dt]|api[_-]?key|private[_-]?key/i;
+  const wert = /['"][0-9a-f]{32,}['"]|['"][A-Za-z0-9+/]{40,}={0,2}['"]/;
+  const funde = [];
+  for (const d of dateien) {
+    if (ausnahmen.includes(d)) continue;
+    const zeilen = lies(join(ordner, d)).split("\n");
+    zeilen.forEach((z, i) => {
+      if (/^\s*--/.test(z)) return;           // Kommentare erklaeren, sie verraten nicht
+      if (wort.test(z) && wert.test(z)) funde.push(`${ordner}/${d}:${i + 1}`);
+    });
+  }
+  if (funde.length) return nein(`Geheimnis im Klartext: ${funde.slice(0, 3).join(" · ")}`);
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -512,6 +546,7 @@ const PRUEFUNGEN = {
   nurWegweiser,
   leereWeltStuerztNicht,
   geruestErstNachGestaltung,
+  keinGeheimnisInMigration,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

@@ -212,6 +212,19 @@
       "params": {
         "huelle": "src/heft03/HeftRoute03.tsx"
       }
+    },
+    {
+      "id": "Z16",
+      "zusage": "Keine Migration bringt ein Geheimnis im Klartext mit — ab hier nach vorn, ausnahmslos.",
+      "beleg": "M8 aus Auftrag Teil M. supabase/migrations/20260721221200_jarvis_wissen_postfach_dna.sql Zeile 6 setzt ai_config.jarvis_cron_secret mit einem 64-stelligen Wert im Klartext. Wer das Repo liest, liest ihn mit. Aus der Git-Geschichte ist er nicht herausloeschbar, und die Datei zu aendern ist mechanisch blockiert (wache.sh) — deshalb ist SIE die eine dokumentierte Ausnahme und die Zusage gilt nach vorn. Die Zeile ist inzwischen aus der Datenbank geloescht (20260930110000), gemessen: 0 Treffer. BEFUND dazu: pawn-jarvis liest das Geheimnis aus Deno.env.get('JARVIS_CRON_SECRET'), NICHT aus ai_config — den ai_config-Schluessel liest im ganzen Repo niemand. Ob das Function-Geheimnis denselben Wert traegt, kann nur Daouda sehen; traegt es ihn, muss er getauscht werden.",
+      "pruefung": "keinGeheimnisInMigration",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ausnahmen": [
+          "20260721221200_jarvis_wissen_postfach_dna.sql"
+        ],
+        "begruendung": "Unveraenderbarer Altbestand: die Datei zu aendern ist durch wache.sh blockiert und nuetzt nichts, weil der Wert in der Git-Geschichte steht. Eine Pruefung, die daran dauerhaft rot steht, lehrt nur, Rot zu uebersehen."
+      }
     }
   ]
 }

@@ -1,0 +1,27 @@
+-- M8 — das Cron-Geheimnis aus der Datenbank nehmen.
+--
+-- BEFUND: supabase/migrations/20260721221200_jarvis_wissen_postfach_dna.sql, Zeile 6,
+-- setzt den ai_config-Schluessel `jarvis_cron_secret` mit einem 64-stelligen Wert im
+-- KLARTEXT. Wer das Repo lesen kann, liest ihn mit.
+--
+-- WAS DER AUFTRAG VERLANGT UND WARUM ES SO NICHT GEHT: „aus der Migration nehmen".
+-- Eine bestehende Migration zu aendern ist in diesem Repo mechanisch blockiert
+-- (.claude/hooks/wache.sh) und nach CLAUDE.md Regel 2 verboten — und es wuerde auch
+-- nichts nuetzen: der Wert steht in der Git-Geschichte und ist dort nicht
+-- herausloeschbar. Der Rueckweg ist immer eine ZWEITE Migration. Das ist diese.
+--
+-- EIN BEFUND, DER DIE LAGE VERSCHIEBT — gemessen, nicht vermutet:
+-- `supabase/functions/pawn-jarvis/index.ts:6005` liest das Geheimnis aus
+--     Deno.env.get("JARVIS_CRON_SECRET")
+-- also aus einem Function-Geheimnis, NICHT aus `ai_config`. Den ai_config-Schluessel
+-- liest im ganzen Repo niemand (geprueft ueber src/ und supabase/functions/). Die
+-- Zeile in der Datenbank ist damit toter Ballast mit einem Geheimnis darin — das
+-- Schlechteste von beidem. Sie wird geloescht.
+--
+-- WAS DAMIT NICHT ERLEDIGT IST, und das kann nur Daouda: ob das Function-Geheimnis
+-- JARVIS_CRON_SECRET denselben Wert traegt wie die Zeile im Repo. Traegt es ihn,
+-- kann jeder, der das Repo gelesen hat, Jarvis-Laeufe ausloesen, sobald pawn-jarvis
+-- ausgerollt ist. Dann muss der Wert getauscht werden — in Lovable/Supabase, nie
+-- in einer Datei.
+
+delete from public.ai_config where key = 'jarvis_cron_secret';
