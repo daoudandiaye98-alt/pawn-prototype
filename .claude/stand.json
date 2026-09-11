@@ -1,21 +1,45 @@
 {
   "aktualisiert": "2026-09-11",
-  "branch": "claude/stand-nach-den-merges",
-  "offene_prs": [],
+  "branch": "claude/teil-l-konto",
+  "offene_prs": [
+    {
+      "nr": 187,
+      "titel": "Doku: Befund zum Vorschau-Betrieb",
+      "status": "Draft, gruen",
+      "blockiert_durch": "Daoudas Entscheidung zu Streifentext und Frist — in Teil L13 ohnehin neu geregelt"
+    },
+    {
+      "nr": 188,
+      "titel": "Teil K: Stand des Umzugs, K1 und K3",
+      "status": "Draft, gruen",
+      "blockiert_durch": "nichts mehr — Teil L hebt die Migrationsblockade auf"
+    },
+    {
+      "nr": 189,
+      "titel": "K7, K10, K13: Vorschau-Betrieb",
+      "status": "Draft, gruen, pruefer 15/15",
+      "blockiert_durch": "nichts — nur Ansehen"
+    }
+  ],
   "merge_reihenfolge": [
-    "ERLEDIGT am 10.09.: PR #184 (Teil H, b4d51c4) und PR #185 (Prüfstand: kein Urteil, 5efb9de) sind beide auf main. Lovable synct, Vercel spiegelt auf pawn.vision.",
-    "OFFEN 1 — DRINGEND: die vier Migrationen supabase/migrations/20260928* über den Lovable-Agenten anwenden. Sie liegen als Dateien auf main; eine Datei ist keine angewandte Migration. Reihenfolge: heft_sichten, heft_kunden_stil, heft_masse_raum, heft_product_dna. Alle vier additiv — keine Spalte wird gelöscht, kein Constraint verschärft.",
-    "OFFEN 2: types.ts neu erzeugen lassen (kennt heute kein kunden_stil).",
-    "OFFEN 3: pawn-chat über Lovable ausliefern — der Code liegt seit dem Merge auf main, ausgeliefert ist er nicht.",
-    "OFFEN 4: H6 (Freistellen) bauen, eigener PR. Die Regel der Bühne ist hart: aufgestellt wird nur, was freigestellt ist (product_dna.heft.cutout_url). Ohne die Function und einen einmaligen Lauf über alle veröffentlichten Werke stehen die Bühnen leer — ehrlicher Leerzustand, aber leer.",
-    "OFFEN 5: Zweig 2 (Stilfoto auf /deine-dna/foto, Bild in „Frag PAWN“) — braucht die ausgelieferte pawn-chat."
+    "TEIL L LAEUFT. Der Auftrag setzt die deploy-choreografie AUSDRUECKLICH und BEGRENZT aus: nur fuer die Migrationen des Erstaufbaus auf cnxtdcifkrdxvajaikxq. Danach gilt sie unveraendert weiter.",
+    "L1 IST IM GANG — WIEDERAUFSETZEN OHNE RATEN: der Stand steht in der Datenbank selbst. mcp Supabase list_migrations zeigt, welche Dateien schon liegen; weiter geht es mit der naechsten Datei aus supabase/migrations/ in Namensreihenfolge.",
+    "DER RUECKWEG IST VORGEFUEHRT (nicht behauptet): drop schema public cascade + Historie leeren, danach von null. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
+    "DIE BUCHHALTUNG: ein BEFORE-INSERT-Trigger auf supabase_migrations.schema_migrations setzt die Version aus dem Dateinamen UND unterdrueckt jede Zeile, deren Name kein Dateiname ist (return null). Damit bleibt keine fremde Zeile stehen. Beim Sentinel-Namen 'zz_ende' entfernt der Trigger sich selbst — das ist der letzte Aufruf des Erstaufbaus.",
+    "NEUN DATEIEN MUESSEN ALLEIN LAUFEN: sie enthalten ALTER TYPE ... ADD VALUE. PostgreSQL verbietet, den neuen Enum-Wert in derselben Transaktion zu benutzen. In einem Stapel mit einer spaeteren Datei, die ihn braucht, bricht es zwingend.",
+    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank und hatte keine Datei. Sie ist jetzt supabase/migrations/20260929090000_zugaenge_daouda.sql. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet.",
+    "L18.2 BEANTWORTET: public.profiles hat KEIN user_id. Migration 1 legt sie als 'id UUID PRIMARY KEY REFERENCES auth.users(id)' an. Also irrt seed-testaccounts/index.ts, nicht die Zugangs-Migration."
   ],
   "wartet_auf_mensch": [
-    "DIE ERSTE FRAGE DIESER SCHICHT: Lädt pawn.vision normal, und stehen Häuser auf den Bühnen? Das Heft ist seit b4d51c4 das öffentliche Frontend. Ein Blick beantwortet mehreres zugleich — ob der Sync durch ist, ob die Bildadressen stimmen, und ob das Supabase-Projekt überhaupt erreichbar ist.",
-    "SIND DIE MIGRATIONEN GELAUFEN? Beleg dagegen: src/integrations/supabase/types.ts kennt kunden_stil nicht (0 Treffer) und wurde seit dem Merge nicht neu erzeugt. Ein Agent sieht die Datenbank von hier nicht. WAS OHNE SIE HALB BLEIBT, nach Schwere: (1) Die Policy „designers public read“ gibt anon weiter stripe_account_id und stripe_customer_id — das Heft liest sie nicht (Zusage Z10), aber die Lücke schließt erst heft_sichten. Das ist Sicherheit, nicht Komfort. (2) Das Bilderquiz bleibt im Gerät; nach dem Login wird nichts übernommen. (3) Interior/Kunst-Maße bleiben Freitext in room_note. KAPUTT IST NICHTS — alle drei fallen bewusst zurück.",
-    "DIE SICHT-FREIGABE WAR BEDINGUNG IM PR UND IST JETZT GESCHICHTE. Falls der Kauf-Weg (Werk → Tasche → Stripe) und das Anklicken eines Werks nicht von Hand durchgeklickt wurden, sind sie ungeprüft live. Kein Werkzeug dieses Projekts hat sie je mit echten Daten gesehen: drei Prüfstandsläufe waren blind (siehe nicht_pruefbar). Kein Vorwurf, sondern die Lücke, die offen bleibt — Nachholen lohnt auch jetzt.",
-    "OFFENE URSACHE: Warum löst der GitHub-Rechner rnakubexbqfgfciynqpt.supabase.co nicht auf? #185 macht die Blindheit sichtbar, behebt sie nicht. Drei Verdächtige, keiner geprüft: Projekt pausiert, Netzsperre der Organisation, DNS auf dem Runner. Lädt pawn.vision normal, fällt der erste weg.",
-    "ENTSCHEIDUNGEN vom 10.09.: D1 Vision-Text bleibt der des Hefts · D3 Häuser nach house_number · D6 VORSCHAU-Stempel weg, Regler „Papier & Bewegung“ bleibt · D7 ein geöffnetes Werk schreibt seine Adresse."
+    "Google-Anmeldung im neuen Supabase-Projekt einrichten (Client-ID und -Geheimnis) — ohne das bleibt L9 ein Knopf ohne Wirkung.",
+    "Site URL und Redirect URLs im neuen Projekt auf https://pawn.vision setzen.",
+    "service_role-Schluessel des neuen Projekts setzen.",
+    "Die 17 Function-Geheimnisse (Liste in docs/teil-k/umzug-stand.md Abschnitt 6).",
+    "Stripe-Webhook auf https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/stripe-webhook — VOR den Vercel-Variablen.",
+    "Vercel-Variablen (Production und Preview) — NACH dem Stripe-Webhook.",
+    ".env aus dem Repo nehmen (nur Schluesselnamen in die Uebergabe, nie Werte).",
+    "ai_config und brand_knowledge inhaltlich nachtragen.",
+    "Die Nachricht an die Haeuser freigeben (L14) — gesendet wird nichts ohne Freigabe."
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-10",
@@ -31,7 +55,7 @@
     "vergleich": "Derselbe Zustand, zwei Verhalten — der Beleg für PR #185: Lauf #109 auf diesem Zweig (ohne Schwelle) meldet grün und sagt NICHTS dazu. Lauf #108 auf dem Zweig von #185 (mit Schwelle) meldet bei 1 von 1104 messbaren Gates „KEIN URTEIL“ plus Warnung am PR — ebenfalls grün, aber nicht mehr stumm. Nach dem Merge von #185 verhält sich auch dieser Zweig so.",
     "hinweis_briefing": "ACHTUNG beim Lesen des Sitzungsstarts: briefing.sh zeigt auf DIESEM Zweig nur „1 bestanden, 0 gefallen“ und verschweigt die 673 ungemessenen — das sieht wie ein Erfolg aus. Die dritte Zahl in die Zeile zu bringen ist Teil von PR #185 (.claude/hooks/briefing.sh). Wird #185 wie empfohlen ZUERST gemergt, erledigt sich das. Wird #184 zuerst gemergt, steht die halbe Wahrheit bis dahin im Briefing."
   },
-  "naechster_zug": "pawn.vision öffnen — lädt es, stehen echte Häuser auf den Bühnen? Dann die vier Migrationen über Lovable anwenden (sie liegen nur als Dateien auf main), types.ts neu erzeugen, pawn-chat ausliefern. Danach H6 (Freistellen) bauen: ohne Freistellung stehen die Bühnen am Umschalttag leer.",
+  "naechster_zug": "L1 zu Ende spielen (Stand aus list_migrations lesen), dann L2 (rls-anon.mjs mit Zugang laufen lassen), L18 pruefen, L4 Saatgut, L3 sichten:true nach neuem types.ts, L13 Banner-Ausloeser, L12 Waechter, danach L5-L11 das Konto im Heft als eigener PR.",
   "nicht_pruefbar": [
     "DREI BLINDE PRÜFSTANDSLÄUFE, belegt: #104 (1 von 674 messbar), #106 und #108 (1 von 1104). Chromium auf dem GitHub-Runner löst rnakubexbqfgfciynqpt.supabase.co nicht auf (net::ERR_NAME_NOT_RESOLVED, 24 bis 60 Anfragen je Seite). Die Vorschau lädt — die Sperre hebt VERCEL_AUTOMATION_BYPASS_SECRET auf —, aber als Hülle ohne Inhalte. Seit #185 sagt der Lauf das selbst („KEIN URTEIL“, Warnung am PR, Check bleibt grün); vorher meldete er nur grün.",
     "FOLGE, und das ist der wichtigste Satz dieser Übergabe: kein Werkzeug dieses Projekts hat das Heft je mit echten Häusern gesehen. Nicht der Entwicklungscontainer (kein Netz zur Datenbank, 1 Bild/Sekunde), nicht der Prüfstand (blind), nicht der Prüfer (liest Code, keine Seite). Der einzige Beweis über echte Daten ist ein Mensch auf pawn.vision.",
