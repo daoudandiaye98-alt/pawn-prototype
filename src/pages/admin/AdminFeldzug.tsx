@@ -4,7 +4,6 @@
  * hart: Instagram-DMs sendet ausschließlich der Mensch, das Organ bereitet nur vor.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -876,7 +875,11 @@ export default function AdminFeldzug() {
   useEffect(() => { if (user && roles.includes("admin")) void load(); }, [user, roles]);
 
   if (loading) return null;
-  if (!user || !roles.includes("admin")) return <Navigate to="/auth" replace />;
+  // Teil L12: hier stand ein zweiter Waechter — "nicht angemeldet? raus nach /auth".
+  // Er widersprach RoleGate, der nicht Angemeldete bewusst durchlaesst und einen
+  // Streifen darueber legt. Zwei Antworten fuer dieselbe Tuer. Zutritt entscheidet
+  // jetzt allein RoleGate in App.tsx. Das Laden der Daten oben bleibt an `user`
+  // gebunden — ohne Konto gibt es nichts zu holen, und RLS gibt auch nichts her.
 
   function patch(id: string, p: Partial<FeldzugLead>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));

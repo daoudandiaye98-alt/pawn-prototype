@@ -153,8 +153,8 @@
     },
     {
       "id": "Z12",
-      "zusage": "Hinter /admin, /studio und /portal entscheidet EIN Waechter, wer hinein darf — RoleGate. Kein zweiter, der etwas anderes sagt.",
-      "beleg": "Teil L12. Drei Adressen — /portal, /portal/onboarding und /studio/onboarding — hingen allein an PortalGate, und PortalGate prueft keine Rolle: er laesst jeden Angemeldeten durch. Eine angemeldete Kundschaft kam damit nicht nach /studio/postfach (RoleGate schickte sie nach /konto), aber sehr wohl nach /portal und /studio/onboarding. Zwei Waechter, zwei Antworten fuer dieselbe Flaeche. PortalGate sitzt jetzt innerhalb eines RoleGate und beantwortet nur noch die Frage, ob ein Haus den Einzug abgeschlossen hat.",
+      "zusage": "Hinter /admin, /studio und /portal entscheidet EIN Waechter, wer hinein darf — RoleGate. Kein zweiter in der Adresstabelle, keiner in der Seite selbst.",
+      "beleg": "Teil L12. Drei Adressen — /portal, /portal/onboarding und /studio/onboarding — hingen allein an PortalGate, und PortalGate prueft keine Rolle: er laesst jeden Angemeldeten durch. Eine angemeldete Kundschaft kam damit nicht nach /studio/postfach (RoleGate schickte sie nach /konto), aber sehr wohl nach /portal und /studio/onboarding. Zwei Waechter, zwei Antworten fuer dieselbe Flaeche. PortalGate sitzt jetzt innerhalb eines RoleGate und beantwortet nur noch die Frage, ob ein Haus den Einzug abgeschlossen hat. Dazu kam ein DRITTER Waechter, elfmal: die Admin-Seiten AdminAkquise, AdminAktionen, AdminArchiv, AdminCampaigns, AdminEditionen, AdminFeldzug, AdminJarvis, AdminKI, AdminPosting, AdminTrends und AdminWerbung hatten je die Zeile if (!user || !roles.includes(\"admin\")) return <Navigate to=\"/auth\" replace />. Die sagt das GEGENTEIL von RoleGate, der nicht Angemeldete bewusst durchlaesst und einen Streifen darueberlegt. Damit galt der Durchlass auf elf Admin-Seiten nicht und auf den uebrigen schon — niemand konnte sagen, welche Regel gilt.",
       "pruefung": "nurEinWaechter",
       "params": {
         "datei": "src/App.tsx",
@@ -164,7 +164,12 @@
           "/portal"
         ],
         "waechter": "RoleGate",
-        "begruendung": "Reine Weiterleitungen (<Navigate>) brauchen keinen Waechter — sie fuehren auf eine Adresse, die selbst einen hat."
+        "begruendung": "Reine Weiterleitungen (<Navigate>) brauchen keinen Waechter — sie fuehren auf eine Adresse, die selbst einen hat. Der zweite Teil der Kontrolle sucht in den Seiten selbst nach <Navigate> in derselben Zeile wie roles.includes: so eng wie die Zusage, kein Wort breiter.",
+        "seiten": [
+          "src/pages/admin",
+          "src/pages/studio",
+          "src/pages/portal"
+        ]
       }
     }
   ]

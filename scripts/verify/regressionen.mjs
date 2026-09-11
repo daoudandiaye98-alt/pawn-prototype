@@ -358,7 +358,7 @@ function vorschauNurWennWeg({ modul, huelle, start }) {
    Genau so ist die Luecke entstanden: drei Adressen hingen nur an ihm.
    Steht eine passende Zeile nicht auf EINER Zeile, wird die Pruefung rot statt
    still gruen — eine Kontrolle, die wegsieht, waere schlimmer als keine. */
-function nurEinWaechter({ datei, bereiche, waechter }) {
+function nurEinWaechter({ datei, bereiche, waechter, seiten }) {
   const zeilen = lies(datei).split("\n");
   const treffer = [];
   for (const [i, z] of zeilen.entries()) {
@@ -374,6 +374,24 @@ function nurEinWaechter({ datei, bereiche, waechter }) {
     if (/element=\{<Navigate\b/.test(t.zeile)) continue;
     if (t.zeile.includes(`<${waechter} `)) continue;
     return nein(`${datei}:${t.nr}: ${t.pfad} haengt an keinem ${waechter} — wer angemeldet ist, kommt hier rein, egal als was`);
+  }
+
+  /* Und der dritte Waechter, der lange uebersehen wurde: elf Admin-Seiten hatten
+     ihren eigenen. `if (!user || !roles.includes("admin")) return <Navigate to="/auth">`
+     sagte das GEGENTEIL von RoleGate, der nicht Angemeldete bewusst durchlaesst.
+     Eine Seite darf niemanden wegen seiner Rolle wegschicken — das entscheidet
+     die Adresstabelle, nicht die Seite. */
+  for (const ordner of seiten ?? []) {
+    for (const f of dateien(ordner)) {
+      // `dateien()` liefert absolute Pfade, `lies()` haengt die Wurzel davor —
+      // deshalb hier direkt lesen und fuer die Meldung wieder kuerzen.
+      const kurz = f.slice(f.indexOf("src/"));
+      for (const [i, z] of readFileSync(f, "utf8").split("\n").entries()) {
+        if (z.includes("<Navigate") && z.includes("roles.includes")) {
+          return nein(`${kurz}:${i + 1}: die Seite schickt selbst wegen einer Rolle weg — das entscheidet ${waechter} in ${datei}, nicht die Seite`);
+        }
+      }
+    }
   }
   return OK;
 }

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -40,7 +39,11 @@ export default function AdminAktionen() {
   };
 
   if (loading) return null;
-  if (!user || !roles.includes("admin")) return <Navigate to="/auth" replace />;
+  // Teil L12: hier stand ein zweiter Waechter — "nicht angemeldet? raus nach /auth".
+  // Er widersprach RoleGate, der nicht Angemeldete bewusst durchlaesst und einen
+  // Streifen darueber legt. Zwei Antworten fuer dieselbe Tuer. Zutritt entscheidet
+  // jetzt allein RoleGate in App.tsx. Das Laden der Daten oben bleibt an `user`
+  // gebunden — ohne Konto gibt es nichts zu holen, und RLS gibt auch nichts her.
 
   return (
     <AdminShell title="Aktionen" eyebrow="PAWN Hände · Log · Rückgängig">

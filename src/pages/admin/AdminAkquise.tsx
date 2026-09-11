@@ -3,7 +3,7 @@
  * Reines Frontend gegen die bereits bestehende Tabelle `acquisition_leads`.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import {useSearchParams} from "react-router-dom";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { GenomeCard } from "@/components/palace/GenomeCard";
 import { JagdPanel } from "@/features/admin/JagdPanel";
@@ -765,7 +765,11 @@ export default function AdminAkquise() {
   useEffect(() => { if (user && roles.includes("admin")) void load(); }, [user, roles]);
 
   if (loading) return null;
-  if (!user || !roles.includes("admin")) return <Navigate to="/auth" replace />;
+  // Teil L12: hier stand ein zweiter Waechter — "nicht angemeldet? raus nach /auth".
+  // Er widersprach RoleGate, der nicht Angemeldete bewusst durchlaesst und einen
+  // Streifen darueber legt. Zwei Antworten fuer dieselbe Tuer. Zutritt entscheidet
+  // jetzt allein RoleGate in App.tsx. Das Laden der Daten oben bleibt an `user`
+  // gebunden — ohne Konto gibt es nichts zu holen, und RLS gibt auch nichts her.
 
   const kpis = {
     toWarmUp: rows.filter((r) => r.status === "neu").length,
