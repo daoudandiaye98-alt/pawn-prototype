@@ -19,7 +19,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useConsent } from "@/lib/consent";
 import { bildVariante, signiereMedia } from "@/lib/media";
@@ -232,6 +232,10 @@ export default function HeftRoute03() {
         quelle,
         adresse: "pfad",
         assets: "/heft/assets/",
+        /* Anklopfen vor dem Start: lebt die Datenbank ueberhaupt? Ohne diese Adresse
+           entschiede allein eine Frist — und dann landete eine langsame, aber gesunde
+           Datenbank in der Beispielausgabe. Siehe notbetrieb.mjs. */
+        anklopfAdresse: SUPABASE_URL,
         zustimmung: consent === "accepted" ? true : consent === "essential" ? false : null,
         auf: {
           /* Das Heft schreibt die History selbst. React Router hört `pushState` nicht —

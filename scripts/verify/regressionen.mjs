@@ -330,6 +330,54 @@ function keineStripeSpalten({ datei, migration, verboten }) {
   return OK;
 }
 
+/* Z11 — Vorschau nur, wenn die Datenbank wirklich weg ist.
+   Die Logik selbst ist in anschluss.test.mjs belegt (drei Faelle, einmal rot
+   vorgefuehrt). Ungeprueft war bisher die VERKABELUNG: ob das Anklopfen im
+   laufenden Heft ueberhaupt stattfindet. Faellt anklopfAdresse aus der Huelle,
+   bleibt jeder Test gruen — und pawn.vision entscheidet wieder nach 6 Sekunden
+   Uhrzeit statt nach der Frage, ob jemand antwortet. Genau das wird hier geprueft. */
+function vorschauNurWennWeg({ modul, huelle, start }) {
+  const m = lies(modul);
+  if (!/export\s+async\s+function\s+anklopfen/.test(m)) return nein(`${modul}: anklopfen() ist weg — dann entscheidet wieder allein die Frist`);
+  if (!/\/auth\/v1\/health/.test(m)) return nein(`${modul}: es wird nicht mehr an /auth/v1/health angeklopft`);
+  if (!/o\.anklopfen\s*\?/.test(m)) return nein(`${modul}: quelleWaehlen liest den Anklopf-Befund nicht mehr`);
+
+  const a = lies(start);
+  if (!/anklopfen\(\s*optionen\.anklopfAdresse\s*\)/.test(a)) return nein(`${start}: startHeft klopft nicht mehr an`);
+  if (!/quelleWaehlen\([^)]*anklopfen\s*:/.test(a.replace(/\n/g, " "))) return nein(`${start}: der Befund wird nicht an quelleWaehlen weitergereicht`);
+
+  const h = lies(huelle);
+  if (!/anklopfAdresse\s*:/.test(h)) return nein(`${huelle}: die Huelle reicht keine Adresse zum Anklopfen durch — das Heft faellt auf die Frist zurueck`);
+  return OK;
+}
+
+/* Z12 — ein Waechter, nicht zwei.
+   Geprueft wird die Adresstabelle selbst: jede Adresse unter /admin, /studio
+   oder /portal muss entweder hinter einem RoleGate haengen oder eine reine
+   Weiterleitung sein. PortalGate allein zaehlt NICHT — er prueft keine Rolle.
+   Genau so ist die Luecke entstanden: drei Adressen hingen nur an ihm.
+   Steht eine passende Zeile nicht auf EINER Zeile, wird die Pruefung rot statt
+   still gruen — eine Kontrolle, die wegsieht, waere schlimmer als keine. */
+function nurEinWaechter({ datei, bereiche, waechter }) {
+  const zeilen = lies(datei).split("\n");
+  const treffer = [];
+  for (const [i, z] of zeilen.entries()) {
+    const m = z.match(/<Route\s+path="([^"]+)"/);
+    if (!m) continue;
+    const pfad = m[1];
+    if (!bereiche.some((b) => pfad === b || pfad.startsWith(b + "/"))) continue;
+    if (!z.includes("/>")) return nein(`${datei}:${i + 1}: die Route ${pfad} steht ueber mehrere Zeilen — diese Kontrolle kann sie nicht lesen und rate nicht`);
+    treffer.push({ nr: i + 1, pfad, zeile: z });
+  }
+  if (!treffer.length) return nein(`${datei}: keine einzige Adresse unter ${bereiche.join(", ")} gefunden — die Tabelle sieht anders aus als gedacht`);
+  for (const t of treffer) {
+    if (/element=\{<Navigate\b/.test(t.zeile)) continue;
+    if (t.zeile.includes(`<${waechter} `)) continue;
+    return nein(`${datei}:${t.nr}: ${t.pfad} haengt an keinem ${waechter} — wer angemeldet ist, kommt hier rein, egal als was`);
+  }
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -341,6 +389,8 @@ const PRUEFUNGEN = {
   heftStartetEinmal,
   keineUmgezogenenLinks,
   keineStripeSpalten,
+  vorschauNurWennWeg,
+  nurEinWaechter,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

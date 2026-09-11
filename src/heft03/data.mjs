@@ -37,6 +37,10 @@ export const sections={entdecken:['hero','edit'],mode:['drape','noir'],interior:
 export const labels={entdecken:'Entdecken',mode:'Mode',interior:'Interior',kunst:'Kunst',haeuser:'Unsere Häuser',dna:'DNA','fuer-designer':'Für Designer',vision:'Vision',haus:'Haus',suche:'Suche',konto:'Mein PAWN','frag-pawn':'Frag PAWN'};
 export const counts=Object.fromEntries(Object.entries(sections).map(([k,v])=>[k,v.length]));
 export const demoNotice='Gestaltungsvorschau · Beispielhäuser und Beispielpreise';
+// Derselbe Satz plus den dritten Teil, den der Streifen im Vorschau-Betrieb braucht:
+// wer Beispielpreise sieht, muss erfahren, dass er sie nicht bezahlen kann. Ein Satz,
+// eine Quelle — sonst driften Streifen und Hinweis auseinander.
+export const vorschauHinweis=demoNotice+' · Es kann nichts bestellt werden';
 
 // ---------------------------------------------------------------------------
 // Anschluss: Das Heft wird mit echten Daten GEFÜLLT, nicht neu importiert.

@@ -10,7 +10,7 @@ import {urteil,passform} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
 import {chatAntwort,SPALTEN,demoQuelle,bildLoeser} from './quelle.mjs';
 import {readView} from './views.mjs';
-import {quelleWaehlen,FRIST_MS} from './notbetrieb.mjs';
+import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
 
 test('Zeilen → Heft: nur zeigbare, veröffentlichte Stücke aktiver, veröffentlichter Häuser',()=>{
@@ -187,7 +187,70 @@ test('Vorschau-Betrieb: eine Quelle, die rechtzeitig antwortet, bleibt die Quell
 
 test('Vorschau-Betrieb: die Frist ist eine Zahl, keine im Code versteckte Ziffer',()=>{
  assert.equal(typeof FRIST_MS,'number');
- assert.equal(FRIST_MS,6000,'6 Sekunden — wer sie ändert, ändert sie hier und nur hier');
+ assert.equal(FRIST_MS,30000,'30 Sekunden — nur noch letzte Rettung, nicht mehr das Gesetz (L13)');
+ assert.equal(typeof ANKLOPF_FRIST_MS,'number');
+});
+
+// ————————————————————————————————————————————————————————————————
+// L13 — Anklopfen statt Warten. Die Frist allein hat zwei Fehler gemacht:
+// eine langsame, aber lebende Datenbank landete in der Beispielausgabe, und eine
+// erreichbare Datenbank mit fehlender Tabelle ebenso — dann standen Beispielhäuser
+// da, wo „noch nichts da" die Wahrheit gewesen wäre. Drei Fälle, drei Tests.
+// ————————————————————————————————————————————————————————————————
+
+test('L13: keine Antwort beim Anklopfen — sofort Vorschau, ohne die Frist abzuwarten',async()=>{
+ // Genau der Fall vom September: rnakubexbqfgfciynqpt.supabase.co loeste nicht mehr auf.
+ const befund=await anklopfen('https://weg.example',{fetch:async()=>{throw new TypeError('Failed to fetch');}});
+ assert.equal(befund.erreichbar,false);
+
+ // Die Quelle antwortet NIE. Wuerde noch auf die Frist gewartet, liefe dieser Test
+ // 30 Sekunden. Er muss in Millisekunden fertig sein — das ist der Beweis.
+ const stumm={art:'supabase',heft:()=>new Promise(()=>{})};
+ const vorher=Date.now();
+ const ergebnis=await quelleWaehlen(stumm,demoQuelle,{anklopfen:befund});
+ assert.ok(Date.now()-vorher<1000,'es wird nicht gewartet, wenn niemand oeffnet');
+ assert.equal(ergebnis.notbetrieb,true);
+ assert.equal(ergebnis.leer,false);
+ assert.equal(ergebnis.quelle.art,'demo');
+ assert.ok(Object.keys(ergebnis.heft.products||{}).length,'die Beispielausgabe steht');
+});
+
+test('L13: jede HTTP-Antwort — auch 401 — heisst nie Vorschau; fehlende Tabellen sind kein Grund',async()=>{
+ // /auth/v1/health laeuft mit mode:'no-cors'. Wir lesen den Inhalt nicht, nur ob
+ // ueberhaupt jemand antwortet. 401 ist eine Antwort: der Server lebt.
+ const befund=await anklopfen('https://lebt.example',{fetch:async()=>({status:401})});
+ assert.equal(befund.erreichbar,true);
+
+ const ohneTabelle={art:'supabase',heft:async()=>{throw new Error('relation "public.heft_produkte" does not exist');}};
+ const ergebnis=await quelleWaehlen(ohneTabelle,()=>{throw new Error('die Beispielquelle darf hier nicht angefasst werden');},{anklopfen:befund});
+ assert.equal(ergebnis.notbetrieb,false,'keine Beispielhaeuser vor eine lebende Datenbank');
+ assert.equal(ergebnis.leer,true);
+ assert.match(ergebnis.fehler.message,/does not exist/,'der Grund wird nicht verschluckt');
+
+ // Und was daraus wird, ist ehrlich leer — nicht erfunden.
+ assert.deepEqual(Object.keys(ergebnis.heft.products),[]);
+ assert.deepEqual(Object.keys(ergebnis.heft.houses),[]);
+ try{
+  heftFuellen(ergebnis.heft);
+  assert.deepEqual(sections.mode,['leer-mode']);
+  assert.equal(displays['leer-mode'].leer,true);
+ }finally{demoWiederherstellen();}
+});
+
+test('L13: die Frist bleibt die letzte Rettung, auch wenn angeklopft wurde',async()=>{
+ const befund=await anklopfen('https://lebt.example',{fetch:async()=>({status:200})});
+ assert.equal(befund.erreichbar,true);
+
+ // Erreichbar, aber die Abfrage haengt. Dagegen — und nur dagegen — gibt es die Frist.
+ const haengt={art:'supabase',heft:()=>new Promise(()=>{})};
+ const ergebnis=await quelleWaehlen(haengt,demoQuelle,{anklopfen:befund,frist:30});
+ assert.equal(ergebnis.notbetrieb,true,'haengt sie ueber die Frist, rettet die Beispielausgabe');
+ assert.equal(ergebnis.leer,false);
+ assert.equal(ergebnis.fehler.art,'frist','und der Grund sagt, dass es die Frist war');
+
+ // Ohne Adresse wird nicht angeklopft — dann gilt wie frueher allein die Frist.
+ const ohne=await anklopfen(undefined);
+ assert.equal(ohne.erreichbar,null,'nicht angeklopft ist nicht dasselbe wie nicht erreichbar');
 });
 
 // ————————————————————————————————————————————————————————————————
