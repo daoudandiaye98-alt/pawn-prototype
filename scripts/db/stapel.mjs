@@ -48,27 +48,6 @@ const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const ORDNER = "supabase/migrations";
 const JE_STAPEL = Number(process.env.STAPEL_GROESSE || 8);
 
-/** Die abspielbare Reihenfolge — aus der Prüfung, nicht aus einem sort. */
-function ordnung() {
-  const aus = execFileSync("node", [join(WURZEL, "scripts/verify/migrationen-kette.mjs"), "--ordnung"],
-    { cwd: WURZEL, encoding: "utf8" });
-  const namen = aus.split("\n").map((z) => z.trim()).filter((z) => z.endsWith(".sql"));
-  const vorhanden = new Set(readdirSync(join(WURZEL, ORDNER)).filter((d) => d.endsWith(".sql")));
-  const fehlt = namen.filter((n) => !vorhanden.has(n));
-  if (fehlt.length) throw new Error(`Abspielordnung nennt Dateien, die es nicht gibt: ${fehlt.join(", ")}`);
-  if (namen.length !== vorhanden.size)
-    throw new Error(`Abspielordnung hat ${namen.length} Dateien, der Ordner ${vorhanden.size}`);
-  return namen;
-}
-
-/** `ALTER TYPE ... ADD VALUE` muss allein laufen — siehe Kopf, Punkt 2. */
-function mussAlleinLaufen(sql) {
-  return /alter\s+type\s+[^;]*\badd\s+value\b/i.test(sql.replace(/--[^\n]*/g, ""));
-}
-
-const version = (datei) => datei.slice(0, datei.indexOf("_"));
-const kennung = (datei) => datei.replace(/\.sql$/, "");
-
 function stapeln() {
   const dateien = ordnung();
   const stapel = [];
@@ -89,10 +68,11 @@ function stapeln() {
 
 /** Die SQL eines Stapels, fertig für apply_migration. */
 function sqlFuer(eintraege) {
+  // WOERTLICH, mit Kommentaren. Eine knappe Fassung haette 18 % gespart und dafuer
+  // einen eigenen Kommentar-Entferner ueber Funktionsrumpf und Zeichenkette laufen
+  // lassen. 18 % rechtfertigen dieses Risiko nicht. Gemessen, dann verworfen.
   const teile = eintraege.map(({ datei, sql }) =>
-    `-- ══════════════════════════════════════════════════════════════\n`
-    + `-- ${datei}\n`
-    + `-- ══════════════════════════════════════════════════════════════\n${sql.trimEnd()}\n`);
+    `-- ${datei}\n${sql.trimEnd()}\n`);
   // DIE LETZTE DATEI BLEIBT HIER AUSSEN VOR. `apply_migration` schreibt ihre Zeile
   // selbst (der Name, den --name liefert, ist ihrer). Wuerde der Stapel sie auch
   // einfuegen, liefe apply_migration danach in einen Schluessel-Konflikt und der
