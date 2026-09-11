@@ -138,6 +138,15 @@ function sqlFuer(eintraege) {
 
 const RUECKWEG = `-- Der Rückweg. Vorführen, nicht behaupten.
 --
+-- WAS DIE ERSTE FASSUNG DIESES RUECKWEGS UEBERSEHEN HAT, belegt am 11.09.2026:
+-- \`storage.objects\` liegt NICHT im Schema public. Ein \`drop schema public cascade\`
+-- nimmt seine Policies also nicht mit, und die Kette brach beim zweiten Stapel mit
+--   ERROR: 42710: policy "applicant upload own folder" for table "objects" already exists
+-- Gemessen waren es 17 Policies auf storage.objects, alle aus PAWNs Migrationen
+-- (applicant, designer media, campaign assets, taste uploads, model pool,
+-- product shots, site assets) — keine einzige eine Supabase-Vorgabe. Ein echter
+-- Rueckweg muss sie mitnehmen, sonst ist er keiner.
+--
 -- Was NICHT mitgelöscht wird: das Schema \`auth\`. Die Konten bleiben; ihre Zeilen in
 -- public (profiles, user_roles) kommen über die Nachzieh-Schleife in
 -- 20260929120000 von selbst zurück.
@@ -145,7 +154,20 @@ drop schema if exists public cascade;
 create schema public;
 grant usage on schema public to anon, authenticated, service_role;
 grant all on schema public to postgres;
-delete from supabase_migrations.schema_migrations;`;
+delete from supabase_migrations.schema_migrations;
+
+-- Die Policies auf storage.objects, die public cascade nicht erreicht.
+do $$
+declare p record;
+begin
+  for p in select polname from pg_policy pol
+             join pg_class c on c.oid = pol.polrelid
+             join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname = 'storage' and c.relname = 'objects'
+  loop
+    execute format('drop policy if exists %I on storage.objects', p.polname);
+  end loop;
+end $$;`;
 
 const stapel = stapeln();
 const ersterStapel = stapel[0];
