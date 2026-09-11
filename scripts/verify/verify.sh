@@ -49,7 +49,21 @@ fuehre() {
 # Stand bis heute absichtlich NICHT hier drin, weil sie echt rot war: acquisition_leads
 # wurde von keiner Datei angelegt. Seit 20260721230100_acquisition_leads_basis.sql ist
 # die Luecke zu, und eine gruene Pruefung gehoert ins Tor.
-kette() { node scripts/verify/migrationen-kette.mjs; }
+kette() {
+  node scripts/verify/migrationen-kette.mjs || return 1
+  # Der Stapel-Drucker gehoert zur Kette: ohne ihn ist der Erstaufbau nicht
+  # fortsetzbar. Belegt am 11.09.2026 — ich habe ihn committet, ohne ihn laufen zu
+  # lassen, und vier Funktionen fehlten. Eine Zeile verhindert das kuenftig.
+  local druck
+  druck=$(node scripts/db/stapel.mjs --liste 2>&1 | tail -1)
+  if ! printf '%s' "$druck" | grep -q '^STAPEL: [0-9]'; then
+    echo "  scripts/db/stapel.mjs laeuft nicht: $druck"
+    echo "KETTE: 0/1 · FEHLER: der Stapel-Drucker ist kaputt"
+    return 1
+  fi
+  echo "  $druck"
+  return 0
+}
 
 rls() { node scripts/verify/rls-anon.mjs; }
 

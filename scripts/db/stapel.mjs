@@ -48,8 +48,47 @@ const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const ORDNER = "supabase/migrations";
 const JE_STAPEL = Number(process.env.STAPEL_GROESSE || 8);
 
+/** Die abspielbare Reihenfolge — aus der Prüfung, nicht aus einem sort. */
+function ordnung() {
+  const aus = execFileSync("node", [join(WURZEL, "scripts/verify/migrationen-kette.mjs"), "--ordnung"],
+    { cwd: WURZEL, encoding: "utf8" });
+  const namen = aus.split("\n").map((z) => z.trim()).filter((z) => z.endsWith(".sql"));
+  const vorhanden = new Set(readdirSync(join(WURZEL, ORDNER)).filter((d) => d.endsWith(".sql")));
+  const fehlt = namen.filter((n) => !vorhanden.has(n));
+  if (fehlt.length) throw new Error(`Abspielordnung nennt Dateien, die es nicht gibt: ${fehlt.join(", ")}`);
+  if (namen.length !== vorhanden.size)
+    throw new Error(`Abspielordnung hat ${namen.length} Dateien, der Ordner ${vorhanden.size}`);
+  return namen;
+}
+
+/** `ALTER TYPE ... ADD VALUE` muss allein laufen — siehe Kopf, Punkt 2. */
+function mussAlleinLaufen(sql) {
+  return /alter\s+type\s+[^;]*\badd\s+value\b/i.test(sql.replace(/--[^\n]*/g, ""));
+}
+
+const version = (datei) => datei.slice(0, datei.indexOf("_"));
+const kennung = (datei) => datei.replace(/\.sql$/, "");
+
+/**
+ * Was schon liegt, wird nicht nochmal gedruckt — `--ohne <datei>`.
+ *
+ * WARUM: ein Lauf ueber 33 Stapel ueberlebt keine Sitzung zwangslaeufig. Ohne diesen
+ * Schalter muesste die naechste Schicht die Stapelgrenzen im Kopf nachrechnen, um zu
+ * wissen, wo sie weitermacht — und genau da entstehen die Fehler. Die Datei enthaelt
+ * die Versionen, die auf der Datenbank liegen, eine je Zeile:
+ *
+ *   select version from supabase_migrations.schema_migrations order by version;
+ */
+function schonGelegt() {
+  const i = process.argv.indexOf("--ohne");
+  if (i < 0) return new Set();
+  return new Set(readFileSync(process.argv[i + 1], "utf8")
+    .split("\n").map((z) => z.trim()).filter(Boolean));
+}
+
 function stapeln() {
-  const dateien = ordnung();
+  const liegt = schonGelegt();
+  const dateien = ordnung().filter((d) => !liegt.has(version(d)));
   const stapel = [];
   let laufend = [];
   for (const d of dateien) {
@@ -90,7 +129,7 @@ function sqlFuer(eintraege) {
   // Der Rueckweg hinterlaesst seine eigene Zeile (Version 00000000000000). Sie
   // gehoert zu keiner Datei und wuerde in der Abnahme als FREMD auftauchen. Der
   // erste Stapel raeumt sie weg — eng, nur diese eine Version.
-  const aufraeumen = eintraege === ersterStapel
+  const aufraeumen = eintraege === ersterStapel && schonGelegt().size === 0
     ? `\n-- Die Zeile des Rueckwegs gehoert zu keiner Datei.\n`
       + `delete from supabase_migrations.schema_migrations where version = '00000000000000';\n`
     : "";
@@ -110,6 +149,7 @@ delete from supabase_migrations.schema_migrations;`;
 
 const stapel = stapeln();
 const ersterStapel = stapel[0];
+if (stapel.length === 0) { console.log("STAPEL: 0 · DATEIEN: 0 · ALLEIN: 0 — alles liegt."); process.exit(0); }
 const arg = (name) => {
   const i = process.argv.indexOf(name);
   return i < 0 ? null : process.argv[i + 1];
