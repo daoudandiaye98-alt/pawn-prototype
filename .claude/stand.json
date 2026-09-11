@@ -32,7 +32,8 @@
     "L11 WEICHT AB, mit Begruendung: merge_anon_session KANN kunden_stil und wishlists nicht tragen. Beide haben user_id als Schluessel mit Fremdschluessel auf auth.users, jede Policy verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner der beiden. Ein Gast hat dort nie eine Zeile. Die Uebernahme passiert deshalb beim Anmelden im Heft (src/heft03/uebernahme.mjs). Der andere Weg waere eine neue anonyme Schreibflaeche auf der Zahlungsdatenbank — das braucht Daoudas Wort.",
     "DER RUECKWEG IST VORGEFUEHRT: drop schema public cascade + Historie leeren. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
     "DIE BUCHHALTUNG: ein BEFORE-INSERT-Trigger auf supabase_migrations.schema_migrations setzt die Version aus dem Dateinamen und unterdrueckt jede fremde Zeile. Beim Sentinel-Namen 'zz_ende' entfernt er sich selbst.",
-    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet."
+    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet.",
+    "DER PRUEFER HAT EINEN FEHLER IN MEINEM BERICHT GEFUNDEN: 12 von 13 bestaetigt, EINER widerlegt. Ich hatte behauptet, es gebe keinen internen Verweis auf /auth mehr — in src/pages/admin/TranslationWarmup.tsx stand er noch, als blosse Zeichenkette in der Liste, mit der PAWN die englische Fassung vorwaermt. Repariert UND gedeckt: Zusage Z13 mit der Kontrolle nurWegweiser, einmal rot vorgefuehrt. Z9 hatte es nicht gefunden, weil Z9 nach to= und href= sucht."
   ],
   "wartet_auf_mensch": [
     "L1-ENTSCHEIDUNG, und sie blockiert alles Datenbank-Nahe: wie soll acquisition_leads entstehen? Weg 1 (neue Migration, Form aus der alten types.ts ableiten, Ergebnis nachpruefbar) ist die Empfehlung. Weg 2 (Akquise beim Erstaufbau weglassen) und Weg 3 (alte Datenbank zurueck — geht nicht, geloescht) stehen in docs/teil-l/l1-bruch-migrationskette.md.",
@@ -74,7 +75,7 @@
     "DER PRÜFER (10.09., 18 Behauptungen zu Teil H): 17 bestätigt, 0 widerlegt, 1 nicht prüfbar (der CI-Stand — er hat keinen GitHub-Zugriff). Er hat zwei der neuen Kontrollen in einer Kopie rot vorgeführt und die Bündelzahl selbst nachgemessen."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": "2026-09-11 — VERIFY 4/4, REGRESSION 12/12, test:heft 45/45, zugang.spec 11/11, Bau gruen. KETTE 0/1 (echt rot, absichtlich nicht im Tor). RLS nicht pruefbar (kein Schluessel in der Umgebung).",
+  "letzter_verify": "2026-09-11 — VERIFY 4/4, REGRESSION 13/13, test:heft 45/45, zugang.spec 11/11, Bau gruen. KETTE 0/1 (echt rot, absichtlich nicht im Tor). RLS nicht pruefbar.",
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },

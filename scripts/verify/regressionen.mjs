@@ -396,6 +396,33 @@ function nurEinWaechter({ datei, bereiche, waechter, seiten }) {
   return OK;
 }
 
+/* Z13 — eine Adresse, die nur noch weiterleitet, steht nirgends mehr im Code.
+   Warum das eine eigene Kontrolle braucht: keineUmgezogenenLinks (Z9) sucht nach
+   to=/href=. In src/pages/admin/TranslationWarmup.tsx stand "/auth" aber als
+   blosse Zeichenkette in einer Liste — und damit waermte PAWN fuer die englische
+   Fassung eine Weiterleitung statt der Zugang-Doppelseite. Kein Link, kein Fund,
+   kein Rot. Diese Pruefung sucht die Adresse als GANZE Zeichenkette, egal wo.
+   Eng gehalten: nur exakt "/auth" in Anfuehrungszeichen. /auth/v1/health, wie es
+   notbetrieb.mjs braucht, trifft sie nicht. */
+function nurWegweiser({ orte, adressen, ausnahmen = [] }) {
+  const treffer = [];
+  for (const ort of orte) {
+    for (const datei of dateien(ort, [".ts", ".tsx", ".js", ".mjs"])) {
+      const rel = datei.slice(WURZEL.length + 1);
+      if (ausnahmen.some((a) => rel === a)) continue;
+      readFileSync(datei, "utf8").split("\n").forEach((zeile, i) => {
+        if (/^\s*(\*|\/\/)/.test(zeile)) return;
+        for (const a of adressen) {
+          if (new RegExp("[\"'`]" + a + "[\"'`]").test(zeile)) treffer.push(`${rel}:${i + 1} → ${a}`);
+        }
+      });
+    }
+  }
+  return treffer.length === 0
+    ? OK
+    : nein(`${treffer.length} Stelle(n) nennen eine Adresse, die nur noch weiterleitet:\n      ${treffer.slice(0, 8).join("\n      ")}`);
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -409,6 +436,7 @@ const PRUEFUNGEN = {
   keineStripeSpalten,
   vorschauNurWennWeg,
   nurEinWaechter,
+  nurWegweiser,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
