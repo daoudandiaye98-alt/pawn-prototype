@@ -75,7 +75,11 @@
     "DER PRÜFER (10.09., 18 Behauptungen zu Teil H): 17 bestätigt, 0 widerlegt, 1 nicht prüfbar (der CI-Stand — er hat keinen GitHub-Zugriff). Er hat zwei der neuen Kontrollen in einer Kopie rot vorgeführt und die Bündelzahl selbst nachgemessen."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": "2026-09-11 — VERIFY 4/4, REGRESSION 13/13, test:heft 45/45, zugang.spec 11/11, Bau gruen. KETTE 0/1 (echt rot, absichtlich nicht im Tor). RLS nicht pruefbar.",
+  "letzter_verify": {
+    "datum": "2026-09-11",
+    "bestanden": 4,
+    "gefallen": 0
+  },
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },
