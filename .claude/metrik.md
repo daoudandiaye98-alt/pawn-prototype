@@ -186,3 +186,44 @@ Male hat erst der rote Lauf es gezeigt:
 
 Das ist der ganze Zweck des Rituals: *eine Prüfung, die nicht rot vorgeführt
 wurde, ist behauptet und nicht bewiesen.* Hier sind zwei belegte Fälle.
+
+---
+
+## 2026-09-11 · Der Prüfstand war blind, und zwar durch eigenen Code
+
+Die härteste Lehre dieser Sitzung, und sie gehört hierher statt in `regressionen.json`,
+weil sie das Messwerkzeug selbst betrifft.
+
+Seit Teil L13 klopft das Heft an `/auth/v1/health`, um zu entscheiden, ob die
+Datenbank lebt — mit einer Frist und einem `AbortController`. Der Hüllen-Wächter des
+Prüfstands zählt jede fehlgeschlagene Anfrage an den Datenhost als „die Seite hat ihre
+Daten nicht bekommen" und setzt **alle** Befunde dieser Seite auf `nicht prüfbar`. Ein
+Abbruch, den das Heft selbst auslöst, sieht für ihn genauso aus.
+
+Ergebnis, gemessen an zwei Läufen auf demselben Zweig:
+
+| | #150 (`33ad2df`) | #151 (`eafefdd`) |
+|---|---|---|
+| bestanden | 1 | 649 |
+| gefallen | 0 | 119 |
+| nicht prüfbar | 1051 | 288 |
+| Urteil | KEIN URTEIL (0,1 % messbar) | gemessen |
+
+**Von 1 messbaren Gate auf 768.** Dazwischen liegen vier Zeilen.
+
+Das Werkzeug hat also nicht falsch gerechnet — es hat sich selbst entwertet, und zwar
+leise: der Check blieb grün, die Warnung „KEIN URTEIL" stand im Protokoll, und niemand
+hat sie gelesen. Seit `#185` sagt der Lauf wenigstens, dass er nichts weiß. Ohne `#185`
+wäre es eine dauerhaft grüne Lüge gewesen.
+
+**Die Lehre, und sie ist neu:** Gesetz 4 sagt „gib dem Agenten Augen". Es sagt nicht,
+was zu tun ist, wenn die Augen *zugehen*, ohne dass es jemand merkt. Ein Messwerkzeug
+braucht eine Messung über sich selbst — und die hat `#185` gebaut („unter N gemessenen
+Gates ist der Lauf kein Urteil"). Diese Schwelle ist das Einzige, was den Fehler
+überhaupt sichtbar gemacht hat. **Sie hat sich an genau einem Fall bezahlt, und zwar an
+diesem.** Beim nächsten Ausmisten ist das die Antwort auf die Frage „wann hat sie
+zuletzt etwas gefangen?"
+
+**Nachfunde durch einen Menschen: unverändert 3.** Dieser Fund ging auf das Konto des
+Werkzeugs, nicht auf das eines Menschen — aber er erklärt, warum Daouda drei Mängel
+finden musste, die kein Lauf gefangen hat. Vier Wochen lang hat nichts gemessen.
