@@ -13,6 +13,7 @@ import {readView} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
 import {sections as SEKTIONEN,counts as ZAEHLER} from './data.mjs';
+import {uebernahme} from './uebernahme.mjs';
 
 test('Zeilen → Heft: nur zeigbare, veröffentlichte Stücke aktiver, veröffentlichter Häuser',()=>{
  const h=heftAusZeilen(zeilen);
@@ -358,4 +359,37 @@ test('L5: kein Verweis in Mein PAWN zeigt nach dem Umbau ins Leere',()=>{
  assert.ok(gesehen.has(1),'„Mein PAWN" ist jetzt Seite 1');
  assert.ok(gesehen.has(2),'der Merkzettel Seite 2');
  assert.ok(gesehen.has(5),'die Einstellungen Seite 5');
+});
+
+// ————————————————————————————————————————————————————————————————
+// L11 — Was der Gast gesammelt hat, geht beim Anmelden nicht verloren.
+//
+// Der Auftrag verlangte das ueber merge_anon_session. Das geht nicht: kunden_stil
+// hat user_id als Primaerschluessel, wishlists user_id NOT NULL, jede Policy
+// verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner
+// der beiden. Ein Gast hat dort nie eine Zeile — die Funktion koennte nur Zeilen
+// zusammenfuehren, die es nicht geben kann. Die Uebergabe passiert deshalb beim
+// Anmelden im Heft, ohne neue anonyme Schreibrechte auf der Datenbank.
+// ————————————————————————————————————————————————————————————————
+
+test('L11: die Gast-Linie geht mit — aber ueberschreibt nie eine, die schon da ist',()=>{
+ const gast={stil:{welt:'mode',richtung:'Klar'},saved:[]};
+
+ const leeresKonto=uebernahme(gast,{stil:null,saved:[]});
+ assert.deepEqual(leeresKonto.stil,{welt:'mode',richtung:'Klar'},'ein leeres Konto bekommt die Gast-Linie');
+
+ const gepflegt=uebernahme(gast,{stil:{welt:'kunst',richtung:'Geste'},saved:[]});
+ assert.equal(gepflegt.stil,null,'ein Gast-Durchlauf am fremden Rechner ersetzt keine gepflegte Linie');
+
+ assert.equal(uebernahme({stil:{},saved:[]},{stil:null,saved:[]}).stil,null,'nichts mitgebracht, nichts zu schreiben');
+ assert.equal(uebernahme().stil,null,'und ohne Angaben faellt gar nichts an');
+});
+
+test('L11: die Merkliste wird nur ergaenzt, nie gekuerzt',()=>{
+ const e=uebernahme({saved:['p-1','p-2','p-3']},{saved:['p-2']});
+ assert.deepEqual(e.merken,['p-1','p-3'],'nur was fehlt, geht hinauf');
+
+ // Loeschen ist eine Handlung, die ein Mensch tut — nicht ein Nebeneffekt des Anmeldens.
+ const nichts=uebernahme({saved:[]},{saved:['p-9']});
+ assert.deepEqual(nichts.merken,[],'was im Konto liegt, wird nie angefasst');
 });

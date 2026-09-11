@@ -9,6 +9,7 @@ import {kuratiere,kurationsNotiz} from './kuration.mjs';
 import {laden,speichern,vergessen} from './store.mjs';
 import {demoQuelle} from './quelle.mjs';
 import {quelleWaehlen,anklopfen} from './notbetrieb.mjs';
+import {uebernahme} from './uebernahme.mjs';
 import {adressen} from './routen.mjs';
 import {massZeile} from './store.mjs';
 
@@ -427,7 +428,11 @@ async function kontoLaden(){
  try{
   const k=await quelle.konto.aktuell();
   if(!k)return;
-  state.profile={name:k.name,email:k.email,id:k.id};if(state.consent===null)state.consent=true;
+  /* Festhalten, was VOR dem Zusammenfuehren im Heft lag — gleich darunter wird
+     state.stil und state.saved mit dem Konto vermischt, und danach liesse sich
+     nicht mehr sagen, was davon der Gast mitgebracht hat. */
+  const vorherigerStil={...(state.stil||{})},vorherGemerkt=[...(state.saved||[])];
+  state.profile={name:k.name,email:k.email,id:k.id,rollen:k.rollen||[]};if(state.consent===null)state.consent=true;
   const [merk,stil,masse,orders,anfragen]=await Promise.all([quelle.merkliste.laden(),quelle.stil.laden(),quelle.masse.laden(),
    quelle.konto.bestellungen?quelle.konto.bestellungen():[],quelle.konto.anfragen?quelle.konto.anfragen():[]]);
   if(Array.isArray(orders))state.orders=orders;
@@ -435,6 +440,12 @@ async function kontoLaden(){
   if(Array.isArray(merk))state.saved=[...new Set([...merk.filter(id=>products[id]),...state.saved])];
   if(stil&&stil.stil&&Object.keys(stil.stil).length){state.stil={...stil.stil,...state.stil};if(stil.fuerWen)state.measurements.fuerWen=state.measurements.fuerWen||stil.fuerWen;}
   if(masse)for(const [k2,v] of Object.entries(masse))if(v!=null&&state.measurements[k2]===undefined)state.measurements[k2]=String(v);
+  // Teil L11 — und jetzt der Weg nach OBEN. Bis hierher hat das Heft nur geholt,
+  // was im Konto liegt; was der Gast vorher gesammelt hat, blieb fuer immer im
+  // Browser. Die Entscheidung, WAS hinaufgeht, steht in uebernahme.mjs.
+  const hinauf=uebernahme({stil:vorherigerStil,saved:vorherGemerkt},{stil:stil&&stil.stil,saved:Array.isArray(merk)?merk:[]});
+  if(hinauf.stil)quelle.stil.speichern(hinauf.stil,state.foto||'',state.measurements?.fuerWen||'').catch(()=>{});
+  for(const id of hinauf.merken)quelle.merkliste.setzen(id,true).catch(()=>{});
   updateCart();if(reading(nav.route))readRefresh();
  }catch(e){if(auf.fehler)auf.fehler(e);}
 }
