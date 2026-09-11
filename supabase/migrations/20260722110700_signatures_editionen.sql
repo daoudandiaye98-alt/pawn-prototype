@@ -41,13 +41,6 @@ CREATE POLICY "admin manages editions" ON public.editions FOR ALL TO authenticat
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "designer reads own editions" ON public.editions FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.edition_participants ep
-    JOIN public.designers d ON d.id = ep.designer_id
-    WHERE ep.edition_id = editions.id AND d.user_id = auth.uid()
-  ));
-
 -- Pro Haus: Freigabe-Status einer Edition. Kein Video landet in video_assets, bevor der Designer
 -- "Umsetzen" gewählt hat (analog dem jarvis_pending_actions-Muster, hier je Haus statt global).
 CREATE TABLE public.edition_participants (
@@ -77,6 +70,18 @@ CREATE POLICY "designer updates own participation" ON public.edition_participant
 CREATE POLICY "admin manages participation" ON public.edition_participants FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+-- NACHGEZOGEN 11.09.2026: diese Policy stand im editions-Block, also VOR
+-- CREATE TABLE edition_participants — sie liest diese Tabelle aber. Postgres
+-- bricht dort mit 42P01 ab, die Datei war nie spielbar. Nur die Reihenfolge
+-- innerhalb dieser Datei wurde geaendert, kein Wort am Inhalt: der Endzustand
+-- ist Zeichen fuer Zeichen derselbe.
+CREATE POLICY "designer reads own editions" ON public.editions FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.edition_participants ep
+    JOIN public.designers d ON d.id = ep.designer_id
+    WHERE ep.edition_id = editions.id AND d.user_id = auth.uid()
+  ));
 
 -- 'regie' als neue Jarvis-Berichtsart (wöchentliche Lernschleife, kampagnen_regie-Modus).
 ALTER TABLE public.jarvis_reports DROP CONSTRAINT IF EXISTS jarvis_reports_kind_check;
