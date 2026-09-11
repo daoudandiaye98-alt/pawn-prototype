@@ -14,16 +14,21 @@
  * zweimal angelegt werden. Damit prüft sie die Deckung mit, statt sie zu glauben: wer
  * die falsche Fassung deckt, wird hier rot.
  *
- * WAS SIE NICHT PRÜFT: ob eine Deckung die RICHTIGE Fassung stumm schaltet. Manche
- * Fassung trägt GRANTs, die der anderen fehlen — das steht als Begründung je Version in
- * deckung.json und ist eine Leseaufgabe, keine Rechenaufgabe.
+ * UND SIE PRÜFT DAS ZWEITE, WAS SCHIEFGEHEN KANN: dass nichts VERLOREN geht. Jede
+ * Anweisung, die eine Deckung wegnimmt, muss in einer der unter `gedeckt_von` genannten
+ * Dateien stehen — Zeichen für Zeichen, leerzeichen-normiert. Das ist nicht theoretisch:
+ * drei der gebündelten Migrationen tragen GRANTs, die den späteren Einzeldateien fehlen.
+ * Wer die falsche Fassung deckt, verliert Rechte still. Diese Prüfung fängt genau das.
+ *
+ * WAS SIE NICHT PRÜFT: ob die Begründung in deckung.json stimmt. Das ist eine
+ * Leseaufgabe, keine Rechenaufgabe.
  *
  * Letzte Zeile maschinenlesbar:
  *   DOPPELUNGEN: <gedeckt>/<gesamt> · FEHLER: <kurzliste>
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { DECKUNG, WURZEL, version, wirksam } from "./deckung.mjs";
+import { DECKUNG, WURZEL, version, wirksam, weggenommen, anweisungen } from "./deckung.mjs";
 
 const ORDNER = join(WURZEL, "supabase/migrations");
 
@@ -81,37 +86,40 @@ const fehler = [];
 const bricht = new Map();
 for (const [schluessel, wo] of anDerDatenbank) {
   if (wo.length < 2) continue;
-  const zeile = `${schluessel} aus ${wo.join(" + ")}`;
   bricht.set(schluessel, wo);
-  fehler.push(zeile);
+  fehler.push(`${schluessel} aus ${wo.join(" + ")}`);
 }
 
-// 2. Eine Deckung ohne Doppelung im Ordner ist eine Karteileiche — sie würde eine
-//    Datei stumm schalten, die gar nichts doppelt. Schlimmer als keine Deckung.
-const doppeltImOrdner = new Map();   // version -> anzahl Objekte
-for (const [, wo] of imOrdner) {
-  if (wo.length < 2) continue;
-  for (const d of wo) doppeltImOrdner.set(version(d), (doppeltImOrdner.get(version(d)) || 0) + 1);
-}
-for (const v of Object.keys(DECKUNG))
-  if (!doppeltImOrdner.has(v)) fehler.push(`deckung.json deckt ${v}, dort ist aber keine Doppelung`);
-
-// 3. Die genannte Quelle muss die Doppelung auch wirklich tragen.
+// 2. NICHTS DARF VERLOREN GEHEN. Jede weggenommene Anweisung muss in einer der
+//    genannten Dateien stehen. Ohne diese Pruefung waeren am 11.09.2026 drei GRANTs
+//    auf public.house_themes still verschwunden — und die veroeffentlichte Hausseite
+//    haette ihre eigene Welt nicht mehr lesen koennen.
+const nachDatei = new Map(roh);
 for (const [v, d] of Object.entries(DECKUNG)) {
   const meine = dateien.find((x) => version(x) === v);
   if (!meine) { fehler.push(`deckung.json deckt ${v}, die Datei gibt es nicht`); continue; }
-  const partner = new Set();
-  for (const [, wo] of imOrdner) if (wo.includes(meine)) for (const x of wo) if (x !== meine) partner.add(version(x));
-  const fremd = d.gedeckt_von.filter((q) => !partner.has(q));
-  if (fremd.length) fehler.push(`${v}: deckung.json nennt ${fremd.join("/")}, dort doppelt sich nichts`);
+  const weg = weggenommen(meine, nachDatei.get(meine));
+  // 3. Eine Deckung, die nichts wegnimmt, ist eine Karteileiche.
+  if (!weg.length) { fehler.push(`${v}: die Deckung nimmt nichts weg`); continue; }
+  const woanders = new Set();
+  for (const q of d.gedeckt_von) {
+    const quelle = dateien.find((x) => version(x) === q);
+    if (!quelle) { fehler.push(`${v}: gedeckt_von nennt ${q}, die Datei gibt es nicht`); continue; }
+    for (const a of anweisungen(nachDatei.get(quelle))) woanders.add(a);
+  }
+  const verloren = weg.filter((a) => !woanders.has(a));
+  if (verloren.length)
+    fehler.push(`${v}: ${verloren.length} Anweisung(en) gehen verloren, z. B. „${verloren[0].slice(0, 70)}"`);
 }
 
-const paare = [...imOrdner.values()].filter((wo) => wo.length > 1).length;
-for (const [v, d] of Object.entries(DECKUNG).sort())
-  console.log(`  ${d.art.padEnd(11)} ${v} → gedeckt von ${d.gedeckt_von.join(", ")}`
-    + `  (${doppeltImOrdner.get(v) || 0} Objekt(e) doppelt im Ordner)`);
+for (const [v, d] of Object.entries(DECKUNG).sort()) {
+  const meine = dateien.find((x) => version(x) === v);
+  const weg = meine ? weggenommen(meine, nachDatei.get(meine)).length : 0;
+  console.log(`  ${d.art.padEnd(11)} ${v} · ${String(weg).padStart(3)} Anweisung(en) gedeckt von ${d.gedeckt_von.join(", ")}`);
+}
 for (const [schluessel, wo] of bricht)
   console.log(`  OFFEN       ${schluessel}: ${wo.join(" + ")}`);
 
-console.log(`\nDOPPELUNGEN: ${paare - bricht.size}/${paare} · FEHLER: ${fehler.length ? fehler.join(" · ") : "keine"}`);
+const gedeckteAnzahl = Object.keys(DECKUNG).length;
+console.log(`\nDOPPELUNGEN: ${gedeckteAnzahl}/${gedeckteAnzahl + bricht.size} · FEHLER: ${fehler.length ? fehler.join(" · ") : "keine"}`);
 process.exit(fehler.length ? 1 : 0);

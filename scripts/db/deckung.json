@@ -8,9 +8,11 @@
       "art": "ganz",
       "gedeckt_von": [
         "20260726141711",
-        "20260731090000"
+        "20260726172947",
+        "20260731090000",
+        "20260930120000"
       ],
-      "grund": "Das Buendel ist an seiner Stelle UEBERHAUPT NICHT spielbar, und das ist kein Deckungs-, sondern ein Reihenfolgeproblem: seine Policy \"public reads current theme of published pages\" liest designers.page_published_at, und diese Spalte legt erst 20260729093000_hausseite_bausteine.sql an — also SPAETER. Gemessen am 11.09.2026: 42703: column d.page_published_at does not exist. Auch die alte Datenbank kann das Buendel so nie bekommen haben; dort muss die Spalte schon vorher von Hand existiert haben. Deshalb laufen die drei Einzeldateien, nicht das Buendel. Die drei GRANTs auf public.house_themes, die nur das Buendel traegt, holt 20260930120000_rechte_house_themes.sql nach — ohne sie koennte eine veroeffentlichte Hausseite ihre eigene Welt nicht lesen. Abschnitt 2 des Buendels (20260726172947_content_begleiter.sql) steht hier nicht unter gedeckt_von, weil er kein Objekt anlegt: er schreibt nur Zeilen mit ON CONFLICT DO NOTHING und liefe zweimal ohne Schaden. Gedeckt ist er trotzdem — die Datei ist schon gelaufen."
+      "grund": "Das Buendel ist an seiner Stelle UEBERHAUPT NICHT spielbar, und das ist kein Deckungs-, sondern ein Reihenfolgeproblem: seine Policy \"public reads current theme of published pages\" liest designers.page_published_at, und diese Spalte legt erst 20260729093000_hausseite_bausteine.sql an — also SPAETER. Gemessen am 11.09.2026: 42703: column d.page_published_at does not exist. Auch die alte Datenbank kann das Buendel so nie bekommen haben; dort muss die Spalte schon vorher von Hand existiert haben. Deshalb laufen die drei Quelldateien (20260726141711, 20260726172947, 20260731090000), nicht das Buendel. Die drei GRANTs auf public.house_themes, die NUR das Buendel traegt, holt 20260930120000_rechte_house_themes.sql nach — ohne sie koennte eine veroeffentlichte Hausseite ihre eigene Welt nicht lesen, und zwar mit einem Berechtigungsfehler statt einer leeren Antwort. Dass die GRANTs fehlten, hat nicht mein Kopf gefunden, sondern die Pruefung: sie verlangt, dass jede weggenommene Anweisung woanders steht."
     },
     "20260802090000": {
       "art": "ganz",
@@ -33,6 +35,13 @@
         "20260810093249"
       ],
       "grund": "Ganz enthalten in 20260810093249 Zeile 79 bis 93: Tabelle rate_limit_hits, ihr Index, RLS, der REVOKE, die zwei GRANTs und die ai_config-Zeile pawn_chat_rate_limits. Diese Datei trägt nichts Eigenes."
+    },
+    "20260729052943": {
+      "art": "ganz",
+      "gedeckt_von": [
+        "20260801090000"
+      ],
+      "grund": "Dieselbe Form wie 20260729052933, und derselbe Grund: `alter type public.page_block_kind add value 'ueberlappend'` — den Typ legt aber erst 20260729093000_hausseite_bausteine.sql an, also SPAETER. An seiner Stelle nicht spielbar. Die identische Anweisung steht in 20260801090000_hausseite_ueberlappend.sql, dort hinter dem Typ. Sie traegt IF NOT EXISTS, liefe also auch zweimal ohne Schaden — nur eben nicht zu frueh."
     }
   }
 }

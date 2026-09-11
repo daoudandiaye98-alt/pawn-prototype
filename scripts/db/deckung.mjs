@@ -46,3 +46,27 @@ export function wirksam(datei, sql) {
   }
   throw new Error(`${datei}: unbekannte Deckungsart ${d.art}`);
 }
+
+/**
+ * SQL in einzelne Anweisungen zerlegen — kommentarfrei und leerzeichen-normiert,
+ * damit zwei Fassungen derselben Anweisung vergleichbar werden. `$$`-Rümpfe bleiben
+ * zusammen, sonst zerfiele jede plpgsql-Funktion an ihren eigenen Semikolons.
+ */
+export function anweisungen(sql) {
+  const rein = sql.split("\n").filter((z) => !z.trimStart().startsWith("--")).join("\n");
+  const stuecke = [];
+  let akt = "", imRumpf = false;
+  for (let i = 0; i < rein.length; i++) {
+    if (rein.startsWith("$$", i)) { imRumpf = !imRumpf; akt += "$$"; i++; continue; }
+    if (rein[i] === ";" && !imRumpf) { stuecke.push(akt); akt = ""; continue; }
+    akt += rein[i];
+  }
+  stuecke.push(akt);
+  return stuecke.map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean);
+}
+
+/** Was die Deckung einer Datei WEGNIMMT — genau das muss woanders stehen. */
+export function weggenommen(datei, sql) {
+  const bleibt = new Set(anweisungen(wirksam(datei, sql)));
+  return anweisungen(sql).filter((a) => !bleibt.has(a));
+}
