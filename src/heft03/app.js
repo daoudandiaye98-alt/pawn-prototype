@@ -8,6 +8,7 @@ import {themes,housePresentation,searchProducts,searchCount,presentationExport,h
 import {kuratiere,kurationsNotiz} from './kuration.mjs';
 import {laden,speichern,vergessen} from './store.mjs';
 import {demoQuelle} from './quelle.mjs';
+import {quelleWaehlen} from './notbetrieb.mjs';
 import {adressen} from './routen.mjs';
 import {massZeile} from './store.mjs';
 
@@ -34,17 +35,12 @@ const hoeren=(ziel,typ,fn,opt)=>{ziel.addEventListener(typ,fn,opt);hoerer.push([
 // Antwortet sie nicht binnen 6 Sekunden oder gar nicht, zeigt das Heft seine
 // Beispielausgabe statt einer toten Ladeseite. Kauf, Anfrage und Konto sind dann
 // gesperrt, weil demoQuelle auf alles mit {fehler:'vorschau'} antwortet.
-let heft=null,notbetrieb=false;
-try{
- heft=await Promise.race([
-  Promise.resolve(quelle.heft()),
-  new Promise((_,ab)=>setTimeout(()=>ab(new Error('Die Quelle hat nicht geantwortet.')),6000))
- ]);
-}catch(fehler){
- notbetrieb=true;
- try{auf.fehler&&auf.fehler(Object.assign(fehler,{art:'quelle-weg'}));}catch(_){}
-}
-if(notbetrieb){quelle=demoQuelle();heft=await quelle.heft();}
+// Die Entscheidung selbst steht in notbetrieb.mjs — dort ist sie ohne Browser prüfbar.
+const gewaehlt=await quelleWaehlen(quelle,demoQuelle);
+const notbetrieb=gewaehlt.notbetrieb;
+quelle=gewaehlt.quelle;
+const heft=gewaehlt.heft;
+if(notbetrieb){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{art:'quelle-weg'}));}catch(_){}}
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -55,22 +51,46 @@ if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!o
 const nav=new Magazine(adresse.lesen(),reduced.matches);
 if(quelle.art!=='demo')state.vorschau=false;
 state.notbetrieb=notbetrieb;
+// Beides muss stop() wieder los werden: der Streifen haengt an document.body, also
+// NICHT im Geruest des Hefts, und die Uhr liefe nach dem Unmount weiter — sie wuerde
+// location.reload() auf einer Seite aufrufen, die das Heft gar nicht mehr zeigt.
+let streifen=null,wiederUhr=null,streifenMass=null;
 if(notbetrieb){
- if(!document.getElementById('vorschau-streifen')){
-  const streifen=document.createElement('div');
+ streifen=document.getElementById('vorschau-streifen');
+ if(!streifen){
+  streifen=document.createElement('div');
   streifen.id='vorschau-streifen';
   streifen.setAttribute('role','status');
-  streifen.textContent='Vorschau-Ausgabe \u2014 die Werke der H\u00e4user werden gerade gewartet und sind in K\u00fcrze wieder da.';
-  streifen.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#f4efe6;color:#2a2521;border-bottom:1px solid #d9d0c2;font:500 10px/1.6 Inter,system-ui,sans-serif;letter-spacing:1.4px;text-transform:uppercase;text-align:center;padding:9px 16px;pointer-events:none';
+  streifen.textContent='Vorschau-Ausgabe — die Werke der Häuser werden gerade gewartet und sind in Kürze wieder da.';
   document.body.appendChild(streifen);
+ }
+ // Der Streifen liegt fest oben — genau dort, wo auch der Kopf liegt. Ohne Ausgleich
+ // deckt er ihn zu: die Wortmarke oben abgeschnitten, das Menue halb darunter, die
+ // Zahl der Tasche beschnitten. Gesehen bei 1280 und 390, nicht vermutet.
+ // Darum schiebt der Kopf um die HOEHE des Streifens nach unten. Gemessen, nicht geraten:
+ // bei 390 px bricht der Satz auf zwei Zeilen (51 px statt 35 px).
+ document.body.classList.add('hat-vorschau-streifen');
+ const hoeheMelden=()=>document.documentElement.style.setProperty('--vorschau-hoehe',Math.ceil(streifen.getBoundingClientRect().height)+'px');
+ hoeheMelden();
+ if(typeof ResizeObserver==='function'){streifenMass=new ResizeObserver(hoeheMelden);streifenMass.observe(streifen);}
+ else hoeren(window,'resize',hoeheMelden);
+ // Im Vorschau-Betrieb gibt es nichts zu kaufen und kein echtes Konto: demoQuelle
+ // antwortet auf kasse() mit {fehler:'vorschau'}, und das Profilformular legt nur ein
+ // Schein-Konto auf diesem Geraet an. Beide Knoepfe bleiben SICHTBAR, sind aber gesperrt —
+ // ein Knopf, der heimlich nichts tut, ist schlimmer als einer, der sagt, dass er nicht kann.
+ for(const id of ['cart-open','account-open']){
+  const knopf=$(id);
+  if(!knopf)continue;
+  knopf.disabled=true;
+  knopf.title='Im Vorschau-Betrieb nicht verfügbar';
  }
  // Alle 60 Sekunden still nachfassen. Ist die Datenbank zurueck, laedt die Seite neu —
  // aber nur, wenn gerade niemand liest oder tippt.
  if(optionen.quelle){
-  const wieder=setInterval(async()=>{
+  wiederUhr=setInterval(async()=>{
    try{
     await optionen.quelle.heft();
-    clearInterval(wieder);
+    clearInterval(wiederUhr);wiederUhr=null;
     const tippt=/^(INPUT|TEXTAREA)$/.test(document.activeElement&&document.activeElement.tagName||'');
     if(!tippt&&!document.querySelector('#drawer.open'))location.reload();
    }catch(_){}
@@ -630,7 +650,15 @@ return {
  // Nach bezahlter Kasse: die Stücke dieses Hauses aus der Tasche nehmen. Muss hier stehen —
  // store.mjs schreibt nur den Zustand weg und kennt weder Fenster noch die Zahl im Kopf.
  tascheLeeren(haus){state.cart=haus?state.cart.filter(r=>!products[r.id]||products[r.id].house!==haus):[];updateCart();readRefresh();},
- stop(){for(const [z,t,f,o] of hoerer)z.removeEventListener(t,f,o);for(const k of [...document.body.classList])if(/^(is-|ohne-3d)/.test(k))document.body.classList.remove(k);delete document.body.dataset.section;delete document.body.dataset.page;delete document.body.dataset.motion;if(raf)cancelAnimationFrame(raf);raf=null;clearTimeout(blasenTimer);clearTimeout(weiterTimer);clearTimeout(toastTimer);if(world?.dispose)world.dispose();world=null;}
+ stop(){for(const [z,t,f,o] of hoerer)z.removeEventListener(t,f,o);for(const k of [...document.body.classList])if(/^(is-|ohne-3d)/.test(k))document.body.classList.remove(k);delete document.body.dataset.section;delete document.body.dataset.page;delete document.body.dataset.motion;if(raf)cancelAnimationFrame(raf);raf=null;clearTimeout(blasenTimer);clearTimeout(weiterTimer);clearTimeout(toastTimer);
+  // Der Vorschau-Betrieb hinterlaesst zwei Dinge ausserhalb des Gerueests: den Streifen an
+  // document.body und die Uhr, die alle 60 s nachfasst. Bleiben sie stehen, zeigt die naechste
+  // Seite einen Streifen ohne Heft — und die Uhr koennte sie neu laden.
+  if(wiederUhr){clearInterval(wiederUhr);wiederUhr=null;}
+  if(streifenMass){streifenMass.disconnect();streifenMass=null;}
+  if(streifen){streifen.remove();streifen=null;document.body.classList.remove('hat-vorschau-streifen');document.documentElement.style.removeProperty('--vorschau-hoehe');}
+  for(const id of ['cart-open','account-open']){const knopf=$(id);if(knopf){knopf.disabled=false;knopf.removeAttribute('title');}}
+  if(world?.dispose)world.dispose();world=null;}
 };
 }
 

@@ -49,12 +49,17 @@ PRÜFE VIER DINGE, in dieser Reihenfolge:
    Eine Unterseite, die 404 antwortet, heißt fast immer: vercel.json ist weg.
 
 2. LÖST DIE DATENBANK AUF?
-   getent hosts rnakubexbqfgfciynqpt.supabase.co
+   getent hosts cnxtdcifkrdxvajaikxq.supabase.co
    curl -sS -o /dev/null -w "%{http_code}\n" --max-time 15 \
-     https://rnakubexbqfgfciynqpt.supabase.co/rest/v1/
-   Löst der Name NICHT auf, ist die erste Vermutung IMMER: das Lovable-Guthaben
-   ist aufgebraucht und die verwaltete Instanz wurde pausiert. Schreib das so in
-   das Ergebnis — nicht "Netzwerkproblem".
+     https://cnxtdcifkrdxvajaikxq.supabase.co/rest/v1/
+   Erwartet wird: der Name löst auf, die REST-Wurzel antwortet 401 (ohne
+   Schlüssel). Das heißt "lebt".
+   Löst der Name NICHT auf (NXDOMAIN), gibt es das Projekt NICHT MEHR — nicht
+   "pausiert", nicht "Netzwerkproblem". Ein pausiertes Projekt löst weiter auf.
+   Genau dieser Unterschied ist am 10.09.2026 übersehen worden: das alte Projekt
+   rnakubexbqfgfciynqpt war gelöscht, und drei Prüfstandsläufe maßen eine Nacht
+   lang gegen eine leere Hülle. Schreib NXDOMAIN als das in das Ergebnis, was es
+   ist: das Projekt ist weg.
 
 3. LADEN DIE WERKBILDER?
    Hol https://pawn.vision/ und zieh die ersten fünf Bildadressen aus dem HTML.
@@ -65,7 +70,7 @@ PRÜFE VIER DINGE, in dieser Reihenfolge:
 
 4. ANTWORTEN DIE ZAHLUNGS-WEBHOOKS?
    curl -sS -o /dev/null -w "%{http_code}\n" -X POST \
-     https://rnakubexbqfgfciynqpt.supabase.co/functions/v1/stripe-webhook
+     https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/stripe-webhook
    Erwartet wird KEIN 200 — ohne gültige Signatur muss die Funktion ablehnen.
    Gut ist 400 oder 401. Schlecht ist 404 (Funktion weg), 500 (kaputt) oder gar
    keine Antwort (Instanz pausiert).

@@ -8,8 +8,9 @@ import {pfadAusRoute,routeAusPfad,alleAdressen,UMZUEGE} from './routen.mjs';
 import {kuratiere} from './kuration.mjs';
 import {urteil,passform} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
-import {chatAntwort,SPALTEN,demoQuelle} from './quelle.mjs';
+import {chatAntwort,SPALTEN,demoQuelle,bildLoeser} from './quelle.mjs';
 import {readView} from './views.mjs';
+import {quelleWaehlen,FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
 
 test('Zeilen → Heft: nur zeigbare, veröffentlichte Stücke aktiver, veröffentlichter Häuser',()=>{
@@ -144,4 +145,86 @@ test('Passform rechnet gegen die Maßtabelle des Hauses, nicht gegen eine Faustr
  assert.equal(passform({},p).moeglich,false);
  // Ohne Maßtabelle ebenso.
  assert.equal(passform({chest_cm:'92'},{...p,measurements:{rows:[],values:{}}}).moeglich,false);
+});
+
+// ————————————————————————————————————————————————————————————————
+// Vorschau-Betrieb. Die Frist stand als Promise.race mitten in startHeft() und war
+// damit nur im Browser beobachtbar — also faktisch ungeprüft. Herausgezogen nach
+// notbetrieb.mjs, hier sind alle drei Fälle belegt.
+// ————————————————————————————————————————————————————————————————
+test('Vorschau-Betrieb: eine Quelle, die nie antwortet, führt zu einem gefüllten Heft',async()=>{
+ // Nie auflösen — genau der Fall, der pawn.vision auf dem Ladebild hängen ließ.
+ const stumm={art:'supabase',heft:()=>new Promise(()=>{})};
+ const ergebnis=await quelleWaehlen(stumm,demoQuelle,30);
+ assert.equal(ergebnis.notbetrieb,true);
+ assert.equal(ergebnis.quelle.art,'demo','die Beispielquelle übernimmt');
+ assert.ok(ergebnis.heft,'und sie liefert ein Heft, keine Ausnahme');
+ assert.ok(Object.keys(ergebnis.heft.products||{}).length,'mit Werken darauf');
+ assert.match(ergebnis.fehler.message,/nicht geantwortet/,'der Grund wird nicht verschluckt');
+});
+
+test('Vorschau-Betrieb: eine Quelle, die absagt — auch synchron — landet im selben Pfad',async()=>{
+ const absage={art:'supabase',heft:async()=>{throw new Error('ERR_NAME_NOT_RESOLVED');}};
+ const a=await quelleWaehlen(absage,demoQuelle,30);
+ assert.equal(a.notbetrieb,true);
+ assert.equal(a.fehler.message,'ERR_NAME_NOT_RESOLVED');
+
+ // Ein synchroner Wurf darf startHeft() nicht sprengen, sondern muss dieselbe Absage sein.
+ const sofort={art:'supabase',heft(){throw new Error('kaputt');}};
+ const b=await quelleWaehlen(sofort,demoQuelle,30);
+ assert.equal(b.notbetrieb,true);
+ assert.equal(b.fehler.message,'kaputt');
+});
+
+test('Vorschau-Betrieb: eine Quelle, die rechtzeitig antwortet, bleibt die Quelle',async()=>{
+ const echt={art:'supabase',heft:async()=>heftAusZeilen(zeilen)};
+ const ergebnis=await quelleWaehlen(echt,()=>{throw new Error('die Beispielquelle darf hier nicht angefasst werden');},500);
+ assert.equal(ergebnis.notbetrieb,false);
+ assert.equal(ergebnis.quelle,echt);
+ assert.equal(ergebnis.fehler,null);
+ assert.ok(ergebnis.heft.houses['haus-lind'],'die echten Zeilen sind durchgekommen');
+});
+
+test('Vorschau-Betrieb: die Frist ist eine Zahl, keine im Code versteckte Ziffer',()=>{
+ assert.equal(typeof FRIST_MS,'number');
+ assert.equal(FRIST_MS,6000,'6 Sekunden — wer sie ändert, ändert sie hier und nur hier');
+});
+
+// ————————————————————————————————————————————————————————————————
+// Bildadressen. Vorher stand in quelle.mjs `bild(karte[u]||u)` und in der Hülle
+// `(await signiereMedia(u)) ?? u`. Beide machten aus „nicht signierbar" wieder den
+// blanken Bucket-Pfad — eine Adresse, die der Browser nie laden kann.
+// ————————————————————————————————————————————————————————————————
+test('Bildlöser: ohne Signatur überlebt nur, was sich selbst tragen kann',()=>{
+ const karte={
+  'product-shots/a.png':'https://signiert/a.png', // erfolgreich signiert
+  'product-shots/b.png':null,                     // signieren fehlgeschlagen
+  'https://fremd.example/c.jpg':null,             // fremde Adresse, nicht signierbar
+ };
+ const loese=bildLoeser(karte,u=>u);
+
+ assert.equal(loese('product-shots/a.png'),'https://signiert/a.png');
+ assert.equal(loese('product-shots/b.png'),null,'ein blanker Bucket-Pfad wird null, nie eine kaputte Adresse');
+ assert.equal(loese('https://fremd.example/c.jpg'),null,'auch eine fremde Adresse, die als nicht ladbar gemeldet wurde, wird null');
+ // Gar nicht angemeldet — die Bilder des Hefts kommen als './assets/…'. Genau hier hat ein
+ // erster Versuch, die Form zu RATEN, jedes Bild geleert. Die Karte entscheidet, nicht das Muster.
+ assert.equal(loese('./assets/cutout-coat.webp'),'./assets/cutout-coat.webp');
+ assert.equal(loese('/heft/assets/cutout-coat.webp'),'/heft/assets/cutout-coat.webp');
+ // Scheiterte die ganze Runde, ist die Karte leer: dann wissen wir über nichts etwas
+ // und alles bleibt stehen. Alles zu leeren wäre schlimmer als ein Versuch zu laden.
+ const leer=bildLoeser({},u=>u);
+ assert.equal(leer('product-shots/b.png'),'product-shots/b.png');
+ // Leeres und Fehlendes geht unverändert durch bild().
+ assert.equal(loese(''),'');
+ assert.equal(loese(null),null);
+});
+
+test('Bildlöser: ein Werk ohne ladbares Bild kommt nicht auf die Bühne',()=>{
+ // Genau die Folge, die den grauen Kasten verhindert: heftAusZeilen() lässt Stücke
+ // ohne Bild weg (wie p-7 in den Fixtures). Mit null statt Bucket-Pfad greift das auch
+ // bei einer fehlgeschlagenen Signatur — vorher kam ein totes Bild durch.
+ const loese=bildLoeser({[zeilen.products[0].image_url]:null},u=>u);
+ const h=heftAusZeilen(zeilen,{bild:loese});
+ assert.ok(!h.products['p-1'],'p-1 hatte keine ladbare Adresse und fehlt');
+ assert.ok(h.products['p-2'],'die übrigen Werke stehen weiter');
 });

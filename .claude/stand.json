@@ -3,25 +3,20 @@
   "branch": "claude/teil-l-konto",
   "offene_prs": [
     {
-      "nr": 187,
-      "titel": "Doku: Befund zum Vorschau-Betrieb",
-      "status": "Draft, gruen",
-      "blockiert_durch": "Daoudas Entscheidung zu Streifentext und Frist — in Teil L13 ohnehin neu geregelt"
+      "nr": 190,
+      "titel": "Teil L: L1 haelt beim ersten Bruch an — die Migrationskette ist nicht abspielbar",
+      "status": "Draft",
+      "blockiert_durch": "Daoudas Entscheidung zu acquisition_leads (docs/teil-l/l1-bruch-migrationskette.md)"
     },
     {
-      "nr": 188,
-      "titel": "Teil K: Stand des Umzugs, K1 und K3",
-      "status": "Draft, gruen",
-      "blockiert_durch": "nichts mehr — Teil L hebt die Migrationsblockade auf"
-    },
-    {
-      "nr": 189,
-      "titel": "K7, K10, K13: Vorschau-Betrieb",
-      "status": "Draft, gruen, pruefer 15/15",
-      "blockiert_durch": "nichts — nur Ansehen"
+      "nr": 183,
+      "titel": "Kein Urteil ohne Messung — der Pruefstand darf nicht gruen melden, ohne gemessen zu haben",
+      "status": "Draft, aelter als der Rollback",
+      "blockiert_durch": "nur Ansehen"
     }
   ],
   "merge_reihenfolge": [
+    "MAIN IST WEITERGEZOGEN: #187, #188 und #189 sind gemergt (main steht auf 23a2df7). Dieser Zweig hat main hereingeholt — notbetrieb.mjs, rls-anon.mjs und docs/teil-k/ liegen jetzt hier.",
     "TEIL L LAEUFT. Der Auftrag setzt die deploy-choreografie AUSDRUECKLICH und BEGRENZT aus: nur fuer die Migrationen des Erstaufbaus auf cnxtdcifkrdxvajaikxq. Danach gilt sie unveraendert weiter.",
     "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
     "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
