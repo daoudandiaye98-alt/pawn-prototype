@@ -217,7 +217,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
               </div>
             ) : (
               <Link
-                to="/auth"
+                to="/konto"
                 aria-label="Anmelden"
                 className={`hidden items-center border-l-[1.5px] px-4 hover:bg-black hover:text-white xl:inline-flex ${border} ${text}`}
               >
@@ -320,7 +320,7 @@ export function PalaceHeader({ variant = "solid" }: { variant?: "solid" | "trans
               <button type="button" onClick={() => { setMenuOpen(false); void handleSignOut(); }} className="block text-[0.7rem] uppercase tracking-[0.32em] text-black/70">{t("nav.logout")}</button>
             </>
           ) : (
-            <Link to="/auth" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.login")}</Link>
+            <Link to="/konto" onClick={() => setMenuOpen(false)} className="text-[0.7rem] uppercase tracking-[0.32em] text-[#000000]">{t("nav.login")}</Link>
           )}
           <button
             type="button"

@@ -80,7 +80,7 @@ export function PublicHeader() {
           <button className="hidden opacity-70 hover:opacity-100 sm:block" aria-label="Search">
             <Search className="h-4 w-4" strokeWidth={1.3} />
           </button>
-          <Link to={user ? "/konto" : "/auth"} className="opacity-70 hover:opacity-100" aria-label={user ? "Account" : "Sign in"}>
+          <Link to="/konto" className="opacity-70 hover:opacity-100" aria-label={user ? "Account" : "Sign in"}>
             <User className="h-4 w-4" strokeWidth={1.3} />
           </Link>
           <Link to="/konto/2" className="hidden opacity-70 hover:opacity-100 sm:block" aria-label="Wishlist">

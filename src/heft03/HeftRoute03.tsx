@@ -187,7 +187,7 @@ export default function HeftRoute03() {
           abbruch: `${location.origin}/tasche`,
         },
         funktionen: {
-          anmelden: () => navigateRef.current(`/auth?next=${encodeURIComponent(location.pathname + location.search)}`),
+          anmelden: () => navigateRef.current(`/konto?next=${encodeURIComponent(location.pathname + location.search)}`),
           /** Eine Runde für alle Bildadressen des Hefts. */
           /*
            * Das `null` bleibt ein `null`. Hier stand `?? u`, und das war der Fehler:
