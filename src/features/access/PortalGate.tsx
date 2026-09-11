@@ -4,12 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
 /**
- * Ensures approved designers complete onboarding before reaching the Studio.
- * If session status !== 'complete' and user is not on /portal/onboarding,
- * redirect them there.
+ * KEIN Waechter — ein Wegweiser.
  *
- * Non-designers pass through untouched (RoleGate handles their case elsewhere).
- * Unauthenticated visitors pass through (prototype mode).
+ * Teil L12: dieser Baustein hat frueher wie ein Waechter ausgesehen und keiner
+ * gewesen. Er prueft keine Rolle und hat nie eine geprueft; wer angemeldet war,
+ * kam durch, egal als was. Weil er an /portal und /studio/onboarding hing und
+ * RoleGate an allem anderen, gaben zwei Waechter zwei Antworten fuer dieselbe
+ * Flaeche. Zutritt entscheidet jetzt allein RoleGate.
+ *
+ * Was hier bleibt, ist die eine Frage, die RoleGate nicht beantworten kann:
+ * hat dieses Haus den Einzug abgeschlossen? Wenn nicht, geht es zuerst dorthin.
+ *
+ * Deshalb gehoert PortalGate IMMER INNERHALB eines <RoleGate role="designer">.
+ * Allein davor gestellt laesst er jeden angemeldeten Besucher durch.
  */
 export function PortalGate({ children }: { children: ReactNode }) {
   const { user, roles, loading } = useAuth();

@@ -321,9 +321,9 @@ const App = () => (
                 <Route path="/studio/vertraege" element={<RoleGate role="designer"><StudioVertraege /></RoleGate>} />
                 <Route path="/studio/tueren" element={<RoleGate role="designer"><StudioOffeneTueren /></RoleGate>} />
 
-                <Route path="/studio/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
-                <Route path="/portal" element={<PortalGate><PortalOverview /></PortalGate>} />
-                <Route path="/portal/onboarding" element={<PortalGate><PortalOnboarding /></PortalGate>} />
+                <Route path="/studio/onboarding" element={<RoleGate role="designer"><PortalGate><PortalOnboarding /></PortalGate></RoleGate>} />
+                <Route path="/portal" element={<RoleGate role="designer"><PortalGate><PortalOverview /></PortalGate></RoleGate>} />
+                <Route path="/portal/onboarding" element={<RoleGate role="designer"><PortalGate><PortalOnboarding /></PortalGate></RoleGate>} />
                 <Route path="/portal/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />
 
                 <Route path="*" element={<NotFound />} />

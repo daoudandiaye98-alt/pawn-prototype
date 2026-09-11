@@ -150,6 +150,22 @@
         "huelle": "src/heft03/HeftRoute03.tsx",
         "begruendung": "Die Logik deckt anschluss.test.mjs ab. Hier wird die Verkabelung geprueft: dass das Anklopfen im laufenden Heft ueberhaupt stattfindet. Ohne diese Kontrolle koennte anklopfAdresse aus der Huelle fallen, ohne dass ein Test rot wird."
       }
+    },
+    {
+      "id": "Z12",
+      "zusage": "Hinter /admin, /studio und /portal entscheidet EIN Waechter, wer hinein darf — RoleGate. Kein zweiter, der etwas anderes sagt.",
+      "beleg": "Teil L12. Drei Adressen — /portal, /portal/onboarding und /studio/onboarding — hingen allein an PortalGate, und PortalGate prueft keine Rolle: er laesst jeden Angemeldeten durch. Eine angemeldete Kundschaft kam damit nicht nach /studio/postfach (RoleGate schickte sie nach /konto), aber sehr wohl nach /portal und /studio/onboarding. Zwei Waechter, zwei Antworten fuer dieselbe Flaeche. PortalGate sitzt jetzt innerhalb eines RoleGate und beantwortet nur noch die Frage, ob ein Haus den Einzug abgeschlossen hat.",
+      "pruefung": "nurEinWaechter",
+      "params": {
+        "datei": "src/App.tsx",
+        "bereiche": [
+          "/admin",
+          "/studio",
+          "/portal"
+        ],
+        "waechter": "RoleGate",
+        "begruendung": "Reine Weiterleitungen (<Navigate>) brauchen keinen Waechter — sie fuehren auf eine Adresse, die selbst einen hat."
+      }
     }
   ]
 }

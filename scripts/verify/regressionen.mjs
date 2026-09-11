@@ -351,6 +351,33 @@ function vorschauNurWennWeg({ modul, huelle, start }) {
   return OK;
 }
 
+/* Z12 — ein Waechter, nicht zwei.
+   Geprueft wird die Adresstabelle selbst: jede Adresse unter /admin, /studio
+   oder /portal muss entweder hinter einem RoleGate haengen oder eine reine
+   Weiterleitung sein. PortalGate allein zaehlt NICHT — er prueft keine Rolle.
+   Genau so ist die Luecke entstanden: drei Adressen hingen nur an ihm.
+   Steht eine passende Zeile nicht auf EINER Zeile, wird die Pruefung rot statt
+   still gruen — eine Kontrolle, die wegsieht, waere schlimmer als keine. */
+function nurEinWaechter({ datei, bereiche, waechter }) {
+  const zeilen = lies(datei).split("\n");
+  const treffer = [];
+  for (const [i, z] of zeilen.entries()) {
+    const m = z.match(/<Route\s+path="([^"]+)"/);
+    if (!m) continue;
+    const pfad = m[1];
+    if (!bereiche.some((b) => pfad === b || pfad.startsWith(b + "/"))) continue;
+    if (!z.includes("/>")) return nein(`${datei}:${i + 1}: die Route ${pfad} steht ueber mehrere Zeilen — diese Kontrolle kann sie nicht lesen und rate nicht`);
+    treffer.push({ nr: i + 1, pfad, zeile: z });
+  }
+  if (!treffer.length) return nein(`${datei}: keine einzige Adresse unter ${bereiche.join(", ")} gefunden — die Tabelle sieht anders aus als gedacht`);
+  for (const t of treffer) {
+    if (/element=\{<Navigate\b/.test(t.zeile)) continue;
+    if (t.zeile.includes(`<${waechter} `)) continue;
+    return nein(`${datei}:${t.nr}: ${t.pfad} haengt an keinem ${waechter} — wer angemeldet ist, kommt hier rein, egal als was`);
+  }
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -363,6 +390,7 @@ const PRUEFUNGEN = {
   keineUmgezogenenLinks,
   keineStripeSpalten,
   vorschauNurWennWeg,
+  nurEinWaechter,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

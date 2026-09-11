@@ -1,14 +1,24 @@
 /**
- * Role-based route gate.
+ * Der Waechter. EINER.
  *
- * Enforces PAWN's three-audience architecture:
- *   Owner  → /admin (Operating System)
- *   Designer → /portal (Studio)
- *   Customer → /account (Experience)
+ * Teil L12: es gab zwei. RoleGate hing an jeder /studio-Adresse und prueft die
+ * Rolle; PortalGate hing an /portal, /portal/onboarding und /studio/onboarding
+ * und prueft KEINE Rolle. Dieselbe Flaeche, zwei Antworten — eine angemeldete
+ * Kundschaft kam nicht nach /studio/postfach, aber sehr wohl nach /portal und
+ * /studio/onboarding. Seitdem gilt: hier faellt die Entscheidung ueber Zutritt,
+ * nirgends sonst. PortalGate entscheidet nur noch, WO im Studio ein Haus landet,
+ * und sitzt dafuer INNERHALB eines RoleGate.
  *
- * Prototype policy: if an unauthenticated visitor lands on /admin or /portal
- * we still render the surface (this is a public prototype) but expose a
- * clearly-labelled prototype banner so the role boundary stays visible.
+ * Die drei Publikumstueren:
+ *   admin    → /admin    (das Cockpit)
+ *   designer → /studio    (das Atelier)
+ *   Kundschaft → /konto   (das Heft)
+ *
+ * Durchlass fuer nicht Angemeldete: wer ohne Konto auf /admin oder /studio
+ * landet, sieht die Flaeche trotzdem — mit einem deutlichen Streifen darauf.
+ * Das ist Absicht, solange PAWN ein oeffentlicher Prototyp ist, und die einzige
+ * Stelle, an der es steht. Wenn Daouda den Durchlass schliessen will, faellt
+ * genau die eine Zeile unten weg.
  */
 import { Navigate, useLocation } from "react-router-dom";
 import { type ReactNode } from "react";
@@ -26,7 +36,9 @@ export function RoleGate({ role, fallback, children }: Props) {
 
   if (loading) return null;
 
-  // Unauthenticated: prototype pass-through, but let the surface show a banner.
+  // DER DURCHLASS. Nicht angemeldet heisst hier: sehen ja, ein Streifen sagt es an.
+  // Eine Zeile, ein Ort. Wer ihn schliessen will, ersetzt sie durch
+  //   return <Navigate to="/konto" replace state={{ from: location }} />;
   if (!user) return <>{children}</>;
 
   if (roles.includes(role)) return <>{children}</>;
