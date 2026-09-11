@@ -9,6 +9,7 @@ import {kuratiere,kurationsNotiz} from './kuration.mjs';
 import {laden,speichern,vergessen} from './store.mjs';
 import {demoQuelle} from './quelle.mjs';
 import {quelleWaehlen,anklopfen} from './notbetrieb.mjs';
+import {uebernahme} from './uebernahme.mjs';
 import {adressen} from './routen.mjs';
 import {massZeile} from './store.mjs';
 
@@ -28,6 +29,10 @@ const adresse=adressen(optionen.adresse||'hash',optionen.basis||'');
 const auf=optionen.auf||{};
 if(optionen.assets)assetBasis(optionen.assets);
 const zustimmungMelden=()=>{if(auf.zustimmung)auf.zustimmung(state.consent);};
+// Hinaus aus dem Heft: /admin und /studio sind React-Seiten, keine Doppelseiten.
+// Ueber die Huelle, damit der Router den Wechsel fuehrt und das Heft sauber abraeumt.
+// Ohne Huelle (Prototyp, direkt im Browser) bleibt der harte Sprung als Rueckfall.
+const hinaus=typeof optionen.hinaus==='function'?optionen.hinaus:(pfad=>{location.href=pfad;});
 const hoerer=[];
 const hoeren=(ziel,typ,fn,opt)=>{ziel.addEventListener(typ,fn,opt);hoerer.push([ziel,typ,fn,opt]);};
 // Erst die Daten, dann das Heft: Sektionen und Häuser hängen davon ab.
@@ -250,7 +255,7 @@ function readRefresh(still=true){speichern(state);chatRefresh();
   world.spread.classList.toggle('still',still);$('mobile-reader').classList.toggle('still',still);
   world.setContent(html,theme);worteSpalten(world.spread);videosLaden(world.spread);
   if(istLeser()){$('mobile-reader').innerHTML=html;worteSpalten($('mobile-reader'));videosLaden($('mobile-reader'));
-   if(['konto','dna'].includes(nav.route.section)&&nav.route.index===0){const grid=$('mobile-reader').firstElementChild;if(grid&&grid.children.length>1)grid.append(grid.firstElementChild);}}
+   if((nav.route.section==='konto'&&nav.route.index<=1)||(nav.route.section==='dna'&&nav.route.index===0)){const grid=$('mobile-reader').firstElementChild;if(grid&&grid.children.length>1)grid.append(grid.firstElementChild);}}
   else $('mobile-reader').innerHTML='';
   fokusZurueck(fokus);
   const vars=theme||{paper:'#f9f7f2',ink:'#252421',accent:'#733039',font:'Playfair'};
@@ -272,8 +277,33 @@ function product(id){if(!products[id])return;activeProduct=id;
  nav.route.werk=id;
  showDrawer(productView(products[id],state));quelle.signal('ansehen',{product:products[id]});}
 function cart(){activeProduct=null;showDrawer(cartView(state));}
-function account(){go({section:'konto',index:0});}
-function saved(){go({section:'konto',index:1});}
+// Ein Port antwortet mit {ok} oder {fehler}. Nie eine Ausnahme, nie ein stilles nichts —
+// ein Formular, das ohne Wort stehen bleibt, ist schlimmer als eine Fehlermeldung.
+function zugangFehler(a){
+ if(a&&a.ok)return '';
+ if(a&&a.fehler==='vorschau')return 'Im Vorschau-Betrieb kann kein Konto angelegt werden.';
+ return (a&&a.fehler)||'Das hat nicht geklappt. Versuch es noch einmal.';
+}
+
+async function zugangAbsenden(modus,data){
+ state.zugang={...state.zugang,laeuft:true,fehler:'',hinweis:''};readRefresh();
+ let antwort;
+ try{
+  antwort=modus==='registrieren'
+   ? await quelle.zugang.registrieren({email:String(data.email||''),passwort:String(data.passwort||''),wiederholung:String(data.wiederholung||''),name:String(data.name||'')})
+   : await quelle.zugang.anmelden({email:String(data.email||''),passwort:String(data.passwort||'')});
+ }catch(_){antwort={fehler:'Die Anmeldung hat nicht geantwortet.'};}
+ const fehler=zugangFehler(antwort);
+ if(fehler){state.zugang={...state.zugang,laeuft:false,fehler};readRefresh();return;}
+ // Registrieren endet in der Regel bei einer Bestaetigungsmail, nicht in einer Sitzung.
+ // Anmelden endet in einer Sitzung — die Huelle fuehrt dann durch die Tuer der Rolle.
+ state.zugang={...state.zugang,laeuft:false,fehler:'',hinweis:antwort.bestaetigung||''};
+ await kontoLaden();
+ readRefresh();
+}
+
+function account(){go({section:'konto',index:state.profile?1:0});}
+function saved(){go({section:'konto',index:2});}
 function search(){go({section:'suche',index:0});}
 function inquiry(id){
  const p=products[id];showDrawer('<p class="eyebrow">ANFRAGE AN '+houses[p.house].name+'</p><h2 id="dialog-title">'+p.name+'</h2><p>Erzähle dem Haus, was du dir vorstellst.</p><form data-inquiry-form><label>Deine E-Mail<input type="email" name="email" required></label><label>Deine Nachricht<textarea name="message" rows="6" minlength="15" required placeholder="Wunsch, Format oder eine Frage zur Arbeit"></textarea></label><button class="solid" type="submit">Anfrage prüfen</button></form><p class="small-note">In dieser Vorschau wird keine Nachricht verschickt.</p>');
@@ -398,7 +428,11 @@ async function kontoLaden(){
  try{
   const k=await quelle.konto.aktuell();
   if(!k)return;
-  state.profile={name:k.name,email:k.email,id:k.id};if(state.consent===null)state.consent=true;
+  /* Festhalten, was VOR dem Zusammenfuehren im Heft lag — gleich darunter wird
+     state.stil und state.saved mit dem Konto vermischt, und danach liesse sich
+     nicht mehr sagen, was davon der Gast mitgebracht hat. */
+  const vorherigerStil={...(state.stil||{})},vorherGemerkt=[...(state.saved||[])];
+  state.profile={name:k.name,email:k.email,id:k.id,rollen:k.rollen||[]};if(state.consent===null)state.consent=true;
   const [merk,stil,masse,orders,anfragen]=await Promise.all([quelle.merkliste.laden(),quelle.stil.laden(),quelle.masse.laden(),
    quelle.konto.bestellungen?quelle.konto.bestellungen():[],quelle.konto.anfragen?quelle.konto.anfragen():[]]);
   if(Array.isArray(orders))state.orders=orders;
@@ -406,6 +440,12 @@ async function kontoLaden(){
   if(Array.isArray(merk))state.saved=[...new Set([...merk.filter(id=>products[id]),...state.saved])];
   if(stil&&stil.stil&&Object.keys(stil.stil).length){state.stil={...stil.stil,...state.stil};if(stil.fuerWen)state.measurements.fuerWen=state.measurements.fuerWen||stil.fuerWen;}
   if(masse)for(const [k2,v] of Object.entries(masse))if(v!=null&&state.measurements[k2]===undefined)state.measurements[k2]=String(v);
+  // Teil L11 — und jetzt der Weg nach OBEN. Bis hierher hat das Heft nur geholt,
+  // was im Konto liegt; was der Gast vorher gesammelt hat, blieb fuer immer im
+  // Browser. Die Entscheidung, WAS hinaufgeht, steht in uebernahme.mjs.
+  const hinauf=uebernahme({stil:vorherigerStil,saved:vorherGemerkt},{stil:stil&&stil.stil,saved:Array.isArray(merk)?merk:[]});
+  if(hinauf.stil)quelle.stil.speichern(hinauf.stil,state.foto||'',state.measurements?.fuerWen||'').catch(()=>{});
+  for(const id of hinauf.merken)quelle.merkliste.setzen(id,true).catch(()=>{});
   updateCart();if(reading(nav.route))readRefresh();
  }catch(e){if(auf.fehler)auf.fehler(e);}
 }
@@ -511,6 +551,21 @@ hoeren(document,'click',e=>{
  if(b.hasAttribute('data-consent-ja')){state.consent=true;speichern(state);zustimmungMelden();blaseWeg();toast('PAWN merkt sich das — auf diesem Gerät.');readRefresh();begleiterTakt();return;}
  if(b.hasAttribute('data-consent-nein')){state.consent=false;vergessen();zustimmungMelden();blaseWeg();begleiterTakt();return;}
  if(b.hasAttribute('data-konto')){chatSchliessen();go({section:'konto',index:0});return;}
+ // Teil L5 — die Zugang-Doppelseite. Umschalten leert die Meldung: ein Fehler von
+ // eben gehoert nicht ueber ein Formular, das man gerade erst geoeffnet hat.
+ if(b.hasAttribute('data-zugang-modus')){state.zugang={...state.zugang,modus:b.dataset.zugangModus,fehler:'',hinweis:''};readRefresh();return;}
+ if(b.hasAttribute('data-zugang-publikum')){state.zugang={...state.zugang,publikum:b.dataset.zugangPublikum,fehler:'',hinweis:''};readRefresh();return;}
+ if(b.hasAttribute('data-aussen')){hinaus(b.dataset.aussen);return;}
+ if(b.hasAttribute('data-zugang-google')){
+  state.zugang={...state.zugang,laeuft:true,fehler:'',hinweis:''};readRefresh();
+  // Ohne Ziel: die Huelle weiss besser, wo der Besucher steht — sie liest die Adresse
+  // und ein etwaiges ?next= aus der Leiste. Das Heft kennt beides nicht verlaesslich.
+  quelle.zugang.google({}).then(a=>{
+   // Bei Erfolg verlaesst der Browser die Seite — was hier ankommt, ist ein Fehler.
+   state.zugang={...state.zugang,laeuft:false,fehler:zugangFehler(a)};readRefresh();
+  }).catch(()=>{state.zugang={...state.zugang,laeuft:false,fehler:'Google hat nicht geantwortet.'};readRefresh();});
+  return;
+ }
  if(b.hasAttribute('data-clear-memory')){
   // Erst der Server, dann das Gerät. Nur zu vergessen, was hier liegt, wäre eine
   // halbe Löschung — und die schlimmere, weil sie sich wie eine ganze anfühlt.
@@ -549,6 +604,7 @@ hoeren(document,'submit',e=>{
  if(f.hasAttribute('data-cart-form')){try{state.cart=addCart(state.cart,products[f.dataset.id],data.size);updateCart();toast('In der Tasche.');}catch(error){toast(error.message);}return;}
  if(f.hasAttribute('data-style-form')){state.style=data.style;readRefresh();toast('Gemerkt. Ich lese es als Hinweis.');}
  if(f.hasAttribute('data-search-form')){const route={section:'suche',index:0};for(const k of ['q','world','house','max','sort','available'])if(data[k])route[k]=String(data[k]);if(key(route)===key(nav.route)){displayKey='';invalidate();}else go(route);}
+ if(f.hasAttribute('data-zugang-form')){zugangAbsenden(f.dataset.zugangForm,data);return;}
  if(f.hasAttribute('data-profile-form')){if(quelle.art!=='demo'){quelle.konto.anmelden();return;}state.profile={name:data.name,email:data.email};if(state.consent===null)state.consent=true;speichern(state);readRefresh();toast('Willkommen, '+data.name+'. PAWN merkt sich das auf diesem Gerät.');}
  if(f.hasAttribute('data-goal-form')){state.goal=data.goal;readRefresh();toast('Deine Richtung ist vorgemerkt.');}
  if(f.hasAttribute('data-measure-form')){state.measurements={...state.measurements,...data};zustimmungFragen();quelle.masse.speichern(massZeile(state.measurements,state.stil)).catch(()=>{});readRefresh();toast(f.hasAttribute('data-raum')?'Gespeichert. Jede Empfehlung wird jetzt räumlich geprüft.':'Gespeichert. Jedes Stück wird jetzt gegen deine Maße geprüft.');}

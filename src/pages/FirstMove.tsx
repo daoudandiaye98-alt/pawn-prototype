@@ -560,12 +560,14 @@ function ZeigenStep(props: {
         <form onSubmit={zugang.submit} className="mt-6 space-y-3">
           <Input type="email" placeholder={t("start.gate.email")} value={zugang.email} onChange={(e) => zugang.setEmail(e.target.value)} required />
           <Input type="password" placeholder={t("start.gate.password")} value={zugang.password} onChange={(e) => zugang.setPassword(e.target.value)} required />
+          {/* Teil L7: zweimal tippen, einmal geprueft — die Pruefung selbst steht in useAuthForm. */}
+          <Input type="password" placeholder={t("auth.passwordRepeat")} value={zugang.passwordRepeat} onChange={(e) => zugang.setPasswordRepeat(e.target.value)} required />
           <Button type="submit" variant="editorial" size="chip" loading={zugang.busy} className="w-full">
             {t("start.gate.createAccess")}
           </Button>
         </form>
         <Link
-          to="/auth?returnTo=/start"
+          to="/konto?next=%2Fstart"
           className="mt-3 inline-block text-[0.62rem] uppercase tracking-[0.24em] text-black/60 hover:text-black"
         >
           {t("start.gate.haveAccess")}

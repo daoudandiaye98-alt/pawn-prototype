@@ -106,6 +106,9 @@ export const SEITEN: SeitenZiel[] = [
   { name: "haus", pfad: `/haus/${HAUS_SLUG}` },
   { name: "welt-mode", pfad: "/mode" },
   { name: "tasche", pfad: "/tasche" },
+  /* Teil L5 — der Zugang ist seit dem Umzug ins Heft eine Doppelseite und keine
+     eigene Seite mehr. Er wird gemessen, weil ohne ihn niemand ein Konto bekommt. */
+  { name: "zugang", pfad: "/konto" },
 ];
 
 /** Absichtlich ungültig — für 4.5. */

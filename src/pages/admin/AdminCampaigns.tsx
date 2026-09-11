@@ -3,7 +3,6 @@ import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { Navigate } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 
 interface DesignerLite { id: string; brand_name: string }
@@ -42,7 +41,11 @@ export default function AdminCampaigns() {
   }, [user, roles]);
 
   if (loading) return null;
-  if (!user || !roles.includes("admin")) return <Navigate to="/auth" replace />;
+  // Teil L12: hier stand ein zweiter Waechter — "nicht angemeldet? raus nach /auth".
+  // Er widersprach RoleGate, der nicht Angemeldete bewusst durchlaesst und einen
+  // Streifen darueber legt. Zwei Antworten fuer dieselbe Tuer. Zutritt entscheidet
+  // jetzt allein RoleGate in App.tsx. Das Laden der Daten oben bleibt an `user`
+  // gebunden — ohne Konto gibt es nichts zu holen, und RLS gibt auch nichts her.
 
   const create = async () => {
     if (!newForm) return;

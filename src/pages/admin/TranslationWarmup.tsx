@@ -10,7 +10,7 @@ import { toast } from "sonner";
  */
 const ROUTES = [
   "/", "/suche", "/mode", "/interior", "/kunst", "/haeuser", "/deine-dna",
-  "/tasche", "/auth", "/fuer-designer", "/kontakt", "/versand", "/presse",
+  "/tasche", "/konto", "/fuer-designer", "/kontakt", "/versand", "/presse",
   "/agb", "/datenschutz", "/impressum", "/widerruf",
 ];
 

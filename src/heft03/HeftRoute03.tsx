@@ -21,6 +21,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { registrieren } from "@/features/auth/registrieren";
+import { sichererPfad, tuerFuerRollen } from "@/features/auth/tueren";
+import { useI18n } from "@/lib/i18n";
 import { useConsent } from "@/lib/consent";
 import { bildVariante, signiereMedia } from "@/lib/media";
 import { createCustomRequestThread } from "@/features/messages/customRequest";
@@ -70,7 +73,8 @@ function stylesheet(href: string): HTMLLinkElement {
 export default function HeftRoute03() {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
-  const { user, roles } = useAuth();
+  const { user, roles, signInWithPassword, signUp, signInWithGoogle } = useAuth();
+  const { t } = useI18n();
   const { value: consent, setConsent } = useConsent();
 
   const heftRef = useRef<Griff | null>(null);
@@ -87,6 +91,44 @@ export default function HeftRoute03() {
   setConsentRef.current = setConsent;
   const userRef = useRef(user);
   userRef.current = user;
+  const rolesRef = useRef(roles);
+  rolesRef.current = roles;
+
+  /**
+   * Teil L5–L9 — was die Zugang-Doppelseite im Heft braucht.
+   *
+   * Das Heft kennt nur die drei Fragen und die Antwort `{ok}` oder `{fehler}`;
+   * `supabase.auth`, der Vergleich der beiden Passwörter und die Frage, welche Tür
+   * eine Rolle öffnet, liegen hier. Der Vergleich selbst steht in
+   * `features/auth/registrieren.ts` — dieselbe Funktion, die `useAuthForm` ruft.
+   *
+   * `?next=` schlägt die Rolle: wer aus der Tasche heraus angemeldet wurde, will
+   * zurück in die Tasche, nicht ins Cockpit.
+   */
+  const zugangRef = useRef<{
+    anmelden(d: { email: string; passwort: string }): Promise<{ ok?: boolean; fehler?: string }>;
+    registrieren(d: { email: string; passwort: string; wiederholung: string; name?: string }): Promise<{ ok?: boolean; fehler?: string; bestaetigung?: string }>;
+    google(): Promise<{ ok?: boolean; fehler?: string }>;
+  } | null>(null);
+  zugangRef.current = {
+    async anmelden({ email, passwort }) {
+      const { error } = await signInWithPassword(email.trim(), passwort);
+      if (error) return { fehler: error };
+      const next = sichererPfad(new URLSearchParams(window.location.search).get("next"));
+      navigateRef.current(next ?? tuerFuerRollen(rolesRef.current), { replace: true });
+      return { ok: true };
+    },
+    async registrieren(d) {
+      const { fehler } = await registrieren(signUp, d, t("auth.passwordMismatch"));
+      if (fehler) return { fehler };
+      return { ok: true, bestaetigung: t("auth.checkEmail") };
+    },
+    async google() {
+      const next = sichererPfad(new URLSearchParams(window.location.search).get("next"));
+      const { error } = await signInWithGoogle(next ?? undefined);
+      return error ? { fehler: error } : { ok: true };
+    },
+  };
 
   /**
    * Seitenbesuche zählen wie `usePageVisit`: nur eingeloggt, Verweildauer alle 20 s.
@@ -187,7 +229,14 @@ export default function HeftRoute03() {
           abbruch: `${location.origin}/tasche`,
         },
         funktionen: {
-          anmelden: () => navigateRef.current(`/auth?next=${encodeURIComponent(location.pathname + location.search)}`),
+          anmelden: () => navigateRef.current(`/konto?next=${encodeURIComponent(location.pathname + location.search)}`),
+          /** Die Rollen hat useAuth() ohnehin geladen — keine zweite Abfrage dafür. */
+          rollen: () => rolesRef.current ?? [],
+          zugang: {
+            anmelden: (d: { email: string; passwort: string }) => zugangRef.current!.anmelden(d),
+            registrieren: (d: { email: string; passwort: string; wiederholung: string; name?: string }) => zugangRef.current!.registrieren(d),
+            google: () => zugangRef.current!.google(),
+          },
           /** Eine Runde für alle Bildadressen des Hefts. */
           /*
            * Das `null` bleibt ein `null`. Hier stand `?? u`, und das war der Fehler:
@@ -236,6 +285,9 @@ export default function HeftRoute03() {
            entschiede allein eine Frist — und dann landete eine langsame, aber gesunde
            Datenbank in der Beispielausgabe. Siehe notbetrieb.mjs. */
         anklopfAdresse: SUPABASE_URL,
+        /* /admin und /studio sind React-Seiten, keine Doppelseiten. Über den Router,
+           damit das Heft beim Verlassen sauber abgeräumt wird. */
+        hinaus: (pfad: string) => navigateRef.current(sichererPfad(pfad) ?? "/"),
         zustimmung: consent === "accepted" ? true : consent === "essential" ? false : null,
         auf: {
           /* Das Heft schreibt die History selbst. React Router hört `pushState` nicht —

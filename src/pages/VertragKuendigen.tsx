@@ -59,7 +59,7 @@ export default function VertragKuendigen() {
           {!user ? (
             <>
               <p className="font-sans text-sm text-[#000000]/80">Melde dich an, um dein Abo zu kündigen.</p>
-              <Link to="/auth" className="mt-4 inline-block border border-[#000000] bg-[#000000] px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.24em] text-[#FFFFFF]">
+              <Link to="/konto" className="mt-4 inline-block border border-[#000000] bg-[#000000] px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.24em] text-[#FFFFFF]">
                 Anmelden
               </Link>
             </>
