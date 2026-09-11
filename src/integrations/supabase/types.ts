@@ -334,6 +334,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_budget_ledger_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_config: {
@@ -611,6 +618,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "campaigns_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "campaigns_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -771,6 +792,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "credits_ledger_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cultural_currents: {
@@ -863,6 +891,7 @@ export type Database = {
           height_cm: number | null
           hip_cm: number | null
           inseam_cm: number | null
+          raum: Json | null
           room_note: string | null
           shoulder_cm: number | null
           updated_at: string
@@ -877,6 +906,7 @@ export type Database = {
           height_cm?: number | null
           hip_cm?: number | null
           inseam_cm?: number | null
+          raum?: Json | null
           room_note?: string | null
           shoulder_cm?: number | null
           updated_at?: string
@@ -891,6 +921,7 @@ export type Database = {
           height_cm?: number | null
           hip_cm?: number | null
           inseam_cm?: number | null
+          raum?: Json | null
           room_note?: string | null
           shoulder_cm?: number | null
           updated_at?: string
@@ -1018,6 +1049,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_automations_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_billing_profiles: {
@@ -1089,6 +1127,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_billing_profiles_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_brand_dna: {
@@ -1146,6 +1191,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: true
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designer_brand_dna_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -1243,6 +1295,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_onboarding_sessions_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_opportunities: {
@@ -1320,6 +1379,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_opportunities_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designer_page_blocks: {
@@ -1356,6 +1422,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designer_page_blocks_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -1399,6 +1472,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "designer_payout_profiles_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       designers: {
@@ -1422,7 +1502,9 @@ export type Database = {
           image_usage_consent: boolean
           image_usage_consent_at: string | null
           instagram: string | null
+          intern: boolean
           is_featured: boolean
+          kauf_freigeschaltet: boolean
           location: string | null
           manifesto: string | null
           media_rights_granted_at: string | null
@@ -1482,7 +1564,9 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
+          intern?: boolean
           is_featured?: boolean
+          kauf_freigeschaltet?: boolean
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
@@ -1542,7 +1626,9 @@ export type Database = {
           image_usage_consent?: boolean
           image_usage_consent_at?: string | null
           instagram?: string | null
+          intern?: boolean
           is_featured?: boolean
+          kauf_freigeschaltet?: boolean
           location?: string | null
           manifesto?: string | null
           media_rights_granted_at?: string | null
@@ -1721,6 +1807,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "edition_participants_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "edition_participants_edition_id_fkey"
             columns: ["edition_id"]
             isOneToOne: false
@@ -1792,6 +1885,54 @@ export type Database = {
           term?: string
           updated_at?: string
           world?: string[]
+        }
+        Relationships: []
+      }
+      first_move_sessions: {
+        Row: {
+          about_source: string | null
+          about_text: string | null
+          billing: Json
+          brand_name: string | null
+          country: string
+          created_at: string
+          location: string | null
+          rochade: Json
+          shipping_de_eu: boolean
+          step: string
+          updated_at: string
+          user_id: string
+          works: Json
+        }
+        Insert: {
+          about_source?: string | null
+          about_text?: string | null
+          billing?: Json
+          brand_name?: string | null
+          country?: string
+          created_at?: string
+          location?: string | null
+          rochade?: Json
+          shipping_de_eu?: boolean
+          step?: string
+          updated_at?: string
+          user_id: string
+          works?: Json
+        }
+        Update: {
+          about_source?: string | null
+          about_text?: string | null
+          billing?: Json
+          brand_name?: string | null
+          country?: string
+          created_at?: string
+          location?: string | null
+          rochade?: Json
+          shipping_de_eu?: boolean
+          step?: string
+          updated_at?: string
+          user_id?: string
+          works?: Json
         }
         Relationships: []
       }
@@ -1942,6 +2083,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "house_milestones_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: true
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       house_models: {
@@ -1990,6 +2138,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_models_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -2042,6 +2197,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "house_settings_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       house_signatures: {
@@ -2075,6 +2237,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_signatures_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -2146,6 +2315,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_themes_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -2425,6 +2601,42 @@ export type Database = {
         }
         Relationships: []
       }
+      kunden_stil: {
+        Row: {
+          created_at: string
+          form: string | null
+          foto_befund: Json | null
+          fuer_wen: string | null
+          quelle: string
+          richtung: string | null
+          updated_at: string
+          user_id: string
+          welt: string | null
+        }
+        Insert: {
+          created_at?: string
+          form?: string | null
+          foto_befund?: Json | null
+          fuer_wen?: string | null
+          quelle?: string
+          richtung?: string | null
+          updated_at?: string
+          user_id: string
+          welt?: string | null
+        }
+        Update: {
+          created_at?: string
+          form?: string | null
+          foto_befund?: Json | null
+          fuer_wen?: string | null
+          quelle?: string
+          richtung?: string | null
+          updated_at?: string
+          user_id?: string
+          welt?: string | null
+        }
+        Relationships: []
+      }
       media_assets: {
         Row: {
           advertises_text: string | null
@@ -2436,6 +2648,7 @@ export type Database = {
           note: string | null
           origin: Database["public"]["Enums"]["media_origin"]
           performance: Json
+          plan_beispiel: string | null
           product_id: string | null
           review_note: string | null
           review_status: Database["public"]["Enums"]["media_review_status"]
@@ -2458,6 +2671,7 @@ export type Database = {
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
           performance?: Json
+          plan_beispiel?: string | null
           product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
@@ -2480,6 +2694,7 @@ export type Database = {
           note?: string | null
           origin?: Database["public"]["Enums"]["media_origin"]
           performance?: Json
+          plan_beispiel?: string | null
           product_id?: string | null
           review_note?: string | null
           review_status?: Database["public"]["Enums"]["media_review_status"]
@@ -2505,6 +2720,20 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
             referencedColumns: ["id"]
           },
           {
@@ -2566,6 +2795,20 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_threads_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_threads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
             referencedColumns: ["id"]
           },
           {
@@ -2897,6 +3140,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partie_zuege_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pawn_signals: {
@@ -2960,6 +3210,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_usage_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -3078,6 +3335,20 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_shot_requests_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_shot_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
             referencedColumns: ["id"]
           },
           {
@@ -3237,6 +3508,13 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -3339,6 +3617,352 @@ export type Database = {
             referencedRelation: "designers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "referrals_referrer_designer_id_fkey"
+            columns: ["referrer_designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rochade_auftraege: {
+        Row: {
+          befund: Json
+          created_at: string
+          designer_id: string
+          einwilligung_at: string
+          einwilligung_quelle: string
+          einwilligung_user: string
+          fehler: string | null
+          id: string
+          kontingent: Json
+          kontingent_erreicht: string | null
+          letzter_schritt_at: string
+          meldung: string | null
+          phase: string
+          plattform: string
+          quell_host: string
+          quell_url: string
+          status: string
+          updated_at: string
+          user_id: string
+          verbrauch: Json
+        }
+        Insert: {
+          befund?: Json
+          created_at?: string
+          designer_id: string
+          einwilligung_at: string
+          einwilligung_quelle?: string
+          einwilligung_user: string
+          fehler?: string | null
+          id?: string
+          kontingent?: Json
+          kontingent_erreicht?: string | null
+          letzter_schritt_at?: string
+          meldung?: string | null
+          phase?: string
+          plattform?: string
+          quell_host: string
+          quell_url: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          verbrauch?: Json
+        }
+        Update: {
+          befund?: Json
+          created_at?: string
+          designer_id?: string
+          einwilligung_at?: string
+          einwilligung_quelle?: string
+          einwilligung_user?: string
+          fehler?: string | null
+          id?: string
+          kontingent?: Json
+          kontingent_erreicht?: string | null
+          letzter_schritt_at?: string
+          meldung?: string | null
+          phase?: string
+          plattform?: string
+          quell_host?: string
+          quell_url?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verbrauch?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_auftraege_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_auftraege_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rochade_bilder: {
+        Row: {
+          auftrag_id: string
+          begonnen_at: string | null
+          breite: number | null
+          bytes: number | null
+          created_at: string
+          fehler: string | null
+          hoehe: number | null
+          id: string
+          inhalt_hash: string | null
+          kandidat_id: string
+          pfad: string | null
+          pfad_klein: string | null
+          quell_url: string
+          reihenfolge: number
+          status: string
+          updated_at: string
+          versuche: number
+        }
+        Insert: {
+          auftrag_id: string
+          begonnen_at?: string | null
+          breite?: number | null
+          bytes?: number | null
+          created_at?: string
+          fehler?: string | null
+          hoehe?: number | null
+          id?: string
+          inhalt_hash?: string | null
+          kandidat_id: string
+          pfad?: string | null
+          pfad_klein?: string | null
+          quell_url: string
+          reihenfolge?: number
+          status?: string
+          updated_at?: string
+          versuche?: number
+        }
+        Update: {
+          auftrag_id?: string
+          begonnen_at?: string | null
+          breite?: number | null
+          bytes?: number | null
+          created_at?: string
+          fehler?: string | null
+          hoehe?: number | null
+          id?: string
+          inhalt_hash?: string | null
+          kandidat_id?: string
+          pfad?: string | null
+          pfad_klein?: string | null
+          quell_url?: string
+          reihenfolge?: number
+          status?: string
+          updated_at?: string
+          versuche?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_bilder_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_auftraege"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_bilder_kandidat_id_fkey"
+            columns: ["kandidat_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_kandidaten"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rochade_kandidaten: {
+        Row: {
+          angebotstyp: string | null
+          auftrag_id: string
+          beschreibung_text: string | null
+          created_at: string
+          designer_id: string
+          deutung: Json
+          fehler: string | null
+          gewaehlt: boolean
+          id: string
+          preis_cent: number | null
+          product_id: string | null
+          quell_url: string | null
+          roh: Json
+          schluessel: string
+          seite_id: string | null
+          sortierung: number
+          status: string
+          titel: string | null
+          updated_at: string
+          varianten: Json
+          verfuegbar: boolean | null
+          waehrung: string | null
+          welt: string | null
+          welt_felder: Json
+        }
+        Insert: {
+          angebotstyp?: string | null
+          auftrag_id: string
+          beschreibung_text?: string | null
+          created_at?: string
+          designer_id: string
+          deutung?: Json
+          fehler?: string | null
+          gewaehlt?: boolean
+          id?: string
+          preis_cent?: number | null
+          product_id?: string | null
+          quell_url?: string | null
+          roh?: Json
+          schluessel: string
+          seite_id?: string | null
+          sortierung?: number
+          status?: string
+          titel?: string | null
+          updated_at?: string
+          varianten?: Json
+          verfuegbar?: boolean | null
+          waehrung?: string | null
+          welt?: string | null
+          welt_felder?: Json
+        }
+        Update: {
+          angebotstyp?: string | null
+          auftrag_id?: string
+          beschreibung_text?: string | null
+          created_at?: string
+          designer_id?: string
+          deutung?: Json
+          fehler?: string | null
+          gewaehlt?: boolean
+          id?: string
+          preis_cent?: number | null
+          product_id?: string | null
+          quell_url?: string | null
+          roh?: Json
+          schluessel?: string
+          seite_id?: string | null
+          sortierung?: number
+          status?: string
+          titel?: string | null
+          updated_at?: string
+          varianten?: Json
+          verfuegbar?: boolean | null
+          waehrung?: string | null
+          welt?: string | null
+          welt_felder?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_kandidaten_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_auftraege"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_kandidaten_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_kandidaten_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_kandidaten_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_kandidaten_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rochade_kandidaten_seite_id_fkey"
+            columns: ["seite_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_seiten"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rochade_seiten: {
+        Row: {
+          art: string
+          auftrag_id: string
+          begonnen_at: string | null
+          created_at: string
+          fehler: string | null
+          gefunden: number
+          http_status: number | null
+          id: string
+          status: string
+          updated_at: string
+          url: string
+          url_schluessel: string
+          versuche: number
+        }
+        Insert: {
+          art?: string
+          auftrag_id: string
+          begonnen_at?: string | null
+          created_at?: string
+          fehler?: string | null
+          gefunden?: number
+          http_status?: number | null
+          id?: string
+          status?: string
+          updated_at?: string
+          url: string
+          url_schluessel: string
+          versuche?: number
+        }
+        Update: {
+          art?: string
+          auftrag_id?: string
+          begonnen_at?: string | null
+          created_at?: string
+          fehler?: string | null
+          gefunden?: number
+          http_status?: number | null
+          id?: string
+          status?: string
+          updated_at?: string
+          url?: string
+          url_schluessel?: string
+          versuche?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rochade_seiten_auftrag_id_fkey"
+            columns: ["auftrag_id"]
+            isOneToOne: false
+            referencedRelation: "rochade_auftraege"
+            referencedColumns: ["id"]
+          },
         ]
       }
       site_content: {
@@ -3420,6 +4044,20 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staging_requests_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staging_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
             referencedColumns: ["id"]
           },
           {
@@ -3573,6 +4211,7 @@ export type Database = {
           designer_id: string
           id: string
           performance: Json
+          plan_beispiel: string | null
           premiere: boolean
           regisseur_verdict: Json | null
           rights_granted: boolean
@@ -3588,6 +4227,7 @@ export type Database = {
           designer_id: string
           id?: string
           performance?: Json
+          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
@@ -3603,6 +4243,7 @@ export type Database = {
           designer_id?: string
           id?: string
           performance?: Json
+          plan_beispiel?: string | null
           premiere?: boolean
           regisseur_verdict?: Json | null
           rights_granted?: boolean
@@ -3625,6 +4266,13 @@ export type Database = {
             columns: ["designer_id"]
             isOneToOne: false
             referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_assets_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
             referencedColumns: ["id"]
           },
         ]
@@ -3653,14 +4301,202 @@ export type Database = {
             foreignKeyName: "wishlists_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "heft_produkte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
       }
+      zugang_bootstrap: {
+        Row: {
+          email: string
+          haus_slug: string | null
+          notiz: string | null
+          rolle: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          email: string
+          haus_slug?: string | null
+          notiz?: string | null
+          rolle: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          email?: string
+          haus_slug?: string | null
+          notiz?: string | null
+          rolle?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      zugang_protokoll: {
+        Row: {
+          detail: string | null
+          email: string | null
+          fehler: string | null
+          id: number
+          wann: string
+        }
+        Insert: {
+          detail?: string | null
+          email?: string | null
+          fehler?: string | null
+          id?: never
+          wann?: string
+        }
+        Update: {
+          detail?: string | null
+          email?: string | null
+          fehler?: string | null
+          id?: never
+          wann?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      heft_haeuser: {
+        Row: {
+          atelier_caption: string | null
+          atelier_image_url: string | null
+          avatar_url: string | null
+          banner_url: string | null
+          brand_dna: Json | null
+          brand_name: string | null
+          collection_title: string | null
+          country: string | null
+          hero_image_url: string | null
+          house_number: number | null
+          id: string | null
+          instagram: string | null
+          is_featured: boolean | null
+          location: string | null
+          manifesto: string | null
+          page_published_at: string | null
+          plan: Database["public"]["Enums"]["designer_plan"] | null
+          portrait_url: string | null
+          published: boolean | null
+          quote: string | null
+          quote_role: string | null
+          slug: string | null
+          status: string | null
+          story: string | null
+          tags: string[] | null
+          verkaufsbereit: boolean | null
+          website: string | null
+        }
+        Insert: {
+          atelier_caption?: string | null
+          atelier_image_url?: string | null
+          avatar_url?: string | null
+          banner_url?: string | null
+          brand_dna?: Json | null
+          brand_name?: string | null
+          collection_title?: string | null
+          country?: string | null
+          hero_image_url?: string | null
+          house_number?: number | null
+          id?: string | null
+          instagram?: string | null
+          is_featured?: boolean | null
+          location?: string | null
+          manifesto?: string | null
+          page_published_at?: string | null
+          plan?: Database["public"]["Enums"]["designer_plan"] | null
+          portrait_url?: string | null
+          published?: boolean | null
+          quote?: string | null
+          quote_role?: string | null
+          slug?: string | null
+          status?: string | null
+          story?: string | null
+          tags?: string[] | null
+          verkaufsbereit?: boolean | null
+          website?: string | null
+        }
+        Update: {
+          atelier_caption?: string | null
+          atelier_image_url?: string | null
+          avatar_url?: string | null
+          banner_url?: string | null
+          brand_dna?: Json | null
+          brand_name?: string | null
+          collection_title?: string | null
+          country?: string | null
+          hero_image_url?: string | null
+          house_number?: number | null
+          id?: string | null
+          instagram?: string | null
+          is_featured?: boolean | null
+          location?: string | null
+          manifesto?: string | null
+          page_published_at?: string | null
+          plan?: Database["public"]["Enums"]["designer_plan"] | null
+          portrait_url?: string | null
+          published?: boolean | null
+          quote?: string | null
+          quote_role?: string | null
+          slug?: string | null
+          status?: string | null
+          story?: string | null
+          tags?: string[] | null
+          verkaufsbereit?: boolean | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      heft_produkte: {
+        Row: {
+          care_instructions: string | null
+          created_at: string | null
+          description: string | null
+          designer_id: string | null
+          designer_note: string | null
+          edition_info: string | null
+          height_cm: number | null
+          id: string | null
+          image_url: string | null
+          inventory_mode: Database["public"]["Enums"]["inventory_mode"] | null
+          lead_time_days: number | null
+          length_cm: number | null
+          made_in: string | null
+          material_composition: Json | null
+          measurements: Json | null
+          name: string | null
+          price: number | null
+          product_dna: Json | null
+          size_variants: Json | null
+          slug: string | null
+          status: Database["public"]["Enums"]["product_status"] | null
+          stock_quantity: number | null
+          sustainability_note: string | null
+          tags: string[] | null
+          vat_rate: number | null
+          width_cm: number | null
+          world: Database["public"]["Enums"]["product_world"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_application_note: {
@@ -3736,6 +4572,7 @@ export type Database = {
           unique_visitors: number
         }[]
       }
+      first_move_publish: { Args: never; Returns: Json }
       generate_ref_code: { Args: never; Returns: string }
       get_attribution_stats: {
         Args: never
@@ -3777,6 +4614,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      ist_kauf_freigeschaltet: {
+        Args: { _designer_id: string }
         Returns: boolean
       }
       ist_verkaufsbereit: { Args: { _designer_id: string }; Returns: boolean }
@@ -3849,6 +4690,64 @@ export type Database = {
           previous_status: string
         }[]
       }
+      rochade_aufraeumen: { Args: never; Returns: Json }
+      rochade_bilder_holen: {
+        Args: { p_anzahl?: number; p_auftrag: string }
+        Returns: {
+          auftrag_id: string
+          begonnen_at: string | null
+          breite: number | null
+          bytes: number | null
+          created_at: string
+          fehler: string | null
+          hoehe: number | null
+          id: string
+          inhalt_hash: string | null
+          kandidat_id: string
+          pfad: string | null
+          pfad_klein: string | null
+          quell_url: string
+          reihenfolge: number
+          status: string
+          updated_at: string
+          versuche: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "rochade_bilder"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      rochade_kontingent_buchen: {
+        Args: { p_auftrag: string; p_feld: string; p_menge?: number }
+        Returns: Json
+      }
+      rochade_seiten_holen: {
+        Args: { p_anzahl?: number; p_auftrag: string }
+        Returns: {
+          art: string
+          auftrag_id: string
+          begonnen_at: string | null
+          created_at: string
+          fehler: string | null
+          gefunden: number
+          http_status: number | null
+          id: string
+          status: string
+          updated_at: string
+          url: string
+          url_schluessel: string
+          versuche: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "rochade_seiten"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      rochade_stand: { Args: { p_auftrag: string }; Returns: Json }
       slugify: { Args: { txt: string }; Returns: string }
       trend_momentum: {
         Args: { _world: string }
@@ -3862,6 +4761,10 @@ export type Database = {
           term: string
           world: string
         }[]
+      }
+      zugang_zuweisen: {
+        Args: { _email: string; _user_id: string }
+        Returns: undefined
       }
     }
     Enums: {

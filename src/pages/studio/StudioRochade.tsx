@@ -19,11 +19,9 @@ import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { MediaImg } from "@/components/palace/MediaImg";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Die Rochade-Tabellen liegen noch nicht in den erzeugten Datenbanktypen.
-// Bis die Migration angewendet ist, laeuft der Zugriff ueber einen ungetypten Client.
-const db = supabase as unknown as SupabaseClient;
+// Die Rochade-Tabellen stehen in den erzeugten Datenbanktypen — getypter Zugriff.
+const db = supabase;
 import { toast } from "sonner";
 import { Check, RotateCcw } from "lucide-react";
 
