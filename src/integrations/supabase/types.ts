@@ -3658,6 +3658,51 @@ export type Database = {
           },
         ]
       }
+      zugang_bootstrap: {
+        Row: {
+          email: string
+          haus_slug: string | null
+          notiz: string | null
+          rolle: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          email: string
+          haus_slug?: string | null
+          notiz?: string | null
+          rolle: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          email?: string
+          haus_slug?: string | null
+          notiz?: string | null
+          rolle?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      zugang_protokoll: {
+        Row: {
+          detail: string | null
+          email: string | null
+          fehler: string | null
+          id: number
+          wann: string
+        }
+        Insert: {
+          detail?: string | null
+          email?: string | null
+          fehler?: string | null
+          id?: never
+          wann?: string
+        }
+        Update: {
+          detail?: string | null
+          email?: string | null
+          fehler?: string | null
+          id?: never
+          wann?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -3862,6 +3907,10 @@ export type Database = {
           term: string
           world: string
         }[]
+      }
+      zugang_zuweisen: {
+        Args: { _email: string; _user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
