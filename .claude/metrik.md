@@ -263,3 +263,33 @@ Beide Messungen waren richtig. Beide Berichte waren richtig. Und trotzdem war da
 offen, darunter `assign_invoice_number`, die Rechnungsnummern verbrennt. **Eine Messung
 gilt nur für den Stand, auf dem sie gemacht wurde — ein Bericht, der das nicht sagt,
 behauptet mehr als er weiß.** Deshalb hängt die neue Prüfung `Z18` an den *Dateien*.
+
+---
+
+## 12.09.2026 · die Maske, die niemand benutzte
+
+| | |
+|---|---|
+| Zweig | `claude/teil-m` |
+| Erledigt | M4 (Z20), L3 (Z10 erweitert) |
+| Neue Prüfungen | 1 neue Zusage, 1 erweiterte — alle drei neuen Hälften einmal rot vorgeführt |
+| **Nachfunde durch einen Menschen** | **unverändert 3** |
+
+**Eine Spaltenmaske, die seit dem Erstaufbau auf der Datenbank lag und nicht benutzt
+wurde.** `heft_haeuser` und `heft_produkte` existieren, `security_invoker = true`, `anon`
+hat `SELECT` darauf — und in `HeftRoute03.tsx` stand `sichten: false`, mit dem Kommentar
+„die Sichten gibt es erst nach der Migration". Der Kommentar war einmal wahr. Danach hat
+ihn niemand gegen die Wirklichkeit gehalten.
+
+**Die Lehre:** eine Begründung mit Verfallsdatum im Code ist eine Zeitbombe mit
+umgekehrtem Vorzeichen — sie tickt nicht, sie *schläft*. Solange sie dasteht, liest jeder
+sie als Grund, nicht als offenen Punkt. Deshalb prüft `Z10` jetzt nicht mehr nur, ob die
+Maske richtig gebaut ist, sondern ob sie **benutzt** wird. Das ist der dritte Ort, und es
+war der stille.
+
+**Und der Fund, der dabei herausfiel:** die Sicht schützt nur, wovon gelesen wird. `anon`
+darf `public.designers` weiter direkt fragen und bekommt dort **33 Spalten**, die die
+Sicht verbirgt — `stripe_account_id`, `stripe_customer_id`, `stripe_subscription_id`,
+`user_id`, `revenue_share_pct` darunter. Eine Policy begrenzt Zeilen, kein Recht begrenzt
+Spalten. Das ist der zweite Teil von M3, und er wartet auf Daoudas Wort, weil ein falscher
+Schnitt die Live-Seite in derselben Sekunde bricht.
