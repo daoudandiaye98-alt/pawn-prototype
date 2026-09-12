@@ -1,48 +1,30 @@
 {
   "aktualisiert": "2026-09-12",
-  "branch": "claude/auftrag-o-archetyp",
+  "branch": "claude/heft-frontend-integration-0bjnzf",
   "offene_prs": [
     {
-      "nr": 198,
-      "titel": "Auftrag O, Block C - Der Archetyp (C1, C2, C3, C4-Farben)",
-      "status": "Draft. Sitzt auf #196, NICHT auf main - Block C braucht Block As Figuren.",
-      "blockiert_durch": "Sicht-Freigabe. MERGE-REIHENFOLGE: #197 -> #196 -> #198."
-    },
-    {
-      "nr": 196,
-      "titel": "Auftrag O, Block A — Der Begleiter",
-      "status": "Draft, gerade aufgemacht. A1-A8 vollstaendig.",
-      "blockiert_durch": "Sicht-Freigabe durch Daouda. Kein Lovable-Deploy noetig — dieser Zweig fasst supabase/functions/* nicht an."
-    },
-    {
-      "nr": 197,
-      "titel": "Fix: npm ci scheitert seit fe75955 — die Sperrdatei nachziehen",
-      "status": "Draft. Repariert den Pruefstand fuer das ganze Projekt, nicht nur fuer einen Zweig.",
-      "blockiert_durch": "Ansehen. Sollte VOR #196 gemergt werden — dann faellt der Merge-Commit in #196 von selbst weg."
+      "nr": 195,
+      "titel": "Teil M: die Kette ist gespielt (M1-M4) - Block B, die Tabellenrechte, und die Maske, die niemand benutzte (L3)",
+      "status": "Draft, unveraendert. Kopf 027f572.",
+      "blockiert_durch": "Daoudas Entscheidung, siehe WAS_AUS_PR_195_WIRD. Nicht blind mergen — der Migrationsteil wurde auf der falschen Datenbank gemacht."
     },
     {
       "nr": 183,
       "titel": "Kein Urteil ohne Messung — der Pruefstand darf nicht gruen melden, ohne gemessen zu haben",
-      "status": "Draft, aelter als der Rollback",
-      "blockiert_durch": "nur Ansehen"
+      "status": "Draft, aelter als der Rollback. Kopf 666dcf4.",
+      "blockiert_durch": "nur Ansehen. Hat durch den 11./12.09. an Gewicht gewonnen: genau das, was dieser PR verhindern will, ist passiert — fuenf Laeufe meldeten rot, ohne gemessen zu haben."
     }
   ],
   "merge_reihenfolge": [
-    "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. main = 22471bc. Gemergt: #187, #188, #189, #190, #191, #192. Nachgeprueft auf origin/main, nicht vermutet: src/features/auth/tueren.ts, src/features/auth/registrieren.ts, src/heft03/uebernahme.mjs liegen dort, und sections.konto beginnt mit 'zugang'.",
-    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten 'merged', aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind.",
-    "LIVE auf main: L5/L6 (Zugang-Doppelseite als erste Seite von /konto), L7 (Passwort-Wiederholung an EINER Stelle: features/auth/registrieren.ts), L8 (drei Publikumstueren), L9 (Google kehrt zurueck), L10 (/auth ist Wegweiser auf /konto), L11 (Uebernahme der Gastdaten), L12 (ein Waechter, drei entfernt), L13 (Anklopfen statt 6-Sekunden-Frist), L16 (heft.d.ts). Zusagen Z11, Z12, Z13 neu, alle einmal rot vorgefuehrt.",
-    "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen auf cnxtdcifkrdxvajaikxq. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
-    "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
-    "DIE NEUE PRUEFUNG: scripts/verify/migrationen-kette.mjs. Rot am echten Ordner, gruen an einer geschlossenen Kopie — beide Richtungen vorgefuehrt. ABSICHTLICH NOCH NICHT in verify.sh schnell, weil sie heute echt rot ist und eine dauerhaft rote Pruefung im Tor lehrt, Rot zu uebersehen. Verdrahten, sobald die Luecke zu ist.",
-    "WIEDERAUFSETZEN OHNE RATEN: mcp Supabase list_migrations zeigt die 35 gelegten Dateien. Der Stapel-Drucker liegt im Scratchpad (stapel.py + stapel.json, 41 Stapel); Stapel 14 ist der naechste, danach der Sentinel zz_ende, dann die Abnahme, dann types.ts neu.",
-    "L11 WEICHT AB, mit Begruendung: merge_anon_session KANN kunden_stil und wishlists nicht tragen. Beide haben user_id als Schluessel mit Fremdschluessel auf auth.users, jede Policy verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner der beiden. Ein Gast hat dort nie eine Zeile. Die Uebernahme passiert deshalb beim Anmelden im Heft (src/heft03/uebernahme.mjs). Der andere Weg waere eine neue anonyme Schreibflaeche auf der Zahlungsdatenbank — das braucht Daoudas Wort.",
-    "DER RUECKWEG IST VORGEFUEHRT: drop schema public cascade + Historie leeren. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
-    "DIE BUCHHALTUNG: ein BEFORE-INSERT-Trigger auf supabase_migrations.schema_migrations setzt die Version aus dem Dateinamen und unterdrueckt jede fremde Zeile. Beim Sentinel-Namen 'zz_ende' entfernt er sich selbst.",
-    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet.",
-    "DER PRUEFER HAT EINEN FEHLER IN MEINEM BERICHT GEFUNDEN: 12 von 13 bestaetigt, EINER widerlegt (ein Verweis auf /auth stand noch in der Aufwaermliste der englischen Fassung). Repariert UND gedeckt: Zusage Z13 mit der Kontrolle nurWegweiser, einmal rot vorgefuehrt."
+    "AUFTRAG O BLOCK A UND C SIND AUF MAIN. Gemergt am 12.09. zwischen 21:00 und 21:09: #196 (Block A), #197 (Sperrdatei, ritt als Merge-Commit 48bc523 in #196 mit) und #198 (Block C).",
+    "DIE FALLE IST DIESMAL NICHT ZUGESCHNAPPT — nachgeprueft auf origin/main, nicht vermutet: src/heft03/archetyp.mjs und src/heft03/figuren.mjs liegen dort, und /deine-dna/archetyp steht in src/App.tsx. #198 war auf claude/auftrag-o-begleiter gestapelt; GitHub hat die Basis beim Merge von #196 selbst auf main umgehaengt und den Kopf dabei von c907b57 auf 9db84e2 neu geschrieben (gleicher Inhalt, gleicher Autor, 19:58).",
+    "WAS DABEI VERLOREN GING UND NICHT NACHGEZOGEN WERDEN MUSS: ich hatte um 21:03 auf claude/auftrag-o-begleiter main nachgezogen und die Sperrdatei bereinigt (0b234d2, 52bdd12). Der Merge lief drei Minuten vorher. Die zwei Commits sind verwaist. Die Stand-Fortschreibung daraus steht jetzt hier; die Sperrdatei hat Daouda selbst erledigt (708d07b).",
+    "MAIN BEWEGT SICH HEUTE ABEND SCHNELL: be17d19 (20:40, Drizzle raus), 255d693 (#196), 694cfbf (#198), 708d07b (21:09, Sperrdatei bereinigt). Dazu ein fremder Zweig codex/pawn-optimierung-20260912 (\"Optimierung: Heft-Start und Uebergaben absichern\"). Vor jedem neuen Zweig frisch fetchen.",
+    "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. Gemergt: #187, #188, #189, #190, #191, #192.",
+    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten \"merged\", aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind."
   ],
   "wartet_auf_mensch": [
-    "DIE 119 GEFALLENEN LAUNCH GATES, neu und zum ersten Mal belegt: 4.7 Seitengewicht, 3.5 Trefferflaechen, 3.3 Kontrast, 3.4 Tastaturfokus. Sie auf die Norm zu ziehen aendert das AUSSEHEN des Hefts — und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Vorher sind zwei Zweifel zu klaeren (3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand) — niemand soll Gestaltung aendern, wo ein Messfehler sitzt. Vollstaendig im Kommentar an PR #194.",
+    "DIE GEFALLENEN GATES, jetzt auf main gemessen: 131, in FUENF Familien (nicht vier, wie ich bis heute schrieb) — 4.7 Seitengewicht, 3.3 Kontrast, 3.5 Trefferflaechen, 3.4 Tastaturfokus, 3.8 Textueberschneidung. Die ersten vier auf die Norm zu ziehen aendert das AUSSEHEN des Hefts, und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Zwei Zweifel vorher klaeren: 3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand. 3.8 ist KEINE Geschmacksfrage — Text liegt auf einem Knopf — und als eigener PR angeboten.",
     "L15 FREISTELLEN — der Auftragssatz ist klar, aber die genannte Vorlage widerspricht ihm, und deshalb wird hier nicht gebaut: src/heft03/referenz/freistellen.py sagt in ihrem eigenen Kopf ‚NICHT auf echte Produktfotos anwenden — gruene Kleidung wuerde zerstoert. Fuer reale Ware gehoert eine Segmentierung in die Medienpipeline.‘ Sie schlaegt einen Farbbereich frei, kein Motiv. Auf einem echten Werkbild loescht sie Teile des Stuecks. FRAGE, die nur Daouda beantworten kann: soll das Freistellen ueber die bestehende Edge Function generate-product-shot laufen (kostet FAL-Guthaben je Bild), oder ueber etwas anderes? Ohne diese Antwort wuerde ich raten, und ein Rateschluss loescht echte Werkbilder.",
     "F2 — DIE WEISSE SEITE BEIM BLAETTERN, nicht nachstellbar und deshalb nicht repariert. Im Container laesst sich die Doppelseite nicht aufschlagen: WebGL laeuft, die Buehne rendert, aber nach 40 Scroll-Schritten existiert kein .spread im DOM. Ich kann die Ursache nicht belegen und rate nicht. Was hilft: eine Aufnahme mitten in der Drehung, oder die Antwort auf die Frage, ob es beim ersten Blaettern passiert oder bei jedem.",
     "F1 — gebaut, aber IM CONTAINER NICHT BEWIESEN. Gemessen wurde mit echtem Chromium gegen den gebauten Stand, die Fassung MIT und OHNE Reparatur: beide Laeufe sind ununterscheidbar (Geruest erscheint nach 12,7 s, 39 ms spaeter ist die Gestaltung da). Der Grund: vite preview liefert das CSS von 127.0.0.1 sofort, das Zeitfenster, in dem Daouda das Aufblitzen sieht, entsteht erst ueber eine echte Leitung. Die Vercel-Vorschau ist vom Container aus nicht lesbar (302 auf die Anmeldung, das Umgehungsgeheimnis liegt nicht hier). DER BEWEIS IST DAOUDAS BLICK: pawn.vision aufrufen und sehen, ob links noch ein unformatierter Block aufblitzt.",
@@ -62,29 +44,30 @@
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-12",
-    "lauf": "GitHub-Action #191, Job 103601881596, Kopf ec231f0 (PR #197)",
-    "DAS_WICHTIGSTE": "ER MISST WIEDER. 18 Minuten Laufzeit, 36 Artefakte hochgeladen, echte Funde. Die fuenf Laeufe davor (186, 185, 184, 167, 165) waren nach rund 30 Sekunden tot: `npm ci` brach ab, bevor ein Wert erhoben wurde. Rot hiess dort NICHT 'die Seite ist kaputt', sondern 'es hat niemand nachgesehen'. PR #197 repariert das.",
-    "ergebnis": "rot, aber mit Urteil — dieselben vier Gate-Familien wie am 11.09.",
-    "die_vier_familien": {
+    "lauf": "GitHub-Action #201, Job 103617967556, Kopf be17d19 (main)",
+    "ergebnis": "Gates: 656 bestanden · 131 gefallen · 300 nicht pruefbar",
+    "zum_vergleich_der_zweig": "#196 auf 53d6905 (Lauf #194, Job 103607234134): 632 bestanden · 129 gefallen · 300 nicht pruefbar. Block A hat also ZWEI gefallene Gates WENIGER als das main, in das er hineinging.",
+    "BERICHTIGUNG_FUENF_FAMILIEN_NICHT_VIER": "Ich habe mehrfach von vier Familien geschrieben. Es sind fuenf. Die fuenfte ist 3.8 und stand die ganze Zeit in den Protokollen — ich hatte sie nie gelesen.",
+    "die_fuenf_familien": {
       "4.7 Seitengewicht": "4.325.784 B gegen 3.000.000 B. index-*.js allein 2.110 kB, three.module 477 kB, Google-Tag 160 kB.",
-      "3.3 Kontrast": "z. B. #note-text 4,31 gegen 4,5; .haus-ort 2,98 gegen 4,5 — Text ueber Bild.",
-      "3.5 Trefferflaechen": "11 bis 12 Bedienelemente je Seite unter 44 px (Seitenpunkte 6x6, Suchen 20x20, Blaetterpfeile 35x35).",
-      "3.4 Tastaturfokus": "je Seite 1 fokussierbares Element ohne sichtbare Veraenderung."
+      "3.3 Kontrast": "26 Faelle im lesbaren Teil. z. B. #note-text 4,31 gegen 4,5; #scroll-hint 4,02; #tools-toggle 4,36 — Text ueber Bild, 9 bis 10 px.",
+      "3.5 Trefferflaechen": "13 bis 18 Bedienelemente je Seite unter 44 px (Seitenpunkte 15x1 und 15x2, Suchen 20x20, Blaetterpfeile 35x35).",
+      "3.4 Tastaturfokus": "je Seite 1 fokussierbares Element ohne sichtbare Veraenderung, meist button \"Direkt entdecken\".",
+      "3.8 Textueberschneidung": "NEU BENANNT. Bei 844 px (iPad hoch) liegt p#intro-caption ueber button#skip: Ueberschneidung 1,0 bei erlaubten 0,25, zwei Paare. Text auf einem Knopf."
     },
-    "NICHT_VON_DIESEN_PRS": "Lauf #191 lief auf #197, und #197 aendert genau EINE Datei: package-lock.json. Kontrast, Gewicht, Trefferflaechen und Fokus koennen daraus nicht kommen. Es sind dieselben Funde wie am 11.09. (Lauf #151), die seither unter wartet_auf_mensch stehen.",
-    "EINE_ZAHL_WAECHST": "Seitengewicht 4.325.784 B heute gegen 3.873.171 B am 11.09. — rund 450 kB mehr. ACHTUNG, KEIN SAUBERER VERGLEICH: damals wurde ein anderer Zweig gemessen (eafefdd auf #194). Keine Ursache behauptet. Aber die Zahl gehoert beobachtet, bevor sie jemand zum ersten Mal ernst nimmt.",
-    "kein_neulauf": "Deterministische Messung, keine Wackelei. Ein zweiter Lauf saegte dasselbe.",
-    "DIE_NULLMESSUNG": {
-      "warum_es_eine_gibt": "Gluecksfall: #197 aendert NUR package-lock.json, kein Zeichen Code. Lauf #191 darauf ist damit eine saubere Nullmessung, gegen die sich Block A (Lauf #193) auf das Byte vergleichen laesst.",
-      "gates": "#191 (nur Sperrdatei): 654 bestanden · 130 gefallen · 303 nicht pruefbar. #193 (Block A): 631 bestanden · 130 gefallen · 300 nicht pruefbar. GEFALLEN: 130 gegen 130 — Block A bricht NICHTS.",
-      "keine_der_130_nennt_den_begleiter": "Nicht die Blase, nicht die Figur, nicht die Chips. Die Kontrastfunde heissen #note-text, #scroll-hint, #tools-toggle, .haus-ort, small — alle schon vorher da.",
-      "was_block_a_kostet": "Auf JEDER Seite exakt +31.599 B: / @1920 4.325.784 -> 4.357.383; /suche @390 4.025.128 -> 4.056.727; /haus/obara @390 4.063.212 -> 4.094.811. Aufgeschluesselt: +11 kB Code (Heft-Buendel 127 kB -> 138 kB) plus 2 Anfragen mit rund 20 kB (die zwei Katalog-Selects auf begleiter_saetze und begleiter_regeln).",
-      "einordnung": "Gate 4.7 verlangt unter 3 MB; die Seite lag VORHER schon bei 4,33 MB, also 1,33 MB darueber. Der Begleiter ist 2,4 % des Ueberhangs. Das Problem sind index-*.js mit 2.110 kB und three.module mit 477 kB — die Buehne selbst.",
-      "eine_moeglichkeit_falls_gewuenscht": "Die zwei Katalog-Anfragen liessen sich zusammenlegen oder verzoegern, bis der Bauer das erste Mal reden will (fruehestens nach 8,4 s) — rund 20 kB weniger beim Erststart. NICHT gebaut: es verkompliziert Block A, ohne ein Gate umzudrehen. Daoudas Entscheidung."
-    },
-    "LAUF_199_BLOCK_C": "Dieselben vier Gate-Familien, nichts Neues in der Art, kein Element aus Block C in der Liste. GEMESSEN, was Block C kostet - dieselbe Seite, dieselbe Breite, drei Laeufe: #191 (nur Sperrdatei) 4.325.784 B ueber 47 Antworten, Buendel 127 kB. #193 (Block A) 4.357.383 B ueber 49 Antworten, Buendel 138 kB. #199 (Block C) 4.368.537 B ueber 49 Antworten, Buendel 147 kB. Block C kostet +11.154 Byte UND KEINE EINZIGE ZUSAETZLICHE ANFRAGE - dieselben 49 wie Block A. Das ist der Beleg, dass die Entscheidung aus C2 haelt: der Archetypen-Katalog wird erst geholt, wenn seine Seite aufgeschlagen wird, nicht beim Start."
+    "familien_gezaehlt": "Im lesbaren Teil beider Protokolle identisch: 3.3 x26 · 4.7 x17 · 3.4 x8 · 3.5 x7 · 3.8 x2.",
+    "WARUM_3_8_ANDERS_IST": "Seitengewicht, Kontrast, Trefferflaechen und Fokus sind Entscheidungen ueber das Aussehen des Hefts — deshalb stehen sie bei wartet_auf_mensch. Zwei Texte, die uebereinander liegen, sind keine Entscheidung. 3.8 ist der einzige der fuenf, der nach einem schlichten Fehler aussieht und sich ohne Gestaltungsdebatte reparieren laesst. ANGEBOTEN, NOCH NICHT BEAUFTRAGT.",
+    "NICHT_VON_AUFTRAG_O": "3.8 steht in BEIDEN Laeufen, auf main wie auf dem Block-A-Zweig. Also nicht neu, nicht von Block A und nicht von Daoudas Lovable-Commit."
   },
-  "naechster_zug": "ERSTENS Sicht-Freigabe durch Daouda, in dieser Reihenfolge: #197 (Sperrdatei - repariert den Pruefstand fuer das ganze Projekt) -> #196 (Block A) -> #198 (Block C). DANACH, und nur mit Daouda: C4 erster Teil und C5 brauchen ausgerollte Edge Functions (pawn-chat mode stilfoto, generate-dna-voice mode kunde). Der Code liegt im Repo, der Deploy ist Lovable. BLOCK B wartet auf Lovables freistellen, BLOCK D auf anprobe. UNVERAENDERT OFFEN: M3 zweiter Teil (anon liest 60 Spalten auf public.designers, darunter 8 Stripe-Spalten), M5 (Speicher-Eimer und ~49 Functions), PR #195, und die vier Gate-Familien des Pruefstands.",
+  "naechster_zug": [
+    "1. DIE GATE-ENTSCHEIDUNG. 131 gefallene Gates auf main, fuenf Familien. Vier davon sind Geschmack und Norm (Seitengewicht, Kontrast, Trefferflaechen, Fokus) — FRAGE an Daouda: wie weit beugt sich das Heft der Norm? Vorher zwei Zweifel klaeren: 3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand.",
+    "2. GATE 3.8 reparieren, wenn Daouda es will — als EIGENER PR, nicht in einem Feature-Zweig. p#intro-caption liegt bei 844 px ueber button#skip.",
+    "3. AUFTRAG O, was fehlt: C3 (Kuration nach Archetyp) und C4 zweiter Teil liegen auf dem gemergten Zweig und sind mit #198 auf main. C4 erster Teil (Foto anschliessen) und C5 (Prosa) brauchen ausgerollte Edge Functions — pawn-chat mode stilfoto, generate-dna-voice mode kunde. Der Code liegt im Repo, der Deploy ist Lovable und damit Daoudas.",
+    "4. BLOCK B wartet auf Lovables freistellen, BLOCK D auf anprobe.",
+    "5. DIE ZWEI OFFENEN EREIGNISSE: archetyp_bestaetigt ist mit Block C jetzt moeglich — pruefen, ob es gemeldet wird, und den Namen aus der Ausnahmeliste des Tests nehmen. anprobe_fertig bleibt bis Block D.",
+    "6. UNVERAENDERT OFFEN: M3 zweiter Teil (anon liest 60 Spalten auf public.designers, darunter 8 Stripe-Spalten), M5 (Speicher-Eimer und ~49 Functions), PR #195, PR #183.",
+    "7. DAS AUSMISTEN hat einen Kandidaten mit vier belegten Faellen: unerreichbarer Code. miniPawn, richtungGemerkt, darfZaehlen, figuren.mjs — kein Werkzeug hat einen davon gemeldet, nicht tsc, nicht ESLint, nicht die Tests."
+  ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
     "F1 IST DIE LEHRREICHSTE MESSUNG DIESER RUNDE: ich habe es mit echtem Chromium versucht, gegen den gebauten Stand, beide Fassungen — mit und ohne Reparatur. Beide Laeufe sind ZEICHENGLEICH: das Geruest erscheint nach 12,7 s, 39 ms spaeter greift die Gestaltung. Die Messung kann die Reparatur nicht von ihrem Fehlen unterscheiden, also beweist sie nichts. Gesagt statt behauptet. Der Grund: vite preview liefert das CSS ohne Verzoegerung von 127.0.0.1. Die Vercel-Vorschau, wo es zu sehen waere, antwortet dem Container mit 302 auf die Anmeldung.",
@@ -99,7 +82,11 @@
     "NEBENBEI AUFGEFALLEN, unbelegt, nicht von Teil M: bei der Fokus-Messung stand die KOPFZEILE auf ENGLISCH ('Fashion', 'Our Houses', 'Your DNA', 'Ask PAWN', 'For designers'). Nach Entscheidung D2 soll die englische Fassung erst nach dem Launch kommen. autoTranslate nimmt #reader-layer und #mobile-reader aus — die Kopfzeile aber nicht. Ob das gewollt ist, weiss ich nicht; nicht angefasst, nur notiert."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": "2026-09-12 - VERIFY 5/5 - node --test src/heft03/*.test.mjs 81/81 - npm test 353/353 - tsc 0",
+  "letzter_verify": {
+    "datum": "2026-09-12",
+    "bestanden": 5,
+    "gefallen": 0
+  },
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },
@@ -139,8 +126,8 @@
   },
   "WAS_AUS_PR_195_WIRD": "PR #195 (Zweig claude/teil-m) traegt Teil M — gemacht auf cnxtdcifkrdxvajaikxq, also auf der falschen Datenbank. Die sechs Migrationen darin (20260930090000-140000) reparieren Dinge, die auf rnak bereits richtig stehen; sie waeren dort wirkungslos bis schaedlich. NICHT blind mergen. Was in dem PR UNABHAENGIG von der Datenbank gilt und weiter wertvoll ist: L3 (das Heft liest die Sichten), der Wand-Fix in passformAssistent, die berichtigten Pruefstand-Slugs, der Zustandswaechter gegen die mitgemessene Eroeffnung, die Fixture mit der echten PostgREST-Antwort, und die Zusagen Z17-Z20. Vorschlag: den Frontend- und Pruefstand-Teil herausloesen, den Migrationsteil verwerfen. Das ist Daoudas Entscheidung, nicht meine.",
   "AUFTRAG_O": {
-    "WAS_FERTIG_IST": "Block A vollstaendig auf claude/auftrag-o-begleiter (5 Commits ab e160862, zuletzt 9921002). A1 Verstand in src/heft03/begleiter.mjs mit 16 Tests. A2 14 von 16 Katalog-Ereignissen verdrahtet (plus blaettern, das der Katalog nicht kennt — macht 15 gemeldete Namen; ich hatte die zwei Mengen vermischt und zuerst faelschlich 15 von 16 geschrieben, der Pruefer hat es berichtigt). A3 Das Schweigen: 25 s Abstand, 8 Blasen je Sitzung, 90 s nach dem ×, Empfang nach 8400 ms. A4 Blase mit Chips und ×. A5 vier Methoden in beiden Quellen. A6 fuenf Rangfiguren, angesehen. A7 Chat-Kontext und echter Bild-Upload. A8 drei tote Listen raus.",
-    "WAS_NOCH_NICHT": "Block B (Buehne aus heft_buehnen) wartet auf Lovables freistellen. Block C (Archetyp) ist unabhaengig und koennte als naechstes kommen. Block D (Avatar, Anprobe, Raum) wartet auf Lovables anprobe.",
+    "WAS_FERTIG_IST": "BLOCK A UND BLOCK C SIND AUF MAIN (#196 und #198, gemergt 12.09. 21:00 und 21:09, auf origin/main nachgeprueft). Block A: A1-A8 vollstaendig, Verstand in src/heft03/begleiter.mjs, Katalog in begleiter_saetze und begleiter_regeln, fuenf Rangfiguren, echter Bild-Upload, drei tote Listen raus. Block C: C1 Archetyp auch fuer Gaeste (src/heft03/archetyp.mjs), C2 Doppelseite /deine-dna/archetyp, C3 Kuration nach bestaetigtem Archetyp, C4 zweiter Teil Farbregister als Kommentar.",
+    "WAS_NOCH_NICHT": "C4 erster Teil (Foto anschliessen, braucht pawn-chat mode stilfoto) und C5 (Prosa, braucht generate-dna-voice mode kunde) — beide haengen an Edge Functions, die nur Daouda ueber Lovable ausrollen kann. Block B (Buehne aus heft_buehnen) wartet auf Lovables freistellen. Block D (Avatar, Anprobe, Raum) wartet auf Lovables anprobe.",
     "DIE_ZWEI_OFFENEN_EREIGNISSE": "archetyp_bestaetigt (Block C) und anprobe_fertig (Block D) werden noch nicht gemeldet. Der Test 'jedes Ereignis des Katalogs wird auch gemeldet' nennt sie ausdruecklich als Ausnahme und verlangt sie, sobald die Bloecke stehen — den Namen dort herausnehmen, dann wird der Test rot, bis die Verdrahtung steht.",
     "WO_ICH_VOM_AUFTRAG_ABGEWICHEN_BIN": "A8 verlangt zustimmungFragen() als Regel im Verstand. Umgesetzt ist nur der Wortlaut aus dem Katalog, nicht das Erscheinen. Grund: melde() darf aus fuenf Gruenden schweigen, und jeder davon hiesse hier 'gemerkt, ohne zu fragen'. Zusage Z16 deckt das ab. Daouda kann das umstossen — dann braucht es einen anderen Weg, der das Erscheinen garantiert.",
     "DER_KATALOG_HAT_LUECKEN": "Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: 30 Saetze, 30 Regeln, 0 ohne Satz. KEINE Regel zu heft.zustimmung. KEINE Regel zu blaettern (Auftrag O nennt das Ereignis). Die Chip-Funktion freistellen kommt im Katalog noch nicht vor. Der Umriss liegt als src/heft03/fixtures/begleiter-katalog.json im Repo und wird von zwei Tests gegen den Code gehalten.",
@@ -153,7 +140,18 @@
       "EIN_FUND_BEIM_TESTEN": "Die Richtung Roh allein ist zweideutig: mode_werkzeug und mode_schicht tragen sie beide, beide bekommen 2,0 Punkte. Entschieden wird alphabetisch, genau wie in der RPC (order by score desc, key). Die Form loest den Gleichstand auf, und die stellt das Quiz ohnehin als naechstes. Als Test festgehalten, damit es niemand fuer eine Stilaussage haelt."
     }
   },
-  "DER_PRUEFSTAND_MISST_NICHTS": "Die GitHub-Action 'messen' ist auf main seit dem 11.09. rot und misst gar nichts: `npm ci` bricht ab, bevor ein Wert erhoben wird. Ursache gemessen: fe75955 (Lovable) hat drizzle-kit, drizzle-orm und postgres in package.json eingetragen und dazu bun.lock fortgeschrieben — die Action benutzt aber npm ci und package-lock.json, wo die drei nie standen. Reparatur liegt als PR #197 (eigener Zweig claude/lock-drizzle) und ist in #196 hereingemergt, damit der dortige Lauf ueberhaupt gruen werden kann. Gemessen: 60 Pakete kommen dazu, 0 gehen, 0 wechseln die Version — Stripe, Supabase und React sind nicht angefasst. OFFEN FUER DAOUDA: ob drizzle ueberhaupt bleiben soll. Es wird nirgends importiert; nur drizzle.config.ts und drizzle/migrations/ verweisen darauf, beide aus demselben Commit. Das Projekt hat seine Migrationen in supabase/migrations/.",
+  "DER_PRUEFSTAND_MISST_NICHTS": {
+    "DIESE_UEBERSCHRIFT_IST_ERLEDIGT": "Seit dem 12.09. 20:40 misst der Pruefstand wieder, auf main und auf den Zweigen. Der npm-ci-Abbruch, der seit dem 11.09. jeden PR getroffen hat, ist weg.",
+    "beweis": "Lauf 201 auf main (be17d19): Schritt \"Abhaengigkeiten\" gruen in 9 Sekunden, Schritt \"Pruefstand\" 17 Minuten echte Messung, 36 Artefakte, 6.863.606 Byte.",
+    "warum_trotzdem_rot": "Weil er misst. Rot heisst jetzt wieder \"etwas ist gefallen\" statt \"niemand hat nachgesehen\"."
+  },
   "VIER_TOTE_FUNDE_AN_EINEM_TAG": "miniPawn() - nie aufgerufen seit 9ddd574, samt CSS-Regeln ins Leere. richtungGemerkt() - von mir geschrieben, nie aufgerufen. darfZaehlen - geprueft, aber nie uebergeben; der Typ in heft.d.ts kannte es nicht, also hat ereignis() NIE eine Zeile geschrieben, mit oder ohne Zustimmung (vom pruefer gefunden). figuren.mjs - VIER Tafeln, seit dem Einzug nie gezeichnet; belegeFigur war importiert und nie aufgerufen, die anderen drei nicht einmal importiert. belegeFigur ist jetzt auf der Archetypen-Seite in Dienst, die anderen drei bleiben tot und gehoeren auf die Ausmist-Liste. KEIN WERKZEUG HAT EINEN DAVON GEMELDET: nicht tsc, nicht ESLint, nicht die Tests. Zwei fand ich durch Hinsehen, einen der pruefer, einen beim Lesen einer Importzeile. Das ist der Kandidat fuer die naechste Harness-Komponente - der einzige mit vier belegten Faellen.",
-  "DIE_STILBERATUNG_WIRD_NICHT_GEMESSEN": "GEFUNDEN AM 12.09.2026 beim Lesen von Lauf #199: der Pruefstand misst genau sieben Seiten - halle, suche, werk, haus, welt-mode, tasche, zugang (tools/pruefstand/pruefstand.config.ts:103-111). KEINE EINZIGE /deine-dna-Seite ist dabei. Die ganze Stilberatung, jetzt acht Seiten lang, ist fuer den Pruefstand unsichtbar: Kontrast, Trefferflaechen und Fokus kennt dort niemand. Das gilt schon laenger, nicht erst seit Block C - aufgefallen ist es, weil ich nach Funden der neuen Archetypen-Seite suchte und keine fand. NICHT GEAENDERT: die Seitenliste ist das Messgeraet, nicht der Gegenstand. Sie in einem Feature-PR zu erweitern verschiebt die Grundlinie mitten in der Messung und haette fast sicher neue rote Gates ungefragt in #198 gebracht. VORSCHLAG FUER DAOUDA: /deine-dna/richtung und /deine-dna/archetyp als zwei Zeilen in der Config, als eigener kleiner PR nach #197/#196/#198. Dann misst der Pruefstand auch den Teil des Hefts, in dem PAWN ueber die Person spricht - und dort zaehlen Kontrast und Lesbarkeit am meisten."
+  "DIE_STILBERATUNG_WIRD_NICHT_GEMESSEN": "GEFUNDEN AM 12.09.2026 beim Lesen von Lauf #199: der Pruefstand misst genau sieben Seiten - halle, suche, werk, haus, welt-mode, tasche, zugang (tools/pruefstand/pruefstand.config.ts:103-111). KEINE EINZIGE /deine-dna-Seite ist dabei. Die ganze Stilberatung, jetzt acht Seiten lang, ist fuer den Pruefstand unsichtbar: Kontrast, Trefferflaechen und Fokus kennt dort niemand. Das gilt schon laenger, nicht erst seit Block C - aufgefallen ist es, weil ich nach Funden der neuen Archetypen-Seite suchte und keine fand. NICHT GEAENDERT: die Seitenliste ist das Messgeraet, nicht der Gegenstand. Sie in einem Feature-PR zu erweitern verschiebt die Grundlinie mitten in der Messung und haette fast sicher neue rote Gates ungefragt in #198 gebracht. VORSCHLAG FUER DAOUDA: /deine-dna/richtung und /deine-dna/archetyp als zwei Zeilen in der Config, als eigener kleiner PR nach #197/#196/#198. Dann misst der Pruefstand auch den Teil des Hefts, in dem PAWN ueber die Person spricht - und dort zaehlen Kontrast und Lesbarkeit am meisten.",
+  "DIE_DRIZZLE_FRAGE_IST_ERLEDIGT": {
+    "frage_war": "Soll drizzle bleiben? Es wurde nirgends importiert; nur drizzle.config.ts und drizzle/migrations/ verwiesen darauf. Das Projekt hat seine Migrationen in supabase/migrations/.",
+    "antwort": "Daouda hat es am 12.09. 20:40 (be17d19, Lovable) geloescht: drizzle.config.ts, drizzle/schema.ts, bun.lockb, sieben meta-Snapshots, _journal.json, drei Zeilen aus package.json. Um 21:09 (708d07b) hat er die Sperrdatei nachgezogen.",
+    "KEINE_MIGRATION_VERLOREN": "Die drei echten SQL-Dateien sind nach supabase/migrations/ gewandert, von Git als 100%-Umbenennung erkannt, byte-gleich: 2624 / 752 / 173 Byte. Dazu neu supabase/migrations/LIESMICH.md.",
+    "stand_jetzt_gemessen": "package.json 0 Treffer drizzle, package-lock.json 0 Treffer, npm ci Exit 0 mit 566 Paketen — dieselbe Paketzahl wie vorher, also keine Versionsdrift.",
+    "WAS_ICH_DABEI_FALSCH_VORHERGESAGT_HABE": "Ich hielt den Zwischenzustand (package.json ohne Drizzle, Sperrdatei mit 37 Eintraegen) fuer einen Bruch von npm ci. Falsch — an einer Probe-Zusammenfuehrung gemessen: Exit 0. Und ich wollte die Sperrdatei selbst bereinigen; jeder Weg dorthin (npm install --package-lock-only ODER Daoudas be17d19-Fassung uebernehmen) schrieb rund 6000 Zeilen um und tauschte 321 Pakete gegen 261 aus. Fuer null belegten Fehler. Deshalb gelassen — und drei Minuten spaeter hat Daouda es selbst getan. Eine konkurrierende Fassung von mir haette damit kollidiert."
+  }
 }
