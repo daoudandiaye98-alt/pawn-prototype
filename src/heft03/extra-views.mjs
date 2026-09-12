@@ -11,11 +11,26 @@ const page=(l,r,c='',welt='')=>'<div class="spread-grid '+c+'"'+(welt?' data-wel
 const wahl=(feld,werte,gewaehlt)=>'<div class="wahlreihe">'+werte.map(w=>'<button class="wahl'+(gewaehlt===w?' an':'')+'" data-wahl="'+feld+':'+w+'" aria-pressed="'+(gewaehlt===w?'true':'false')+'">'+w+'</button>').join('')+'</div>';
 const link=(n,title,text,attrs)=>'<button class="feature-link" '+attrs+'><span class="feature-no">'+n+'</span><span><strong>'+title+'</strong><small>'+text+'</small></span><span>↗</span></button>';
 const PAWN_PFAD='M50 4c11 0 20 9 20 20 0 7.5-4.1 14-10.2 17.4 1.5 1.5 2.4 3.5 2.4 5.8 0 2.6-1.2 4.9-3.1 6.4C63.4 60 68 70.8 69.6 82H30.4C32 70.8 36.6 60 40.9 53.6c-1.9-1.5-3.1-3.8-3.1-6.4 0-2.3.9-4.3 2.4-5.8C34.1 38 30 31.5 30 24c0-11 9-20 20-20zM22 88h56l6 10H16z';
-export const pawnNotizen=[
- 'Ich lese nur, was du mir zeigst. Kein Profil, kein Score.',
- 'Je mehr du dir ansiehst, desto genauer wird die Skizze.',
- 'Fehlt mir etwas, sage ich es — statt zu raten.'
-];
+
+/**
+ * A6 — die fünf Ränge als Figur. Gestochene Silhouette mit Schraffur, wie der Bauer:
+ * gedruckt, nicht leuchtend. Jede Figur steht auf demselben Sockel und ist gleich hoch,
+ * damit der Aufstieg als Figurwechsel sichtbar wird und nicht als Größensprung.
+ *
+ * Die Augen sitzen je Figur woanders (der Springer schaut im Profil und hat nur eines).
+ * Angesehen am 12.09.2026 als Aufnahme aller fünf nebeneinander — nicht nur beschrieben.
+ */
+const SOCKEL='M22 88h56l6 10H16z';
+export const RANG_PFADE={
+ bauer:PAWN_PFAD,
+ springer:'M41 10c1.5-3.5 4-6 7.5-7l-1 7c8 1 15.5 5 21 11.5C74.5 28.5 78 37 78.5 46c.5 9-1 17.5-3 25.5-1.5 5.5-2 8.5-2 10.5H31c0-6 1-11.5 3.5-17C37.5 58.5 42 52 48 46.5c-4 1.5-8 2.5-12 2.5-2.5 4-5.5 7-9 9-1.5-5.5-1-11 1.5-16.5 2.5-5.5 6.5-10 11.5-13.5-1-3-1.5-6-1.5-9 0-3 .5-6 2.5-9z'+SOCKEL,
+ laeufer:'M50 3l3.5 5.5C52.5 9.5 51.5 11 51.5 13c0 2.5 1.5 4.5 3.5 6 6 4.5 9.5 11 9.5 18 0 6-2.5 11.5-7 15.5 1.5 1.5 2.5 3.5 2.5 5.5 0 2.5-1.5 4.5-3.5 6C61 70 65.5 75.5 67 82H33c1.5-6.5 6-12 11.5-18-2-1.5-3.5-3.5-3.5-6 0-2 1-4 2.5-5.5-4.5-4-7-9.5-7-15.5 0-7 3.5-13.5 9.5-18 2-1.5 3.5-3.5 3.5-6 0-2-1-3.5-2-4.5z'+SOCKEL,
+ turm:'M26 6h11v9h8V6h10v9h8V6h11v20l-7 6v27l7 8v6H26v-6l7-8V32l-7-6z'+SOCKEL,
+ dame:'M22 8l5.5 14L35 9l6 14.5L50 6l9 17.5L65 9l7.5 13L78 8l-4.5 30c-1.5 2-3.5 3.5-6 4.5 1.5 1.5 2.5 3.5 2.5 5.5 0 2.5-1.5 5-4 6.5C71 62 75.5 72 77 82H23c1.5-10 6-20 11-27.5-2.5-1.5-4-4-4-6.5 0-2 1-4 2.5-5.5-2.5-1-4.5-2.5-6-4.5z'+SOCKEL
+};
+// Augen je Figur: [x1,y1] und optional [x2,y2]. Der Springer schaut im Profil.
+const RANG_AUGEN={bauer:[42.4,23.5,57.6,23.5],springer:[61,29],laeufer:[46,34,54,34],turm:[44,47,56,47],dame:[45,33,55,33]};
+export const RANG_NAME={bauer:'Bauer',springer:'Springer',laeufer:'Läufer',turm:'Turm',dame:'Dame'};
 let pawnLauf=0;
 // Der Bauer erklärt in einem Satz, was hier zu tun ist.
 export function pawnSagt(text){
@@ -29,22 +44,35 @@ export function pawnGlyph(cls=''){const id='pg'+(++pawnLauf);
  +'<path d="'+PAWN_PFAD+'"/><rect clip-path="url(#'+id+'c)" width="100" height="100" fill="url(#'+id+'h)"/>'
  +'<g class="pawn-augen"><ellipse cx="42.4" cy="23.5" rx="4.3" ry="5.6"/><ellipse cx="57.6" cy="23.5" rx="4.3" ry="5.6"/></g>'
  +'</svg></span>';}
-// Der Bauer als Druckfigur: gestochen, nicht leuchtend. Er gehört auf das Papier.
+/**
+ * Die eigene Figur als Druckstock: gestochen, nicht leuchtend. Sie gehört auf das Papier.
+ *
+ * A6 — gezeichnet wird nach `state.rang` (bauer · springer · laeufer · turm · dame).
+ * Den Rang liefert `begleiter_besuch()`; ohne Konto und ohne Antwort bleibt es der Bauer.
+ * Der Satz darunter ist das ZULETZT GESAGTE des Begleiters, keine fest verdrahtete Liste
+ * mehr — spricht er noch nicht, steht dort auch nichts.
+ */
 function miniPawn(state){
- const id='pw'+(++pawnLauf),offen=state.pawnNote!=null;
- return '<figure class="pawn-figure'+(offen?' spricht':'')+'">'
- +'<button class="pawn-mark" data-pawn aria-label="Den Bauern fragen">'
+ const id='pw'+(++pawnLauf);
+ const rang=RANG_PFADE[state.rang]?state.rang:'bauer';
+ const d=RANG_PFADE[rang],a=RANG_AUGEN[rang];
+ const notiz=typeof state.pawnNote==='string'?state.pawnNote:'';
+ const augen=(a[2]!=null
+  ?'<ellipse cx="'+a[0]+'" cy="'+a[1]+'" rx="4.3" ry="5.6"/><ellipse cx="'+a[2]+'" cy="'+a[3]+'" rx="4.3" ry="5.6"/>'
+  :'<ellipse cx="'+a[0]+'" cy="'+a[1]+'" rx="4.3" ry="5.6"/>');
+ return '<figure class="pawn-figure'+(notiz?' spricht':'')+'" data-rang="'+rang+'">'
+ +'<button class="pawn-mark" data-pawn aria-label="PAWN fragen">'
  +'<svg viewBox="0 0 100 106" aria-hidden="true">'
- +'<defs><clipPath id="'+id+'c"><path d="'+PAWN_PFAD+'"/></clipPath>'
+ +'<defs><clipPath id="'+id+'c"><path d="'+d+'"/></clipPath>'
  +'<pattern id="'+id+'h" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">'
  +'<line x1="0" y1="0" x2="0" y2="3.4" stroke="var(--house-paper,#f6f1e7)" stroke-width="1" opacity=".26"/></pattern></defs>'
  +'<ellipse class="pawn-schatten" cx="50" cy="100" rx="34" ry="3.4"/>'
- +'<g class="pawn-koerper"><path d="'+PAWN_PFAD+'"/>'
+ +'<g class="pawn-koerper"><path d="'+d+'"/>'
  +'<rect clip-path="url(#'+id+'c)" width="100" height="100" fill="url(#'+id+'h)"/>'
- +'<g class="pawn-augen"><ellipse cx="42.4" cy="23.5" rx="4.3" ry="5.6"/><ellipse cx="57.6" cy="23.5" rx="4.3" ry="5.6"/></g></g>'
+ +'<g class="pawn-augen">'+augen+'</g></g>'
  +'</svg></button>'
- +'<figcaption><small>DEINE FIGUR</small>Bauer<em>Tipp mich an. Ich sage dir, was ich lese.</em></figcaption>'
- +'<p class="pawn-notiz"'+(offen?'':' hidden')+'>'+esc(pawnNotizen[state.pawnNote??0])+'<span>— PAWN</span></p>'
+ +'<figcaption><small>DEINE FIGUR</small>'+RANG_NAME[rang]+'<em>Tipp mich an. Ich sage dir, was ich lese.</em></figcaption>'
+ +(notiz?'<p class="pawn-notiz">'+esc(notiz)+'<span>— PAWN</span></p>':'')
  +'</figure>';
 }
 
@@ -110,13 +138,6 @@ export function gespraechKern(state,{frei=false}={}){
  const grenze=!fr.rahmen&&!frei&&!state.message?'<p class="chat-grenze">Tipp eine Antwort an. PAWN führt dich Schritt für Schritt — ohne Fragebogen.</p>':'';
  return {html:bisherZeile+'<div class="conversation gefuehrt" aria-live="polite">'+lauf+'</div>'+formular+grenze,schritt,welt:WELT_VON[fr.was]||'dna',bereit:!!erg,ergebnis:erg};
 }
-// Kleine Sätze, mit denen der Bauer begleitet. Sie wechseln und verschwinden wieder.
-export const begleiterSaetze={
- hero:['Neu hier? Tipp eine Welt an — ich zeige dir den Rest.','Ich bin PAWN. Frag mich, wenn du etwas suchst.','Drei Welten, ein Heft. Wo willst du anfangen?'],
- lesen:['Du kannst blättern — oder mich fragen.','Merk dir ein Stück. Daraus lese ich deine Linie.','Sag mir, ob ich mir das merken darf — dann ist es beim nächsten Öffnen noch da.'],
- dna:['Oder erzähl es mir — tipp mich an.','Zeig mir ein Bild. Ich lese, was du magst.','Ohne dein Ja vergesse ich alles nach dem Schließen.'],
- stage:['Tipp ein Plus an — jedes Stück hat eine Geschichte.','Ich stelle dir jedes Mal etwas Neues auf. Je mehr ich von dir lese, desto genauer.','Frag mich, wenn du etwas Bestimmtes suchst.']
-};
 export function pawnChat(state){
  const g=gespraechKern(state,{frei:true});
  return '<div class="chat-kopf">'+pawnGlyph('klein')+'<div><strong>Frag PAWN</strong><small>DEIN BERATER</small></div><button data-chat-schliessen aria-label="Gespräch schließen">×</button></div>'
@@ -298,6 +319,11 @@ export function extendedView(route,state){
    +'<p class="body-copy lead">Deine Linie entsteht von selbst — aus dem, was du ansiehst, dir merkst und kaufst.</p>'
    +'<ol class="schritte knapp hell"><li><span>01</span><strong>Ansehen</strong></li><li><span>02</span><strong>Merken</strong></li><li><span>03</span><strong>Kaufen</strong></li></ol>'
    +'<p class="bild-marke">'+(state.saved.length?state.saved.length+(state.saved.length===1?' gemerktes Stück liegt':' gemerkte Stücke liegen')+' schon vor.':'Du musst nichts ausfüllen. Willst du schneller sein: vier Bilder, zwei Minuten.')+'</p>'
+   // A6 — hier steht die eigene Figur. Sie lag seit dem Einzug (9ddd574) als toter Code
+   // herum: miniPawn() wurde nie aufgerufen, und die CSS-Regeln `.dna-einstieg
+   // .pawn-figure` zeigten ins Leere. Der Platz folgt dem, was das Stylesheet schon
+   // vorgesehen hatte — die Seite, auf der es um die eigene Linie geht.
+   +miniPawn(state)
    +zug('DEIN ZUG','Stilberatung starten','Vier Bilder. Zwei Minuten. Deine Linie.','data-page="'+nr('welt')+'"'),{welt:'dna',karte:true});
   if(name==='welt')return page(
    schritt(1)+'<h1>Tipp deine<br><em>Welt an.</em></h1>'+pawnSagt('Tipp eine Welt an. Die Seite blättert von selbst weiter.')

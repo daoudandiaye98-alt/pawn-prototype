@@ -4,7 +4,7 @@ import {createWorld} from './world.mjs';
 import {readView,productView,cartView,applicationView,productCard,esc,money} from './views.mjs';
 import {prepareCutouts,prepareBilder,cutouts} from './cutouts.mjs';
 import {extendedView,searchToolbar,pawnChat,pawnGlyph} from './extra-views.mjs';
-import {erschaffeBegleiter,gedaechtnisAus} from './begleiter.mjs';
+import {erschaffeBegleiter,gedaechtnisAus,RAENGE} from './begleiter.mjs';
 import {themes,housePresentation,searchProducts,searchCount,presentationExport,houseBlocks,houseProducts} from './presentation.mjs';
 import {befundAusWerken} from './beratung.mjs';
 import {kuratiere,kurationsNotiz} from './kuration.mjs';
@@ -56,7 +56,7 @@ if(gewaehlt.fehler){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{ar
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:null,denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',fitProduct:null};
+const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',fitProduct:null};
 // Was mit Zustimmung gespeichert wurde, kommt zurück.
 {const alt=laden();if(alt&&alt.consent===true)Object.assign(state,alt,{denkt:false,message:'',reference:''});}
 if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!optionen.zustimmung;
@@ -460,6 +460,7 @@ function melden(ereignis,daten={}){
 /** A4 — die Blase: Text, bis zu drei Chips, ein × rechts oben. */
 function blaseZeigen(blase){
  letzteBlase=blase;
+ state.pawnNote=blase.text;   // dasselbe Wort bei der Figur — nicht zwei Stimmen
  const b=$('begleiter-blase');
  const a=blase.aktion||{art:'sagen'};
  const chips=(a.chips||[]).slice(0,3).map(c=>
@@ -517,6 +518,7 @@ async function begleiterAufstellen(){
   saetze:katalog.saetze,regeln:katalog.regeln,flaeche:'heft',
   gedaechtnis:gedaechtnisAus(besuch?{...roh,...besuch}:roh)
  });
+ state.rang=besuch?.rang&&RAENGE.includes(besuch.rang)?besuch.rang:'bauer';
  const auf=besuch?begleiter.rangGewechselt(besuch.rang):null;
  // Der Empfang wartet die Eröffnung ab (5,8 s) plus 2,6 s — wer „Direkt entdecken"
  // tippt, ist dann längst weiter und bekommt keinen mehr.
@@ -664,7 +666,14 @@ hoeren(document,'click',e=>{
  if(b.dataset.page!==undefined){go({...nav.route,index:Number(b.dataset.page)});return;}
  if(b.hasAttribute('data-return'))returnDisplay();
  if(b.dataset.save){zustimmungFragen();const id=b.dataset.save;state.saved=state.saved.includes(id)?state.saved.filter(s=>s!==id):[...state.saved,id];quelle.merkliste.setzen(id,state.saved.includes(id)).catch(()=>{});quelle.signal('merken',{product:products[id],an:state.saved.includes(id)});melden('merken',{werk_id:id,an:state.saved.includes(id),merkliste_n:state.saved.length,n:state.saved.length});b.textContent=state.saved.includes(id)?'♥ Gemerkt':'♡ Stück merken';readRefresh();toast(state.saved.includes(id)?'Gemerkt. Du findest es unter Mein PAWN — und ich lese es als Beleg.':'Aus deiner Merkliste entfernt.');}
- if(b.hasAttribute('data-pawn')){state.pawnNote=state.pawnNote==null?0:(state.pawnNote+1)%3===0?null:state.pawnNote+1;readRefresh();return;}
+ if(b.hasAttribute('data-pawn')){
+  // Kein Karussell aus drei festen Saetzen mehr (A8). Steht ein Satz da, nimmt das
+  // Antippen ihn weg; steht keiner da, wird der Begleiter gefragt — antwortet er nicht,
+  // bleibt es still. Lieber nichts als ein Platzhaltersatz.
+  if(state.pawnNote){state.pawnNote='';readRefresh();return;}
+  melden('hilfe_gesucht',{kontext:begleiterKontext()});
+  if(!state.pawnNote)chat();
+  return;}
  if(b.dataset.wahl){const [feld,wert]=b.dataset.wahl.split(':');const neu=state.stil[feld]!==wert;state.stil[feld]=neu?wert:'';
   const formular=b.closest('form[data-measure-form]');if(formular)Object.assign(state.measurements,Object.fromEntries(new FormData(formular)));
   if(feld==='richtung')zustimmungFragen();
@@ -734,7 +743,7 @@ hoeren(document,'click',e=>{
   // Erst der Server, dann das Gerät. Nur zu vergessen, was hier liegt, wäre eine
   // halbe Löschung — und die schlimmere, weil sie sich wie eine ganze anfühlt.
   quelle.vergessen&&quelle.vergessen().then(r=>{if(r&&r.ok===false)toast(r.fehler||'Auf dem Server blieb etwas stehen.');},()=>toast('Auf dem Server blieb etwas stehen.'));
-  vergessen();state.style='';state.saved=[];state.goal='';state.pawnNote=null;state.stil={};state.frag={};state.foto='';state.message='';state.measurements={};state.fitProduct=null;state.reference='';state.consent=false;readRefresh();toast('Vorschau-Erinnerungen gelöscht.');}
+  vergessen();state.style='';state.saved=[];state.goal='';state.pawnNote='';state.stil={};state.frag={};state.foto='';state.message='';state.measurements={};state.fitProduct=null;state.reference='';state.consent=false;readRefresh();toast('Vorschau-Erinnerungen gelöscht.');}
  if(b.hasAttribute('data-export')){const blob=new Blob([JSON.stringify({scope:'PAWN Gestaltungsvorschau',style:state.style,goal:state.goal,measurements:state.measurements,saved:state.saved,consent:state.consent},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pawn-vorschau-dna.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);toast('Deine Vorschau-DNA wurde exportiert.');}
  if(b.dataset.rechnung){
   const id=b.dataset.rechnung;
