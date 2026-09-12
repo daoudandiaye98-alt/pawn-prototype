@@ -5,14 +5,14 @@
     {
       "nr": 196,
       "titel": "Auftrag O, Block A — Der Begleiter",
-      "status": "Draft, gerade aufgemacht. A1-A8 vollstaendig.",
-      "blockiert_durch": "Sicht-Freigabe durch Daouda. Kein Lovable-Deploy noetig — dieser Zweig fasst supabase/functions/* nicht an."
+      "status": "READY FOR REVIEW — Daouda hat den Entwurfsstatus am 12.09. 20:58 aufgehoben. A1-A8 vollstaendig. main (be17d19) ist nachgezogen, die Sperrdatei ist jetzt exakt die von main.",
+      "blockiert_durch": "NUR die Gate-Entscheidung (wartet_auf_mensch). Die Action messen ist rot, aber an denselben fuenf Gate-Familien, die auch auf main rot sind — und #196 hat WENIGER gefallene Gates als sein eigenes Ziel: 129 gegen 131. Kein Lovable-Deploy noetig."
     },
     {
       "nr": 197,
       "titel": "Fix: npm ci scheitert seit fe75955 — die Sperrdatei nachziehen",
-      "status": "Draft. Repariert den Pruefstand fuer das ganze Projekt, nicht nur fuer einen Zweig.",
-      "blockiert_durch": "Ansehen. Sollte VOR #196 gemergt werden — dann faellt der Merge-Commit in #196 von selbst weg."
+      "status": "UEBERHOLT — nicht mergen. Daoudas Lovable-Commit be17d19 hat Drizzle am 12.09. 20:40 ganz aus package.json und package-lock.json geloescht. Damit ist der Fehler, den #197 reparieren sollte, auf andere Weise weg.",
+      "blockiert_durch": "Nichts. SCHLIESSEN, nicht mergen: ein Merge wuerde drizzle-kit, drizzle-orm und postgres wieder hereinholen, die Daouda gerade entfernt hat. GEMESSEN: npm ci auf reinem main (be17d19, ohne #197) laeuft durch, Exit 0 — und im Lauf 201 auf main brauchte der Schritt Abhaengigkeiten 9 Sekunden und war gruen."
     },
     {
       "nr": 183,
@@ -22,18 +22,11 @@
     }
   ],
   "merge_reihenfolge": [
-    "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. main = 22471bc. Gemergt: #187, #188, #189, #190, #191, #192. Nachgeprueft auf origin/main, nicht vermutet: src/features/auth/tueren.ts, src/features/auth/registrieren.ts, src/heft03/uebernahme.mjs liegen dort, und sections.konto beginnt mit 'zugang'.",
-    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten 'merged', aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind.",
-    "LIVE auf main: L5/L6 (Zugang-Doppelseite als erste Seite von /konto), L7 (Passwort-Wiederholung an EINER Stelle: features/auth/registrieren.ts), L8 (drei Publikumstueren), L9 (Google kehrt zurueck), L10 (/auth ist Wegweiser auf /konto), L11 (Uebernahme der Gastdaten), L12 (ein Waechter, drei entfernt), L13 (Anklopfen statt 6-Sekunden-Frist), L16 (heft.d.ts). Zusagen Z11, Z12, Z13 neu, alle einmal rot vorgefuehrt.",
-    "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen auf cnxtdcifkrdxvajaikxq. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
-    "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
-    "DIE NEUE PRUEFUNG: scripts/verify/migrationen-kette.mjs. Rot am echten Ordner, gruen an einer geschlossenen Kopie — beide Richtungen vorgefuehrt. ABSICHTLICH NOCH NICHT in verify.sh schnell, weil sie heute echt rot ist und eine dauerhaft rote Pruefung im Tor lehrt, Rot zu uebersehen. Verdrahten, sobald die Luecke zu ist.",
-    "WIEDERAUFSETZEN OHNE RATEN: mcp Supabase list_migrations zeigt die 35 gelegten Dateien. Der Stapel-Drucker liegt im Scratchpad (stapel.py + stapel.json, 41 Stapel); Stapel 14 ist der naechste, danach der Sentinel zz_ende, dann die Abnahme, dann types.ts neu.",
-    "L11 WEICHT AB, mit Begruendung: merge_anon_session KANN kunden_stil und wishlists nicht tragen. Beide haben user_id als Schluessel mit Fremdschluessel auf auth.users, jede Policy verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner der beiden. Ein Gast hat dort nie eine Zeile. Die Uebernahme passiert deshalb beim Anmelden im Heft (src/heft03/uebernahme.mjs). Der andere Weg waere eine neue anonyme Schreibflaeche auf der Zahlungsdatenbank — das braucht Daoudas Wort.",
-    "DER RUECKWEG IST VORGEFUEHRT: drop schema public cascade + Historie leeren. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
-    "DIE BUCHHALTUNG: ein BEFORE-INSERT-Trigger auf supabase_migrations.schema_migrations setzt die Version aus dem Dateinamen und unterdrueckt jede fremde Zeile. Beim Sentinel-Namen 'zz_ende' entfernt er sich selbst.",
-    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet.",
-    "DER PRUEFER HAT EINEN FEHLER IN MEINEM BERICHT GEFUNDEN: 12 von 13 bestaetigt, EINER widerlegt (ein Verweis auf /auth stand noch in der Aufwaermliste der englischen Fassung). Repariert UND gedeckt: Zusage Z13 mit der Kontrolle nurWegweiser, einmal rot vorgefuehrt."
+    "NEU AM 12.09. ABEND: die Reihenfolge #197 -> #196 -> #198 ist hinfaellig. #197 ist ueberholt und gehoert geschlossen. Es bleibt: #196 -> #198.",
+    "main ist be17d19 (Lovable-Merge \"P2-P3 erledigt, P1 nicht moeglich\", 20:40). Dieser Commit hat das ganze Drizzle-Geruest geloescht: drizzle.config.ts, drizzle/schema.ts, bun.lockb, 7 meta-Snapshots und _journal.json, dazu 3 Zeilen aus package.json.",
+    "KEINE MIGRATION IST VERLOREN: die drei echten SQL-Dateien wurden nach supabase/migrations/ verschoben, von Git als 100%-Umbenennung erkannt, Byte-gleich (2624 / 752 / 173). Dazu neu: supabase/migrations/LIESMICH.md.",
+    "#196 traegt main jetzt in sich und seine Sperrdatei ist Byte-gleich mit der von main. Das war noetig, weil der Merge sonst 37 Drizzle-Eintraege in der Sperrdatei stehen gelassen haette, die Daouda gerade geloescht hat — npm ci verzeiht das (gemessen, Exit 0), aber es haette seine Aufraeumarbeit halb zurueckgedreht.",
+    "#198 sitzt auf #196 und braucht main ebenfalls nachgezogen, sobald #196 durch ist."
   ],
   "wartet_auf_mensch": [
     "DIE 119 GEFALLENEN LAUNCH GATES, neu und zum ersten Mal belegt: 4.7 Seitengewicht, 3.5 Trefferflaechen, 3.3 Kontrast, 3.4 Tastaturfokus. Sie auf die Norm zu ziehen aendert das AUSSEHEN des Hefts — und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Vorher sind zwei Zweifel zu klaeren (3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand) — niemand soll Gestaltung aendern, wo ein Messfehler sitzt. Vollstaendig im Kommentar an PR #194.",
@@ -77,7 +70,12 @@
       "eine_moeglichkeit_falls_gewuenscht": "Die zwei Katalog-Anfragen liessen sich zusammenlegen oder verzoegern, bis der Bauer das erste Mal reden will (fruehestens nach 8,4 s) — rund 20 kB weniger beim Erststart. NICHT gebaut: es verkompliziert Block A, ohne ein Gate umzudrehen. Daoudas Entscheidung."
     }
   },
-  "naechster_zug": "ERSTENS: Sicht-Freigabe fuer PR #196 (Block A) durch Daouda — die Aufnahmen liegen unter .claude/sicht/2026-09-12/. DANACH Block C (Archetyp): er ist der einzige Block, der von Lovable nichts braucht, und kann sofort gebaut werden. Block B wartet auf Lovables freistellen, Block D auf Lovables anprobe. UNVERAENDERT OFFEN, weil nur Daouda es entscheiden kann: M3 zweiter Teil (anon liest 60 Spalten auf public.designers, darunter 8 Stripe-Spalten, user_id und revenue_share_pct — auf LIVE-Daten), M5 (Speicher-Eimer und ~49 Edge Functions), und was aus PR #195 wird.",
+  "naechster_zug": [
+    "1. #197 SCHLIESSEN (nicht mergen) — begruendet und gemessen, siehe offene_prs.",
+    "2. Die Gate-Entscheidung treffen: fuenf Familien, 131 gefallene Gates auf main. Das ist eine Entscheidung ueber das Aussehen des Hefts, keine Panne — und sie blockiert #196 und #198.",
+    "3. Von den fuenf ist 3.8 der einzige, der nach einem schlichten Fehler aussieht und nicht nach Geschmack: Text liegt auf einem Knopf. Ein Kandidat, der sich ohne Gestaltungsdebatte reparieren laesst.",
+    "4. Dann #196 mergen, danach main in #198 nachziehen und #198 mergen."
+  ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
     "F1 IST DIE LEHRREICHSTE MESSUNG DIESER RUNDE: ich habe es mit echtem Chromium versucht, gegen den gebauten Stand, beide Fassungen — mit und ohne Reparatur. Beide Laeufe sind ZEICHENGLEICH: das Geruest erscheint nach 12,7 s, 39 ms spaeter greift die Gestaltung. Die Messung kann die Reparatur nicht von ihrem Fehlen unterscheiden, also beweist sie nichts. Gesagt statt behauptet. Der Grund: vite preview liefert das CSS ohne Verzoegerung von 127.0.0.1. Die Vercel-Vorschau, wo es zu sehen waere, antwortet dem Container mit 302 auf die Anmeldung.",
@@ -139,5 +137,13 @@
     "DER_KATALOG_HAT_LUECKEN": "Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: 30 Saetze, 30 Regeln, 0 ohne Satz. KEINE Regel zu heft.zustimmung. KEINE Regel zu blaettern (Auftrag O nennt das Ereignis). Die Chip-Funktion freistellen kommt im Katalog noch nicht vor. Der Umriss liegt als src/heft03/fixtures/begleiter-katalog.json im Repo und wird von zwei Tests gegen den Code gehalten.",
     "WAS_TOT_WAR_UND_JETZT_LEBT": "miniPawn() wurde seit dem Einzug 9ddd574 NIE aufgerufen; die CSS-Regeln .dna-einstieg .pawn-figure zeigten ins Leere. richtungGemerkt() war geschrieben, aber nie aufgerufen. Beides ist jetzt verdrahtet. MERKREGEL fuer die naechste Schicht: nach jeder neuen Funktion pruefen, ob sie auch aufgerufen wird — in dieser Sitzung zweimal passiert."
   },
-  "DER_PRUEFSTAND_MISST_NICHTS": "Die GitHub-Action 'messen' ist auf main seit dem 11.09. rot und misst gar nichts: `npm ci` bricht ab, bevor ein Wert erhoben wird. Ursache gemessen: fe75955 (Lovable) hat drizzle-kit, drizzle-orm und postgres in package.json eingetragen und dazu bun.lock fortgeschrieben — die Action benutzt aber npm ci und package-lock.json, wo die drei nie standen. Reparatur liegt als PR #197 (eigener Zweig claude/lock-drizzle) und ist in #196 hereingemergt, damit der dortige Lauf ueberhaupt gruen werden kann. Gemessen: 60 Pakete kommen dazu, 0 gehen, 0 wechseln die Version — Stripe, Supabase und React sind nicht angefasst. OFFEN FUER DAOUDA: ob drizzle ueberhaupt bleiben soll. Es wird nirgends importiert; nur drizzle.config.ts und drizzle/migrations/ verweisen darauf, beide aus demselben Commit. Das Projekt hat seine Migrationen in supabase/migrations/."
+  "DER_PRUEFSTAND_MISST_NICHTS": {
+    "ERLEDIGT": "Diese Ueberschrift stimmt seit dem 12.09. 20:40 nicht mehr. Der Pruefstand misst wieder, auf main und auf den Zweigen.",
+    "beweis": "Lauf 201 auf main (be17d19): Schritt Abhaengigkeiten gruen in 9 s, Schritt Pruefstand 17 Minuten echte Messung, 36 Artefakte, 6.863.606 Byte.",
+    "main_ist_rot_und_zwar_echt": "Gates: 656 bestanden · 131 gefallen · 300 nicht pruefbar.",
+    "196_ist_besser_als_main": "Gates auf 53d6905: 632 bestanden · 129 gefallen · 300 nicht pruefbar. Block A macht nichts schlechter — main hat zwei gefallene Gates MEHR als der Zweig.",
+    "BERICHTIGUNG_ES_SIND_FUENF_FAMILIEN_NICHT_VIER": "Ich habe bisher von vier Familien geschrieben: 4.7 Seitengewicht, 3.3 Kontrast, 3.5 Trefferflaechen, 3.4 Tastaturfokus. Es sind fuenf. Die fuenfte ist 3.8.",
+    "gate_3_8": "Bei 844 px (iPad hoch) liegt p#intro-caption ueber button#skip — Ueberschneidung 1,0 bei erlaubten 0,25, zwei Paare. Text auf einem Knopf. Steht in BEIDEN Laeufen, auf main und auf #196, ist also nicht neu und nicht von Block A. Ich hatte es nur nie benannt.",
+    "familien_gezaehlt": "Im lesbaren Teil beider Protokolle identisch: 3.3 x26, 4.7 x17, 3.4 x8, 3.5 x7, 3.8 x2."
+  }
 }
