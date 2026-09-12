@@ -13,7 +13,6 @@ import { RoomShiftProvider } from "@/features/os/roomShift";
 import { PersonalizationProvider } from "@/features/personalization";
 import { ConsentProvider } from "@/lib/consent";
 import { ConsentBanner } from "@/components/palace/ConsentBanner";
-import { EditModeProvider } from "@/lib/editMode";
 import { CopilotProvider } from "@/components/pawn/CopilotDrawer";
 import { lazy, Suspense } from "react";
 import { istHeftAdresse } from "@/heft03/adressen";
@@ -71,6 +70,8 @@ function EinwilligungAusserhalbDesHefts() {
 import AdminContent from "./pages/admin/AdminContent.tsx";
 import AdminWerbung from "./pages/admin/AdminWerbung.tsx";
 import AdminAktionen from "./pages/admin/AdminAktionen.tsx";
+import AdminBegleiter from "./pages/admin/AdminBegleiter.tsx";
+import AdminArchetypen from "./pages/admin/AdminArchetypen.tsx";
 
 
 import Preise from "./pages/Preise.tsx";
@@ -107,6 +108,7 @@ import StudioVideothek from "./pages/studio/StudioVideothek.tsx";
 import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
 import StudioContentBegleiter from "./pages/studio/StudioContentBegleiter.tsx";
 import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
+import StudioHeft from "./pages/studio/StudioHeft.tsx";
 import StudioReferrals from "./pages/studio/StudioReferrals.tsx";
 import StudioBeweis from "./pages/studio/StudioBeweis.tsx";
 import StudioDNA from "./pages/studio/StudioDNA.tsx";
@@ -175,7 +177,6 @@ const App = () => (
           <AuthedCore>
             <CartProvider>
               <ConsentProvider>
-              <EditModeProvider>
               <PersonalizationProvider>
               <RoomShiftProvider>
               <CopilotProvider>
@@ -281,6 +282,8 @@ const App = () => (
                 <Route path="/admin/editionen" element={<RoleGate role="admin"><AdminEditionen /></RoleGate>} />
                 <Route path="/admin/werbung" element={<RoleGate role="admin"><AdminWerbung /></RoleGate>} />
                 <Route path="/admin/aktionen" element={<RoleGate role="admin"><AdminAktionen /></RoleGate>} />
+                <Route path="/admin/begleiter" element={<RoleGate role="admin"><AdminBegleiter /></RoleGate>} />
+                <Route path="/admin/archetypen" element={<RoleGate role="admin"><AdminArchetypen /></RoleGate>} />
 
                 <Route path="/studio" element={<RoleGate role="designer"><StudioOverview /></RoleGate>} />
                 {/* Teil K1 — Sidebar-Faltung: neue gefaltete Flächen. */}
@@ -289,6 +292,7 @@ const App = () => (
                 <Route path="/studio/werke/bilder" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
                 <Route path="/studio/werke/rochade" element={<RoleGate role="designer"><StudioRochade /></RoleGate>} />
                 <Route path="/studio/doppelseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
+                <Route path="/studio/heft" element={<RoleGate role="designer"><StudioHeft /></RoleGate>} />
                 <Route path="/studio/doppelseite/stil" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/clips" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
                 <Route path="/studio/clips/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />
@@ -333,7 +337,6 @@ const App = () => (
               </RoomShiftProvider>
 
               </PersonalizationProvider>
-              </EditModeProvider>
               </ConsentProvider>
             </CartProvider>
 

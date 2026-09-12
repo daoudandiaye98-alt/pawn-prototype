@@ -19,7 +19,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { MediaImg } from "@/components/palace/MediaImg";
-import type { BlockMediaLite } from "@/components/palace/HausseiteBlocks";
+/* Teil O/K3 — der Typ wohnte in HausseiteBlocks; die Datei ist entfallen, der Typ bleibt hier. */
+export interface BlockMediaLite { id: string; url: string; kind: "bild" | "video"; }
 
 const MAX_BILD_MB = 15;
 const MAX_VIDEO_MB = 200;

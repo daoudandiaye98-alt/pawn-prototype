@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PalaceHeader } from "./PalaceHeader";
-import { BuilderBar, BuilderToggle } from "./BuilderMode";
 import { Editable, useContentValue } from "./Editable";
 import { useSiteContent } from "@/lib/siteContent";
 import { Breadcrumbs } from "./Breadcrumbs";
@@ -65,7 +64,6 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
       <JsonLd data={organizationLd()} />
       {/* Teil L2 — Sprunglink: erstes fokussierbares Element, sichtbar nur per Tastatur. */}
       <a href="#inhalt" className="skip-link">{t("a11y.skipToContent")}</a>
-      <BuilderBar />
       <PalaceHeader variant={headerVariant} />
       {showBreadcrumbs && <div className="pt-[68px] md:pt-[76px]"><Breadcrumbs /></div>}
       <main id="inhalt">{children}</main>
@@ -153,7 +151,6 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
           <span>© {new Date().getFullYear()} — Für Designer <a href="/fuer-designer/2" className="uline text-black">bewerben</a></span>
         </div>
       </footer>
-      <BuilderToggle />
     </div>
   );
 }
