@@ -80,9 +80,34 @@ export interface SeitenZiel {
   pfad: string;
 }
 
-/** Die vier, an denen Geld und Vertrauen hängen. Slugs stehen hier, nicht im Code. */
-export const PRODUKT_SLUG = "obara-rope-jacket";
-export const HAUS_SLUG = "obara";
+/**
+ * Die vier, an denen Geld und Vertrauen hängen. Slugs stehen hier, nicht im Code.
+ *
+ * NACHGEZOGEN AM 12.09.2026, und der Grund ist ein Messfehler, nicht ein Tippfehler:
+ * hier standen `obara` und `obara-rope-jacket`. Dieses Haus gibt es auf der Datenbank
+ * nicht (mehr) — nach dem Erstaufbau trägt sie genau ein Haus, `demo-drape` mit drei
+ * Werken. Der Prüfstand hat damit zwei seiner sechs Seiten auf ein Haus gerichtet, das
+ * es nicht gibt, und dort die HEFT-HÜLLE gemessen statt einer Haus- oder Werkseite.
+ *
+ * Das ist dieselbe Form wie die Blindheit, die Teil L13 hinterlassen hatte: die Augen
+ * waren offen und zeigten auf eine Wand. Belegt am Protokoll des Laufs 173 — die
+ * Befunde 3.3/3.4/3.5 für `/haus/obara` nennen ausschließlich Heft-Bedienelemente
+ * (`note-text`, `scroll-hint`, `tools-toggle`, „Doppelseite 1/2"), kein einziges
+ * Element eines Hauses oder eines Werks.
+ *
+ * WER DAS HIER ÄNDERT, MUSS ES WIEDER ÄNDERN, sobald echte Häuser live sind: ein
+ * Demo-Haus zu messen ist besser als ein nicht existierendes, aber es ist nicht die
+ * Wirklichkeit. Die Slugs müssen auf ein echtes, veröffentlichtes Haus zeigen.
+ *
+ * WAS HIER NOCH FEHLT, ausdrücklich als offener Punkt: der Prüfstand merkt es nicht
+ * selbst. `huelleMarkieren` in `lauf.ts` fängt TRANSPORTfehler (Anfrage fehlgeschlagen),
+ * nicht „Anfrage erfolgreich, null Zeilen". Der saubere Wächter dafür braucht keine
+ * Kenntnis des Heft-DOM, sondern einen Unterschiedstest: rendert `/haus/<slug>` dasselbe
+ * wie `/haus/<UNSINN_PFAD-artiger Unsinn>`, dann ist das Haus nicht geladen und die Seite
+ * ist eine Hülle. Das ist der nächste Schritt und bewusst nicht geraten gebaut.
+ */
+export const PRODUKT_SLUG = "wool-coat";
+export const HAUS_SLUG = "demo-drape";
 
 /** Die Halle — die Startseite. */
 export const HALLE_PFAD = "/";
