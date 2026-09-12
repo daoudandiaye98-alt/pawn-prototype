@@ -2386,6 +2386,8 @@ export type Database = {
           id: string
           key: string
           name: string
+          notiz: string | null
+          quelle_url: string | null
           seitenverhaeltnis: number | null
           tags: string[]
           welt: string | null
@@ -2400,6 +2402,8 @@ export type Database = {
           id?: string
           key: string
           name: string
+          notiz?: string | null
+          quelle_url?: string | null
           seitenverhaeltnis?: number | null
           tags?: string[]
           welt?: string | null
@@ -2414,6 +2418,8 @@ export type Database = {
           id?: string
           key?: string
           name?: string
+          notiz?: string | null
+          quelle_url?: string | null
           seitenverhaeltnis?: number | null
           tags?: string[]
           welt?: string | null
