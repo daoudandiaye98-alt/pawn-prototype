@@ -6,9 +6,9 @@ import {heftAusZeilen,productFromRow,themeFromRow,checkoutLines,cartByHouse,stil
 import {heftFuellen,demoWiederherstellen,products,houses,sections,displays,counts,kuration} from './data.mjs';
 import {pfadAusRoute,routeAusPfad,alleAdressen,UMZUEGE} from './routen.mjs';
 import {kuratiere} from './kuration.mjs';
-import {urteil,passform} from './beratung.mjs';
+import {urteil,passform,befundAusWerken} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
-import {chatAntwort,SPALTEN,demoQuelle,bildLoeser} from './quelle.mjs';
+import {chatAntwort,SPALTEN,demoQuelle,bildLoeser,bilderTauglich,BILD_GRENZE} from './quelle.mjs';
 import {readView} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
@@ -110,8 +110,49 @@ test('Chat-Antwort: Karten werden zu Slugs, alte /product/-Adressen inklusive',(
  assert.equal(chatAntwort(null),null);
 });
 
+test('An pawn-chat geht hoechstens ein Bild, und keines ueber 2 MB',()=>{
+ const klein='data:image/jpeg;base64,'+'A'.repeat(1000);
+ const gross='data:image/png;base64,'+'A'.repeat(BILD_GRENZE);
+ assert.deepEqual(bilderTauglich([klein]),[klein]);
+ // Die Grenze gilt fuer die KODIERTE Laenge — das ist, was gesendet wird.
+ assert.ok(gross.length>BILD_GRENZE);
+ assert.deepEqual(bilderTauglich([gross]),[],'zu gross geht gar nicht erst raus');
+ // Kein Bild, keine Zeichenkette, ein fremdes Schema: alles faellt weg.
+ assert.deepEqual(bilderTauglich([]),[]);
+ assert.deepEqual(bilderTauglich(['https://example.com/x.jpg']),[]);
+ assert.deepEqual(bilderTauglich(['data:text/html;base64,AAA']),[]);
+ assert.deepEqual(bilderTauglich([null,undefined,42]),[]);
+ // Hoechstens eines — image_urls[0], wie in Auftrag O A7.
+ assert.deepEqual(bilderTauglich([klein,klein]).length,1);
+ // Auch ein einzelnes Bild ohne Feld kommt an.
+ assert.deepEqual(bilderTauglich(klein),[klein]);
+});
+
 test('Spaltenmasken enthalten keine Stripe- oder Kontospalten',()=>{
  for(const [k,v] of Object.entries(SPALTEN))assert.ok(!/stripe|user_id|email|iban|application_fee/.test(v),k);
+});
+
+test('Befund aus gemerkten Stuecken erfindet keine gemeinsame Linie',()=>{
+ // Der Chip „befund" haengt im Katalog an der Regel heft.merken.zweites:
+ // „Zwei Stuecke. Soll ich lesen, was die beiden gemeinsam haben?"
+ const klar={name:'Wool Coat',world:'mode',dna:{mood:['klar'],silhouette:['gerade'],materials:['wolle'],colors:['schwarz']}};
+ const auchKlar={name:'Linen Shirt',world:'mode',dna:{mood:['klar'],silhouette:['gerade'],materials:['leinen'],colors:['elfenbein']}};
+ const laut={name:'Red Print',world:'mode',dna:{mood:['laut'],silhouette:['weit'],materials:['seide'],colors:['rot']}};
+
+ const geteilt=befundAusWerken([klar,auchKlar]);
+ assert.equal(geteilt.linie,'Klar & Gerade');
+ assert.equal(geteilt.anzahl,2);
+ assert.ok(geteilt.satz.includes('Klar geschnitten'),'der Satz kommt aus befund(), nicht aus dem Begleiter');
+
+ // Zwei Stuecke ohne gemeinsame Richtung: lieber nichts sagen als eine Linie behaupten.
+ assert.equal(befundAusWerken([klar,laut]),null);
+ // Unter zwei Stuecken gibt es nichts zu vergleichen.
+ assert.equal(befundAusWerken([klar]),null);
+ assert.equal(befundAusWerken([]),null);
+ // Eine Richtung ohne gemeinsame Form reicht — die Form bleibt dann offen.
+ const ohneForm=befundAusWerken([klar,{...auchKlar,dna:{...auchKlar.dna,silhouette:['lagen']}}]);
+ assert.equal(ohneForm.linie,'Klar');
+ assert.equal(ohneForm.fertig,false);
 });
 
 test('Stilprofil hin und zurück',()=>{

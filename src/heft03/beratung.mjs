@@ -108,6 +108,29 @@ function trifft(p,wert){
  const woerter=[wert,...(VOKABULAR[welt]?.[wert]||[])].map(w=>w.toLocaleLowerCase('de'));
  return woerter.some(w=>hay.includes(w));
 }
+// Der Befund über die gemerkten Stücke — der Chip „befund" aus dem Begleiter-Katalog
+// („Zwei Stücke. Soll ich lesen, was die beiden gemeinsam haben?").
+//
+// Er erfindet nichts: eine Richtung oder Form zählt nur, wenn JEDES gemerkte Stück sie
+// trägt. Teilen die Stücke keine Richtung, kommt `null` zurück und der Bauer schweigt —
+// lieber kein Befund als ein geratener. Den Satz spricht `befund()`, damit die Linie im
+// Heft überall gleich klingt.
+export function befundAusWerken(werke=[]){
+ const liste=werke.filter(Boolean);
+ if(liste.length<2)return null;
+ // Die Welt ist die der Mehrheit; Stücke aus anderen Welten reden beim Befund nicht mit.
+ const zaehlung={};
+ for(const p of liste){const w=p.world||'mode';zaehlung[w]=(zaehlung[w]||0)+1;}
+ const welt=Object.keys(zaehlung).sort((a,b)=>zaehlung[b]-zaehlung[a])[0];
+ const eigene=liste.filter(p=>(p.world||'mode')===welt);
+ if(eigene.length<2)return null;
+ const alle=werte=>werte.find(v=>eigene.every(p=>trifft(p,v)))||null;
+ const richtung=alle((richtungen[welt]||[]).map(r=>r.wert));
+ const form=alle((formen[welt]?.werte||[]).map(f=>f.wert));
+ if(!richtung)return null;
+ return {...befund({welt,richtung,form:form||undefined}),anzahl:eigene.length};
+}
+
 export function urteil(stil={},produkt){
  if(!produkt)return null;
  const treffer=[stil.richtung,stil.form].filter(x=>x&&trifft(produkt,x));

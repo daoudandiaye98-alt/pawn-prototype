@@ -48,7 +48,15 @@ fortgeschrieben. Eine Sitzung, die den Stand nicht fortschreibt, ist nicht ferti
 
 ## Stack und was wo live geht
 - Vite + React + TypeScript + Tailwind. Backend: Lovable Cloud (managed
-  Supabase, Projekt `cnxtdcifkrdxvajaikxq`).
+  Supabase, Projekt **`rnakubexbqfgfciynqpt`**).
+- **Es gibt ein zweites Supabase-Projekt, `cnxtdcifkrdxvajaikxq`, und es ist
+  NICHT die Datenbank der Seite.** Hier stand es wochenlang als das echte, und
+  Teil M wurde vollständig dort gemacht — umsonst. Gemessen am 12.09.2026:
+  das Bündel von pawn.vision nennt genau eine Adresse, `rnakubexbqfgfciynqpt`;
+  `supabase/config.toml` nennt dieselbe; dort liegen 91 Tabellen und die
+  Historie 208, auf `cnxt` sind es 80 und 170. Beide Projekte antworten, keines
+  ist gelöscht. **Wer eine Datenbankzahl misst, nennt dazu das Projekt** — sonst
+  ist die Zahl wertlos.
 - **Frontend:** Push auf `main` → Lovable synct und deployt, Vercel spiegelt auf
   pawn.vision. Frontend-Arbeit über Git ist der günstige Kanal.
 - **Edge Functions (`supabase/functions/*`):** Code ändern ja — **Deploy nur

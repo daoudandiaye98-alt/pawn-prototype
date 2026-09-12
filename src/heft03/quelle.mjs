@@ -26,6 +26,17 @@ import {heftAusZeilen,checkoutLines,cartByHouse,stilToRow,stilFromRow,orderFromR
 const nichts=async()=>null;
 const kein=async()=>({ok:false});
 
+/* Ein Katalog fuer die Vorschau — dieselbe Form wie in der Datenbank, nur klein. */
+const DEMO_SAETZE=[
+ {key:'heft.empfang.erster',flaeche:'heft',kontext:'hero',varianten:{de:['Ich bin PAWN. Stöber in Ruhe — oder tipp mich an.','Willkommen. Drei Welten liegen vor dir.']},aktiv:true},
+ {key:'heft.merken.erstes',flaeche:'heft',kontext:'werk',varianten:{de:['Das erste Stück. Daraus lese ich schon etwas.']},aktiv:true},
+ {key:'heft.stillstand.hero',flaeche:'heft',kontext:'hero',varianten:{de:['Tipp eine Welt an — ich zeige dir den Rest.']},aktiv:true}
+];
+const DEMO_REGELN=[
+ {key:'heft.empfang.erster',flaeche:'heft',ereignis:'betreten',bedingung:{besuch:'erster'},satz_key:'heft.empfang.erster',aktion:{art:'sagen'},prioritaet:100,abklingzeit_s:0,einmal:'immer',aktiv:true},
+ {key:'heft.merken.erstes',flaeche:'heft',ereignis:'merken',bedingung:{merkliste_eq:1},satz_key:'heft.merken.erstes',aktion:{art:'sagen'},prioritaet:85,abklingzeit_s:0,einmal:'sitzung',aktiv:true},
+ {key:'heft.stillstand.hero',flaeche:'heft',ereignis:'stillstand',bedingung:{kontext:'hero',min_ms:12000},satz_key:'heft.stillstand.hero',aktion:{art:'sagen'},prioritaet:20,abklingzeit_s:120,einmal:null,aktiv:true}
+];
 export function demoQuelle(){
  return {
   art:'demo',
@@ -39,6 +50,13 @@ export function demoQuelle(){
   masse:{laden:nichts,speichern:kein},
   merkliste:{laden:nichts,setzen:kein},
   signal:nichts,
+  /* Der Begleiter in der Vorschau: ein kleiner, echter Katalog in der Form der
+     Datenbank. Genug, damit die Blase erscheint und das Schweigen greift — nicht
+     genug, um die 30 echten Saetze vorzutaeuschen. */
+  async begleiter(){return {saetze:DEMO_SAETZE,regeln:DEMO_REGELN};},
+  async begleiterMerken(){return null;},
+  async begleiterBesuch(){return {besuche:1,rang:'bauer',letzter_besuch:null};},
+  async ereignis(){return null;},
   texte:async()=>({}),
   vertraege:async()=>[],
   vergessen:kein,
@@ -54,6 +72,21 @@ export function demoQuelle(){
 }
 
 // Spaltenmasken: Das öffentliche Heft liest NUR diese Spalten (designers exponiert per RLS auch Stripe-Felder).
+/**
+ * Was als Bild an pawn-chat gehen darf: eine einzige data-URL mit Bild-Typ, hoechstens
+ * 2 MB. Gemessen wird die KODIERTE Laenge — das ist, was wirklich ueber die Leitung
+ * geht; die Dateigroesse waere die falsche Zahl (base64 waechst um rund ein Drittel).
+ *
+ * Der Riegel sitzt hier an der Grenze und nicht nur am Knopf: wer chat() sonstwo
+ * aufruft, kann die Zusage nicht versehentlich brechen.
+ */
+export const BILD_GRENZE=2*1024*1024;
+export function bilderTauglich(bilder=[],grenze=BILD_GRENZE){
+ return (Array.isArray(bilder)?bilder:[bilder])
+  .filter(b=>typeof b==='string'&&/^data:image\/[a-z.+-]+;base64,/i.test(b)&&b.length<=grenze)
+  .slice(0,1);
+}
+
 export const SPALTEN={
  products:'id,slug,name,world,price,image_url,description,designer_note,product_dna,size_variants,measurements,material_composition,inventory_mode,stock_quantity,lead_time_days,tags,status,height_cm,width_cm,length_cm,made_in,care_instructions,edition_info,sustainability_note,vat_rate,designer_id,designers(id,slug,brand_name,verkaufsbereit)',
  designers:'id,slug,brand_name,house_number,status,published,page_published_at,plan,brand_dna,story,manifesto,quote,quote_role,collection_title,location,country,website,instagram,tags,hero_image_url,avatar_url,banner_url,portrait_url,atelier_image_url,atelier_caption,is_featured,verkaufsbereit',
@@ -66,7 +99,9 @@ export const SPALTEN={
  stil:'welt,richtung,form,fuer_wen,foto_befund',
  anfragen:'id,subject,category,status,last_message_at,product_id,designer_id,products:product_id(slug,name),designers:designer_id(slug,brand_name)',
  texte:'key,value',
- vertraege:'id,kind,version,title,url,effective_from'
+ vertraege:'id,kind,version,title,url,effective_from',
+ begleiterSaetze:'key,flaeche,kontext,welt,register,varianten,platzhalter,aktiv',
+ begleiterRegeln:'key,flaeche,ereignis,bedingung,satz_key,aktion,prioritaet,abklingzeit_s,einmal,aktiv,notiz'
 };
 
 /** Chat-Antwort von pawn-chat → Heft: Karten-Links (/werk/<slug>, alt /product/<slug>) werden zu Slugs. */
@@ -144,7 +179,8 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    return heftAusZeilen({products:products||[],designers:designers||[],blocks:blocks||[],themes:themes||[],media:media||[],collection:collection||null,items:items||[]},{bild:bildAufgeloest});
   },
   async chat({messages=[],bilder=[],kontext={},session_id=sitzung()}={}){
-   const {data,error}=await client.functions.invoke('pawn-chat',{body:{messages,session_id,image_urls:bilder.length?bilder:undefined,page_context:{route:kontext.route||'/frag-pawn',product_slug:kontext.product_slug,heft:kontext}}});
+   const gesendet=bilderTauglich(bilder);
+   const {data,error}=await client.functions.invoke('pawn-chat',{body:{messages,session_id,image_urls:gesendet.length?gesendet:undefined,page_context:{route:kontext.route||'/frag-pawn',product_slug:kontext.product_slug,heft:kontext}}});
    if(error)return {reply:'',treffer:[],fehler:fehlerText(error)};
    const a=chatAntwort(data);
    if(a?.session_id){try{localStorage.setItem('palace.chat.session_id',a.session_id);}catch(e){}}
@@ -250,6 +286,46 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
     return error?null:(data&&data.signedUrl)||null;
    },
    async abmelden(){await client.auth.signOut();}
+  },
+  /*
+   * DER BEGLEITER (Auftrag O, A5). Vier Methoden, mehr braucht der Verstand nicht.
+   *
+   * Der Katalog wird EINMAL je Sitzung geholt — 30 Saetze und 30 Regeln sind klein,
+   * und ein Begleiter, der bei jedem Ereignis die Datenbank fragt, waere langsam und
+   * gespraechig zugleich.
+   */
+  async begleiter(){
+   const [{data:saetze,error:e1},{data:regeln,error:e2}]=await Promise.all([
+    client.from('begleiter_saetze').select(SPALTEN.begleiterSaetze).eq('aktiv',true),
+    client.from('begleiter_regeln').select(SPALTEN.begleiterRegeln).eq('aktiv',true)
+   ]);
+   if(e1||e2)return {saetze:[],regeln:[]};
+   return {saetze:saetze||[],regeln:regeln||[]};
+  },
+  /** Was gesagt, abgelehnt oder angenommen wurde — nur mit Konto, die RPC prueft das selbst. */
+  async begleiterMerken(satzKey,antwort,notizen){
+   const u=await nutzer();if(!u)return null;
+   const {data,error}=await client.rpc('begleiter_merken',{satz_key:satzKey,antwort,notizen:notizen??null});
+   return error?null:data;
+  },
+  /** Besuche, Rang, letzter Besuch. Ohne Konto gibt es nichts zu zaehlen. */
+  async begleiterBesuch(){
+   const u=await nutzer();if(!u)return null;
+   const {data,error}=await client.rpc('begleiter_besuch');
+   if(error)return null;
+   return Array.isArray(data)?(data[0]??null):(data??null);
+  },
+  /*
+   * Ein Ereignis wegschreiben — NUR mit Konto UND mit Zustimmung zur Auswertung.
+   * Beides zusammen, nicht eines davon: ohne Konto gibt es keine Zeile, die jemandem
+   * gehoert, und ohne consent_analytics hat niemand erlaubt, sein Verhalten zu zaehlen.
+   */
+  async ereignis(flaeche,art,daten){
+   const u=await nutzer();if(!u)return null;
+   if(!funktionen.darfZaehlen?.())return null;
+   const {error}=await client.from('begleiter_ereignisse')
+    .insert({user_id:u.id,session_id:sitzung()??null,flaeche,ereignis:art,daten:daten??{}});
+   return error?null:true;
   },
   /* Anmelden, Registrieren und Google liegen in der React-Huelle, nicht hier: dort lebt
      supabase.auth samt Sitzung, dort steht der Vergleich der beiden Passwoerter

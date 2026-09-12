@@ -474,6 +474,14 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/admin/begleiter/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/admin/archetypen/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/studio/?$",
       "dest": "/index.html"
     },
@@ -495,6 +503,10 @@
     },
     {
       "src": "^/studio/doppelseite/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/studio/heft/?$",
       "dest": "/index.html"
     },
     {

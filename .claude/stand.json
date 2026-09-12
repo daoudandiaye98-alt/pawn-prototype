@@ -1,7 +1,19 @@
 {
-  "aktualisiert": "2026-09-11",
-  "branch": "claude/teil-l-stand",
+  "aktualisiert": "2026-09-12",
+  "branch": "claude/auftrag-o-begleiter",
   "offene_prs": [
+    {
+      "nr": 196,
+      "titel": "Auftrag O, Block A — Der Begleiter",
+      "status": "Draft, gerade aufgemacht. A1-A8 vollstaendig.",
+      "blockiert_durch": "Sicht-Freigabe durch Daouda. Kein Lovable-Deploy noetig — dieser Zweig fasst supabase/functions/* nicht an."
+    },
+    {
+      "nr": 197,
+      "titel": "Fix: npm ci scheitert seit fe75955 — die Sperrdatei nachziehen",
+      "status": "Draft. Repariert den Pruefstand fuer das ganze Projekt, nicht nur fuer einen Zweig.",
+      "blockiert_durch": "Ansehen. Sollte VOR #196 gemergt werden — dann faellt der Merge-Commit in #196 von selbst weg."
+    },
     {
       "nr": 183,
       "titel": "Kein Urteil ohne Messung — der Pruefstand darf nicht gruen melden, ohne gemessen zu haben",
@@ -43,19 +55,29 @@
     "seed-testaccounts hat dieselbe offene Tuer wie seed-admin (verify_jwt = false, kein Auth-Check). Nicht angefasst, weil kein Auftrag dazu vorliegt — aber sie gehoert geschlossen oder geloescht."
   ],
   "letzter_pruefstand": {
-    "datum": "2026-09-11",
-    "lauf": "GitHub-Action #151, Job 103424349509, Kopf eafefdd",
-    "ergebnis": "649 bestanden · 119 gefallen · 288 nicht pruefbar — ZUM ERSTEN MAL SEIT L13 EIN ECHTES URTEIL",
-    "der_sprung": "Lauf #150 auf demselben Zweig: 1 bestanden, 0 gefallen, 1051 nicht pruefbar, KEIN URTEIL. Lauf #151 nach der Reparatur: 768 messbare Gates statt 1. Der Commit dazwischen nimmt dem Pruefstand den Verband ab — er zaehlte das Anklopfen aus L13 als fehlende Daten.",
-    "die_119_sind_nicht_neu": "Sie sind zum ersten Mal SICHTBAR. Kein einziges liegt in Code, den PR #194 anfasst. Alle 60 im Protokoll sichtbaren gehoeren zu vier Familien, alle vier Launch Gates: 4.7 Seitengewicht (3.873.171 B gegen 3.000.000 B — index-*.js allein 2.136 kB, three.module 477 kB, Google-Tag 160 kB) · 3.5 Trefferflaechen (9 bis 17 Elemente je Seite unter 44 px: page-dots 6x6, Suchen 20x20, Blaetterpfeile 35x35) · 3.3 Kontrast (scroll-hint 4,02 · note-text 4,31 · tools-toggle 4,36 · '0 Arbeiten' 3,69, alle gegen 4,5) · 3.4 sichtbarer Tastaturfokus (je Seite GENAU EIN Element). Die uebrigen 59 liegen in bericht.json, Artefakt pruefstand-151.",
-    "nicht_repariert_und_warum": "Das sind Gestaltungsentscheidungen am Heft, keine Nits. Auf 44 px und 4,5:1 zu ziehen aendert das Aussehen — und das Heft bleibt per Auftrag, wie es ist. Die Entscheidung gehoert Daouda. Gemeldet in einem Kommentar an PR #194. Der Lauf wurde NICHT neu gestartet: er ist nicht flockig, er ist richtig.",
-    "zwei_zweifel_vor_jeder_reparatur": "BERICHTIGT — mein erster Zweifel war falsch, nachgemessen statt vermutet. Ich hatte behauptet, 3.4 sei womoeglich ein Messartefakt des outline-offset. Gemessen im Browser mit echter Tastaturwanderung: ALLE 15 fokussierbaren Elemente bekommen 2px solid bei offset 3px (nicht 5), KEIN Vorfahr schneidet ab (jeder auf overflow und transform geprueft), und die Regel greift bei jedem Element. Es fehlt also keine Regel und nichts wird abgeschnitten. Der Befund des Pruefstands ist ENGER als ich sagte: je Seite faellt GENAU EIN Element auf, und warum gerade dieses, ist offen. Zwei Moeglichkeiten, von hier nicht zu trennen: der Ring hebt sich an dieser Stelle zu wenig von seinem eigenen Grund ab (Pixelvergleich hat eine Schwelle), oder die verglichene Flaeche trifft ihn dort nicht. Zu klaeren an den Aufnahmen im Artefakt pruefstand-151. 3.4 ist also NICHT als 'wahrscheinlich Messfehler' abzutun. ZWEITER ZWEIFEL STEHT: ein Teil von 3.3 ('0 Arbeiten' bei 9px) kommt aus dem leeren Zustand und sieht nach L1 anders aus.",
-    "bestanden": 649,
-    "gefallen": 119,
-    "nicht_pruefbar": 288,
-    "offene_frage": "Warum bleiben 288 Gates unmessbar? Das ist die naechste Frage AM PRUEFSTAND, nicht an PR #194. Und: ob der Runner das neue Projekt erreicht, ist damit BEANTWORTET — die Seiten kamen mit Inhalt an (/haus/..., /werk/..., '0 Arbeiten' als ehrlicher Leerzustand)."
+    "datum": "2026-09-12",
+    "lauf": "GitHub-Action #191, Job 103601881596, Kopf ec231f0 (PR #197)",
+    "DAS_WICHTIGSTE": "ER MISST WIEDER. 18 Minuten Laufzeit, 36 Artefakte hochgeladen, echte Funde. Die fuenf Laeufe davor (186, 185, 184, 167, 165) waren nach rund 30 Sekunden tot: `npm ci` brach ab, bevor ein Wert erhoben wurde. Rot hiess dort NICHT 'die Seite ist kaputt', sondern 'es hat niemand nachgesehen'. PR #197 repariert das.",
+    "ergebnis": "rot, aber mit Urteil — dieselben vier Gate-Familien wie am 11.09.",
+    "die_vier_familien": {
+      "4.7 Seitengewicht": "4.325.784 B gegen 3.000.000 B. index-*.js allein 2.110 kB, three.module 477 kB, Google-Tag 160 kB.",
+      "3.3 Kontrast": "z. B. #note-text 4,31 gegen 4,5; .haus-ort 2,98 gegen 4,5 — Text ueber Bild.",
+      "3.5 Trefferflaechen": "11 bis 12 Bedienelemente je Seite unter 44 px (Seitenpunkte 6x6, Suchen 20x20, Blaetterpfeile 35x35).",
+      "3.4 Tastaturfokus": "je Seite 1 fokussierbares Element ohne sichtbare Veraenderung."
+    },
+    "NICHT_VON_DIESEN_PRS": "Lauf #191 lief auf #197, und #197 aendert genau EINE Datei: package-lock.json. Kontrast, Gewicht, Trefferflaechen und Fokus koennen daraus nicht kommen. Es sind dieselben Funde wie am 11.09. (Lauf #151), die seither unter wartet_auf_mensch stehen.",
+    "EINE_ZAHL_WAECHST": "Seitengewicht 4.325.784 B heute gegen 3.873.171 B am 11.09. — rund 450 kB mehr. ACHTUNG, KEIN SAUBERER VERGLEICH: damals wurde ein anderer Zweig gemessen (eafefdd auf #194). Keine Ursache behauptet. Aber die Zahl gehoert beobachtet, bevor sie jemand zum ersten Mal ernst nimmt.",
+    "kein_neulauf": "Deterministische Messung, keine Wackelei. Ein zweiter Lauf saegte dasselbe.",
+    "DIE_NULLMESSUNG": {
+      "warum_es_eine_gibt": "Gluecksfall: #197 aendert NUR package-lock.json, kein Zeichen Code. Lauf #191 darauf ist damit eine saubere Nullmessung, gegen die sich Block A (Lauf #193) auf das Byte vergleichen laesst.",
+      "gates": "#191 (nur Sperrdatei): 654 bestanden · 130 gefallen · 303 nicht pruefbar. #193 (Block A): 631 bestanden · 130 gefallen · 300 nicht pruefbar. GEFALLEN: 130 gegen 130 — Block A bricht NICHTS.",
+      "keine_der_130_nennt_den_begleiter": "Nicht die Blase, nicht die Figur, nicht die Chips. Die Kontrastfunde heissen #note-text, #scroll-hint, #tools-toggle, .haus-ort, small — alle schon vorher da.",
+      "was_block_a_kostet": "Auf JEDER Seite exakt +31.599 B: / @1920 4.325.784 -> 4.357.383; /suche @390 4.025.128 -> 4.056.727; /haus/obara @390 4.063.212 -> 4.094.811. Aufgeschluesselt: +11 kB Code (Heft-Buendel 127 kB -> 138 kB) plus 2 Anfragen mit rund 20 kB (die zwei Katalog-Selects auf begleiter_saetze und begleiter_regeln).",
+      "einordnung": "Gate 4.7 verlangt unter 3 MB; die Seite lag VORHER schon bei 4,33 MB, also 1,33 MB darueber. Der Begleiter ist 2,4 % des Ueberhangs. Das Problem sind index-*.js mit 2.110 kB und three.module mit 477 kB — die Buehne selbst.",
+      "eine_moeglichkeit_falls_gewuenscht": "Die zwei Katalog-Anfragen liessen sich zusammenlegen oder verzoegern, bis der Bauer das erste Mal reden will (fruehestens nach 8,4 s) — rund 20 kB weniger beim Erststart. NICHT gebaut: es verkompliziert Block A, ohne ein Gate umzudrehen. Daoudas Entscheidung."
+    }
   },
-  "naechster_zug": "Zwei Entscheidungen von Daouda, sonst geht nichts weiter. ERSTENS acquisition_leads (blockiert L1, L2, L3, L4, L18): Weg A = neue Migration, Form aus der alten types.ts ableiten (58 Spalten minus das, was die 24 spaeteren Dateien selbst anlegen), nachpruefbar — Empfehlung. Weg B = Akquise beim Erstaufbau weglassen. ZWEITENS L15 Freistellen: der Auftragstext liegt nicht im Repo, raten waere schlimmer als fragen. Sobald A oder B steht: Stapel 14 bis 41 spielen, dann zz_ende, dann Abnahme, dann types.ts neu, dann L2/L18/L4/L3.",
+  "naechster_zug": "ERSTENS: Sicht-Freigabe fuer PR #196 (Block A) durch Daouda — die Aufnahmen liegen unter .claude/sicht/2026-09-12/. DANACH Block C (Archetyp): er ist der einzige Block, der von Lovable nichts braucht, und kann sofort gebaut werden. Block B wartet auf Lovables freistellen, Block D auf Lovables anprobe. UNVERAENDERT OFFEN, weil nur Daouda es entscheiden kann: M3 zweiter Teil (anon liest 60 Spalten auf public.designers, darunter 8 Stripe-Spalten, user_id und revenue_share_pct — auf LIVE-Daten), M5 (Speicher-Eimer und ~49 Edge Functions), und was aus PR #195 wird.",
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
     "F1 IST DIE LEHRREICHSTE MESSUNG DIESER RUNDE: ich habe es mit echtem Chromium versucht, gegen den gebauten Stand, beide Fassungen — mit und ohne Reparatur. Beide Laeufe sind ZEICHENGLEICH: das Geruest erscheint nach 12,7 s, 39 ms spaeter greift die Gestaltung. Die Messung kann die Reparatur nicht von ihrem Fehlen unterscheiden, also beweist sie nichts. Gesagt statt behauptet. Der Grund: vite preview liefert das CSS ohne Verzoegerung von 127.0.0.1. Die Vercel-Vorschau, wo es zu sehen waere, antwortet dem Container mit 302 auf die Anmeldung.",
@@ -70,11 +92,7 @@
     "NEBENBEI AUFGEFALLEN, unbelegt, nicht von Teil M: bei der Fokus-Messung stand die KOPFZEILE auf ENGLISCH ('Fashion', 'Our Houses', 'Your DNA', 'Ask PAWN', 'For designers'). Nach Entscheidung D2 soll die englische Fassung erst nach dem Launch kommen. autoTranslate nimmt #reader-layer und #mobile-reader aus — die Kopfzeile aber nicht. Ob das gewollt ist, weiss ich nicht; nicht angefasst, nur notiert."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": {
-    "datum": "2026-09-11",
-    "bestanden": 4,
-    "gefallen": 0
-  },
+  "letzter_verify": "2026-09-12 · VERIFY 5/5 · REGRESSION 17/17 · node --test src/heft03/*.test.mjs 64/64 · tsc 0",
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },
@@ -97,10 +115,29 @@
       "Noch nicht gebaut": "Stilfoto (/deine-dna/foto) und Bild in Frag PAWN — Zweig 2. Freistellen — H6, eigener PR."
     }
   },
-  "letzter_pruefer": {
-    "datum": "2026-09-11",
-    "gegenstand": "14 Behauptungen zu PR #194 (Teil M)",
-    "ergebnis": "14 bestaetigt · 0 widerlegt · 0 nicht pruefbar",
-    "was_er_selbst_gemessen_hat": "Die Spaltenrechnung 59/44/15 eigenstaendig nachgerechnet · die Kette in einer Kopie ohne die Basis-Datei rot vorgefuehrt (Exit 1, FEHLER: acquisition_leads) · --ordnung auf Vollstaendigkeit geprueft (163 Zeilen, sort -u ebenfalls 163) · seed-admin aus `git show HEAD~1` gelesen und den fehlenden Auth-Check sowie das hartcodierte Passwort bestaetigt · has_role in einer frueher sortierten Migration gefunden"
-  }
+  "letzter_pruefer": "2026-09-12 · Block A · PRUEFER: 8/10 · WIDERLEGT: 3. Zwei echte Funde: (1) darfZaehlen wurde in quelle.mjs geprueft, aber nie von der Huelle uebergeben — der Typ in heft.d.ts kannte es nicht, also hat ereignis() NIE geschrieben, mit oder ohne Zustimmung. Repariert, Zusage Z17, rot vorgefuehrt. (2) Meine Zahl '15 von 16 Ereignissen' war falsch; richtig 14 von 16. Beides in metrik.md und hier berichtigt.",
+  "DIE_DATENBANKFRAGE_IST_ENTSCHIEDEN": {
+    "entscheidung": "Daouda am 12.09.2026: rnakubexbqfgfciynqpt ist die echte Datenbank. CLAUDE.md ist berichtigt.",
+    "bestaetigt_ueber_Lovable": "Zugang laeuft NICHT ueber das Supabase-MCP (dort 'You do not have permission'), sondern ueber das Lovable-MCP: query_database mit project_id 81416573-4f0e-4ff7-a863-43988a85e8d2 (Projekt pawn-archive-muse). DAS IST DER WEG FUER JEDE KUENFTIGE MESSUNG AN DER ECHTEN DATENBANK.",
+    "gemessen": "Historie 208 · 91 Tabellen · 2 Sichten · alle zehn neuen Tabellen aus Auftrag O da. Die Zahlen des Auftrags (207/91) stimmen damit."
+  },
+  "DIE_LOECHER_AUF_DER_LIVE_DATENBANK": {
+    "ergebnis": "ENTWARNUNG bei den zwei schweren. Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt.",
+    "kontouebernahme": "zugang_zuweisen(_user_id uuid, _email text) — anon NEIN, authenticated NEIN. Rechte nur {postgres, service_role}. Kein PUBLIC-Eintrag. Die Luecke, die auf cnxt offen war, ist hier ZU.",
+    "rechnungsnummern": "assign_invoice_number und next_invoice_number — anon NEIN, authenticated ja, service_role ja. Kein PUBLIC. ZU.",
+    "secdef_fuer_anon": "Genau NEUN Funktionen (ohne Trigger-Funktionen): add_dwell_seconds, bump_media_metric, bump_product_view, count_founding_designers, first_move_publish, get_founding_social_proof, get_lead_invitation, ist_kauf_freigeschaltet, record_page_visit. Das sind EXAKT die neun, die ich in Teil M als gewollt dokumentiert habe.",
+    "rls": "91 Tabellen, 0 ohne RLS. 3 mit RLS und ohne Policy: rate_limit_hits, zugang_bootstrap, zugang_protokoll — EXAKT die drei aus M4.",
+    "DER_MERKWUERDIGE_TEIL": "Meine Teil-M-Migrationen (20260930090000 bis 20260930140000) sind in der Historie von rnak NICHT vorhanden — nur die 20260929er-Reihe. Die Rechte stehen dort also richtig, OHNE dass meine Reparatur je ankam. Entweder hat Lovable dieselben Loecher unabhaengig geschlossen, oder die Funktionen wurden auf rnak von vornherein enger angelegt. Ich habe es nicht weiter verfolgt; wichtig ist der Befund, nicht die Vorgeschichte.",
+    "WAS_OFFEN_BLEIBT": "Der Spaltenfund aus L3 gilt AUCH HIER, und damit auf der LIVE-Datenbank: anon darf an public.designers 60 Spalten lesen, darunter ACHT Stripe-Spalten (stripe_account_id, stripe_customer_id, stripe_subscription_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_details_submitted, stripe_requirements, stripe_country) sowie user_id, revenue_share_pct, intern, plan_seit, plan_bis. Das ist keine Testdatenbank — das sind echte Haeuser. Die Entscheidung aus M3 Teil 2 ist damit dringender als gedacht."
+  },
+  "WAS_AUS_PR_195_WIRD": "PR #195 (Zweig claude/teil-m) traegt Teil M — gemacht auf cnxtdcifkrdxvajaikxq, also auf der falschen Datenbank. Die sechs Migrationen darin (20260930090000-140000) reparieren Dinge, die auf rnak bereits richtig stehen; sie waeren dort wirkungslos bis schaedlich. NICHT blind mergen. Was in dem PR UNABHAENGIG von der Datenbank gilt und weiter wertvoll ist: L3 (das Heft liest die Sichten), der Wand-Fix in passformAssistent, die berichtigten Pruefstand-Slugs, der Zustandswaechter gegen die mitgemessene Eroeffnung, die Fixture mit der echten PostgREST-Antwort, und die Zusagen Z17-Z20. Vorschlag: den Frontend- und Pruefstand-Teil herausloesen, den Migrationsteil verwerfen. Das ist Daoudas Entscheidung, nicht meine.",
+  "AUFTRAG_O": {
+    "WAS_FERTIG_IST": "Block A vollstaendig auf claude/auftrag-o-begleiter (5 Commits ab e160862, zuletzt 9921002). A1 Verstand in src/heft03/begleiter.mjs mit 16 Tests. A2 14 von 16 Katalog-Ereignissen verdrahtet (plus blaettern, das der Katalog nicht kennt — macht 15 gemeldete Namen; ich hatte die zwei Mengen vermischt und zuerst faelschlich 15 von 16 geschrieben, der Pruefer hat es berichtigt). A3 Das Schweigen: 25 s Abstand, 8 Blasen je Sitzung, 90 s nach dem ×, Empfang nach 8400 ms. A4 Blase mit Chips und ×. A5 vier Methoden in beiden Quellen. A6 fuenf Rangfiguren, angesehen. A7 Chat-Kontext und echter Bild-Upload. A8 drei tote Listen raus.",
+    "WAS_NOCH_NICHT": "Block B (Buehne aus heft_buehnen) wartet auf Lovables freistellen. Block C (Archetyp) ist unabhaengig und koennte als naechstes kommen. Block D (Avatar, Anprobe, Raum) wartet auf Lovables anprobe.",
+    "DIE_ZWEI_OFFENEN_EREIGNISSE": "archetyp_bestaetigt (Block C) und anprobe_fertig (Block D) werden noch nicht gemeldet. Der Test 'jedes Ereignis des Katalogs wird auch gemeldet' nennt sie ausdruecklich als Ausnahme und verlangt sie, sobald die Bloecke stehen — den Namen dort herausnehmen, dann wird der Test rot, bis die Verdrahtung steht.",
+    "WO_ICH_VOM_AUFTRAG_ABGEWICHEN_BIN": "A8 verlangt zustimmungFragen() als Regel im Verstand. Umgesetzt ist nur der Wortlaut aus dem Katalog, nicht das Erscheinen. Grund: melde() darf aus fuenf Gruenden schweigen, und jeder davon hiesse hier 'gemerkt, ohne zu fragen'. Zusage Z16 deckt das ab. Daouda kann das umstossen — dann braucht es einen anderen Weg, der das Erscheinen garantiert.",
+    "DER_KATALOG_HAT_LUECKEN": "Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: 30 Saetze, 30 Regeln, 0 ohne Satz. KEINE Regel zu heft.zustimmung. KEINE Regel zu blaettern (Auftrag O nennt das Ereignis). Die Chip-Funktion freistellen kommt im Katalog noch nicht vor. Der Umriss liegt als src/heft03/fixtures/begleiter-katalog.json im Repo und wird von zwei Tests gegen den Code gehalten.",
+    "WAS_TOT_WAR_UND_JETZT_LEBT": "miniPawn() wurde seit dem Einzug 9ddd574 NIE aufgerufen; die CSS-Regeln .dna-einstieg .pawn-figure zeigten ins Leere. richtungGemerkt() war geschrieben, aber nie aufgerufen. Beides ist jetzt verdrahtet. MERKREGEL fuer die naechste Schicht: nach jeder neuen Funktion pruefen, ob sie auch aufgerufen wird — in dieser Sitzung zweimal passiert."
+  },
+  "DER_PRUEFSTAND_MISST_NICHTS": "Die GitHub-Action 'messen' ist auf main seit dem 11.09. rot und misst gar nichts: `npm ci` bricht ab, bevor ein Wert erhoben wird. Ursache gemessen: fe75955 (Lovable) hat drizzle-kit, drizzle-orm und postgres in package.json eingetragen und dazu bun.lock fortgeschrieben — die Action benutzt aber npm ci und package-lock.json, wo die drei nie standen. Reparatur liegt als PR #197 (eigener Zweig claude/lock-drizzle) und ist in #196 hereingemergt, damit der dortige Lauf ueberhaupt gruen werden kann. Gemessen: 60 Pakete kommen dazu, 0 gehen, 0 wechseln die Version — Stripe, Supabase und React sind nicht angefasst. OFFEN FUER DAOUDA: ob drizzle ueberhaupt bleiben soll. Es wird nirgends importiert; nur drizzle.config.ts und drizzle/migrations/ verweisen darauf, beide aus demselben Commit. Das Projekt hat seine Migrationen in supabase/migrations/."
 }

@@ -212,6 +212,25 @@
       "params": {
         "huelle": "src/heft03/HeftRoute03.tsx"
       }
+    },
+    {
+      "id": "Z16",
+      "zusage": "Wer etwas merkt, wird gefragt: die Zustimmungsfrage erscheint immer, solange keine Antwort vorliegt — und solange sie steht, schweigt der Begleiter.",
+      "beleg": "Auftrag O, Block A8, verlangt zustimmungFragen() als Regel (heft.zustimmung, Prioritaet ueber allem). Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: diese Regel gibt es im Katalog nicht (0 Zeilen in begleiter_regeln/begleiter_saetze auf 'zustimm'). Wichtiger: melde() darf aus fuenf Gruenden schweigen — Mindestabstand 25 s, Budget von acht Blasen je Sitzung, ein frueheres ×, Stummschaltung, fehlender Platzhalter. Jeder davon hiesse hier: die Merkliste wird gespeichert, ohne dass jemand gefragt wurde. Deshalb kommt aus dem Katalog nur der WORTLAUT (src/heft03/app.js, zustimmungFragen), nie das Erscheinen. Die Prioritaet ueber allem ist strukturell: istStumm() meldet true, solange ein [data-consent-ja] in der Blase steht. · Rot vorgefuehrt am 2026-09-12, zweimal — einmal je Haelfte der Zusage: (1) melden('zustimmung') in zustimmungFragen() eingesetzt -> REGRESSION 15/16, FEHLER Z16; (2) die [data-consent-ja]-Zeile aus istStumm() entfernt -> REGRESSION 15/16, FEHLER Z16. Beide zurueck: 16/16.",
+      "pruefung": "zustimmungOhneRegelwerk",
+      "params": {
+        "heft": "src/heft03/app.js"
+      }
+    },
+    {
+      "id": "Z17",
+      "zusage": "Gezaehlt wird nur mit ausdruecklicher Zustimmung — und die Frage danach wird auch wirklich beantwortet.",
+      "beleg": "Vom Subagenten pruefer gefunden, nicht von mir: quelle.mjs:325 prueft seit dem Begleiter `funktionen.darfZaehlen?.()`, aber HeftRoute03.tsx hat diese Funktion nie uebergeben — der Typ in heft.d.ts kannte sie gar nicht, die Huelle konnte sie also nicht reichen. `!undefined?.()` ist immer wahr, folglich hat ereignis() NIE eine Zeile nach begleiter_ereignisse geschrieben, weder mit noch ohne Konto, weder mit noch ohne Zustimmung. Der Riegel hielt die Tuer auf beiden Seiten zu. Repariert: darfZaehlen in heft.d.ts aufgenommen und in HeftRoute03.tsx aus profile.consent.analytics als Ref gereicht (Ref, weil funktionen einmal beim Start gebaut wird, die Zustimmung sich aber jederzeit aendern kann). DRITTER FALL DERSELBEN ART an einem Tag — nach miniPawn() und richtungGemerkt(), die beide geschrieben und nie aufgerufen waren. · Rot vorgefuehrt am 2026-09-12: die darfZaehlen-Zeile aus HeftRoute03.tsx entfernt (also genau der Zustand, in dem es lag) -> REGRESSION 16/17, FEHLER Z17. Zurueck: 17/17.",
+      "pruefung": "zaehlenNurMitErlaubnis",
+      "params": {
+        "quelle": "src/heft03/quelle.mjs",
+        "huelle": "src/heft03/HeftRoute03.tsx"
+      }
     }
   ]
 }

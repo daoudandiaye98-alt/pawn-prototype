@@ -496,6 +496,59 @@ function geruestErstNachGestaltung({ huelle, warter = "blattGeladen" }) {
   return OK;
 }
 
+/**
+ * Z16 — die Zustimmungsfrage haengt nicht am Regelwerk des Begleiters.
+ *
+ * Der Begleiter darf aus fuenf guten Gruenden schweigen: Mindestabstand, aufgebrauchtes
+ * Blasenbudget, ein frueheres ×, Stummschaltung, fehlender Platzhalter. Ginge die
+ * Zustimmungsfrage durch melde(), wuerde jeder dieser Gruende bedeuten: gemerkt wird,
+ * ohne zu fragen. Die Pruefung ist deshalb eng — sie deckt genau diese Zusage:
+ * zustimmungFragen() schreibt selbst in die Blase und ruft nie melde()/melden().
+ */
+function zustimmungOhneRegelwerk({ heft }) {
+  const h = lies(heft);
+  const ab = h.indexOf("function zustimmungFragen");
+  if (ab < 0) return nein(`${heft}: zustimmungFragen() gibt es nicht mehr — wer fragt jetzt nach der Zustimmung?`);
+  const rest = h.slice(ab + 1);
+  const bis = rest.search(/\n(?:function|const|let|export|class)\s/);
+  const rumpf = bis < 0 ? rest : rest.slice(0, bis);
+  if (!/state\.consent\s*!==\s*null/.test(rumpf))
+    return nein(`${heft}: zustimmungFragen() prueft nicht mehr auf consent === null — die Frage kaeme wieder und wieder oder gar nicht`);
+  if (/\bmelde[n]?\s*\(/.test(rumpf))
+    return nein(`${heft}: zustimmungFragen() geht durch das Regelwerk — dann kann Schweigen bedeuten: gemerkt ohne zu fragen`);
+  if (!/data-consent-ja/.test(rumpf) || !/data-consent-nein/.test(rumpf))
+    return nein(`${heft}: die Zustimmungsfrage hat nicht mehr beide Antworten`);
+  // Und die andere Haelfte der Zusage: solange die Frage steht, schweigt der Begleiter.
+  const stumm = h.slice(h.indexOf("function istStumm"), h.indexOf("function begleiterZustand"));
+  if (!/data-consent-ja/.test(stumm))
+    return nein(`${heft}: istStumm() achtet nicht mehr auf die offene Zustimmungsfrage — der Bauer redet dazwischen`);
+  return OK;
+}
+
+/**
+ * Z17 — ein Riegel, den niemand bedient, ist kein Riegel.
+ *
+ * quelle.mjs fragt vor jedem Schreiben nach begleiter_ereignisse
+ * `funktionen.darfZaehlen?.()`. Uebergibt die Huelle diese Funktion nicht, ist
+ * `!undefined?.()` immer wahr — und es wird NIE gezaehlt, ganz gleich ob jemand
+ * angemeldet ist oder zugestimmt hat. Genau so lag es da, bis der Pruefer es fand.
+ *
+ * Eng gehalten: geprueft wird nur, dass die Frage gestellt wird, dass die Huelle sie
+ * beantwortet und dass die Antwort an der Zustimmung haengt — nicht, wie das im
+ * Einzelnen geschrieben ist.
+ */
+function zaehlenNurMitErlaubnis({ quelle, huelle }) {
+  const q = lies(quelle);
+  if (!/funktionen\.darfZaehlen\?\.\(\)/.test(q))
+    return nein(`${quelle}: vor dem Zaehlen wird nicht mehr nach der Erlaubnis gefragt`);
+  const h = lies(huelle);
+  if (!/darfZaehlen\s*:/.test(h))
+    return nein(`${huelle}: reicht kein darfZaehlen an die Quelle — die Frage bliebe unbeantwortet und es wuerde NIE gezaehlt`);
+  if (!/consent\?\.analytics|consent\.analytics/.test(h))
+    return nein(`${huelle}: die Zaehl-Erlaubnis haengt nicht mehr an der Zustimmung (consent.analytics)`);
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -512,6 +565,8 @@ const PRUEFUNGEN = {
   nurWegweiser,
   leereWeltStuerztNicht,
   geruestErstNachGestaltung,
+  zustimmungOhneRegelwerk,
+  zaehlenNurMitErlaubnis,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
