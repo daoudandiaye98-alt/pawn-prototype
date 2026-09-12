@@ -124,8 +124,8 @@
     },
     {
       "id": "Z10",
-      "zusage": "Das oeffentliche Heft liest keine Stripe-Spalte und keine fremde Kontospalte.",
-      "beleg": "docs/heft03/backend-inventar.md: die Policy „designers public read“ (USING published = true) gibt anon ALLE Spalten der Tabelle, auch stripe_account_id und stripe_customer_id — es gibt keine Spaltenmaske. Das Heft schuetzt sich mit einer eigenen Auswahlliste (quelle.mjs SPALTEN) und, sobald sie angewandt ist, mit den Sichten aus der Migration heft_sichten.",
+      "zusage": "Das oeffentliche Heft liest keine Stripe-Spalte und keine fremde Kontospalte — und es liest wirklich durch die Sichten.",
+      "beleg": "docs/heft03/backend-inventar.md: die Policy „designers public read“ (USING published = true) gibt anon ALLE Spalten der Tabelle, auch stripe_account_id und stripe_customer_id — es gibt keine Spaltenmaske. Das Heft schuetzt sich mit einer eigenen Auswahlliste (quelle.mjs SPALTEN) und, sobald sie angewandt ist, mit den Sichten aus der Migration heft_sichten. NACHGETRAGEN AM 12.09.2026 (L3): die Sichten lagen seit dem Erstaufbau auf der Datenbank — heft_haeuser und heft_produkte, beide security_invoker=true, anon hat SELECT — und die Huelle stand die ganze Zeit auf `sichten: false`. Die Maske war gebaut und wirkungslos. Die Pruefung verlangt jetzt zusaetzlich, dass HeftRoute03.tsx sichten:true setzt und der eingebettete Join auf heft_haeuser zeigt statt auf public.designers. Zweimal rot vorgefuehrt, je Haelfte einmal.",
       "pruefung": "keineStripeSpalten",
       "params": {
         "datei": "src/heft03/quelle.mjs",
@@ -136,7 +136,8 @@
           "email",
           "iban",
           "application_fee"
-        ]
+        ],
+        "huelle": "src/heft03/HeftRoute03.tsx"
       }
     },
     {

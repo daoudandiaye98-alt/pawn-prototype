@@ -313,7 +313,7 @@ function umzuegeAusRoutenJs() {
 // Zwei Orte, eine Zusage: die Auswahlliste, mit der das Heft heute liest, und
 // die Sicht, die anon spaeter bekommt. Beide duerfen die Spalte nicht kennen.
 // ————————————————————————————————————————————————————————————————
-function keineStripeSpalten({ datei, migration, verboten }) {
+function keineStripeSpalten({ datei, migration, verboten, huelle }) {
   const quelle = lies(datei);
   const block = quelle.slice(quelle.indexOf("export const SPALTEN"), quelle.indexOf("};", quelle.indexOf("export const SPALTEN")));
   if (!block.includes("designers:")) return nein(`${datei}: die Spaltenmaske SPALTEN ist nicht mehr auffindbar`);
@@ -327,6 +327,22 @@ function keineStripeSpalten({ datei, migration, verboten }) {
   const sicht = lies(migration).replace(/--[^\n]*/g, "");
   for (const wort of verboten) {
     if (wort !== "user_id" && sicht.includes(wort)) return nein(`${migration}: die Sicht listet „${wort}“ — sie waere keine Maske mehr`);
+  }
+
+  /* UND DER DRITTE ORT, und er war der stille: die Maske muss auch BENUTZT werden.
+     Belegt am 12.09.2026 — die Sichten lagen seit dem Erstaufbau auf der Datenbank
+     (heft_haeuser, heft_produkte, security_invoker=true, anon hat SELECT), und die
+     Huelle stand die ganze Zeit auf `sichten: false`. Die Maske war gebaut, bezahlt
+     und wirkungslos. Eine Auswahlliste ohne Stripe-Spalte schuetzt nur, solange
+     niemand sie erweitert; die Sicht schuetzt, egal was die Liste sagt. Deshalb wird
+     hier geprueft, dass das Heft wirklich durch sie liest. */
+  if (huelle) {
+    const h = lies(huelle).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    if (!/sichten:\s*true/.test(h))
+      return nein(`${huelle}: sichten steht nicht auf true — das Heft liest die Basistabellen, die Sicht laeuft leer mit`);
+    const q = lies(datei).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    if (!/designers:heft_haeuser\(/.test(q))
+      return nein(`${datei}: der eingebettete Join geht nicht auf heft_haeuser — damit beruehrt das Heft public.designers weiter direkt`);
   }
   return OK;
 }

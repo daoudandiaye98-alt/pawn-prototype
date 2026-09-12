@@ -8,7 +8,7 @@ import {pfadAusRoute,routeAusPfad,alleAdressen,UMZUEGE} from './routen.mjs';
 import {kuratiere} from './kuration.mjs';
 import {urteil,passform} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
-import {chatAntwort,SPALTEN,demoQuelle,bildLoeser} from './quelle.mjs';
+import {chatAntwort,SPALTEN,demoQuelle,bildLoeser,produktSpalten} from './quelle.mjs';
 import {readView} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
@@ -112,6 +112,21 @@ test('Chat-Antwort: Karten werden zu Slugs, alte /product/-Adressen inklusive',(
 
 test('Spaltenmasken enthalten keine Stripe- oder Kontospalten',()=>{
  for(const [k,v] of Object.entries(SPALTEN))assert.ok(!/stripe|user_id|email|iban|application_fee/.test(v),k);
+});
+
+test('mit Sichten geht auch der eingebettete Join auf die Sicht',()=>{
+ // Ohne Sichten bleibt alles, wie es war.
+ assert.equal(produktSpalten(false),SPALTEN.products);
+ const mit=produktSpalten(true);
+ // Der Join zeigt auf heft_haeuser, die Basistabelle wird nicht mehr beruehrt.
+ assert.ok(mit.includes('designers:heft_haeuser('),'Join geht auf die Sicht');
+ assert.ok(!/(^|,)designers\(/.test(mit),'kein Join mehr auf die Basistabelle designers');
+ // Der Schluessel in der Antwort heisst weiter `designers` — die Adapter lesen row.designers.
+ assert.ok(mit.includes('designers:'),'der Schluessel bleibt designers');
+ // Die vier Felder bleiben dieselben.
+ assert.ok(mit.includes('heft_haeuser(id,slug,brand_name,verkaufsbereit)'));
+ // Und auch die Sicht-Fassung nennt keine Spalte, die anon nichts angeht.
+ assert.ok(!/stripe|user_id|email|iban|application_fee/.test(mit));
 });
 
 test('Stilprofil hin und zurück',()=>{
