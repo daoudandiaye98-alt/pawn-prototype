@@ -844,7 +844,13 @@ Deno.serve(async (req) => {
           route?: string; seite?: string;
           stil?: { welt?: string; richtung?: string; form?: string };
           frag?: { was?: string; anlass?: string; rahmen?: string };
+          /* Teil O — der Begleiter im Heft: Rang, letzter Satz, Merkliste, Archetyp, Anproben. */
+          begleiter?: {
+            rang?: string; zuletzt_gesagt?: string; merkliste?: string[];
+            archetyp?: string; anproben?: number;
+          };
         };
+
       };
       mode?: "erste_partie" | "stilfoto";
       /* stilfoto: die Welt, aus der gelesen wird (mode | interior | kunst). */
