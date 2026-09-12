@@ -2,6 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {zeilen} from './fixtures/zeilen.mjs';
+import antwort from './fixtures/heft-produkte-sicht-antwort.json' with {type:'json'};
 import {heftAusZeilen,productFromRow,themeFromRow,checkoutLines,cartByHouse,stilToRow,stilFromRow} from './adapters.mjs';
 import {heftFuellen,demoWiederherstellen,products,houses,sections,displays,counts,kuration} from './data.mjs';
 import {pfadAusRoute,routeAusPfad,alleAdressen,UMZUEGE} from './routen.mjs';
@@ -112,6 +113,28 @@ test('Chat-Antwort: Karten werden zu Slugs, alte /product/-Adressen inklusive',(
 
 test('Spaltenmasken enthalten keine Stripe- oder Kontospalten',()=>{
  for(const [k,v] of Object.entries(SPALTEN))assert.ok(!/stripe|user_id|email|iban|application_fee/.test(v),k);
+});
+
+test('die ECHTE Antwort der Sicht laeuft durch die Adapter',()=>{
+ /*
+  * Der Pruefer hat genau diesen Punkt als NICHT PRUEFBAR zurueckgewiesen, und er hatte
+  * recht: der Test darunter vergleicht nur die erzeugte Auswahl-ZEICHENKETTE. Ob PostgREST
+  * die Hausdaten beim Alias `designers:heft_haeuser(...)` wirklich unter `designers`
+  * ablegt, stand nirgends gemessen — und waere es anders, liefe row.designers leer und
+  * jedes Werk verloere sein Haus, ohne dass ein Test etwas sagt.
+  *
+  * fixtures/heft-produkte-sicht-antwort.json ist die gemessene Antwort, als anon gegen die
+  * echte Datenbank, mit genau der Zeichenkette aus produktSpalten(true).
+  */
+ const schluessel=Object.keys(antwort.zeile);
+ assert.ok(schluessel.includes('designers'),'PostgREST legt den Alias unter `designers` ab');
+ assert.ok(!schluessel.includes('heft_haeuser'),'und nicht unter dem Namen der Sicht');
+ // Und jetzt der Punkt, auf den es ankommt: die Adapter finden das Haus.
+ const werk=productFromRow(antwort.zeile);
+ assert.equal(werk.house,antwort.zeile.designers.slug,'das Werk kennt sein Haus');
+ assert.notEqual(werk.house,antwort.zeile.designer_id,'und zwar als Slug, nicht als rohe Kennung');
+ // Keine Stripe-Spalte ist durchgekommen.
+ assert.ok(!/stripe|user_id/.test(JSON.stringify(antwort.zeile)));
 });
 
 test('mit Sichten geht auch der eingebettete Join auf die Sicht',()=>{
