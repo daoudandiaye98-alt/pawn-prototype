@@ -258,6 +258,21 @@
         "ausnahmen_authenticated": [],
         "begruendung": "Keine Ausnahme noetig: alle 77 Tabellen mit einer authenticated-Policy haben ihr GRANT. Drei Tabellen haben absichtlich KEINES und brauchen auch keine Ausnahme, weil sie gar keine authenticated-Policy tragen: rate_limit_hits (ihre Datei sagt ausdruecklich 'kein Client-Zugriff, weder anon noch authenticated'), zugang_bootstrap und zugang_protokoll (RLS an, keine Policy — Absicht, und der Gegenstand von M4). anon ist NICHT Gegenstand dieser Zusage: wer oeffentlich lesen darf, ist eine Entscheidung, keine Vollstaendigkeitsfrage, und gehoert in den zweiten Teil von M3."
       }
+    },
+    {
+      "id": "Z20",
+      "zusage": "Keine Tabelle ohne RLS, und keine RLS-Tabelle ohne Policy ausser den drei benannten (M4).",
+      "beleg": "M4 aus Auftrag Teil M: zugang_bootstrap und zugang_protokoll sollen als dokumentierte Ausnahmen eingetragen werden. Gemessen am 12.09.2026 sind es DREI, nicht zwei — rate_limit_hits gehoert dazu, und ihre eigene Datei sagt den Grund ausdruecklich ('Nur der Service-Role-Schluessel darf hier lesen/schreiben, kein Client-Zugriff, weder anon noch authenticated. Kein RLS-Policy-Grant noetig, RLS ohne Policy blockt per Default'). Datei-Sicht und Datenbank stimmen ueberein: 80 Tabellen, 80 mit RLS, 77 mit Policy. WARUM DIE ERSTE HAELFTE JETZT NOETIGER IST ALS VORHER: seit 20260930140000 hat authenticated auf 77 Tabellen ein ausdrueckliches GRANT. Ein GRANT ohne RLS heisst, dass jeder angemeldete Mensch alle Zeilen liest. Vorher haette dasselbe Versehen weniger geschadet, weil das GRANT fehlte — die Reparatur der Rechte hat diese Pruefung also erst scharf gemacht. Einmal rot vorgefuehrt, beide Haelften.",
+      "pruefung": "rlsUndPolicySindVollstaendig",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ohne_policy_erlaubt": [
+          "rate_limit_hits",
+          "zugang_bootstrap",
+          "zugang_protokoll"
+        ],
+        "begruendung": "Drei Tabellen mit RLS und ohne Policy, jede mit Absicht. RLS ohne Policy heisst: fuer alle ausser service_role ZU. 1) rate_limit_hits — ihre Datei (20260810093249) sagt es selbst: nur der Service-Role-Schluessel, kein Client-Zugriff. Sie zaehlt Aufrufe fuer die Rate-Begrenzung von pawn-chat; ein Client, der sie lesen koennte, koennte auch sehen, wie nah er an der Grenze ist. 2) zugang_bootstrap (20260929090000) — sie enthaelt die Zuordnung E-Mail -> Rolle. Wer sie lesen koennte, wuesste, welche Adresse Admin wird. Wer sie SCHREIBEN koennte, haette sich selbst Admin gegeben; genau dieses Loch hat M7 an der Funktion zugang_zuweisen zugemacht. Zugriff laeuft ausschliesslich ueber die SECURITY-DEFINER-Funktion beim Anmelden. 3) zugang_protokoll (20260929110000) — das Fehlerprotokoll derselben Starthilfe. Es traegt E-Mail-Adressen und Datenbankfehler; beides gehoert niemandem im Netz."
+      }
     }
   ]
 }

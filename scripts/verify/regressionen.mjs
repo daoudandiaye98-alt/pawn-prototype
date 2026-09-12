@@ -542,6 +542,47 @@ function keinGeheimnisInMigration({ ordner, ausnahmen = [] }) {
 }
 
 /**
+ * Z20 (M4) — keine Tabelle ohne RLS, und keine RLS-Tabelle ohne Policy ausser den benannten.
+ *
+ * WARUM BEIDE HAELFTEN zusammen stehen: sie sind die zwei Arten, wie eine Tabelle falsch
+ * zugaenglich wird, und sie zeigen in entgegengesetzte Richtungen.
+ *
+ *   Ohne RLS ist eine Tabelle OFFEN — und zwar seit 20260930140000 erst richtig, denn
+ *   jetzt hat `authenticated` auf 77 Tabellen ein ausdrueckliches GRANT. Ein GRANT ohne
+ *   RLS heisst: jeder angemeldete Mensch liest alle Zeilen. Vorher haette dasselbe
+ *   Versehen weniger geschadet, weil das GRANT fehlte. Die Reparatur macht diese Haelfte
+ *   also NOETIGER als sie vorher war.
+ *
+ *   RLS ohne Policy ist das Gegenteil: die Tabelle ist fuer alle ausser service_role
+ *   ZU. Manchmal genau richtig (nur Edge Functions kommen heran), manchmal eine Tabelle,
+ *   die niemand benutzen kann und an der jemand lange sucht. Der Unterschied ist eine
+ *   Absicht, und Absichten gehoeren aufgeschrieben — genau das verlangt M4.
+ *
+ * Gemessen am 12.09.2026, Datei-Sicht und Datenbank stimmen ueberein: 80 Tabellen,
+ * 80 mit RLS, 77 mit Policy, 3 ohne. Die drei sind unten benannt.
+ */
+function rlsUndPolicySindVollstaendig({ ordner, ohne_policy_erlaubt = [] }) {
+  const alles = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort()
+    .map((d) => lies(join(ordner, d)).split("\n").filter((z) => !z.trimStart().startsWith("--")).join("\n"))
+    .join("\n");
+
+  const tab = new Set([...alles.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z_0-9]+)/gi)]
+    .map((m) => m[1].toLowerCase()));
+  const rls = new Set([...alles.matchAll(/alter\s+table\s+public\.([a-z_0-9]+)\s+enable\s+row\s+level\s+security/gi)]
+    .map((m) => m[1].toLowerCase()));
+  const mitPolicy = new Set([...alles.matchAll(/create\s+policy\s+(?:"[^"]+"|\S+)\s+on\s+(?:table\s+)?public\.([a-z_0-9]+)/gi)]
+    .map((m) => m[1].toLowerCase()));
+
+  const ohneRls = [...tab].filter((t) => !rls.has(t)).sort();
+  const ohnePolicy = [...tab].filter((t) => rls.has(t) && !mitPolicy.has(t) && !ohne_policy_erlaubt.includes(t)).sort();
+
+  const klagen = [];
+  if (ohneRls.length) klagen.push(`${ohneRls.length} Tabelle(n) OHNE RLS — mit dem GRANT fuer authenticated liest dort jeder angemeldete Mensch alles: ${ohneRls.join(", ")}`);
+  if (ohnePolicy.length) klagen.push(`${ohnePolicy.length} Tabelle(n) mit RLS aber ohne Policy und ohne Begruendung — entweder Absicht aufschreiben oder Policy nachziehen: ${ohnePolicy.join(", ")}`);
+  return klagen.length ? nein(klagen.join(" · ")) : OK;
+}
+
+/**
  * Z19 — jede Tabelle hat ihre Rechte ausdruecklich in einer Migration, nicht per Vorgabe.
  *
  * DER BELEGTE FEHLER, und er war mein eigener: der Rueckweg des Erstaufbaus macht
@@ -675,6 +716,7 @@ const PRUEFUNGEN = {
   jedeDoppelungIstGedeckt,
   secdefEntscheidetRechte,
   tabellenrechteSindAusdruecklich,
+  rlsUndPolicySindVollstaendig,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
