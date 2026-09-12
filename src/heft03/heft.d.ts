@@ -239,6 +239,15 @@ declare module "@/heft03/quelle.mjs" {
       /** Die Rollen des angemeldeten Menschen. Die Hülle hat sie ohnehin — keine zweite Abfrage. */
       rollen?(): readonly string[];
       /**
+       * Darf gezaehlt werden? quelle.mjs fragt das vor jedem Schreiben nach
+       * begleiter_ereignisse. Fehlt die Funktion, wird NICHT gezaehlt — im Zweifel
+       * schweigt die Zaehlung. Genau das war der Fehler, den diese Zeile beendet:
+       * quelle.mjs prueft sie seit dem Begleiter, aber der Typ kannte sie nicht,
+       * also konnte die Huelle sie gar nicht uebergeben, und `ereignis()` hat nie
+       * geschrieben.
+       */
+      darfZaehlen?(): boolean;
+      /**
        * Teil L5 — was die Zugang-Doppelseite braucht. Das Heft kennt nur diese drei
        * Fragen; `supabase.auth`, der Vergleich der beiden Passwörter und die Frage,
        * welche Tür eine Rolle öffnet, liegen in der Hülle.

@@ -98,7 +98,7 @@ function stylesheet(href: string): HTMLLinkElement {
 export default function HeftRoute03() {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
-  const { user, roles, signInWithPassword, signUp, signInWithGoogle } = useAuth();
+  const { user, roles, profile, signInWithPassword, signUp, signInWithGoogle } = useAuth();
   const { t } = useI18n();
   const { value: consent, setConsent } = useConsent();
 
@@ -120,6 +120,19 @@ export default function HeftRoute03() {
   userRef.current = user;
   const rolesRef = useRef(roles);
   rolesRef.current = roles;
+  /*
+   * Die Zaehl-Erlaubnis, als Ref statt als Wert: `funktionen` wird einmal beim Start
+   * gebaut, die Zustimmung kann sich danach jederzeit aendern. Ein eingefrorener Wert
+   * wuerde entweder fuer immer zaehlen oder fuer immer nicht.
+   *
+   * WARUM DIESE ZEILE ES GIBT: quelle.mjs prueft seit dem Begleiter
+   * `funktionen.darfZaehlen?.()` — und niemand hat die Funktion je uebergeben.
+   * `!undefined?.()` ist immer wahr, also hat `ereignis()` NIE eine Zeile geschrieben,
+   * ganz gleich ob jemand angemeldet war oder zugestimmt hatte. Der Riegel sass da und
+   * hielt die Tuer zu, auf beiden Seiten.
+   */
+  const darfZaehlenRef = useRef(false);
+  darfZaehlenRef.current = !!profile?.consent?.analytics;
 
   /**
    * Teil L5–L9 — was die Zugang-Doppelseite im Heft braucht.
@@ -266,6 +279,8 @@ export default function HeftRoute03() {
           anmelden: () => navigateRef.current(`/konto?next=${encodeURIComponent(location.pathname + location.search)}`),
           /** Die Rollen hat useAuth() ohnehin geladen — keine zweite Abfrage dafür. */
           rollen: () => rolesRef.current ?? [],
+          /** Ohne ausdrueckliche Zustimmung wird nichts gezaehlt. */
+          darfZaehlen: () => darfZaehlenRef.current,
           zugang: {
             anmelden: (d: { email: string; passwort: string }) => zugangRef.current!.anmelden(d),
             registrieren: (d: { email: string; passwort: string; wiederholung: string; name?: string }) => zugangRef.current!.registrieren(d),

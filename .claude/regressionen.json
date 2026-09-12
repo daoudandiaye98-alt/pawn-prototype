@@ -221,6 +221,16 @@
       "params": {
         "heft": "src/heft03/app.js"
       }
+    },
+    {
+      "id": "Z17",
+      "zusage": "Gezaehlt wird nur mit ausdruecklicher Zustimmung — und die Frage danach wird auch wirklich beantwortet.",
+      "beleg": "Vom Subagenten pruefer gefunden, nicht von mir: quelle.mjs:325 prueft seit dem Begleiter `funktionen.darfZaehlen?.()`, aber HeftRoute03.tsx hat diese Funktion nie uebergeben — der Typ in heft.d.ts kannte sie gar nicht, die Huelle konnte sie also nicht reichen. `!undefined?.()` ist immer wahr, folglich hat ereignis() NIE eine Zeile nach begleiter_ereignisse geschrieben, weder mit noch ohne Konto, weder mit noch ohne Zustimmung. Der Riegel hielt die Tuer auf beiden Seiten zu. Repariert: darfZaehlen in heft.d.ts aufgenommen und in HeftRoute03.tsx aus profile.consent.analytics als Ref gereicht (Ref, weil funktionen einmal beim Start gebaut wird, die Zustimmung sich aber jederzeit aendern kann). DRITTER FALL DERSELBEN ART an einem Tag — nach miniPawn() und richtungGemerkt(), die beide geschrieben und nie aufgerufen waren. · Rot vorgefuehrt am 2026-09-12: die darfZaehlen-Zeile aus HeftRoute03.tsx entfernt (also genau der Zustand, in dem es lag) -> REGRESSION 16/17, FEHLER Z17. Zurueck: 17/17.",
+      "pruefung": "zaehlenNurMitErlaubnis",
+      "params": {
+        "quelle": "src/heft03/quelle.mjs",
+        "huelle": "src/heft03/HeftRoute03.tsx"
+      }
     }
   ]
 }

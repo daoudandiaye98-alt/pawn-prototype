@@ -525,6 +525,30 @@ function zustimmungOhneRegelwerk({ heft }) {
   return OK;
 }
 
+/**
+ * Z17 — ein Riegel, den niemand bedient, ist kein Riegel.
+ *
+ * quelle.mjs fragt vor jedem Schreiben nach begleiter_ereignisse
+ * `funktionen.darfZaehlen?.()`. Uebergibt die Huelle diese Funktion nicht, ist
+ * `!undefined?.()` immer wahr — und es wird NIE gezaehlt, ganz gleich ob jemand
+ * angemeldet ist oder zugestimmt hat. Genau so lag es da, bis der Pruefer es fand.
+ *
+ * Eng gehalten: geprueft wird nur, dass die Frage gestellt wird, dass die Huelle sie
+ * beantwortet und dass die Antwort an der Zustimmung haengt — nicht, wie das im
+ * Einzelnen geschrieben ist.
+ */
+function zaehlenNurMitErlaubnis({ quelle, huelle }) {
+  const q = lies(quelle);
+  if (!/funktionen\.darfZaehlen\?\.\(\)/.test(q))
+    return nein(`${quelle}: vor dem Zaehlen wird nicht mehr nach der Erlaubnis gefragt`);
+  const h = lies(huelle);
+  if (!/darfZaehlen\s*:/.test(h))
+    return nein(`${huelle}: reicht kein darfZaehlen an die Quelle — die Frage bliebe unbeantwortet und es wuerde NIE gezaehlt`);
+  if (!/consent\?\.analytics|consent\.analytics/.test(h))
+    return nein(`${huelle}: die Zaehl-Erlaubnis haengt nicht mehr an der Zustimmung (consent.analytics)`);
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -542,6 +566,7 @@ const PRUEFUNGEN = {
   leereWeltStuerztNicht,
   geruestErstNachGestaltung,
   zustimmungOhneRegelwerk,
+  zaehlenNurMitErlaubnis,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
