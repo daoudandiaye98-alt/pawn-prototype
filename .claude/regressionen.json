@@ -232,6 +232,21 @@
       "zusage": "Die Migrationskette ist gegen eine leere Datenbank spielbar — jede doppelte Anlage ist in scripts/db/deckung.json benannt.",
       "beleg": "Belegt am 11.09.2026 mitten im Abspielen gegen cnxtdcifkrdxvajaikxq: `42P07: relation \"staging_requests\" already exists` bei 20260729052933. Das war keine Ausnahme, sondern eine Form — der Lovable-Agent hatte am 29.07. drei Repo-Dateien in EINER Migration gebuendelt angewandt, und dieselben Dateien liegen zusaetzlich einzeln im Ordner, zwei davon mit SPAETEREM Datum. Einmal alle gesucht statt eine nach der anderen anzulaufen: FUENF Stellen, nicht eine (20260729052933, 20260731090000, 20260802090000, 20260803090000, 20260905090000). Drei der Buendel tragen GRANTs, die in den spaeteren Einzeldateien fehlen, darunter `GRANT SELECT ON public.house_themes TO anon` und ein `revoke all on function public.recompute_house_milestones(uuid) from public` — haette man die Buendel uebersprungen statt der Einzeldateien, waere genau das Loch zurueckgekommen, das M7 zugemacht hat. Einmal rot vorgefuehrt, zweifach: eine Deckung entfernt (VERIFY: 4/5 · FEHLER: kette) und eine Deckung eingetragen, die nichts deckt (eine Karteileiche waere schlimmer als keine Deckung, weil sie eine Datei stumm schaltet, die gar nichts doppelt).",
       "pruefung": "jedeDoppelungIstGedeckt"
+    },
+    {
+      "id": "Z18",
+      "zusage": "Jede SECURITY-DEFINER-Funktion entscheidet ihre Ausfuehrungsrechte ausdruecklich — kein Versehen macht eine oeffentlich.",
+      "beleg": "Belegt am 12.09.2026, nach dem vollstaendigen Abspielen der Kette (169 Versionen): assign_invoice_number(uuid, uuid) war fuer anon aufrufbar. Sie ist SECURITY DEFINER und sie SCHREIBT — zaehlt designer_billing_profiles.invoice_next_number hoch und stempelt die Nummer auf eine Bestellung. Ihre eigene Datei (20260811002120) vergibt EXECUTE ausdruecklich nur an service_role, aber PostgreSQL vergibt auf eine neue Funktion per VORGABE an PUBLIC, und anon erbt das. Wer den oeffentlichen Schluessel hat, konnte Rechnungsnummern verbrennen; ein Rechnungsnummernkreis muss lueckenlos sein (§14 UStG). Dasselbe Loch bei next_invoice_number, das im ganzen Repo niemand ruft. Gemessen: has_function_privilege('anon', ..., 'EXECUTE') = true fuer 15 Funktionen; nach 20260930130000 sind es 9, und die neun sind alle ausdruecklich gewollt. WARUM ES EINEN ZWEITEN DURCHGANG BRAUCHTE: 20260930090000 (M7) wurde gegen eine Datenbank mit erst 35 Migrationen geschrieben und konnte die anderen gar nicht sehen — genau das ist der Grund, warum diese Pruefung an DATEIEN haengt und nicht an einer Messung.",
+      "pruefung": "secdefEntscheidetRechte",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ausnahmen": [
+          "order_has_my_house_items",
+          "ist_verkaufsbereit",
+          "ist_kauf_freigeschaltet"
+        ],
+        "begruendung": "Drei bewusst offene Funktionen, jede mit Grund. 1) order_has_my_house_items steht in der RLS-Policy \"designer sees orders containing own products\" auf public.orders (20260801100648 Zeile 21). Ein Entzug fuer authenticated wuerde jedes Haus aus seinen EIGENEN Bestellungen sperren — dieselbe Falle wie bei has_role. Als anon ist auth.uid() leer, sie gibt false zurueck. 2+3) ist_verkaufsbereit und ist_kauf_freigeschaltet lesen nur einen Wahrheitswert je Haus, und genau dieser Wert steht ohnehin oeffentlich in designers.kauf_freigeschaltet, das die Heft-Sicht ausliefert. Sie zuzuziehen braeuchte den Beleg, dass kein Besucher sie ruft — den habe ich nicht, und eine Vermutung rechtfertigt kein Risiko auf einer Seite mit Kaufknoepfen."
+      }
     }
   ]
 }

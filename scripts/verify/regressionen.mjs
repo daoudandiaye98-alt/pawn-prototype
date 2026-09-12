@@ -542,6 +542,52 @@ function keinGeheimnisInMigration({ ordner, ausnahmen = [] }) {
 }
 
 /**
+ * Z18 — jede SECURITY-DEFINER-Funktion entscheidet ihre Rechte ausdruecklich.
+ *
+ * PostgreSQL vergibt EXECUTE auf eine neue Funktion per VORGABE an PUBLIC. Wer eine
+ * SECURITY-DEFINER-Funktion anlegt und nur `GRANT ... TO service_role` schreibt, hat
+ * damit nichts eingeschraenkt: PUBLIC behaelt sein Recht, und `anon` erbt es.
+ *
+ * BELEGT am 12.09.2026, nach dem vollstaendigen Abspielen der Kette:
+ * `assign_invoice_number(uuid, uuid)` war fuer `anon` aufrufbar. Sie ist SECURITY
+ * DEFINER und sie SCHREIBT — zaehlt designer_billing_profiles.invoice_next_number hoch
+ * und stempelt die Nummer auf eine Bestellung. Ihre eigene Datei vergibt EXECUTE
+ * ausdruecklich nur an service_role. Wer den oeffentlichen Schluessel hat, konnte
+ * Rechnungsnummern verbrennen; ein Rechnungsnummernkreis muss lueckenlos sein.
+ * Dasselbe bei next_invoice_number. Zugezogen in 20260930130000.
+ *
+ * ENG GEHALTEN: Trigger-Funktionen (returns trigger) zaehlen nicht — PostgREST stellt
+ * sie nicht bereit, und die Trigger rufen sie im DEFINER-Zusammenhang ohne EXECUTE.
+ * Ein ausdrueckliches `GRANT ... TO anon` gilt als Entscheidung, nicht als Verstoss:
+ * eine oeffentliche Funktion ist erlaubt, eine versehentlich oeffentliche nicht.
+ */
+function secdefEntscheidetRechte({ ordner, ausnahmen = [] }) {
+  const alles = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort()
+    .map((d) => lies(join(ordner, d)).split("\n").filter((z) => !z.trimStart().startsWith("--")).join("\n"))
+    .join("\n");
+
+  const secdef = new Map();
+  const re = /create\s+(?:or\s+replace\s+)?function\s+public\.([a-z_0-9]+)\s*\(([\s\S]*?)\)\s*returns\s+([a-z_0-9 ]+)([\s\S]{0,400}?)\bas\s*\$/gi;
+  for (const m of alles.matchAll(re)) {
+    const [, name, , rueck, kopf] = m;
+    if (!/security\s+definer/i.test(kopf)) continue;
+    if (/^\s*trigger\b/i.test(rueck)) continue;
+    if (!secdef.has(name)) secdef.set(name, true);
+  }
+
+  const entschieden = new Set();
+  for (const m of alles.matchAll(/revoke\s+(?:all|execute)[\s\S]{0,80}?on\s+function\s+public\.([a-z_0-9]+)/gi))
+    entschieden.add(m[1]);
+  for (const m of alles.matchAll(/grant\s+execute\s+on\s+function\s+public\.([a-z_0-9]+)\s*\([^)]*\)\s*to\s+([^;]+);/gi))
+    if (/\banon\b/i.test(m[2])) entschieden.add(m[1]);
+
+  const offen = [...secdef.keys()].filter((n) => !entschieden.has(n) && !ausnahmen.includes(n));
+  if (offen.length)
+    return nein(`${offen.length} SECURITY-DEFINER-Funktion(en) ohne Rechte-Entscheidung, PUBLIC behaelt EXECUTE: ${offen.join(", ")}`);
+  return OK;
+}
+
+/**
  * Z17 — die Kette ist spielbar. Die Umsetzung liegt in scripts/db/doppelungen.mjs,
  * weil sie dort auch von Hand aufgerufen wird, wenn jemand mitten im Lauf steht.
  * Hier steht nur der Aufruf: eine Umsetzung, zwei Tueren, keine Kopie.
@@ -575,6 +621,7 @@ const PRUEFUNGEN = {
   geruestErstNachGestaltung,
   keinGeheimnisInMigration,
   jedeDoppelungIstGedeckt,
+  secdefEntscheidetRechte,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
