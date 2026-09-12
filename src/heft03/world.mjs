@@ -255,6 +255,22 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   paperStyle(next){style=next;currentId='';letzteSignatur='';display(currentStage.id);onDirty();},
   setContent(html,theme){letzteSignatur='';spread.innerHTML=html;const vars=theme||{paper:'#f9f7f2',ink:'#252421',accent:'#733039',font:'Playfair'};for(const m of paperMats)m.color.set(vars.paper);for(const [k,v]of Object.entries(vars))spread.style.setProperty('--house-'+k,v);spread.dataset.theme=vars.theme||'';},
   hotspots(oben=false){return(currentStage?.products||[]).map(p=>{p.object.localToWorld(temp.copy(oben?p.oben:p.point));temp.project(camera);return{id:p.id,x:(temp.x*.5+.5)*innerWidth,y:(-temp.y*.5+.5)*innerHeight};});},
-  hit(x,y){pointer.set(x/innerWidth*2-1,-y/innerHeight*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(currentStage?.root.children||[],true).find(hit=>hit.object.userData.cutout&&hit.uv&&alphaHit(hit.object.userData.cutout,hit.uv.x,hit.uv.y))?.object.userData.product;}
+  /*
+   * DEKO DARF DEN KLICK NICHT VERDECKEN.
+   *
+   * Bis zur Buehne trug jeder Aufsteller ein userData.product — .find() konnte
+   * also gar nichts anderes treffen. Deko der vorderen Ebene (z > 0,65) steht
+   * VOR den Werken und traegt bewusst KEIN product: sie ist Kulisse, kein Ziel.
+   *
+   * Mit dem alten .find() haette der Strahl sie trotzdem als Treffer genommen
+   * — sie hat ja ein cutout und eine Alphamaske — und danach waere
+   * `?.object.userData.product` undefined gewesen. Das Werk DAHINTER waere
+   * unerreichbar geworden, ohne dass irgendwo ein Fehler auftaucht.
+   *
+   * Deshalb wird auf product geprueft, bevor der Treffer gilt, nicht danach.
+   * Heute ist das ein No-op: es gibt noch keine Deko. Es ist der Riegel, der
+   * sitzt, BEVOR die Deko kommt — nicht die Reparatur danach.
+   */
+  hit(x,y){pointer.set(x/innerWidth*2-1,-y/innerHeight*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(currentStage?.root.children||[],true).find(hit=>hit.object.userData.product&&hit.object.userData.cutout&&hit.uv&&alphaHit(hit.object.userData.cutout,hit.uv.x,hit.uv.y))?.object.userData.product;}
  };
 }
