@@ -36,9 +36,7 @@
     "lauf": 173,
     "ergebnis": "messen rot — dieselben Klassen wie vorher: 3.3 Kontrast, 3.4 Fokus, 3.5 Tippflaechen, 4.7 Seitengewicht. KEIN neuer Grund durch den Diff (er beruehrt keine Frontend-Datei).",
     "die_zahl_die_zaehlt": "4.7: 4 294 154 Byte gemessen, 3 000 000 erlaubt. Der groesste Posten ist index-dyer7c-H.js mit 2136 kB, dazu three.module mit 477 kB. Das ist das Heft samt Three.js — die Zahl ist echt und nicht von den falschen Slugs betroffen, denn das Buendel laedt auf jeder Seite.",
-    "was_dieser_lauf_nicht_gemessen_hat": [
-      "Die Haus- und die Werkseite. Die Slugs zeigten auf ein Haus, das es nicht gibt — gemessen wurde dort die Heft-Huelle. Berichtigt, aber der Lauf 173 sagt ueber diese zwei Seiten nichts."
-    ]
+    "was_dieser_lauf_nicht_gemessen_hat": "Die Haus- und die Werkseite. Die Slugs zeigten auf ein Haus, das es nicht gibt — gemessen wurde dort die Heft-Huelle. Berichtigt, aber der Lauf 173 sagt ueber diese zwei Seiten nichts."
   },
   "naechster_zug": "M2 ist fertig. Was jetzt ansteht, in dieser Reihenfolge: 1. PR #195 ansehen und mergen (der messen-Lauf ist dort rot und bleibt es: 119 Launch Gates, bekannt, nicht von diesem PR, zweimal kommentiert). 2. M5 — die Speicher-Eimer und der Deploy von ~49 Edge Functions. NUR DAOUDA: der Deploy kostet Guthaben und laeuft ueber Lovable. Ohne ihn kommt die Seite nicht zurueck, egal wie vollstaendig die Datenbank ist. 3. M3 (Rechte je Tabelle + rls-anon.mjs, das auch GRANTs prueft) und M4 (zugang_bootstrap/zugang_protokoll als dokumentierte Ausnahmen). M3 hat mit 20260930120000 und 20260930130000 schon zwei Vorboten. 4. L3 (sichten:true) — jetzt moeglich, types.ts kennt die Sichten. 5. M13 Texte, dann das Schaufenster M14-M17, dann M18-M20. OFFENE ENTSCHEIDUNG VON DAOUDA: M12 Jarvis J1 oder J2 — mit der Berichtigung, dass pawn-jarvis (6422 Zeilen) und compute-trends schon im Repo liegen, J1 also viel billiger ist als der Auftrag annimmt.",
   "nicht_pruefbar": [
