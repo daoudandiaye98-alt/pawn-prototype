@@ -10,7 +10,7 @@ import {kuratiere} from './kuration.mjs';
 import {urteil,passform} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
 import {chatAntwort,SPALTEN,demoQuelle,bildLoeser,produktSpalten} from './quelle.mjs';
-import {readView} from './views.mjs';
+import {readView,passformAssistent} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
 import {sections as SEKTIONEN,counts as ZAEHLER} from './data.mjs';
@@ -113,6 +113,28 @@ test('Chat-Antwort: Karten werden zu Slugs, alte /product/-Adressen inklusive',(
 
 test('Spaltenmasken enthalten keine Stripe- oder Kontospalten',()=>{
  for(const [k,v] of Object.entries(SPALTEN))assert.ok(!/stripe|user_id|email|iban|application_fee/.test(v),k);
+});
+
+test('ein Mode-Stueck ohne Groessentabelle bekommt nie die Kunst-Formulierung',()=>{
+ /*
+  * Gesehen auf artefakte/werk--1280.png aus Pruefstand-Lauf 177, Vorschau mit echter
+  * Datenbank: „Wool Coat", Welt MODE, Anfertigung nach Absprache — und darunter
+  * „ob die Arbeit an deine Wand passt". Ein Mantel an der Wand.
+  *
+  * Ursache: die Verzweigung fragte sizes.length, dann interior, und fiel SONST in den
+  * Kunst-Zweig. wool-coat hat size_variants: [] — gemessen, steht in der Fixture.
+  */
+ const mantel={id:'x',name:'Wool Coat',world:'mode',sizes:[],price:480};
+ const html=passformAssistent(mantel,{measurements:{},stil:{}});
+ assert.ok(!/Wand/.test(html),'kein Wort von der Wand bei einem Kleidungsstueck');
+ assert.ok(/auf Maß/.test(html),'stattdessen die Anfertigung');
+ assert.ok(/data-goto="dna:6"/.test(html),'und der Weg zu den Massen, nicht zum Format');
+ // Die Kunst-Formulierung bleibt, wo sie hingehoert.
+ const werk={id:'y',name:'Traces / 01',world:'kunst',sizes:[]};
+ assert.ok(/Wand/.test(passformAssistent(werk,{measurements:{},stil:{}})),'Kunst spricht weiter von der Wand');
+ // Und Mode MIT Groessentabelle laeuft weiter ueber die Groesse.
+ const hemd={id:'z',name:'Hemd',world:'mode',sizes:['S','M','L']};
+ assert.ok(!/auf Maß/.test(passformAssistent(hemd,{measurements:{},stil:{}})),'mit Groessen kein Anfertigungssatz');
 });
 
 test('die ECHTE Antwort der Sicht laeuft durch die Adapter',()=>{
