@@ -247,6 +247,17 @@
         ],
         "begruendung": "Drei bewusst offene Funktionen, jede mit Grund. 1) order_has_my_house_items steht in der RLS-Policy \"designer sees orders containing own products\" auf public.orders (20260801100648 Zeile 21). Ein Entzug fuer authenticated wuerde jedes Haus aus seinen EIGENEN Bestellungen sperren — dieselbe Falle wie bei has_role. Als anon ist auth.uid() leer, sie gibt false zurueck. 2+3) ist_verkaufsbereit und ist_kauf_freigeschaltet lesen nur einen Wahrheitswert je Haus, und genau dieser Wert steht ohnehin oeffentlich in designers.kauf_freigeschaltet, das die Heft-Sicht ausliefert. Sie zuzuziehen braeuchte den Beleg, dass kein Besucher sie ruft — den habe ich nicht, und eine Vermutung rechtfertigt kein Risiko auf einer Seite mit Kaufknoepfen."
       }
+    },
+    {
+      "id": "Z19",
+      "zusage": "Jede Tabelle hat ihre Rechte ausdruecklich in einer Migration — der Ordner verlaesst sich auf keine Vorgabe der Plattform.",
+      "beleg": "Belegt am 12.09.2026, und der Fehler war mein eigener: der Rueckweg des Erstaufbaus macht `drop schema public cascade; create schema public;`. Ein NEUES Schema traegt keine Vorgabe-Rechte. Supabase hatte am alten public `alter default privileges in schema public grant all on tables to anon, authenticated, service_role` haengen — deshalb schreiben die meisten Migrationen gar keine GRANTs, sie brauchten keine. Gemessen: pg_default_acl hat Eintraege fuer storage, auth, graphql, realtime, cron und extensions — fuer public KEINEN. Die Folge, gemessen: von 80 Tabellen durfte authenticated nur 63 lesen und service_role ebenfalls nur 63. Die Edge Functions arbeiten mit service_role — auf 17 Tabellen waeren sie mit einem Berechtigungsfehler abgebrochen, und das haette niemand erklaeren koennen. Nachgezogen in 20260930140000, eng: fuer authenticated genau die Verben, die die Policies der Tabelle decken, an pg_policy.polcmd nachgemessen — drei Tabellen bekommen nur SELECT, style_references kein UPDATE. Danach gemessen: service_role 80/80, authenticated 77/80, anon unveraendert 13. Die Datei-Pruefung und die Datenbank-Messung stimmen ueberein: beide 0 fehlend. Einmal rot vorgefuehrt.",
+      "pruefung": "tabellenrechteSindAusdruecklich",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ausnahmen_authenticated": [],
+        "begruendung": "Keine Ausnahme noetig: alle 77 Tabellen mit einer authenticated-Policy haben ihr GRANT. Drei Tabellen haben absichtlich KEINES und brauchen auch keine Ausnahme, weil sie gar keine authenticated-Policy tragen: rate_limit_hits (ihre Datei sagt ausdruecklich 'kein Client-Zugriff, weder anon noch authenticated'), zugang_bootstrap und zugang_protokoll (RLS an, keine Policy — Absicht, und der Gegenstand von M4). anon ist NICHT Gegenstand dieser Zusage: wer oeffentlich lesen darf, ist eine Entscheidung, keine Vollstaendigkeitsfrage, und gehoert in den zweiten Teil von M3."
+      }
     }
   ]
 }

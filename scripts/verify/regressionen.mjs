@@ -542,6 +542,58 @@ function keinGeheimnisInMigration({ ordner, ausnahmen = [] }) {
 }
 
 /**
+ * Z19 — jede Tabelle hat ihre Rechte ausdruecklich in einer Migration, nicht per Vorgabe.
+ *
+ * DER BELEGTE FEHLER, und er war mein eigener: der Rueckweg des Erstaufbaus macht
+ * `drop schema public cascade; create schema public;`. Ein NEUES Schema traegt keine
+ * Vorgabe-Rechte. Supabase hatte am alten `public`
+ *     alter default privileges in schema public grant all on tables to anon, authenticated, service_role
+ * haengen — deshalb schreiben die meisten Migrationen gar keine GRANTs: sie brauchten keine.
+ * Nach dem Rueckweg ist diese Vorgabe weg (gemessen am 12.09.2026: pg_default_acl hat
+ * Eintraege fuer storage, auth, graphql, realtime, cron, extensions — fuer public KEINEN).
+ *
+ * Gemessen war die Folge: von 80 Tabellen durfte `authenticated` nur 63 lesen und
+ * `service_role` ebenfalls nur 63. Die Edge Functions arbeiten mit service_role — auf 17
+ * Tabellen waeren sie mit einem Berechtigungsfehler abgebrochen. Und eine Policy ohne das
+ * zugehoerige GRANT laeuft ins Leere: RLS sagt, WELCHE Zeilen jemand sieht, das GRANT sagt,
+ * ob er die Tabelle ueberhaupt anfassen darf. Nachgezogen in 20260930140000.
+ *
+ * Diese Pruefung haelt den Ordner unabhaengig von jeder Vorgabe: jede Tabelle braucht ein
+ * ausdrueckliches GRANT fuer service_role, und jede Tabelle mit einer Policy, die
+ * `authenticated` einschliesst, eines fuer authenticated. `anon` ist NICHT Gegenstand —
+ * wer oeffentlich lesen darf, ist eine Entscheidung, keine Vollstaendigkeitsfrage.
+ */
+function tabellenrechteSindAusdruecklich({ ordner, ausnahmen_authenticated = [] }) {
+  const alles = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort()
+    .map((d) => lies(join(ordner, d)).split("\n").filter((z) => !z.trimStart().startsWith("--")).join("\n"))
+    .join("\n");
+
+  const tabellen = new Set([...alles.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z_0-9]+)/gi)]
+    .map((m) => m[1].toLowerCase()));
+
+  // Eine Policy ohne `TO` gilt fuer alle Rollen, also auch fuer authenticated.
+  const authPolicy = new Set();
+  for (const m of alles.matchAll(/create\s+policy\s+"[^"]+"\s+on\s+public\.([a-z_0-9]+)([\s\S]{0,120}?)(?:using|with\s+check)/gi))
+    if (!/\bto\s+/i.test(m[2]) || /\bauthenticated\b/i.test(m[2])) authPolicy.add(m[1].toLowerCase());
+
+  const grant = { service_role: new Set(), authenticated: new Set() };
+  for (const m of alles.matchAll(/grant\s+([a-z, ]+?)\s+on\s+((?:\s*(?:table\s+)?public\.[a-z_0-9]+\s*,?)+)\s*to\s+([^;]+);/gi)) {
+    const liste = [...m[2].matchAll(/public\.([a-z_0-9]+)/gi)].map((x) => x[1].toLowerCase());
+    for (const rolle of Object.keys(grant))
+      if (new RegExp(`\\b${rolle}\\b`, "i").test(m[3])) for (const t of liste) grant[rolle].add(t);
+  }
+
+  const ohneService = [...tabellen].filter((t) => !grant.service_role.has(t)).sort();
+  const ohneAuth = [...authPolicy].filter((t) => tabellen.has(t)
+    && !grant.authenticated.has(t) && !ausnahmen_authenticated.includes(t)).sort();
+
+  const klagen = [];
+  if (ohneService.length) klagen.push(`${ohneService.length} Tabelle(n) ohne service_role-GRANT (die Edge Functions brechen dort ab): ${ohneService.join(", ")}`);
+  if (ohneAuth.length) klagen.push(`${ohneAuth.length} Tabelle(n) mit authenticated-Policy, aber ohne GRANT (die Policy laeuft ins Leere): ${ohneAuth.join(", ")}`);
+  return klagen.length ? nein(klagen.join(" · ")) : OK;
+}
+
+/**
  * Z18 — jede SECURITY-DEFINER-Funktion entscheidet ihre Rechte ausdruecklich.
  *
  * PostgreSQL vergibt EXECUTE auf eine neue Funktion per VORGABE an PUBLIC. Wer eine
@@ -622,6 +674,7 @@ const PRUEFUNGEN = {
   keinGeheimnisInMigration,
   jedeDoppelungIstGedeckt,
   secdefEntscheidetRechte,
+  tabellenrechteSindAusdruecklich,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
