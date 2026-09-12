@@ -174,6 +174,34 @@ export const DATEN_HOSTS = ["supabase.co"];
  */
 export const EIGENE_ABBRUECHE = [
   { pfad: "/auth/v1/health", fehler: "net::ERR_ABORTED" },
+  /*
+   * BELEGT am 2026-09-12, Lauf #179: `/konto` bei 1920 und `/suche` bei 390 wurden
+   * KOMPLETT entwertet — 31 bzw. 25 Befunde auf „kein Urteil", mit der Begründung
+   *
+   *   https://<projekt>.supabase.co/rest/v1/i18n_overrides?select=key,value_en
+   *   — net::ERR_FAILED
+   *
+   * Derselbe Aufruf beantwortet als anon mit HTTP 200 und `[]` — nachgemessen am
+   * selben Tag mit curl gegen die echte Datenbank. Der Aufruf ist also nicht kaputt,
+   * er wird abgebrochen. Er stammt aus src/lib/i18n.tsx:4974 und wird dort bewusst
+   * ohne Rückweg abgeschickt (`void supabase.from(...).then(...)`) — er holt
+   * Übersetzungs-Überschreibungen nach, die Seite wartet nicht auf ihn und zeigt
+   * ohne ihn genau dasselbe.
+   *
+   * Eine Seite deswegen zur leeren Hülle zu erklären, löscht 31 richtige Messungen
+   * wegen eines Nachtrags, der ohnehin nichts liefert. Das ist die stille Schwester
+   * des falschen Rots: sie lehrt nicht, Rot zu übersehen, sondern gar nichts mehr zu
+   * sehen.
+   *
+   * ENG geschrieben: nur dieser eine Pfad. Ist die Datenbank wirklich weg, scheitern
+   * auch alle anderen Aufrufe, und DIE markieren die Hülle weiterhin.
+   *
+   * OFFEN, und ich sage es lieber, als es zu verschweigen: WARUM der Aufruf
+   * abbricht, ist nicht geklärt. Er trat in den Läufen 177 und 178 kein einziges Mal
+   * auf und in 179 zweimal von 35 Seitenaufrufen. Ohne Browser ist das von hier aus
+   * nicht weiter zu verfolgen; der offene Punkt steht in .claude/stand.json.
+   */
+  { pfad: "/rest/v1/i18n_overrides", fehler: "net::ERR_FAILED" },
 ];
 
 export const SCHWELLEN = {
