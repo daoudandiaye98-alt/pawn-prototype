@@ -227,3 +227,39 @@ zuletzt etwas gefangen?"
 **Nachfunde durch einen Menschen: unverändert 3.** Dieser Fund ging auf das Konto des
 Werkzeugs, nicht auf das eines Menschen — aber er erklärt, warum Daouda drei Mängel
 finden musste, die kein Lauf gefangen hat. Vier Wochen lang hat nichts gemessen.
+
+---
+
+## 12.09.2026 · die Kette, und was in ihr steckte
+
+| | |
+|---|---|
+| Migrationen gespielt | 169 Versionen aus 170 Dateien, gegen `cnxtdcifkrdxvajaikxq` |
+| Abnahme | md5 über alle Versionen, beidseitig `9bcdb726…` · 177 Objekte gemessen da |
+| Dateien, die **in sich** kaputt waren | 2 |
+| Dateien, die etwas doppelt oder zu früh anlegen | 7 |
+| **Nachfunde durch einen Menschen** | **unverändert 3** |
+
+**Sieben Brüche in einer Kette, die seit Monaten als „die Wahrheit" galt.** Keiner davon
+war durch Lesen zu finden — jeder einzelne hat sich erst gezeigt, als die Datei wirklich
+an eine Datenbank ging. Zwei Dateien waren *in sich* nicht spielbar: eine Policy, die
+etwas liest, das dieselbe Datei erst weiter unten anlegt. Fünf weitere legen an, was eine
+andere Migration schon anlegt, oder benutzen eine Spalte, die erst später entsteht.
+
+Der gemeinsame Grund ist keiner von sieben Zufällen: **der Lovable-Agent hat Dateien
+gebündelt auf eine Datenbank angewandt, die dem Repo voraus war.** Damit hat der Ordner
+nie dasselbe beschrieben wie die Datenbank — und es war niemandem anzusehen, weil
+niemand die Kette je von null gespielt hat.
+
+**Die Lehre, und sie ist die teuerste dieses Monats:** eine Migration, die nie von null
+gelaufen ist, ist keine Migration. Sie ist eine Notiz darüber, was einmal jemand
+angewandt hat. Der Unterschied bleibt unsichtbar, solange niemand bei null anfängt —
+und wird in dem Moment total, in dem jemand muss.
+
+**Und eine zweite, die dieselbe Form hat:** der erste M7-Durchgang hat 16
+anon-aufrufbare SECURITY-DEFINER-Funktionen gefunden und auf 0 gebracht — gemessen, auf
+einer Datenbank mit 35 Migrationen. Nach der vollständigen Kette waren es wieder 15.
+Beide Messungen waren richtig. Beide Berichte waren richtig. Und trotzdem war das Loch
+offen, darunter `assign_invoice_number`, die Rechnungsnummern verbrennt. **Eine Messung
+gilt nur für den Stand, auf dem sie gemacht wurde — ein Bericht, der das nicht sagt,
+behauptet mehr als er weiß.** Deshalb hängt die neue Prüfung `Z18` an den *Dateien*.
