@@ -183,8 +183,8 @@ Deno.serve(async (req) => {
     if (!["anprobe", "raum", "wand"].includes(aktion)) return json({ ok: false, grund: "aktion_unbekannt" }, 400);
     if (!body.product_id) return json({ ok: false, grund: "product_id_fehlt" }, 400);
 
-    // Kontingent
-    const { data: kont } = await admin.rpc("anprobe_kontingent");
+    // Kontingent — über den Nutzer-Client, denn die Funktion rechnet mit auth.uid().
+    const { data: kont } = await alsNutzer.rpc("anprobe_kontingent");
     const frei = (kont as { frei?: number } | null)?.frei ?? (Array.isArray(kont) ? (kont[0] as { frei?: number })?.frei : undefined);
     if (typeof frei === "number" && frei <= 0) {
       return json({ ok: false, grund: "kontingent", satz: "Für heute sind deine zehn Anproben aufgebraucht. Morgen geht es weiter." }, 200);
