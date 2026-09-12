@@ -304,10 +304,10 @@ Deno.serve(async (req) => {
       try {
         await admin.from("ai_logs").insert({
           agent_id: KOSTENSTELLE,
-          model: modell,
+          model: aktion === "anprobe" ? "tryon" : RAUM_MODELL,
           status: "ok",
           latency_ms: Date.now() - start,
-          request: { kostenstelle: KOSTENSTELLE, traeger: "plattform", cents, art, anprobe_id, product_id: p.id },
+          request: { kostenstelle: KOSTENSTELLE, traeger: "plattform", cents, art: aktion, anprobe_id, product_id: p.id },
           response: { result_path: pfad },
         } as never);
       } catch { /* informativ, blockiert nie */ }
