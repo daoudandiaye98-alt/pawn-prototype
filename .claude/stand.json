@@ -85,10 +85,11 @@
     }
   },
   "letzter_pruefer": {
-    "datum": "2026-09-11",
-    "gegenstand": "14 Behauptungen zu PR #194 (Teil M)",
-    "ergebnis": "14 bestaetigt · 0 widerlegt · 0 nicht pruefbar",
-    "was_er_selbst_gemessen_hat": "Die Spaltenrechnung 59/44/15 eigenstaendig nachgerechnet · die Kette in einer Kopie ohne die Basis-Datei rot vorgefuehrt (Exit 1, FEHLER: acquisition_leads) · --ordnung auf Vollstaendigkeit geprueft (163 Zeilen, sort -u ebenfalls 163) · seed-admin aus `git show HEAD~1` gelesen und den fehlenden Auth-Check sowie das hartcodierte Passwort bestaetigt · has_role in einer frueher sortierten Migration gefunden"
+    "datum": "2026-09-12",
+    "ergebnis": "PRUEFER: 10/12 · WIDERLEGT: 1 · NICHT PRUEFBAR: 1",
+    "widerlegt": "B11: ich hatte „drei neue Migrationsdateien\" geschrieben und dann zwei genannt. Gegen main sind es SIEBEN hinzugefuegte und zwei geaenderte, null geloescht, null umbenannt. Fuenf der sieben kamen mit den fruehreren Block-B-Commits dieses Zweigs, zwei sind neu aus dieser Runde (20260930120000, 20260930130000). Im PR-Text berichtigt.",
+    "nicht_pruefbar": "B1: dass die Kette wirklich gegen cnxtdcifkrdxvajaikxq angewandt wurde, kann der Pruefer nicht nachmessen — er hat keinen Datenbankzugang. Dateizahl (170) und die eine Doppelung (20260811090000 traegt zwei Dateien) hat er bestaetigt. ALLES, was eine Zahl von der Datenbank nennt — die Pruefsumme 9bcdb726…, die 177 Objekte, die 15 -> 9 SECURITY-DEFINER-Funktionen — ist MEINE Messung und nur meine. Wer sie nachrechnen will, braucht Datenbankzugang.",
+    "was_er_selbst_vorgefuehrt_hat": "Er hat die drei neuen Pruefungen nicht geglaubt, sondern kaputtgemacht: Deckung entfernt (DOPPELUNGEN: 6/8, nennt rate_limit_hits), gedeckt_von geleert (7 Anweisungen gehen verloren, nennt house_milestones), die Spalte in 20260729093000 zurueckgeschoben (KETTE: 0/1). Alles wiederhergestellt, Baum danach sauber."
   },
   "erstaufbau": {
     "WO_ES_STEHT": "FERTIG. 169 Versionen liegen auf cnxtdcifkrdxvajaikxq, der Ordner und die Liste stimmen exakt ueberein — md5 ueber alle Versionen sortiert ist auf beiden Seiten 9bcdb726fd00250f39ebbdc2247b1922 (das war vor dem letzten Nachtrag 20260930130000; jetzt 169). Alle 177 Objekte, die die Kette anlegt, sind gemessen da. ABER: die Seite ist damit NICHT zurueck. Es fehlen die Speicher-Eimer (M5) und der Deploy von ~49 Edge Functions — und der kann nur ueber Daouda laufen.",
