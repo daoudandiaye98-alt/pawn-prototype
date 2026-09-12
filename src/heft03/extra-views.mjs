@@ -1,4 +1,5 @@
 import {products,houses,labels,asset,heftModus} from './data.mjs';
+import {punkteAnzeige} from './archetyp.mjs';
 import {kuratiere} from './kuration.mjs';
 import {esc,money,productCard,zug,ausschnitt,spreadVoll} from './views.mjs';
 import {searchProducts,housePresentation} from './presentation.mjs';
@@ -61,6 +62,31 @@ export function pawnGlyph(cls=''){const id='pg'+(++pawnLauf);
  * Der Satz darunter ist das ZULETZT GESAGTE des Begleiters, keine fest verdrahtete Liste
  * mehr — spricht er noch nicht, steht dort auch nichts.
  */
+/**
+ * Nur die Figur, ohne Rahmen und ohne Bildunterschrift.
+ *
+ * Die Archetypen-Karte braucht das: dort steht die Figur FUER den Archetyp, nicht als
+ * anklickbarer Bauer. Mit miniPawn() stand dort „DEINE FIGUR / TURM · Tipp mich an" —
+ * neben der Ueberschrift „Die Linie". Zwei Namen fuer dieselbe Sache, einer davon falsch,
+ * und eine Aufforderung, die ins Leere zeigt.
+ */
+export function figurZeichnen(name,cls=''){
+ const rang=RANG_PFADE[name]?name:'bauer';
+ const id='fz'+(++pawnLauf),d=RANG_PFADE[rang],a=RANG_AUGEN[rang];
+ const augen=(a[2]!=null
+  ?'<ellipse cx="'+a[0]+'" cy="'+a[1]+'" rx="4.3" ry="5.6"/><ellipse cx="'+a[2]+'" cy="'+a[3]+'" rx="4.3" ry="5.6"/>'
+  :'<ellipse cx="'+a[0]+'" cy="'+a[1]+'" rx="4.3" ry="5.6"/>');
+ return '<span class="pawn-mark '+cls+'" data-figur="'+rang+'">'
+ +'<svg viewBox="0 0 100 106" aria-hidden="true">'
+ +'<defs><clipPath id="'+id+'c"><path d="'+d+'"/></clipPath>'
+ +'<pattern id="'+id+'h" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">'
+ +'<line x1="0" y1="0" x2="0" y2="3.4" stroke="var(--house-paper,#f6f1e7)" stroke-width="1" opacity=".26"/></pattern></defs>'
+ +'<ellipse class="pawn-schatten" cx="50" cy="100" rx="34" ry="3.4"/>'
+ +'<g class="pawn-koerper"><path d="'+d+'"/>'
+ +'<rect clip-path="url(#'+id+'c)" width="100" height="100" fill="url(#'+id+'h)"/>'
+ +'<g class="pawn-augen">'+augen+'</g></g></svg></span>';
+}
+
 function miniPawn(state){
  const id='pw'+(++pawnLauf);
  const rang=RANG_PFADE[state.rang]?state.rang:'bauer';
@@ -372,6 +398,93 @@ export function extendedView(route,state){
     +(state.foto?'<p class="foto-liegt">Foto liegt vor: '+esc(state.foto)+'</p>':'')
     +'<form data-foto-form class="aktionsreihe"><label class="reference-upload'+(state.foto?' hat-datei':'')+'"><i aria-hidden="true">'+(state.foto?'✓':'+')+'</i>'+(state.foto?'Anderes Foto':esc(fo.knopf))+'<input type="file" name="foto" accept="image/*" data-foto></label></form>'
     +zug('DEIN ZUG',state.foto?'Weiter zu deinen Maßen':'Ohne Foto weiter','Zugabe zwei: Maße'+(welt==='mode'?'':welt==='interior'?' deines Raums':' deiner Wand')+'.','data-page="'+nr('massband')+'"'),{welt:'dna',rechts:false});
+  }
+  /*
+   * C2 — Der Archetyp. Die Seite, die sagt, wen PAWN in dir liest.
+   *
+   * DAS SCHWERSTE AN IHR IST, WAS SIE WEGLAESST. Gemessen am 12.09.2026 auf der
+   * Live-Datenbank: `bild_url` ist auf allen 18 Archetypen leer, `haus_archetypen`
+   * ueberall ein leeres Feld, und eine Spalte `zuglogik` gibt es gar nicht. Drei
+   * Abschnitte, die der Auftrag beschreibt, haben also keine Daten. Sie erscheinen
+   * deshalb NICHT — kein Platzhalterbild, kein „noch keine Haeuser", kein „noch
+   * unbekannt". Eine leere Ueberschrift ist ein Versprechen, das die Seite nicht
+   * halten kann.
+   *
+   * Was bleibt, steht auf Belegen: Name, Kurzbeschreibung, die Figur, die Belege selbst
+   * und die Nachbarn. Jede Zeile aus echten Daten oder gar nicht.
+   */
+  if(name==='archetyp'){
+   const a=state.archetyp||null;                 // {archetyp_key,zuversicht,belege,alternativen,bestaetigt}
+   const katalog=state.archetypen||[];
+   const karte=a?katalog.find(x=>x.key===a.archetyp_key):null;
+
+   // Ohne Quiz keine Rechnung, ohne Rechnung keine Figur. Das ist kein Fehlerfall,
+   // sondern der normale Weg fuer jemanden, der die Seite zuerst aufschlaegt.
+   if(!a||!karte){
+    return page(
+     tag('DEIN TYP')+'<h1>Noch<br><em>keine Figur.</em></h1>'
+     +'<p class="body-copy lead">'+(katalog.length
+       ?'Tipp im Quiz eine Welt und eine Richtung an — daraus lese ich, welche Figur du spielst.'
+       :'Die Figuren ziehen gerade ein. Sobald sie stehen, lese ich dir deine vor.')+'</p>'
+     +(katalog.length?button('Zur Stilberatung','data-page="'+nr('welt')+'"'):''),
+     tag('WORAUS ICH LESE')+pawnSagt('Ich rate nicht. Ohne Antworten sage ich nichts.')
+     +zug('DEIN ZUG','Weiter zu deinen Maßen','Zugabe zwei: Maße.','data-page="'+nr('massband')+'"'),'','dna');
+   }
+
+   const zv=punkteAnzeige(a.zuversicht);
+   const punkteReihe='<p class="zuversicht" aria-label="Zuversicht '+zv.voll+' von '+zv.gesamt+'">'
+    +'<small>WIE SICHER</small><span aria-hidden="true">'
+    +Array.from({length:zv.gesamt},(_,i)=>'<i class="'+(i<zv.voll?'voll':'leer')+'"></i>').join('')
+    +'</span></p>';
+
+   // Die Belege — jeder eine Zeile, jede aus echten Daten. Keine Belege, kein Abschnitt.
+   const belege=(a.belege||[]).filter(b=>b&&b.text);
+   // `belegeFigur` lag seit dem Einzug (9ddd574) ungenutzt in figuren.mjs: importiert,
+   // nie aufgerufen. Sie zeichnet genau das hier — eine steigende Linie mit ein bis drei
+   // Punkten, „die Belege sammeln sich an". Gebraucht statt neu gebaut.
+   const belegBlock=belege.length
+    ?'<div class="belege">'+belegeFigur(belege.length)+'<small>WORAN ICH DAS LESE:</small><ul>'
+      +belege.map(b=>'<li>'+esc(b.text)+'</li>').join('')+'</ul></div>'
+    :'';
+
+   // Die Nachbarn, uebersetzt in ihre Namen. Was der Katalog nicht kennt, faellt weg.
+   const nahe=(karte.nahe||[]).map(k=>katalog.find(x=>x.key===k)).filter(Boolean);
+   const naheBlock=nahe.length
+    ?'<div class="nahe"><small>WAS DIR NAHE IST</small><ul>'
+      +nahe.map(n=>'<li><strong>'+esc(n.name)+'</strong> — '+esc(n.kurz||'')+'</li>').join('')+'</ul></div>'
+    :'';
+
+   // „Haeuser mit dieser Handschrift" braucht gepflegte haus_archetypen. Gemessen: leer
+   // auf allen 18. Also kein Abschnitt, statt einer leeren Ueberschrift.
+   const haeuserBlock='';
+
+   // Das Referenzbild gibt es nur, wenn es eines gibt. Gemessen: bild_url ist ueberall
+   // leer, dieser Zweig laeuft heute nie — er steht da, damit er greift, sobald jemand
+   // Bilder pflegt, und nicht damit heute ein Kasten erscheint.
+   const bild=karte.bild_url
+    ?'<img class="blatt-bild archetyp-bild" src="'+esc(karte.bild_url)+'" alt="" decoding="async">'
+    :'';
+
+   const figur=RANG_PFADE[karte.figur]?karte.figur:null;
+   const figurBlock=figur?'<div class="archetyp-figur">'+figurZeichnen(figur)+'</div>':'';
+
+   return page(
+    tag('DEIN TYP · '+esc((labels[welt]||welt).toUpperCase()))
+    +'<h1>'+esc(karte.name).replace(' ','<br><em>')+'</em></h1>'
+    +punkteReihe
+    +(karte.kurz?'<p class="body-copy lead">'+esc(karte.kurz)+'</p>':'')
+    +bild+figurBlock+belegBlock
+    +button('Antworten ändern','data-page="'+nr('richtung')+'"'),
+
+    tag('STIMMT DAS?')
+    +'<div class="aktionsreihe">'
+     +'<button class="solid" data-archetyp-ja="'+esc(karte.key)+'">Das bin ich</button>'
+     +'<button class="outline" data-archetyp-nein="'+esc(karte.key)+'">Eher nicht</button>'
+    +'</div>'
+    +(a.bestaetigt?'<p class="foto-liegt">Bestätigt. Ich rechne nicht mehr dagegen.</p>':'')
+    +naheBlock+haeuserBlock
+    +(state.archetypProsa?'<blockquote class="pawn-meint"><small>PAWN MEINT</small>'+esc(state.archetypProsa)+'</blockquote>':'')
+    +zug('DEIN ZUG','Weiter zu deinen Maßen','Zugabe zwei: Maße.','data-page="'+nr('massband')+'"'),'','dna');
   }
   if(name==='massband'){
    const m=state.measurements||{},zurueck=state.fitProduct?zug('DEIN ZUG','← Zurück zu '+esc(products[state.fitProduct].name),'Jetzt mit deiner Größe geprüft.','data-product="'+state.fitProduct+'"'):zug('DEIN ZUG','Was PAWN von dir weiß','Alles auf einer Seite — änderbar, löschbar.','data-page="'+nr('privacy')+'"');

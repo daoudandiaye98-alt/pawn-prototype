@@ -7,6 +7,7 @@ import {extendedView,searchToolbar,pawnChat,pawnGlyph} from './extra-views.mjs';
 import {erschaffeBegleiter,gedaechtnisAus,waehleVariante,RAENGE} from './begleiter.mjs';
 import {themes,housePresentation,searchProducts,searchCount,presentationExport,houseBlocks,houseProducts} from './presentation.mjs';
 import {befundAusWerken} from './beratung.mjs';
+import {archetypFuerGast,naechsteAlternative} from './archetyp.mjs';
 import {kuratiere,kurationsNotiz} from './kuration.mjs';
 import {laden,speichern,vergessen} from './store.mjs';
 import {demoQuelle,BILD_GRENZE} from './quelle.mjs';
@@ -56,7 +57,7 @@ if(gewaehlt.fehler){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{ar
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,anproben:[],fitProduct:null};
+const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,archetypen:[],archetypProsa:'',archetypAbgelehnt:[],anproben:[],fitProduct:null};
 // Was mit Zustimmung gespeichert wurde, kommt zurück.
 {const alt=laden();if(alt&&alt.consent===true)Object.assign(state,alt,{denkt:false,message:'',reference:''});}
 if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!optionen.zustimmung;
@@ -156,6 +157,11 @@ function go(route,push=true){
   if(route.section==='tasche'||route.section==='kasse')melden('kasse',{});
  }
  if(!reading(route)&&route.section!=='entdecken')melden('buehne_geoeffnet',{welt:route.section});
+ // Der Archetyp wird geholt, wenn seine Seite aufgeschlagen wird — nicht beim Start.
+ // Ein Katalog, den niemand ansieht, gehoert nicht ins Erstgewicht der Seite.
+ if(route.section==='dna'&&sections.dna[route.index]==='archetyp'){
+  archetypBestimmen().then(()=>readRefresh()).catch(()=>{});
+ }
 }
 function house(slug){if(!reading(nav.route))nav.origin={...nav.route};go({section:'haus',slug,index:0});}
 function returnDisplay(){go(nav.origin||{section:nav.route.section==='haus'?houses[nav.route.slug].world:'entdecken',index:0});}
@@ -561,6 +567,30 @@ function alsDatenUrl(datei,grenze=BILD_GRENZE){
  });
 }
 
+/**
+ * C1/C2 — den Archetyp bestimmen. Mit Konto rechnet die Datenbank, ohne Konto der
+ * Browser. Gleiche Form, gleiche Gewichte, ein Aufrufer.
+ *
+ * Warum ueberhaupt zwei Wege: `archetyp_berechnen()` beginnt mit
+ * `if uid is null then return` und liest kunden_stil, orders und anproben. Ein Gast hat
+ * nichts davon — er bekaeme eine leere Seite, obwohl er das Quiz gerade ausgefuellt hat.
+ */
+async function archetypBestimmen(){
+ if(!state.archetypen.length){
+  state.archetypen=await quelle.archetypen?.()??[];
+ }
+ const slugs=(state.saved||[]).map(id=>products[id]?.slug).filter(Boolean);
+ // Mit Konto hat die Datenbank mehr gesehen als dieser Browser — Kaeufe und Anproben,
+ // die hier niemand kennt. Ihr Wort gilt.
+ const ausDerDatenbank=state.profile?await quelle.archetyp?.(slugs)??null:null;
+ state.archetyp=ausDerDatenbank||archetypFuerGast(
+  state.archetypen,state.stil||{},
+  (state.saved||[]).map(id=>products[id]).filter(Boolean),
+  {foto:!!state.foto,bestaetigt:false}
+ );
+ return state.archetyp;
+}
+
 /** Der Stillstand — bei jeder Eingabe zurückgesetzt. */
 function stillstandNeu(){
  clearTimeout(stillTimer);
@@ -736,6 +766,23 @@ hoeren(document,'click',e=>{
  if(b.dataset.page!==undefined){go({...nav.route,index:Number(b.dataset.page)});return;}
  if(b.hasAttribute('data-return'))returnDisplay();
  if(b.dataset.save){zustimmungFragen();const id=b.dataset.save;state.saved=state.saved.includes(id)?state.saved.filter(s=>s!==id):[...state.saved,id];quelle.merkliste.setzen(id,state.saved.includes(id)).catch(()=>{});quelle.signal('merken',{product:products[id],an:state.saved.includes(id)});melden('merken',{werk_id:id,an:state.saved.includes(id),merkliste_n:state.saved.length,n:state.saved.length});b.textContent=state.saved.includes(id)?'♥ Gemerkt':'♡ Stück merken';readRefresh();toast(state.saved.includes(id)?'Gemerkt. Du findest es unter Mein PAWN — und ich lese es als Beleg.':'Aus deiner Merkliste entfernt.');}
+ if(b.hasAttribute('data-archetyp-ja')){
+  const key=b.getAttribute('data-archetyp-ja');
+  if(state.archetyp){state.archetyp={...state.archetyp,bestaetigt:true,zuversicht:1};}
+  quelle.archetypBestaetigen?.(key,true)?.catch?.(()=>{});
+  melden('archetyp_bestaetigt',{archetyp_key:key});
+  readRefresh();toast('Notiert. Ich rechne nicht mehr dagegen.');return;}
+ if(b.hasAttribute('data-archetyp-nein')){
+  const key=b.getAttribute('data-archetyp-nein');
+  quelle.archetypBestaetigen?.(key,false)?.catch?.(()=>{});
+  state.archetypAbgelehnt=[...state.archetypAbgelehnt,key];
+  // Die erste Alternative rueckt nach. Ist keine mehr da, wird NICHTS behauptet —
+  // lieber keine Figur als die dritte Wahl als Wahrheit verkauft.
+  const naechste=naechsteAlternative(state.archetyp?.alternativen||[],state.archetypAbgelehnt);
+  state.archetyp=naechste?{...state.archetyp,archetyp_key:naechste,bestaetigt:false}:null;
+  readRefresh();
+  toast(naechste?'Dann so. Sag mir, ob das näher liegt.':'Dann lese ich es lieber neu — tipp die Antworten noch einmal an.');
+  return;}
  if(b.hasAttribute('data-pawn')){
   // Kein Karussell aus drei festen Saetzen mehr (A8). Steht ein Satz da, nimmt das
   // Antippen ihn weg; steht keiner da, wird der Begleiter gefragt — antwortet er nicht,
@@ -747,7 +794,7 @@ hoeren(document,'click',e=>{
  if(b.dataset.wahl){const [feld,wert]=b.dataset.wahl.split(':');const neu=state.stil[feld]!==wert;state.stil[feld]=neu?wert:'';
   const formular=b.closest('form[data-measure-form]');if(formular)Object.assign(state.measurements,Object.fromEntries(new FormData(formular)));
   if(feld==='richtung')zustimmungFragen();
-  if(feld==='richtung'||feld==='form')quelle.stil.speichern(state.stil,{},state.measurements.fuerWen||'').catch(()=>{});quelle.signal('quiz',{feld,wert:state.stil[feld],stil:{...state.stil}});if(state.stil.richtung&&state.stil.form)melden('quiz_fertig',{});
+  if(feld==='richtung'||feld==='form')quelle.stil.speichern(state.stil,{},state.measurements.fuerWen||'').catch(()=>{});quelle.signal('quiz',{feld,wert:state.stil[feld],stil:{...state.stil}});if(state.stil.richtung&&state.stil.form){melden('quiz_fertig',{});archetypBestimmen().catch(()=>{});}
   if(feld==='welt'&&neu){state.stil.richtung='';state.stil.form='';state.fitProduct=null;}
   if(feld==='richtung'&&neu){state.fitProduct=null;}
   readRefresh();

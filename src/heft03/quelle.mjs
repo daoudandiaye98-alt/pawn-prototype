@@ -57,6 +57,12 @@ export function demoQuelle(){
   async begleiterMerken(){return null;},
   async begleiterBesuch(){return {besuche:1,rang:'bauer',letzter_besuch:null};},
   async ereignis(){return null;},
+  // Der Katalog kommt auch in der Vorschau aus der Datenbank — er ist oeffentlich.
+  // Hier ist er leer, und das ist ehrlich: ohne Katalog keine Karte, statt einer
+  // erfundenen. Echte Archetypennamen waeren Beispieldaten, und die gibt es nicht.
+  async archetypen(){return [];},
+  async archetyp(){return null;},
+  async archetypBestaetigen(){return null;},
   texte:async()=>({}),
   vertraege:async()=>[],
   vergessen:kein,
@@ -101,7 +107,10 @@ export const SPALTEN={
  texte:'key,value',
  vertraege:'id,kind,version,title,url,effective_from',
  begleiterSaetze:'key,flaeche,kontext,welt,register,varianten,platzhalter,aktiv',
- begleiterRegeln:'key,flaeche,ereignis,bedingung,satz_key,aktion,prioritaet,abklingzeit_s,einmal,aktiv,notiz'
+ begleiterRegeln:'key,flaeche,ereignis,bedingung,satz_key,aktion,prioritaet,abklingzeit_s,einmal,aktiv,notiz',
+ // `beschreibung` und die _en-Felder bleiben draussen: die Karte zeigt sie nicht,
+ // und was nicht gebraucht wird, wird nicht ueber die Leitung geschickt.
+ archetypen:'key,welt,name,figur,kurz,richtung,form,woerter,farbregister,nahe,haus_archetypen,bild_url,sort'
 };
 
 /** Chat-Antwort von pawn-chat → Heft: Karten-Links (/werk/<slug>, alt /product/<slug>) werden zu Slugs. */
@@ -314,6 +323,34 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    const {data,error}=await client.rpc('begleiter_besuch');
    if(error)return null;
    return Array.isArray(data)?(data[0]??null):(data??null);
+  },
+  /**
+   * Der Archetypen-Katalog. Anon darf ihn lesen (Policy „stil_archetypen lesen",
+   * gemessen am 12.09.2026) — ohne das haette ein Gast nichts, wogegen zu rechnen waere.
+   */
+  async archetypen(){
+   const {data,error}=await client.from('stil_archetypen')
+    .select(SPALTEN.archetypen).eq('aktiv',true).order('welt').order('sort');
+   return error?[]:(data||[]);
+  },
+  /**
+   * Der eigene Archetyp aus der Datenbank — nur mit Konto. Die RPC beginnt selbst mit
+   * `if uid is null then return`, aber wir fragen gar nicht erst: ein Aufruf, von dem
+   * man weiss, dass er nichts liefern kann, ist eine Anfrage zu viel.
+   *
+   * Fuer Gaeste rechnet archetyp.mjs im Browser. Gleiche Form, andere Quelle.
+   */
+  async archetyp(merklisteSlugs=[]){
+   const u=await nutzer();if(!u)return null;
+   const {data,error}=await client.rpc('archetyp_berechnen',{_merkliste_slugs:merklisteSlugs});
+   if(error)return null;
+   return Array.isArray(data)?(data[0]??null):(data??null);
+  },
+  /** „Das bin ich" oder „Eher nicht". Ohne Konto gibt es nichts zu bestaetigen. */
+  async archetypBestaetigen(key,ja){
+   const u=await nutzer();if(!u)return null;
+   const {data,error}=await client.rpc('archetyp_bestaetigen',{_key:key,_ja:!!ja});
+   return error?null:(data??true);
   },
   /*
    * Ein Ereignis wegschreiben — NUR mit Konto UND mit Zustimmung zur Auswertung.
