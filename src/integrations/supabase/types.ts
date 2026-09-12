@@ -483,6 +483,82 @@ export type Database = {
         }
         Relationships: []
       }
+      anproben: {
+        Row: {
+          art: string
+          bewertung: string | null
+          bild_id: string | null
+          created_at: string
+          dauer_ms: number | null
+          fehler: string | null
+          id: string
+          platz: Json
+          product_id: string
+          provider: string | null
+          request_handle: Json | null
+          result_path: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          art: string
+          bewertung?: string | null
+          bild_id?: string | null
+          created_at?: string
+          dauer_ms?: number | null
+          fehler?: string | null
+          id?: string
+          platz?: Json
+          product_id: string
+          provider?: string | null
+          request_handle?: Json | null
+          result_path?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          art?: string
+          bewertung?: string | null
+          bild_id?: string | null
+          created_at?: string
+          dauer_ms?: number | null
+          fehler?: string | null
+          id?: string
+          platz?: Json
+          product_id?: string
+          provider?: string | null
+          request_handle?: Json | null
+          result_path?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anproben_bild_id_fkey"
+            columns: ["bild_id"]
+            isOneToOne: false
+            referencedRelation: "kunden_bilder"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anproben_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "heft_produkte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anproben_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       application_notes: {
         Row: {
           application_id: string
@@ -514,6 +590,173 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      begleiter_ereignisse: {
+        Row: {
+          created_at: string
+          daten: Json
+          ereignis: string
+          flaeche: string
+          id: number
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          daten?: Json
+          ereignis: string
+          flaeche: string
+          id?: never
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          daten?: Json
+          ereignis?: string
+          flaeche?: string
+          id?: never
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      begleiter_gedaechtnis: {
+        Row: {
+          abgelehnt: string[]
+          angenommen: string[]
+          besuche: number
+          gesagt: Json
+          letzter_besuch: string | null
+          notizen: Json
+          rang: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          abgelehnt?: string[]
+          angenommen?: string[]
+          besuche?: number
+          gesagt?: Json
+          letzter_besuch?: string | null
+          notizen?: Json
+          rang?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          abgelehnt?: string[]
+          angenommen?: string[]
+          besuche?: number
+          gesagt?: Json
+          letzter_besuch?: string | null
+          notizen?: Json
+          rang?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      begleiter_regeln: {
+        Row: {
+          abklingzeit_s: number
+          aktion: Json
+          aktiv: boolean
+          bedingung: Json
+          created_at: string
+          einmal: string | null
+          ereignis: string
+          flaeche: string
+          id: string
+          key: string
+          notiz: string | null
+          prioritaet: number
+          satz_key: string | null
+        }
+        Insert: {
+          abklingzeit_s?: number
+          aktion?: Json
+          aktiv?: boolean
+          bedingung?: Json
+          created_at?: string
+          einmal?: string | null
+          ereignis: string
+          flaeche: string
+          id?: string
+          key: string
+          notiz?: string | null
+          prioritaet?: number
+          satz_key?: string | null
+        }
+        Update: {
+          abklingzeit_s?: number
+          aktion?: Json
+          aktiv?: boolean
+          bedingung?: Json
+          created_at?: string
+          einmal?: string | null
+          ereignis?: string
+          flaeche?: string
+          id?: string
+          key?: string
+          notiz?: string | null
+          prioritaet?: number
+          satz_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "begleiter_regeln_satz_key_fkey"
+            columns: ["satz_key"]
+            isOneToOne: false
+            referencedRelation: "begleiter_saetze"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      begleiter_saetze: {
+        Row: {
+          aktiv: boolean
+          created_at: string
+          flaeche: string
+          id: string
+          key: string
+          kontext: string | null
+          notiz: string | null
+          platzhalter: string[]
+          register: string
+          updated_at: string
+          varianten: Json
+          welt: string | null
+        }
+        Insert: {
+          aktiv?: boolean
+          created_at?: string
+          flaeche: string
+          id?: string
+          key: string
+          kontext?: string | null
+          notiz?: string | null
+          platzhalter?: string[]
+          register?: string
+          updated_at?: string
+          varianten?: Json
+          welt?: string | null
+        }
+        Update: {
+          aktiv?: boolean
+          created_at?: string
+          flaeche?: string
+          id?: string
+          key?: string
+          kontext?: string | null
+          notiz?: string | null
+          platzhalter?: string[]
+          register?: string
+          updated_at?: string
+          varianten?: Json
+          welt?: string | null
+        }
+        Relationships: []
       }
       brand_knowledge: {
         Row: {
@@ -2044,6 +2287,139 @@ export type Database = {
         }
         Relationships: []
       }
+      heft_buehnen: {
+        Row: {
+          blatt: number
+          boden: Json
+          collection_id: string | null
+          created_at: string
+          deko: Json
+          designer_id: string | null
+          eigenhaendig: boolean
+          id: string
+          kicker: string | null
+          layout: string
+          licht: Json
+          ruecken: Json
+          stuecke: Json
+          text: string | null
+          titel: string | null
+          updated_at: string
+          veroeffentlicht: boolean
+          version: number
+          welt: string | null
+        }
+        Insert: {
+          blatt?: number
+          boden?: Json
+          collection_id?: string | null
+          created_at?: string
+          deko?: Json
+          designer_id?: string | null
+          eigenhaendig?: boolean
+          id?: string
+          kicker?: string | null
+          layout?: string
+          licht?: Json
+          ruecken?: Json
+          stuecke?: Json
+          text?: string | null
+          titel?: string | null
+          updated_at?: string
+          veroeffentlicht?: boolean
+          version?: number
+          welt?: string | null
+        }
+        Update: {
+          blatt?: number
+          boden?: Json
+          collection_id?: string | null
+          created_at?: string
+          deko?: Json
+          designer_id?: string | null
+          eigenhaendig?: boolean
+          id?: string
+          kicker?: string | null
+          layout?: string
+          licht?: Json
+          ruecken?: Json
+          stuecke?: Json
+          text?: string | null
+          titel?: string | null
+          updated_at?: string
+          veroeffentlicht?: boolean
+          version?: number
+          welt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "heft_buehnen_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "curated_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "heft_buehnen_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "heft_buehnen_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "heft_haeuser"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      heft_deko: {
+        Row: {
+          aktiv: boolean
+          art: string
+          created_at: string
+          cutout_url: string | null
+          ebene: string
+          hoehe_m: number
+          id: string
+          key: string
+          name: string
+          seitenverhaeltnis: number | null
+          tags: string[]
+          welt: string | null
+        }
+        Insert: {
+          aktiv?: boolean
+          art: string
+          created_at?: string
+          cutout_url?: string | null
+          ebene?: string
+          hoehe_m?: number
+          id?: string
+          key: string
+          name: string
+          seitenverhaeltnis?: number | null
+          tags?: string[]
+          welt?: string | null
+        }
+        Update: {
+          aktiv?: boolean
+          art?: string
+          created_at?: string
+          cutout_url?: string | null
+          ebene?: string
+          hoehe_m?: number
+          id?: string
+          key?: string
+          name?: string
+          seitenverhaeltnis?: number | null
+          tags?: string[]
+          welt?: string | null
+        }
+        Relationships: []
+      }
       house_milestones: {
         Row: {
           designer_id: string
@@ -2598,6 +2974,101 @@ export type Database = {
           summary?: string | null
           tokens_used?: number | null
           trigger?: string
+        }
+        Relationships: []
+      }
+      kunden_archetyp: {
+        Row: {
+          abgelehnt: string[]
+          alternativen: Json
+          archetyp_key: string | null
+          belege: Json
+          berechnet_am: string | null
+          bestaetigt: boolean
+          updated_at: string
+          user_id: string
+          zuglogik: string | null
+          zuversicht: number
+        }
+        Insert: {
+          abgelehnt?: string[]
+          alternativen?: Json
+          archetyp_key?: string | null
+          belege?: Json
+          berechnet_am?: string | null
+          bestaetigt?: boolean
+          updated_at?: string
+          user_id: string
+          zuglogik?: string | null
+          zuversicht?: number
+        }
+        Update: {
+          abgelehnt?: string[]
+          alternativen?: Json
+          archetyp_key?: string | null
+          belege?: Json
+          berechnet_am?: string | null
+          bestaetigt?: boolean
+          updated_at?: string
+          user_id?: string
+          zuglogik?: string | null
+          zuversicht?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kunden_archetyp_archetyp_key_fkey"
+            columns: ["archetyp_key"]
+            isOneToOne: false
+            referencedRelation: "stil_archetypen"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      kunden_bilder: {
+        Row: {
+          aktiv: boolean
+          art: string
+          basis_path: string | null
+          befund: Json | null
+          created_at: string
+          fehler: string | null
+          id: string
+          masse: Json
+          name: string | null
+          quelle_path: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aktiv?: boolean
+          art: string
+          basis_path?: string | null
+          befund?: Json | null
+          created_at?: string
+          fehler?: string | null
+          id?: string
+          masse?: Json
+          name?: string | null
+          quelle_path: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aktiv?: boolean
+          art?: string
+          basis_path?: string | null
+          befund?: Json | null
+          created_at?: string
+          fehler?: string | null
+          id?: string
+          masse?: Json
+          name?: string | null
+          quelle_path?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -3520,6 +3991,8 @@ export type Database = {
       profiles: {
         Row: {
           consent_analytics: boolean
+          consent_avatar: boolean
+          consent_avatar_at: string | null
           consent_memory: boolean
           consent_personalization: boolean
           created_at: string
@@ -3531,6 +4004,8 @@ export type Database = {
         }
         Insert: {
           consent_analytics?: boolean
+          consent_avatar?: boolean
+          consent_avatar_at?: string | null
           consent_memory?: boolean
           consent_personalization?: boolean
           created_at?: string
@@ -3542,6 +4017,8 @@ export type Database = {
         }
         Update: {
           consent_analytics?: boolean
+          consent_avatar?: boolean
+          consent_avatar_at?: string | null
           consent_memory?: boolean
           consent_personalization?: boolean
           created_at?: string
@@ -4069,6 +4546,72 @@ export type Database = {
           },
         ]
       }
+      stil_archetypen: {
+        Row: {
+          aktiv: boolean
+          beschreibung: string | null
+          bild_url: string | null
+          created_at: string
+          farbregister: string
+          figur: string
+          form: string[]
+          haus_archetypen: string[]
+          id: string
+          key: string
+          kurz: string
+          kurz_en: string | null
+          nahe: string[]
+          name: string
+          name_en: string | null
+          richtung: string[]
+          sort: number
+          welt: string
+          woerter: string[]
+        }
+        Insert: {
+          aktiv?: boolean
+          beschreibung?: string | null
+          bild_url?: string | null
+          created_at?: string
+          farbregister?: string
+          figur: string
+          form?: string[]
+          haus_archetypen?: string[]
+          id?: string
+          key: string
+          kurz: string
+          kurz_en?: string | null
+          nahe?: string[]
+          name: string
+          name_en?: string | null
+          richtung?: string[]
+          sort?: number
+          welt: string
+          woerter?: string[]
+        }
+        Update: {
+          aktiv?: boolean
+          beschreibung?: string | null
+          bild_url?: string | null
+          created_at?: string
+          farbregister?: string
+          figur?: string
+          form?: string[]
+          haus_archetypen?: string[]
+          id?: string
+          key?: string
+          kurz?: string
+          kurz_en?: string | null
+          nahe?: string[]
+          name?: string
+          name_en?: string | null
+          richtung?: string[]
+          sort?: number
+          welt?: string
+          woerter?: string[]
+        }
+        Relationships: []
+      }
       style_references: {
         Row: {
           beschreibung: string | null
@@ -4507,7 +5050,28 @@ export type Database = {
         Args: { p_seconds: number; p_target_id: string; p_target_type: string }
         Returns: undefined
       }
+      anprobe_kontingent: {
+        Args: never
+        Returns: {
+          frei: number
+          heute: number
+        }[]
+      }
       approve_designer: { Args: { _application_id: string }; Returns: string }
+      archetyp_berechnen: {
+        Args: { _merkliste_slugs?: string[] }
+        Returns: {
+          alternativen: Json
+          archetyp_key: string
+          belege: Json
+          bestaetigt: boolean
+          zuversicht: number
+        }[]
+      }
+      archetyp_bestaetigen: {
+        Args: { _ja: boolean; _key: string }
+        Returns: undefined
+      }
       archive_application: {
         Args: { _application_id: string }
         Returns: undefined
@@ -4516,12 +5080,25 @@ export type Database = {
         Args: { _designer_id: string; _order_id: string }
         Returns: string
       }
+      avatar_einwilligung: { Args: { _ja: boolean }; Returns: undefined }
       backfill_lead_attribution: {
         Args: never
         Returns: {
           examined_count: number
           matched_count: number
         }[]
+      }
+      begleiter_besuch: {
+        Args: never
+        Returns: {
+          besuche: number
+          letzter_besuch: string
+          rang: string
+        }[]
+      }
+      begleiter_merken: {
+        Args: { _antwort?: string; _notizen?: Json; _satz_key: string }
+        Returns: undefined
       }
       book_ai_spend: {
         Args: { _cents: number; _designer_id: string }
