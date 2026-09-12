@@ -3,8 +3,10 @@ import {products,houses,displays,sections,labels,counts,asset,heftFuellen,ASSETS
 import {createWorld} from './world.mjs';
 import {readView,productView,cartView,applicationView,productCard,esc,money} from './views.mjs';
 import {prepareCutouts,prepareBilder,cutouts} from './cutouts.mjs';
-import {extendedView,searchToolbar,pawnChat,pawnGlyph,begleiterSaetze} from './extra-views.mjs';
+import {extendedView,searchToolbar,pawnChat,pawnGlyph} from './extra-views.mjs';
+import {erschaffeBegleiter,gedaechtnisAus} from './begleiter.mjs';
 import {themes,housePresentation,searchProducts,searchCount,presentationExport,houseBlocks,houseProducts} from './presentation.mjs';
+import {befundAusWerken} from './beratung.mjs';
 import {kuratiere,kurationsNotiz} from './kuration.mjs';
 import {laden,speichern,vergessen} from './store.mjs';
 import {demoQuelle} from './quelle.mjs';
@@ -144,6 +146,16 @@ function go(route,push=true){
  // Eine Adresse kann ein Werk oder die Tasche mitbringen (/werk/<slug>, /tasche) — auch
  // mitten in der Sitzung, wenn React Router hierher navigiert. Vorher tat das nur der Start.
  if(route.werk)product(route.werk);else if(route.tasche)cart();
+ // Die Sinne des Begleiters. Gemeldet wird immer — ob etwas gesagt wird, entscheidet
+ // der Katalog, nicht diese Zeile.
+ stillstandNeu();
+ melden('blaettern',{von:from.section,nach:route.section});
+ if(from.section!==route.section){
+  if(['mode','interior','kunst'].includes(route.section))melden('welt_gewaehlt',{welt:route.section});
+  if(route.section==='haus')melden('haus_betreten',{haus_slug:route.slug});
+  if(route.section==='tasche'||route.section==='kasse')melden('kasse',{});
+ }
+ if(!reading(route)&&route.section!=='entdecken')melden('buehne_geoeffnet',{welt:route.section});
 }
 function house(slug){if(!reading(nav.route))nav.origin={...nav.route};go({section:'haus',slug,index:0});}
 function returnDisplay(){go(nav.origin||{section:nav.route.section==='haus'?houses[nav.route.slug].world:'entdecken',index:0});}
@@ -275,7 +287,10 @@ function product(id){if(!products[id])return;activeProduct=id;
  const mitWerk={...nav.route,werk:id};
  if(!adresse.gleich(mitWerk))rememberHash(mitWerk);
  nav.route.werk=id;
- showDrawer(productView(products[id],state));quelle.signal('ansehen',{product:products[id]});}
+ showDrawer(productView(products[id],state));quelle.signal('ansehen',{product:products[id]});
+ // Der Drawer ist offen: der Bauer schweigt (istStumm), aber die Uhr laeuft — beim
+ // Schliessen weiss er, wie lange jemand hingesehen hat.
+ werkSeit=Date.now();melden('werk_geoeffnet',{werk_id:id,cutout:!!(products[id]&&products[id].cutout)});}
 function cart(){activeProduct=null;showDrawer(cartView(state));}
 // Ein Port antwortet mit {ok} oder {fehler}. Nie eine Ausnahme, nie ein stilles nichts —
 // ein Formular, das ohne Wort stehen bleibt, ist schlimmer als eine Fehlermeldung.
@@ -360,7 +375,7 @@ function polaroid(datei,anker){
  const img=document.createElement('img');img.className='polaroid';img.src=polaroidUrl;img.alt='Dein Bild';anker.insertAdjacentElement('afterend',img);
 }
 // Der Bauer im Raum: das kleine Gesprächsfenster und die wechselnden Blasen.
-let blasenTimer=null,blasenIndex=0;
+let blasenTimer=null;
 function chatRefresh(){const box=$('pawn-chat');if(box.hidden)return;const fokus=document.activeElement;const wert=fokus&&fokus.name==='message'?fokus.value:null;box.innerHTML=pawnChat(state);if(wert!=null){const t=box.querySelector('textarea[name="message"]');if(t){t.value=wert;}}}
 function chat(){
  // Auf der Frag-PAWN-Seite lebt das Gespräch schon auf dem Papier — dorthin, statt ein zweites zu öffnen.
@@ -375,16 +390,142 @@ function zustimmungFragen(){
 }
 function chatSchliessen(){$('pawn-chat').hidden=true;$('begleiter-knopf').setAttribute('aria-expanded','false');}
 function blaseWeg(){$('begleiter-blase').classList.remove('da');}
-function begleiterKontext(){const r=nav.route;if(!reading(r))return r.section==='entdecken'&&r.index===0?'hero':'stage';return r.section==='dna'?'dna':'lesen';}
-function begleiterTakt(){
- clearTimeout(blasenTimer);
- const zeigen=()=>{
-  if(nav.status!=='ready'||!$('pawn-chat').hidden||drawer.open||document.body.classList.contains('is-rotate')||$('begleiter-blase').querySelector('[data-consent-ja]')){blasenTimer=setTimeout(zeigen,4000);return;}
-  const liste=begleiterSaetze[begleiterKontext()];const text=liste[blasenIndex++%liste.length];
-  const b=$('begleiter-blase');b.innerHTML='<b>PAWN</b>'+text;b.classList.add('da');
-  blasenTimer=setTimeout(()=>{blaseWeg();blasenTimer=setTimeout(zeigen,9000);},5200);
+/*
+ * DER BEGLEITER — die Sinne (A2), die Blase (A4) und das Schweigen (A3).
+ *
+ * Der Verstand steht in begleiter.mjs und kennt kein DOM. Hier wird nur gemeldet,
+ * was geschieht, und gezeigt, was er antwortet. Vorher lief an dieser Stelle
+ * `begleiterTakt()`: ein Zeitgeber, der alle paar Sekunden einen festen Satz aus
+ * einer Liste im Code zog, ohne irgendetwas zu wissen.
+ */
+let begleiter=null,stillTimer=null,blaseWegTimer=null,letzteBlase=null,werkSeit=0,richtungen=[];
+
+function begleiterKontext(){
+ if(drawer.open)return 'werk';
+ const r=nav.route;
+ if(r.section==='haus')return 'haus';
+ if(r.section==='tasche'||r.section==='kasse')return 'kasse';
+ if(r.section==='konto')return 'konto';
+ if(!reading(r))return r.section==='entdecken'&&r.index===0?'hero':'stage';
+ return r.section==='dna'?'dna':'lesen';
+}
+
+/** Ist der Bauer gerade im Weg oder hat jemand anderes das Wort? */
+function istStumm(){
+ return nav.status!=='ready'
+  ||!$('pawn-chat').hidden
+  ||drawer.open
+  ||document.body.classList.contains('is-rotate')
+  ||!!$('begleiter-blase').querySelector('[data-consent-ja]')
+  ||!!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.kasse-form,[data-kasse]'));
+}
+
+/** Alles, was eine Bedingung fragen koennte — einmal je Ereignis zusammengestellt. */
+function begleiterZustand(daten){
+ const p=daten.werk_id?products[daten.werk_id]:null;
+ const h=p?houses[p.house]:(daten.haus_slug?houses[daten.haus_slug]:null);
+ return {
+  kontext:begleiterKontext(),
+  welt:nav.route.section,
+  besuch:(begleiter?.gedaechtnis.besuche??0)>1?'wieder':'erster',
+  konto:!!state.profile,
+  avatar:!!state.avatar,
+  linie:!!(state.stil&&state.stil.richtung),
+  bestellung:(state.orders||[]).length>0,
+  merkliste:(state.saved||[]).length,
+  merk_sichtbar:(state.saved||[]).length>0,
+  stuecke:Object.keys(products).length,
+  stumm:istStumm(),
+  werte:{
+   werk:p?p.name:undefined,
+   haus:h?h.name:undefined,
+   nummer:h&&h.number!=null?String(h.number).padStart(2,'0'):undefined,
+   material:p?p.material:undefined,
+   ort:h?h.location:undefined,
+   lead:p?p.lead:undefined,
+   welt:labels[nav.route.section]||undefined,
+   n:daten.n!=null?String(daten.n):undefined
+  }
  };
- blasenTimer=setTimeout(zeigen,2600);
+}
+
+/** Ein Ereignis melden. Antwortet der Verstand, erscheint eine Blase — sonst nichts. */
+function melden(ereignis,daten={}){
+ if(!begleiter)return;
+ const blase=begleiter.melde(ereignis,daten,begleiterZustand(daten));
+ quelle.ereignis?.('heft',ereignis,daten)?.catch?.(()=>{});
+ if(blase)blaseZeigen(blase);
+}
+
+/** A4 — die Blase: Text, bis zu drei Chips, ein × rechts oben. */
+function blaseZeigen(blase){
+ letzteBlase=blase;
+ const b=$('begleiter-blase');
+ const a=blase.aktion||{art:'sagen'};
+ const chips=(a.chips||[]).slice(0,3).map(c=>
+  '<button class="chip" data-blase-chip="'+esc(c.funktion||'')+'"'+(c.route?' data-blase-route="'+esc(c.route)+'"':'')+'>'+esc(c.text||'')+'</button>').join('');
+ // `fuehren` navigiert NIE von selbst — erst auf Antippen.
+ const fuehrt=a.art==='fuehren'&&a.ziel?'<button class="chip" data-blase-route="'+esc(a.ziel)+'">Zeig es mir</button>':'';
+ const oeffnet=a.art==='oeffnen'&&a.ziel==='chat'?'<button class="chip" data-blase-chat>Frag PAWN</button>':'';
+ b.innerHTML='<button class="blase-zu" data-blase-weg aria-label="Nicht mehr zeigen">×</button>'
+  +'<b>PAWN</b>'+esc(blase.text)
+  +(chips||fuehrt||oeffnet?'<span class="blase-knoepfe">'+chips+fuehrt+oeffnet+'</span>':'');
+ b.classList.add('da');
+ clearTimeout(blaseWegTimer);
+ // Eine Blase mit Knöpfen bleibt stehen — sonst verschwindet die Frage vor der Antwort.
+ if(a.art==='sagen')blaseWegTimer=setTimeout(blaseWeg,5200);
+}
+function blaseWeg(){$('begleiter-blase').classList.remove('da');}
+
+/**
+ * Chip „befund": was die gemerkten Stücke gemeinsam haben.
+ *
+ * `befundAusWerken()` in beratung.mjs liest die Stil-DNA der gemerkten Stücke und
+ * spricht den Satz mit derselben Stimme wie die Linie auf /deine-dna. Teilen die
+ * Stücke keine Richtung, kommt `null` — dann wird nichts erfunden, sondern gesagt,
+ * dass es (noch) nichts zu lesen gibt.
+ */
+function befundZeigen(){
+ const werke=(state.saved||[]).map(id=>products[id]).filter(Boolean);
+ if(werke.length<2){toast('Merk dir noch ein Stück — aus zweien lese ich mehr.');return;}
+ const b=befundAusWerken(werke);
+ if(!b){toast('Die beiden ziehen in verschiedene Richtungen. Daraus lese ich noch keine Linie.');return;}
+ blaseZeigen({key:'heft.befund',text:b.linie+'. '+b.satz,aktion:{art:'sagen'}});
+}
+
+/** Der Stillstand — bei jeder Eingabe zurückgesetzt. */
+function stillstandNeu(){
+ clearTimeout(stillTimer);
+ const seit=Date.now();
+ stillTimer=setTimeout(()=>melden('stillstand',{kontext:begleiterKontext(),ms:Date.now()-seit}),12000);
+}
+
+/** Drei Richtungswechsel in 10 s — jemand sucht und findet nicht. */
+function richtungGemerkt(dir){
+ const jetzt=Date.now();
+ richtungen=richtungen.filter(r=>jetzt-r.t<10000);richtungen.push({d:dir,t:jetzt});
+ let wechsel=0;for(let i=1;i<richtungen.length;i++)if(richtungen[i].d!==richtungen[i-1].d)wechsel++;
+ if(wechsel>=3){richtungen=[];melden('hilfe_gesucht',{});}
+}
+
+/** Den Katalog holen und den Verstand aufstellen. Einmal je Sitzung. */
+async function begleiterAufstellen(){
+ const katalog=await quelle.begleiter?.()??{saetze:[],regeln:[]};
+ const besuch=await quelle.begleiterBesuch?.()??null;
+ const roh=state.consent===true?(laden()?.begleiter??{}):{};
+ begleiter=erschaffeBegleiter({
+  saetze:katalog.saetze,regeln:katalog.regeln,flaeche:'heft',
+  gedaechtnis:gedaechtnisAus(besuch?{...roh,...besuch}:roh)
+ });
+ const auf=besuch?begleiter.rangGewechselt(besuch.rang):null;
+ // Der Empfang wartet die Eröffnung ab (5,8 s) plus 2,6 s — wer „Direkt entdecken"
+ // tippt, ist dann längst weiter und bekommt keinen mehr.
+ setTimeout(()=>{
+  if(nav.status!=='ready')return;
+  melden('betreten',{besuch:(besuch?.besuche??0)>1?'wieder':'erster'});
+  if(auf)melden('rang_aufstieg',auf);
+ },8400);
+ stillstandNeu();
 }
 $('begleiter-knopf').innerHTML=pawnGlyph('klein');
 async function checkout(slug){
@@ -468,7 +609,7 @@ function sync(){
     :'<button class="hotspot" data-product="'+pid+'" data-title="'+products[pid].name+'" aria-label="'+products[pid].name+' ansehen">+</button>').join('');
    document.body.classList.toggle('is-hero',id==='hero');
   }
-  if(!$('begleiter-blase').querySelector('[data-consent-ja]')){blaseWeg();begleiterTakt();}landete=false;
+  if(!$('begleiter-blase').querySelector('[data-consent-ja]')){blaseWeg();stillstandNeu();}landete=false;
  }
  if(ready&&prefetchKey!==key(route)){prefetchKey=key(route);nachbarnVorladen(route);}
  const opening=nav.status==='intro'&&nav.progress>.34;
@@ -522,12 +663,12 @@ hoeren(document,'click',e=>{
  if(b.dataset.product){if(nav.status==='ready'||drawer.open)product(b.dataset.product);return;}
  if(b.dataset.page!==undefined){go({...nav.route,index:Number(b.dataset.page)});return;}
  if(b.hasAttribute('data-return'))returnDisplay();
- if(b.dataset.save){zustimmungFragen();const id=b.dataset.save;state.saved=state.saved.includes(id)?state.saved.filter(s=>s!==id):[...state.saved,id];quelle.merkliste.setzen(id,state.saved.includes(id)).catch(()=>{});quelle.signal('merken',{product:products[id],an:state.saved.includes(id)});b.textContent=state.saved.includes(id)?'♥ Gemerkt':'♡ Stück merken';readRefresh();toast(state.saved.includes(id)?'Gemerkt. Du findest es unter Mein PAWN — und ich lese es als Beleg.':'Aus deiner Merkliste entfernt.');}
+ if(b.dataset.save){zustimmungFragen();const id=b.dataset.save;state.saved=state.saved.includes(id)?state.saved.filter(s=>s!==id):[...state.saved,id];quelle.merkliste.setzen(id,state.saved.includes(id)).catch(()=>{});quelle.signal('merken',{product:products[id],an:state.saved.includes(id)});melden('merken',{werk_id:id,an:state.saved.includes(id),merkliste_n:state.saved.length,n:state.saved.length});b.textContent=state.saved.includes(id)?'♥ Gemerkt':'♡ Stück merken';readRefresh();toast(state.saved.includes(id)?'Gemerkt. Du findest es unter Mein PAWN — und ich lese es als Beleg.':'Aus deiner Merkliste entfernt.');}
  if(b.hasAttribute('data-pawn')){state.pawnNote=state.pawnNote==null?0:(state.pawnNote+1)%3===0?null:state.pawnNote+1;readRefresh();return;}
  if(b.dataset.wahl){const [feld,wert]=b.dataset.wahl.split(':');const neu=state.stil[feld]!==wert;state.stil[feld]=neu?wert:'';
   const formular=b.closest('form[data-measure-form]');if(formular)Object.assign(state.measurements,Object.fromEntries(new FormData(formular)));
   if(feld==='richtung')zustimmungFragen();
-  if(feld==='richtung'||feld==='form')quelle.stil.speichern(state.stil,{},state.measurements.fuerWen||'').catch(()=>{});quelle.signal('quiz',{feld,wert:state.stil[feld],stil:{...state.stil}});
+  if(feld==='richtung'||feld==='form')quelle.stil.speichern(state.stil,{},state.measurements.fuerWen||'').catch(()=>{});quelle.signal('quiz',{feld,wert:state.stil[feld],stil:{...state.stil}});if(state.stil.richtung&&state.stil.form)melden('quiz_fertig',{});
   if(feld==='welt'&&neu){state.stil.richtung='';state.stil.form='';state.fitProduct=null;}
   if(feld==='richtung'&&neu){state.fitProduct=null;}
   readRefresh();
@@ -538,6 +679,29 @@ hoeren(document,'click',e=>{
   if(feld==='was'){state.frag.anlass='';state.frag.rahmen='';state.message='';}
   if(feld==='anlass'){state.frag.rahmen='';state.message='';}
   readRefresh();return;}
+ // ——— Die Hände des Begleiters (A1 „Hände", A4 Chips) ———
+ if(b.hasAttribute('data-blase-weg')){
+  // Das ×: 90 s gar nichts, und dieser Schlüssel nie wieder.
+  if(letzteBlase&&begleiter){const k=begleiter.ablehnen(letzteBlase.key);quelle.begleiterMerken?.(k,'abgelehnt')?.catch?.(()=>{});}
+  blaseWeg();return;}
+ if(b.hasAttribute('data-blase-chat')){chat();return;}
+ if(b.hasAttribute('data-blase-route')){
+  // `fuehren` navigiert nie von selbst — erst hier, auf Antippen.
+  const ziel=b.getAttribute('data-blase-route');blaseWeg();
+  if(letzteBlase)quelle.begleiterMerken?.(letzteBlase.key,'angenommen')?.catch?.(()=>{});
+  go(routeAusPfad(ziel));return;}
+ if(b.hasAttribute('data-blase-chip')){
+  const f=b.getAttribute('data-blase-chip');
+  // Was gemerkt wird, ist die Antwort selbst — „Eher nicht" auf eine Anprobe ist keine
+  // Zustimmung, auch wenn ein Knopf gedrückt wurde. Sonst lernt das Gedächtnis Unsinn.
+  const antwort=f==='weg'?'abgelehnt':f&&f.startsWith('bewerten:')?f.slice(9):'angenommen';
+  if(letzteBlase)quelle.begleiterMerken?.(letzteBlase.key,antwort)?.catch?.(()=>{});
+  blaseWeg();
+  if(f==='weg')return;
+  if(f==='befund'){befundZeigen();return;}
+  if(f&&f.startsWith('bewerten:')){toast(f.endsWith('passt')?'Notiert — das passt dir.':'Notiert.');return;}
+  // anprobe, raum, wand, freistellen bauen auf Lovables Functions auf (Block D bzw. B4).
+  toast('Das kommt gleich — die Werkstatt dafür wird gerade angeschlossen.');return;}
  if(b.dataset.inquiry)inquiry(b.dataset.inquiry);
  if(b.dataset.remove){const [id,size]=b.dataset.remove.split('|');state.cart=state.cart.filter(r=>r.id!==id||r.size!==size);cart();updateCart();}
  if(b.hasAttribute('data-checkout'))checkout(b.dataset.checkout||undefined);
@@ -548,8 +712,8 @@ hoeren(document,'click',e=>{
  if(b.hasAttribute('data-saved'))saved();
  if(b.hasAttribute('data-chat')||b.hasAttribute('data-pawn-chat')){if(b.hasAttribute('data-pawn-chat')&&!$('pawn-chat').hidden)chatSchliessen();else chat();return;}
  if(b.hasAttribute('data-chat-schliessen')){chatSchliessen();return;}
- if(b.hasAttribute('data-consent-ja')){state.consent=true;speichern(state);zustimmungMelden();blaseWeg();toast('PAWN merkt sich das — auf diesem Gerät.');readRefresh();begleiterTakt();return;}
- if(b.hasAttribute('data-consent-nein')){state.consent=false;vergessen();zustimmungMelden();blaseWeg();begleiterTakt();return;}
+ if(b.hasAttribute('data-consent-ja')){state.consent=true;speichern(state);zustimmungMelden();blaseWeg();toast('PAWN merkt sich das — auf diesem Gerät.');readRefresh();stillstandNeu();return;}
+ if(b.hasAttribute('data-consent-nein')){state.consent=false;vergessen();zustimmungMelden();blaseWeg();stillstandNeu();return;}
  if(b.hasAttribute('data-konto')){chatSchliessen();go({section:'konto',index:0});return;}
  // Teil L5 — die Zugang-Doppelseite. Umschalten leert die Meldung: ein Fehler von
  // eben gehoert nicht ueber ein Formular, das man gerade erst geoeffnet hat.
@@ -683,7 +847,7 @@ try{
  await Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,1800))]);
  await Promise.all([prepareCutouts(Object.values(products).filter(buehnenfaehig)),prepareBilder(['cover.webp'])]);
  world=createWorld($('stage'),$('reader-layer'),invalidate);
- world.display('hero');begleiterTakt();
+ world.display('hero');begleiterAufstellen();
  if(nav.route.section==='suche')nav.route.index=clamp(nav.route.index,0,searchCount(nav.route)-1);
  world.canvas.addEventListener('pointerdown',e=>{pointerStart={x:e.clientX,y:e.clientY};});
  world.canvas.addEventListener('pointerup',e=>{
@@ -703,7 +867,7 @@ try{
  $('mobile-reader').hidden=false;displayKey='';uiKey='';
  const html=viewHtml(nav.route);$('mobile-reader').innerHTML=html;worteSpalten($('mobile-reader'));videosLaden($('mobile-reader'));
  document.body.classList.add('is-reading');document.body.dataset.motion='ready';document.body.dataset.section=nav.route.section;
- begleiterTakt();
+ begleiterAufstellen();
 }
 kontoLaden();
 return {
@@ -711,7 +875,7 @@ return {
  // Nach bezahlter Kasse: die Stücke dieses Hauses aus der Tasche nehmen. Muss hier stehen —
  // store.mjs schreibt nur den Zustand weg und kennt weder Fenster noch die Zahl im Kopf.
  tascheLeeren(haus){state.cart=haus?state.cart.filter(r=>!products[r.id]||products[r.id].house!==haus):[];updateCart();readRefresh();},
- stop(){for(const [z,t,f,o] of hoerer)z.removeEventListener(t,f,o);for(const k of [...document.body.classList])if(/^(is-|ohne-3d)/.test(k))document.body.classList.remove(k);delete document.body.dataset.section;delete document.body.dataset.page;delete document.body.dataset.motion;if(raf)cancelAnimationFrame(raf);raf=null;clearTimeout(blasenTimer);clearTimeout(weiterTimer);clearTimeout(toastTimer);
+ stop(){for(const [z,t,f,o] of hoerer)z.removeEventListener(t,f,o);for(const k of [...document.body.classList])if(/^(is-|ohne-3d)/.test(k))document.body.classList.remove(k);delete document.body.dataset.section;delete document.body.dataset.page;delete document.body.dataset.motion;if(raf)cancelAnimationFrame(raf);raf=null;clearTimeout(blasenTimer);clearTimeout(stillTimer);clearTimeout(blaseWegTimer);clearTimeout(weiterTimer);clearTimeout(toastTimer);
   // Der Vorschau-Betrieb hinterlaesst zwei Dinge ausserhalb des Gerueests: den Streifen an
   // document.body und die Uhr, die alle 60 s nachfasst. Bleiben sie stehen, zeigt die naechste
   // Seite einen Streifen ohne Heft — und die Uhr koennte sie neu laden.
