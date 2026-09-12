@@ -67,7 +67,15 @@
     },
     "NICHT_VON_DIESEN_PRS": "Lauf #191 lief auf #197, und #197 aendert genau EINE Datei: package-lock.json. Kontrast, Gewicht, Trefferflaechen und Fokus koennen daraus nicht kommen. Es sind dieselben Funde wie am 11.09. (Lauf #151), die seither unter wartet_auf_mensch stehen.",
     "EINE_ZAHL_WAECHST": "Seitengewicht 4.325.784 B heute gegen 3.873.171 B am 11.09. — rund 450 kB mehr. ACHTUNG, KEIN SAUBERER VERGLEICH: damals wurde ein anderer Zweig gemessen (eafefdd auf #194). Keine Ursache behauptet. Aber die Zahl gehoert beobachtet, bevor sie jemand zum ersten Mal ernst nimmt.",
-    "kein_neulauf": "Deterministische Messung, keine Wackelei. Ein zweiter Lauf saegte dasselbe."
+    "kein_neulauf": "Deterministische Messung, keine Wackelei. Ein zweiter Lauf saegte dasselbe.",
+    "DIE_NULLMESSUNG": {
+      "warum_es_eine_gibt": "Gluecksfall: #197 aendert NUR package-lock.json, kein Zeichen Code. Lauf #191 darauf ist damit eine saubere Nullmessung, gegen die sich Block A (Lauf #193) auf das Byte vergleichen laesst.",
+      "gates": "#191 (nur Sperrdatei): 654 bestanden · 130 gefallen · 303 nicht pruefbar. #193 (Block A): 631 bestanden · 130 gefallen · 300 nicht pruefbar. GEFALLEN: 130 gegen 130 — Block A bricht NICHTS.",
+      "keine_der_130_nennt_den_begleiter": "Nicht die Blase, nicht die Figur, nicht die Chips. Die Kontrastfunde heissen #note-text, #scroll-hint, #tools-toggle, .haus-ort, small — alle schon vorher da.",
+      "was_block_a_kostet": "Auf JEDER Seite exakt +31.599 B: / @1920 4.325.784 -> 4.357.383; /suche @390 4.025.128 -> 4.056.727; /haus/obara @390 4.063.212 -> 4.094.811. Aufgeschluesselt: +11 kB Code (Heft-Buendel 127 kB -> 138 kB) plus 2 Anfragen mit rund 20 kB (die zwei Katalog-Selects auf begleiter_saetze und begleiter_regeln).",
+      "einordnung": "Gate 4.7 verlangt unter 3 MB; die Seite lag VORHER schon bei 4,33 MB, also 1,33 MB darueber. Der Begleiter ist 2,4 % des Ueberhangs. Das Problem sind index-*.js mit 2.110 kB und three.module mit 477 kB — die Buehne selbst.",
+      "eine_moeglichkeit_falls_gewuenscht": "Die zwei Katalog-Anfragen liessen sich zusammenlegen oder verzoegern, bis der Bauer das erste Mal reden will (fruehestens nach 8,4 s) — rund 20 kB weniger beim Erststart. NICHT gebaut: es verkompliziert Block A, ohne ein Gate umzudrehen. Daoudas Entscheidung."
+    }
   },
   "naechster_zug": "ERSTENS: Sicht-Freigabe fuer PR #196 (Block A) durch Daouda — die Aufnahmen liegen unter .claude/sicht/2026-09-12/. DANACH Block C (Archetyp): er ist der einzige Block, der von Lovable nichts braucht, und kann sofort gebaut werden. Block B wartet auf Lovables freistellen, Block D auf Lovables anprobe. UNVERAENDERT OFFEN, weil nur Daouda es entscheiden kann: M3 zweiter Teil (anon liest 60 Spalten auf public.designers, darunter 8 Stripe-Spalten, user_id und revenue_share_pct — auf LIVE-Daten), M5 (Speicher-Eimer und ~49 Edge Functions), und was aus PR #195 wird.",
   "nicht_pruefbar": [
