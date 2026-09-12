@@ -1,5 +1,5 @@
 {
-  "aktualisiert": "2026-09-12 (Abend, nach den drei Merges)",
+  "aktualisiert": "2026-09-12",
   "branch": "claude/heft-frontend-integration-0bjnzf",
   "offene_prs": [
     {
@@ -82,7 +82,11 @@
     "NEBENBEI AUFGEFALLEN, unbelegt, nicht von Teil M: bei der Fokus-Messung stand die KOPFZEILE auf ENGLISCH ('Fashion', 'Our Houses', 'Your DNA', 'Ask PAWN', 'For designers'). Nach Entscheidung D2 soll die englische Fassung erst nach dem Launch kommen. autoTranslate nimmt #reader-layer und #mobile-reader aus — die Kopfzeile aber nicht. Ob das gewollt ist, weiss ich nicht; nicht angefasst, nur notiert."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": "2026-09-12 - VERIFY 5/5 - node --test src/heft03/*.test.mjs 81/81 - npm test 353/353 - tsc 0",
+  "letzter_verify": {
+    "datum": "2026-09-12",
+    "bestanden": 5,
+    "gefallen": 0
+  },
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },
