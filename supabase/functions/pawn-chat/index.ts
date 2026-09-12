@@ -1215,9 +1215,9 @@ Deno.serve(async (req) => {
         }
         if (archRow?.archetyp_key) {
           const { data: kat } = await admin.from("stil_archetypen")
-            .select("name, kurzsatz").eq("key", archRow.archetyp_key).maybeSingle();
-          const k = kat as { name?: string; kurzsatz?: string } | null;
-          zeilen.push(`Ihr Archetyp: ${k?.name ?? archRow.archetyp_key}${k?.kurzsatz ? ` — ${k.kurzsatz}` : ""}.`);
+            .select("name, kurz").eq("key", archRow.archetyp_key).maybeSingle();
+          const k = kat as { name?: string; kurz?: string } | null;
+          zeilen.push(`Ihr Archetyp: ${k?.name ?? archRow.archetyp_key}${k?.kurz ? ` — ${k.kurz}` : ""}.`);
         }
         if (zeilen.length) pageContextHint = [pageContextHint, zeilen.join(" ")].filter(Boolean).join(" ");
       } catch { /* die Bruecke darf das Gespraech nie aufhalten */ }
