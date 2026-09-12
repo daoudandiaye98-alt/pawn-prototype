@@ -322,11 +322,17 @@ Ergebnis:** vier Läufe hintereinander, am Frontend nach dem zweiten nichts mehr
 | 178 | 126 | 345 | 61 | 16 | 14 | 0 | 35 |
 | 179 | 122 | 353 | 60 | 15 | 14 | 0 | 33 |
 | 180 | 125 | 343 | 61 | 15 | 14 | 0 | 35 |
+| 181 | 125 | 341 | 61 | 15 | 14 | 0 | 35 |
 
 Die Zahl, die über Grün und Rot entscheidet, wackelte um **fünf Gates** — ohne dass sich
 am Code etwas änderte. Zwei Ursachen, beide gefunden und behoben: die Eröffnung wurde
 mitgemessen, und ein abgebrochener Übersetzungs-Nachtrag erklärte zwei ganze Seiten zur
-leeren Hülle. Übrig sind **zwei** wackelnde Befunde von 61.
+leeren Hülle.
+
+Lauf 180 und 181 sind dann **identisch** — 125 gegen 125, und die 61 Kontrastbefunde
+Element für Element dieselben. (Nach Lauf 180 hatte ich noch zwei verbleibende Wackler
+behauptet; Lauf 181 zeigt null Bewegung. Zwei gleiche Läufe sind kein Beweis für immer,
+aber mehr, als ich vorher hatte.)
 
 **Die Lehre:** eine Prüfung misst sich selbst mit. Bevor man ihrer Zahl glaubt, muss man
 sie zweimal gegen *denselben* Code laufen lassen — sonst hält man Rauschen für Arbeit und
