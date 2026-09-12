@@ -55,17 +55,19 @@
     "seed-testaccounts hat dieselbe offene Tuer wie seed-admin (verify_jwt = false, kein Auth-Check). Nicht angefasst, weil kein Auftrag dazu vorliegt — aber sie gehoert geschlossen oder geloescht."
   ],
   "letzter_pruefstand": {
-    "datum": "2026-09-11",
-    "lauf": "GitHub-Action #151, Job 103424349509, Kopf eafefdd",
-    "ergebnis": "649 bestanden · 119 gefallen · 288 nicht pruefbar — ZUM ERSTEN MAL SEIT L13 EIN ECHTES URTEIL",
-    "der_sprung": "Lauf #150 auf demselben Zweig: 1 bestanden, 0 gefallen, 1051 nicht pruefbar, KEIN URTEIL. Lauf #151 nach der Reparatur: 768 messbare Gates statt 1. Der Commit dazwischen nimmt dem Pruefstand den Verband ab — er zaehlte das Anklopfen aus L13 als fehlende Daten.",
-    "die_119_sind_nicht_neu": "Sie sind zum ersten Mal SICHTBAR. Kein einziges liegt in Code, den PR #194 anfasst. Alle 60 im Protokoll sichtbaren gehoeren zu vier Familien, alle vier Launch Gates: 4.7 Seitengewicht (3.873.171 B gegen 3.000.000 B — index-*.js allein 2.136 kB, three.module 477 kB, Google-Tag 160 kB) · 3.5 Trefferflaechen (9 bis 17 Elemente je Seite unter 44 px: page-dots 6x6, Suchen 20x20, Blaetterpfeile 35x35) · 3.3 Kontrast (scroll-hint 4,02 · note-text 4,31 · tools-toggle 4,36 · '0 Arbeiten' 3,69, alle gegen 4,5) · 3.4 sichtbarer Tastaturfokus (je Seite GENAU EIN Element). Die uebrigen 59 liegen in bericht.json, Artefakt pruefstand-151.",
-    "nicht_repariert_und_warum": "Das sind Gestaltungsentscheidungen am Heft, keine Nits. Auf 44 px und 4,5:1 zu ziehen aendert das Aussehen — und das Heft bleibt per Auftrag, wie es ist. Die Entscheidung gehoert Daouda. Gemeldet in einem Kommentar an PR #194. Der Lauf wurde NICHT neu gestartet: er ist nicht flockig, er ist richtig.",
-    "zwei_zweifel_vor_jeder_reparatur": "BERICHTIGT — mein erster Zweifel war falsch, nachgemessen statt vermutet. Ich hatte behauptet, 3.4 sei womoeglich ein Messartefakt des outline-offset. Gemessen im Browser mit echter Tastaturwanderung: ALLE 15 fokussierbaren Elemente bekommen 2px solid bei offset 3px (nicht 5), KEIN Vorfahr schneidet ab (jeder auf overflow und transform geprueft), und die Regel greift bei jedem Element. Es fehlt also keine Regel und nichts wird abgeschnitten. Der Befund des Pruefstands ist ENGER als ich sagte: je Seite faellt GENAU EIN Element auf, und warum gerade dieses, ist offen. Zwei Moeglichkeiten, von hier nicht zu trennen: der Ring hebt sich an dieser Stelle zu wenig von seinem eigenen Grund ab (Pixelvergleich hat eine Schwelle), oder die verglichene Flaeche trifft ihn dort nicht. Zu klaeren an den Aufnahmen im Artefakt pruefstand-151. 3.4 ist also NICHT als 'wahrscheinlich Messfehler' abzutun. ZWEITER ZWEIFEL STEHT: ein Teil von 3.3 ('0 Arbeiten' bei 9px) kommt aus dem leeren Zustand und sieht nach L1 anders aus.",
-    "bestanden": 649,
-    "gefallen": 119,
-    "nicht_pruefbar": 288,
-    "offene_frage": "Warum bleiben 288 Gates unmessbar? Das ist die naechste Frage AM PRUEFSTAND, nicht an PR #194. Und: ob der Runner das neue Projekt erreicht, ist damit BEANTWORTET — die Seiten kamen mit Inhalt an (/haus/..., /werk/..., '0 Arbeiten' als ehrlicher Leerzustand)."
+    "datum": "2026-09-12",
+    "lauf": "GitHub-Action #191, Job 103601881596, Kopf ec231f0 (PR #197)",
+    "DAS_WICHTIGSTE": "ER MISST WIEDER. 18 Minuten Laufzeit, 36 Artefakte hochgeladen, echte Funde. Die fuenf Laeufe davor (186, 185, 184, 167, 165) waren nach rund 30 Sekunden tot: `npm ci` brach ab, bevor ein Wert erhoben wurde. Rot hiess dort NICHT 'die Seite ist kaputt', sondern 'es hat niemand nachgesehen'. PR #197 repariert das.",
+    "ergebnis": "rot, aber mit Urteil — dieselben vier Gate-Familien wie am 11.09.",
+    "die_vier_familien": {
+      "4.7 Seitengewicht": "4.325.784 B gegen 3.000.000 B. index-*.js allein 2.110 kB, three.module 477 kB, Google-Tag 160 kB.",
+      "3.3 Kontrast": "z. B. #note-text 4,31 gegen 4,5; .haus-ort 2,98 gegen 4,5 — Text ueber Bild.",
+      "3.5 Trefferflaechen": "11 bis 12 Bedienelemente je Seite unter 44 px (Seitenpunkte 6x6, Suchen 20x20, Blaetterpfeile 35x35).",
+      "3.4 Tastaturfokus": "je Seite 1 fokussierbares Element ohne sichtbare Veraenderung."
+    },
+    "NICHT_VON_DIESEN_PRS": "Lauf #191 lief auf #197, und #197 aendert genau EINE Datei: package-lock.json. Kontrast, Gewicht, Trefferflaechen und Fokus koennen daraus nicht kommen. Es sind dieselben Funde wie am 11.09. (Lauf #151), die seither unter wartet_auf_mensch stehen.",
+    "EINE_ZAHL_WAECHST": "Seitengewicht 4.325.784 B heute gegen 3.873.171 B am 11.09. — rund 450 kB mehr. ACHTUNG, KEIN SAUBERER VERGLEICH: damals wurde ein anderer Zweig gemessen (eafefdd auf #194). Keine Ursache behauptet. Aber die Zahl gehoert beobachtet, bevor sie jemand zum ersten Mal ernst nimmt.",
+    "kein_neulauf": "Deterministische Messung, keine Wackelei. Ein zweiter Lauf saegte dasselbe."
   },
   "naechster_zug": "ERSTENS: Sicht-Freigabe fuer PR #196 (Block A) durch Daouda — die Aufnahmen liegen unter .claude/sicht/2026-09-12/. DANACH Block C (Archetyp): er ist der einzige Block, der von Lovable nichts braucht, und kann sofort gebaut werden. Block B wartet auf Lovables freistellen, Block D auf Lovables anprobe. UNVERAENDERT OFFEN, weil nur Daouda es entscheiden kann: M3 zweiter Teil (anon liest 60 Spalten auf public.designers, darunter 8 Stripe-Spalten, user_id und revenue_share_pct — auf LIVE-Daten), M5 (Speicher-Eimer und ~49 Edge Functions), und was aus PR #195 wird.",
   "nicht_pruefbar": [
