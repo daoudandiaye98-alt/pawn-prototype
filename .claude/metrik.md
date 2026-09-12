@@ -285,3 +285,26 @@ eine Prüfung auf Unerreichbarkeit.** Drei belegte Fälle, alle an einem Tag, al
 
 Und die Bestätigung des Gesetzes, das darüber steht: **ein Agent ist niemals sein eigener
 Prüfer.** Ich hatte Block A vier Mal grün gemeldet, bevor der Prüfer lief.
+
+### Vierter Fund desselben Tages: ein ganzes Modul
+
+`src/heft03/figuren.mjs` — vier gestochene Tafeln, 2,6 kB. **Seit dem Einzug (`9ddd574`)
+hat keine davon je etwas gezeichnet.** `belegeFigur` war in `extra-views.mjs` importiert
+und nie aufgerufen; die anderen drei nicht einmal importiert.
+
+Damit steht die Liste bei vier: `miniPawn()`, `richtungGemerkt()`, `darfZaehlen`,
+`figuren.mjs`. Zwei fand ich durch Hinsehen, einen der Prüfer, einen beim Lesen einer
+Importzeile. **Kein Werkzeug hat einen davon gemeldet.**
+
+`belegeFigur` passte genau auf die Archetypen-Seite und ist jetzt in Dienst — gebraucht
+statt neu gebaut. Die anderen drei bleiben tot und gehören auf die Ausmist-Liste.
+
+**Was eine Prüfung auf Unerreichbarkeit fangen müsste**, an diesen vier Fällen gemessen:
+- ein Export, den niemand importiert (`richtungsFigur`, `passformFigur`, `schichtenFigur`)
+- ein Import, den niemand aufruft (`belegeFigur`)
+- eine Funktion im Modul, die nirgends vorkommt (`miniPawn`, `richtungGemerkt`)
+- eine Fähigkeit, die geprüft, aber nie geliefert wird (`darfZaehlen`) — die schwerste,
+  weil hier beide Seiten für sich genommen richtig aussehen
+
+Die ersten drei sind mit `grep` zu haben. Die vierte braucht den Typ als Brücke — und
+genau dort hat sie gefehlt.
