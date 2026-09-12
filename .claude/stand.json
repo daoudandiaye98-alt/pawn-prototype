@@ -51,12 +51,13 @@
     }
   },
   "naechster_zug": [
-    "1. TEIL 2 BAUEN (B1-B8) auf claude/auftrag-q-buehne. Erster Schritt: die Buehnen-Konstanten gegen die heutige Aufnahme pruefen.",
-    "2. DIE BEILAGE teil-o-migrationen.zip nachreichen — ohne sie bleibt E4 offen und supabase/migrations/ bei 166 statt 173. Keine Platzhalter anlegen, LIESMICH.md verbietet es zu Recht.",
-    "3. OFFENE-LISTE.md anlegen, wenn sie das fuehrende Papier sein soll. Sie liegt nicht im Repo.",
-    "4. Wenn die 299 nicht pruefbaren wirklich interessieren: bericht.json aus einem Lauf-Artefakt ziehen und nach Seite und Kontrolle auszaehlen. Von hier nicht erreichbar, von Daouda schon.",
-    "5. Die Gate-Entscheidung bleibt Daoudas: 4.7 Seitengewicht, 3.3 Kontrast, 3.5 Trefferflaechen, 3.4 Fokus. 3.8 ist erledigt.",
-    "6. UNVERAENDERT OFFEN: M3 zweiter Teil, M5, C4 erster Teil und C5 (brauchen Lovable-Deploys)."
+    "1. B4 zweiter Teil — heft() parametrisieren statt verdoppeln, dann studioQuelle. Mit frischem Kopf anfangen, es ist der Weg, ueber den das ganze Heft seine Daten holt.",
+    "2. DAOUDA: freistellen ueber Lovable ausrollen. Ohne ausgerollte Gegenstelle ist B8 eine Attrappe — eine war schon der Bild-Upload in Block A.",
+    "3. DAOUDA: die Beilage teil-o-migrationen.zip. Ohne sie bleibt E4 offen, supabase/migrations/ bei 166 statt 173. Keine Platzhalter anlegen.",
+    "4. DAOUDA: OFFENE-LISTE.md anlegen, wenn sie das fuehrende Papier sein soll. Sie liegt nicht im Repo.",
+    "5. DAOUDA: die 3-Werke-Regel. Der Trigger verlangt drei Werke je Buehne, drape hat je Welt eins — heute kann KEIN Haus veroeffentlichen. fehltZumVeroeffentlichen() sagt es der Oberflaeche schon, aber die Entscheidung ist deine.",
+    "6. Die Gate-Entscheidung bleibt offen: 4.7 Seitengewicht, 3.3 Kontrast, 3.5 Trefferflaechen, 3.4 Fokus. 3.8 ist erledigt und am Pruefstand belegt.",
+    "7. UNVERAENDERT OFFEN: M3 zweiter Teil, M5, C4 erster Teil und C5."
   ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
@@ -161,7 +162,23 @@
       "BRAUCHT_DAOUDA": "Lovable-Deploy von freistellen — sonst ist B8 eine Attrappe, und eine Attrappe war schon der Bild-Upload in Block A. Dazu die Entscheidung zur 3-Werke-Regel: der Trigger heft_buehne_pruefen verlangt drei Werke je Buehne, drape hat je Welt eins. Mit dem heutigen Bestand kann KEIN Haus eine Buehne veroeffentlichen.",
       "B1_ERSTER_TEIL_LIEGT": "src/heft03/buehne.mjs mit 8 Tests: BUEHNE, buehneX/buehneZ, ebeneVon, klemmeStueck/klemmeDeko, fehltZumVeroeffentlichen. Konstanten berichtigt auf {breite:5.6, tiefe:1.067, z0:-0.073}; die Vorgabe haette die Werke um 0,41 bis 0,81 Einheiten nach hinten geschoben. Einmal rot vorgefuehrt mit den Zahlen des Auftrags.",
       "FUND_2_IST_BEHOBEN": "world.mjs:258 prueft jetzt userData.product, BEVOR der Treffer gilt. Heute ein No-op — es gibt noch keine Deko —, also ohne Verhaltensaenderung: 353/353, 89/89, tsc 0, Bau gruen. Der Riegel sitzt, bevor die Deko kommt.",
-      "ALS_NAECHSTES": "makeBuehne in world.mjs (B1 zweiter Teil), mit Aufnahme gegen die heutige Buehne — jetzt moeglich, siehe AUGEN_FUER_DIE_BUEHNE."
+      "ALS_NAECHSTES": "B4 zweiter Teil: heft() parametrisieren (eine Abfrage, zwei Aufrufer), studioQuelle darauf, dann B5 (bearbeiten:true) und B7. B8 bleibt an Daoudas Lovable-Deploy von freistellen.",
+      "WAS_LIEGT": {
+        "B1 Buehne aus Daten": "FERTIG. buehne.mjs (reine Rechnung, 22 Tests) + makeBuehne in world.mjs. Konstanten berichtigt auf {breite:5.6, tiefe:1.067, z0:-0.073}; die Vorgabe haette die Werke um 0,41 bis 0,81 Einheiten nach hinten geschoben. platzFuer reproduziert die heutigen drei Stellen auf 0,001 genau.",
+        "B2 Deko als Aufsteller": "FERTIG. dekoNachEbenen + fuerDeko. Die EBENE ENTSCHEIDET DER KATALOG, nicht die Buehnenzeile. Was nicht im Katalog steht, erscheint nicht. Deko traegt kein userData.product und bekommt keinen Sockel. Hinten wird zuerst gezeichnet.",
+        "B3 Vortritt der Buehne": "ERSTER TEIL FERTIG. display() nimmt displays[id].buehne, sonst makeStage. version steckt im Zwischenspeicher-Schluessel. OFFEN: displayAusHaus nimmt weiter slice(0,2) (data.mjs:62) — die Regel „mindestens drei Aufsteller\" braucht heft_deko, also B4.",
+        "B6 Klemme und erstes Ziehen": "LOGIK FERTIG. klemmeStueck/klemmeDeko halten, sie federn nicht zurueck. nachDemZiehen setzt layout frei und eigenhaendig true. Noch nicht verdrahtet (das ist B5).",
+        "B4 studioQuelle": "ANGEFANGEN, der pruefbare Teil liegt: schreibEntwurf mit dem Versionsriegel (zweimal rot vorgefuehrt). Die Supabase-Abfragen fehlen.",
+        "B5 B7 B8": "OFFEN."
+      },
+      "B4_DIE_ENTSCHEIDUNG_DIE_ANSTEHT": {
+        "gefunden": "designers.user_id ist die Eigentuemer-Spalte (types.ts, 60 Spalten). SPALTEN.products und SPALTEN.designers stehen in quelle.mjs. Damit ist studioQuelle schreibbar.",
+        "DIE_FRAGE": "studioQuelle.heft() liest andere Zeilen als supabaseQuelle.heft(): Entwuerfe mit, nur das eigene Haus, dazu heft_buehnen und heft_deko. Der naheliegende Weg waere, die rund 25 Zeilen von heft() zu verdoppeln und die Filter zu aendern.",
+        "WARUM_DAS_FALSCH_WAERE": "Zwei Fassungen derselben Abfrage laufen auseinander. Genau deshalb wurde vorher die Kulisse aus makeStage herausgezogen und platzFuer in buehne.mjs gelegt, statt die Rechnung im Renderer zu wiederholen.",
+        "VORSCHLAG": "heft() so umbauen, dass die Filter (status-Filter, designer_id-Einschraenkung) Parameter sind, und studioQuelle ruft dieselbe Funktion mit anderen Parametern. Eine Abfrage, zwei Aufrufer. Das ist ein Eingriff in den Weg, ueber den das ganze Heft seine Daten holt — er gehoert an den Anfang einer Schicht, nicht ans Ende einer langen.",
+        "WARUM_ICH_HIER_ANGEHALTEN_HABE": "Am Ende einer langen Strecke ist mir heute schon einmal beim Einsetzen eines Zweigs die interior-Zeile verlorengegangen, und kein Werkzeug hat es gemeldet. Ein Umbau am Datenweg unter denselben Bedingungen ist dasselbe Risiko mit groesserem Schaden."
+      },
+      "WO_DER_BEWEIS_HERKOMMT": "BERICHTIGUNG an mir selbst: ich hatte B4 „blockiert, weil Supabase hier nicht erreichbar ist\" genannt. Das war zu kurz gegriffen. Die VERCEL-VORSCHAU erreicht Supabase — deshalb misst der Pruefstand dort echte Daten. Der Beweis fuer studioQuelle kommt also eine Stufe spaeter, nicht gar nicht. Genau dafuer gibt es den Pruefstand; der Container hat fuer den Browser kein Netz, der Runner schon."
     }
   },
   "EIN_FEHLER_VON_MIR_IN_DIESER_RUNDE": {
