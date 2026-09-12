@@ -293,3 +293,22 @@ Sicht verbirgt — `stripe_account_id`, `stripe_customer_id`, `stripe_subscripti
 `user_id`, `revenue_share_pct` darunter. Eine Policy begrenzt Zeilen, kein Recht begrenzt
 Spalten. Das ist der zweite Teil von M3, und er wartet auf Daoudas Wort, weil ein falscher
 Schnitt die Live-Seite in derselben Sekunde bricht.
+
+**Nachtrag vom selben Tag, und er ist die eigentliche Lehre der Runde:** ich habe
+Daouda geschrieben, der Blick auf die echte Seite sei aus diesem Container nicht zu
+haben — Chromium kommt nicht ins Netz, gemessen und zweimal gegengeprüft. Das
+stimmte und war trotzdem falsch. Der CI-Läufer misst gegen die Vercel-Vorschau mit
+echter Datenbank und legt **35 Aufnahmen** als Artefakt ab; die liegen seit jedem
+Lauf da und sind mit `curl` und dem Token zu holen.
+
+Auf der ersten Aufnahme, die ich mir angesehen habe, stand unter einem **Mantel**:
+„ob die Arbeit an deine **Wand** passt."
+
+**Die Lehre:** „ich kann das nicht sehen" ist fast nie wahr — meistens heißt es
+„ich habe nur einen Weg gesucht". Der Weg zu Augen führte hier nicht über einen
+Browser, sondern über ein Artefakt, das schon existierte. Es steht jetzt unter
+`letzter_pruefstand.WICHTIG_FUER_DIE_NAECHSTE_SITZUNG`.
+
+Und die Zahl, die alle Berichte seit Wochen tragen — „119 gefallene Launch Gates" —
+ist überholt: es sind **131**. Nicht weil etwas kaputtging, sondern weil zum ersten
+Mal eine echte Haus- und Werkseite gemessen wurde statt einer Wand.
