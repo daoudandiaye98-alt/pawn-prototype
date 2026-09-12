@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BUEHNE, buehneX, buehneZ, EBENE_ZWEI, WERKE_MINDESTENS,
-  ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen, platzFuer,
+  ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen, platzFuer, schreibEntwurf, nachDemZiehen,
 } from './buehne.mjs';
 
 /*
@@ -127,4 +127,48 @@ test('platzFuer klemmt, bevor es rechnet', () => {
   // die der Trigger spaeter ablehnt.
   const zuWeitVorn = platzFuer({x: .5, z: .95}, null);
   assert.ok(Math.abs(zuWeitVorn.z - buehneZ(EBENE_ZWEI.bis)) < 1e-9);
+});
+
+test('der Versionsriegel haelt das aeltere Fenster auf', () => {
+  const gelesen = {id: 'b1', version: 7, stuecke: [{x: .5, z: .5}]};
+  const {bedingung, zeile} = schreibEntwurf(gelesen);
+  assert.deepEqual(bedingung, {id: 'b1', version: 7}, 'geschrieben wird gegen die gelesene Version');
+  assert.equal(zeile.version, 8, 'und die Zeile traegt danach die naechste');
+});
+
+test('schreibEntwurf klemmt, statt den Trigger ablehnen zu lassen', () => {
+  const {zeile} = schreibEntwurf({id: 'b1', version: 1, stuecke: [
+    {werk_id: 'a', x: 2, z: .95},
+    {werk_id: 'b', x: -1, z: .1},
+  ]});
+  zeile.stuecke.forEach((s) => assert.equal(ebeneVon(s.z), 2, 'jedes Stueck liegt auf Ebene 2'));
+  assert.equal(zeile.stuecke[0].x, 1);
+  assert.equal(zeile.stuecke[1].x, 0);
+});
+
+test('eine neue Buehne faengt bei Version 1 an', () => {
+  const {bedingung, zeile} = schreibEntwurf({stuecke: []});
+  assert.equal(bedingung.version, 0, 'ungelesen heisst Version 0');
+  assert.equal(zeile.version, 1);
+  assert.deepEqual(zeile.ruecken, {papier: 'weiss'}, 'die Vorgabe der Spalte');
+  assert.equal(zeile.eigenhaendig, false);
+  assert.equal(zeile.layout, 'fan');
+});
+
+test('das erste Ziehen macht die Buehne eigenhaendig', () => {
+  const vorher = {id: 'b1', version: 3, layout: 'fan', eigenhaendig: false,
+    stuecke: [{werk_id: 'a', x: .2, z: .5}, {werk_id: 'b', x: .8, z: .5}]};
+  const nachher = nachDemZiehen(vorher, 1, {x: .6, z: .42});
+  assert.equal(nachher.eigenhaendig, true);
+  assert.equal(nachher.layout, 'frei');
+  assert.deepEqual(nachher.stuecke[0], vorher.stuecke[0], 'das andere Stueck bleibt unberuehrt');
+  assert.equal(nachher.stuecke[1].x, .6);
+  assert.equal(nachher.stuecke[1].z, .42);
+  assert.equal(nachher.stuecke[1].werk_id, 'b', 'das Werk bleibt dasselbe');
+});
+
+test('auch beim Ziehen haelt die Klemme', () => {
+  const nachher = nachDemZiehen({stuecke: [{werk_id: 'a', x: .5, z: .5}]}, 0, {x: 9, z: .99});
+  assert.equal(nachher.stuecke[0].x, 1);
+  assert.equal(nachher.stuecke[0].z, EBENE_ZWEI.bis);
 });

@@ -140,3 +140,46 @@ export function platzFuer(stueck, produkt) {
     drehung: (stueck.drehung || 0) * Math.PI / 180,
   };
 }
+
+/**
+ * Was beim Schreiben einer Buehne wirklich in die Zeile geht (B4).
+ *
+ * DER VERSIONSRIEGEL IST DER PUNKT. Wer zwei Fenster offen hat, soll nicht
+ * stillschweigend das aeltere gewinnen lassen. Geschrieben wird deshalb mit
+ * einer Bedingung auf die Version, die beim Lesen galt — trifft sie keine
+ * Zeile, hat jemand anderes dazwischen geschrieben, und der Aufrufer erfaehrt
+ * es, statt dass eine Aenderung lautlos verschwindet.
+ *
+ * Die Stuecke werden dabei GEKLEMMT, nicht nur geprueft: was hier durchgeht,
+ * darf vom Trigger heft_buehne_pruefen nicht mehr abgelehnt werden.
+ */
+export function schreibEntwurf(entwurf) {
+  const gelesen = Number.isFinite(entwurf?.version) ? entwurf.version : 0;
+  return {
+    bedingung: {id: entwurf?.id, version: gelesen},
+    zeile: {
+      layout: entwurf?.layout ?? 'fan',
+      kicker: entwurf?.kicker ?? null,
+      titel: entwurf?.titel ?? null,
+      text: entwurf?.text ?? null,
+      boden: entwurf?.boden ?? {},
+      ruecken: entwurf?.ruecken ?? {papier: 'weiss'},
+      licht: entwurf?.licht ?? {},
+      stuecke: (entwurf?.stuecke ?? []).map(klemmeStueck),
+      deko: entwurf?.deko ?? [],
+      eigenhaendig: entwurf?.eigenhaendig === true,
+      version: gelesen + 1,
+    },
+  };
+}
+
+/**
+ * Das erste Ziehen macht die Buehne eigenhaendig (B6) — danach raeumt keine
+ * automatische Komposition mehr auf. Was von Hand gestellt wurde, bleibt
+ * gestellt; sonst waere jede Muehe beim naechsten Aufschlagen weg.
+ */
+export function nachDemZiehen(entwurf, stueckIndex, position) {
+  const stuecke = (entwurf?.stuecke ?? []).map((s, i) =>
+    i === stueckIndex ? klemmeStueck({...s, ...position}) : s);
+  return {...entwurf, stuecke, layout: 'frei', eigenhaendig: true};
+}
