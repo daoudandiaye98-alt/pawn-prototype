@@ -254,3 +254,34 @@ belegten Fehler — zwei Fälle an einem Tag, beide in `src/heft03/`.
 Arbeit an `app.js` gelöscht, weil ich damit eine einzelne Zeile zurücknehmen wollte und
 die Datei seit dem letzten Commit viele Änderungen trug. Für das Rot-Vorführen gilt ab
 jetzt: **vorher `cp` auf eine Sicherung, danach `cp` zurück.** Nie `git checkout`.
+
+### Nachtrag desselben Tages: was der Prüfer fand
+
+`PRUEFER: 8/10 · WIDERLEGT: 3`. Zwei Funde, beide echt:
+
+**Erstens, und es war ernst:** `quelle.mjs` fragt vor jedem Schreiben nach
+`begleiter_ereignisse` die Zähl-Erlaubnis ab — `funktionen.darfZaehlen?.()`. Diese
+Funktion hat die Hülle nie übergeben, und *konnte* es nicht: der Typ in `heft.d.ts`
+kannte sie gar nicht. `!undefined?.()` ist immer wahr, also hat `ereignis()` **nie** eine
+Zeile geschrieben — weder mit noch ohne Konto, weder mit noch ohne Zustimmung.
+
+Mein Bericht sagte: „schreibt nur mit Konto und Zähl-Erlaubnis". Das war **wahr und
+bedeutete nichts.** Eine Zusage, die nur deshalb nie gebrochen wird, weil sie nie zum
+Zug kommt, ist keine Zusage. Jetzt Z17, einmal rot vorgeführt.
+
+**Zweitens, kleiner, aber es war meine Zahl:** ich schrieb „15 der 16 Ereignisse". Richtig
+sind **14 von 16** — es fehlen zwei, und `blaettern` meldet der Code zusätzlich, obwohl es
+im Katalog gar nicht steht. 15 gemeldete Namen, davon 14 aus dem Katalog. Ich hatte die
+beiden Mengen vermischt und mir die Zahl dadurch schöngerechnet.
+
+**Das ist der dritte Fall derselben Art an einem Tag** — `miniPawn()`, `richtungGemerkt()`,
+`darfZaehlen`. Drei Mal geschriebener Code, der nie zum Zug kam, und kein einziges
+Werkzeug hat eines davon gemeldet: nicht `tsc`, nicht ESLint, nicht die 64 Tests. Zwei
+fand ich, weil ich hingesehen habe. Den dritten fand der Prüfer.
+
+**Wenn beim nächsten Ausmisten gefragt wird, was gebaut werden soll, ist das die Antwort:
+eine Prüfung auf Unerreichbarkeit.** Drei belegte Fälle, alle an einem Tag, alle in
+`src/heft03/`. Kein anderer Kandidat hat eine solche Belegdichte.
+
+Und die Bestätigung des Gesetzes, das darüber steht: **ein Agent ist niemals sein eigener
+Prüfer.** Ich hatte Block A vier Mal grün gemeldet, bevor der Prüfer lief.

@@ -9,6 +9,12 @@
       "blockiert_durch": "Sicht-Freigabe durch Daouda. Kein Lovable-Deploy noetig — dieser Zweig fasst supabase/functions/* nicht an."
     },
     {
+      "nr": 197,
+      "titel": "Fix: npm ci scheitert seit fe75955 — die Sperrdatei nachziehen",
+      "status": "Draft. Repariert den Pruefstand fuer das ganze Projekt, nicht nur fuer einen Zweig.",
+      "blockiert_durch": "Ansehen. Sollte VOR #196 gemergt werden — dann faellt der Merge-Commit in #196 von selbst weg."
+    },
+    {
       "nr": 183,
       "titel": "Kein Urteil ohne Messung — der Pruefstand darf nicht gruen melden, ohne gemessen zu haben",
       "status": "Draft, aelter als der Rollback",
@@ -76,7 +82,7 @@
     "NEBENBEI AUFGEFALLEN, unbelegt, nicht von Teil M: bei der Fokus-Messung stand die KOPFZEILE auf ENGLISCH ('Fashion', 'Our Houses', 'Your DNA', 'Ask PAWN', 'For designers'). Nach Entscheidung D2 soll die englische Fassung erst nach dem Launch kommen. autoTranslate nimmt #reader-layer und #mobile-reader aus — die Kopfzeile aber nicht. Ob das gewollt ist, weiss ich nicht; nicht angefasst, nur notiert."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": "2026-09-12 · VERIFY 5/5 · REGRESSION 16/16 · node --test src/heft03/*.test.mjs 64/64 · tsc 0",
+  "letzter_verify": "2026-09-12 · VERIFY 5/5 · REGRESSION 17/17 · node --test src/heft03/*.test.mjs 64/64 · tsc 0",
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },
@@ -99,7 +105,7 @@
       "Noch nicht gebaut": "Stilfoto (/deine-dna/foto) und Bild in Frag PAWN — Zweig 2. Freistellen — H6, eigener PR."
     }
   },
-  "letzter_pruefer": "2026-09-12 · Block A · Lauf gestartet, Ergebnis siehe PR #196",
+  "letzter_pruefer": "2026-09-12 · Block A · PRUEFER: 8/10 · WIDERLEGT: 3. Zwei echte Funde: (1) darfZaehlen wurde in quelle.mjs geprueft, aber nie von der Huelle uebergeben — der Typ in heft.d.ts kannte es nicht, also hat ereignis() NIE geschrieben, mit oder ohne Zustimmung. Repariert, Zusage Z17, rot vorgefuehrt. (2) Meine Zahl '15 von 16 Ereignissen' war falsch; richtig 14 von 16. Beides in metrik.md und hier berichtigt.",
   "DIE_DATENBANKFRAGE_IST_ENTSCHIEDEN": {
     "entscheidung": "Daouda am 12.09.2026: rnakubexbqfgfciynqpt ist die echte Datenbank. CLAUDE.md ist berichtigt.",
     "bestaetigt_ueber_Lovable": "Zugang laeuft NICHT ueber das Supabase-MCP (dort 'You do not have permission'), sondern ueber das Lovable-MCP: query_database mit project_id 81416573-4f0e-4ff7-a863-43988a85e8d2 (Projekt pawn-archive-muse). DAS IST DER WEG FUER JEDE KUENFTIGE MESSUNG AN DER ECHTEN DATENBANK.",
@@ -116,11 +122,12 @@
   },
   "WAS_AUS_PR_195_WIRD": "PR #195 (Zweig claude/teil-m) traegt Teil M — gemacht auf cnxtdcifkrdxvajaikxq, also auf der falschen Datenbank. Die sechs Migrationen darin (20260930090000-140000) reparieren Dinge, die auf rnak bereits richtig stehen; sie waeren dort wirkungslos bis schaedlich. NICHT blind mergen. Was in dem PR UNABHAENGIG von der Datenbank gilt und weiter wertvoll ist: L3 (das Heft liest die Sichten), der Wand-Fix in passformAssistent, die berichtigten Pruefstand-Slugs, der Zustandswaechter gegen die mitgemessene Eroeffnung, die Fixture mit der echten PostgREST-Antwort, und die Zusagen Z17-Z20. Vorschlag: den Frontend- und Pruefstand-Teil herausloesen, den Migrationsteil verwerfen. Das ist Daoudas Entscheidung, nicht meine.",
   "AUFTRAG_O": {
-    "WAS_FERTIG_IST": "Block A vollstaendig auf claude/auftrag-o-begleiter (5 Commits ab e160862, zuletzt 9921002). A1 Verstand in src/heft03/begleiter.mjs mit 16 Tests. A2 15 von 16 Katalog-Ereignissen verdrahtet. A3 Das Schweigen: 25 s Abstand, 8 Blasen je Sitzung, 90 s nach dem ×, Empfang nach 8400 ms. A4 Blase mit Chips und ×. A5 vier Methoden in beiden Quellen. A6 fuenf Rangfiguren, angesehen. A7 Chat-Kontext und echter Bild-Upload. A8 drei tote Listen raus.",
+    "WAS_FERTIG_IST": "Block A vollstaendig auf claude/auftrag-o-begleiter (5 Commits ab e160862, zuletzt 9921002). A1 Verstand in src/heft03/begleiter.mjs mit 16 Tests. A2 14 von 16 Katalog-Ereignissen verdrahtet (plus blaettern, das der Katalog nicht kennt — macht 15 gemeldete Namen; ich hatte die zwei Mengen vermischt und zuerst faelschlich 15 von 16 geschrieben, der Pruefer hat es berichtigt). A3 Das Schweigen: 25 s Abstand, 8 Blasen je Sitzung, 90 s nach dem ×, Empfang nach 8400 ms. A4 Blase mit Chips und ×. A5 vier Methoden in beiden Quellen. A6 fuenf Rangfiguren, angesehen. A7 Chat-Kontext und echter Bild-Upload. A8 drei tote Listen raus.",
     "WAS_NOCH_NICHT": "Block B (Buehne aus heft_buehnen) wartet auf Lovables freistellen. Block C (Archetyp) ist unabhaengig und koennte als naechstes kommen. Block D (Avatar, Anprobe, Raum) wartet auf Lovables anprobe.",
     "DIE_ZWEI_OFFENEN_EREIGNISSE": "archetyp_bestaetigt (Block C) und anprobe_fertig (Block D) werden noch nicht gemeldet. Der Test 'jedes Ereignis des Katalogs wird auch gemeldet' nennt sie ausdruecklich als Ausnahme und verlangt sie, sobald die Bloecke stehen — den Namen dort herausnehmen, dann wird der Test rot, bis die Verdrahtung steht.",
     "WO_ICH_VOM_AUFTRAG_ABGEWICHEN_BIN": "A8 verlangt zustimmungFragen() als Regel im Verstand. Umgesetzt ist nur der Wortlaut aus dem Katalog, nicht das Erscheinen. Grund: melde() darf aus fuenf Gruenden schweigen, und jeder davon hiesse hier 'gemerkt, ohne zu fragen'. Zusage Z16 deckt das ab. Daouda kann das umstossen — dann braucht es einen anderen Weg, der das Erscheinen garantiert.",
     "DER_KATALOG_HAT_LUECKEN": "Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: 30 Saetze, 30 Regeln, 0 ohne Satz. KEINE Regel zu heft.zustimmung. KEINE Regel zu blaettern (Auftrag O nennt das Ereignis). Die Chip-Funktion freistellen kommt im Katalog noch nicht vor. Der Umriss liegt als src/heft03/fixtures/begleiter-katalog.json im Repo und wird von zwei Tests gegen den Code gehalten.",
     "WAS_TOT_WAR_UND_JETZT_LEBT": "miniPawn() wurde seit dem Einzug 9ddd574 NIE aufgerufen; die CSS-Regeln .dna-einstieg .pawn-figure zeigten ins Leere. richtungGemerkt() war geschrieben, aber nie aufgerufen. Beides ist jetzt verdrahtet. MERKREGEL fuer die naechste Schicht: nach jeder neuen Funktion pruefen, ob sie auch aufgerufen wird — in dieser Sitzung zweimal passiert."
-  }
+  },
+  "DER_PRUEFSTAND_MISST_NICHTS": "Die GitHub-Action 'messen' ist auf main seit dem 11.09. rot und misst gar nichts: `npm ci` bricht ab, bevor ein Wert erhoben wird. Ursache gemessen: fe75955 (Lovable) hat drizzle-kit, drizzle-orm und postgres in package.json eingetragen und dazu bun.lock fortgeschrieben — die Action benutzt aber npm ci und package-lock.json, wo die drei nie standen. Reparatur liegt als PR #197 (eigener Zweig claude/lock-drizzle) und ist in #196 hereingemergt, damit der dortige Lauf ueberhaupt gruen werden kann. Gemessen: 60 Pakete kommen dazu, 0 gehen, 0 wechseln die Version — Stripe, Supabase und React sind nicht angefasst. OFFEN FUER DAOUDA: ob drizzle ueberhaupt bleiben soll. Es wird nirgends importiert; nur drizzle.config.ts und drizzle/migrations/ verweisen darauf, beide aus demselben Commit. Das Projekt hat seine Migrationen in supabase/migrations/."
 }
