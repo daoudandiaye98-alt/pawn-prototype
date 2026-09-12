@@ -312,3 +312,22 @@ Browser, sondern über ein Artefakt, das schon existierte. Es steht jetzt unter
 Und die Zahl, die alle Berichte seit Wochen tragen — „119 gefallene Launch Gates" —
 ist überholt: es sind **131**. Nicht weil etwas kaputtging, sondern weil zum ersten
 Mal eine echte Haus- und Werkseite gemessen wurde statt einer Wand.
+
+**Und noch ein Nachtrag desselben Tages, weil er eine Methode zeigt und nicht nur ein
+Ergebnis:** vier Läufe hintereinander, am Frontend nach dem zweiten nichts mehr geändert.
+
+| Lauf | gefallen | kein Urteil | 3.3 | 3.4 | 3.5 | 3.8 | 4.7 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 177 | 131 | 345 | 61 | 20 | 14 | 1 | 35 |
+| 178 | 126 | 345 | 61 | 16 | 14 | 0 | 35 |
+| 179 | 122 | 353 | 60 | 15 | 14 | 0 | 33 |
+| 180 | 125 | 343 | 61 | 15 | 14 | 0 | 35 |
+
+Die Zahl, die über Grün und Rot entscheidet, wackelte um **fünf Gates** — ohne dass sich
+am Code etwas änderte. Zwei Ursachen, beide gefunden und behoben: die Eröffnung wurde
+mitgemessen, und ein abgebrochener Übersetzungs-Nachtrag erklärte zwei ganze Seiten zur
+leeren Hülle. Übrig sind **zwei** wackelnde Befunde von 61.
+
+**Die Lehre:** eine Prüfung misst sich selbst mit. Bevor man ihrer Zahl glaubt, muss man
+sie zweimal gegen *denselben* Code laufen lassen — sonst hält man Rauschen für Arbeit und
+Arbeit für Rauschen. Das kostet zwei Läufe und spart den Irrtum.
