@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BUEHNE, buehneX, buehneZ, EBENE_ZWEI, WERKE_MINDESTENS,
-  ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen,
+  ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen, platzFuer,
 } from './buehne.mjs';
 
 /*
@@ -84,4 +84,47 @@ test('ein Werk neben der Ebene wird eigens genannt, nicht nur gezaehlt', () => {
     stuecke: [{x: .2, z: .5}, {x: .5, z: .5}, {x: .8, z: .9}],
   });
   assert.deepEqual(gruende, ['ein Werk liegt nicht auf der mittleren Ebene']);
+});
+
+test('platzFuer reproduziert die heutige Buehne Stelle fuer Stelle', () => {
+  /*
+   * Der eigentliche Beweis fuer B1: eine Buehne, aus den heutigen Zahlen
+   * zurueckgerechnet, muss durch makeBuehne wieder GENAU dort landen, wo
+   * makeStage sie hinstellt. Die Erwartungswerte stammen aus world.mjs:208,
+   * nicht aus dieser Datei.
+   */
+  const zurueck = (welt, achse) => achse === 'x'
+    ? 0.5 + welt / BUEHNE.breite
+    : (welt - BUEHNE.z0) / BUEHNE.tiefe;
+
+  HEUTE_X.forEach((wx, i) => {
+    const wz = HEUTE_Z[i];
+    const stueck = {werk_id: 'w' + i, x: zurueck(wx, 'x'), z: zurueck(wz, 'z')};
+    const platz = platzFuer(stueck, {stage: {lift: 0.17, h: 2.9}});
+    assert.ok(Math.abs(platz.x - wx) < 0.001, `x ${platz.x} statt ${wx}`);
+    assert.ok(Math.abs(platz.z - wz) < 0.001, `z ${platz.z} statt ${wz}`);
+    assert.equal(platz.lift, 0.17, 'der Sockel bleibt der des Werks');
+    assert.equal(platz.hoehe, 2.9, 'ohne hoehe_m gilt product_dna.heft.hoehe');
+  });
+});
+
+test('die Ausnahme der Buehne gewinnt, die Regel des Werks bleibt stehen', () => {
+  const produkt = {stage: {lift: 0.22, h: 2.9}};
+  assert.equal(platzFuer({x: .5, z: .5, hoehe_m: 3.4}, produkt).hoehe, 3.4);
+  assert.equal(platzFuer({x: .5, z: .5}, produkt).hoehe, 2.9);
+  assert.equal(platzFuer({x: .5, z: .5}, null).hoehe, 2.6, 'ohne beides der Vorgabewert aus standee');
+  assert.equal(platzFuer({x: .5, z: .5}, produkt).lift, 0.22, 'der Sockel kommt immer vom Werk');
+});
+
+test('die Drehung kommt in Grad und wird zu Bogenmass', () => {
+  assert.equal(platzFuer({x: .5, z: .5, drehung: 0}, null).drehung, 0);
+  assert.ok(Math.abs(platzFuer({x: .5, z: .5, drehung: -8}, null).drehung - (-8 * Math.PI / 180)) < 1e-9);
+  assert.equal(platzFuer({x: .5, z: .5}, null).drehung, 0, 'ohne Angabe keine Drehung');
+});
+
+test('platzFuer klemmt, bevor es rechnet', () => {
+  // Ein Stueck ausserhalb der Ebene 2 darf nie eine Welt-Stelle bekommen,
+  // die der Trigger spaeter ablehnt.
+  const zuWeitVorn = platzFuer({x: .5, z: .95}, null);
+  assert.ok(Math.abs(zuWeitVorn.z - buehneZ(EBENE_ZWEI.bis)) < 1e-9);
 });

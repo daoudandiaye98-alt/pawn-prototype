@@ -2,6 +2,7 @@ import {THREE,CSS3DObject,CSS3DRenderer} from './dreiD.mjs';
 import {phase,smooth,clamp} from './model.mjs';
 import {cutouts,alphaHit,bilder} from './cutouts.mjs';
 import {products,displays} from './data.mjs';
+import {platzFuer} from './buehne.mjs';
 const PI=Math.PI;
 export function createWorld(container,readerLayer,onDirty){
  const materials=new Map(),textures=new Map(),cache=new Map();
@@ -174,8 +175,10 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   return textures.get(url);
  }
  const standeeMaps=new Map();
- function standee(id,parent){
-  const item=cutouts.get(id),g=group(parent),h=products[id]?.stage?.h||2.6,width=h*item.ratio;
+ function standee(id,parent,hoehe){
+  // `hoehe` kommt aus stuecke[].hoehe_m (B7). Ohne sie bleibt alles wie bisher:
+  // product_dna.heft.hoehe ueber products[].stage.h, sonst 2,6.
+  const item=cutouts.get(id),g=group(parent),h=hoehe||products[id]?.stage?.h||2.6,width=h*item.ratio;
   if(!standeeMaps.has(id)){const m=new THREE.Texture(item.image);m.needsUpdate=true;m.colorSpace=THREE.SRGBColorSpace;m.anisotropy=renderer.capabilities.getMaxAnisotropy();standeeMaps.set(id,m);}
   const map=standeeMaps.get(id);
   const mat=new THREE.MeshStandardMaterial({map,roughness:1,side:THREE.DoubleSide,transparent:false,alphaTest:.35});
@@ -209,6 +212,49 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    if(data.architecture!=='frame')mesh(new THREE.ExtrudeGeometry(arch,{depth:.025,bevelEnabled:false}),material('#ece5d9'),frame,0,0,.04);
    const side=hinge(stage,2.88,.04,.43,1,.08);polygon(side,[[-.4,0],[-.4,2.4],[.6,2.1],[.6,0]],'#f3efe6');
   }
+ }
+ /**
+  * B1 — die Buehne aus Daten, neben makeStage und nicht statt ihr.
+  *
+  * makeStage bleibt der Rueckfall (B3): wo keine Zeile in heft_buehnen steht,
+  * komponiert weiterhin displayAusHaus. Wo eine steht, gewinnt sie.
+  *
+  * DIE ABBILDUNG STEHT IN buehne.mjs, nicht hier — sie ist reine Rechnung und
+  * wird ohne Browser geprueft (buehne.test.mjs, 8 Tests). Die Konstanten sind
+  * gegen world.mjs:208 nachgerechnet und weichen bewusst von der Vorgabe ab;
+  * die Begruendung steht im Kopf von buehne.mjs.
+  *
+  * DREI TIEFENEBENEN, hart: Deko hinten (z < 0,35), Werke in der Mitte
+  * (0,35 bis 0,65), Deko vorn (z > 0,65). Der Datenbank-Trigger
+  * heft_buehne_pruefen erzwingt dasselbe; platzFuer klemmt schon hier, damit
+  * der Fehler gar nicht erst zur Datenbank laeuft.
+  */
+ function makeBuehne(buehne){
+  const stuecke=(buehne.stuecke||[]).filter(s=>cutouts.has(s.werk_id));
+  const stage={root:group(book),hinges:[],plinths:[],products:[],id:'buehne:'+(buehne.id||'')};
+  stage.root.visible=false;
+  // Die Kulisse liest dieselben Felder wie bei einer fest verdrahteten Buehne.
+  // `ruecken` ist jsonb; ohne Farbe bleibt das Papierweiss der Vorgabe.
+  kulisse(stage,{
+   layout:buehne.layout==='frei'?'frame':(buehne.layout||'fan'),
+   color:buehne.ruecken?.farbe||'#f1ede5',
+   architecture:buehne.layout==='frame'?'frame':undefined,
+   pieces:{length:stuecke.length},
+  });
+  stuecke.forEach((stueck,i)=>{
+   const id=stueck.werk_id;
+   // Die Rechnung steht in buehne.mjs und ist dort geprueft (platzFuer, 12 Tests).
+   // Hier wird nur noch hingestellt — eine zweite Fassung waere eine zweite Wahrheit.
+   const platz=platzFuer(stueck,products[id]);
+   addPlinth(stage,platz.x,platz.z,1.8,platz.lift,1.03);
+   const pivot=hinge(stage,platz.x,platz.z,platz.drehung,-1,.11+i*.055);
+   const piece=standee(id,pivot,platz.hoehe);piece.g.position.y=platz.lift;
+   piece.g.traverse(o=>{if(o.isMesh)o.userData.product=id;});
+   stage.products.push({id,object:piece.g,point:piece.point,oben:piece.oben});
+  });
+  stage.materials=[];stage.fade=-1;
+  stage.root.traverse(o=>{if(o.isMesh){o.material=o.material.clone();stage.materials.push(o.material);}});
+  return stage;
  }
  function makeStage(id,pieces){
   const data={...displays[id],pieces:pieces||displays[id].pieces},stage={root:group(book),hinges:[],plinths:[],products:[],id};stage.root.visible=false;

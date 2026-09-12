@@ -116,3 +116,27 @@ export function fehltZumVeroeffentlichen(buehne) {
   }
   return gruende;
 }
+
+/**
+ * Der Platz eines Stuecks — alles, was world.mjs zum Hinstellen braucht,
+ * ohne eine einzige Zeile THREE.
+ *
+ * Damit ist die Rechnung pruefbar und nur noch das Hinstellen selbst nicht.
+ * `produkt` ist der Eintrag aus products[] (adapters.mjs legt ihn unter row.id
+ * ab, deshalb ist werk_id die UUID und kein Slug).
+ *
+ * Die Reihenfolge der Hoehe ist die aus dem Auftrag und sie hat einen Grund:
+ * stuecke[].hoehe_m ist die AUSNAHME, die diese eine Buehne kennt;
+ * product_dna.heft.hoehe ist die REGEL, die das Werk ueberallhin mitnimmt.
+ * Die Ausnahme gewinnt, die Regel bleibt stehen.
+ */
+export function platzFuer(stueck, produkt) {
+  const k = klemmeStueck(stueck);
+  return {
+    x: buehneX(k.x),
+    z: buehneZ(k.z),
+    lift: produkt?.stage?.lift ?? 0.17,
+    hoehe: stueck.hoehe_m || produkt?.stage?.h || 2.6,
+    drehung: (stueck.drehung || 0) * Math.PI / 180,
+  };
+}
