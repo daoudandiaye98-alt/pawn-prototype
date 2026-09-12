@@ -1,6 +1,6 @@
 {
-  "aktualisiert": "2026-09-11",
-  "branch": "claude/teil-l-stand",
+  "aktualisiert": "2026-09-12",
+  "branch": "claude/auftrag-o-begleiter",
   "offene_prs": [
     {
       "nr": 183,
@@ -102,5 +102,20 @@
     "gegenstand": "14 Behauptungen zu PR #194 (Teil M)",
     "ergebnis": "14 bestaetigt · 0 widerlegt · 0 nicht pruefbar",
     "was_er_selbst_gemessen_hat": "Die Spaltenrechnung 59/44/15 eigenstaendig nachgerechnet · die Kette in einer Kopie ohne die Basis-Datei rot vorgefuehrt (Exit 1, FEHLER: acquisition_leads) · --ordnung auf Vollstaendigkeit geprueft (163 Zeilen, sort -u ebenfalls 163) · seed-admin aus `git show HEAD~1` gelesen und den fehlenden Auth-Check sowie das hartcodierte Passwort bestaetigt · has_role in einer frueher sortierten Migration gefunden"
-  }
+  },
+  "DIE_DATENBANKFRAGE_IST_ENTSCHIEDEN": {
+    "entscheidung": "Daouda am 12.09.2026: rnakubexbqfgfciynqpt ist die echte Datenbank. CLAUDE.md ist berichtigt.",
+    "bestaetigt_ueber_Lovable": "Zugang laeuft NICHT ueber das Supabase-MCP (dort 'You do not have permission'), sondern ueber das Lovable-MCP: query_database mit project_id 81416573-4f0e-4ff7-a863-43988a85e8d2 (Projekt pawn-archive-muse). DAS IST DER WEG FUER JEDE KUENFTIGE MESSUNG AN DER ECHTEN DATENBANK.",
+    "gemessen": "Historie 208 · 91 Tabellen · 2 Sichten · alle zehn neuen Tabellen aus Auftrag O da. Die Zahlen des Auftrags (207/91) stimmen damit."
+  },
+  "DIE_LOECHER_AUF_DER_LIVE_DATENBANK": {
+    "ergebnis": "ENTWARNUNG bei den zwei schweren. Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt.",
+    "kontouebernahme": "zugang_zuweisen(_user_id uuid, _email text) — anon NEIN, authenticated NEIN. Rechte nur {postgres, service_role}. Kein PUBLIC-Eintrag. Die Luecke, die auf cnxt offen war, ist hier ZU.",
+    "rechnungsnummern": "assign_invoice_number und next_invoice_number — anon NEIN, authenticated ja, service_role ja. Kein PUBLIC. ZU.",
+    "secdef_fuer_anon": "Genau NEUN Funktionen (ohne Trigger-Funktionen): add_dwell_seconds, bump_media_metric, bump_product_view, count_founding_designers, first_move_publish, get_founding_social_proof, get_lead_invitation, ist_kauf_freigeschaltet, record_page_visit. Das sind EXAKT die neun, die ich in Teil M als gewollt dokumentiert habe.",
+    "rls": "91 Tabellen, 0 ohne RLS. 3 mit RLS und ohne Policy: rate_limit_hits, zugang_bootstrap, zugang_protokoll — EXAKT die drei aus M4.",
+    "DER_MERKWUERDIGE_TEIL": "Meine Teil-M-Migrationen (20260930090000 bis 20260930140000) sind in der Historie von rnak NICHT vorhanden — nur die 20260929er-Reihe. Die Rechte stehen dort also richtig, OHNE dass meine Reparatur je ankam. Entweder hat Lovable dieselben Loecher unabhaengig geschlossen, oder die Funktionen wurden auf rnak von vornherein enger angelegt. Ich habe es nicht weiter verfolgt; wichtig ist der Befund, nicht die Vorgeschichte.",
+    "WAS_OFFEN_BLEIBT": "Der Spaltenfund aus L3 gilt AUCH HIER, und damit auf der LIVE-Datenbank: anon darf an public.designers 60 Spalten lesen, darunter ACHT Stripe-Spalten (stripe_account_id, stripe_customer_id, stripe_subscription_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_details_submitted, stripe_requirements, stripe_country) sowie user_id, revenue_share_pct, intern, plan_seit, plan_bis. Das ist keine Testdatenbank — das sind echte Haeuser. Die Entscheidung aus M3 Teil 2 ist damit dringender als gedacht."
+  },
+  "WAS_AUS_PR_195_WIRD": "PR #195 (Zweig claude/teil-m) traegt Teil M — gemacht auf cnxtdcifkrdxvajaikxq, also auf der falschen Datenbank. Die sechs Migrationen darin (20260930090000-140000) reparieren Dinge, die auf rnak bereits richtig stehen; sie waeren dort wirkungslos bis schaedlich. NICHT blind mergen. Was in dem PR UNABHAENGIG von der Datenbank gilt und weiter wertvoll ist: L3 (das Heft liest die Sichten), der Wand-Fix in passformAssistent, die berichtigten Pruefstand-Slugs, der Zustandswaechter gegen die mitgemessene Eroeffnung, die Fixture mit der echten PostgREST-Antwort, und die Zusagen Z17-Z20. Vorschlag: den Frontend- und Pruefstand-Teil herausloesen, den Migrationsteil verwerfen. Das ist Daoudas Entscheidung, nicht meine."
 }
