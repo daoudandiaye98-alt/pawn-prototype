@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Download, Upload, Sparkles, Image as ImageIcon, Trash2, Send, Check, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { aufstellerDNA, pruefeAufsteller } from "@/features/studio/heftAufsteller";
+import { signiereMedia } from "@/lib/media";
 
 type Kind = "bild" | "video";
 type Origin = "upload" | "erzeugt" | "edition";
@@ -164,7 +166,7 @@ export default function StudioMediathek() {
     }
   };
 
-  const useOnProduct = async (row: MediaRow, productId: string) => {
+  const aufProduktVerwenden = async (row: MediaRow, productId: string) => {
     if (!productId) return;
     setBusyId(row.id);
     try {
@@ -180,6 +182,43 @@ export default function StudioMediathek() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const imHeftVerwenden = async (row: MediaRow, productId: string) => {
+    if (!productId || !designer || !user || busyId) return;
+    setBusyId(row.id);
+    try {
+      const url = await signiereMedia(row.url);
+      if (!url) throw new Error(t("studio.mediathek.cutout.failed"));
+      const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      if (!response.ok) throw new Error(t("studio.mediathek.cutout.failed"));
+      const blob = await response.blob();
+      if (!await pruefeAufsteller(blob)) throw new Error(t("studio.mediathek.cutout.transparent"));
+      const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+      const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+      const path = `${user.id}/heft/${hash}.${blob.type === "image/png" ? "png" : "webp"}`;
+      const { error: uploadError } = await supabase.storage.from("designer-media").upload(path, blob, { contentType: blob.type, upsert: false });
+      if (uploadError && !/already exists/i.test(uploadError.message) && String((uploadError as { statusCode?: string }).statusCode) !== "409") throw uploadError;
+      const { data: publicImage } = supabase.storage.from("designer-media").getPublicUrl(path);
+      // Auch vor einem noch ausstehenden Bucket-Deploy keinen kaputten Aufsteller speichern.
+      const probe = await fetch(publicImage.publicUrl, { method: "HEAD", signal: AbortSignal.timeout(15000) });
+      if (!probe.ok) throw new Error(t("studio.mediathek.cutout.unavailable"));
+      const { data: product, error: readError } = await supabase.from("products").select("product_dna")
+        .eq("id", productId).eq("designer_id", designer.id).single();
+      if (readError) throw readError;
+      let update = supabase.from("products").update({ product_dna: aufstellerDNA(product.product_dna, publicImage.publicUrl) })
+        .eq("id", productId).eq("designer_id", designer.id);
+      // Keine inzwischen von einem anderen Fenster bearbeitete DNA ueberschreiben.
+      update = product.product_dna === null ? update.is("product_dna", null) : update.filter("product_dna", "eq", JSON.stringify(product.product_dna));
+      const { data: saved, error: saveError } = await update.select("id").maybeSingle();
+      if (saveError) throw saveError;
+      if (!saved) throw new Error(t("studio.mediathek.cutout.conflict"));
+      toast.success(t("studio.mediathek.cutout.done"));
+    } catch (e) {
+      // Der inhaltsadressierte Upload bleibt wiederverwendbar, auch bei einem Konflikt.
+      // Nie loeschen: ein zweites Fenster koennte dieselbe Kopie bereits verknuepft haben.
+      toast.error((e as Error).message || t("studio.mediathek.cutout.failed"));
+    } finally { setBusyId(null); }
   };
 
   const markForBanner = async (row: MediaRow) => {
@@ -305,12 +344,27 @@ export default function StudioMediathek() {
 
                 {row.kind === "bild" && products.length > 0 && (
                   <label className="mt-2 flex items-center gap-2 text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground">
-                    <select defaultValue="" onChange={(e) => { const v = e.target.value; if (v) void useOnProduct(row, v); e.target.value = ""; }}
+                    <select defaultValue="" onChange={(e) => { const v = e.target.value; if (v) void aufProduktVerwenden(row, v); e.target.value = ""; }}
                       className="min-h-[32px] flex-1 border border-border bg-white px-2 py-1 text-[0.68rem] normal-case tracking-normal text-foreground">
                       <option value="">{t("studio.mediathek.useOnProduct")}</option>
                       {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </label>
+                )}
+
+                {row.kind === "bild" && products.length > 0 && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <label className="block text-xs">
+                      {t("studio.mediathek.cutout.label")}
+                      <select defaultValue="" disabled={busyId !== null}
+                        onChange={(e) => { const id = e.target.value; e.target.value = ""; if (id) void imHeftVerwenden(row, id); }}
+                        className="mt-2 min-h-[44px] w-full border border-border bg-white px-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                        <option value="">{t("studio.mediathek.cutout.choose")}</option>
+                        {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </label>
+                    <p className="mt-2 text-xs text-foreground">{t("studio.mediathek.cutout.hint")}</p>
+                  </div>
                 )}
 
                 {row.usages.some((u) => u.type === "produkt") && (

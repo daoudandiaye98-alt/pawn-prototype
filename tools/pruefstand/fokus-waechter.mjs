@@ -17,7 +17,7 @@
  * Endet mit Code 1, sobald ein neuer Fund dazukommt.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 /**
  * Was als Ersatz gilt: die Stelle nimmt den Rahmen weg UND setzt an derselben
@@ -60,7 +60,7 @@ function dateien(wurzel) {
 
 const funde = [];
 for (const pfad of dateien("src")) {
-  if (AUSNAHMEN.some((a) => pfad.startsWith(a))) continue;
+  if (AUSNAHMEN.some((a) => pfad.split(sep).join("/").startsWith(a))) continue;
   readFileSync(pfad, "utf8").split("\n").forEach((zeile, i) => {
     if (!FUND.test(zeile) || ERSATZ.test(zeile)) return;
     funde.push(`${pfad}:${i + 1}  ${zeile.trim().slice(0, 120)}`);

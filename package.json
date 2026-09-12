@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:heft": "node --test src/heft03/*.test.mjs",
+    "test:heft": "node --test --test-reporter=tap src/heft03/*.test.mjs",
+    "test:infra": "node --test scripts/verify/*.test.mjs",
+    "stand": "node scripts/projektstand.mjs",
+    "build:gewicht": "node scripts/verify/startgewicht.mjs",
     "test:watch": "vitest",
     "pruefstand": "tsx tools/pruefstand/lauf.ts"
   },

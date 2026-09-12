@@ -10,7 +10,7 @@
  * Endet mit 1, sobald eine Zusage gefallen ist. Letzte Zeile maschinenlesbar.
  */
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -280,7 +280,7 @@ function keineUmgezogenenLinks({ orte, ausnahmen = [] }) {
   const treffer = [];
   for (const ort of orte) {
     for (const datei of dateien(ort)) {
-      const rel = datei.slice(WURZEL.length + 1);
+      const rel = datei.slice(WURZEL.length + 1).split(sep).join("/");
       if (ausnahmen.some((a) => rel === a || rel.startsWith(a + "/"))) continue;
       const text = readFileSync(datei, "utf8");
       text.split("\n").forEach((zeile, i) => {
@@ -408,7 +408,7 @@ function nurWegweiser({ orte, adressen, ausnahmen = [] }) {
   const treffer = [];
   for (const ort of orte) {
     for (const datei of dateien(ort, [".ts", ".tsx", ".js", ".mjs"])) {
-      const rel = datei.slice(WURZEL.length + 1);
+      const rel = datei.slice(WURZEL.length + 1).split(sep).join("/");
       if (ausnahmen.some((a) => rel === a)) continue;
       readFileSync(datei, "utf8").split("\n").forEach((zeile, i) => {
         if (/^\s*(\*|\/\/)/.test(zeile)) return;

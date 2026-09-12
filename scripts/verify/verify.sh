@@ -15,8 +15,8 @@ cd "$(dirname "$0")/../.."
 
 MODUS="${1:-schnell}"
 case "$MODUS" in
-  schnell) PRUEFUNGEN=(tsc tests heft regression kette rls) ;;
-  voll)    PRUEFUNGEN=(tsc tests heft regression kette rls build sicht) ;;
+  schnell) PRUEFUNGEN=(tsc tests heft infra regression kette rls) ;;
+  voll)    PRUEFUNGEN=(tsc tests heft infra regression kette rls build sicht) ;;
   *) echo "Aufruf: verify.sh [schnell|voll]" >&2; exit 64 ;;
 esac
 
@@ -50,6 +50,7 @@ fuehre() {
 # wurde von keiner Datei angelegt. Seit 20260721230100_acquisition_leads_basis.sql ist
 # die Luecke zu, und eine gruene Pruefung gehoert ins Tor.
 kette() { node scripts/verify/migrationen-kette.mjs; }
+infra() { npm run test:infra; }
 
 rls() { node scripts/verify/rls-anon.mjs; }
 
@@ -87,6 +88,7 @@ for p in "${PRUEFUNGEN[@]}"; do
     tsc)        fuehre tsc        scripts/verify/tsc.sh ;;
     tests)      fuehre tests      tests ;;
     heft)       fuehre heft       heft ;;
+    infra)      fuehre infra      infra ;;
     regression) fuehre regression scripts/verify/regression.sh ;;
     kette)      fuehre kette      kette ;;
     rls)        fuehre rls        rls ;;

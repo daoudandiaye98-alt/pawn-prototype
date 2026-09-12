@@ -1,3 +1,4 @@
+import { begrenzeBypass } from "../../scripts/verify/bypass.mjs";
 /**
  * Teil P — der Einstiegspunkt.
  *
@@ -25,21 +26,9 @@ import {
 
 const ORDNER = join(process.cwd(), "tools", "pruefstand", "artefakte");
 
-/**
- * Die Vercel-Vorschau ist standardmäßig gesperrt: JEDE Anfrage, auch die auf ein
- * `.webp`, antwortet mit 302 auf `vercel.com/sso-api`. Ein Lauf dagegen würde die
- * Anmeldeseite vermessen und lauter grüne Zahlen liefern, die nichts bedeuten.
- *
- * „Protection Bypass for Automation" hebt das auf. Das Geheimnis liegt in den
- * GitHub-Secrets, kommt über die Umgebung herein und wird NIE hier notiert. Es
- * geht als Kopfzeile an jede Anfrage des Browsers mit — auch an die Bilder,
- * nicht nur an das Dokument.
- *
- * Fehlt es, wird nichts mitgeschickt. Dann trifft der Lauf die Sperre und meldet
- * das als Umleitung, statt still etwas Falsches zu messen.
- */
+// Only the origin verified by the deployment gate may receive the secret.
 const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
-const ZUSATZ_KOPFZEILEN = BYPASS ? { "x-vercel-protection-bypass": BYPASS } : undefined;
+const BYPASS_ORIGIN = process.env.PAWN_BYPASS_ORIGIN?.trim();
 
 /**
  * tsx/esbuild hängt an benannte Funktionen einen Helfer `__name`, den es im Browser
@@ -180,8 +169,9 @@ async function seiteMessen(
     isMobile: breite.eingabe === "finger",
     locale: "de-DE",
     reducedMotion: ruhigeBewegung ? "reduce" : "no-preference",
-    extraHTTPHeaders: ZUSATZ_KOPFZEILEN,
+    serviceWorkers: "block",
   });
+  await begrenzeBypass(page.context(), BYPASS_ORIGIN, BYPASS);
   await nameHelferSetzen(page);
   const befunde: Befund[] = [];
 
@@ -372,7 +362,8 @@ async function seiteMessen(
 /** 4.3 Wege · 4.5 404 — beides über echte Anfragen, einmal je Lauf. */
 async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   const befunde: Befund[] = [];
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: "de-DE", serviceWorkers: "block" });
+  await begrenzeBypass(page.context(), BYPASS_ORIGIN, BYPASS);
   await nameHelferSetzen(page);
   try {
     await page.goto(basis + "/", { waitUntil: "domcontentloaded", timeout: 45_000 });
@@ -462,7 +453,7 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
      * (pawn.vision) urteilt 4.5 unverändert hart, und eine VORHANDENE Spur wird
      * auch hinter der Sperre normal gewertet.
      */
-    const hinterDerSperre = !!BYPASS && !spur;
+    const hinterDerSperre = !!BYPASS && BYPASS_ORIGIN === new URL(basis).origin && !spur;
 
     befunde.push({
       kontrolle: "4.5", gate: true,

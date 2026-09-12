@@ -1083,3 +1083,16 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .zugang-oder{display:flex;align-items:center;gap:14px;margin:26px 0 4px}
 .zugang-oder:before,.zugang-oder:after{content:'';flex:1;height:1px;background:#c3baa9}
 .zugang-oder span{font:400 9px Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557}
+
+/* Hochkant: die spaetere .is-reading-Regel drueckte das Folio auf 40px zusammen.
+   Kapitel, Zaehler und Lesehinweis brauchen zwei eigene Zeilen. */
+@media(max-width:759px){
+ .is-reading footer{bottom:8px;height:76px;padding-top:0;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:44px auto;align-items:center;gap:0 8px}
+ .is-reading footer .page-id{min-width:0;gap:8px;white-space:nowrap}
+ .is-reading footer #section-label{min-width:0;overflow:hidden;text-overflow:ellipsis;letter-spacing:.1em}
+ .is-reading footer #counter{font-size:12px;white-space:nowrap}
+ .is-reading footer .divider{width:12px;flex-shrink:0}
+ .is-reading footer .pagination{position:static;transform:none;margin:0;gap:4px;justify-self:end}
+ .is-reading footer .pagination>button{width:44px;height:44px}
+ .is-reading footer #scroll-hint{position:static;grid-column:1/-1;font-size:10px;line-height:1.4;color:#655e54}
+}

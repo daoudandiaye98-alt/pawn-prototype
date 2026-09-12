@@ -1,6 +1,6 @@
 {
-  "aktualisiert": "2026-09-11",
-  "branch": "claude/teil-l-stand",
+  "aktualisiert": "2026-09-12",
+  "branch": "codex/pawn-optimierung-20260912",
   "offene_prs": [
     {
       "nr": 183,
@@ -10,37 +10,11 @@
     }
   ],
   "merge_reihenfolge": [
-    "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. main = 22471bc. Gemergt: #187, #188, #189, #190, #191, #192. Nachgeprueft auf origin/main, nicht vermutet: src/features/auth/tueren.ts, src/features/auth/registrieren.ts, src/heft03/uebernahme.mjs liegen dort, und sections.konto beginnt mit 'zugang'.",
+    "Hauptzweig nach erneutem Fetch: 8f1e3b4 (12.09.2026), einschliesslich PR #194 und danach neuer Studio-/Adminseiten, Drizzle-Migrationen, freistellen und anprobe. Alle Aenderungen in diese Arbeitskopie uebernommen. Kein Nachweis ihres Live-Deploys.",
     "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten 'merged', aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind.",
-    "LIVE auf main: L5/L6 (Zugang-Doppelseite als erste Seite von /konto), L7 (Passwort-Wiederholung an EINER Stelle: features/auth/registrieren.ts), L8 (drei Publikumstueren), L9 (Google kehrt zurueck), L10 (/auth ist Wegweiser auf /konto), L11 (Uebernahme der Gastdaten), L12 (ein Waechter, drei entfernt), L13 (Anklopfen statt 6-Sekunden-Frist), L16 (heft.d.ts). Zusagen Z11, Z12, Z13 neu, alle einmal rot vorgefuehrt.",
-    "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen auf cnxtdcifkrdxvajaikxq. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
-    "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
-    "DIE NEUE PRUEFUNG: scripts/verify/migrationen-kette.mjs. Rot am echten Ordner, gruen an einer geschlossenen Kopie — beide Richtungen vorgefuehrt. ABSICHTLICH NOCH NICHT in verify.sh schnell, weil sie heute echt rot ist und eine dauerhaft rote Pruefung im Tor lehrt, Rot zu uebersehen. Verdrahten, sobald die Luecke zu ist.",
-    "WIEDERAUFSETZEN OHNE RATEN: mcp Supabase list_migrations zeigt die 35 gelegten Dateien. Der Stapel-Drucker liegt im Scratchpad (stapel.py + stapel.json, 41 Stapel); Stapel 14 ist der naechste, danach der Sentinel zz_ende, dann die Abnahme, dann types.ts neu.",
-    "L11 WEICHT AB, mit Begruendung: merge_anon_session KANN kunden_stil und wishlists nicht tragen. Beide haben user_id als Schluessel mit Fremdschluessel auf auth.users, jede Policy verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner der beiden. Ein Gast hat dort nie eine Zeile. Die Uebernahme passiert deshalb beim Anmelden im Heft (src/heft03/uebernahme.mjs). Der andere Weg waere eine neue anonyme Schreibflaeche auf der Zahlungsdatenbank — das braucht Daoudas Wort.",
-    "DER RUECKWEG IST VORGEFUEHRT: drop schema public cascade + Historie leeren. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
-    "DIE BUCHHALTUNG: ein BEFORE-INSERT-Trigger auf supabase_migrations.schema_migrations setzt die Version aus dem Dateinamen und unterdrueckt jede fremde Zeile. Beim Sentinel-Namen 'zz_ende' entfernt er sich selbst.",
-    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet.",
-    "DER PRUEFER HAT EINEN FEHLER IN MEINEM BERICHT GEFUNDEN: 12 von 13 bestaetigt, EINER widerlegt (ein Verweis auf /auth stand noch in der Aufwaermliste der englischen Fassung). Repariert UND gedeckt: Zusage Z13 mit der Kontrolle nurWegweiser, einmal rot vorgefuehrt."
-  ],
-  "wartet_auf_mensch": [
-    "DIE 119 GEFALLENEN LAUNCH GATES, neu und zum ersten Mal belegt: 4.7 Seitengewicht, 3.5 Trefferflaechen, 3.3 Kontrast, 3.4 Tastaturfokus. Sie auf die Norm zu ziehen aendert das AUSSEHEN des Hefts — und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Vorher sind zwei Zweifel zu klaeren (3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand) — niemand soll Gestaltung aendern, wo ein Messfehler sitzt. Vollstaendig im Kommentar an PR #194.",
-    "L15 FREISTELLEN — der Auftragssatz ist klar, aber die genannte Vorlage widerspricht ihm, und deshalb wird hier nicht gebaut: src/heft03/referenz/freistellen.py sagt in ihrem eigenen Kopf ‚NICHT auf echte Produktfotos anwenden — gruene Kleidung wuerde zerstoert. Fuer reale Ware gehoert eine Segmentierung in die Medienpipeline.‘ Sie schlaegt einen Farbbereich frei, kein Motiv. Auf einem echten Werkbild loescht sie Teile des Stuecks. FRAGE, die nur Daouda beantworten kann: soll das Freistellen ueber die bestehende Edge Function generate-product-shot laufen (kostet FAL-Guthaben je Bild), oder ueber etwas anderes? Ohne diese Antwort wuerde ich raten, und ein Rateschluss loescht echte Werkbilder.",
-    "F2 — DIE WEISSE SEITE BEIM BLAETTERN, nicht nachstellbar und deshalb nicht repariert. Im Container laesst sich die Doppelseite nicht aufschlagen: WebGL laeuft, die Buehne rendert, aber nach 40 Scroll-Schritten existiert kein .spread im DOM. Ich kann die Ursache nicht belegen und rate nicht. Was hilft: eine Aufnahme mitten in der Drehung, oder die Antwort auf die Frage, ob es beim ersten Blaettern passiert oder bei jedem.",
-    "F1 — gebaut, aber IM CONTAINER NICHT BEWIESEN. Gemessen wurde mit echtem Chromium gegen den gebauten Stand, die Fassung MIT und OHNE Reparatur: beide Laeufe sind ununterscheidbar (Geruest erscheint nach 12,7 s, 39 ms spaeter ist die Gestaltung da). Der Grund: vite preview liefert das CSS von 127.0.0.1 sofort, das Zeitfenster, in dem Daouda das Aufblitzen sieht, entsteht erst ueber eine echte Leitung. Die Vercel-Vorschau ist vom Container aus nicht lesbar (302 auf die Anmeldung, das Umgehungsgeheimnis liegt nicht hier). DER BEWEIS IST DAOUDAS BLICK: pawn.vision aufrufen und sehen, ob links noch ein unformatierter Block aufblitzt.",
-    "PR #194 ansehen und mergen — sonst bleibt die Kette offen.",
-    "NEBENFUND, unveraendert: ai_config.jarvis_cron_secret steht im Klartext im Repo (20260721221200_jarvis_wissen_postfach_dna.sql). Wer das Repo liest, kann Jarvis-Laeufe ohne Admin-Login ausloesen. Steht in der Git-Geschichte, laesst sich nicht herausloeschen — der WERT muss getauscht werden, sobald die Kette steht.",
-    "NEBENFUND, unveraendert: ein pg_cron-Nachtjob (compute-trends-daily, 3:15 Uhr) postet fest verdrahtet an die geloeschte alte Datenbank rnakubexbqfgfciynqpt. Gehoert in eine eigene spaetere Migration, nicht in eine bestehende.",
-    "Google-Anmeldung im neuen Supabase-Projekt einrichten (Client-ID und -Geheimnis) — ohne das bleibt der Knopf aus L9 ohne Wirkung.",
-    "Site URL und Redirect URLs im neuen Projekt auf https://pawn.vision setzen.",
-    "service_role-Schluessel des neuen Projekts setzen.",
-    "Die 17 Function-Geheimnisse (Liste in docs/teil-k/umzug-stand.md Abschnitt 6, auf PR #188).",
-    "Stripe-Webhook auf https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/stripe-webhook — VOR den Vercel-Variablen.",
-    "Vercel-Variablen (Production und Preview) — NACH dem Stripe-Webhook.",
-    ".env aus dem Repo nehmen (nur Schluesselnamen in die Uebergabe, nie Werte).",
-    "ai_config und brand_knowledge inhaltlich nachtragen.",
-    "Die Nachricht an die Haeuser freigeben (L14) — gesendet wird nichts ohne Freigabe.",
-    "seed-testaccounts hat dieselbe offene Tuer wie seed-admin (verify_jwt = false, kein Auth-Check). Nicht angefasst, weil kein Auftrag dazu vorliegt — aber sie gehoert geschlossen oder geloescht."
+    "Teil M ergaenzt acquisition_leads und die Migrationspruefung. scripts/verify/verify.sh fuehrt die Kettenpruefung inzwischen aus. Die normale chronologische Ausfuehrung und der Stand der entfernten Datenbank muessen weiterhin getrennt verifiziert werden.",
+    "Datenbank-Uebergabe aus Teil L ist historisch (35 angewandte Migrationen, Stapel 14 offen). Vor jeder Fortsetzung den heutigen Datenbankstand ablesen; keine alten Stapel blind erneut ausfuehren.",
+    "Optimierung auf 8f1e3b4 integriert. Neue Verwaltungsseiten ebenfalls bedarfsweise geladen. npm-Lockdatei an die auf main hinzugekommenen Entwicklungsabhaengigkeiten angepasst. Noch kein Merge oder Deploy dieses Zweigs."
   ],
   "letzter_pruefstand": {
     "datum": "2026-09-11",
@@ -55,20 +29,7 @@
     "nicht_pruefbar": 288,
     "offene_frage": "Warum bleiben 288 Gates unmessbar? Das ist die naechste Frage AM PRUEFSTAND, nicht an PR #194. Und: ob der Runner das neue Projekt erreicht, ist damit BEANTWORTET — die Seiten kamen mit Inhalt an (/haus/..., /werk/..., '0 Arbeiten' als ehrlicher Leerzustand)."
   },
-  "naechster_zug": "Zwei Entscheidungen von Daouda, sonst geht nichts weiter. ERSTENS acquisition_leads (blockiert L1, L2, L3, L4, L18): Weg A = neue Migration, Form aus der alten types.ts ableiten (58 Spalten minus das, was die 24 spaeteren Dateien selbst anlegen), nachpruefbar — Empfehlung. Weg B = Akquise beim Erstaufbau weglassen. ZWEITENS L15 Freistellen: der Auftragstext liegt nicht im Repo, raten waere schlimmer als fragen. Sobald A oder B steht: Stapel 14 bis 41 spielen, dann zz_ende, dann Abnahme, dann types.ts neu, dann L2/L18/L4/L3.",
-  "nicht_pruefbar": [
-    "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
-    "F1 IST DIE LEHRREICHSTE MESSUNG DIESER RUNDE: ich habe es mit echtem Chromium versucht, gegen den gebauten Stand, beide Fassungen — mit und ohne Reparatur. Beide Laeufe sind ZEICHENGLEICH: das Geruest erscheint nach 12,7 s, 39 ms spaeter greift die Gestaltung. Die Messung kann die Reparatur nicht von ihrem Fehlen unterscheiden, also beweist sie nichts. Gesagt statt behauptet. Der Grund: vite preview liefert das CSS ohne Verzoegerung von 127.0.0.1. Die Vercel-Vorschau, wo es zu sehen waere, antwortet dem Container mit 302 auf die Anmeldung.",
-    "F2 ist im Container nicht nachstellbar: nach 40 Scroll-Schritten existiert kein .spread im DOM. Die Doppelseite laesst sich hier nicht aufschlagen, also auch nicht umblaettern.",
-    "DIE NEUE MIGRATION IST NICHT GELAUFEN. Sie ist gegen die Dateien geprueft (Kette gruen, Spaltenrechnung zweimal unabhaengig), aber nie auf einer Datenbank angewandt. Der erste echte Beweis ist Stapel 14, und der braucht den Merge.",
-    "DER ERSTE PROSA-BEFUND ZUR FORM: ob die 15 Spalten wirklich die Form der alten Tabelle sind, zeigt sich endgueltig erst NACH allen 24 spaeteren Dateien — dann muss die Tabelle exakt 59 Spalten haben. Das ist die Abnahme, die in L1 noch aussteht.",
-    "FOLGE, und das ist der wichtigste Satz dieser Uebergabe: kein Werkzeug dieses Projekts hat das Heft je mit echten Haeusern gesehen. Nicht der Entwicklungscontainer (12,7 s bis zur ersten Seite, kein Netz zur Datenbank), nicht der Pruefstand (blind, Chromium auf dem Runner loest die Datenbank nicht auf), nicht der Pruefer (liest Code, keine Seite). Der einzige Beweis ueber echte Daten ist ein Mensch auf pawn.vision.",
-    "DER KAUF-WEG: Werk -> Tasche -> Stripe ist durch Tests gedeckt (tasche.test.mjs, Zusage Z7) und im Browser mit Fixture-Zeilen durchgeklickt — nie mit einer echten Datenbank bis zur Kasse. Dieser Beweis fehlt weiter, und er betrifft Geld.",
-    "DIE SICHTEN: supabaseQuelle laeuft mit sichten:false. Ob der eingebettete Join products->designers ueber heft_produkte funktioniert, zeigt sich erst nach der Migration.",
-    "DIE EDGE FUNCTIONS: Deno ist im Container nicht vorhanden. pawn-chat ist nur auf Syntax geprueft.",
-    "DREI BLINDE PRUEFSTANDSLAEUFE aus der Zeit DAVOR, belegt: #104 (1 von 674 messbar), #106 und #108 (1 von 1104). Dort loeste Chromium auf dem Runner die GELOESCHTE alte Datenbank nicht auf (net::ERR_NAME_NOT_RESOLVED, 24 bis 60 Anfragen je Seite). Andere Ursache als Lauf #150.",
-    "NEBENBEI AUFGEFALLEN, unbelegt, nicht von Teil M: bei der Fokus-Messung stand die KOPFZEILE auf ENGLISCH ('Fashion', 'Our Houses', 'Your DNA', 'Ask PAWN', 'For designers'). Nach Entscheidung D2 soll die englische Fassung erst nach dem Launch kommen. autoTranslate nimmt #reader-layer und #mobile-reader aus — die Kopfzeile aber nicht. Ob das gewollt ist, weiss ich nicht; nicht angefasst, nur notiert."
-  ],
+  "naechster_zug": "Integrierten Optimierungszweig abschliessend pruefen und als Draft-PR uebergeben. Danach Vorschau desselben Commits pruefen; seed-testaccounts gesondert ueber Lovable deployen.",
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
     "datum": "2026-09-11",
@@ -98,9 +59,69 @@
     }
   },
   "letzter_pruefer": {
-    "datum": "2026-09-11",
-    "gegenstand": "14 Behauptungen zu PR #194 (Teil M)",
-    "ergebnis": "14 bestaetigt · 0 widerlegt · 0 nicht pruefbar",
-    "was_er_selbst_gemessen_hat": "Die Spaltenrechnung 59/44/15 eigenstaendig nachgerechnet · die Kette in einer Kopie ohne die Basis-Datei rot vorgefuehrt (Exit 1, FEHLER: acquisition_leads) · --ordnung auf Vollstaendigkeit geprueft (163 Zeilen, sort -u ebenfalls 163) · seed-admin aus `git show HEAD~1` gelesen und den fehlenden Auth-Check sowie das hartcodierte Passwort bestaetigt · has_role in einer frueher sortierten Migration gefunden"
-  }
+    "datum": "2026-09-12",
+    "gegenstand": "Optimierung: Deployment-Vertrauen, Bypass-Header, Aufsteller, Testkonto-Tombstone",
+    "ergebnis": "Anfangs Bypass-Blocker gefunden; nach Korrektur im engen Nachcheck kein weiterer Blocker. 9/9 gezielte Tests vom Pruefer selbst bestanden.",
+    "grenze": "Kein Live-Deploy- oder RLS-Nachweis; neue Hauptzweig-Integration danach erfolgt."
+  },
+  "optimierung_2026_09_12": {
+    "basis": "8f1e3b4",
+    "status": "mit aktuellem Hauptzweig integriert; erneute Verifikation laeuft",
+    "arbeitskopie": "work/pawn-optimierung",
+    "umfang": [
+      "70 Seiten bedarfsweise laden (einschliesslich drei neuer Seiten auf main)",
+      "Deployment anhand Build-Marker pruefen",
+      "Obsidian-Startseite und erzeugter Git-Stand",
+      "Transparente Aufsteller validieren und mit bestehender Produkt-DNA verbinden",
+      "seed-testaccounts durch nebenwirkungsfreien HTTP-410-Tombstone ersetzen"
+    ],
+    "verifikation": "Vor Hauptzweig-Abgleich: 349 Vitest, 46 Heft, 10 Infra, 15 Regressionen bestanden; Build und TypeScript gruen. Browser 1440/390 mit isolierten Fixtures inkl. Login, Alpha-Ablehnung/Zuordnung und mobilem Footer bestanden. Pruefer bestaetigt Bypass-Korrektur, 9 eigene gezielte Tests gruen. Live/RLS nicht geprueft.",
+    "backend_deploy": [
+      "seed-testaccounts"
+    ],
+    "datenbank": "Keine Migration oder Policy geaendert; kein Live-DB-Test ausgefuehrt.",
+    "urspruengliche_messbasis": "8379bd0"
+  },
+  "historische_offene_punkte_2026_09_11": {
+    "hinweis": "Historische Uebergabe, keine aktuelle Aussage ueber Deploys oder Datenbank. Hauptzweig 8f1e3b4 enthaelt inzwischen weitere Arbeiten. Vor Fortsetzung live abgleichen.",
+    "wartet_auf_mensch": [
+      "DIE 119 GEFALLENEN LAUNCH GATES, neu und zum ersten Mal belegt: 4.7 Seitengewicht, 3.5 Trefferflaechen, 3.3 Kontrast, 3.4 Tastaturfokus. Sie auf die Norm zu ziehen aendert das AUSSEHEN des Hefts — und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Vorher sind zwei Zweifel zu klaeren (3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand) — niemand soll Gestaltung aendern, wo ein Messfehler sitzt. Vollstaendig im Kommentar an PR #194.",
+      "F2 — DIE WEISSE SEITE BEIM BLAETTERN, nicht nachstellbar und deshalb nicht repariert. Im Container laesst sich die Doppelseite nicht aufschlagen: WebGL laeuft, die Buehne rendert, aber nach 40 Scroll-Schritten existiert kein .spread im DOM. Ich kann die Ursache nicht belegen und rate nicht. Was hilft: eine Aufnahme mitten in der Drehung, oder die Antwort auf die Frage, ob es beim ersten Blaettern passiert oder bei jedem.",
+      "F1 — gebaut, aber IM CONTAINER NICHT BEWIESEN. Gemessen wurde mit echtem Chromium gegen den gebauten Stand, die Fassung MIT und OHNE Reparatur: beide Laeufe sind ununterscheidbar (Geruest erscheint nach 12,7 s, 39 ms spaeter ist die Gestaltung da). Der Grund: vite preview liefert das CSS von 127.0.0.1 sofort, das Zeitfenster, in dem Daouda das Aufblitzen sieht, entsteht erst ueber eine echte Leitung. Die Vercel-Vorschau ist vom Container aus nicht lesbar (302 auf die Anmeldung, das Umgehungsgeheimnis liegt nicht hier). DER BEWEIS IST DAOUDAS BLICK: pawn.vision aufrufen und sehen, ob links noch ein unformatierter Block aufblitzt.",
+      "NEBENFUND, unveraendert: ai_config.jarvis_cron_secret steht im Klartext im Repo (20260721221200_jarvis_wissen_postfach_dna.sql). Wer das Repo liest, kann Jarvis-Laeufe ohne Admin-Login ausloesen. Steht in der Git-Geschichte, laesst sich nicht herausloeschen — der WERT muss getauscht werden, sobald die Kette steht.",
+      "NEBENFUND, unveraendert: ein pg_cron-Nachtjob (compute-trends-daily, 3:15 Uhr) postet fest verdrahtet an die geloeschte alte Datenbank rnakubexbqfgfciynqpt. Gehoert in eine eigene spaetere Migration, nicht in eine bestehende.",
+      "Google-Anmeldung im neuen Supabase-Projekt einrichten (Client-ID und -Geheimnis) — ohne das bleibt der Knopf aus L9 ohne Wirkung.",
+      "Site URL und Redirect URLs im neuen Projekt auf https://pawn.vision setzen.",
+      "service_role-Schluessel des neuen Projekts setzen.",
+      "Die 17 Function-Geheimnisse (Liste in docs/teil-k/umzug-stand.md Abschnitt 6, auf PR #188).",
+      "Stripe-Webhook auf https://cnxtdcifkrdxvajaikxq.supabase.co/functions/v1/stripe-webhook — VOR den Vercel-Variablen.",
+      "Vercel-Variablen (Production und Preview) — NACH dem Stripe-Webhook.",
+      ".env aus dem Repo nehmen (nur Schluesselnamen in die Uebergabe, nie Werte).",
+      "ai_config und brand_knowledge inhaltlich nachtragen.",
+      "Die Nachricht an die Haeuser freigeben (L14) — gesendet wird nichts ohne Freigabe.",
+      "Automatische Freistellung: echte autorisierte Produktbilder fuer einen Qualitaetsvergleich fehlen hier. Der neue Mediathek-Weg verbindet bereits transparente Dateien; der bisherige Studiofoto-Dienst wird nicht als Alpha-Freistellung ausgegeben.",
+      "seed-testaccounts: Tombstone im Optimierungszweig getestet. Gesonderter Lovable-Deploy notwendig; alte Live-Fassung nicht aufrufen."
+    ],
+    "nicht_pruefbar": [
+      "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
+      "F1 IST DIE LEHRREICHSTE MESSUNG DIESER RUNDE: ich habe es mit echtem Chromium versucht, gegen den gebauten Stand, beide Fassungen — mit und ohne Reparatur. Beide Laeufe sind ZEICHENGLEICH: das Geruest erscheint nach 12,7 s, 39 ms spaeter greift die Gestaltung. Die Messung kann die Reparatur nicht von ihrem Fehlen unterscheiden, also beweist sie nichts. Gesagt statt behauptet. Der Grund: vite preview liefert das CSS ohne Verzoegerung von 127.0.0.1. Die Vercel-Vorschau, wo es zu sehen waere, antwortet dem Container mit 302 auf die Anmeldung.",
+      "F2 ist im Container nicht nachstellbar: nach 40 Scroll-Schritten existiert kein .spread im DOM. Die Doppelseite laesst sich hier nicht aufschlagen, also auch nicht umblaettern.",
+      "DIE NEUE MIGRATION IST NICHT GELAUFEN. Sie ist gegen die Dateien geprueft (Kette gruen, Spaltenrechnung zweimal unabhaengig), aber nie auf einer Datenbank angewandt. Der erste echte Beweis ist Stapel 14, und der braucht den Merge.",
+      "DER ERSTE PROSA-BEFUND ZUR FORM: ob die 15 Spalten wirklich die Form der alten Tabelle sind, zeigt sich endgueltig erst NACH allen 24 spaeteren Dateien — dann muss die Tabelle exakt 59 Spalten haben. Das ist die Abnahme, die in L1 noch aussteht.",
+      "FOLGE, und das ist der wichtigste Satz dieser Uebergabe: kein Werkzeug dieses Projekts hat das Heft je mit echten Haeusern gesehen. Nicht der Entwicklungscontainer (12,7 s bis zur ersten Seite, kein Netz zur Datenbank), nicht der Pruefstand (blind, Chromium auf dem Runner loest die Datenbank nicht auf), nicht der Pruefer (liest Code, keine Seite). Der einzige Beweis ueber echte Daten ist ein Mensch auf pawn.vision.",
+      "DER KAUF-WEG: Werk -> Tasche -> Stripe ist durch Tests gedeckt (tasche.test.mjs, Zusage Z7) und im Browser mit Fixture-Zeilen durchgeklickt — nie mit einer echten Datenbank bis zur Kasse. Dieser Beweis fehlt weiter, und er betrifft Geld.",
+      "DIE SICHTEN: supabaseQuelle laeuft mit sichten:false. Ob der eingebettete Join products->designers ueber heft_produkte funktioniert, zeigt sich erst nach der Migration.",
+      "DIE EDGE FUNCTIONS: Deno ist im Container nicht vorhanden. pawn-chat ist nur auf Syntax geprueft.",
+      "DREI BLINDE PRUEFSTANDSLAEUFE aus der Zeit DAVOR, belegt: #104 (1 von 674 messbar), #106 und #108 (1 von 1104). Dort loeste Chromium auf dem Runner die GELOESCHTE alte Datenbank nicht auf (net::ERR_NAME_NOT_RESOLVED, 24 bis 60 Anfragen je Seite). Andere Ursache als Lauf #150.",
+      "NEBENBEI AUFGEFALLEN, unbelegt, nicht von Teil M: bei der Fokus-Messung stand die KOPFZEILE auf ENGLISCH ('Fashion', 'Our Houses', 'Your DNA', 'Ask PAWN', 'For designers'). Nach Entscheidung D2 soll die englische Fassung erst nach dem Launch kommen. autoTranslate nimmt #reader-layer und #mobile-reader aus — die Kopfzeile aber nicht. Ob das gewollt ist, weiss ich nicht; nicht angefasst, nur notiert."
+    ]
+  },
+  "wartet_auf_mensch": [
+    "seed-testaccounts ueber Lovable als Tombstone ausliefern; im Code stillgelegt, nicht als Live-Deploy bestaetigt.",
+    "Freistellen/anprobe aus dem neuen Hauptzweig: echte autorisierte Produktbilder fuer Qualitaets- und Kostenabnahme; in dieser Runde keine KI-Auftraege ausgeloest."
+  ],
+  "nicht_pruefbar": [
+    "Live-RLS und Storage-Voraussetzungen: kein authentifizierter Backend-Test in dieser Runde.",
+    "Aktueller Migrations-/Deploystand und echter Kauf bis Stripe nicht Teil der isolierten Browserabnahme."
+  ]
 }
