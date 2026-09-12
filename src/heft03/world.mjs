@@ -271,11 +271,26 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   stage.root.traverse(o=>{if(o.isMesh){o.material=o.material.clone();stage.materials.push(o.material);}});
   cache.set(id+style+(pieces||[]).join(),stage);return stage;
  }
+ /**
+  * B3 — existiert eine Buehne, gewinnt sie. Existiert keine, bleibt alles beim
+  * Alten: displayAusHaus komponiert, makeStage stellt hin.
+  *
+  * Die Buehne haengt an displays[id].buehne, weil dort schon alles haengt, was
+  * eine Doppelseite ausmacht (data.mjs › displayAusHaus). Wer sie fuellt, ist
+  * B4 (studioQuelle); bis dahin ist das Feld leer und dieser Zweig laeuft nie.
+  *
+  * `version` gehoert in den Schluessel: wer eine Buehne umstellt und dieselbe
+  * Seite noch einmal aufschlaegt, soll die neue sehen und nicht die
+  * zwischengespeicherte alte.
+  */
  function display(id,pieces){
-  const schluessel=id+style+(pieces||[]).join();
+  const buehne=displays[id]?.buehne;
+  const schluessel=id+style+(pieces||[]).join()+(buehne?'|b'+(buehne.id||'')+'v'+(buehne.version||0):'');
   if(currentId===schluessel)return;
   if(currentStage)currentStage.root.visible=false;
-  currentStage=cache.get(schluessel)||makeStage(id,pieces);currentStage.root.visible=true;currentId=schluessel;letzteSignatur='';
+  currentStage=cache.get(schluessel)||(buehne?makeBuehne(buehne):makeStage(id,pieces));
+  if(buehne&&!cache.has(schluessel))cache.set(schluessel,currentStage);
+  currentStage.root.visible=true;currentId=schluessel;letzteSignatur='';
  }
  let letzteSignatur='';
  function render(pose,{angle=0,manualFold=1,interactive=false,search=false,paging=false}={}){
