@@ -319,11 +319,6 @@ export function extendedView(route,state){
    +'<p class="body-copy lead">Deine Linie entsteht von selbst — aus dem, was du ansiehst, dir merkst und kaufst.</p>'
    +'<ol class="schritte knapp hell"><li><span>01</span><strong>Ansehen</strong></li><li><span>02</span><strong>Merken</strong></li><li><span>03</span><strong>Kaufen</strong></li></ol>'
    +'<p class="bild-marke">'+(state.saved.length?state.saved.length+(state.saved.length===1?' gemerktes Stück liegt':' gemerkte Stücke liegen')+' schon vor.':'Du musst nichts ausfüllen. Willst du schneller sein: vier Bilder, zwei Minuten.')+'</p>'
-   // A6 — hier steht die eigene Figur. Sie lag seit dem Einzug (9ddd574) als toter Code
-   // herum: miniPawn() wurde nie aufgerufen, und die CSS-Regeln `.dna-einstieg
-   // .pawn-figure` zeigten ins Leere. Der Platz folgt dem, was das Stylesheet schon
-   // vorgesehen hatte — die Seite, auf der es um die eigene Linie geht.
-   +miniPawn(state)
    +zug('DEIN ZUG','Stilberatung starten','Vier Bilder. Zwei Minuten. Deine Linie.','data-page="'+nr('welt')+'"'),{welt:'dna',karte:true});
   if(name==='welt')return page(
    schritt(1)+'<h1>Tipp deine<br><em>Welt an.</em></h1>'+pawnSagt('Tipp eine Welt an. Die Seite blättert von selbst weiter.')
@@ -347,6 +342,12 @@ export function extendedView(route,state){
     tag('DEINE LINIE')+'<h1>'+esc(b.linie).replace(' & ','<br><em>&amp; ')+(b.linie.includes(' & ')?'</em>':'')+'</h1>'
     +(richtung?'<div class="recap-kachel gross"><img src="'+bildVon(richtung.bild)+'" alt=""><span><small>DEINE RICHTUNG</small><strong>'+esc(richtung.wert)+'</strong></span></div>':weltBild(260))
     +'<p class="tafel-legende">'+esc(b.satz)+'</p>'
+    // A6 — die eigene Figur, neben der eigenen Linie. Sie lag seit dem Einzug (9ddd574)
+    // als toter Code herum: miniPawn() wurde nie aufgerufen, und die CSS-Regeln
+    // `.dna-einstieg .pawn-figure` zeigten ins Leere. Sie steht hier und nicht auf der
+    // Einstiegskarte: die ist schwarz, und dort war die Figur dunkel auf dunkel — in der
+    // Aufnahme war der Rangname gar nicht zu lesen. Dies ist helles Papier.
+    +miniPawn(state)
     +button('Antworten ändern','data-page="'+nr('richtung')+'"'),
     tag(fragen.toUpperCase()+' / TIPP EIN STÜCK AN')+pawnSagt('Tipp ein Stück an. Ich sage dir, ob es zu deiner Linie passt — und warum.')
     +'<div class="fit-pieces'+(auswahl.length>2?' drei':'')+'">'+auswahl.map(p=>'<button data-fit="'+p.id+'" aria-pressed="'+(state.fitProduct===p.id?'true':'false')+'" class="'+(state.fitProduct===p.id?'an':'')+'"><img src="'+p.image+'" alt="'+esc(p.name)+'"><span>'+esc(p.name)+'</span></button>').join('')+'</div>'

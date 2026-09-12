@@ -193,6 +193,32 @@ test('der Code versteht jeden Bedingungsschluessel des echten Katalogs', () => {
     'weder ein Schluessel im Katalog ohne case im Code noch einer im Code ohne Katalog');
 });
 
+/**
+ * Die Ereignisse, die app.js WIRKLICH meldet — aus dem Quelltext gelesen.
+ *
+ * DER STILLE FEHLER dahinter: eine Regel im Katalog haengt an einem Ereignis. Meldet
+ * app.js dieses Ereignis nie, feuert die Regel nie — und nichts wird rot. Die Regel
+ * liegt dann als Karteileiche in der Datenbank, und niemand merkt es.
+ */
+function ereignisseAusAppJs() {
+  const quelle = readFileSync(new URL('./app.js', import.meta.url), 'utf8');
+  return [...new Set([...quelle.matchAll(/melden\('([a-z_]+)'/g)].map((m) => m[1]))].sort();
+}
+
+test('jedes Ereignis des Katalogs wird auch gemeldet — ausser denen spaeterer Bloecke', () => {
+  const gemeldet = new Set(ereignisseAusAppJs());
+  // Diese zwei entstehen erst mit Block C (Archetyp) und Block D (Anprobe). Steht der
+  // Block, faellt der Name hier raus und der Test verlangt die Verdrahtung.
+  const spaeter = new Set(['archetyp_bestaetigt', 'anprobe_fertig']);
+  const fehlt = katalog.ereignisse.filter((e) => !gemeldet.has(e) && !spaeter.has(e));
+  assert.deepEqual(fehlt, [], 'Regeln zu diesen Ereignissen koennten nie feuern');
+  // Und umgekehrt: was gemeldet wird, sollte der Katalog kennen — sonst redet der Code
+  // ins Leere. `blaettern` ist die eine bekannte Ausnahme (Auftrag O A2 nennt es, der
+  // Katalog hat dazu keine Regel).
+  const unbekannt = [...gemeldet].filter((e) => !katalog.ereignisse.includes(e) && e !== 'blaettern');
+  assert.deepEqual(unbekannt, [], 'gemeldet, aber im Katalog unbekannt');
+});
+
 test('jede Aktionsart des Katalogs hat eine Hand', () => {
   // Die vier Arten aus Auftrag O, A1 "Hände". Mehr gibt es nicht, weniger auch nicht.
   assert.deepEqual([...katalog.aktionsarten].sort(), ['anbieten', 'fuehren', 'oeffnen', 'sagen']);

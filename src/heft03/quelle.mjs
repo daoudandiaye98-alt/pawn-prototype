@@ -72,6 +72,21 @@ export function demoQuelle(){
 }
 
 // Spaltenmasken: Das öffentliche Heft liest NUR diese Spalten (designers exponiert per RLS auch Stripe-Felder).
+/**
+ * Was als Bild an pawn-chat gehen darf: eine einzige data-URL mit Bild-Typ, hoechstens
+ * 2 MB. Gemessen wird die KODIERTE Laenge — das ist, was wirklich ueber die Leitung
+ * geht; die Dateigroesse waere die falsche Zahl (base64 waechst um rund ein Drittel).
+ *
+ * Der Riegel sitzt hier an der Grenze und nicht nur am Knopf: wer chat() sonstwo
+ * aufruft, kann die Zusage nicht versehentlich brechen.
+ */
+export const BILD_GRENZE=2*1024*1024;
+export function bilderTauglich(bilder=[],grenze=BILD_GRENZE){
+ return (Array.isArray(bilder)?bilder:[bilder])
+  .filter(b=>typeof b==='string'&&/^data:image\/[a-z.+-]+;base64,/i.test(b)&&b.length<=grenze)
+  .slice(0,1);
+}
+
 export const SPALTEN={
  products:'id,slug,name,world,price,image_url,description,designer_note,product_dna,size_variants,measurements,material_composition,inventory_mode,stock_quantity,lead_time_days,tags,status,height_cm,width_cm,length_cm,made_in,care_instructions,edition_info,sustainability_note,vat_rate,designer_id,designers(id,slug,brand_name,verkaufsbereit)',
  designers:'id,slug,brand_name,house_number,status,published,page_published_at,plan,brand_dna,story,manifesto,quote,quote_role,collection_title,location,country,website,instagram,tags,hero_image_url,avatar_url,banner_url,portrait_url,atelier_image_url,atelier_caption,is_featured,verkaufsbereit',
@@ -164,7 +179,8 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    return heftAusZeilen({products:products||[],designers:designers||[],blocks:blocks||[],themes:themes||[],media:media||[],collection:collection||null,items:items||[]},{bild:bildAufgeloest});
   },
   async chat({messages=[],bilder=[],kontext={},session_id=sitzung()}={}){
-   const {data,error}=await client.functions.invoke('pawn-chat',{body:{messages,session_id,image_urls:bilder.length?bilder:undefined,page_context:{route:kontext.route||'/frag-pawn',product_slug:kontext.product_slug,heft:kontext}}});
+   const gesendet=bilderTauglich(bilder);
+   const {data,error}=await client.functions.invoke('pawn-chat',{body:{messages,session_id,image_urls:gesendet.length?gesendet:undefined,page_context:{route:kontext.route||'/frag-pawn',product_slug:kontext.product_slug,heft:kontext}}});
    if(error)return {reply:'',treffer:[],fehler:fehlerText(error)};
    const a=chatAntwort(data);
    if(a?.session_id){try{localStorage.setItem('palace.chat.session_id',a.session_id);}catch(e){}}

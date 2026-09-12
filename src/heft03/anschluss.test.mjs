@@ -8,7 +8,7 @@ import {pfadAusRoute,routeAusPfad,alleAdressen,UMZUEGE} from './routen.mjs';
 import {kuratiere} from './kuration.mjs';
 import {urteil,passform,befundAusWerken} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
-import {chatAntwort,SPALTEN,demoQuelle,bildLoeser} from './quelle.mjs';
+import {chatAntwort,SPALTEN,demoQuelle,bildLoeser,bilderTauglich,BILD_GRENZE} from './quelle.mjs';
 import {readView} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
@@ -108,6 +108,24 @@ test('Chat-Antwort: Karten werden zu Slugs, alte /product/-Adressen inklusive',(
  const a=chatAntwort({reply:'Schau dir das an.',cards:[{href:'/werk/lind-mantel-01'},{href:'/product/plisse-01?x=1'},{href:'/haus/drape'}],session_id:'s1'});
  assert.deepEqual(a.treffer,['lind-mantel-01','plisse-01']);assert.equal(a.session_id,'s1');
  assert.equal(chatAntwort(null),null);
+});
+
+test('An pawn-chat geht hoechstens ein Bild, und keines ueber 2 MB',()=>{
+ const klein='data:image/jpeg;base64,'+'A'.repeat(1000);
+ const gross='data:image/png;base64,'+'A'.repeat(BILD_GRENZE);
+ assert.deepEqual(bilderTauglich([klein]),[klein]);
+ // Die Grenze gilt fuer die KODIERTE Laenge — das ist, was gesendet wird.
+ assert.ok(gross.length>BILD_GRENZE);
+ assert.deepEqual(bilderTauglich([gross]),[],'zu gross geht gar nicht erst raus');
+ // Kein Bild, keine Zeichenkette, ein fremdes Schema: alles faellt weg.
+ assert.deepEqual(bilderTauglich([]),[]);
+ assert.deepEqual(bilderTauglich(['https://example.com/x.jpg']),[]);
+ assert.deepEqual(bilderTauglich(['data:text/html;base64,AAA']),[]);
+ assert.deepEqual(bilderTauglich([null,undefined,42]),[]);
+ // Hoechstens eines — image_urls[0], wie in Auftrag O A7.
+ assert.deepEqual(bilderTauglich([klein,klein]).length,1);
+ // Auch ein einzelnes Bild ohne Feld kommt an.
+ assert.deepEqual(bilderTauglich(klein),[klein]);
 });
 
 test('Spaltenmasken enthalten keine Stripe- oder Kontospalten',()=>{
