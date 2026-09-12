@@ -158,7 +158,10 @@
       "FUND_2_DEKO_VERDECKT_DEN_KLICK": "world.mjs:258 sucht mit .find(hit => hit.object.userData.cutout && alphaHit(...)) und liest danach ?.object.userData.product. Deko der Ebene 3 steht VOR den Werken. Trifft der Strahl zuerst eine undurchsichtige Deko-Stelle, liefert find() die Deko, product ist undefined — und das Werk dahinter wird UNKLICKBAR. „Deko ist nicht anklickbar\" reicht nicht: hit() muss Objekte ohne product ueberspringen statt sie als Treffer zu nehmen.",
       "GEPRUEFT_UND_BESTAETIGT": "Die staerkste Annahme haelt: heft_buehnen und heft_deko stehen mit genau den beschriebenen Spalten in src/integrations/supabase/types.ts. Nicht geraten.",
       "erster_schritt": "makeBuehne bauen, eine Buehne aus den heutigen makeStage-Werten zurueckrechnen, beide bei 1280 aufnehmen und die Bilder nebeneinander halten. Erst wenn sie deckungsgleich sind, stehen die Konstanten fest.",
-      "BRAUCHT_DAOUDA": "Lovable-Deploy von freistellen — sonst ist B8 eine Attrappe, und eine Attrappe war schon der Bild-Upload in Block A. Dazu die Entscheidung zur 3-Werke-Regel: der Trigger heft_buehne_pruefen verlangt drei Werke je Buehne, drape hat je Welt eins. Mit dem heutigen Bestand kann KEIN Haus eine Buehne veroeffentlichen."
+      "BRAUCHT_DAOUDA": "Lovable-Deploy von freistellen — sonst ist B8 eine Attrappe, und eine Attrappe war schon der Bild-Upload in Block A. Dazu die Entscheidung zur 3-Werke-Regel: der Trigger heft_buehne_pruefen verlangt drei Werke je Buehne, drape hat je Welt eins. Mit dem heutigen Bestand kann KEIN Haus eine Buehne veroeffentlichen.",
+      "B1_ERSTER_TEIL_LIEGT": "src/heft03/buehne.mjs mit 8 Tests: BUEHNE, buehneX/buehneZ, ebeneVon, klemmeStueck/klemmeDeko, fehltZumVeroeffentlichen. Konstanten berichtigt auf {breite:5.6, tiefe:1.067, z0:-0.073}; die Vorgabe haette die Werke um 0,41 bis 0,81 Einheiten nach hinten geschoben. Einmal rot vorgefuehrt mit den Zahlen des Auftrags.",
+      "FUND_2_IST_BEHOBEN": "world.mjs:258 prueft jetzt userData.product, BEVOR der Treffer gilt. Heute ein No-op — es gibt noch keine Deko —, also ohne Verhaltensaenderung: 353/353, 89/89, tsc 0, Bau gruen. Der Riegel sitzt, bevor die Deko kommt.",
+      "ALS_NAECHSTES": "makeBuehne in world.mjs (B1 zweiter Teil), mit Aufnahme gegen die heutige Buehne — jetzt moeglich, siehe AUGEN_FUER_DIE_BUEHNE."
     }
   },
   "EIN_FEHLER_VON_MIR_IN_DIESER_RUNDE": {
@@ -167,5 +170,14 @@
     "was_ihn_gefangen_hat": "Die Rot-Vorfuehrung von Z18 — also das Ritual selbst, nicht eine Pruefung, die schon da war.",
     "folge": "Z18 deckt jetzt die REIHENFOLGE der drei Welten (mode -> interior -> Auffang), nicht bloss den einen Satz.",
     "lehre_fuer_die_naechste_schicht": "Nach jedem Einsetzen eines Zweigs in eine if/else-Kette die Kette selbst nachzaehlen. Ein Textersatz, der einen Anker verschluckt, ist syntaktisch gueltig und faellt durch jede Pruefung, die den Rumpf nicht liest."
+  },
+  "AUGEN_FUER_DIE_BUEHNE": {
+    "DIE_FRAGE": "Teil 2 verlangt Aufnahmen als Abnahme („Buehne sichtbar → Aufnahme, 1280 und 390\"). Kann dieser Container die 3D-Buehne ueberhaupt rendern? Ohne Antwort waere jede Fertigmeldung zu Teil 2 eine Behauptung.",
+    "ANTWORT_JA_ABER_NUR_UEBER_DIST": "Gemessen am 12.09.: `npx vite preview --host 127.0.0.1 --port N` auf dem gebauten dist/ rendert die Buehne vollstaendig. Bei 1280x900 nach rund 12 s: canvas 1280x900, Ladeflaeche weg, drei Hotspots, echte Hausdaten („DRAPÉ. In Bewegung.\", „Wool Coat ansehen\"). KEINE Datenbank noetig — die Demo-Daten aus data.mjs und cutouts.json reichen.",
+    "DIE_SACKGASSE_DIE_ICH_ZUERST_LIEF": "src/heft03/referenz/index.html direkt auszuliefern rendert NICHTS: dreiD.mjs importiert `three` als blanken Namen, und ohne Buendler meldet der Browser „Failed to resolve module specifier three\". Kein canvas, Ladeflaeche bleibt stehen. Die Referenzseite taugt fuer reines CSS (so wurde Kontrolle 3.8 gemessen), nicht fuer die Buehne.",
+    "MERKREGEL": "Fuer alles mit drei Dimensionen: erst npm run build, dann vite preview auf dist. Fuer reines CSS und Textgeometrie reicht die Referenzseite.",
+    "WAS_NOCH_FEHLT": "Nach 14 s steht die Seite noch auf is-intro/is-opening — die Aufsteller erscheinen erst nach der Eroeffnung. Fuer eine Aufnahme der Buehne muss #skip geklickt werden. Die Eroeffnung dauert laut Block A 5,8 s + 2,6 s.",
+    "NEBENBEI_BESTAETIGT": "Die Kopfzeile steht auf ENGLISCH. Das ist der bereits unter wartet_auf_mensch notierte D2-Punkt, nicht neu und nicht von dieser Arbeit.",
+    "STOLPERSTEIN": "pkill -f \"vite preview\" trifft den eigenen Befehl mit, weil das Muster in dessen Kommandozeile steht. Exit 144. Enger fassen oder die PID merken."
   }
 }
