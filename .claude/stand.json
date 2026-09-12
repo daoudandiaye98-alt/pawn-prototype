@@ -3,6 +3,12 @@
   "branch": "claude/auftrag-o-begleiter",
   "offene_prs": [
     {
+      "nr": 196,
+      "titel": "Auftrag O, Block A — Der Begleiter",
+      "status": "Draft, gerade aufgemacht. A1-A8 vollstaendig.",
+      "blockiert_durch": "Sicht-Freigabe durch Daouda. Kein Lovable-Deploy noetig — dieser Zweig fasst supabase/functions/* nicht an."
+    },
+    {
       "nr": 183,
       "titel": "Kein Urteil ohne Messung — der Pruefstand darf nicht gruen melden, ohne gemessen zu haben",
       "status": "Draft, aelter als der Rollback",
@@ -55,7 +61,7 @@
     "nicht_pruefbar": 288,
     "offene_frage": "Warum bleiben 288 Gates unmessbar? Das ist die naechste Frage AM PRUEFSTAND, nicht an PR #194. Und: ob der Runner das neue Projekt erreicht, ist damit BEANTWORTET — die Seiten kamen mit Inhalt an (/haus/..., /werk/..., '0 Arbeiten' als ehrlicher Leerzustand)."
   },
-  "naechster_zug": "Zwei Entscheidungen von Daouda, sonst geht nichts weiter. ERSTENS acquisition_leads (blockiert L1, L2, L3, L4, L18): Weg A = neue Migration, Form aus der alten types.ts ableiten (58 Spalten minus das, was die 24 spaeteren Dateien selbst anlegen), nachpruefbar — Empfehlung. Weg B = Akquise beim Erstaufbau weglassen. ZWEITENS L15 Freistellen: der Auftragstext liegt nicht im Repo, raten waere schlimmer als fragen. Sobald A oder B steht: Stapel 14 bis 41 spielen, dann zz_ende, dann Abnahme, dann types.ts neu, dann L2/L18/L4/L3.",
+  "naechster_zug": "ERSTENS: Sicht-Freigabe fuer PR #196 (Block A) durch Daouda — die Aufnahmen liegen unter .claude/sicht/2026-09-12/. DANACH Block C (Archetyp): er ist der einzige Block, der von Lovable nichts braucht, und kann sofort gebaut werden. Block B wartet auf Lovables freistellen, Block D auf Lovables anprobe. UNVERAENDERT OFFEN, weil nur Daouda es entscheiden kann: M3 zweiter Teil (anon liest 60 Spalten auf public.designers, darunter 8 Stripe-Spalten, user_id und revenue_share_pct — auf LIVE-Daten), M5 (Speicher-Eimer und ~49 Edge Functions), und was aus PR #195 wird.",
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
     "F1 IST DIE LEHRREICHSTE MESSUNG DIESER RUNDE: ich habe es mit echtem Chromium versucht, gegen den gebauten Stand, beide Fassungen — mit und ohne Reparatur. Beide Laeufe sind ZEICHENGLEICH: das Geruest erscheint nach 12,7 s, 39 ms spaeter greift die Gestaltung. Die Messung kann die Reparatur nicht von ihrem Fehlen unterscheiden, also beweist sie nichts. Gesagt statt behauptet. Der Grund: vite preview liefert das CSS ohne Verzoegerung von 127.0.0.1. Die Vercel-Vorschau, wo es zu sehen waere, antwortet dem Container mit 302 auf die Anmeldung.",
@@ -70,11 +76,7 @@
     "NEBENBEI AUFGEFALLEN, unbelegt, nicht von Teil M: bei der Fokus-Messung stand die KOPFZEILE auf ENGLISCH ('Fashion', 'Our Houses', 'Your DNA', 'Ask PAWN', 'For designers'). Nach Entscheidung D2 soll die englische Fassung erst nach dem Launch kommen. autoTranslate nimmt #reader-layer und #mobile-reader aus — die Kopfzeile aber nicht. Ob das gewollt ist, weiss ich nicht; nicht angefasst, nur notiert."
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
-  "letzter_verify": {
-    "datum": "2026-09-11",
-    "bestanden": 4,
-    "gefallen": 0
-  },
+  "letzter_verify": "2026-09-12 · VERIFY 5/5 · REGRESSION 16/16 · node --test src/heft03/*.test.mjs 64/64 · tsc 0",
   "lastprobe": {
     "phase_a": "Ursache belegt: Anthropic-Sitzungsvermittler sperrt api.github.com pauschal. Nicht behebbar durch den Agenten. Anleitung siehe wartet_auf_mensch[0]."
   },
@@ -97,12 +99,7 @@
       "Noch nicht gebaut": "Stilfoto (/deine-dna/foto) und Bild in Frag PAWN — Zweig 2. Freistellen — H6, eigener PR."
     }
   },
-  "letzter_pruefer": {
-    "datum": "2026-09-11",
-    "gegenstand": "14 Behauptungen zu PR #194 (Teil M)",
-    "ergebnis": "14 bestaetigt · 0 widerlegt · 0 nicht pruefbar",
-    "was_er_selbst_gemessen_hat": "Die Spaltenrechnung 59/44/15 eigenstaendig nachgerechnet · die Kette in einer Kopie ohne die Basis-Datei rot vorgefuehrt (Exit 1, FEHLER: acquisition_leads) · --ordnung auf Vollstaendigkeit geprueft (163 Zeilen, sort -u ebenfalls 163) · seed-admin aus `git show HEAD~1` gelesen und den fehlenden Auth-Check sowie das hartcodierte Passwort bestaetigt · has_role in einer frueher sortierten Migration gefunden"
-  },
+  "letzter_pruefer": "2026-09-12 · Block A · Lauf gestartet, Ergebnis siehe PR #196",
   "DIE_DATENBANKFRAGE_IST_ENTSCHIEDEN": {
     "entscheidung": "Daouda am 12.09.2026: rnakubexbqfgfciynqpt ist die echte Datenbank. CLAUDE.md ist berichtigt.",
     "bestaetigt_ueber_Lovable": "Zugang laeuft NICHT ueber das Supabase-MCP (dort 'You do not have permission'), sondern ueber das Lovable-MCP: query_database mit project_id 81416573-4f0e-4ff7-a863-43988a85e8d2 (Projekt pawn-archive-muse). DAS IST DER WEG FUER JEDE KUENFTIGE MESSUNG AN DER ECHTEN DATENBANK.",
@@ -117,5 +114,13 @@
     "DER_MERKWUERDIGE_TEIL": "Meine Teil-M-Migrationen (20260930090000 bis 20260930140000) sind in der Historie von rnak NICHT vorhanden — nur die 20260929er-Reihe. Die Rechte stehen dort also richtig, OHNE dass meine Reparatur je ankam. Entweder hat Lovable dieselben Loecher unabhaengig geschlossen, oder die Funktionen wurden auf rnak von vornherein enger angelegt. Ich habe es nicht weiter verfolgt; wichtig ist der Befund, nicht die Vorgeschichte.",
     "WAS_OFFEN_BLEIBT": "Der Spaltenfund aus L3 gilt AUCH HIER, und damit auf der LIVE-Datenbank: anon darf an public.designers 60 Spalten lesen, darunter ACHT Stripe-Spalten (stripe_account_id, stripe_customer_id, stripe_subscription_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_details_submitted, stripe_requirements, stripe_country) sowie user_id, revenue_share_pct, intern, plan_seit, plan_bis. Das ist keine Testdatenbank — das sind echte Haeuser. Die Entscheidung aus M3 Teil 2 ist damit dringender als gedacht."
   },
-  "WAS_AUS_PR_195_WIRD": "PR #195 (Zweig claude/teil-m) traegt Teil M — gemacht auf cnxtdcifkrdxvajaikxq, also auf der falschen Datenbank. Die sechs Migrationen darin (20260930090000-140000) reparieren Dinge, die auf rnak bereits richtig stehen; sie waeren dort wirkungslos bis schaedlich. NICHT blind mergen. Was in dem PR UNABHAENGIG von der Datenbank gilt und weiter wertvoll ist: L3 (das Heft liest die Sichten), der Wand-Fix in passformAssistent, die berichtigten Pruefstand-Slugs, der Zustandswaechter gegen die mitgemessene Eroeffnung, die Fixture mit der echten PostgREST-Antwort, und die Zusagen Z17-Z20. Vorschlag: den Frontend- und Pruefstand-Teil herausloesen, den Migrationsteil verwerfen. Das ist Daoudas Entscheidung, nicht meine."
+  "WAS_AUS_PR_195_WIRD": "PR #195 (Zweig claude/teil-m) traegt Teil M — gemacht auf cnxtdcifkrdxvajaikxq, also auf der falschen Datenbank. Die sechs Migrationen darin (20260930090000-140000) reparieren Dinge, die auf rnak bereits richtig stehen; sie waeren dort wirkungslos bis schaedlich. NICHT blind mergen. Was in dem PR UNABHAENGIG von der Datenbank gilt und weiter wertvoll ist: L3 (das Heft liest die Sichten), der Wand-Fix in passformAssistent, die berichtigten Pruefstand-Slugs, der Zustandswaechter gegen die mitgemessene Eroeffnung, die Fixture mit der echten PostgREST-Antwort, und die Zusagen Z17-Z20. Vorschlag: den Frontend- und Pruefstand-Teil herausloesen, den Migrationsteil verwerfen. Das ist Daoudas Entscheidung, nicht meine.",
+  "AUFTRAG_O": {
+    "WAS_FERTIG_IST": "Block A vollstaendig auf claude/auftrag-o-begleiter (5 Commits ab e160862, zuletzt 9921002). A1 Verstand in src/heft03/begleiter.mjs mit 16 Tests. A2 15 von 16 Katalog-Ereignissen verdrahtet. A3 Das Schweigen: 25 s Abstand, 8 Blasen je Sitzung, 90 s nach dem ×, Empfang nach 8400 ms. A4 Blase mit Chips und ×. A5 vier Methoden in beiden Quellen. A6 fuenf Rangfiguren, angesehen. A7 Chat-Kontext und echter Bild-Upload. A8 drei tote Listen raus.",
+    "WAS_NOCH_NICHT": "Block B (Buehne aus heft_buehnen) wartet auf Lovables freistellen. Block C (Archetyp) ist unabhaengig und koennte als naechstes kommen. Block D (Avatar, Anprobe, Raum) wartet auf Lovables anprobe.",
+    "DIE_ZWEI_OFFENEN_EREIGNISSE": "archetyp_bestaetigt (Block C) und anprobe_fertig (Block D) werden noch nicht gemeldet. Der Test 'jedes Ereignis des Katalogs wird auch gemeldet' nennt sie ausdruecklich als Ausnahme und verlangt sie, sobald die Bloecke stehen — den Namen dort herausnehmen, dann wird der Test rot, bis die Verdrahtung steht.",
+    "WO_ICH_VOM_AUFTRAG_ABGEWICHEN_BIN": "A8 verlangt zustimmungFragen() als Regel im Verstand. Umgesetzt ist nur der Wortlaut aus dem Katalog, nicht das Erscheinen. Grund: melde() darf aus fuenf Gruenden schweigen, und jeder davon hiesse hier 'gemerkt, ohne zu fragen'. Zusage Z16 deckt das ab. Daouda kann das umstossen — dann braucht es einen anderen Weg, der das Erscheinen garantiert.",
+    "DER_KATALOG_HAT_LUECKEN": "Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: 30 Saetze, 30 Regeln, 0 ohne Satz. KEINE Regel zu heft.zustimmung. KEINE Regel zu blaettern (Auftrag O nennt das Ereignis). Die Chip-Funktion freistellen kommt im Katalog noch nicht vor. Der Umriss liegt als src/heft03/fixtures/begleiter-katalog.json im Repo und wird von zwei Tests gegen den Code gehalten.",
+    "WAS_TOT_WAR_UND_JETZT_LEBT": "miniPawn() wurde seit dem Einzug 9ddd574 NIE aufgerufen; die CSS-Regeln .dna-einstieg .pawn-figure zeigten ins Leere. richtungGemerkt() war geschrieben, aber nie aufgerufen. Beides ist jetzt verdrahtet. MERKREGEL fuer die naechste Schicht: nach jeder neuen Funktion pruefen, ob sie auch aufgerufen wird — in dieser Sitzung zweimal passiert."
+  }
 }

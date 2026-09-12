@@ -227,3 +227,30 @@ zuletzt etwas gefangen?"
 **Nachfunde durch einen Menschen: unverändert 3.** Dieser Fund ging auf das Konto des
 Werkzeugs, nicht auf das eines Menschen — aber er erklärt, warum Daouda drei Mängel
 finden musste, die kein Lauf gefangen hat. Vier Wochen lang hat nichts gemessen.
+
+---
+
+## 2026-09-12 · PR #196 · Auftrag O, Block A
+
+**Nachfunde durch einen Menschen: unverändert 3.** Dieser Zweig ist noch nicht gemergt —
+die Zahl kann erst steigen, wenn Daouda ihn auf der Vorschau ansieht.
+
+Was hier zählt, ist etwas anderes: **zwei Funktionen waren geschrieben und wurden nie
+aufgerufen.** `miniPawn()` seit dem Einzug am 9ddd574 — samt CSS-Regeln, die ins Leere
+zeigten. `richtungGemerkt()` seit dieser Sitzung, von mir selbst. Beide hätten als
+„fertig" gemeldet werden können, ohne dass ein Test rot geworden wäre.
+
+Nichts im Harness fängt das. Weder `tsc` noch ESLint noch die 64 Tests melden eine
+Funktion, die nirgends vorkommt — sie ist ja syntaktisch einwandfrei und wird exportiert
+oder steht nur da. Der einzige Grund, warum es aufgefallen ist: ich habe die Figur
+zeichnen lassen und **angesehen**, und da war sie nirgends.
+
+**Was daraus folgt, bevor das Ausmisten die Frage stellt:** die Zahl, die hier fehlt, ist
+nicht „wie viele Tests" sondern „wie viel von dem, was ich gebaut habe, ist erreichbar".
+Wenn beim nächsten Ausmisten eine Komponente dazukommen soll, ist das die mit dem
+belegten Fehler — zwei Fälle an einem Tag, beide in `src/heft03/`.
+
+**Und die zweite Lehre, teurer:** `git checkout <datei>` hat in dieser Sitzung eine Stunde
+Arbeit an `app.js` gelöscht, weil ich damit eine einzelne Zeile zurücknehmen wollte und
+die Datei seit dem letzten Commit viele Änderungen trug. Für das Rot-Vorführen gilt ab
+jetzt: **vorher `cp` auf eine Sicherung, danach `cp` zurück.** Nie `git checkout`.
