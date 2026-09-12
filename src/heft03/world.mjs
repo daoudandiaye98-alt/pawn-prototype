@@ -2,7 +2,7 @@ import {THREE,CSS3DObject,CSS3DRenderer} from './dreiD.mjs';
 import {phase,smooth,clamp} from './model.mjs';
 import {cutouts,alphaHit,bilder} from './cutouts.mjs';
 import {products,displays} from './data.mjs';
-import {platzFuer} from './buehne.mjs';
+import {platzFuer,dekoNachEbenen} from './buehne.mjs';
 const PI=Math.PI;
 export function createWorld(container,readerLayer,onDirty){
  const materials=new Map(),textures=new Map(),cache=new Map();
@@ -241,6 +241,8 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    architecture:buehne.layout==='frame'?'frame':undefined,
    pieces:{length:stuecke.length},
   });
+  const ebenen=dekoNachEbenen(buehne.deko,buehne.dekoKatalog||{});
+  fuerDeko(stage,ebenen.hinten);
   stuecke.forEach((stueck,i)=>{
    const id=stueck.werk_id;
    // Die Rechnung steht in buehne.mjs und ist dort geprueft (platzFuer, 12 Tests).
@@ -252,9 +254,30 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    piece.g.traverse(o=>{if(o.isMesh)o.userData.product=id;});
    stage.products.push({id,object:piece.g,point:piece.point,oben:piece.oben});
   });
+  // Deko der vorderen Ebene ZULETZT, damit sie wirklich vor den Werken liegt.
+  fuerDeko(stage,ebenen.vorn);
   stage.materials=[];stage.fade=-1;
   stage.root.traverse(o=>{if(o.isMesh){o.material=o.material.clone();stage.materials.push(o.material);}});
   return stage;
+ }
+ /**
+  * B2 — Deko laeuft durch denselben Weg wie ein Werk: prepareCutouts, standee,
+  * Alphamaske. Nur so trifft alphaHit an einer Pflanze wirklich die Pflanze und
+  * nicht ihr Rechteck.
+  *
+  * SIE TRAEGT KEIN userData.product. Das ist die ganze Unterscheidung zwischen
+  * Buehnenbild und Ware: Deko ist Kulisse, kein Ziel — kein Drawer, kein
+  * Treffer in der Suche. Damit sie deshalb nicht die Werke dahinter verdeckt,
+  * prueft hit() auf product, BEVOR ein Treffer gilt (siehe dort).
+  *
+  * Kein Sockel: ein Aufsteller steht, ein Podest hebt ein WERK hervor.
+  */
+ function fuerDeko(stage,liste){
+  for(const d of liste){
+   if(!cutouts.has(d.id))continue; // ohne Freistellung kein Aufsteller
+   const pivot=hinge(stage,d.x,d.z,d.drehung,-1,.09);
+   standee(d.id,pivot,d.hoehe);
+  }
  }
  function makeStage(id,pieces){
   const data={...displays[id],pieces:pieces||displays[id].pieces},stage={root:group(book),hinges:[],plinths:[],products:[],id};stage.root.visible=false;

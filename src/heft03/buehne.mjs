@@ -183,3 +183,39 @@ export function nachDemZiehen(entwurf, stueckIndex, position) {
     i === stueckIndex ? klemmeStueck({...s, ...position}) : s);
   return {...entwurf, stuecke, layout: 'frei', eigenhaendig: true};
 }
+
+/**
+ * Deko auf die Ebenen verteilen (B2).
+ *
+ * `katalog` ist heft_deko nach `key`. Er liefert `ebene` ('hinten'|'vorn'),
+ * `cutout_url` und `seitenverhaeltnis` — letzteres spart das Nachmessen am
+ * Bild, die Hoehen liegen auf derselben Skala wie die der Werke.
+ *
+ * WAS NICHT IM KATALOG STEHT, ERSCHEINT NICHT. Kein Platzhalter, kein
+ * graues Rechteck: ein Aufsteller ohne Freistellung ist kein Aufsteller.
+ * Dasselbe Gesetz wie bei den leeren Abschnitten der Archetypen-Seite.
+ *
+ * Die Ebene entscheidet der KATALOG, nicht die Zeile der Buehne — sonst
+ * stuende eine Wand ploetzlich vor dem Mantel. Die Zeile darf nur noch
+ * innerhalb ihrer Ebene schieben, und klemmeDeko haelt sie dort.
+ */
+export function dekoNachEbenen(deko = [], katalog = {}) {
+  const hinten = [], vorn = [];
+  for (const eintrag of deko) {
+    const k = katalog[eintrag?.key];
+    if (!k || !k.cutout_url) continue;
+    const ebene = k.ebene === 'vorn' ? 'vorn' : 'hinten';
+    const geklemmt = klemmeDeko(eintrag, ebene);
+    (ebene === 'vorn' ? vorn : hinten).push({
+      id: 'deko:' + eintrag.key,
+      cutout: k.cutout_url,
+      ratio: k.seitenverhaeltnis || undefined,
+      x: buehneX(geklemmt.x),
+      z: buehneZ(geklemmt.z),
+      hoehe: eintrag.hoehe_m || k.hoehe_m || 1.7,
+      drehung: (eintrag.drehung || 0) * Math.PI / 180,
+    });
+  }
+  // Hinten zuerst zeichnen, damit die vordere Ebene wirklich davor liegt.
+  return {hinten, vorn};
+}

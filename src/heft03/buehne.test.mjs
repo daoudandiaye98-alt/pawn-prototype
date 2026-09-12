@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BUEHNE, buehneX, buehneZ, EBENE_ZWEI, WERKE_MINDESTENS,
-  ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen, platzFuer, schreibEntwurf, nachDemZiehen,
+  ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen, platzFuer, schreibEntwurf, nachDemZiehen, dekoNachEbenen,
 } from './buehne.mjs';
 
 /*
@@ -171,4 +171,49 @@ test('auch beim Ziehen haelt die Klemme', () => {
   const nachher = nachDemZiehen({stuecke: [{werk_id: 'a', x: .5, z: .5}]}, 0, {x: 9, z: .99});
   assert.equal(nachher.stuecke[0].x, 1);
   assert.equal(nachher.stuecke[0].z, EBENE_ZWEI.bis);
+});
+
+const KATALOG = {
+  wand_beton:     {ebene: 'hinten', cutout_url: '/d/wand.webp',  seitenverhaeltnis: 1.4, hoehe_m: 3.2},
+  bogen_schwarz:  {ebene: 'hinten', cutout_url: '/d/bogen.webp', seitenverhaeltnis: 0.8, hoehe_m: 2.2},
+  pflanze_olive:  {ebene: 'vorn',   cutout_url: '/d/olive.webp', seitenverhaeltnis: 0.6, hoehe_m: 1.7},
+  ohne_bild:      {ebene: 'vorn',   cutout_url: null,            hoehe_m: 1.0},
+};
+
+test('die Ebene entscheidet der Katalog, nicht die Zeile', () => {
+  // Eine Wand mit z=0.9 (also scheinbar vorn) gehoert trotzdem nach hinten.
+  const {hinten, vorn} = dekoNachEbenen([{key: 'wand_beton', x: .5, z: .9}], KATALOG);
+  assert.equal(hinten.length, 1, 'die Wand steht hinten, was auch immer die Zeile sagt');
+  assert.equal(vorn.length, 0);
+  assert.ok(hinten[0].z < buehneZ(EBENE_ZWEI.von), 'und wirklich hinter der Ebene der Werke');
+});
+
+test('Deko ohne Freistellung erscheint nicht', () => {
+  const {vorn} = dekoNachEbenen([{key: 'ohne_bild', x: .5, z: .9}], KATALOG);
+  assert.deepEqual(vorn, [], 'kein Platzhalter, kein graues Rechteck');
+  const unbekannt = dekoNachEbenen([{key: 'gibt_es_nicht', x: .5, z: .9}], KATALOG);
+  assert.deepEqual(unbekannt, {hinten: [], vorn: []});
+});
+
+test('Deko landet nie auf der Ebene der Werke', () => {
+  const {hinten, vorn} = dekoNachEbenen([
+    {key: 'bogen_schwarz', x: .2, z: .5},
+    {key: 'pflanze_olive', x: .8, z: .5},
+  ], KATALOG);
+  assert.ok(hinten[0].z < buehneZ(EBENE_ZWEI.von));
+  assert.ok(vorn[0].z > buehneZ(EBENE_ZWEI.bis));
+});
+
+test('die Hoehe der Zeile gewinnt vor der des Katalogs', () => {
+  const {vorn} = dekoNachEbenen([{key: 'pflanze_olive', x: .5, z: .9, hoehe_m: 0.9}], KATALOG);
+  assert.equal(vorn[0].hoehe, 0.9);
+  const ohne = dekoNachEbenen([{key: 'pflanze_olive', x: .5, z: .9}], KATALOG);
+  assert.equal(ohne.vorn[0].hoehe, 1.7, 'sonst die des Katalogs');
+});
+
+test('Deko traegt einen eigenen Namensraum und das Seitenverhaeltnis', () => {
+  const {hinten} = dekoNachEbenen([{key: 'wand_beton', x: .5, z: .1}], KATALOG);
+  assert.equal(hinten[0].id, 'deko:wand_beton', 'nie mit einer Werk-UUID zu verwechseln');
+  assert.equal(hinten[0].cutout, '/d/wand.webp');
+  assert.equal(hinten[0].ratio, 1.4, 'spart das Nachmessen am Bild');
 });
