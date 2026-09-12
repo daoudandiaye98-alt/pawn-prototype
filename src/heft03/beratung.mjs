@@ -131,15 +131,45 @@ export function befundAusWerken(werke=[]){
  return {...befund({welt,richtung,form:form||undefined}),anzahl:eigene.length};
 }
 
-export function urteil(stil={},produkt){
+/**
+ * C4, zweiter Teil — das Farbregister aus dem Foto-Befund.
+ *
+ * Der Befund (`kunden_stil.foto_befund`) traegt `farben_passen` und `farben_meiden`.
+ * Traegt ein Stueck eine Farbe daraus, bekommt das Urteil einen Satz dazu. Sonst nicht:
+ * ohne Foto gibt es keinen Befund, ohne Befund keine Farbaussage.
+ *
+ * WICHTIG AN DER FORMULIERUNG: „liegt ausserhalb deines Registers" ist kein Verbot.
+ * Der Satz endet mit „probier es trotzdem an" — PAWN sortiert Farben aus, die nicht
+ * stehen, aber er nimmt niemandem die Entscheidung ab. Ein Beratungssystem, das
+ * „nein" sagt, ist ein Filter; eines, das „ich wuerde nicht, aber sieh selbst" sagt,
+ * ist ein Berater.
+ */
+export function farbUrteil(produkt,befund){
+ if(!produkt||!befund)return null;
+ const farben=((produkt.dna||{}).colors||[]).map(f=>String(f).toLocaleLowerCase('de'));
+ if(!farben.length)return null;
+ const passt=(befund.farben_passen||[]).map(f=>String(f).toLocaleLowerCase('de'));
+ const meiden=(befund.farben_meiden||[]).map(f=>String(f).toLocaleLowerCase('de'));
+ const treffer=(liste)=>farben.find(f=>liste.some(x=>x&&(f.includes(x)||x.includes(f))));
+ const gut=treffer(passt);
+ if(gut)return {gut:true,farbe:gut,text:'Das '+gut.charAt(0).toLocaleUpperCase('de')+gut.slice(1)+' liegt in deinem Register.'};
+ const schlecht=treffer(meiden);
+ if(schlecht)return {gut:false,farbe:schlecht,text:'Das '+schlecht.charAt(0).toLocaleUpperCase('de')+schlecht.slice(1)+' liegt außerhalb deines Registers — probier es trotzdem an.'};
+ return null;
+}
+
+export function urteil(stil={},produkt,befund){
  if(!produkt)return null;
  const treffer=[stil.richtung,stil.form].filter(x=>x&&trifft(produkt,x));
  const welt=produkt.world||stil.welt||'mode';
  if(!stil.richtung)return {ja:null,text:'Tipp erst deine Richtung an. Dann sage ich dir, ob es passt.'};
+ // Die dritte Pruefung. Sie haengt hinten an, sie ersetzt nichts: die Linie entscheidet,
+ // die Farbe kommentiert.
+ const f=farbUrteil(produkt,befund),farbsatz=f?' '+f.text:'';
  const ja={mode:'Ja. '+produkt.name+' trägt genau deine Linie: '+treffer.join(' und ')+'.',interior:'Ja. '+produkt.name+' bringt genau das in deinen Raum: '+treffer.join(' und ')+'.',kunst:'Ja. '+produkt.name+' ist '+treffer.join(' und ')+' — das passt an deine Wand.'}[welt];
- if(treffer.length===2)return {ja:true,text:ja};
- if(treffer.length===1)return {ja:true,text:'Ja, mit einem Aber. '+treffer[0]+' passt — der Rest ist ein bewusster Bruch.'};
- return {ja:false,text:'Eher nicht. '+produkt.name+' zieht in eine andere Richtung als deine Linie. Es sei denn, du willst genau das.'};
+ if(treffer.length===2)return {ja:true,text:ja+farbsatz,farbe:f||undefined};
+ if(treffer.length===1)return {ja:true,text:'Ja, mit einem Aber. '+treffer[0]+' passt — der Rest ist ein bewusster Bruch.'+farbsatz,farbe:f||undefined};
+ return {ja:false,text:'Eher nicht. '+produkt.name+' zieht in eine andere Richtung als deine Linie. Es sei denn, du willst genau das.'+farbsatz,farbe:f||undefined};
 }
 
 export const bildVon=name=>asset(name);

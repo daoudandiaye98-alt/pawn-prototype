@@ -208,6 +208,7 @@ const App = () => (
                 <Route path="/deine-dna/form" element={<Heft />} />
                 <Route path="/deine-dna/linie" element={<Heft />} />
                 <Route path="/deine-dna/foto" element={<Heft />} />
+                <Route path="/deine-dna/archetyp" element={<Heft />} />
                 <Route path="/deine-dna/massband" element={<Heft />} />
                 <Route path="/deine-dna/privacy" element={<Heft />} />
                 <Route path="/frag-pawn" element={<Heft />} />

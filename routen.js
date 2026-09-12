@@ -44,6 +44,7 @@ export const ROUTEN = [
   "/deine-dna/form",
   "/deine-dna/linie",
   "/deine-dna/foto",
+  "/deine-dna/archetyp",
   "/deine-dna/massband",
   "/deine-dna/privacy",
   "/frag-pawn",

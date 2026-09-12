@@ -1083,3 +1083,45 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .zugang-oder{display:flex;align-items:center;gap:14px;margin:26px 0 4px}
 .zugang-oder:before,.zugang-oder:after{content:'';flex:1;height:1px;background:#c3baa9}
 .zugang-oder span{font:400 9px Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557}
+
+/* ===================== Block C: Der Archetyp ===================== */
+/*
+ * Die Zuversicht als Punkte, nie als Prozentwert. „0,55" liest sich wie eine Messung,
+ * drei von fünf wie das, was es ist: eine Ahnung, die fester wird.
+ *
+ * Ohne diese Regeln standen die Punkte als unsichtbare <i> da — die Überschrift
+ * „WIE SICHER" versprach einen Wert und zeigte keinen. In der Aufnahme sofort gesehen.
+ */
+.zuversicht{display:flex;align-items:center;gap:12px;margin:4px 0 18px}
+.zuversicht small{font:400 9px Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557}
+.zuversicht span{display:inline-flex;gap:5px}
+.zuversicht i{width:7px;height:7px;border:1px solid var(--house-ink,#232220);display:block}
+.zuversicht i.voll{background:var(--house-ink,#232220)}
+
+/* Die Figur des Archetyps steht für sich — ohne Bildunterschrift, ohne Aufforderung. */
+.archetyp-figur{margin:22px 0 6px}
+.archetyp-figur .pawn-mark{width:clamp(84px,10vw,118px);display:block}
+
+.archetyp-bild{max-height:260px;object-fit:cover;margin:18px 0 6px}
+
+/* Belege: die Tafel klein halten, damit die Zeilen darunter auf der Seite bleiben. */
+.belege{margin:20px 0 6px}
+.belege .tafel{margin:0 0 10px;justify-content:flex-start}
+.belege .tafel svg{max-width:190px}
+.belege small{display:block;font:400 9px Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557;margin-bottom:6px}
+.belege ul{margin:0;padding-left:16px;list-style:none}
+.belege li{position:relative;font:400 12.5px/1.7 Inter,sans-serif;color:#1c1a17}
+.belege li:before{content:'—';position:absolute;left:-16px;color:#8d8478}
+
+/* Sonst klebt „Antworten ändern" an der Belegliste und liest sich als vierte Zeile.
+   Auf 390 px in der Aufnahme gesehen. */
+.belege+.text-link,.belege+button{margin-top:22px}
+.nahe{margin:26px 0 6px}
+.nahe small{display:block;font:400 9px Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557;margin-bottom:8px}
+.nahe ul{margin:0;padding:0;list-style:none}
+.nahe li{font:400 12.5px/1.7 Inter,sans-serif;color:#1c1a17;margin-bottom:4px}
+
+/* „PAWN meint" ist erkennbar eine Meinung — nie ein Fakt. */
+.pawn-meint{margin:24px 0 6px;padding:12px 14px;border-left:1.5px solid var(--house-accent,#6d2230);background:#f1ece3}
+.pawn-meint small{display:block;font:400 9px Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557;margin-bottom:5px}
+@media(max-width:759px){.archetyp-figur .pawn-mark{width:78px}.belege .tafel svg{max-width:150px}}

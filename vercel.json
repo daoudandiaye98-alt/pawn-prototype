@@ -206,6 +206,10 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/deine-dna/archetyp/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/deine-dna/massband/?$",
       "dest": "/index.html"
     },
