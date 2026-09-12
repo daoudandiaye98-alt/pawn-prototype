@@ -1,0 +1,26 @@
+{
+  "WAS_DAS_IST": "Der Umriss des echten Katalogs aus begleiter_regeln und begleiter_saetze — gemessen am 12.09.2026 auf der LIVE-Datenbank rnakubexbqfgfciynqpt (über das Lovable-MCP, query_database, Projekt 81416573-4f0e-4ff7-a863-43988a85e8d2).",
+  "WARUM_ER_HIER_LIEGT": "Der Verstand in begleiter.mjs versteht eine feste Menge von Bedingungsschlüsseln. Trifft er einen, den er nicht kennt, SCHWEIGT die Regel — absichtlich, damit eine neue Regel nicht bei jedem Ereignis losredet. Der Preis dafür ist ein stiller Fehler: legt jemand eine Regel mit einem neuen Schlüssel an, sagt der Bauer dazu nie etwas, und niemand merkt es. Diese Datei macht daraus einen roten Test statt eines Rätsels.",
+  "WIE_ER_ERNEUERT_WIRD": "select string_agg(distinct k, ', ' order by k) from begleiter_regeln r, jsonb_object_keys(r.bedingung) k where r.aktiv; — dazu die Aktionsarten, die Chip-Funktionen und die Platzhalter. Wächst der Katalog, wächst diese Datei mit, und begleiter.mjs muss nachziehen.",
+  "gemessen_am": "2026-09-12",
+  "projekt": "rnakubexbqfgfciynqpt",
+  "zahlen": { "saetze": 30, "regeln": 30, "regeln_ohne_satz": 0 },
+  "flaechen": ["heft", "studio"],
+  "ereignisse": [
+    "anprobe_fertig", "archetyp_bestaetigt", "betreten", "buehne_geoeffnet",
+    "haus_betreten", "hilfe_gesucht", "kasse", "kauf", "merken", "quiz_fertig",
+    "rang_aufstieg", "stillstand", "suche_leer", "verweilen", "welt_gewaehlt",
+    "werk_geoeffnet"
+  ],
+  "bedingungsschluessel": [
+    "anfragen_offen_min", "aufrufe_min", "avatar", "bestellung", "besuch",
+    "cutout", "kontext", "konto", "linie", "merk_sichtbar", "merkliste_eq",
+    "merkliste_min", "min_ms", "stuecke_lt", "welt"
+  ],
+  "aktionsarten": ["anbieten", "fuehren", "oeffnen", "sagen"],
+  "chip_funktionen": ["anprobe", "befund", "bewerten:nicht", "bewerten:passt", "raum", "wand", "weg"],
+  "platzhalter": ["haus", "lead", "material", "n", "nummer", "ort", "welt", "werk"],
+  "einmal_werte": ["immer", "sitzung"],
+  "ANMERKUNG_ZU_BLAETTERN": "Auftrag O nennt unter A2 das Ereignis `blaettern`; im Katalog hat es KEINE Regel. Der Code meldet es trotzdem — der Katalog entscheidet, ob etwas gesagt wird, nicht der Code. Umgekehrt kennt der Katalog `buehne_geoeffnet` und `werk_geoeffnet`, die im Auftrag nicht stehen; auch die werden gemeldet.",
+  "ANMERKUNG_ZU_FREISTELLEN": "Auftrag O nennt die Chip-Funktion `freistellen`; im Katalog kommt sie noch nicht vor. Die Hand kann sie, der Katalog ruft sie noch nicht."
+}
