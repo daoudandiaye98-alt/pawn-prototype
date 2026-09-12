@@ -70,8 +70,12 @@ type Daten = typeof import("@/heft03/data.mjs");
  *
  * Die Frist ist kein Schmuck: ohne sie bliebe das Heft unsichtbar, wenn ein Blatt nie
  * lädt. Lieber einen Moment ungestaltet als eine Seite, die sich nie öffnet.
+ *
+ * Die ursprünglichen 2 s erwiesen sich in der Messung als zu kurz: bei einem kalten
+ * Aufruf steht das Gerüst nach ~6 s im DOM, das Stylesheet ist erst bei ~13 s fertig —
+ * die Frist zog also immer und zeigte das nackte Gerüst. Deshalb 12 s.
  */
-function blattGeladen(el: HTMLLinkElement, frist = 2000): Promise<void> {
+function blattGeladen(el: HTMLLinkElement, frist = 12000): Promise<void> {
   return new Promise((fertig) => {
     if (el.sheet) return fertig();
     const ab = () => fertig();
@@ -252,8 +256,8 @@ export default function HeftRoute03() {
         /* Nur noch die Anzeigegröße: signiert wird eine Runde vorher in `quelle.heft()`,
            weil die Adapter `bild()` synchron rufen und Signieren asynchron ist. */
         bild: (u: string) => bildVariante(u, { breite: 1280 }) ?? u,
-        /* Die Sichten aus sql/01 gibt es erst nach der Migration. Bis dahin die Tabellen. */
-        sichten: false,
+        /* Die Sichten aus sql/01 stehen in der Datenbank (geprüft via information_schema). */
+        sichten: true,
         adressen: {
           erfolg: `${location.origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
           abbruch: `${location.origin}/tasche`,
