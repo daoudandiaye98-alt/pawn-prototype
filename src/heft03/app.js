@@ -4,7 +4,7 @@ import {createWorld} from './world.mjs';
 import {readView,productView,cartView,applicationView,productCard,esc,money} from './views.mjs';
 import {prepareCutouts,prepareBilder,cutouts} from './cutouts.mjs';
 import {extendedView,searchToolbar,pawnChat,pawnGlyph} from './extra-views.mjs';
-import {erschaffeBegleiter,gedaechtnisAus,RAENGE} from './begleiter.mjs';
+import {erschaffeBegleiter,gedaechtnisAus,waehleVariante,RAENGE} from './begleiter.mjs';
 import {themes,housePresentation,searchProducts,searchCount,presentationExport,houseBlocks,houseProducts} from './presentation.mjs';
 import {befundAusWerken} from './beratung.mjs';
 import {kuratiere,kurationsNotiz} from './kuration.mjs';
@@ -391,18 +391,39 @@ function polaroid(datei,anker){
  polaroidUrl=URL.createObjectURL(datei);
  const img=document.createElement('img');img.className='polaroid';img.src=polaroidUrl;img.alt='Dein Bild';anker.insertAdjacentElement('afterend',img);
 }
-// Der Bauer im Raum: das kleine Gesprächsfenster und die wechselnden Blasen.
-let blasenTimer=null;
+// Der Bauer im Raum: das kleine Gesprächsfenster und die Blasen.
 function chatRefresh(){const box=$('pawn-chat');if(box.hidden)return;const fokus=document.activeElement;const wert=fokus&&fokus.name==='message'?fokus.value:null;box.innerHTML=pawnChat(state);if(wert!=null){const t=box.querySelector('textarea[name="message"]');if(t){t.value=wert;}}}
 function chat(){
  // Auf der Frag-PAWN-Seite lebt das Gespräch schon auf dem Papier — dorthin, statt ein zweites zu öffnen.
  if(nav.route.section==='frag-pawn'&&nav.status==='ready'){const ziel=(istLeser()?$('mobile-reader'):world.spread).querySelector('.chip,textarea[name="message"]');if(ziel){ziel.focus({preventScroll:true});blaseWeg();return;}}
  const box=$('pawn-chat');box.hidden=false;chatRefresh();$('begleiter-knopf').setAttribute('aria-expanded','true');blaseWeg();const t=box.querySelector('textarea');if(t&&innerWidth>760)t.focus({preventScroll:true});}
 // Einmal fragen, ob PAWN sich etwas merken darf — genau dann, wenn es zum ersten Mal etwas zu merken gäbe.
+/**
+ * A8 — die Zustimmungsfrage. Der WORTLAUT kommt aus dem Katalog (`heft.zustimmung`),
+ * das ERSCHEINEN nicht.
+ *
+ * WARUM NICHT ALS REGEL IM VERSTAND, obwohl Auftrag O es so nennt: melde() darf aus
+ * fuenf guten Gruenden schweigen — Mindestabstand, aufgebrauchtes Blasenbudget, ein
+ * frueheres ×, Stummschaltung, fehlender Platzhalter. Jeder davon wuerde hier
+ * bedeuten: die Merkliste wird gespeichert, ohne dass jemand gefragt wurde. Das ist
+ * kein Anzeigefehler, das ist eine gebrochene Zusage gegenueber der Person. Die Frage
+ * erscheint deshalb immer, solange `consent === null` ist.
+ *
+ * „Prioritaet ueber allem" gilt trotzdem und ist gemessen: solange ein
+ * [data-consent-ja] in der Blase steht, meldet istStumm() true, und der Begleiter
+ * schweigt, bis geantwortet ist.
+ *
+ * Fehlt `heft.zustimmung` im Katalog — heute ist das so, gemessen am 12.09.2026 auf
+ * rnakubexbqfgfciynqpt — bleibt der eingebaute Satz stehen. Eine Rechtsfrage darf
+ * nicht davon abhaengen, ob eine Zeile in einer Tabelle liegt.
+ */
 function zustimmungFragen(){
  if(state.consent!==null)return;
- const b=$('begleiter-blase');clearTimeout(blasenTimer);
- b.innerHTML='<b>PAWN</b>Darf ich mir das merken? Dann ist es beim nächsten Öffnen noch da.<span class="blase-knoepfe"><button class="chip" data-consent-ja>Ja, merk es dir</button><button class="chip leise" data-consent-nein>Nur jetzt</button></span>';
+ const satz=saetzeAusDerQuelle.find(x=>x.key==='heft.zustimmung');
+ const ausDemKatalog=satz&&waehleVariante(satz.varianten,'de',undefined,Math.random);
+ const text=ausDemKatalog?.text||'Darf ich mir das merken? Dann ist es beim nächsten Öffnen noch da.';
+ const b=$('begleiter-blase');clearTimeout(blaseWegTimer);
+ b.innerHTML='<b>PAWN</b>'+esc(text)+'<span class="blase-knoepfe"><button class="chip" data-consent-ja>Ja, merk es dir</button><button class="chip leise" data-consent-nein>Nur jetzt</button></span>';
  b.classList.add('da');
 }
 function chatSchliessen(){$('pawn-chat').hidden=true;$('begleiter-knopf').setAttribute('aria-expanded','false');}
@@ -415,7 +436,7 @@ function blaseWeg(){$('begleiter-blase').classList.remove('da');}
  * `begleiterTakt()`: ein Zeitgeber, der alle paar Sekunden einen festen Satz aus
  * einer Liste im Code zog, ohne irgendetwas zu wissen.
  */
-let begleiter=null,stillTimer=null,blaseWegTimer=null,letzteBlase=null,werkSeit=0,richtungen=[],verweilTimer=null,verweilTimer2=null;
+let begleiter=null,saetzeAusDerQuelle=[],stillTimer=null,blaseWegTimer=null,letzteBlase=null,werkSeit=0,richtungen=[],verweilTimer=null,verweilTimer2=null;
 
 function begleiterKontext(){
  if(drawer.open)return 'werk';
@@ -558,6 +579,7 @@ function richtungGemerkt(dir){
 /** Den Katalog holen und den Verstand aufstellen. Einmal je Sitzung. */
 async function begleiterAufstellen(){
  const katalog=await quelle.begleiter?.()??{saetze:[],regeln:[]};
+ saetzeAusDerQuelle=katalog.saetze||[];
  const besuch=await quelle.begleiterBesuch?.()??null;
  const roh=state.consent===true?(laden()?.begleiter??{}):{};
  begleiter=erschaffeBegleiter({
@@ -950,7 +972,7 @@ return {
  tascheLeeren(haus){state.cart=haus?state.cart.filter(r=>!products[r.id]||products[r.id].house!==haus):[];updateCart();readRefresh();
   // Erst hier ist wirklich gekauft — beim Sprung zu Stripe war es nur ein Vorhaben.
   melden('kauf',{haus_slug:haus||undefined});},
- stop(){for(const [z,t,f,o] of hoerer)z.removeEventListener(t,f,o);for(const k of [...document.body.classList])if(/^(is-|ohne-3d)/.test(k))document.body.classList.remove(k);delete document.body.dataset.section;delete document.body.dataset.page;delete document.body.dataset.motion;if(raf)cancelAnimationFrame(raf);raf=null;clearTimeout(blasenTimer);clearTimeout(stillTimer);clearTimeout(blaseWegTimer);clearTimeout(weiterTimer);clearTimeout(toastTimer);
+ stop(){for(const [z,t,f,o] of hoerer)z.removeEventListener(t,f,o);for(const k of [...document.body.classList])if(/^(is-|ohne-3d)/.test(k))document.body.classList.remove(k);delete document.body.dataset.section;delete document.body.dataset.page;delete document.body.dataset.motion;if(raf)cancelAnimationFrame(raf);raf=null;clearTimeout(stillTimer);clearTimeout(blaseWegTimer);clearTimeout(verweilTimer);clearTimeout(verweilTimer2);clearTimeout(weiterTimer);clearTimeout(toastTimer);
   // Der Vorschau-Betrieb hinterlaesst zwei Dinge ausserhalb des Gerueests: den Streifen an
   // document.body und die Uhr, die alle 60 s nachfasst. Bleiben sie stehen, zeigt die naechste
   // Seite einen Streifen ohne Heft — und die Uhr koennte sie neu laden.

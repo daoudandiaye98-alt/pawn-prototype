@@ -212,6 +212,15 @@
       "params": {
         "huelle": "src/heft03/HeftRoute03.tsx"
       }
+    },
+    {
+      "id": "Z16",
+      "zusage": "Wer etwas merkt, wird gefragt: die Zustimmungsfrage erscheint immer, solange keine Antwort vorliegt — und solange sie steht, schweigt der Begleiter.",
+      "beleg": "Auftrag O, Block A8, verlangt zustimmungFragen() als Regel (heft.zustimmung, Prioritaet ueber allem). Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: diese Regel gibt es im Katalog nicht (0 Zeilen in begleiter_regeln/begleiter_saetze auf 'zustimm'). Wichtiger: melde() darf aus fuenf Gruenden schweigen — Mindestabstand 25 s, Budget von acht Blasen je Sitzung, ein frueheres ×, Stummschaltung, fehlender Platzhalter. Jeder davon hiesse hier: die Merkliste wird gespeichert, ohne dass jemand gefragt wurde. Deshalb kommt aus dem Katalog nur der WORTLAUT (src/heft03/app.js, zustimmungFragen), nie das Erscheinen. Die Prioritaet ueber allem ist strukturell: istStumm() meldet true, solange ein [data-consent-ja] in der Blase steht. · Rot vorgefuehrt am 2026-09-12, zweimal — einmal je Haelfte der Zusage: (1) melden('zustimmung') in zustimmungFragen() eingesetzt -> REGRESSION 15/16, FEHLER Z16; (2) die [data-consent-ja]-Zeile aus istStumm() entfernt -> REGRESSION 15/16, FEHLER Z16. Beide zurueck: 16/16.",
+      "pruefung": "zustimmungOhneRegelwerk",
+      "params": {
+        "heft": "src/heft03/app.js"
+      }
     }
   ]
 }
