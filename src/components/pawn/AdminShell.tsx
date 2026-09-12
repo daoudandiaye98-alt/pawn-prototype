@@ -21,6 +21,8 @@ import {
   Layers,
   Menu,
   Send,
+  MessageCircle,
+  Shapes,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -44,6 +46,8 @@ const ITEMS = [
   { to: "/admin/trends", label: "Trends", icon: TrendingUp },
   { to: "/admin/ki", label: "KI Cockpit", icon: Bot },
   { to: "/admin/aktionen", label: "Aktionen", icon: Sparkles },
+  { to: "/admin/begleiter", label: "Begleiter", icon: MessageCircle },
+  { to: "/admin/archetypen", label: "Archetypen", icon: Shapes },
 ];
 
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {

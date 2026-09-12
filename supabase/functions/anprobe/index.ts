@@ -294,13 +294,22 @@ Deno.serve(async (req) => {
         status: "fertig", result_path: pfad, fehler: null, dauer_ms: Date.now() - start,
       } as never).eq("id", anprobe_id);
 
-      // Auf PAWNs Rechnung: nur der Ledger, kein Credit der Kundin.
+      /* K1 — Anproben laufen auf PAWNs Rechnung, nie gegen ein Haus. Ein Haus darf keine
+         KI-Ausgaben in seiner Abrechnung sehen, die eine Kundin ausgelöst hat (sonst wird ein
+         beliebtes Stück für den Designer teuer). book_ai_spend und ai_budget_ledger sind beide
+         hausgebunden (ai_budget_ledger.designer_id ist NOT NULL) — es gibt dort keine Zeile ohne
+         Haus. Deshalb wird die Plattform-Ausgabe in ai_logs geschrieben, Kostenstelle kunde_anprobe. */
       const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
       const cents = ((costsCfg?.value as Record<string, number> | null)?.[KOSTENSTELLE]) ?? 12;
       try {
-        const { data: des } = await admin.from("products").select("designer_id").eq("id", p.id).maybeSingle();
-        const designerId = (des as { designer_id?: string } | null)?.designer_id;
-        if (designerId) await admin.rpc("book_ai_spend", { _designer_id: designerId, _cents: cents });
+        await admin.from("ai_logs").insert({
+          agent_id: KOSTENSTELLE,
+          model: aktion === "anprobe" ? "tryon" : RAUM_MODELL,
+          status: "ok",
+          latency_ms: Date.now() - start,
+          request: { kostenstelle: KOSTENSTELLE, traeger: "plattform", cents, art: aktion, anprobe_id, product_id: p.id },
+          response: { result_path: pfad },
+        } as never);
       } catch { /* informativ, blockiert nie */ }
     })();
     imHintergrund(lauf);
