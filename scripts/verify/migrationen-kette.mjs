@@ -98,6 +98,38 @@ for (const l of luecken) l.spaeter = angelegt.get(l.tabelle) ?? null;
 const nie = luecken.filter((l) => !l.spaeter);
 const spaet = luecken.filter((l) => l.spaeter);
 
+/**
+ * DER BRUCH INNERHALB EINER DATEI. Zwei Dateien lasen in einer POLICY etwas, das
+ * DIESELBE Datei erst weiter unten anlegt — eine Tabelle (20260722110700) und eine
+ * Spalte (20260729093000). Postgres bricht dort mit 42P01 bzw. 42703 ab. Gemessen am
+ * 11.09.2026 beim Abspielen gegen die echte Datenbank, beide Male mitten im Lauf.
+ *
+ * Das ist ein ANDERER Fehler als `spaet` oben: den loest die Abspielordnung auf, indem
+ * sie Dateien umsortiert. Innerhalb einer Datei hilft keine Reihenfolge von Dateien —
+ * deshalb ist das hier rot, nicht bloss ein Hinweis.
+ */
+function bruchInnerhalbEinerDatei() {
+  const treffer = [];
+  for (const datei of dateien) {
+    const sql = ohneKommentar(readFileSync(join(ORDNER, datei), "utf8"));
+    const anlage = new Map();   // Name -> erste Stelle, an der er entsteht
+    for (const m of sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z_0-9]+)/gi))
+      if (!anlage.has(m[1])) anlage.set(m[1], m.index);
+    for (const m of sql.matchAll(/add\s+column\s+(?:if\s+not\s+exists\s+)?([a-z_0-9]+)/gi))
+      if (!anlage.has(m[1])) anlage.set(m[1], m.index);
+    if (!anlage.size) continue;
+    for (const m of sql.matchAll(/create\s+(?:policy|(?:unique\s+)?index)\b[\s\S]*?;\s*$/gim)) {
+      for (const w of new Set(m[0].toLowerCase().match(/[a-z_0-9]+/g) || [])) {
+        if (anlage.has(w) && anlage.get(w) > m.index)
+          treffer.push({ datei, name: w });
+      }
+    }
+  }
+  return treffer;
+}
+
+const intern = bruchInnerhalbEinerDatei();
+
 /** Die Reihenfolge, in der der Erstaufbau spielen muss: jede Anlage vor ihrer ersten Aenderung. */
 function abspielordnung() {
   const vorziehen = new Map(); // anlegende Datei -> Datei, vor die sie gehoert
@@ -118,6 +150,15 @@ function abspielordnung() {
 if (process.argv.includes("--ordnung")) {
   for (const d of abspielordnung()) console.log(d);
   process.exit(nie.length ? 1 : 0);
+}
+
+if (intern.length) {
+  console.log(`  ${dateien.length} Dateien geprueft.`);
+  console.log(`  ${intern.length} Anweisung(en) lesen etwas, das DIESELBE Datei erst spaeter anlegt.`);
+  console.log(`  Keine Reihenfolge von Dateien loest das auf — die Datei selbst ist nicht spielbar:`);
+  for (const t of intern) console.log(`  · ${t.datei}: liest \`${t.name}\`, angelegt erst weiter unten`);
+  console.log(`KETTE: 0/1 · FEHLER: ${[...new Set(intern.map((t) => t.datei))].join(", ")}`);
+  process.exit(1);
 }
 
 if (nie.length === 0 && spaet.length === 0) {

@@ -12,6 +12,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const lies = (p) => readFileSync(join(WURZEL, p), "utf8");
@@ -312,7 +313,7 @@ function umzuegeAusRoutenJs() {
 // Zwei Orte, eine Zusage: die Auswahlliste, mit der das Heft heute liest, und
 // die Sicht, die anon spaeter bekommt. Beide duerfen die Spalte nicht kennen.
 // ————————————————————————————————————————————————————————————————
-function keineStripeSpalten({ datei, migration, verboten }) {
+function keineStripeSpalten({ datei, migration, verboten, huelle }) {
   const quelle = lies(datei);
   const block = quelle.slice(quelle.indexOf("export const SPALTEN"), quelle.indexOf("};", quelle.indexOf("export const SPALTEN")));
   if (!block.includes("designers:")) return nein(`${datei}: die Spaltenmaske SPALTEN ist nicht mehr auffindbar`);
@@ -326,6 +327,22 @@ function keineStripeSpalten({ datei, migration, verboten }) {
   const sicht = lies(migration).replace(/--[^\n]*/g, "");
   for (const wort of verboten) {
     if (wort !== "user_id" && sicht.includes(wort)) return nein(`${migration}: die Sicht listet „${wort}“ — sie waere keine Maske mehr`);
+  }
+
+  /* UND DER DRITTE ORT, und er war der stille: die Maske muss auch BENUTZT werden.
+     Belegt am 12.09.2026 — die Sichten lagen seit dem Erstaufbau auf der Datenbank
+     (heft_haeuser, heft_produkte, security_invoker=true, anon hat SELECT), und die
+     Huelle stand die ganze Zeit auf `sichten: false`. Die Maske war gebaut, bezahlt
+     und wirkungslos. Eine Auswahlliste ohne Stripe-Spalte schuetzt nur, solange
+     niemand sie erweitert; die Sicht schuetzt, egal was die Liste sagt. Deshalb wird
+     hier geprueft, dass das Heft wirklich durch sie liest. */
+  if (huelle) {
+    const h = lies(huelle).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    if (!/sichten:\s*true/.test(h))
+      return nein(`${huelle}: sichten steht nicht auf true — das Heft liest die Basistabellen, die Sicht laeuft leer mit`);
+    const q = lies(datei).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    if (!/designers:heft_haeuser\(/.test(q))
+      return nein(`${datei}: der eingebettete Join geht nicht auf heft_haeuser — damit beruehrt das Heft public.designers weiter direkt`);
   }
   return OK;
 }
@@ -496,6 +513,205 @@ function geruestErstNachGestaltung({ huelle, warter = "blattGeladen" }) {
   return OK;
 }
 
+// ————————————————————————————————————————————————————————————————
+// Z16 — kein Geheimnis im Klartext in einer Migration
+//
+// Belegter Fehler: 20260721221200_jarvis_wissen_postfach_dna.sql, Zeile 6, setzt
+// ai_config.jarvis_cron_secret mit einem 64-stelligen Wert im Klartext. Wer das Repo
+// lesen kann, liest ihn mit — und aus der Git-Geschichte ist er nicht mehr
+// herausloeschbar.
+//
+// DIESE DATEI IST DIE EINE DOKUMENTIERTE AUSNAHME, und zwar mit Absicht: sie zu
+// aendern ist mechanisch blockiert (wache.sh) und wuerde nichts nuetzen. Die Zusage
+// gilt ab hier nach vorn — KEINE NEUE Migration bringt je wieder ein Geheimnis mit.
+// Eine Pruefung, die an unveraenderbarem Altbestand dauerhaft rot steht, lehrt nur,
+// Rot zu uebersehen.
+// ————————————————————————————————————————————————————————————————
+function keinGeheimnisInMigration({ ordner, ausnahmen = [] }) {
+  const dateien = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort();
+  // Gesucht wird ein langer Zufallswert in der Naehe eines Geheimnis-Wortes — beides
+  // zusammen, nie eines allein: eine uuid in einer Spalte ist kein Geheimnis, und das
+  // Wort „key" steht in jeder zweiten Zeile dieses Repos.
+  const wort = /secret|token|passwor[dt]|api[_-]?key|private[_-]?key/i;
+  // DREI FORMEN. Die dritte ist spaeter dazugekommen, weil die Kontrolle ohne sie ein
+  // Loch genau an der wichtigsten Stelle hatte: ein JWT enthaelt PUNKTE, und das
+  // Base64-Muster ohne Punkte ging daran vorbei. In einem Supabase-Repo ist der JWT die
+  // haeufigste Geheimnisform ueberhaupt. Gefunden am 11.09.2026, beim Lesen von
+  // 20260709092523 — dort steht der anon-JWT des alten Projekts im Klartext, und Z16
+  // blieb gruen.
+  const wert = new RegExp(
+    ["['\"][0-9a-f]{32,}['\"]",                                   // Hex-Geheimnis
+     "['\"][A-Za-z0-9+/]{40,}={0,2}['\"]",                        // Base64
+     "eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}", // JWT
+    ].join("|"));
+  const funde = [];
+  for (const d of dateien) {
+    if (ausnahmen.includes(d)) continue;
+    const zeilen = lies(join(ordner, d)).split("\n");
+    zeilen.forEach((z, i) => {
+      if (/^\s*--/.test(z)) return;           // Kommentare erklaeren, sie verraten nicht
+      if (wort.test(z) && wert.test(z)) funde.push(`${ordner}/${d}:${i + 1}`);
+    });
+  }
+  if (funde.length) return nein(`Geheimnis im Klartext: ${funde.slice(0, 3).join(" · ")}`);
+  return OK;
+}
+
+/**
+ * Z20 (M4) — keine Tabelle ohne RLS, und keine RLS-Tabelle ohne Policy ausser den benannten.
+ *
+ * WARUM BEIDE HAELFTEN zusammen stehen: sie sind die zwei Arten, wie eine Tabelle falsch
+ * zugaenglich wird, und sie zeigen in entgegengesetzte Richtungen.
+ *
+ *   Ohne RLS ist eine Tabelle OFFEN — und zwar seit 20260930140000 erst richtig, denn
+ *   jetzt hat `authenticated` auf 77 Tabellen ein ausdrueckliches GRANT. Ein GRANT ohne
+ *   RLS heisst: jeder angemeldete Mensch liest alle Zeilen. Vorher haette dasselbe
+ *   Versehen weniger geschadet, weil das GRANT fehlte. Die Reparatur macht diese Haelfte
+ *   also NOETIGER als sie vorher war.
+ *
+ *   RLS ohne Policy ist das Gegenteil: die Tabelle ist fuer alle ausser service_role
+ *   ZU. Manchmal genau richtig (nur Edge Functions kommen heran), manchmal eine Tabelle,
+ *   die niemand benutzen kann und an der jemand lange sucht. Der Unterschied ist eine
+ *   Absicht, und Absichten gehoeren aufgeschrieben — genau das verlangt M4.
+ *
+ * Gemessen am 12.09.2026, Datei-Sicht und Datenbank stimmen ueberein: 80 Tabellen,
+ * 80 mit RLS, 77 mit Policy, 3 ohne. Die drei sind unten benannt.
+ */
+function rlsUndPolicySindVollstaendig({ ordner, ohne_policy_erlaubt = [] }) {
+  const alles = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort()
+    .map((d) => lies(join(ordner, d)).split("\n").filter((z) => !z.trimStart().startsWith("--")).join("\n"))
+    .join("\n");
+
+  const tab = new Set([...alles.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z_0-9]+)/gi)]
+    .map((m) => m[1].toLowerCase()));
+  const rls = new Set([...alles.matchAll(/alter\s+table\s+public\.([a-z_0-9]+)\s+enable\s+row\s+level\s+security/gi)]
+    .map((m) => m[1].toLowerCase()));
+  const mitPolicy = new Set([...alles.matchAll(/create\s+policy\s+(?:"[^"]+"|\S+)\s+on\s+(?:table\s+)?public\.([a-z_0-9]+)/gi)]
+    .map((m) => m[1].toLowerCase()));
+
+  const ohneRls = [...tab].filter((t) => !rls.has(t)).sort();
+  const ohnePolicy = [...tab].filter((t) => rls.has(t) && !mitPolicy.has(t) && !ohne_policy_erlaubt.includes(t)).sort();
+
+  const klagen = [];
+  if (ohneRls.length) klagen.push(`${ohneRls.length} Tabelle(n) OHNE RLS — mit dem GRANT fuer authenticated liest dort jeder angemeldete Mensch alles: ${ohneRls.join(", ")}`);
+  if (ohnePolicy.length) klagen.push(`${ohnePolicy.length} Tabelle(n) mit RLS aber ohne Policy und ohne Begruendung — entweder Absicht aufschreiben oder Policy nachziehen: ${ohnePolicy.join(", ")}`);
+  return klagen.length ? nein(klagen.join(" · ")) : OK;
+}
+
+/**
+ * Z19 — jede Tabelle hat ihre Rechte ausdruecklich in einer Migration, nicht per Vorgabe.
+ *
+ * DER BELEGTE FEHLER, und er war mein eigener: der Rueckweg des Erstaufbaus macht
+ * `drop schema public cascade; create schema public;`. Ein NEUES Schema traegt keine
+ * Vorgabe-Rechte. Supabase hatte am alten `public`
+ *     alter default privileges in schema public grant all on tables to anon, authenticated, service_role
+ * haengen — deshalb schreiben die meisten Migrationen gar keine GRANTs: sie brauchten keine.
+ * Nach dem Rueckweg ist diese Vorgabe weg (gemessen am 12.09.2026: pg_default_acl hat
+ * Eintraege fuer storage, auth, graphql, realtime, cron, extensions — fuer public KEINEN).
+ *
+ * Gemessen war die Folge: von 80 Tabellen durfte `authenticated` nur 63 lesen und
+ * `service_role` ebenfalls nur 63. Die Edge Functions arbeiten mit service_role — auf 17
+ * Tabellen waeren sie mit einem Berechtigungsfehler abgebrochen. Und eine Policy ohne das
+ * zugehoerige GRANT laeuft ins Leere: RLS sagt, WELCHE Zeilen jemand sieht, das GRANT sagt,
+ * ob er die Tabelle ueberhaupt anfassen darf. Nachgezogen in 20260930140000.
+ *
+ * Diese Pruefung haelt den Ordner unabhaengig von jeder Vorgabe: jede Tabelle braucht ein
+ * ausdrueckliches GRANT fuer service_role, und jede Tabelle mit einer Policy, die
+ * `authenticated` einschliesst, eines fuer authenticated. `anon` ist NICHT Gegenstand —
+ * wer oeffentlich lesen darf, ist eine Entscheidung, keine Vollstaendigkeitsfrage.
+ */
+function tabellenrechteSindAusdruecklich({ ordner, ausnahmen_authenticated = [] }) {
+  const alles = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort()
+    .map((d) => lies(join(ordner, d)).split("\n").filter((z) => !z.trimStart().startsWith("--")).join("\n"))
+    .join("\n");
+
+  const tabellen = new Set([...alles.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z_0-9]+)/gi)]
+    .map((m) => m[1].toLowerCase()));
+
+  // Eine Policy ohne `TO` gilt fuer alle Rollen, also auch fuer authenticated.
+  const authPolicy = new Set();
+  for (const m of alles.matchAll(/create\s+policy\s+"[^"]+"\s+on\s+public\.([a-z_0-9]+)([\s\S]{0,120}?)(?:using|with\s+check)/gi))
+    if (!/\bto\s+/i.test(m[2]) || /\bauthenticated\b/i.test(m[2])) authPolicy.add(m[1].toLowerCase());
+
+  const grant = { service_role: new Set(), authenticated: new Set() };
+  for (const m of alles.matchAll(/grant\s+([a-z, ]+?)\s+on\s+((?:\s*(?:table\s+)?public\.[a-z_0-9]+\s*,?)+)\s*to\s+([^;]+);/gi)) {
+    const liste = [...m[2].matchAll(/public\.([a-z_0-9]+)/gi)].map((x) => x[1].toLowerCase());
+    for (const rolle of Object.keys(grant))
+      if (new RegExp(`\\b${rolle}\\b`, "i").test(m[3])) for (const t of liste) grant[rolle].add(t);
+  }
+
+  const ohneService = [...tabellen].filter((t) => !grant.service_role.has(t)).sort();
+  const ohneAuth = [...authPolicy].filter((t) => tabellen.has(t)
+    && !grant.authenticated.has(t) && !ausnahmen_authenticated.includes(t)).sort();
+
+  const klagen = [];
+  if (ohneService.length) klagen.push(`${ohneService.length} Tabelle(n) ohne service_role-GRANT (die Edge Functions brechen dort ab): ${ohneService.join(", ")}`);
+  if (ohneAuth.length) klagen.push(`${ohneAuth.length} Tabelle(n) mit authenticated-Policy, aber ohne GRANT (die Policy laeuft ins Leere): ${ohneAuth.join(", ")}`);
+  return klagen.length ? nein(klagen.join(" · ")) : OK;
+}
+
+/**
+ * Z18 — jede SECURITY-DEFINER-Funktion entscheidet ihre Rechte ausdruecklich.
+ *
+ * PostgreSQL vergibt EXECUTE auf eine neue Funktion per VORGABE an PUBLIC. Wer eine
+ * SECURITY-DEFINER-Funktion anlegt und nur `GRANT ... TO service_role` schreibt, hat
+ * damit nichts eingeschraenkt: PUBLIC behaelt sein Recht, und `anon` erbt es.
+ *
+ * BELEGT am 12.09.2026, nach dem vollstaendigen Abspielen der Kette:
+ * `assign_invoice_number(uuid, uuid)` war fuer `anon` aufrufbar. Sie ist SECURITY
+ * DEFINER und sie SCHREIBT — zaehlt designer_billing_profiles.invoice_next_number hoch
+ * und stempelt die Nummer auf eine Bestellung. Ihre eigene Datei vergibt EXECUTE
+ * ausdruecklich nur an service_role. Wer den oeffentlichen Schluessel hat, konnte
+ * Rechnungsnummern verbrennen; ein Rechnungsnummernkreis muss lueckenlos sein.
+ * Dasselbe bei next_invoice_number. Zugezogen in 20260930130000.
+ *
+ * ENG GEHALTEN: Trigger-Funktionen (returns trigger) zaehlen nicht — PostgREST stellt
+ * sie nicht bereit, und die Trigger rufen sie im DEFINER-Zusammenhang ohne EXECUTE.
+ * Ein ausdrueckliches `GRANT ... TO anon` gilt als Entscheidung, nicht als Verstoss:
+ * eine oeffentliche Funktion ist erlaubt, eine versehentlich oeffentliche nicht.
+ */
+function secdefEntscheidetRechte({ ordner, ausnahmen = [] }) {
+  const alles = readdirSync(join(WURZEL, ordner)).filter((d) => d.endsWith(".sql")).sort()
+    .map((d) => lies(join(ordner, d)).split("\n").filter((z) => !z.trimStart().startsWith("--")).join("\n"))
+    .join("\n");
+
+  const secdef = new Map();
+  const re = /create\s+(?:or\s+replace\s+)?function\s+public\.([a-z_0-9]+)\s*\(([\s\S]*?)\)\s*returns\s+([a-z_0-9 ]+)([\s\S]{0,400}?)\bas\s*\$/gi;
+  for (const m of alles.matchAll(re)) {
+    const [, name, , rueck, kopf] = m;
+    if (!/security\s+definer/i.test(kopf)) continue;
+    if (/^\s*trigger\b/i.test(rueck)) continue;
+    if (!secdef.has(name)) secdef.set(name, true);
+  }
+
+  const entschieden = new Set();
+  for (const m of alles.matchAll(/revoke\s+(?:all|execute)[\s\S]{0,80}?on\s+function\s+public\.([a-z_0-9]+)/gi))
+    entschieden.add(m[1]);
+  for (const m of alles.matchAll(/grant\s+execute\s+on\s+function\s+public\.([a-z_0-9]+)\s*\([^)]*\)\s*to\s+([^;]+);/gi))
+    if (/\banon\b/i.test(m[2])) entschieden.add(m[1]);
+
+  const offen = [...secdef.keys()].filter((n) => !entschieden.has(n) && !ausnahmen.includes(n));
+  if (offen.length)
+    return nein(`${offen.length} SECURITY-DEFINER-Funktion(en) ohne Rechte-Entscheidung, PUBLIC behaelt EXECUTE: ${offen.join(", ")}`);
+  return OK;
+}
+
+/**
+ * Z17 — die Kette ist spielbar. Die Umsetzung liegt in scripts/db/doppelungen.mjs,
+ * weil sie dort auch von Hand aufgerufen wird, wenn jemand mitten im Lauf steht.
+ * Hier steht nur der Aufruf: eine Umsetzung, zwei Tueren, keine Kopie.
+ */
+function jedeDoppelungIstGedeckt() {
+  try {
+    execFileSync("node", [join(WURZEL, "scripts/db/doppelungen.mjs")],
+      { cwd: WURZEL, encoding: "utf8", stdio: "pipe" });
+    return OK;
+  } catch (e) {
+    const letzte = String(e.stdout || "").trim().split("\n").pop() || e.message;
+    return nein(letzte);
+  }
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -512,6 +728,11 @@ const PRUEFUNGEN = {
   nurWegweiser,
   leereWeltStuerztNicht,
   geruestErstNachGestaltung,
+  keinGeheimnisInMigration,
+  jedeDoppelungIstGedeckt,
+  secdefEntscheidetRechte,
+  tabellenrechteSindAusdruecklich,
+  rlsUndPolicySindVollstaendig,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

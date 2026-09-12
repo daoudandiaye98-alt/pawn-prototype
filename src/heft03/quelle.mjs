@@ -108,6 +108,29 @@ export function bildLoeser(karte,bild){
  };
 }
 
+/**
+ * Die Spaltenmaske der Werke — mit sichten:true geht auch der EINGEBETTETE Join auf die
+ * Sicht, nicht auf die Basistabelle.
+ *
+ * Der Grund ist gemessen, nicht gedacht: `anon` darf an public.designers 33 Spalten lesen,
+ * die heft_haeuser verbirgt — darunter stripe_account_id, stripe_customer_id,
+ * stripe_subscription_id, user_id und revenue_share_pct (gemessen am 12.09.2026 mit
+ * has_column_privilege). Die Sicht schuetzt also nur, wovon sie gelesen wird. Solange der
+ * Join auf `designers(...)` zeigte, haette ein kuenftiges REVOKE auf der Basistabelle das
+ * Heft mitgerissen. Mit `designers:heft_haeuser(...)` beruehrt das Heft die Basistabelle
+ * gar nicht mehr — der Schluessel in der Antwort heisst weiter `designers`, die Adapter
+ * bleiben unveraendert (adapters.mjs:38 und :148 lesen row.designers).
+ *
+ * PostgREST kennt den Weg: heft_produkte.designer_id loest auf designers UND heft_haeuser
+ * auf (types.ts, Relationships von heft_produkte — aus der echten Datenbank erzeugt).
+ */
+export function produktSpalten(sichten){
+ if(!sichten)return SPALTEN.products;
+ const treffer=SPALTEN.products.split('designers(').length-1;
+ if(treffer!==1)throw Error('SPALTEN.products: erwartet genau einen Join designers(, gefunden '+treffer);
+ return SPALTEN.products.replace('designers(','designers:heft_haeuser(');
+}
+
 export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sichten=false}={}){
  if(!client)throw Error('supabaseQuelle braucht den supabase-js-Client.');
  // sichten:true liest die Spaltenmasken-Sichten aus sql/01_heft_sichten.sql statt der Tabellen (gleiche Spalten).
@@ -119,7 +142,7 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
   art:'supabase',bild,
   async heft(){
    const [{data:products,error:e1},{data:designers,error:e2},{data:collection}]=await Promise.all([
-    client.from(T.products).select(SPALTEN.products).eq('status','published').order('created_at',{ascending:false}).limit(400),
+    client.from(T.products).select(produktSpalten(sichten)).eq('status','published').order('created_at',{ascending:false}).limit(400),
     client.from(T.designers).select(SPALTEN.designers).eq('status','active').eq('published',true).order('house_number',{ascending:true}),
     client.from('curated_collections').select(SPALTEN.collections).eq('is_active',true).order('number',{ascending:false}).limit(1).maybeSingle()
    ]);

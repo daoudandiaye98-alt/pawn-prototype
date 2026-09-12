@@ -1,0 +1,52 @@
+{
+  "WAS_DAS_IST": "Eine ECHTE Antwort von PostgREST, gemessen am 12.09.2026 als anon gegen public.heft_produkte mit genau der Auswahlzeichenkette, die produktSpalten(true) erzeugt. Keine Handschrift, keine Annahme.",
+  "WARUM_SIE_HIER_LIEGT": "Der Pruefer hat zu L3 genau einen Punkt als NICHT PRUEFBAR zurueckgewiesen: dass der PostgREST-Alias `designers:heft_haeuser(...)` die Hausdaten wirklich unter dem Schluessel `designers` ablegt. Stimmte das nicht, liefen adapters.mjs:38 und :148 (row.designers) leer, und jedes Werk verlöre sein Haus — ohne dass ein Test im Repo etwas sagt. Der Test im Repo verglich nur die ERZEUGTE Zeichenkette, nie eine Antwort. Diese Datei ist die Antwort.",
+  "DER_BEFUND": "Der Schluessel heisst `designers`, nicht `heft_haeuser`. Er traegt genau die vier angefragten Felder.",
+  "WIE_SIE_ERNEUERT_WIRD": "curl -G https://<projekt>.supabase.co/rest/v1/heft_produkte --data-urlencode \"select=$(node -e \"import('./src/heft03/quelle.mjs').then(m=>console.log(m.produktSpalten(true)))\")\" --data-urlencode status=eq.published --data-urlencode limit=1 -H \"apikey: <anon>\" -H \"Authorization: Bearer <anon>\". Der anon-Schluessel ist der oeffentliche aus dem Bündel, kein Geheimnis — er gehoert aber trotzdem nicht in diese Datei.",
+  "zeile": {
+    "id": "aaf64b9d-f712-48be-a8fe-7de8cd81a400",
+    "slug": "wool-coat",
+    "name": "Wool Coat",
+    "world": "Mode",
+    "price": 480.0,
+    "image_url": "/heft/assets/cutout-coat.webp",
+    "description": null,
+    "designer_note": null,
+    "product_dna": {
+      "heft": {
+        "hoehe": 3.08,
+        "cutout_url": "/heft/assets/cutout-coat.webp"
+      },
+      "kind": "produkt",
+      "materials": [
+        "Wolle"
+      ]
+    },
+    "size_variants": [],
+    "measurements": {},
+    "material_composition": [],
+    "inventory_mode": "made_to_order",
+    "stock_quantity": 0,
+    "lead_time_days": null,
+    "tags": [
+      "mantel",
+      "Wolle"
+    ],
+    "status": "published",
+    "height_cm": 185,
+    "width_cm": null,
+    "length_cm": null,
+    "made_in": null,
+    "care_instructions": null,
+    "edition_info": null,
+    "sustainability_note": null,
+    "vat_rate": null,
+    "designer_id": "a69830e1-f815-4c5a-aa51-2d4d968d0638",
+    "designers": {
+      "id": "a69830e1-f815-4c5a-aa51-2d4d968d0638",
+      "slug": "demo-drape",
+      "brand_name": "DRAPÉ",
+      "verkaufsbereit": false
+    }
+  }
+}

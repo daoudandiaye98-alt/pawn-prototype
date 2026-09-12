@@ -80,9 +80,34 @@ export interface SeitenZiel {
   pfad: string;
 }
 
-/** Die vier, an denen Geld und Vertrauen hängen. Slugs stehen hier, nicht im Code. */
-export const PRODUKT_SLUG = "obara-rope-jacket";
-export const HAUS_SLUG = "obara";
+/**
+ * Die vier, an denen Geld und Vertrauen hängen. Slugs stehen hier, nicht im Code.
+ *
+ * NACHGEZOGEN AM 12.09.2026, und der Grund ist ein Messfehler, nicht ein Tippfehler:
+ * hier standen `obara` und `obara-rope-jacket`. Dieses Haus gibt es auf der Datenbank
+ * nicht (mehr) — nach dem Erstaufbau trägt sie genau ein Haus, `demo-drape` mit drei
+ * Werken. Der Prüfstand hat damit zwei seiner sechs Seiten auf ein Haus gerichtet, das
+ * es nicht gibt, und dort die HEFT-HÜLLE gemessen statt einer Haus- oder Werkseite.
+ *
+ * Das ist dieselbe Form wie die Blindheit, die Teil L13 hinterlassen hatte: die Augen
+ * waren offen und zeigten auf eine Wand. Belegt am Protokoll des Laufs 173 — die
+ * Befunde 3.3/3.4/3.5 für `/haus/obara` nennen ausschließlich Heft-Bedienelemente
+ * (`note-text`, `scroll-hint`, `tools-toggle`, „Doppelseite 1/2"), kein einziges
+ * Element eines Hauses oder eines Werks.
+ *
+ * WER DAS HIER ÄNDERT, MUSS ES WIEDER ÄNDERN, sobald echte Häuser live sind: ein
+ * Demo-Haus zu messen ist besser als ein nicht existierendes, aber es ist nicht die
+ * Wirklichkeit. Die Slugs müssen auf ein echtes, veröffentlichtes Haus zeigen.
+ *
+ * WAS HIER NOCH FEHLT, ausdrücklich als offener Punkt: der Prüfstand merkt es nicht
+ * selbst. `huelleMarkieren` in `lauf.ts` fängt TRANSPORTfehler (Anfrage fehlgeschlagen),
+ * nicht „Anfrage erfolgreich, null Zeilen". Der saubere Wächter dafür braucht keine
+ * Kenntnis des Heft-DOM, sondern einen Unterschiedstest: rendert `/haus/<slug>` dasselbe
+ * wie `/haus/<UNSINN_PFAD-artiger Unsinn>`, dann ist das Haus nicht geladen und die Seite
+ * ist eine Hülle. Das ist der nächste Schritt und bewusst nicht geraten gebaut.
+ */
+export const PRODUKT_SLUG = "wool-coat";
+export const HAUS_SLUG = "demo-drape";
 
 /** Die Halle — die Startseite. */
 export const HALLE_PFAD = "/";
@@ -149,6 +174,34 @@ export const DATEN_HOSTS = ["supabase.co"];
  */
 export const EIGENE_ABBRUECHE = [
   { pfad: "/auth/v1/health", fehler: "net::ERR_ABORTED" },
+  /*
+   * BELEGT am 2026-09-12, Lauf #179: `/konto` bei 1920 und `/suche` bei 390 wurden
+   * KOMPLETT entwertet — 31 bzw. 25 Befunde auf „kein Urteil", mit der Begründung
+   *
+   *   https://<projekt>.supabase.co/rest/v1/i18n_overrides?select=key,value_en
+   *   — net::ERR_FAILED
+   *
+   * Derselbe Aufruf beantwortet als anon mit HTTP 200 und `[]` — nachgemessen am
+   * selben Tag mit curl gegen die echte Datenbank. Der Aufruf ist also nicht kaputt,
+   * er wird abgebrochen. Er stammt aus src/lib/i18n.tsx:4974 und wird dort bewusst
+   * ohne Rückweg abgeschickt (`void supabase.from(...).then(...)`) — er holt
+   * Übersetzungs-Überschreibungen nach, die Seite wartet nicht auf ihn und zeigt
+   * ohne ihn genau dasselbe.
+   *
+   * Eine Seite deswegen zur leeren Hülle zu erklären, löscht 31 richtige Messungen
+   * wegen eines Nachtrags, der ohnehin nichts liefert. Das ist die stille Schwester
+   * des falschen Rots: sie lehrt nicht, Rot zu übersehen, sondern gar nichts mehr zu
+   * sehen.
+   *
+   * ENG geschrieben: nur dieser eine Pfad. Ist die Datenbank wirklich weg, scheitern
+   * auch alle anderen Aufrufe, und DIE markieren die Hülle weiterhin.
+   *
+   * OFFEN, und ich sage es lieber, als es zu verschweigen: WARUM der Aufruf
+   * abbricht, ist nicht geklärt. Er trat in den Läufen 177 und 178 kein einziges Mal
+   * auf und in 179 zweimal von 35 Seitenaufrufen. Ohne Browser ist das von hier aus
+   * nicht weiter zu verfolgen; der offene Punkt steht in .claude/stand.json.
+   */
+  { pfad: "/rest/v1/i18n_overrides", fehler: "net::ERR_FAILED" },
 ];
 
 export const SCHWELLEN = {
@@ -186,6 +239,28 @@ export const SCHWELLEN = {
  * warten macht sie falsch.
  */
 export const RUHE_MS = 4300;
+
+/**
+ * Wie lange nach der Ruhezeit NOCH auf das Ende der Eröffnung gewartet wird.
+ *
+ * DER BELEGTE FEHLER, und er ist ein Messfehler, kein Seitenfehler: zwischen Lauf 177
+ * und Lauf 178 sind fünf gefallene Gates verschwunden, ohne dass irgendetwas an ihnen
+ * geändert wurde — vier Befunde 3.4 („Direkt entdecken ↗" ohne sichtbare
+ * Fokusänderung) und der eine Befund 3.8 auf /konto. Beide betreffen `#skip` und
+ * `#intro-caption`, und beide sind WÄHREND der Eröffnung rechtmäßig da.
+ *
+ * Die Ruhezeit von 4300 ms reicht dem Läufer in der Werkstatt also mal und mal nicht.
+ * Damit wackelt die Zahl, die über Grün und Rot entscheidet, um fünf Gates — und eine
+ * Prüfung, die an rechtmäßigem Code zufällig rot wird, lehrt nur, Rot zu übersehen
+ * (.claude/rules/00-gesetze.md).
+ *
+ * Die Antwort ist nicht eine größere Zahl, sondern eine andere Frage: nicht „wie lange
+ * dauert die Eröffnung", sondern „ist sie vorbei". Das Heft sagt es selbst — es setzt
+ * `is-intro` und `is-opening` auf `document.body` (app.js:477). Gewartet wird auf den
+ * Zustand, diese Frist ist nur die Reißleine. Bleibt eine Seite in der Eröffnung
+ * stehen, wird gemessen wie bisher, nur eben nicht zufällig.
+ */
+export const EROEFFNUNG_FRIST_MS = 6000;
 
 /** Chromium-Pfad, falls die Umgebung einen mitbringt (Container, CI). */
 export const CHROMIUM_PFAD = process.env.PRUEFSTAND_CHROMIUM ?? undefined;

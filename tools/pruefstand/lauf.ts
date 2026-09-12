@@ -13,7 +13,8 @@ import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, EIGENE_ABBRUECHE, RUHE_MS, SCHWELLEN, SEITEN, UNSINN_PFAD,
+  BREITEN, CHROMIUM_PFAD, DATEN_HOSTS, EIGENE_ABBRUECHE, EROEFFNUNG_FRIST_MS, RUHE_MS,
+  SCHWELLEN, SEITEN, UNSINN_PFAD,
   VORGABE_ZIEL, ZIELE, type Breite, type SeitenZiel, type ZielName,
 } from "./pruefstand.config";
 import { ausnahmeFuer, abgelaufen } from "./ausnahmen";
@@ -214,7 +215,7 @@ async function seiteMessen(
   const adresse = basis + seite.pfad;
   try {
     const antwort = await page.goto(adresse, { waitUntil: "domcontentloaded", timeout: 45_000 });
-    await page.waitForTimeout(RUHE_MS);
+    await ruhe(page);
 
     const umgeleitet = await istUmgeleitet(page, new URL(basis).host);
     if (umgeleitet) {
@@ -369,6 +370,26 @@ async function seiteMessen(
   return huelleMarkieren(befunde, datenFehler);
 }
 
+/**
+ * Warten, bis die Seite wirklich stillsteht — erst die Ruhezeit, dann das Ende der
+ * Eröffnung. Nicht „wie lange dauert sie", sondern „ist sie vorbei": das Heft setzt
+ * `is-intro`/`is-opening` auf `document.body` selbst. Siehe EROEFFNUNG_FRIST_MS.
+ */
+async function ruhe(page: Page): Promise<void> {
+  await page.waitForTimeout(RUHE_MS);
+  await page
+    .waitForFunction(
+      () =>
+        !document.body.classList.contains("is-intro") &&
+        !document.body.classList.contains("is-opening"),
+      undefined,
+      { timeout: EROEFFNUNG_FRIST_MS },
+    )
+    .catch(() => {
+      /* Bleibt die Eröffnung stehen, wird gemessen, wie es ist — aber nicht zufällig. */
+    });
+}
+
 /** 4.3 Wege · 4.5 404 — beides über echte Anfragen, einmal je Lauf. */
 async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   const befunde: Befund[] = [];
@@ -376,7 +397,7 @@ async function wegeUnd404(browser: Browser, basis: string): Promise<Befund[]> {
   await nameHelferSetzen(page);
   try {
     await page.goto(basis + "/", { waitUntil: "domcontentloaded", timeout: 45_000 });
-    await page.waitForTimeout(RUHE_MS);
+    await ruhe(page);
     const links = await page.evaluate((host) => {
       const intern: string[] = [];
       const extern: string[] = [];

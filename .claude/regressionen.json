@@ -124,8 +124,8 @@
     },
     {
       "id": "Z10",
-      "zusage": "Das oeffentliche Heft liest keine Stripe-Spalte und keine fremde Kontospalte.",
-      "beleg": "docs/heft03/backend-inventar.md: die Policy „designers public read“ (USING published = true) gibt anon ALLE Spalten der Tabelle, auch stripe_account_id und stripe_customer_id — es gibt keine Spaltenmaske. Das Heft schuetzt sich mit einer eigenen Auswahlliste (quelle.mjs SPALTEN) und, sobald sie angewandt ist, mit den Sichten aus der Migration heft_sichten.",
+      "zusage": "Das oeffentliche Heft liest keine Stripe-Spalte und keine fremde Kontospalte — und es liest wirklich durch die Sichten.",
+      "beleg": "docs/heft03/backend-inventar.md: die Policy „designers public read“ (USING published = true) gibt anon ALLE Spalten der Tabelle, auch stripe_account_id und stripe_customer_id — es gibt keine Spaltenmaske. Das Heft schuetzt sich mit einer eigenen Auswahlliste (quelle.mjs SPALTEN) und, sobald sie angewandt ist, mit den Sichten aus der Migration heft_sichten. NACHGETRAGEN AM 12.09.2026 (L3): die Sichten lagen seit dem Erstaufbau auf der Datenbank — heft_haeuser und heft_produkte, beide security_invoker=true, anon hat SELECT — und die Huelle stand die ganze Zeit auf `sichten: false`. Die Maske war gebaut und wirkungslos. Die Pruefung verlangt jetzt zusaetzlich, dass HeftRoute03.tsx sichten:true setzt und der eingebettete Join auf heft_haeuser zeigt statt auf public.designers. Zweimal rot vorgefuehrt, je Haelfte einmal.",
       "pruefung": "keineStripeSpalten",
       "params": {
         "datei": "src/heft03/quelle.mjs",
@@ -136,7 +136,8 @@
           "email",
           "iban",
           "application_fee"
-        ]
+        ],
+        "huelle": "src/heft03/HeftRoute03.tsx"
       }
     },
     {
@@ -211,6 +212,67 @@
       "pruefung": "geruestErstNachGestaltung",
       "params": {
         "huelle": "src/heft03/HeftRoute03.tsx"
+      }
+    },
+    {
+      "id": "Z16",
+      "zusage": "Keine Migration bringt ein Geheimnis im Klartext mit — ab hier nach vorn, ausnahmslos.",
+      "beleg": "M8 aus Auftrag Teil M. supabase/migrations/20260721221200_jarvis_wissen_postfach_dna.sql Zeile 6 setzt ai_config.jarvis_cron_secret mit einem 64-stelligen Wert im Klartext. Wer das Repo liest, liest ihn mit. Aus der Git-Geschichte ist er nicht herausloeschbar, und die Datei zu aendern ist mechanisch blockiert (wache.sh) — deshalb ist SIE die eine dokumentierte Ausnahme und die Zusage gilt nach vorn. Die Zeile ist inzwischen aus der Datenbank geloescht (20260930110000), gemessen: 0 Treffer. BEFUND dazu: pawn-jarvis liest das Geheimnis aus Deno.env.get('JARVIS_CRON_SECRET'), NICHT aus ai_config — den ai_config-Schluessel liest im ganzen Repo niemand. Ob das Function-Geheimnis denselben Wert traegt, kann nur Daouda sehen; traegt es ihn, muss er getauscht werden. · ERWEITERT am 11.09.2026: die Kontrolle hatte ein Loch genau an der wichtigsten Stelle. Ein JWT enthaelt PUNKTE, und das Base64-Muster ohne Punkte ging daran vorbei — in einem Supabase-Repo ist der JWT die haeufigste Geheimnisform ueberhaupt. Gefunden beim Lesen von 20260709092523 waehrend des Erstaufbaus, nicht durch Nachdenken. Das Muster kennt jetzt drei Formen: Hex, Base64 und JWT. Einmal rot vorgefuehrt, indem die Ausnahme entfernt wurde — sie findet den echten JWT in Zeile 16.",
+      "pruefung": "keinGeheimnisInMigration",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ausnahmen": [
+          "20260721221200_jarvis_wissen_postfach_dna.sql",
+          "20260709092523_092fc55e-a0d2-4453-be92-a386b60ee50a.sql"
+        ],
+        "begruendung": "Zwei unveraenderbare Altbestaende, und beide zu aendern ist durch wache.sh blockiert und nuetzt nichts, weil die Werte in der Git-Geschichte stehen. Eine Pruefung, die daran dauerhaft rot steht, lehrt nur, Rot zu uebersehen. 1) 20260721221200: ai_config.jarvis_cron_secret, 64 Stellen Hex. Inzwischen aus der Datenbank geloescht (20260930110000). 2) 20260709092523: der anon-JWT des GELOESCHTEN alten Projekts rnakubexbqfgfciynqpt, im Kopf des Nachtjobs. Der Schluessel ist wertlos, weil das Projekt nicht mehr existiert, und der Job ist abgeschaltet (20260930100000) — aber die Zeile bleibt in der Datei."
+      }
+    },
+    {
+      "id": "Z17",
+      "zusage": "Die Migrationskette ist gegen eine leere Datenbank spielbar — jede doppelte Anlage ist in scripts/db/deckung.json benannt.",
+      "beleg": "Belegt am 11.09.2026 mitten im Abspielen gegen cnxtdcifkrdxvajaikxq: `42P07: relation \"staging_requests\" already exists` bei 20260729052933. Das war keine Ausnahme, sondern eine Form — der Lovable-Agent hatte am 29.07. drei Repo-Dateien in EINER Migration gebuendelt angewandt, und dieselben Dateien liegen zusaetzlich einzeln im Ordner, zwei davon mit SPAETEREM Datum. Einmal alle gesucht statt eine nach der anderen anzulaufen: FUENF Stellen, nicht eine (20260729052933, 20260731090000, 20260802090000, 20260803090000, 20260905090000). Drei der Buendel tragen GRANTs, die in den spaeteren Einzeldateien fehlen, darunter `GRANT SELECT ON public.house_themes TO anon` und ein `revoke all on function public.recompute_house_milestones(uuid) from public` — haette man die Buendel uebersprungen statt der Einzeldateien, waere genau das Loch zurueckgekommen, das M7 zugemacht hat. Einmal rot vorgefuehrt, zweifach: eine Deckung entfernt (VERIFY: 4/5 · FEHLER: kette) und eine Deckung eingetragen, die nichts deckt (eine Karteileiche waere schlimmer als keine Deckung, weil sie eine Datei stumm schaltet, die gar nichts doppelt).",
+      "pruefung": "jedeDoppelungIstGedeckt"
+    },
+    {
+      "id": "Z18",
+      "zusage": "Jede SECURITY-DEFINER-Funktion entscheidet ihre Ausfuehrungsrechte ausdruecklich — kein Versehen macht eine oeffentlich.",
+      "beleg": "Belegt am 12.09.2026, nach dem vollstaendigen Abspielen der Kette (169 Versionen): assign_invoice_number(uuid, uuid) war fuer anon aufrufbar. Sie ist SECURITY DEFINER und sie SCHREIBT — zaehlt designer_billing_profiles.invoice_next_number hoch und stempelt die Nummer auf eine Bestellung. Ihre eigene Datei (20260811002120) vergibt EXECUTE ausdruecklich nur an service_role, aber PostgreSQL vergibt auf eine neue Funktion per VORGABE an PUBLIC, und anon erbt das. Wer den oeffentlichen Schluessel hat, konnte Rechnungsnummern verbrennen; ein Rechnungsnummernkreis muss lueckenlos sein (§14 UStG). Dasselbe Loch bei next_invoice_number, das im ganzen Repo niemand ruft. Gemessen: has_function_privilege('anon', ..., 'EXECUTE') = true fuer 15 Funktionen; nach 20260930130000 sind es 9, und die neun sind alle ausdruecklich gewollt. WARUM ES EINEN ZWEITEN DURCHGANG BRAUCHTE: 20260930090000 (M7) wurde gegen eine Datenbank mit erst 35 Migrationen geschrieben und konnte die anderen gar nicht sehen — genau das ist der Grund, warum diese Pruefung an DATEIEN haengt und nicht an einer Messung.",
+      "pruefung": "secdefEntscheidetRechte",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ausnahmen": [
+          "order_has_my_house_items",
+          "ist_verkaufsbereit",
+          "ist_kauf_freigeschaltet"
+        ],
+        "begruendung": "Drei bewusst offene Funktionen, jede mit Grund. 1) order_has_my_house_items steht in der RLS-Policy \"designer sees orders containing own products\" auf public.orders (20260801100648 Zeile 21). Ein Entzug fuer authenticated wuerde jedes Haus aus seinen EIGENEN Bestellungen sperren — dieselbe Falle wie bei has_role. Als anon ist auth.uid() leer, sie gibt false zurueck. 2+3) ist_verkaufsbereit und ist_kauf_freigeschaltet lesen nur einen Wahrheitswert je Haus, und genau dieser Wert steht ohnehin oeffentlich in designers.kauf_freigeschaltet, das die Heft-Sicht ausliefert. Sie zuzuziehen braeuchte den Beleg, dass kein Besucher sie ruft — den habe ich nicht, und eine Vermutung rechtfertigt kein Risiko auf einer Seite mit Kaufknoepfen."
+      }
+    },
+    {
+      "id": "Z19",
+      "zusage": "Jede Tabelle hat ihre Rechte ausdruecklich in einer Migration — der Ordner verlaesst sich auf keine Vorgabe der Plattform.",
+      "beleg": "Belegt am 12.09.2026, und der Fehler war mein eigener: der Rueckweg des Erstaufbaus macht `drop schema public cascade; create schema public;`. Ein NEUES Schema traegt keine Vorgabe-Rechte. Supabase hatte am alten public `alter default privileges in schema public grant all on tables to anon, authenticated, service_role` haengen — deshalb schreiben die meisten Migrationen gar keine GRANTs, sie brauchten keine. Gemessen: pg_default_acl hat Eintraege fuer storage, auth, graphql, realtime, cron und extensions — fuer public KEINEN. Die Folge, gemessen: von 80 Tabellen durfte authenticated nur 63 lesen und service_role ebenfalls nur 63. Die Edge Functions arbeiten mit service_role — auf 17 Tabellen waeren sie mit einem Berechtigungsfehler abgebrochen, und das haette niemand erklaeren koennen. Nachgezogen in 20260930140000, eng: fuer authenticated genau die Verben, die die Policies der Tabelle decken, an pg_policy.polcmd nachgemessen — drei Tabellen bekommen nur SELECT, style_references kein UPDATE. Danach gemessen: service_role 80/80, authenticated 77/80, anon unveraendert 13. Die Datei-Pruefung und die Datenbank-Messung stimmen ueberein: beide 0 fehlend. Einmal rot vorgefuehrt.",
+      "pruefung": "tabellenrechteSindAusdruecklich",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ausnahmen_authenticated": [],
+        "begruendung": "Keine Ausnahme noetig: alle 77 Tabellen mit einer authenticated-Policy haben ihr GRANT. Drei Tabellen haben absichtlich KEINES und brauchen auch keine Ausnahme, weil sie gar keine authenticated-Policy tragen: rate_limit_hits (ihre Datei sagt ausdruecklich 'kein Client-Zugriff, weder anon noch authenticated'), zugang_bootstrap und zugang_protokoll (RLS an, keine Policy — Absicht, und der Gegenstand von M4). anon ist NICHT Gegenstand dieser Zusage: wer oeffentlich lesen darf, ist eine Entscheidung, keine Vollstaendigkeitsfrage, und gehoert in den zweiten Teil von M3."
+      }
+    },
+    {
+      "id": "Z20",
+      "zusage": "Keine Tabelle ohne RLS, und keine RLS-Tabelle ohne Policy ausser den drei benannten (M4).",
+      "beleg": "M4 aus Auftrag Teil M: zugang_bootstrap und zugang_protokoll sollen als dokumentierte Ausnahmen eingetragen werden. Gemessen am 12.09.2026 sind es DREI, nicht zwei — rate_limit_hits gehoert dazu, und ihre eigene Datei sagt den Grund ausdruecklich ('Nur der Service-Role-Schluessel darf hier lesen/schreiben, kein Client-Zugriff, weder anon noch authenticated. Kein RLS-Policy-Grant noetig, RLS ohne Policy blockt per Default'). Datei-Sicht und Datenbank stimmen ueberein: 80 Tabellen, 80 mit RLS, 77 mit Policy. WARUM DIE ERSTE HAELFTE JETZT NOETIGER IST ALS VORHER: seit 20260930140000 hat authenticated auf 77 Tabellen ein ausdrueckliches GRANT. Ein GRANT ohne RLS heisst, dass jeder angemeldete Mensch alle Zeilen liest. Vorher haette dasselbe Versehen weniger geschadet, weil das GRANT fehlte — die Reparatur der Rechte hat diese Pruefung also erst scharf gemacht. Einmal rot vorgefuehrt, beide Haelften.",
+      "pruefung": "rlsUndPolicySindVollstaendig",
+      "params": {
+        "ordner": "supabase/migrations",
+        "ohne_policy_erlaubt": [
+          "rate_limit_hits",
+          "zugang_bootstrap",
+          "zugang_protokoll"
+        ],
+        "begruendung": "Drei Tabellen mit RLS und ohne Policy, jede mit Absicht. RLS ohne Policy heisst: fuer alle ausser service_role ZU. 1) rate_limit_hits — ihre Datei (20260810093249) sagt es selbst: nur der Service-Role-Schluessel, kein Client-Zugriff. Sie zaehlt Aufrufe fuer die Rate-Begrenzung von pawn-chat; ein Client, der sie lesen koennte, koennte auch sehen, wie nah er an der Grenze ist. 2) zugang_bootstrap (20260929090000) — sie enthaelt die Zuordnung E-Mail -> Rolle. Wer sie lesen koennte, wuesste, welche Adresse Admin wird. Wer sie SCHREIBEN koennte, haette sich selbst Admin gegeben; genau dieses Loch hat M7 an der Funktion zugang_zuweisen zugemacht. Zugriff laeuft ausschliesslich ueber die SECURITY-DEFINER-Funktion beim Anmelden. 3) zugang_protokoll (20260929110000) — das Fehlerprotokoll derselben Starthilfe. Es traegt E-Mail-Adressen und Datenbankfehler; beides gehoert niemandem im Netz."
       }
     }
   ]

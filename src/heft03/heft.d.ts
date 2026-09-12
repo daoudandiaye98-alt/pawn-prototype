@@ -257,6 +257,8 @@ declare module "@/heft03/quelle.mjs" {
   export function chatAntwort(data: unknown): HeftChatAntwort | null;
   /** Die Spalten, die das öffentliche Heft liest — nie Stripe-, nie Kontospalten. */
   export const SPALTEN: Record<string, string>;
+  /** Die Spaltenmaske der Werke; mit sichten:true geht der eingebettete Join auf heft_haeuser. */
+  export function produktSpalten(sichten?: boolean): string;
 }
 
 declare module "@/heft03/routen.mjs" {

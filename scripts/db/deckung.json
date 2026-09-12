@@ -1,0 +1,89 @@
+{
+  "WAS_DAS_IST": "Fünf Migrationen legen Dinge an, die eine ANDERE Migration der Kette schon angelegt hat. Beim Abspielen bricht die Kette dort mit 42P07 (Tabelle existiert schon) oder 42710 (Policy existiert schon). Diese Tabelle sagt für jede dieser Versionen, was schon gedeckt ist und von wem — damit der Lauf reproduzierbar ist und nicht von dem abhängt, was eine Sitzung gerade im Kopf hat.",
+  "WOHER_DAS_KOMMT": "Der Lovable-Agent hat am 29.07.2026 drei Repo-Dateien in EINER Migration gebündelt angewandt (20260729052933, die Abschnitte tragen die Dateinamen im Kommentar). Dieselben Dateien liegen aber auch einzeln im Ordner, zwei davon mit SPÄTEREM Datum. Dasselbe am 10.08. mit rate_limit_hits. Die Datenbank kannte also nur den Bündel-Stand; der Ordner kennt beide. Gefunden beim Abspielen gegen die echte Datenbank am 11.09.2026, nicht durch Nachdenken.",
+  "DIE_REGEL": "Gedeckt wird immer die ÄRMERE Fassung. Drei der Bündel-Migrationen tragen zusätzliche GRANTs (darunter `GRANT SELECT ... TO anon` auf house_themes und house_milestones, ohne die eine veröffentlichte Hausseite ihre eigene Welt nicht lesen kann) und einen REVOKE, die in den späteren Einzeldateien FEHLEN. Wer stattdessen die Bündel überspringt, verliert diese Rechte still. Deshalb laufen die Bündel, und die Einzeldateien werden nur gebucht.",
+  "KEINE_DATEI_WIRD_GEAENDERT": "Die Migrationen selbst bleiben unangetastet (CLAUDE.md Regel 2). Diese Tabelle wirkt nur auf das, was scripts/db/stapel.mjs an die Datenbank druckt.",
+  "versionen": {
+    "20260729052933": {
+      "art": "ganz",
+      "gedeckt_von": [
+        "20260726141711",
+        "20260726172947",
+        "20260731090000",
+        "20260930120000"
+      ],
+      "grund": "Das Buendel ist an seiner Stelle UEBERHAUPT NICHT spielbar, und das ist kein Deckungs-, sondern ein Reihenfolgeproblem: seine Policy \"public reads current theme of published pages\" liest designers.page_published_at, und diese Spalte legt erst 20260729093000_hausseite_bausteine.sql an — also SPAETER. Gemessen am 11.09.2026: 42703: column d.page_published_at does not exist. Auch die alte Datenbank kann das Buendel so nie bekommen haben; dort muss die Spalte schon vorher von Hand existiert haben. Deshalb laufen die drei Quelldateien (20260726141711, 20260726172947, 20260731090000), nicht das Buendel. Die drei GRANTs auf public.house_themes, die NUR das Buendel traegt, holt 20260930120000_rechte_house_themes.sql nach — ohne sie koennte eine veroeffentlichte Hausseite ihre eigene Welt nicht lesen, und zwar mit einem Berechtigungsfehler statt einer leeren Antwort. Dass die GRANTs fehlten, hat nicht mein Kopf gefunden, sondern die Pruefung: sie verlangt, dass jede weggenommene Anweisung woanders steht."
+    },
+    "20260802090000": {
+      "art": "ganz",
+      "gedeckt_von": [
+        "20260729053012"
+      ],
+      "grund": "Ganz enthalten in 20260729053012 — und zwar ärmer: dort stehen zusätzlich die drei GRANTs auf public.house_milestones und `revoke all on function public.recompute_house_milestones(uuid) from public`. Ohne das Bündel wäre diese Funktion für PUBLIC aufrufbar, also genau das Loch, das M7 zugemacht hat. Anweisung für Anweisung nachgezählt: 11 gegen 7."
+    },
+    "20260803090000": {
+      "art": "anweisung",
+      "gedeckt_von": [
+        "20260729053041"
+      ],
+      "grund": "Zwei Anweisungen sind gedeckt. (1) Die Policy \"public reads media of active houses\" ist Zeichen fuer Zeichen dieselbe wie in 20260729053041. (2) Das Backfill auf media_assets.product_id ist in DIESER Datei fehlerhaft geschrieben und laeuft nirgends — 20260729053041 hat dasselbe Backfill korrekt als Unterabfrage und ist gelaufen. Der ganze Rest der Datei ist ihr eigener.",
+      "weglassen": [
+        {
+          "text": "CREATE POLICY \"public reads media of active houses\" ON public.media_assets FOR SELECT\n  TO anon, authenticated\n  USING (\n    EXISTS (SELECT 1 FROM public.designers d WHERE d.id = media_assets.designer_id AND d.status = 'active')\n  );",
+          "warum": "Zeichen fuer Zeichen dieselbe Policy wie in 20260729053041."
+        },
+        {
+          "text": "UPDATE public.media_assets ma\nSET product_id = (elem->>'product_id')::uuid\nFROM jsonb_array_elements(ma.usages) AS elem\nWHERE ma.product_id IS NULL\n  AND elem->>'type' = 'produkt'\n  AND elem->>'product_id' IS NOT NULL\n  AND (elem->>'product_id') ~ '^[0-9a-f-]{36}$';",
+          "warum": "Dieses Backfill KANN nicht laufen, in keiner Datenbank: ein UPDATE darf seine eigene Zieltabelle nicht in der FROM-Klausel nennen. Gemessen am 11.09.2026: 42P10: invalid reference to FROM-clause entry for table \"ma\". Dasselbe Backfill steht in 20260729053041 als gueltige Unterabfrage und ist dort gelaufen.",
+          "ersetzt_durch": "UPDATE public.media_assets ma\nSET product_id = sub.pid\nFROM (\n  SELECT m.id, (elem->>'product_id')::uuid AS pid\n  FROM public.media_assets m\n  CROSS JOIN LATERAL jsonb_array_elements(m.usages) AS elem\n  WHERE m.product_id IS NULL\n    AND elem->>'type' = 'produkt'\n    AND elem->>'product_id' IS NOT NULL\n    AND (elem->>'product_id') ~ '^[0-9a-f-]{36}$'\n) sub\nWHERE ma.id = sub.id AND ma.product_id IS NULL;"
+        }
+      ]
+    },
+    "20260905090000": {
+      "art": "ganz",
+      "gedeckt_von": [
+        "20260810093249"
+      ],
+      "grund": "Ganz enthalten in 20260810093249 Zeile 79 bis 93: Tabelle rate_limit_hits, ihr Index, RLS, der REVOKE, die zwei GRANTs und die ai_config-Zeile pawn_chat_rate_limits. Diese Datei trägt nichts Eigenes."
+    },
+    "20260729052943": {
+      "art": "ganz",
+      "gedeckt_von": [
+        "20260801090000"
+      ],
+      "grund": "Dieselbe Form wie 20260729052933, und derselbe Grund: `alter type public.page_block_kind add value 'ueberlappend'` — den Typ legt aber erst 20260729093000_hausseite_bausteine.sql an, also SPAETER. An seiner Stelle nicht spielbar. Die identische Anweisung steht in 20260801090000_hausseite_ueberlappend.sql, dort hinter dem Typ. Sie traegt IF NOT EXISTS, liefe also auch zweimal ohne Schaden — nur eben nicht zu frueh."
+    },
+    "20260810093133": {
+      "art": "anweisung",
+      "gedeckt_von": [
+        "20260825090000"
+      ],
+      "weglassen": [
+        {
+          "text": "create index if not exists brand_knowledge_kategorie_idx on public.brand_knowledge (kategorie, active, approved, created_at desc);",
+          "warum": "Der Index liest brand_knowledge.active — diese Spalte legt aber erst 20260821090000_brand_knowledge_teil33.sql an, also SPAETER in der Abspielordnung. An dieser Stelle nicht spielbar (42703). Dieselbe Zeile steht Zeichen fuer Zeichen in 20260825090000_wissen_wirtschaft_teil38.sql, und die laeuft nach der Spalte. Sie traegt IF NOT EXISTS, liefe also auch zweimal ohne Schaden — nur eben nicht zu frueh."
+        }
+      ],
+      "grund": "Nur diese eine Index-Zeile ist gedeckt. Der ganze Rest der Datei ist ihr eigener und laeuft — sie ist die groesste Lovable-Sammelmigration der Kette (26 Anweisungen, Teil 38 AP1 bis AP6)."
+    },
+    "20260810215321": {
+      "art": "anweisung",
+      "gedeckt_von": [
+        "20260912090000"
+      ],
+      "weglassen": [
+        {
+          "text": "CREATE FUNCTION public.get_lead_invitation(_ref_code text)\nRETURNS TABLE(handle text, world text, personal_line text, lead_type text, language text, plate_images jsonb, plate_number integer, plate_status text)\nLANGUAGE sql\nSTABLE SECURITY DEFINER\nSET search_path TO 'public'\nAS $function$\n  SELECT handle, world, personal_line, lead_type, language, plate_images, plate_number, plate_status\n  FROM public.acquisition_leads\n  WHERE ref_code = upper(trim(_ref_code))\n  LIMIT 1;\n$function$;",
+          "ersetzt_durch": "CREATE FUNCTION public.get_lead_invitation(_ref_code text)\nRETURNS TABLE (handle text, world text, personal_line text, lead_type text, language text)\nLANGUAGE sql\nSTABLE\nSECURITY DEFINER\nSET search_path TO 'public'\nAS $function$\n  SELECT handle, world, personal_line, lead_type, language\n  FROM public.acquisition_leads\n  WHERE ref_code = upper(trim(_ref_code))\n  LIMIT 1;\n$function$;",
+          "warum": "Diese Fassung liest acquisition_leads.ref_code und .language. ref_code legt erst 20260908090000 an, language erst 20260813090000 — beide SPAETER. Eine SQL-Funktion wird beim Anlegen aufgeloest, anders als eine plpgsql-Funktion, also bricht es hier wirklich. Zweiter, staerkerer Grund: haette es diese 8-spaltige Fassung je gegeben, waere 20260909090000 daran gescheitert — die Datei benutzt CREATE OR REPLACE mit nur 4 Spalten, und Postgres laesst die Rueckgabetabelle einer bestehenden Funktion nicht aendern (42P13). Die Endfassung der Kette steht in 20260912090000 mit fuenf Spalten; sie loescht die Funktion vorher ausdruecklich und begruendet das im Kopf mit genau diesem Satz."
+        },
+        {
+          "text": "GRANT EXECUTE ON FUNCTION public.get_lead_invitation(text) TO anon, authenticated, service_role;",
+          "ersetzt_durch": "GRANT EXECUTE ON FUNCTION public.get_lead_invitation(text) TO anon, authenticated;",
+          "warum": "Haengt an der Funktion: ohne sie gibt es nichts zu vergeben. 20260912090000 loescht die Funktion und legt sie neu an — damit sind die Rechte dort ohnehin neu gesetzt, auf anon und authenticated. service_role braucht kein EXECUTE-Recht, es umgeht RLS und Rechte."
+        }
+      ],
+      "grund": "Zwei Anweisungen gedeckt, beide zur Funktion get_lead_invitation. Der Rest der Datei — die drei plate_-Spalten und ihr Index — ist ihr eigener und laeuft."
+    }
+  }
+}

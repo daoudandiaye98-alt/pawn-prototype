@@ -1205,7 +1205,7 @@ export type Database = {
       designer_consents: {
         Row: {
           accepted_at: string
-          application_id: string | null
+          application_id: string
           checksum_at_accept: string
           contract_version_id: string
           id: string
@@ -1216,7 +1216,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string
-          application_id?: string | null
+          application_id: string
           checksum_at_accept: string
           contract_version_id: string
           id?: string
@@ -1227,7 +1227,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string
-          application_id?: string | null
+          application_id?: string
           checksum_at_accept?: string
           contract_version_id?: string
           id?: string
@@ -2533,7 +2533,7 @@ export type Database = {
         Row: {
           body: string
           created_at: string
-          data: Json | null
+          data: Json
           id: string
           kind: string
           read_at: string | null
@@ -2542,7 +2542,7 @@ export type Database = {
         Insert: {
           body: string
           created_at?: string
-          data?: Json | null
+          data?: Json
           id?: string
           kind: string
           read_at?: string | null
@@ -2551,7 +2551,7 @@ export type Database = {
         Update: {
           body?: string
           created_at?: string
-          data?: Json | null
+          data?: Json
           id?: string
           kind?: string
           read_at?: string | null
@@ -2570,7 +2570,7 @@ export type Database = {
           started_at: string
           status: string
           summary: string | null
-          tokens_used: number | null
+          tokens_used: number
           trigger: string
         }
         Insert: {
@@ -2583,8 +2583,8 @@ export type Database = {
           started_at?: string
           status?: string
           summary?: string | null
-          tokens_used?: number | null
-          trigger?: string
+          tokens_used?: number
+          trigger: string
         }
         Update: {
           cost_estimate?: number | null
@@ -2596,7 +2596,7 @@ export type Database = {
           started_at?: string
           status?: string
           summary?: string | null
-          tokens_used?: number | null
+          tokens_used?: number
           trigger?: string
         }
         Relationships: []
@@ -4595,9 +4595,6 @@ export type Database = {
           language: string
           lead_type: string
           personal_line: string
-          plate_images: Json
-          plate_number: number
-          plate_status: string
           world: string
         }[]
       }
@@ -4621,7 +4618,6 @@ export type Database = {
         Returns: boolean
       }
       ist_verkaufsbereit: { Args: { _designer_id: string }; Returns: boolean }
-      jarvis_heartbeat_sql: { Args: never; Returns: Json }
       mark_application_in_review: {
         Args: { _application_id: string }
         Returns: undefined

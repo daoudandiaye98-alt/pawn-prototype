@@ -252,8 +252,29 @@ export default function HeftRoute03() {
         /* Nur noch die Anzeigegröße: signiert wird eine Runde vorher in `quelle.heft()`,
            weil die Adapter `bild()` synchron rufen und Signieren asynchron ist. */
         bild: (u: string) => bildVariante(u, { breite: 1280 }) ?? u,
-        /* Die Sichten aus sql/01 gibt es erst nach der Migration. Bis dahin die Tabellen. */
-        sichten: false,
+        /*
+         * L3 — das Heft liest die Sichten, nicht die Basistabellen.
+         *
+         * Gemessen am 12.09.2026 an der echten Datenbank: public.heft_haeuser und
+         * public.heft_produkte existieren, beide mit security_invoker=true, anon und
+         * authenticated haben SELECT darauf. Vorher stand hier `false`, weil die
+         * Migration fehlte — sie liegt seit 20260928090000_heft_sichten.sql in der Kette
+         * und ist beim Erstaufbau mitgelaufen.
+         *
+         * WAS SICH AN DEN ZAHLEN AENDERT: heute nichts, gemessen. heft_haeuser 1 Zeile
+         * gegen designers(active,published) 1 Zeile, heft_produkte 3 gegen
+         * products(published) 3. Die Sicht filtert strenger — sie zeigt nur Werke von
+         * Haeusern, die aktiv UND veroeffentlicht sind, die Tabellenabfrage zeigte jedes
+         * veroeffentlichte Werk. Auf dem heutigen Stand fallen beide Mengen zusammen;
+         * sobald ein Haus ein Werk veroeffentlicht, ohne selbst veroeffentlicht zu sein,
+         * gehen sie auseinander, und dann ist die Sicht die richtige Antwort.
+         *
+         * WAS SICH NICHT AENDERT: `anon` darf die Basistabellen weiter lesen, mit allen
+         * 33 verborgenen Spalten an designers. Die Sicht schuetzt nur, wovon gelesen wird.
+         * Das Loch selbst gehoert in den zweiten Teil von M3 und wartet auf Daouda
+         * (.claude/stand.json).
+         */
+        sichten: true,
         adressen: {
           erfolg: `${location.origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
           abbruch: `${location.origin}/tasche`,

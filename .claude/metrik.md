@@ -227,3 +227,113 @@ zuletzt etwas gefangen?"
 **Nachfunde durch einen Menschen: unverändert 3.** Dieser Fund ging auf das Konto des
 Werkzeugs, nicht auf das eines Menschen — aber er erklärt, warum Daouda drei Mängel
 finden musste, die kein Lauf gefangen hat. Vier Wochen lang hat nichts gemessen.
+
+---
+
+## 12.09.2026 · die Kette, und was in ihr steckte
+
+| | |
+|---|---|
+| Migrationen gespielt | 169 Versionen aus 170 Dateien, gegen `cnxtdcifkrdxvajaikxq` |
+| Abnahme | md5 über alle Versionen, beidseitig `9bcdb726…` · 177 Objekte gemessen da |
+| Dateien, die **in sich** kaputt waren | 2 |
+| Dateien, die etwas doppelt oder zu früh anlegen | 7 |
+| **Nachfunde durch einen Menschen** | **unverändert 3** |
+
+**Sieben Brüche in einer Kette, die seit Monaten als „die Wahrheit" galt.** Keiner davon
+war durch Lesen zu finden — jeder einzelne hat sich erst gezeigt, als die Datei wirklich
+an eine Datenbank ging. Zwei Dateien waren *in sich* nicht spielbar: eine Policy, die
+etwas liest, das dieselbe Datei erst weiter unten anlegt. Fünf weitere legen an, was eine
+andere Migration schon anlegt, oder benutzen eine Spalte, die erst später entsteht.
+
+Der gemeinsame Grund ist keiner von sieben Zufällen: **der Lovable-Agent hat Dateien
+gebündelt auf eine Datenbank angewandt, die dem Repo voraus war.** Damit hat der Ordner
+nie dasselbe beschrieben wie die Datenbank — und es war niemandem anzusehen, weil
+niemand die Kette je von null gespielt hat.
+
+**Die Lehre, und sie ist die teuerste dieses Monats:** eine Migration, die nie von null
+gelaufen ist, ist keine Migration. Sie ist eine Notiz darüber, was einmal jemand
+angewandt hat. Der Unterschied bleibt unsichtbar, solange niemand bei null anfängt —
+und wird in dem Moment total, in dem jemand muss.
+
+**Und eine zweite, die dieselbe Form hat:** der erste M7-Durchgang hat 16
+anon-aufrufbare SECURITY-DEFINER-Funktionen gefunden und auf 0 gebracht — gemessen, auf
+einer Datenbank mit 35 Migrationen. Nach der vollständigen Kette waren es wieder 15.
+Beide Messungen waren richtig. Beide Berichte waren richtig. Und trotzdem war das Loch
+offen, darunter `assign_invoice_number`, die Rechnungsnummern verbrennt. **Eine Messung
+gilt nur für den Stand, auf dem sie gemacht wurde — ein Bericht, der das nicht sagt,
+behauptet mehr als er weiß.** Deshalb hängt die neue Prüfung `Z18` an den *Dateien*.
+
+---
+
+## 12.09.2026 · die Maske, die niemand benutzte
+
+| | |
+|---|---|
+| Zweig | `claude/teil-m` |
+| Erledigt | M4 (Z20), L3 (Z10 erweitert) |
+| Neue Prüfungen | 1 neue Zusage, 1 erweiterte — alle drei neuen Hälften einmal rot vorgeführt |
+| **Nachfunde durch einen Menschen** | **unverändert 3** |
+
+**Eine Spaltenmaske, die seit dem Erstaufbau auf der Datenbank lag und nicht benutzt
+wurde.** `heft_haeuser` und `heft_produkte` existieren, `security_invoker = true`, `anon`
+hat `SELECT` darauf — und in `HeftRoute03.tsx` stand `sichten: false`, mit dem Kommentar
+„die Sichten gibt es erst nach der Migration". Der Kommentar war einmal wahr. Danach hat
+ihn niemand gegen die Wirklichkeit gehalten.
+
+**Die Lehre:** eine Begründung mit Verfallsdatum im Code ist eine Zeitbombe mit
+umgekehrtem Vorzeichen — sie tickt nicht, sie *schläft*. Solange sie dasteht, liest jeder
+sie als Grund, nicht als offenen Punkt. Deshalb prüft `Z10` jetzt nicht mehr nur, ob die
+Maske richtig gebaut ist, sondern ob sie **benutzt** wird. Das ist der dritte Ort, und es
+war der stille.
+
+**Und der Fund, der dabei herausfiel:** die Sicht schützt nur, wovon gelesen wird. `anon`
+darf `public.designers` weiter direkt fragen und bekommt dort **33 Spalten**, die die
+Sicht verbirgt — `stripe_account_id`, `stripe_customer_id`, `stripe_subscription_id`,
+`user_id`, `revenue_share_pct` darunter. Eine Policy begrenzt Zeilen, kein Recht begrenzt
+Spalten. Das ist der zweite Teil von M3, und er wartet auf Daoudas Wort, weil ein falscher
+Schnitt die Live-Seite in derselben Sekunde bricht.
+
+**Nachtrag vom selben Tag, und er ist die eigentliche Lehre der Runde:** ich habe
+Daouda geschrieben, der Blick auf die echte Seite sei aus diesem Container nicht zu
+haben — Chromium kommt nicht ins Netz, gemessen und zweimal gegengeprüft. Das
+stimmte und war trotzdem falsch. Der CI-Läufer misst gegen die Vercel-Vorschau mit
+echter Datenbank und legt **35 Aufnahmen** als Artefakt ab; die liegen seit jedem
+Lauf da und sind mit `curl` und dem Token zu holen.
+
+Auf der ersten Aufnahme, die ich mir angesehen habe, stand unter einem **Mantel**:
+„ob die Arbeit an deine **Wand** passt."
+
+**Die Lehre:** „ich kann das nicht sehen" ist fast nie wahr — meistens heißt es
+„ich habe nur einen Weg gesucht". Der Weg zu Augen führte hier nicht über einen
+Browser, sondern über ein Artefakt, das schon existierte. Es steht jetzt unter
+`letzter_pruefstand.WICHTIG_FUER_DIE_NAECHSTE_SITZUNG`.
+
+Und die Zahl, die alle Berichte seit Wochen tragen — „119 gefallene Launch Gates" —
+ist überholt: es sind **131**. Nicht weil etwas kaputtging, sondern weil zum ersten
+Mal eine echte Haus- und Werkseite gemessen wurde statt einer Wand.
+
+**Und noch ein Nachtrag desselben Tages, weil er eine Methode zeigt und nicht nur ein
+Ergebnis:** vier Läufe hintereinander, am Frontend nach dem zweiten nichts mehr geändert.
+
+| Lauf | gefallen | kein Urteil | 3.3 | 3.4 | 3.5 | 3.8 | 4.7 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 177 | 131 | 345 | 61 | 20 | 14 | 1 | 35 |
+| 178 | 126 | 345 | 61 | 16 | 14 | 0 | 35 |
+| 179 | 122 | 353 | 60 | 15 | 14 | 0 | 33 |
+| 180 | 125 | 343 | 61 | 15 | 14 | 0 | 35 |
+| 181 | 125 | 341 | 61 | 15 | 14 | 0 | 35 |
+
+Die Zahl, die über Grün und Rot entscheidet, wackelte um **fünf Gates** — ohne dass sich
+am Code etwas änderte. Zwei Ursachen, beide gefunden und behoben: die Eröffnung wurde
+mitgemessen, und ein abgebrochener Übersetzungs-Nachtrag erklärte zwei ganze Seiten zur
+leeren Hülle.
+
+Lauf 180 und 181 sind dann **identisch** — 125 gegen 125, und die 61 Kontrastbefunde
+Element für Element dieselben. (Nach Lauf 180 hatte ich noch zwei verbleibende Wackler
+behauptet; Lauf 181 zeigt null Bewegung. Zwei gleiche Läufe sind kein Beweis für immer,
+aber mehr, als ich vorher hatte.)
+
+**Die Lehre:** eine Prüfung misst sich selbst mit. Bevor man ihrer Zahl glaubt, muss man
+sie zweimal gegen *denselben* Code laufen lassen — sonst hält man Rauschen für Arbeit und
+Arbeit für Rauschen. Das kostet zwei Läufe und spart den Irrtum.

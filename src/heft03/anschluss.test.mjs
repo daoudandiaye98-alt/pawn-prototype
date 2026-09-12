@@ -2,14 +2,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {zeilen} from './fixtures/zeilen.mjs';
+import antwort from './fixtures/heft-produkte-sicht-antwort.json' with {type:'json'};
 import {heftAusZeilen,productFromRow,themeFromRow,checkoutLines,cartByHouse,stilToRow,stilFromRow} from './adapters.mjs';
 import {heftFuellen,demoWiederherstellen,products,houses,sections,displays,counts,kuration} from './data.mjs';
 import {pfadAusRoute,routeAusPfad,alleAdressen,UMZUEGE} from './routen.mjs';
 import {kuratiere} from './kuration.mjs';
 import {urteil,passform} from './beratung.mjs';
 import {purchaseMode,reading} from './model.mjs';
-import {chatAntwort,SPALTEN,demoQuelle,bildLoeser} from './quelle.mjs';
-import {readView} from './views.mjs';
+import {chatAntwort,SPALTEN,demoQuelle,bildLoeser,produktSpalten} from './quelle.mjs';
+import {readView,passformAssistent} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
 import {sections as SEKTIONEN,counts as ZAEHLER} from './data.mjs';
@@ -112,6 +113,65 @@ test('Chat-Antwort: Karten werden zu Slugs, alte /product/-Adressen inklusive',(
 
 test('Spaltenmasken enthalten keine Stripe- oder Kontospalten',()=>{
  for(const [k,v] of Object.entries(SPALTEN))assert.ok(!/stripe|user_id|email|iban|application_fee/.test(v),k);
+});
+
+test('ein Mode-Stueck ohne Groessentabelle bekommt nie die Kunst-Formulierung',()=>{
+ /*
+  * Gesehen auf artefakte/werk--1280.png aus Pruefstand-Lauf 177, Vorschau mit echter
+  * Datenbank: „Wool Coat", Welt MODE, Anfertigung nach Absprache — und darunter
+  * „ob die Arbeit an deine Wand passt". Ein Mantel an der Wand.
+  *
+  * Ursache: die Verzweigung fragte sizes.length, dann interior, und fiel SONST in den
+  * Kunst-Zweig. wool-coat hat size_variants: [] — gemessen, steht in der Fixture.
+  */
+ const mantel={id:'x',name:'Wool Coat',world:'mode',sizes:[],price:480};
+ const html=passformAssistent(mantel,{measurements:{},stil:{}});
+ assert.ok(!/Wand/.test(html),'kein Wort von der Wand bei einem Kleidungsstueck');
+ assert.ok(/auf Maß/.test(html),'stattdessen die Anfertigung');
+ assert.ok(/data-goto="dna:6"/.test(html),'und der Weg zu den Massen, nicht zum Format');
+ // Die Kunst-Formulierung bleibt, wo sie hingehoert.
+ const werk={id:'y',name:'Traces / 01',world:'kunst',sizes:[]};
+ assert.ok(/Wand/.test(passformAssistent(werk,{measurements:{},stil:{}})),'Kunst spricht weiter von der Wand');
+ // Und Mode MIT Groessentabelle laeuft weiter ueber die Groesse.
+ const hemd={id:'z',name:'Hemd',world:'mode',sizes:['S','M','L']};
+ assert.ok(!/auf Maß/.test(passformAssistent(hemd,{measurements:{},stil:{}})),'mit Groessen kein Anfertigungssatz');
+});
+
+test('die ECHTE Antwort der Sicht laeuft durch die Adapter',()=>{
+ /*
+  * Der Pruefer hat genau diesen Punkt als NICHT PRUEFBAR zurueckgewiesen, und er hatte
+  * recht: der Test darunter vergleicht nur die erzeugte Auswahl-ZEICHENKETTE. Ob PostgREST
+  * die Hausdaten beim Alias `designers:heft_haeuser(...)` wirklich unter `designers`
+  * ablegt, stand nirgends gemessen — und waere es anders, liefe row.designers leer und
+  * jedes Werk verloere sein Haus, ohne dass ein Test etwas sagt.
+  *
+  * fixtures/heft-produkte-sicht-antwort.json ist die gemessene Antwort, als anon gegen die
+  * echte Datenbank, mit genau der Zeichenkette aus produktSpalten(true).
+  */
+ const schluessel=Object.keys(antwort.zeile);
+ assert.ok(schluessel.includes('designers'),'PostgREST legt den Alias unter `designers` ab');
+ assert.ok(!schluessel.includes('heft_haeuser'),'und nicht unter dem Namen der Sicht');
+ // Und jetzt der Punkt, auf den es ankommt: die Adapter finden das Haus.
+ const werk=productFromRow(antwort.zeile);
+ assert.equal(werk.house,antwort.zeile.designers.slug,'das Werk kennt sein Haus');
+ assert.notEqual(werk.house,antwort.zeile.designer_id,'und zwar als Slug, nicht als rohe Kennung');
+ // Keine Stripe-Spalte ist durchgekommen.
+ assert.ok(!/stripe|user_id/.test(JSON.stringify(antwort.zeile)));
+});
+
+test('mit Sichten geht auch der eingebettete Join auf die Sicht',()=>{
+ // Ohne Sichten bleibt alles, wie es war.
+ assert.equal(produktSpalten(false),SPALTEN.products);
+ const mit=produktSpalten(true);
+ // Der Join zeigt auf heft_haeuser, die Basistabelle wird nicht mehr beruehrt.
+ assert.ok(mit.includes('designers:heft_haeuser('),'Join geht auf die Sicht');
+ assert.ok(!/(^|,)designers\(/.test(mit),'kein Join mehr auf die Basistabelle designers');
+ // Der Schluessel in der Antwort heisst weiter `designers` — die Adapter lesen row.designers.
+ assert.ok(mit.includes('designers:'),'der Schluessel bleibt designers');
+ // Die vier Felder bleiben dieselben.
+ assert.ok(mit.includes('heft_haeuser(id,slug,brand_name,verkaufsbereit)'));
+ // Und auch die Sicht-Fassung nennt keine Spalte, die anon nichts angeht.
+ assert.ok(!/stripe|user_id|email|iban|application_fee/.test(mit));
 });
 
 test('Stilprofil hin und zurück',()=>{
