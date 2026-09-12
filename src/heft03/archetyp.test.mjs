@@ -13,6 +13,7 @@ import {
 } from './archetyp.mjs';
 import katalogDatei from './fixtures/archetypen-mode.json' with { type: 'json' };
 import { archetypWoerter, ARCHETYP_GEWICHT } from './kuration.mjs';
+import { farbUrteil, urteil } from './beratung.mjs';
 
 const KATALOG = katalogDatei.archetypen;
 
@@ -207,4 +208,51 @@ test('das Gewicht des Archetyps liegt zwischen Welt und Merkliste', () => {
   // gemerkt" (1,5). Eine Handlung wiegt schwerer als eine Beschreibung.
   assert.ok(ARCHETYP_GEWICHT > 0.5, 'sonst zaehlt er weniger als die blosse Welt');
   assert.ok(ARCHETYP_GEWICHT < 1.5, 'sonst uebertoent er das Merken');
+});
+
+/* ---------------------------------------------------------------------------
+ * C4, zweiter Teil — das Farbregister aus dem Foto-Befund
+ * ------------------------------------------------------------------------- */
+
+test('ohne Foto-Befund sagt das Urteil kein Wort ueber Farben', () => {
+  const rot = { name: 'Rotes Kleid', world: 'mode', dna: { colors: ['Rot'], mood: ['Laut'] } };
+  assert.equal(farbUrteil(rot, null), null);
+  assert.equal(farbUrteil(rot, {}), null, 'ein leerer Befund ist kein Befund');
+  assert.equal(farbUrteil({ dna: {} }, { farben_passen: ['rot'] }), null, 'ohne Farbe am Stueck nichts');
+  // Und das Urteil bleibt wortgleich zu vorher.
+  const ohne = urteil({ welt: 'mode', richtung: 'Laut' }, rot);
+  assert.ok(!/Register/.test(ohne.text));
+});
+
+test('der Befund kommentiert die Farbe — und verbietet sie nie', () => {
+  const rot = { name: 'Rotes Kleid', world: 'mode', dna: { colors: ['Rot'], mood: ['Laut'] } };
+  const gut = farbUrteil(rot, { farben_passen: ['Rot', 'Ocker'], farben_meiden: ['Mint'] });
+  assert.equal(gut.gut, true);
+  assert.equal(gut.text, 'Das Rot liegt in deinem Register.');
+
+  const schlecht = farbUrteil(rot, { farben_passen: ['Ocker'], farben_meiden: ['Rot'] });
+  assert.equal(schlecht.gut, false);
+  /*
+   * Der entscheidende Teil des Satzes. „Ausserhalb deines Registers" allein waere ein
+   * Verbot. Ein Beratungssystem, das „nein" sagt, ist ein Filter; eines, das „ich
+   * wuerde nicht, aber sieh selbst" sagt, ist ein Berater.
+   */
+  assert.ok(/probier es trotzdem an/.test(schlecht.text));
+  assert.ok(!/nicht kaufen|ungeeignet|steht dir nicht/.test(schlecht.text));
+
+  // Passt gewinnt vor meiden, wenn beides zutraefe — im Zweifel ermutigen.
+  const beides = farbUrteil(rot, { farben_passen: ['Rot'], farben_meiden: ['Rot'] });
+  assert.equal(beides.gut, true);
+});
+
+test('das Farb-Urteil haengt hinten an und ersetzt die Linie nicht', () => {
+  const rot = { name: 'Rotes Kleid', world: 'mode', dna: { colors: ['Rot'], mood: ['Laut'], silhouette: ['Weit'] } };
+  const mit = urteil({ welt: 'mode', richtung: 'Laut', form: 'Weit' }, rot, { farben_passen: ['Rot'] });
+  assert.equal(mit.ja, true, 'die Linie entscheidet weiterhin');
+  assert.ok(/trägt genau deine Linie/.test(mit.text), 'der alte Satz steht noch');
+  assert.ok(/Das Rot liegt in deinem Register/.test(mit.text), 'der neue kommt dazu');
+  // Auch ein Nein bekommt seinen Farbsatz — die Farbe kommentiert, sie stimmt nicht ab.
+  const nein = urteil({ welt: 'mode', richtung: 'Klar' }, rot, { farben_meiden: ['Rot'] });
+  assert.equal(nein.ja, false);
+  assert.ok(/probier es trotzdem an/.test(nein.text));
 });
