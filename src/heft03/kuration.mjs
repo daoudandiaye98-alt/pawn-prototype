@@ -3,12 +3,41 @@
 // Im verbundenen System liefert die DNA diese Reihenfolge; hier steht die Regel dafür.
 import {products,displays,kuration as reihe,WELTEN,buehnenfaehig} from './data.mjs';
 import {urteil} from './beratung.mjs';
+import {werkTrifft} from './archetyp.mjs';
 const besuche={};
+/**
+ * C3 — die Wörter des BESTÄTIGTEN Archetyps. Ohne Bestätigung: keine.
+ *
+ * Die Einschränkung steht so im Auftrag und sie ist der Kern: ein berechneter Archetyp
+ * ist eine Vermutung mit 0,4 Zuversicht. Danach zu kuratieren hiesse, jemandem eine
+ * Schublade zu bauen, bevor er sie bestätigt hat — und ihn dann nur noch darin zu
+ * zeigen, was hineinpasst. Erst wenn er „Das bin ich" gesagt hat, darf die Bühne
+ * danach sortieren.
+ */
+export function archetypWoerter(state){
+ const a=state.archetyp;
+ if(!a||!a.bestaetigt)return [];
+ const k=(state.archetypen||[]).find(x=>x&&x.key===a.archetyp_key);
+ return (k&&k.woerter)||[];
+}
+
+/**
+ * Das Gewicht des Archetyps in der Kuration.
+ *
+ * Es sitzt bewusst ZWISCHEN Welt (0,5) und Merkliste (1,5): stärker als „ist in der
+ * richtigen Welt", schwächer als „hat sich das gemerkt". Der Archetyp ist eine
+ * Beschreibung, das Merken eine Handlung — und eine Handlung wiegt schwerer als eine
+ * Beschreibung, auch wenn die Beschreibung bestätigt ist.
+ */
+export const ARCHETYP_GEWICHT=1;
+
 export function passung(p,state){
  const u=urteil(state.stil||{},p);
  let n=u?(u.ja===true?(/beiden/.test(u.text)?3:2):u.ja===false?0:1):1;
  if((state.saved||[]).includes(p.id))n+=1.5;
  if((state.stil||{}).welt===p.world)n+=.5;
+ const woerter=archetypWoerter(state);
+ if(woerter.length&&werkTrifft(p,woerter))n+=ARCHETYP_GEWICHT;
  return n;
 }
 export function kuratiere(id,state={}){
@@ -35,5 +64,12 @@ export function kuratiere(id,state={}){
 }
 export function kurationsNotiz(id,state={}){
  const st=state.stil||{};
+ // Ist ein Archetyp bestätigt, sortiert die Bühne auch danach — dann soll sie es auch
+ // sagen. Eine Auswahl, deren Grund im Verborgenen bleibt, ist keine Kuration.
+ const a=state.archetyp;
+ if(a&&a.bestaetigt){
+  const k=(state.archetypen||[]).find(x=>x&&x.key===a.archetyp_key);
+  if(k&&k.name)return 'Kuratiert nach deiner Figur: '+k.name;
+ }
  return st.richtung?'Kuratiert nach deiner Linie: '+st.richtung+(st.form?' & '+st.form:''):'Kuratiert von PAWN · schärfer mit deiner Linie';
 }

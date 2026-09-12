@@ -12,6 +12,7 @@ import {
   punkteAnzeige, naechsteAlternative, GEWICHT, STUFEN,
 } from './archetyp.mjs';
 import katalogDatei from './fixtures/archetypen-mode.json' with { type: 'json' };
+import { archetypWoerter, ARCHETYP_GEWICHT } from './kuration.mjs';
 
 const KATALOG = katalogDatei.archetypen;
 
@@ -173,4 +174,37 @@ test('jede Figur des Archetypen-Katalogs ist auch gezeichnet', () => {
   assert.deepEqual(fehlt, [], 'diese Archetypen zeigten sonst stumm die falsche Figur');
   // Und die Fixture darf nicht von der Wirklichkeit abdriften.
   for (const a of KATALOG) assert.ok(gezeichnet.has(a.figur), a.key + ' traegt ' + a.figur);
+});
+
+/* ---------------------------------------------------------------------------
+ * C3 — Der Archetyp in der Kuration
+ * ------------------------------------------------------------------------- */
+
+test('nur ein BESTAETIGTER Archetyp darf die Buehne sortieren', () => {
+  /*
+   * Die wichtigste Zeile von C3. Ein berechneter Archetyp ist eine Vermutung mit 0,4
+   * Zuversicht. Danach zu kuratieren hiesse: jemandem eine Schublade bauen, bevor er
+   * sie bestaetigt hat — und ihm dann nur noch zeigen, was hineinpasst. Das ist die
+   * Mechanik, mit der Empfehlungssysteme Menschen einsperren.
+   */
+  const katalog = KATALOG;
+  const berechnet = { archetyp_key: 'mode_linie', bestaetigt: false };
+  const bestaetigt = { archetyp_key: 'mode_linie', bestaetigt: true };
+
+  assert.deepEqual(archetypWoerter({ archetyp: berechnet, archetypen: katalog }), [],
+    'ohne Bestaetigung wird nicht danach sortiert');
+  assert.ok(archetypWoerter({ archetyp: bestaetigt, archetypen: katalog }).includes('schwarz'),
+    'mit Bestaetigung schon');
+
+  // Kein Archetyp, kein Katalog, ein unbekannter Schluessel: immer leer, nie ein Wurf.
+  assert.deepEqual(archetypWoerter({}), []);
+  assert.deepEqual(archetypWoerter({ archetyp: bestaetigt, archetypen: [] }), []);
+  assert.deepEqual(archetypWoerter({ archetyp: { archetyp_key: 'gibt_es_nicht', bestaetigt: true }, archetypen: katalog }), []);
+});
+
+test('das Gewicht des Archetyps liegt zwischen Welt und Merkliste', () => {
+  // Stärker als „ist in der richtigen Welt" (0,5), schwächer als „hat sich das
+  // gemerkt" (1,5). Eine Handlung wiegt schwerer als eine Beschreibung.
+  assert.ok(ARCHETYP_GEWICHT > 0.5, 'sonst zaehlt er weniger als die blosse Welt');
+  assert.ok(ARCHETYP_GEWICHT < 1.5, 'sonst uebertoent er das Merken');
 });
