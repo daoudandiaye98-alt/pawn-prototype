@@ -844,7 +844,13 @@ Deno.serve(async (req) => {
           route?: string; seite?: string;
           stil?: { welt?: string; richtung?: string; form?: string };
           frag?: { was?: string; anlass?: string; rahmen?: string };
+          /* Teil O — der Begleiter im Heft: Rang, letzter Satz, Merkliste, Archetyp, Anproben. */
+          begleiter?: {
+            rang?: string; zuletzt_gesagt?: string; merkliste?: string[];
+            archetyp?: string; anproben?: number;
+          };
         };
+
       };
       mode?: "erste_partie" | "stilfoto";
       /* stilfoto: die Welt, aus der gelesen wird (mode | interior | kunst). */
@@ -1157,14 +1163,66 @@ Deno.serve(async (req) => {
       const h = pc.heft;
       const stil = [h.stil?.welt, h.stil?.richtung, h.stil?.form].filter(Boolean).join(" · ");
       const frag = [h.frag?.was, h.frag?.anlass, h.frag?.rahmen].filter(Boolean).join(" · ");
+      const bg = h.begleiter;
+      const RANG_SATZ: Record<string, string> = {
+        bauer: "Sie ist zum ersten Mal da.", springer: "Sie war schon ein paarmal hier.",
+        laeufer: "Sie kommt regelmäßig zurück.", turm: "Sie kennt das Heft gut.",
+        dame: "Sie ist eine der Vertrautesten.", koenig: "Sie gehört längst dazu.",
+      };
       const teile = [
         `«HEFT» Der Kunde steht im Heft auf ${h.route ?? pc.route ?? "einer Doppelseite"}${h.seite ? ` (${h.seite})` : ""}.`,
         stil ? `Seine Linie aus dem Bilderquiz: ${stil}.` : "Seine Linie ist noch nicht gewaehlt.",
         frag ? `Er hat vorher angetippt: ${frag}.` : "",
+        bg?.rang ? (RANG_SATZ[bg.rang] ?? `Rang im Heft: ${bg.rang}.`) : "",
+        bg?.zuletzt_gesagt ? `Zuletzt hast du im Heft angeboten: "${bg.zuletzt_gesagt}" — knuepfe daran an, ohne es zu wiederholen.` : "",
+        bg?.merkliste?.length ? `Gemerkt hat sie: ${bg.merkliste.slice(0, 8).join(", ")}.` : "",
+        bg?.archetyp ? `Ihr Typ aus dem Quiz: ${bg.archetyp}.` : "",
+        typeof bg?.anproben === "number" && bg.anproben > 0 ? `Sie hat ${bg.anproben} Anprobe(n) gemacht — sprich darueber wie ueber etwas Selbstverstaendliches.` : "",
         "Sprich zu dieser Linie, ohne sie vorzulesen. Nenne nie eine Adresse, die nicht im Heft steht.",
       ].filter(Boolean);
       pageContextHint = [pageContextHint, teile.join(" ")].filter(Boolean).join(" ");
     }
+
+    /* Teil O — die Bruecke zwischen Quiz und Gespraech: kunden_stil und kunden_archetyp
+       waren bisher ein getrennter Speicher, den der Chat nie gelesen hat. */
+    if (admin && user_id) {
+      try {
+        const [{ data: ks }, { data: ka }] = await Promise.all([
+          admin.from("kunden_stil").select("welt, richtung, form, foto_befund").eq("user_id", user_id).maybeSingle(),
+          admin.from("kunden_archetyp").select("archetyp_key, zuversicht").eq("user_id", user_id).maybeSingle(),
+        ]);
+        const stilRow = ks as { welt?: string; richtung?: string; form?: string; foto_befund?: Record<string, unknown> | null } | null;
+        const archRow = ka as { archetyp_key?: string; zuversicht?: number } | null;
+        const zeilen: string[] = [];
+        if (stilRow) {
+          const linie = [stilRow.welt, stilRow.richtung, stilRow.form].filter(Boolean).join(" · ");
+          if (linie) zeilen.push(`«QUIZ» Ihre gespeicherte Linie: ${linie}.`);
+          const bef = (stilRow.foto_befund ?? {}) as {
+            hautton?: string; unterton?: string; augenfarbe?: string; haarfarbe?: string;
+            farben_passen?: string[]; farben_meiden?: string[];
+          };
+          const befundTeile = [
+            bef.hautton && `Hautton ${bef.hautton}`, bef.unterton && `Unterton ${bef.unterton}`,
+            bef.augenfarbe && `Augen ${bef.augenfarbe}`, bef.haarfarbe && `Haar ${bef.haarfarbe}`,
+          ].filter(Boolean);
+          if (befundTeile.length) zeilen.push(`Aus ihrem Foto: ${befundTeile.join(", ")}.`);
+          if (bef.unterton) {
+            const warm = /warm|golden|gelb|olive/i.test(bef.unterton);
+            zeilen.push(`Metall: ${warm ? "Gold" : "Silber"} steht ihr — nenne es nur, wenn es zum Gespraech passt.`);
+          }
+          if (bef.farben_passen?.length) zeilen.push(`Farben, die tragen: ${bef.farben_passen.slice(0, 8).join(", ")}.`);
+          if (bef.farben_meiden?.length) zeilen.push(`Farben, die sie blass machen: ${bef.farben_meiden.slice(0, 6).join(", ")}.`);
+        }
+        if (archRow?.archetyp_key) {
+          const { data: kat } = await admin.from("stil_archetypen")
+            .select("name, kurz").eq("key", archRow.archetyp_key).maybeSingle();
+          const k = kat as { name?: string; kurz?: string } | null;
+          zeilen.push(`Ihr Archetyp: ${k?.name ?? archRow.archetyp_key}${k?.kurz ? ` — ${k.kurz}` : ""}.`);
+        }
+        if (zeilen.length) pageContextHint = [pageContextHint, zeilen.join(" ")].filter(Boolean).join(" ");
+      } catch { /* die Bruecke darf das Gespraech nie aufhalten */ }
+    }
+
 
     // DNA-Seite: das Ziel wird beiläufig herauskitzeln, nie abgefragt (Teil 21b).
     if (pc?.route === "/dna" || pc?.route === "/deine-dna" || pc?.route?.startsWith("/deine-dna/")) {
