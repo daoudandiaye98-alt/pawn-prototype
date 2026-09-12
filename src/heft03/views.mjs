@@ -186,6 +186,24 @@ export function passformAssistent(p,state){
    :f.moeglich
     ?'<p class="passform-satz">Keine Größe liegt in deinem Spielraum. '+esc((f.groessen.find(g=>g.stufe!=='unbekannt')||{}).grund||'')+'</p><button class="text-link" type="button" data-goto="dna:6">Maße prüfen <span aria-hidden="true">↗</span></button>'
     :'<p class="passform-satz">Hinterleg deine Maße einmal — dann steht hier deine Größe.</p><button class="solid" type="button" data-goto="dna:6">Maße hinterlegen</button>';
+ }else if(p.world==='mode'){
+  /*
+   * Mode OHNE Groessentabelle — und das ist kein Randfall, sondern die Anfertigung.
+   *
+   * DER BELEGTE FEHLER, gesehen auf der Aufnahme des Pruefstand-Laufs 177
+   * (artefakte/werk--1280.png, Vorschau mit echter Datenbank): „Wool Coat", Welt MODE,
+   * 480 EUR, Anfertigung nach Absprache — und darunter der Satz „Wähle dein Format in der
+   * DNA — dann sagt PAWN, ob die Arbeit an deine Wand passt." Ein Mantel an der Wand.
+   *
+   * Die Ursache steht drei Zeilen hoeher: die Verzweigung fragt zuerst nach sizes.length,
+   * dann nach interior — und faellt SONST in den Kunst-Zweig. Ein Mode-Stueck ohne
+   * Groessentabelle (size_variants: []) landete damit in der Kunst-Formulierung.
+   *
+   * Dass das niemand gesehen hat, hat einen Grund: der Pruefstand zielte bis zum
+   * 12.09.2026 auf ein Haus, das es nicht gibt, und hat dort die Heft-Huelle gemessen
+   * statt einer Werkseite. Die Augen waren offen und zeigten auf eine Wand.
+   */
+  inhalt+='<p class="passform-satz">'+(m.chest_cm?'Deine Maße liegen vor — bei einer Anfertigung reisen sie mit deiner Anfrage.':'Dieses Stück entsteht auf Maß. Hinterleg deine Maße einmal — dann gehen sie mit deiner Anfrage.')+'</p>'+(m.chest_cm?'':'<button class="solid" type="button" data-goto="dna:6">Maße hinterlegen</button>');
  }else if(p.world==='interior'){
   inhalt+='<p class="passform-satz">'+(state.foto?'Dein Raumfoto liegt vor. Im verbundenen System prüft PAWN hier Maß und Licht.':'Lade ein Foto von deinem Raum hoch — PAWN prüft, ob das Stück hineinpasst.')+'</p>'+(state.foto?'':'<button class="solid" type="button" data-goto="dna:4">Raumfoto hinzufügen</button>');
  }else{

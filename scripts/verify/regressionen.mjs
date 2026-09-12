@@ -549,6 +549,96 @@ function zaehlenNurMitErlaubnis({ quelle, huelle }) {
   return OK;
 }
 
+// ————————————————————————————————————————————————————————————————
+// Z18 — kein Mantel an der Wand
+//
+// Die Verzweigung in passformAssistent fragte zuerst nach sizes.length, dann
+// nach interior — und fiel SONST in den Kunst-Zweig. Ein Mode-Stueck ohne
+// Groessentabelle (size_variants: []) landete damit in der Kunst-Formulierung:
+// „Wool Coat", Welt MODE, 480 EUR, darunter „ob die Arbeit an deine Wand passt".
+// Gesehen auf der Aufnahme des Pruefstand-Laufs 177.
+//
+// Die Pruefung ist eng: sie verlangt genau, dass mode VOR dem Auffang-else
+// abgefangen wird und dass in diesem Zweig kein Wand-Satz steht.
+// ————————————————————————————————————————————————————————————————
+function modeNieAnDieWand({ views }) {
+  const v = lies(views);
+  const ab = v.indexOf("export function passformAssistent");
+  if (ab < 0) return nein(`${views}: passformAssistent() gibt es nicht mehr — wer beantwortet jetzt die Passform?`);
+  const rest = v.slice(ab);
+  const bis = rest.indexOf("\nexport function");
+  const rumpf = bis < 0 ? rest : rest.slice(0, bis);
+
+  const iMode = rumpf.indexOf("p.world==='mode'");
+  if (iMode < 0)
+    return nein(`${views}: passformAssistent() kennt keinen eigenen Mode-Zweig mehr — ein Mantel ohne Groessentabelle faellt wieder in die Kunst-Formulierung`);
+
+  // Der Auffang-Zweig (Kunst) ist das letzte `}else{` im Rumpf. Mode muss davor stehen.
+  const iSonst = rumpf.lastIndexOf("}else{");
+  if (iSonst < 0) return nein(`${views}: der Auffang-Zweig der Passform ist weg — die Pruefung selbst ist kaputt`);
+  if (iMode > iSonst)
+    return nein(`${views}: der Mode-Zweig steht HINTER dem Auffang-Zweig und wird nie erreicht`);
+
+  /*
+   * Die ganze Kette, nicht nur der neue Zweig. Beim Einsetzen des Mode-Zweigs am
+   * 12.09.2026 ist mir die interior-Zeile verlorengegangen — Interior lief danach in
+   * den Kunst-Zweig, also derselbe Fehler eine Welt weiter. Durchgerutscht sind dabei:
+   * node --test 81/81, npm test 353/353, tsc 0 und VERIFY 5/5. Kein Werkzeug hat es
+   * gemeldet, weil passformAssistent nirgends geprueft wird. Deshalb deckt diese
+   * Zusage die Reihenfolge der drei Welten, nicht bloss den einen Satz.
+   */
+  const iInterior = rumpf.indexOf("p.world==='interior'");
+  if (iInterior < 0)
+    return nein(`${views}: der Interior-Zweig ist weg — Raumstuecke fallen in die Kunst-Formulierung`);
+  if (!(iMode < iInterior && iInterior < iSonst))
+    return nein(`${views}: die Reihenfolge der Passform-Zweige stimmt nicht mehr (mode -> interior -> Auffang)`);
+
+  // Und der ausgegebene Text des Mode-Zweigs darf die Wand nicht erwaehnen.
+  // OHNE die Kommentare: der Zweig traegt die Herkunftsnotiz aus #195, und die
+  // zitiert den falschen Satz absichtlich. Eine Pruefung, die daran rot wird,
+  // lehrt Rot zu uebersehen.
+  const nachMode = rumpf.slice(iMode, iSonst)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  if (/[Ww]and/.test(nachMode))
+    return nein(`${views}: im Mode-Zweig steht wieder ein Wand-Satz — ein Mantel haengt nicht an der Wand`);
+  return OK;
+}
+
+// ————————————————————————————————————————————————————————————————
+// Z19 — der Ueberspringen-Knopf liegt nie unter der Bildunterschrift
+//
+// Kontrolle 3.8 des Pruefstands, gemessen bei 844x390 (Telefon quer) im
+// Eroeffnungszustand: #intro-caption 156-285, #skip 246-280. Der Knopf lag
+// VOLLSTAENDIG im Band der Schrift, Anteil 1,000 bei erlaubten 0,25.
+//
+// Ursache: beide hingen an der Hoehe und keiner an der anderen — die Schrift auf
+// top:42%, der Knopf auf bottom:110px. Quer ist die Ansicht nur 390 hoch, dann
+// treffen sie sich. Die Loesung haengt den Knopf an die Schrift.
+//
+// Die Pruefung deckt genau das: in der Querformat-Abfrage bekommt #skip ein
+// `top` UND ausdruecklich `bottom:auto`. Faellt eines von beiden weg, sitzt der
+// Knopf wieder am unteren Rand und wandert der Schrift entgegen.
+// ————————————————————————————————————————————————————————————————
+function ueberspringenNichtUnterDerSchrift({ stil }) {
+  const css = lies(stil);
+  const ab = css.indexOf("@media(orientation:landscape) and (max-height:540px){");
+  if (ab < 0)
+    return nein(`${stil}: die Querformat-Abfrage (max-height:540px) gibt es nicht mehr — dort haengt die Reparatur von 3.8`);
+  const rest = css.slice(ab);
+  const bis = rest.indexOf("\n}");
+  const block = bis < 0 ? rest : rest.slice(0, bis);
+
+  const regel = block.match(/#skip\{([^}]*)\}/);
+  if (!regel)
+    return nein(`${stil}: die Querformat-Abfrage setzt #skip nicht mehr — der Knopf sitzt wieder am unteren Rand, unter der Bildunterschrift`);
+  if (!/\btop:/.test(regel[1]))
+    return nein(`${stil}: #skip haengt quer nicht mehr an einem top — ohne das wandert er der Schrift entgegen`);
+  if (!/\bbottom:\s*auto/.test(regel[1]))
+    return nein(`${stil}: #skip behaelt quer sein bottom — top und bottom zugleich, das ergibt wieder die Ueberschneidung`);
+  return OK;
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -567,6 +657,8 @@ const PRUEFUNGEN = {
   geruestErstNachGestaltung,
   zustimmungOhneRegelwerk,
   zaehlenNurMitErlaubnis,
+  modeNieAnDieWand,
+  ueberspringenNichtUnterDerSchrift,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));
