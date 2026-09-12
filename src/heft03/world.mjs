@@ -184,8 +184,13 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   photo.userData.cutout=id;photo.receiveShadow=false;
   return {g,point:new THREE.Vector3(0,.05,.2),oben:new THREE.Vector3(0,h+.12,0)};
  }
- function makeStage(id,pieces){
-  const data={...displays[id],pieces:pieces||displays[id].pieces},stage={root:group(book),hinges:[],plinths:[],products:[],id};stage.root.visible=false;
+ /**
+  * Die Kulisse — Ruecken, Rahmen, Flanke. Woertlich aus makeStage
+  * herausgezogen, kein Zeichen geaendert: makeBuehne (die Buehne aus Daten)
+  * braucht dieselbe, und zwei Fassungen derselben Kulisse waeren zwei
+  * Wahrheiten. `data` braucht layout, color, architecture und pieces.length.
+  */
+ function kulisse(stage,data){
   if(data.layout==='fan'){
    const fluegel=data.pieces.length===3?[[-2.3,-.55,-.28,'#d9781f',3.0],[-.75,-1.1,.12,'#1f3d8a',3.1],[1.05,-1.08,-.14,'#8a1d22',2.95],[2.55,-.58,.36,'#f1ede5',2.5]]:[[-2.25,-.50,-.3,'#e5dfd4',2.9],[-.8,-1.05,.15,data.color,3.05],[1.1,-1.04,-.18,'#d4c7b5',2.85],[2.55,-.55,.4,'#f1ede5',2.5]];
    fluegel.forEach(([x,z,yaw,color,h],i)=>{
@@ -204,6 +209,10 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    if(data.architecture!=='frame')mesh(new THREE.ExtrudeGeometry(arch,{depth:.025,bevelEnabled:false}),material('#ece5d9'),frame,0,0,.04);
    const side=hinge(stage,2.88,.04,.43,1,.08);polygon(side,[[-.4,0],[-.4,2.4],[.6,2.1],[.6,0]],'#f3efe6');
   }
+ }
+ function makeStage(id,pieces){
+  const data={...displays[id],pieces:pieces||displays[id].pieces},stage={root:group(book),hinges:[],plinths:[],products:[],id};stage.root.visible=false;
+  kulisse(stage,data);
   data.pieces.forEach((id,i)=>{
    const n=data.pieces.length,x=n===1?.2:n===3?[-1.95,.15,2.05][i]:[-1.15,1.2][i],z=n===1?.53:n===3?[.6,.3,.62][i]:[.35,.65][i],h=products[id]?.stage?.lift??.17;
    addPlinth(stage,x,z,1.8,h,1.03);
