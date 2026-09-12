@@ -231,6 +231,24 @@
         "quelle": "src/heft03/quelle.mjs",
         "huelle": "src/heft03/HeftRoute03.tsx"
       }
+    },
+    {
+      "id": "Z18",
+      "zusage": "Ein Mode-Stueck ohne Groessentabelle bekommt die Anfertigungs-Formulierung, nie die der Kunst.",
+      "beleg": "Auftrag Q / R2b. Gesehen auf der Aufnahme des Pruefstand-Laufs 177 (artefakte/werk--1280.png, Vorschau mit echter Datenbank): „Wool Coat\", Welt MODE, 480 EUR, Anfertigung nach Absprache — und darunter „Waehle dein Format in der DNA — dann sagt PAWN, ob die Arbeit an deine Wand passt.\" Ein Mantel an der Wand. Ursache: die Verzweigung in passformAssistent fragte sizes.length, dann interior, und fiel SONST in den Kunst-Zweig; size_variants ist bei Anfertigung leer. Die Fassung lag fertig auf claude/teil-m (#195) und ist von dort uebernommen, samt Kommentar. Dass es niemand sah, hat einen Grund: der Pruefstand zielte bis zum 12.09.2026 auf obara-rope-jacket, ein Werk, das es nicht gibt, und mass dort die Heft-Huelle statt einer Werkseite (siehe R2a im selben PR). · ZWEIMAL ROT VORGEFUEHRT am 2026-09-12: (a) Mode-Zweig entfernt, also der Zustand von main -> REGRESSION 18/19, FEHLER Z18. (b) die interior-Zeile entfernt -> REGRESSION 18/19, FEHLER Z18. Fall (b) ist kein erfundener: er ist mir beim Einsetzen des Mode-Zweigs wirklich passiert, und Interior lief danach in den Kunst-Zweig. Durchgerutscht sind dabei node --test 81/81, npm test 353/353, tsc 0 und VERIFY 5/5 — kein Werkzeug hat es gemeldet, weil passformAssistent nirgends geprueft wird. Deshalb deckt Z18 die Reihenfolge der drei Welten, nicht bloss den einen Satz. Zurueck: 19/19.",
+      "pruefung": "modeNieAnDieWand",
+      "params": {
+        "views": "src/heft03/views.mjs"
+      }
+    },
+    {
+      "id": "Z19",
+      "zusage": "Der Ueberspringen-Knopf liegt nie unter der Bildunterschrift — auch nicht, wenn das Telefon quer gehalten wird.",
+      "beleg": "Auftrag Q / R4, Kontrolle 3.8 des Pruefstands. Gemessen bei 844x390 im Eroeffnungszustand: #intro-caption 156-285, #skip 246-280 — der Knopf lag VOLLSTAENDIG im Band der Schrift, Ueberschneidung 3224 px², Anteil 1,000 bei erlaubten 0,25. Auf der Aufnahme steht „Direkt entdecken\" unlesbar unter „Deine Welt entfaltet sich.\". Ursache: beide hingen an der Hoehe und keiner an der anderen (Schrift top:42%, Knopf bottom:110px); quer ist die Ansicht nur 390 hoch. Repariert in der bereits vorhandenen Abfrage @media(orientation:landscape) and (max-height:540px), die Kopf und Fuss schon verkleinerte, diese beiden aber nicht anfasste. Nach der Reparatur: caption 67-143, skip 168-202, Anteil 0,000. Bei 390 hoch und 768 unveraendert. Der Zustand besteht nur waehrend der Eroeffnung — der Pruefstand erwischt ihn, weil RUHE_MS 4300 kuerzer ist als die Eroeffnung des Hefts (8400 ms). · ROT VORGEFUEHRT am 2026-09-12: die Regel #skip{top:10.5rem;bottom:auto} aus der Querformat-Abfrage entfernt -> REGRESSION 18/19, FEHLER Z19. Zurueck: 19/19.",
+      "pruefung": "ueberspringenNichtUnterDerSchrift",
+      "params": {
+        "stil": "src/heft03/style.css"
+      }
     }
   ]
 }

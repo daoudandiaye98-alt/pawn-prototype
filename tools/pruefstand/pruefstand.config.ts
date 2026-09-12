@@ -81,8 +81,14 @@ export interface SeitenZiel {
 }
 
 /** Die vier, an denen Geld und Vertrauen hängen. Slugs stehen hier, nicht im Code. */
-export const PRODUKT_SLUG = "obara-rope-jacket";
-export const HAUS_SLUG = "obara";
+// Gemessen am 12.09.2026 auf rnakubexbqfgfciynqpt: `obara-rope-jacket` existiert dort
+// nicht. Veroeffentlicht sind vier Werke — wool-coat, curve-chair, traces-01 (alle Haus
+// `drape`, Hausseite veroeffentlicht) und obara-test-msa28gai, dessen Haus `obara` KEINE
+// veroeffentlichte Hausseite hat. Auf ein Werk zu zielen, das es nicht gibt, heisst: der
+// Pruefstand misst unter /werk/... und /haus/... die Heft-Huelle statt der Seite, und
+// meldet den Rest als `nicht_pruefbar`. Ein Testwerk ist ausserdem kein Messgegenstand.
+export const PRODUKT_SLUG = "wool-coat";
+export const HAUS_SLUG = "drape";
 
 /** Die Halle — die Startseite. */
 export const HALLE_PFAD = "/";

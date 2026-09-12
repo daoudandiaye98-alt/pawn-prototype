@@ -97,6 +97,33 @@ body.is-rotate{overflow:hidden}
  footer{padding-block:.35rem}
  #scroll-hint,.prototype-badge{display:none}
  .motion-tools{display:none}
+ /*
+  * R4 / Kontrolle 3.8 — der Ueberspringen-Knopf lag UNTER der Bildunterschrift.
+  *
+  * GEMESSEN bei 844x390 (Telefon quer), im Eroeffnungszustand: caption 156-285,
+  * skip 246-280. Der Knopf lag damit VOLLSTAENDIG im Band der Schrift,
+  * Ueberschneidung 3224 px², Anteil 1,000 bei erlaubten 0,25.
+  *
+  * DIE URSACHE IST, DASS BEIDE AN DER HOEHE HAENGEN und keiner an der anderen:
+  * #intro-caption sitzt auf top:42%, #skip auf bottom:110px. Bei 844 Breite ist
+  * die Ansicht nur 390 hoch — die 42 % liegen dann bei 156 px, und die Schrift
+  * reicht hinunter bis dorthin, wo der Knopf von unten heraufkommt. Bei 390 hoch
+  * und bei 768 liegen sie weit auseinander; nur quer treffen sie sich.
+  *
+  * WARUM ES NIEMAND SAH: der Zustand besteht nur WAEHREND der Eroeffnung, und nur
+  * quer auf dem Telefon. Der Prueftand erwischt ihn, weil RUHE_MS (4300) kuerzer
+  * ist als die Eroeffnung des Hefts (8400 ms) — er misst mitten hinein. Das ist
+  * kein Messfehler: in diesem Moment ist der Knopf das einzige Bedienelement der
+  * Seite, und die Schrift liegt darauf.
+  *
+  * DIE LOESUNG haengt den Knopf an die Schrift statt an den unteren Rand. Damit
+  * koennen die zwei sich nicht mehr treffen, unabhaengig davon, wie hoch die
+  * Ansicht ist und wie hoch Kopf und Fuss gerade ausfallen.
+  */
+ #intro-caption{top:4.2rem;font-size:1.4rem;line-height:1.3;max-width:26rem}
+ #intro-caption small{margin-bottom:.5rem}
+ #intro-caption em{font-size:.95rem}
+ #skip{top:10.5rem;bottom:auto}
 }
 
 /* Hotspots stehen am Fuß der Arbeit, mit einer feinen Linie wie ein Museumsschild. */
