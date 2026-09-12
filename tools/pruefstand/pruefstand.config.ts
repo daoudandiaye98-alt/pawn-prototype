@@ -212,5 +212,27 @@ export const SCHWELLEN = {
  */
 export const RUHE_MS = 4300;
 
+/**
+ * Wie lange nach der Ruhezeit NOCH auf das Ende der Eröffnung gewartet wird.
+ *
+ * DER BELEGTE FEHLER, und er ist ein Messfehler, kein Seitenfehler: zwischen Lauf 177
+ * und Lauf 178 sind fünf gefallene Gates verschwunden, ohne dass irgendetwas an ihnen
+ * geändert wurde — vier Befunde 3.4 („Direkt entdecken ↗" ohne sichtbare
+ * Fokusänderung) und der eine Befund 3.8 auf /konto. Beide betreffen `#skip` und
+ * `#intro-caption`, und beide sind WÄHREND der Eröffnung rechtmäßig da.
+ *
+ * Die Ruhezeit von 4300 ms reicht dem Läufer in der Werkstatt also mal und mal nicht.
+ * Damit wackelt die Zahl, die über Grün und Rot entscheidet, um fünf Gates — und eine
+ * Prüfung, die an rechtmäßigem Code zufällig rot wird, lehrt nur, Rot zu übersehen
+ * (.claude/rules/00-gesetze.md).
+ *
+ * Die Antwort ist nicht eine größere Zahl, sondern eine andere Frage: nicht „wie lange
+ * dauert die Eröffnung", sondern „ist sie vorbei". Das Heft sagt es selbst — es setzt
+ * `is-intro` und `is-opening` auf `document.body` (app.js:477). Gewartet wird auf den
+ * Zustand, diese Frist ist nur die Reißleine. Bleibt eine Seite in der Eröffnung
+ * stehen, wird gemessen wie bisher, nur eben nicht zufällig.
+ */
+export const EROEFFNUNG_FRIST_MS = 6000;
+
 /** Chromium-Pfad, falls die Umgebung einen mitbringt (Container, CI). */
 export const CHROMIUM_PFAD = process.env.PRUEFSTAND_CHROMIUM ?? undefined;
