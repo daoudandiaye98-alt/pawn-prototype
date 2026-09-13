@@ -3,7 +3,7 @@
 // echte Pfade für pawn.vision (/mode, /haus/drape/2). Beide Richtungen stehen hier —
 // App.tsx, routen.js und vercel.json des echten Projekts müssen dieselben Pfade kennen.
 import {routeHash,parseRoute} from './model.mjs';
-import {sections,counts,houses,products} from './data.mjs';
+import {sections,counts,houses,products,seitenNr} from './data.mjs';
 
 const ABFRAGE=['q','world','house','max','available','sort'];
 // Sektion → Pfadsegment. Reihenfolge ist zugleich die Reihenfolge im Heft.
@@ -37,7 +37,7 @@ export function routeAusPfad(pfad){
  const params=new URLSearchParams(query),extra={};for(const k of ABFRAGE){const v=params.get(k);if(v)extra[k]=v.slice(0,240);}
  const [kopf,a,b]=teile;
  if(!kopf)return {section:'entdecken',index:0};
- if(kopf==='ausgewaehlt')return {section:'entdecken',index:1};
+ if(kopf==='ausgewaehlt')return {section:'entdecken',index:seitenNr('entdecken','edit')};
  if(kopf==='tasche')return {section:'entdecken',index:0,tasche:true};
  if(kopf==='werk'&&a){const p=Object.values(products).find(x=>x.slug===a||x.id===a);if(p)return {section:p.world,index:Math.max(0,sections[p.world].indexOf(p.house)),werk:p.id};}
  if(kopf==='haus'&&a&&houses[a])return {section:'haus',slug:a,index:Math.min(2,Math.max(0,(Number(b)||1)-1))};

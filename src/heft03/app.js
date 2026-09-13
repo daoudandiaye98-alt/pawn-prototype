@@ -1,5 +1,5 @@
 import {Magazine,reading,key,routeHash,parseRoute,addCart,clamp} from './model.mjs';
-import {products,houses,displays,sections,labels,counts,asset,heftFuellen,ASSETS,assetBasis,buehnenfaehig,vorschauHinweis} from './data.mjs';
+import {products,houses,displays,sections,labels,counts,asset,heftFuellen,ASSETS,assetBasis,buehnenfaehig,vorschauHinweis,seitenNr} from './data.mjs';
 import {createWorld} from './world.mjs';
 import {readView,productView,cartView,applicationView,productCard,esc,money} from './views.mjs';
 import {prepareCutouts,prepareBilder,cutouts} from './cutouts.mjs';
@@ -363,7 +363,7 @@ async function zugangAbsenden(modus,data){
 }
 
 function account(){go({section:'konto',index:state.profile?1:0});}
-function saved(){go({section:'konto',index:2});}
+function saved(){go({section:'konto',index:seitenNr('konto','saved')});}
 function search(){go({section:'suche',index:0});}
 function inquiry(id){
  const p=products[id];showDrawer('<p class="eyebrow">ANFRAGE AN '+houses[p.house].name+'</p><h2 id="dialog-title">'+p.name+'</h2><p>Erzähle dem Haus, was du dir vorstellst.</p><form data-inquiry-form><label>Deine E-Mail<input type="email" name="email" required></label><label>Deine Nachricht<textarea name="message" rows="6" minlength="15" required placeholder="Wunsch, Format oder eine Frage zur Arbeit"></textarea></label><button class="solid" type="submit">Anfrage prüfen</button></form><p class="small-note">In dieser Vorschau wird keine Nachricht verschickt.</p>');
@@ -781,11 +781,11 @@ function frame(now){
 hoeren(document,'click',e=>{
  const b=e.target.closest('button');if(!b||b.disabled)return;
  if(b.dataset.route){go({section:b.dataset.route,index:0});return;}
- if(b.dataset.goto){const [sec,idx]=b.dataset.goto.split(':');if(b.dataset.welt){state.stil.welt=b.dataset.welt;}if(b.dataset.stueck){state.fitProduct=b.dataset.stueck;}go({section:sec,index:isNaN(Number(idx))?(sections[sec]||[]).indexOf(idx):Number(idx)});return;}
+ if(b.dataset.goto){const [sec,idx]=b.dataset.goto.split(':');if(b.dataset.welt){state.stil.welt=b.dataset.welt;}if(b.dataset.stueck){state.fitProduct=b.dataset.stueck;}go({section:sec,index:seitenNr(sec,idx)});return;}
  if(b.dataset.groesse){const r=b.closest('#drawer-content')?.querySelector('input[name="size"][value="'+b.dataset.groesse+'"]');if(r){r.checked=true;toast('Größe '+b.dataset.groesse+' gesetzt.');}return;}
  if(b.dataset.house){house(b.dataset.house);return;}
  if(b.dataset.product){if(nav.status==='ready'||drawer.open)product(b.dataset.product);return;}
- if(b.dataset.page!==undefined){go({...nav.route,index:Number(b.dataset.page)});return;}
+ if(b.dataset.page!==undefined){go({...nav.route,index:seitenNr(nav.route.section,b.dataset.page)});return;}
  if(b.hasAttribute('data-return'))returnDisplay();
  if(b.dataset.save){zustimmungFragen();const id=b.dataset.save;state.saved=state.saved.includes(id)?state.saved.filter(s=>s!==id):[...state.saved,id];quelle.merkliste.setzen(id,state.saved.includes(id)).catch(()=>{});quelle.signal('merken',{product:products[id],an:state.saved.includes(id)});melden('merken',{werk_id:id,an:state.saved.includes(id),merkliste_n:state.saved.length,n:state.saved.length});b.textContent=state.saved.includes(id)?'♥ Gemerkt':'♡ Stück merken';readRefresh();toast(state.saved.includes(id)?'Gemerkt. Du findest es unter Mein PAWN — und ich lese es als Beleg.':'Aus deiner Merkliste entfernt.');}
  if(b.hasAttribute('data-archetyp-ja')){
@@ -891,11 +891,14 @@ hoeren(document,'click',e=>{
  if(b.dataset.werkSlug){const p2=Object.values(products).find(x=>x.slug===b.dataset.werkSlug);if(p2){drawer.close();product(p2.id);}return;}
  if(b.hasAttribute('data-reset-search'))go({section:'suche',index:0});
  if(b.hasAttribute('data-logout')){state.profile=null;quelle.konto.abmelden().catch(()=>{});readRefresh();toast('Abgemeldet.');}
- if(b.hasAttribute('data-dna-privacy'))go({section:'dna',index:7});
+ if(b.hasAttribute('data-dna-privacy'))go({section:'dna',index:seitenNr('dna','privacy')});
  if(b.hasAttribute('data-search-chat'))go({section:'suche',index:0});
  if(b.dataset.prompt){const [was,anlass,rahmen,satz]=b.dataset.prompt.split('|');state.frag={was,anlass,rahmen};state.message=satz||'';state.denkt=false;readRefresh();return;}
  if(b.dataset.fit){state.fitProduct=b.dataset.fit;readRefresh();}
- if(b.dataset.styleCheck){state.fitProduct=b.dataset.styleCheck;go({section:'dna',index:5});}
+ // DER FEHLER, DER HIER LAG: index 5 ist 'foto'. Gesetzt wird aber state.fitProduct,
+ // und das liest NUR die linie-Seite (extra-views.mjs > fitProduct). „Meine Linie
+ // pruefen" fuehrte also auf eine Seite, die das gewaehlte Stueck ignoriert.
+ if(b.dataset.styleCheck){state.fitProduct=b.dataset.styleCheck;go({section:'dna',index:seitenNr('dna','linie')});}
  if(b.dataset.blockUp!==undefined||b.dataset.blockDown!==undefined||b.dataset.blockToggle!==undefined){
   const slug=b.closest('[data-slug]').dataset.slug,st=studioState(slug),L=st.blocks;
   if(b.dataset.blockToggle!==undefined){const i=+b.dataset.blockToggle;L[i].on=!L[i].on;}

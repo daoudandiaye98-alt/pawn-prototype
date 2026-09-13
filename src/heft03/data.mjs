@@ -36,6 +36,28 @@ export const displays={
 export const sections={entdecken:['hero','edit'],mode:['drape','noir'],interior:['forme','terre'],kunst:['traces','gestures'],haeuser:['welten','mode','interior','kunst'],dna:['intro','welt','richtung','form','linie','foto','archetyp','massband','privacy'],suche:['results'],konto:['zugang','start','saved','orders','requests','settings'],'frag-pawn':['dialog'],'fuer-designer':['invitation','studio'],vision:['vision','belief','work']};
 export const labels={entdecken:'Entdecken',mode:'Mode',interior:'Interior',kunst:'Kunst',haeuser:'Unsere Häuser',dna:'DNA','fuer-designer':'Für Designer',vision:'Vision',haus:'Haus',suche:'Suche',konto:'Mein PAWN','frag-pawn':'Frag PAWN'};
 export const counts=Object.fromEntries(Object.entries(sections).map(([k,v])=>[k,v.length]));
+
+/**
+ * Die Seitenzahl zu einem NAMEN — und der Grund, warum es sie gibt.
+ *
+ * Commit 1b91aae hat 'archetyp' in sections.dna eingeschoben. Damit rutschten
+ * massband von 6 auf 7 und privacy von 7 auf 8 — und die hartkodierten Zahlen in
+ * den Sprungknoepfen wurden nicht nachgezogen. Sechs Knoepfe landeten danach auf
+ * der falschen Doppelseite, monatelang, ohne dass irgendetwas rot wurde. Der
+ * unangenehmste: „Meine Linie pruefen" setzte state.fitProduct und sprang dann auf
+ * eine Seite, die state.fitProduct gar nicht liest.
+ *
+ * Eine Zahl im Code bindet an eine REIHENFOLGE. Ein Name bindet an eine SACHE.
+ * Reihenfolgen aendern sich, Sachen nicht. Darum steht ab hier ueberall der Name.
+ *
+ * -1, wenn es die Seite nicht gibt — der Aufrufer klemmt ohnehin (Magazine.go).
+ */
+export const seitenNr=(sektion,name)=>{
+ const liste=sections[sektion]||[];
+ if(typeof name==='number')return name;
+ const n=Number(name);
+ return Number.isFinite(n)&&String(name).trim()!==''?n:liste.indexOf(name);
+};
 export const demoNotice='Gestaltungsvorschau · Beispielhäuser und Beispielpreise';
 // Derselbe Satz plus den dritten Teil, den der Streifen im Vorschau-Betrieb braucht:
 // wer Beispielpreise sieht, muss erfahren, dass er sie nicht bezahlen kann. Ein Satz,
