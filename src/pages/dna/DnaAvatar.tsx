@@ -100,7 +100,7 @@ export default function DnaAvatar() {
               value={groesse}
               onChange={(e) => setGroesse(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
               placeholder="z. B. 174"
-              className="mt-2 w-40 border-[1.5px] border-black bg-white px-3 py-2 font-sans text-sm text-black outline-none"
+              className="mt-2 w-40 border-[1.5px] border-black bg-white px-3 py-2 font-sans text-sm text-black"
             />
             <p className="mt-2 max-w-[60ch] font-sans text-[0.8rem] text-black/70">
               Mit ihr rechnet die Anprobe die echte Größe. Ohne sie schätzt sie — und das sieht man.
