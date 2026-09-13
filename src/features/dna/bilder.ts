@@ -111,7 +111,7 @@ export function useKundenBilder(userId: string | null | undefined, arten: BildAr
     if (upErr) throw new Error(upErr.message);
     const { error: insErr } = await supabase.from("kunden_bilder").insert({
       user_id: userId, art, quelle_path: pfad, name: datei.name.slice(0, 120),
-      masse: (masse ?? {}) as never, status: "neu", aktiv: false,
+      masse: (masse ?? {}) as never, status: "hochgeladen", aktiv: false,
     } as never);
     if (insErr) {
       // Kein Eintrag ohne Datei und keine Datei ohne Eintrag.
