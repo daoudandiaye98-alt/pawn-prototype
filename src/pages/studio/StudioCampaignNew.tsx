@@ -1087,7 +1087,7 @@ export default function StudioCampaignNew() {
       } as never);
 
       toast.success(t("studio.campaignNew.toast.savedForApproval"));
-      nav("/studio/kampagnen");
+      nav("/studio/clips");
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -1129,7 +1129,7 @@ export default function StudioCampaignNew() {
         shows_synthetic_person: hasModelShot,
       } as never);
       toast.success(t("studio.campaignNew.toast.savedForApproval"));
-      nav("/studio/kampagnen");
+      nav("/studio/clips");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -1274,7 +1274,7 @@ export default function StudioCampaignNew() {
               {products.length === 0 ? (
                 <div className="mt-4 text-sm text-muted-foreground">
                   {t("studio.campaignNew.material.noProducts")}{" "}
-                  <Link to="/studio/produkte/neu" className="underline hover:text-foreground">{t("studio.campaignNew.material.createNow")}</Link> {t("studio.campaignNew.material.createNowSuffix")}
+                  <Link to="/studio/werke/neu" className="underline hover:text-foreground">{t("studio.campaignNew.material.createNow")}</Link> {t("studio.campaignNew.material.createNowSuffix")}
                 </div>
               ) : (
                 <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">

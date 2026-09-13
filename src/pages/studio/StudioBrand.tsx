@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+import { AUFTRITT_TABS } from "@/features/studio/flaechen";
 import { ArchetypWahl } from "@/components/pawn/ArchetypWahl";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -72,10 +73,7 @@ export default function StudioBrand() {
 
   return (
     <StudioShell title={t("studioShell.nav.doppelseite")} eyebrow={t("studio.brand.publicUnder", { slug: designer.slug })}>
-      <FlaechenTabs tabs={[
-        { label: t("studio.tabs.seite"), to: "/studio/doppelseite" },
-        { label: t("studio.tabs.stil"), to: "/studio/doppelseite/stil" },
-      ]} />
+      <FlaechenTabs tabs={AUFTRITT_TABS.map((f) => ({ label: t(f.labelKey), to: f.to }))} />
       {/* Teil K — Archetyp-Wahl: ein Tipp ändert, wie die Doppelseite erzählt. */}
       <ArchetypWahl
         designerId={designer.id}

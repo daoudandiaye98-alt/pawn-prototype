@@ -108,7 +108,7 @@ export function PalaceLayout({ children, transparentHeader = true, showBreadcrum
                 { label: "Pläne", to: "/preise" },
                 { label: "Studio", to: "/studio" },
                 { label: "Copilot", to: "/studio/copilot" },
-                { label: "Kampagnen", to: "/studio/kampagnen" },
+                { label: "Kampagnen", to: "/studio/clips" },
               ],
             },
             {

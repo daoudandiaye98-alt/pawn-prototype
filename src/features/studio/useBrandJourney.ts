@@ -104,7 +104,7 @@ export function useBrandJourney(designer: StudioDesigner | null) {
         {
           key: "haus_benannt", label: "Haus benannt", why: "Kund·innen merken sich einen Namen, keine Nummer.",
           how: "Trag den Namen deiner Marke ein — er steht später über allem, was du zeigst.",
-          tool: "Markenseite", to: "/studio/brand", done: !!d.brand_name,
+          tool: "Markenseite", to: "/studio/doppelseite/stil", done: !!d.brand_name,
         },
         {
           key: "welt", label: "Welt gewählt", why: "Mode, Interior oder Kunst — daran hängt, wem PAWN dich zeigt.",
@@ -121,22 +121,22 @@ export function useBrandJourney(designer: StudioDesigner | null) {
         {
           key: "erstes_stueck", label: "Erstes Stück angelegt", why: "Ohne ein Stück gibt es nichts zu kaufen.",
           how: "Foto hochladen, Name, Preis — der Rest kann warten.",
-          tool: "Kollektion", to: "/studio/produkte/neu", done: facts.products > 0,
+          tool: "Kollektion", to: "/studio/werke/neu", done: facts.products > 0,
         },
         {
           key: "gutes_bild", label: "Ein gutes Bild", why: "Das Bild entscheidet in einer Sekunde, ob jemand bleibt.",
           how: "Tageslicht, ruhiger Hintergrund. PAWN kann dein Foto freistellen und inszenieren.",
-          tool: "Bilder", to: "/studio/mediathek", done: facts.withImage > 0,
+          tool: "Bilder", to: "/studio/werke/bilder", done: facts.withImage > 0,
         },
         {
           key: "details", label: "Details vollständig", why: "Maße, Material und Pflege beantworten die Fragen, die sonst zum Abbruch führen.",
           how: "Öffne dein Stück und fülle Material, Pflege und Maße aus.",
-          tool: "Kollektion", to: "/studio/produkte", done: facts.withDetails > 0,
+          tool: "Kollektion", to: "/studio/werke", done: facts.withDetails > 0,
         },
         {
           key: "veroeffentlicht", label: "Stück veröffentlicht", why: "Erst veröffentlicht ist es im Shop sichtbar.",
           how: "Stelle den Schalter im Stück auf veröffentlicht.",
-          tool: "Kollektion", to: "/studio/produkte", done: facts.published > 0,
+          tool: "Kollektion", to: "/studio/werke", done: facts.published > 0,
         },
       ],
     },
@@ -148,12 +148,12 @@ export function useBrandJourney(designer: StudioDesigner | null) {
         {
           key: "portrait", label: "Porträt und Geschichte", why: "Menschen kaufen von Menschen. Ein Gesicht und ein Satz reichen.",
           how: "Lade ein Porträt hoch und schreibe drei Sätze darüber, warum du das machst.",
-          tool: "Markenseite", to: "/studio/brand", done: !!d.avatar_url && !!d.story,
+          tool: "Markenseite", to: "/studio/doppelseite/stil", done: !!d.avatar_url && !!d.story,
         },
         {
           key: "seite_veroeffentlicht", label: "Markenseite veröffentlicht", why: "Ohne veröffentlichte Seite findet dich niemand.",
           how: "Bausteine wählen, Bilder setzen, veröffentlichen.",
-          tool: "Deine Markenseite", to: "/studio/hausseite", done: !!d.page_published_at,
+          tool: "Deine Markenseite", to: "/studio/doppelseite", done: !!d.page_published_at,
         },
       ],
     },
@@ -165,12 +165,12 @@ export function useBrandJourney(designer: StudioDesigner | null) {
         {
           key: "erstes_video", label: "Erstes Video", why: "Bewegte Bilder werden deutlich öfter gesehen als Fotos.",
           how: "Aus deinen Fotos macht PAWN in wenigen Minuten einen Clip.",
-          tool: "Videos erstellen", to: "/studio/kampagnen/neu", done: facts.videos > 0,
+          tool: "Videos erstellen", to: "/studio/clips/neu", done: facts.videos > 0,
         },
         {
           key: "geteilt", label: "Erstmals geteilt", why: "Der erste Beitrag ist der schwerste — danach wird es Routine.",
           how: "Lade dein Video herunter, poste es und verlinke deine PAWN-Seite.",
-          tool: "Fertige Videos", to: "/studio/videothek", done: facts.shared,
+          tool: "Fertige Videos", to: "/studio/clips/fertig", done: facts.shared,
         },
         {
           key: "rhythmus", label: "Posting-Rhythmus gewählt", why: "Ein fester Rhythmus schlägt jede einzelne gute Idee.",

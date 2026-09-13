@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+import { AUFTRITT_TABS } from "@/features/studio/flaechen";
 import { GERUEST, KASTEN_STIL, stylesheet } from "@/heft03/geruest";
 import heftCss from "@/heft03/style.css?url";
 import schriftenCss from "@/heft03/schriften.css?url";
@@ -338,17 +339,14 @@ export default function StudioHeft() {
   };
 
   if (loading) return <StudioShell title={t("studioShell.nav.doppelseite")}><PawnLoading /></StudioShell>;
-  if (!designer) return <StudioShell title={t("studioShell.nav.doppelseite")}><p className="text-muted-foreground">{t("studio.hausseite.noAccess")}</p></StudioShell>;
+  if (!designer) return <StudioShell title={t("studioShell.nav.doppelseite")}><p className="text-muted-foreground">{t("studio.heft.keinZugang")}</p></StudioShell>;
 
   const hoch = ANSICHTEN.find((a) => a.key === ansicht)?.hoch ?? true;
 
   return (
     <StudioShell title={t("studioShell.nav.doppelseite")} eyebrow={t("studio.heft.eyebrow")}>
       {/* Ohne die Tabs war dieser Raum eine Sackgasse: von „Seite" führte kein Weg zu „Stil". */}
-      <FlaechenTabs tabs={[
-        { to: "/studio/doppelseite", label: t("studio.tabs.seite") },
-        { to: "/studio/doppelseite/stil", label: t("studio.tabs.stil") },
-      ]} />
+      <FlaechenTabs tabs={AUFTRITT_TABS.map((f) => ({ label: t(f.labelKey), to: f.to }))} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="flex border border-border">
           {ANSICHTEN.map((a) => (
@@ -376,7 +374,7 @@ export default function StudioHeft() {
         </span>
         <button onClick={() => void veroeffentlichen()} disabled={busy || veroeffentlicht}
           className="ml-auto min-h-[36px] border border-foreground bg-foreground px-4 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] text-background hover:bg-foreground/90 disabled:opacity-50">
-          {veroeffentlicht ? t("studio.heft.zustand.veroeffentlicht") : t("studio.hausseite.publishButton")}
+          {veroeffentlicht ? t("studio.heft.zustand.veroeffentlicht") : t("studio.heft.veroeffentlichen")}
         </button>
       </div>
 

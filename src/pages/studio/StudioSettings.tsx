@@ -42,7 +42,7 @@ export default function StudioSettings() {
             <PawnEmptyState
               className="mt-6"
               title={t("studio.settings.dna.empty")}
-              action={<Link to="/studio/produkte" className="inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.dna.createFirst")}</Link>}
+              action={<Link to="/studio/werke" className="inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.dna.createFirst")}</Link>}
             />
           ) : (
             <>
@@ -98,7 +98,7 @@ export default function StudioSettings() {
             <Row k={t("studio.settings.meta.status")} v={designer.status} />
             <Row k={t("studio.settings.meta.memberSince")} v={designer.created_at ? formatDate(designer.created_at, locale, { month: "long", year: "numeric" }) : "—"} />
           </dl>
-          <Link to="/studio/brand" className="mt-6 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.meta.editReview")}</Link>
+          <Link to="/studio/doppelseite/stil" className="mt-6 inline-flex border border-foreground px-4 py-2 text-[0.68rem] tracking-wide hover:bg-foreground hover:text-background">{t("studio.settings.meta.editReview")}</Link>
         </section>
       </div>
 

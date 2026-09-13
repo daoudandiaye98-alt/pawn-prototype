@@ -170,7 +170,7 @@ function OnboardingBody() {
           {t("portal.onboarding.complete.body")}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button onClick={() => navigate("/studio/kampagnen/neu")} className="rounded-none">
+          <Button onClick={() => navigate("/studio/clips/neu")} className="rounded-none">
             {t("portal.onboarding.complete.ctaShot")}
           </Button>
           <Button onClick={() => navigate("/portal")} variant="outline" className="rounded-none">

@@ -47,12 +47,12 @@ export function useDesignerJourney({ designer, productsCount, hasPaidOrder }: Jo
 
   const steps: JourneyStep[] = designer ? [
     { key: "konto", label: "Konto", reason: "Dein Zugang zu PAWN.", done: true, to: "/studio/einstellungen" },
-    { key: "haus_benannt", label: "Haus benannt", reason: "Kund·innen erkennen dich an deinem Namen.", done: !!designer.brand_name, to: "/studio/brand" },
-    { key: "erstes_stueck", label: "Erstes Stück", reason: "Ohne ein Stück gibt es nichts zu verkaufen.", done: productsCount > 0, to: "/studio/produkte/neu" },
-    { key: "bild_inszeniert", label: "Bild inszeniert", reason: "Ein inszeniertes Bild verkauft nachweislich besser als ein Rohfoto.", done: staged, to: "/studio/produkte" },
+    { key: "haus_benannt", label: "Haus benannt", reason: "Kund·innen erkennen dich an deinem Namen.", done: !!designer.brand_name, to: "/studio/doppelseite/stil" },
+    { key: "erstes_stueck", label: "Erstes Stück", reason: "Ohne ein Stück gibt es nichts zu verkaufen.", done: productsCount > 0, to: "/studio/werke/neu" },
+    { key: "bild_inszeniert", label: "Bild inszeniert", reason: "Ein inszeniertes Bild verkauft nachweislich besser als ein Rohfoto.", done: staged, to: "/studio/werke" },
     { key: "auszahlungskonto", label: "Auszahlungskonto", reason: "Ohne Konto kann PAWN dein Geld nicht auszahlen — die Einrichtung dauert etwa 5 Minuten.", done: designer.stripe_charges_enabled === true, to: "/studio/auszahlung" },
-    { key: "seite_veroeffentlicht", label: "Seite veröffentlicht", reason: "Deine Seite ist deine Visitenkarte — ohne sie findet dich niemand.", done: !!designer.page_published_at, to: "/studio/hausseite" },
-    { key: "erstmals_geteilt", label: "Erstmals geteilt", reason: "Reichweite entsteht nicht von allein — das erste Teilen ist der erste Schritt.", done: shared, to: "/studio/produkte" },
+    { key: "seite_veroeffentlicht", label: "Seite veröffentlicht", reason: "Deine Seite ist deine Visitenkarte — ohne sie findet dich niemand.", done: !!designer.page_published_at, to: "/studio/doppelseite" },
+    { key: "erstmals_geteilt", label: "Erstmals geteilt", reason: "Reichweite entsteht nicht von allein — das erste Teilen ist der erste Schritt.", done: shared, to: "/studio/werke" },
     { key: "erster_verkauf", label: "Erster Verkauf", reason: "Der Moment, für den alles andere da ist.", done: hasPaidOrder, to: "/studio/bestellungen" },
   ] : [];
 

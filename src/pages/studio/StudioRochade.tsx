@@ -14,6 +14,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
+import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+/* Diese Seite fuehrt ihre Texte hart im Code, ohne t() — eigener Mangel, hier nicht
+   mit aufgemacht. Die Leiste nimmt deshalb die deutschen Beschriftungen direkt. */
+const LEISTE = (
+  <FlaechenTabs tabs={[
+    { label: "Werke", to: "/studio/werke" },
+    { label: "Bilder", to: "/studio/werke/bilder" },
+    { label: "Rochade", to: "/studio/werke/rochade" },
+  ]} />
+);
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { MediaImg } from "@/components/palace/MediaImg";
@@ -239,6 +249,7 @@ export default function StudioRochade() {
   if (!auftrag) {
     return (
       <StudioShell title="Rochade" eyebrow="Deine bestehende Seite">
+        {LEISTE}
         <p className="max-w-2xl text-sm text-muted-foreground">
           Du hast schon eine Seite? Dann tipp sie nicht ab. Wir sehen sie uns an, holen deine
           Werke und legen sie dir zur Auswahl vor. Nichts geht live, bevor du es gewählt hast.
@@ -274,6 +285,7 @@ export default function StudioRochade() {
 
   return (
     <StudioShell title="Rochade" eyebrow={auftrag.quell_host}>
+      {LEISTE}
       {/* ---- Der Stand, immer ehrlich ---- */}
       <div className="border border-border bg-white p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-3">

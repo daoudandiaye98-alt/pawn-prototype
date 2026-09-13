@@ -182,7 +182,15 @@
           "src"
         ],
         "adressen": [
-          "/auth"
+          "/auth",
+          "/studio/aufbau",
+          "/studio/produkte",
+          "/studio/mediathek",
+          "/studio/hausseite",
+          "/studio/kampagnen",
+          "/studio/videothek",
+          "/studio/brand",
+          "/studio/heft"
         ],
         "ausnahmen": [
           "src/App.tsx",
@@ -191,7 +199,7 @@
           "src/features/auth/tueren.ts",
           "src/__tests__/zugang.spec.ts"
         ],
-        "begruendung": "App.tsx deklariert die Route, Auth.tsx IST der Wegweiser. tueren.ts nennt /auth in der Zeile, die es ueberhaupt erst zum Wegweiser macht (sichererPfad weist /auth ab, sonst leitete die Seite auf sich selbst zurueck), und zugang.spec.ts prueft genau diese Zeile; heft03-adressen.spec prueft, dass /auth keine Heft-Adresse ist. Alle fuenf sind rechtmaessig — eine Kontrolle, die an rechtmaessigem Code rot wird, lehrt nur, Rot zu uebersehen. Gesucht wird nur die exakte Zeichenkette in Anfuehrungszeichen: /auth/v1/health, das notbetrieb.mjs zum Anklopfen braucht, trifft die Pruefung nicht."
+        "begruendung": "App.tsx deklariert die Route, Auth.tsx IST der Wegweiser. tueren.ts nennt /auth in der Zeile, die es ueberhaupt erst zum Wegweiser macht (sichererPfad weist /auth ab, sonst leitete die Seite auf sich selbst zurueck), und zugang.spec.ts prueft genau diese Zeile; heft03-adressen.spec prueft, dass /auth keine Heft-Adresse ist. Alle fuenf sind rechtmaessig — eine Kontrolle, die an rechtmaessigem Code rot wird, lehrt nur, Rot zu uebersehen. Gesucht wird nur die exakte Zeichenkette in Anfuehrungszeichen: /auth/v1/health, das notbetrieb.mjs zum Anklopfen braucht, trifft die Pruefung nicht. · AM 13.09. UM ACHT STUDIO-ADRESSEN ERWEITERT. Sie leiten seit dem Umbau auf werke/clips/doppelseite weiter, standen aber noch an 18 Stellen im lebenden Code — rund 50 Fundstellen. Zwei davon waren nicht nur Umwege, sondern tot: PawnDeck.tsx benutzt die Adressen als PRAEFIX zur Routenerkennung, und ein Praefix auf eine Adresse, die es nicht mehr gibt, trifft nie. /studio/heft kommt dazu, weil die Doppelseite jetzt unter /studio/doppelseite selbst liegt und /studio/heft nur noch Wegweiser ist. App.tsx bleibt ausgenommen: dort stehen die Weiterleitungen selbst."
       }
     },
     {
