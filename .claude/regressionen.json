@@ -249,6 +249,19 @@
       "params": {
         "stil": "src/heft03/style.css"
       }
+    },
+    {
+      "id": "Z20",
+      "zusage": "Keine Cockpit-Seite holt Stripe-Daten, bevor die Rolle feststeht — und keine fragt select(*) auf designers.",
+      "beleg": "ERREICHBAR, nicht theoretisch. RoleGate.tsx laesst Nicht-Angemeldete bewusst durch („DER DURCHLASS\", eine Zeile, bewusst gesetzt). Die Datenbank gibt anon per GRANT SELECT ON public.designers TO anon ALLE Spalten frei und begrenzt nur die ZEILEN (Policy USING (published = true)) — eine Spaltenbegrenzung gibt es dort nicht. In stand.json aus einer frueheren Sitzung auf der LIVE-Datenbank gemessen: 60 Spalten, darunter ACHT Stripe-Spalten (stripe_account_id, stripe_customer_id, stripe_subscription_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_details_submitted, stripe_requirements, stripe_country) sowie user_id, revenue_share_pct, intern, plan_seit, plan_bis. DREI Stellen im Cockpit fragten ohne Konto-Pruefer: AdminDesigners.tsx mit select(*) (alle 60 Spalten, bei jedem Aufschlagen von /admin/designers), AdminPayments.tsx mit den Stripe-Kennungen ausdruecklich in der Spaltenliste, und useCockpitBuhne.ts mit stripe_charges_enabled fuer bis zu 20 Haeuser beim Aufschlagen von /admin. Gegenprobe gemessen: JEDE andere Cockpit-Abfrage auf designers benannte ihre Spalten schon — AdminDesigners war die einzige mit select(*). Repariert in zwei Schichten: der Pruefer laesst die Abfrage gar nicht erst los, und die benannte Spaltenliste sorgt dafuer, dass selbst dann keine Stripe-Kennung ueber die Leitung geht, wenn jemand den Pruefer spaeter entfernt. Der Typ DesignerZeile (Pick) haelt Liste und Seite zusammen: faellt ein benoetigtes Feld aus der Liste, wird tsc rot statt die Oberflaeche leer. DAS LOCH IN DER DATENBANK (der GRANT) bleibt offen und ist Aufgabe M3 Teil 2 — es zuzumauern kann das oeffentliche Heft treffen und braucht Daoudas Wort.",
+      "pruefung": "keineStripeDatenOhneRolle",
+      "params": {
+        "orte": [
+          "src/pages/admin",
+          "src/features/admin"
+        ],
+        "wache": "roles.includes(\"admin\")"
+      }
     }
   ]
 }

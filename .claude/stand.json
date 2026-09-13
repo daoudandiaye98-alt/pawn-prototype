@@ -1,45 +1,24 @@
 {
-  "aktualisiert": "2026-09-12",
-  "branch": "claude/auftrag-q-tisch",
+  "aktualisiert": "2026-09-13",
+  "branch": "claude/heft-frontend-integration-0bjnzf",
   "offene_prs": [
     {
-      "nr": 201,
-      "titel": "Auftrag Q, Teil 1 — Der Tisch (R1 · R2a · R2b · R4)",
-      "status": "Entwurf, neu. Lokal alles gruen: VERIFY 5/5 · REGRESSION 19/19 · KETTE 1/1 · 81/81 · 353/353 · tsc 0 · build gruen.",
-      "blockiert_durch": "Daoudas Ansehen. MUSS VOR TEIL 2 AUF MAIN — sonst misst Teil 2 wieder die Heft-Huelle statt der Seite."
+      "nr": 203,
+      "titel": "Sicherheit: kein Stripe-Datum im Cockpit, bevor die Rolle feststeht",
+      "status": "Entwurf, 6 Dateien + Sperrdatei. Zweig auf main. tsc 0, npm test 356/356, VERIFY 5/5, REGRESSION 20/20, Bau gruen. Zusage Z20 (keineStripeDatenOhneRolle), gegen alle drei Ursachen einzeln rot vorgefuehrt.",
+      "blockiert_durch": "Nichts. SOLLTE ZUERST GEMERGT WERDEN: klein, schliesst das Leck, und traegt die Sperrdatei-Reparatur, ohne die auf diesem main KEIN Pruefstand laeuft."
     },
     {
-      "nr": 200,
-      "titel": "Doku: der Stand nach den drei Merges — und es sind fuenf Gate-Familien, nicht vier",
-      "status": "Entwurf, eine Datei (.claude/stand.json). UEBERHOLT von #201: dieser Stand hier ist neuer und enthaelt alles aus #200.",
-      "blockiert_durch": "Daoudas Entscheidung: #200 schliessen (einfacher) ODER zuerst mergen, dann loese ich den Konflikt in #201 auf. Beide Zweige fassen dieselbe Datei an."
-    },
-    {
-      "nr": 195,
-      "titel": "Teil M — Block B, Tabellenrechte, L3",
-      "status": "Entwurf. Der wertvolle Teil ist heraus: der Mode-Zweig aus views.mjs liegt woertlich in #201, samt Kommentar.",
-      "blockiert_durch": "R3 — schliessen, sobald #201 auf main ist. Die acht 20260930-Migrationen NICHT uebernehmen: sie reparieren Rechte, die stehen, und entstanden auf der aufgegebenen Datenbank cnxtdcifkrdxvajaikxq."
-    },
-    {
-      "nr": 183,
-      "titel": "Kein Urteil ohne Messung",
-      "status": "Entwurf. INHALT IST LAENGST AUF MAIN — auf c56de9c nachgesehen: urteil.ts (KEIN_URTEIL 3, MINDESTANTEIL 0.5, urteilsfaehig), lauf.ts beendet damit, pruefstand.yml faengt Ausgang 3, der Test liegt unter src/__tests__.",
-      "blockiert_durch": "R3 — schliessen. Der Diff traegt nur noch Konflikte."
+      "nr": 202,
+      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel + der Routen-Rundgang",
+      "status": "Entwurf, 20 Commits. B1-B8 VOLLSTAENDIG. 120/120 Heft-Tests, 353/353, VERIFY 5/5, REGRESSION 20/20, tsc 0, Bau gruen. Zusagen Z20 (Auftritt) und Z13 (um acht Studio-Adressen erweitert), je rot vorgefuehrt. Netto -572 Zeilen in der Routen-Runde.",
+      "blockiert_durch": "Nichts im Code. `messen` ist rot, aber BELEGT nicht wegen dieses PRs: 129 gefallene Gates hier gegen 131 auf main, und alle gehoeren zu den vier Familien 3.3/3.4/3.5/4.7, ueber die Daouda entscheidet."
     }
   ],
   "merge_reihenfolge": [
-    "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. main = 22471bc. Gemergt: #187, #188, #189, #190, #191, #192. Nachgeprueft auf origin/main, nicht vermutet: src/features/auth/tueren.ts, src/features/auth/registrieren.ts, src/heft03/uebernahme.mjs liegen dort, und sections.konto beginnt mit 'zugang'.",
-    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten 'merged', aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind.",
-    "LIVE auf main: L5/L6 (Zugang-Doppelseite als erste Seite von /konto), L7 (Passwort-Wiederholung an EINER Stelle: features/auth/registrieren.ts), L8 (drei Publikumstueren), L9 (Google kehrt zurueck), L10 (/auth ist Wegweiser auf /konto), L11 (Uebernahme der Gastdaten), L12 (ein Waechter, drei entfernt), L13 (Anklopfen statt 6-Sekunden-Frist), L16 (heft.d.ts). Zusagen Z11, Z12, Z13 neu, alle einmal rot vorgefuehrt.",
-    "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen auf cnxtdcifkrdxvajaikxq. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
-    "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
-    "DIE NEUE PRUEFUNG: scripts/verify/migrationen-kette.mjs. Rot am echten Ordner, gruen an einer geschlossenen Kopie — beide Richtungen vorgefuehrt. ABSICHTLICH NOCH NICHT in verify.sh schnell, weil sie heute echt rot ist und eine dauerhaft rote Pruefung im Tor lehrt, Rot zu uebersehen. Verdrahten, sobald die Luecke zu ist.",
-    "WIEDERAUFSETZEN OHNE RATEN: mcp Supabase list_migrations zeigt die 35 gelegten Dateien. Der Stapel-Drucker liegt im Scratchpad (stapel.py + stapel.json, 41 Stapel); Stapel 14 ist der naechste, danach der Sentinel zz_ende, dann die Abnahme, dann types.ts neu.",
-    "L11 WEICHT AB, mit Begruendung: merge_anon_session KANN kunden_stil und wishlists nicht tragen. Beide haben user_id als Schluessel mit Fremdschluessel auf auth.users, jede Policy verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner der beiden. Ein Gast hat dort nie eine Zeile. Die Uebernahme passiert deshalb beim Anmelden im Heft (src/heft03/uebernahme.mjs). Der andere Weg waere eine neue anonyme Schreibflaeche auf der Zahlungsdatenbank — das braucht Daoudas Wort.",
-    "DER RUECKWEG IST VORGEFUEHRT: drop schema public cascade + Historie leeren. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
-    "DIE BUCHHALTUNG: ein BEFORE-INSERT-Trigger auf supabase_migrations.schema_migrations setzt die Version aus dem Dateinamen und unterdrueckt jede fremde Zeile. Beim Sentinel-Namen 'zz_ende' entfernt er sich selbst.",
-    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet.",
-    "DER PRUEFER HAT EINEN FEHLER IN MEINEM BERICHT GEFUNDEN: 12 von 13 bestaetigt, EINER widerlegt (ein Verweis auf /auth stand noch in der Aufwaermliste der englischen Fassung). Repariert UND gedeckt: Zusage Z13 mit der Kontrolle nurWegweiser, einmal rot vorgefuehrt."
+    "1. #203 ZUERST. Es schliesst das Cockpit-Leck UND repariert package-lock.json. Ohne die zweite Haelfte bricht `npm ci` auf main ab und der Pruefstand kommt gar nicht zum Messen — das blockiert jeden PR, auch Daoudas eigene Merges.",
+    "2. #202 danach. Es sitzt auf einem aelteren main und hat deshalb die Sperrdatei-Falle noch nicht gesehen; nach dem Merge von #203 wird es sie sehen und braucht dann einen Basis-Merge.",
+    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 ging 20 Sekunden vor #191 durch, beide meldeten 'merged', und die Dateien lagen trotzdem nicht auf main. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind."
   ],
   "wartet_auf_mensch": [
     "DIE 119 GEFALLENEN LAUNCH GATES, neu und zum ersten Mal belegt: 4.7 Seitengewicht, 3.5 Trefferflaechen, 3.3 Kontrast, 3.4 Tastaturfokus. Sie auf die Norm zu ziehen aendert das AUSSEHEN des Hefts — und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Vorher sind zwei Zweifel zu klaeren (3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand) — niemand soll Gestaltung aendern, wo ein Messfehler sitzt. Vollstaendig im Kommentar an PR #194.",
@@ -76,13 +55,13 @@
     }
   },
   "naechster_zug": [
-    "1. #201 ansehen und mergen. Dann R3 abschliessen: #183 schliessen, #195 schliessen, #200 mergen oder schliessen.",
-    "2. DIE BEILAGE teil-o-migrationen.zip nachreichen — ohne sie bleibt E4 offen und supabase/migrations/ bei 166 statt 173.",
-    "3. OFFENE-LISTE.md anlegen, wenn sie das fuehrende Papier sein soll.",
-    "4. Die nicht_pruefbar-Zahl aus dem CI-Lauf auf #201 gegen die 299 halten. Faellt sie nicht, war R2a die falsche Ursache.",
-    "5. DANN Teil 2 (B1-B8).",
-    "6. Die Gate-Entscheidung bleibt Daoudas: 4.7 Seitengewicht, 3.3 Kontrast, 3.5 Trefferflaechen, 3.4 Fokus aendern das Aussehen des Hefts. Zwei Zweifel vorher klaeren: 3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand.",
-    "7. UNVERAENDERT OFFEN: M3 zweiter Teil, M5 (Speicher-Eimer und ~49 Functions), C4 erster Teil und C5 (brauchen Lovable-Deploys)."
+    "1. DAOUDA: #203 mergen. Klein, schliesst das Leck, macht den Pruefstand wieder lauffaehig.",
+    "2. DAOUDA: #202 mergen. Danach auf origin/main nachsehen, ob die Dateien wirklich dort liegen.",
+    "3. PR 4 — die Anprobe in der DNA-Seite. JETZT moeglich, weil die Spruenge auf NAMEN stehen (data.mjs > seitenNr): ein Einschieben verschiebt nichts mehr. Die foto-Seite wird die Anprobe-Seite und zieht von Platz 5 auf Platz 1 (Daoudas Entscheidung). Backend ist fertig und deployt — supabase/functions/anprobe kann bereinigen/anprobe/raum/wand/stand/bewerten. Es fehlt NUR die Verdrahtung: quelle.anprobe, der Platzhalter-Toast in app.js:829, state.avatar (existiert nicht, wird aber gelesen), state.anproben (wird nie gefuellt), das Melden von anprobe_fertig.",
+    "4. PR 5 — Clips layout-bewusst. Der Knopf 'Freisteller' in StudioMediathek ruft generate-product-shot (weisses JPEG) statt freistellen (echter Freisteller). Damit ist die Kette Clips → product_dna.heft → Buehne an genau dieser Stelle gerissen.",
+    "5. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message). Dazu der Fehler in app.js:874 — die Beispiel-Prompts rufen kein fragen(), die Edge Function sieht den Satz nie.",
+    "6. Die zwei Vorschlagspapiere: docs/vorschlag-mini-pawn.md und docs/vorschlag-cockpit.md.",
+    "7. DAOUDA, unveraendert offen: die Drei-Werke-Regel · die gefallenen Gates 4.7/3.3/3.5/3.4 · der GRANT auf designers (M3 Teil 2) · teil-o-migrationen.zip (166 statt 173 Dateien) · OFFENE-LISTE.md fehlt im Repo."
   ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
@@ -99,7 +78,7 @@
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-12",
+    "datum": "2026-09-13",
     "bestanden": 5,
     "gefallen": 0
   },
@@ -179,5 +158,24 @@
     "was_ihn_gefangen_hat": "Die Rot-Vorfuehrung von Z18 — also das Ritual selbst, nicht eine Pruefung, die schon da war.",
     "folge": "Z18 deckt jetzt die REIHENFOLGE der drei Welten (mode -> interior -> Auffang), nicht bloss den einen Satz.",
     "lehre_fuer_die_naechste_schicht": "Nach jedem Einsetzen eines Zweigs in eine if/else-Kette die Kette selbst nachzaehlen. Ein Textersatz, der einen Anker verschluckt, ist syntaktisch gueltig und faellt durch jede Pruefung, die den Rumpf nicht liest."
+  },
+  "DAS_COCKPIT_LECK_IST_IN_DER_OBERFLAECHE_ZU": {
+    "was": "Drei Stellen im Cockpit holten Daten von `designers`, ohne dass jemand angemeldet sein musste. Die Kette war geschlossen: RoleGate laesst Nicht-Angemeldete bewusst durch, die Datenbank gibt anon alle 60 Spalten frei und begrenzt nur die Zeilen (USING published = true), und diese drei Stellen fragten ohne Konto-Pruefer.",
+    "die_drei": [
+      "AdminDesigners.tsx — select(*), alle 60 Spalten, bei jedem Aufschlagen von /admin/designers",
+      "AdminPayments.tsx — die Stripe-Kennungen ausdruecklich in der Spaltenliste, ohne Pruefer",
+      "useCockpitBuhne.ts — stripe_charges_enabled fuer bis zu 20 Haeuser beim Aufschlagen von /admin; AdminOverviews Pruefer gilt fuer SEINEN Effekt, nicht fuer diesen Haken"
+    ],
+    "gegenprobe": "JEDE andere Cockpit-Abfrage auf designers benannte ihre Spalten schon (AdminCampaigns, AdminEditionen, AdminMessages, AdminArchetypen, useAdminData). AdminDesigners war die EINZIGE mit select(*). Die Reparatur ist damit nicht breiter als der Fehler.",
+    "nicht_geschlossen": "DAS LOCH IN DER DATENBANK. Der GRANT SELECT ON public.designers TO anon steht weiter, und die Policy begrenzt nur Zeilen, nicht Spalten. Das ist Aufgabe M3 Teil 2 und braucht Daoudas Wort — zumauern kann das oeffentliche Heft treffen.",
+    "zusage": "Z20 auf dem Zweig claude/heft-frontend-integration-0bjnzf, Kontrolle keineStripeDatenOhneRolle, gegen alle drei Ursachen einzeln rot vorgefuehrt."
+  },
+  "Z13_WAR_AUF_MAIN_GEBROCHEN": "Beim Bauen der Cockpit-Pruefung aufgefallen: src/pages/dna/DnaShell.tsx (neu aus dem Lovable-Commit 467563a 'Changes') verlinkt auf /auth — eine Adresse, die seit Teil L10 nur noch auf /konto weiterleitet. Zusage Z13 war damit auf main rot. Eine Zeile, mitrepariert. Merkregel: die Kontrollen fangen auch, was NICHT aus dieser Arbeit kommt — sie muessen deshalb auch dann gelesen werden, wenn man glaubt, nichts Einschlaegiges angefasst zu haben.",
+  "DIE_SPERRDATEI_BLOCKIERT_MAIN": {
+    "befund": "npm ci scheitert auf main. Seit dem letzten Sperrdatei-Commit (708d07b) hat package.json drei Pakete dazubekommen — drizzle-kit ^0.31.10, drizzle-orm ^0.45.2, postgres ^3.4.9 — ohne dass package-lock.json nachgezogen wurde. drizzle-kit bringt esbuild 0.25.x mit, die Sperrdatei pinnt 0.21.5. Die Action bricht nach 23 Sekunden mit 24 Zeilen 'Missing: @esbuild/…@0.25.12 from lock file' ab, BEVOR der Pruefstand etwas misst.",
+    "reproduziert": "alte Sperrdatei → npm ci: 'Missing: drizzle-kit@0.31.10 from lock file' (derselbe Abbruch). neue Sperrdatei → npm ci --dry-run: added 155 packages, kein Fehler.",
+    "reparatur": "npm install --package-lock-only, also das Werkzeug des Projekts. Gemessen: 60 Eintraege NEU, 0 entfernt, 0 Versionsaenderungen, davon 48 esbuild-Plattformpakete. Kein vorhandenes Paket verschoben.",
+    "warum_jetzt_und_vorher_nicht": "In einer frueheren Runde habe ich ausdruecklich davon ABGERATEN, die Sperrdatei anzufassen: der Umbau bewegte damals ~6000 Zeilen und behob KEINEN belegten Fehler. Jetzt gibt es den Fehler, und die Reparatur ist klein. Die Regel hat sich nicht geaendert, die Faktenlage schon.",
+    "liegt_in": "#203"
   }
 }
