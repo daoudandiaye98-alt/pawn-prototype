@@ -164,7 +164,10 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
     const p=group(base,0,0,side*d/2);box(p,w,h,.016,color,0,h/2,0);walls.push({p,axis:'x',sign:-side});
   }
   const top=box(base,w,.02,d,color,0,h,0);
-  stage.plinths.push({walls,top,h});return h;
+  // `base` zurueck, nicht `h`: beim Ziehen (B6) wandert der Sockel mit dem Werk, und
+  // dafuer braucht der Aufrufer die GRUPPE. Das urspruengliche `return h` hat nie
+  // jemand gelesen — makeStage wirft den Wert weg, makeBuehne ist der einzige Leser.
+  stage.plinths.push({walls,top,h});
   return base;
 }
 

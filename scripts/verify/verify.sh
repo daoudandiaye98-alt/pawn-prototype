@@ -15,8 +15,8 @@ cd "$(dirname "$0")/../.."
 
 MODUS="${1:-schnell}"
 case "$MODUS" in
-  schnell) PRUEFUNGEN=(tsc tests heft regression kette rls) ;;
-  voll)    PRUEFUNGEN=(tsc tests heft regression kette rls build sicht) ;;
+  schnell) PRUEFUNGEN=(tsc tests heft lint_heft regression kette rls) ;;
+  voll)    PRUEFUNGEN=(tsc tests heft lint_heft regression kette rls build sicht) ;;
   *) echo "Aufruf: verify.sh [schnell|voll]" >&2; exit 64 ;;
 esac
 
@@ -69,6 +69,29 @@ tests() {
 # Die 27 Tests des Hefts laufen unter node:test, nicht unter Vitest — sie kommen
 # unveraendert aus dem Prototyp und sollen es bleiben, damit ein Abgleich mit ihm
 # eine Sache von `diff` bleibt. Zwei Laeufer, ein Tor.
+# Der Linter — ABER NUR UEBER DAS HEFT.
+#
+# Warum so eng: projektweit ist `npm run lint` seit langem rot (18 Fehler, 665
+# Hinweise, Altbestand). Haengt man das hier ein, ist VERIFY dauerhaft rot und lehrt,
+# Rot zu uebersehen. `src/heft03/` dagegen ist gemessen sauber — null Verstoesse.
+#
+# Warum ueberhaupt: das Heft wurde bis zum 13.09. GAR NICHT gelintet. eslint.config.js
+# fasste nur .ts und .tsx; die 3.458 Zeilen .js/.mjs des oeffentlichen Hefts sah der
+# Linter nie an. Gefunden wurde das durch einen echten Fehler — `addPlinth` in
+# world.mjs hatte ein unerreichbares `return base;` hinter einem `return h;`, und
+# weder 120/120 Heft-Tests noch tsc noch der Bau haben es gemeldet.
+lint_heft() {
+  local ausgabe ende
+  ausgabe=$(npx eslint "src/heft03/**/*.{js,mjs}" 2>&1); ende=$?
+  if [ $ende -eq 0 ]; then
+    echo "LINT-HEFT: 1/1 · FEHLER: keine"
+    return 0
+  fi
+  echo "$ausgabe" | grep -E "error|warning" | head -12
+  echo "LINT-HEFT: 0/1 · FEHLER: der Linter hat im Heft etwas gefunden"
+  return 1
+}
+
 heft() {
   local ausgabe ende
   ausgabe=$(npm run test:heft 2>&1); ende=$?
@@ -87,6 +110,7 @@ for p in "${PRUEFUNGEN[@]}"; do
     tsc)        fuehre tsc        scripts/verify/tsc.sh ;;
     tests)      fuehre tests      tests ;;
     heft)       fuehre heft       heft ;;
+    lint_heft)  fuehre lint_heft  lint_heft ;;
     regression) fuehre regression scripts/verify/regression.sh ;;
     kette)      fuehre kette      kette ;;
     rls)        fuehre rls        rls ;;
