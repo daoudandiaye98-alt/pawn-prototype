@@ -99,6 +99,14 @@ export default function Datenschutz() {
                 )}
               </li>
               <li>
+                <strong>{L("Avatar und Anproben:", "Avatar and Try-Ons:")}</strong>{" "}
+                {L(
+                  "Wenn du willst, lädst du ein Foto von dir hoch — oder ein Foto deines Raums, deiner Wand. Daraus entsteht bei einem Dienstleister (fal.ai, siehe Abschnitt 8) ein Anprobebild: dein Foto plus das Bild des Stücks. Dazu kommt, was du selbst angibst, etwa deine Körpergröße. Die Bilder liegen in einem privaten Speicher, den nur du siehst; wir geben sie niemandem weiter und nutzen sie nicht für Werbung. Sie bleiben liegen, solange dein Konto besteht — Anprobebilder löschen wir spätestens nach 12 Monaten. Löschen kannst du jederzeit selbst: jedes Bild einzeln unter „Deine DNA → Avatar“ (bzw. Räume, Anproben), oder alles auf einmal, indem du dein Konto löschst. Beides entfernt Datei und Eintrag, nicht nur den Eintrag.",
+                  "If you want to, you upload a photo of yourself — or of your room or wall. A service provider (fal.ai, see section 8) turns it into a try-on image: your photo plus the picture of the piece. Whatever you tell us yourself, such as your height, is stored alongside it. The images sit in private storage only you can see; we never pass them on and never use them for advertising. They stay as long as your account exists — try-on images are deleted after 12 months at the latest. You can delete at any time: each image individually under \u201cYour DNA \u2192 Avatar\u201d (or Rooms, Try-Ons), or all at once by deleting your account. Both remove the file and the record, not just the record.",
+                )}
+              </li>
+
+              <li>
                 <strong>{L("Aufrufe/Nutzung:", "Views/Usage:")}</strong>{" "}
                 {L(
                   "welche Seiten wie oft aufgerufen werden (erste Partei, kein Tracking Dritter) — für Reihenfolge/Empfehlung, siehe Abschnitt 4.",
