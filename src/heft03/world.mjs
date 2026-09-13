@@ -9,8 +9,27 @@ export function createWorld(container,readerLayer,onDirty){
  let scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(33,innerWidth/innerHeight,.1,90);
  let book,leftPage,rightPage,leaf,shadow,currentStage,style='contour',currentId='';
  const printPlanes=[],paperMats=[];
+ /**
+  * WIE GROSS IST DIE BUEHNE? Bis hierher lautete die Antwort ueberall `innerWidth`
+  * und `innerHeight` — also das FENSTER. Im oeffentlichen Heft stimmt das, weil
+  * `#stage` per CSS `position:fixed;inset:0` ist: der Kasten IST das Fenster.
+  *
+  * Im Studio ist er es nicht. Dort sitzt die Buehne in einem 390- oder 1280-px-Kasten,
+  * und mit der Fenstergroesse waere alles daneben: das Bild verzerrt (camera.aspect),
+  * die Hotspots an der falschen Stelle, und `hit()` faende beim Tippen ein anderes
+  * Werk als das unter dem Finger — oder keines.
+  *
+  * Darum EINE Messung, von der alle lesen. Im oeffentlichen Heft liefert sie exakt
+  * dieselben Zahlen wie vorher (fixed;inset:0 → left 0, top 0, Fenstermass), die
+  * Umstellung ist dort also ein No-op. Belegt, nicht behauptet: die Aufnahme der
+  * Startseite ist vor und nach dieser Aenderung byteweise dieselbe.
+  */
+ const masse=()=>{
+  const r=container.getBoundingClientRect();
+  return {b:r.width||innerWidth,h:r.height||innerHeight,l:r.left,t:r.top};
+ };
  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));renderer.setSize(innerWidth,innerHeight);
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));{const m=masse();renderer.setSize(m.b,m.h);camera.aspect=m.b/m.h;camera.updateProjectionMatrix();}
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
  container.append(renderer.domElement);
@@ -166,7 +185,7 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
 }
 
  buildBook();
- const cssRenderer=new CSS3DRenderer();cssRenderer.setSize(innerWidth,innerHeight);cssRenderer.domElement.style.overflow='clip';readerLayer.append(cssRenderer.domElement);
+ const cssRenderer=new CSS3DRenderer();{const m=masse();cssRenderer.setSize(m.b,m.h);}cssRenderer.domElement.style.overflow='clip';readerLayer.append(cssRenderer.domElement);
  const spread=document.createElement('article');spread.className='spread';spread.setAttribute('aria-label','Geöffnete Doppelseite');
  const cssObject=new CSS3DObject(spread);cssObject.scale.setScalar(8.2/1200);cssObject.rotation.x=-PI/2;cssObject.position.set(0,.067,0);book.add(cssObject);
  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),temp=new THREE.Vector3();
@@ -317,6 +336,11 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
  }
  let letzteSignatur='';
  function render(pose,{angle=0,manualFold=1,interactive=false,search=false,paging=false}={}){
+  // `mobile` bleibt ABSICHTLICH am Fenster, nicht am Kasten: die @media-Regeln des
+  // Heft-CSS folgen ebenfalls dem Fenster. Liest das 3D den Kasten und das CSS das
+  // Fenster, entsteht ein Mischzustand — ein Handy-Buch in einer Desktop-Seite.
+  // Lieber durchgehend die eine Wahrheit, auch wenn die Studio-Vorschau darum bei
+  // 390 px die Desktop-Fassung zeigt (so steht es auch am Breiten-Knopf).
   const {lay,open,fold,read}=pose,mobile=innerWidth<760;
   book.scale.set((mobile?.9:1)+read*.13,1,1);
   book.rotation.set((1-lay)*PI/2+read*1.53,(-.15+angle)*lay*(1-read),read*.006);
@@ -329,25 +353,26 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   shadow.visible=read<.75;
   const flat=mobile?[2.4,5.5,13.1]:[3.72,4.15,11.6],front=mobile?[0,2.0,20]:[0,.65,13.4];
   camera.position.set(...flat.map((a,i)=>a+(front[i]-a)*read));
-  const chrome=Math.min(search?200:112,Math.max(search?150:92,innerHeight*(search?.27:.15))),availableH=Math.min(innerHeight-chrome,innerWidth*.99/1.82),frontFov=2*Math.atan(5.32*innerHeight/(2*13.4*Math.max(availableH,180)))*180/PI;
-  const flatFov=Math.max(31,2*Math.atan(.376*innerHeight/(innerWidth*.78))*180/PI);
-  camera.fov=mobile?39+27*lay-28*read:flatFov+(frontFov-flatFov)*read;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  const m=masse();
+  const chrome=Math.min(search?200:112,Math.max(search?150:92,m.h*(search?.27:.15))),availableH=Math.min(m.h-chrome,m.b*.99/1.82),frontFov=2*Math.atan(5.32*m.h/(2*13.4*Math.max(availableH,180)))*180/PI;
+  const flatFov=Math.max(31,2*Math.atan(.376*m.h/(m.b*.78))*180/PI);
+  camera.fov=mobile?39+27*lay-28*read:flatFov+(frontFov-flatFov)*read;camera.aspect=m.b/m.h;camera.updateProjectionMatrix();
   camera.lookAt(mobile?0:-1.22*(1-read),mobile?1.85*(1-read):.5*(1-read)+(search?.40:.1)*read,0);camera.updateMatrixWorld(true);
   spread.style.opacity=(interactive&&read>.98)||paging?'1':'0';spread.inert=!(interactive&&read>.98);spread.setAttribute('aria-hidden',String(spread.inert));
   readerLayer.style.pointerEvents=interactive&&read>.98?'auto':'none';
   cssObject.visible=read>.5||paging;
   // Steht das Buch still (z. B. während des Blätterns zwischen zwei Leseseiten), wird WebGL nicht neu gezeichnet.
-  const signatur=[lay,open,fold,read,leaf.visible?pose.leaf.toFixed(3):0,angle,manualFold,innerWidth,innerHeight,currentId,currentStage?currentStage.fade:0,search?1:0].join('|');
+  const signatur=[lay,open,fold,read,leaf.visible?pose.leaf.toFixed(3):0,angle,manualFold,m.b,m.h,currentId,currentStage?currentStage.fade:0,search?1:0].join('|');
   if(signatur!==letzteSignatur){letzteSignatur=signatur;light.shadow.needsUpdate=true;renderer.render(scene,camera);}
   cssRenderer.render(scene,camera);
  }
  return {
   display,render,spread,canvas:renderer.domElement,
   updateHouse(slug,p){letzteSignatur='';for(const [id,d] of Object.entries(displays)){if(d.house!==slug)continue;d.color=p.accent;d.architecture=p.architecture;d.layout=p.architecture==='fan'?'fan':'frame';for(const [k,old] of [...cache]){if(!k.startsWith(id+style))continue;book.remove(old.root);old.root.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(o.material&&!standeeMaps.has(o.userData.cutout))o.material.dispose();}});cache.delete(k);if(currentStage===old)currentStage=null;}currentId='';}},
-  resize(){renderer.setSize(innerWidth,innerHeight);cssRenderer.setSize(innerWidth,innerHeight);letzteSignatur='';},
+  resize(){const m=masse();renderer.setSize(m.b,m.h);cssRenderer.setSize(m.b,m.h);camera.aspect=m.b/m.h;camera.updateProjectionMatrix();letzteSignatur='';},
   paperStyle(next){style=next;currentId='';letzteSignatur='';display(currentStage.id);onDirty();},
   setContent(html,theme){letzteSignatur='';spread.innerHTML=html;const vars=theme||{paper:'#f9f7f2',ink:'#252421',accent:'#733039',font:'Playfair'};for(const m of paperMats)m.color.set(vars.paper);for(const [k,v]of Object.entries(vars))spread.style.setProperty('--house-'+k,v);spread.dataset.theme=vars.theme||'';},
-  hotspots(oben=false){return(currentStage?.products||[]).map(p=>{p.object.localToWorld(temp.copy(oben?p.oben:p.point));temp.project(camera);return{id:p.id,x:(temp.x*.5+.5)*innerWidth,y:(-temp.y*.5+.5)*innerHeight};});},
+  hotspots(oben=false){return(currentStage?.products||[]).map(p=>{p.object.localToWorld(temp.copy(oben?p.oben:p.point));temp.project(camera);const m=masse();return{id:p.id,x:(temp.x*.5+.5)*m.b,y:(-temp.y*.5+.5)*m.h};});},
   /*
    * DEKO DARF DEN KLICK NICHT VERDECKEN.
    *
@@ -364,6 +389,6 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    * Heute ist das ein No-op: es gibt noch keine Deko. Es ist der Riegel, der
    * sitzt, BEVOR die Deko kommt — nicht die Reparatur danach.
    */
-  hit(x,y){pointer.set(x/innerWidth*2-1,-y/innerHeight*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(currentStage?.root.children||[],true).find(hit=>hit.object.userData.product&&hit.object.userData.cutout&&hit.uv&&alphaHit(hit.object.userData.cutout,hit.uv.x,hit.uv.y))?.object.userData.product;}
+  hit(x,y){const m=masse();pointer.set((x-m.l)/m.b*2-1,-(y-m.t)/m.h*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(currentStage?.root.children||[],true).find(hit=>hit.object.userData.product&&hit.object.userData.cutout&&hit.uv&&alphaHit(hit.object.userData.cutout,hit.uv.x,hit.uv.y))?.object.userData.product;}
  };
 }

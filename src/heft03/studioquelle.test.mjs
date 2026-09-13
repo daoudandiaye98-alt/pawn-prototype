@@ -10,6 +10,7 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {studioQuelle,SPALTEN_BUEHNE} from './quelle.mjs';
 import {heftFuellen,demoWiederherstellen,displays} from './data.mjs';
 
@@ -185,4 +186,30 @@ test('Ein Editor ist kein Laden: Kasse, Chat und Bewerbung sind ausdruecklich zu
 test('Ohne Client oder ohne Haus haelt sie an, statt halb zu laufen',()=>{
  assert.throws(()=>studioQuelle({haus:'drape'}),/Client/);
  assert.throws(()=>studioQuelle({client:nachbau()}),/Slug/);
+});
+
+/**
+ * Die Voraussetzung, unter der world.mjs > masse() im oeffentlichen Heft NICHTS aendert.
+ *
+ * `masse()` liest `container.getBoundingClientRect()` statt `innerWidth/innerHeight`.
+ * Im Studio ist das noetig (dort ist der Kasten 390 px breit), im oeffentlichen Heft
+ * darf es keinen Unterschied machen. Es macht keinen, WEIL `#stage` per CSS
+ * `position:fixed;inset:0` ist — dann ist der Kasten exakt das Fenster.
+ *
+ * Gemessen in Chromium auf dem gebauten Heft, drei Breiten:
+ *   1440x900 · 390x844 · 834x1112  →  stage = {l:0, t:0, b:Fenster, h:Fenster}
+ *
+ * Faellt diese CSS-Zeile weg, faellt die Begruendung mit — und zwar lautlos, weil das
+ * Heft dann einfach falsch gross rendert statt einen Fehler zu werfen. Darum die Wache.
+ *
+ * (Der Versuch, das ueber byteweise gleiche Aufnahmen zu belegen, ist gescheitert:
+ *  drei Aufnahmen DESSELBEN Baus ergaben drei verschiedene Pruefsummen — die Buehne
+ *  animiert. Arithmetik schlaegt hier Pixel.)
+ */
+test('#stage ist im oeffentlichen Heft das Fenster — sonst ist masse() kein No-op',()=>{
+ const css=readFileSync(new URL('./style.css',import.meta.url),'utf8');
+ const ohneUmbruch=css.replace(/\s+/g,'');
+ assert.ok(ohneUmbruch.includes('#stage,#reader-layer{position:fixed;inset:0}'),
+  'style.css muss #stage auf position:fixed;inset:0 halten — daran haengt, dass '+
+  'world.mjs > masse() im oeffentlichen Heft dieselben Zahlen liefert wie innerWidth/innerHeight');
 });
