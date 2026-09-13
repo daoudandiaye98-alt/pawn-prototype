@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { X, Pencil, Package as PackageIcon } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 import { formatPrice } from "@/lib/format";
 
 type Designer = Database["public"]["Tables"]["designers"]["Row"];
@@ -15,27 +16,78 @@ type InvMode = Database["public"]["Enums"]["inventory_mode"];
 
 const PAGE = 30;
 
+/**
+ * GENAU DIE SPALTEN, DIE DIESE SEITE ANZEIGT UND BEARBEITET — nie `select("*")`.
+ *
+ * Der belegte Fehler: `designers` traegt 60 Spalten, darunter ACHT Stripe-Spalten
+ * (stripe_account_id, stripe_customer_id, stripe_subscription_id, stripe_charges_enabled,
+ * stripe_payouts_enabled, stripe_details_submitted, stripe_requirements, stripe_country)
+ * sowie user_id, intern, plan_seit und plan_bis. `select("*")` fragte sie ALLE an.
+ *
+ * Das war nicht nur unnoetig, es war erreichbar: die Datenbank gibt anon per
+ * `GRANT SELECT ON public.designers TO anon` alle Spalten frei und begrenzt nur die
+ * ZEILEN (Policy `USING (published = true)`) — eine Spaltenbegrenzung gibt es dort
+ * nicht. Und RoleGate laesst Nicht-Angemeldete bewusst durch (RoleGate.tsx, „DER
+ * DURCHLASS"). Diese Abfrage lief hier OHNE Konto-Pruefer, bei jedem Aufschlagen.
+ *
+ * Zwei Schichten also: der Pruefer unten laesst die Abfrage gar nicht erst los, und
+ * diese Liste sorgt dafuer, dass selbst dann keine Stripe-Kennung ueber die Leitung
+ * geht, wenn jemand den Pruefer spaeter wieder entfernt. Dasselbe Muster wie SPALTEN
+ * in src/heft03/quelle.mjs, das fuer das oeffentliche Heft schon so gebaut ist (Z10).
+ */
+const SPALTEN_DESIGNER =
+  "id,brand_name,slug,status,published,is_featured," +
+  "location,country,website,instagram,tags," +
+  "story,quote,quote_role," +
+  "avatar_url,banner_url,hero_image_url," +
+  "revenue_share_pct";
+
+/**
+ * Der Typ, der zur Abfrage passt — und der Grund, warum er hier steht.
+ *
+ * `Designer` ist die ganze Zeile, 60 Spalten. Solange die Abfrage `select("*")` war,
+ * stimmte das. Jetzt fragt sie 18, und der Typ muss es sagen: sonst verspricht die
+ * Seite Felder, die nie ankommen, und niemand merkt es bis zur weissen Stelle im
+ * Formular. `Pick` ist dabei auch die Probe auf die Liste oben — faellt ein Feld
+ * darin, das die Seite braucht, wird tsc rot statt die Oberflaeche leer.
+ */
+type DesignerZeile = Pick<Designer,
+  | "id" | "brand_name" | "slug" | "status" | "published" | "is_featured"
+  | "location" | "country" | "website" | "instagram" | "tags"
+  | "story" | "quote" | "quote_role"
+  | "avatar_url" | "banner_url" | "hero_image_url"
+  | "revenue_share_pct">;
+
 export default function AdminDesigners() {
-  const [designers, setDesigners] = useState<Designer[]>([]);
+  const { user, roles } = useAuth();
+  const [designers, setDesigners] = useState<DesignerZeile[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [drawer, setDrawer] = useState<{ designer: Designer; view: "brand" | "products" } | null>(null);
+  const [drawer, setDrawer] = useState<{ designer: DesignerZeile; view: "brand" | "products" } | null>(null);
 
   const load = async () => {
     setLoading(true);
-    let q = supabase.from("designers").select("*", { count: "exact" }).order("brand_name");
+    let q = supabase.from("designers").select(SPALTEN_DESIGNER, { count: "exact" }).order("brand_name");
     if (search.trim()) q = q.ilike("brand_name", `%${search.trim()}%`);
     const from = page * PAGE;
     q = q.range(from, from + PAGE - 1);
     const { data, count } = await q;
-    setDesigners(((data ?? []) as Designer[]));
+    setDesigners(((data ?? []) as unknown as DesignerZeile[]));
     setTotal(count ?? 0);
     setLoading(false);
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [page, search]);
+  /* Der Lade-Pruefer, den diese Seite als einzige der Haeuser-Seiten nicht hatte.
+     Ohne ihn lief die Abfrage bei jedem Aufschlagen — auch fuer einen anonymen
+     Besucher, den RoleGate bewusst durchlaesst. Dasselbe Muster wie AdminArchiv,
+     AdminCampaigns, AdminEditionen und neun weitere. */
+  useEffect(() => {
+    if (!user || !roles.includes("admin")) { setLoading(false); return; }
+    void load();
+    /* eslint-disable-next-line */
+  }, [page, search, user, roles]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE));
 
   return (
@@ -105,8 +157,8 @@ export default function AdminDesigners() {
 }
 
 function DetailDrawer({ designer, view, onClose, onSaved, setView }: {
-  designer: Designer; view: "brand" | "products";
-  onClose: () => void; onSaved: (d: Designer) => void;
+  designer: DesignerZeile; view: "brand" | "products";
+  onClose: () => void; onSaved: (d: DesignerZeile) => void;
   setView: (v: "brand" | "products") => void;
 }) {
   return (
@@ -139,8 +191,8 @@ function DetailDrawer({ designer, view, onClose, onSaved, setView }: {
   );
 }
 
-function BrandEditor({ designer, onSaved }: { designer: Designer; onSaved: (d: Designer) => void }) {
-  const [d, setD] = useState<Designer>(designer);
+function BrandEditor({ designer, onSaved }: { designer: DesignerZeile; onSaved: (d: DesignerZeile) => void }) {
+  const [d, setD] = useState<DesignerZeile>(designer);
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -152,11 +204,11 @@ function BrandEditor({ designer, onSaved }: { designer: Designer; onSaved: (d: D
       avatar_url: d.avatar_url, banner_url: d.banner_url, hero_image_url: d.hero_image_url,
       status: d.status, revenue_share_pct: d.revenue_share_pct,
       published: d.published, is_featured: d.is_featured,
-    }).eq("id", d.id).select("*").maybeSingle();
+    }).eq("id", d.id).select(SPALTEN_DESIGNER).maybeSingle();
     setBusy(false);
     if (error || !data) return toast.error(error?.message ?? "Speichern fehlgeschlagen.");
     toast.success("Gespeichert.");
-    onSaved(data as Designer);
+    onSaved(data as unknown as DesignerZeile);
   };
 
   return (
