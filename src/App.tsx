@@ -107,7 +107,6 @@ import StudioPlan from "./pages/studio/StudioPlan.tsx";
 import StudioVideothek from "./pages/studio/StudioVideothek.tsx";
 import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
 import StudioContentBegleiter from "./pages/studio/StudioContentBegleiter.tsx";
-import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
 import StudioHeft from "./pages/studio/StudioHeft.tsx";
 import StudioReferrals from "./pages/studio/StudioReferrals.tsx";
 import StudioBeweis from "./pages/studio/StudioBeweis.tsx";
@@ -292,8 +291,13 @@ const App = () => (
                 <Route path="/studio/werke/neu" element={<RoleGate role="designer"><StudioStueckNeu /></RoleGate>} />
                 <Route path="/studio/werke/bilder" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
                 <Route path="/studio/werke/rochade" element={<RoleGate role="designer"><StudioRochade /></RoleGate>} />
-                <Route path="/studio/doppelseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
-                <Route path="/studio/heft" element={<RoleGate role="designer"><StudioHeft /></RoleGate>} />
+                {/* `/studio/doppelseite` rendert das Heft SELBST. Vorher stand hier ein
+                    Zwischenhalt (StudioHausseite → Navigate → /studio/heft): das Dock leuchtete
+                    dabei auf keinem Raum, der Tab „Seite" bekam nie `aria-current`, und eine
+                    Adresse, die nur weiterleitet, bricht Zusage Z13. `/studio/heft` bleibt als
+                    Wegweiser stehen, weil die Adresse kurz im Umlauf war. */}
+                <Route path="/studio/doppelseite" element={<RoleGate role="designer"><StudioHeft /></RoleGate>} />
+                <Route path="/studio/heft" element={<Navigate to="/studio/doppelseite" replace />} />
                 <Route path="/studio/doppelseite/stil" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/clips" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
                 <Route path="/studio/clips/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />

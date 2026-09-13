@@ -23,13 +23,18 @@ import {massZeile} from './store.mjs';
 //   optionen.basis    : Pfad-Präfix bei 'pfad' (z. B. ''), optional.
 //   optionen.assets   : Basis der Heft-Bilder (Standard './assets/'; unter Vite z. B. '/heft/assets/').
 //   optionen.zustimmung: true|false|null — Zustimmung der Hülle (ConsentProvider) vorbelegen; optional.
-//   optionen.auf      : Rückrufe {navigiert(route), kauf(antwort), anfrage(ereignis), zustimmung(wert), fehler(e)} — optional.
+//   optionen.bearbeiten: true — Studio-Betrieb (B5). Die Buehne ist stellbar, und die
+//                        Beispielausgabe ist GESPERRT: wer seine eigene Seite bearbeitet,
+//                        darf niemals fremde Beispielhaeuser vor sich haben.
+//   optionen.auf      : Rückrufe {navigiert(route), kauf(antwort), anfrage(ereignis), zustimmung(wert), fehler(e), gestellt(entwurf)} — optional.
+//                        gestellt(entwurf) feuert nach jedem Stellen, Ziehen und Hoehenzug (B5).
 // Rückgabe: {go, route, state, refresh, stop}. Die Hülle (React) hält die Kopf-/Fußzeile, das Heft die Bühne.
 // ---------------------------------------------------------------------------
 export async function startHeft(optionen={}){
 let quelle=optionen.quelle||demoQuelle();
 const adresse=adressen(optionen.adresse||'hash',optionen.basis||'');
 const auf=optionen.auf||{};
+const bearbeiten=optionen.bearbeiten===true;
 if(optionen.assets)assetBasis(optionen.assets);
 const zustimmungMelden=()=>{if(auf.zustimmung)auf.zustimmung(state.consent);};
 // Hinaus aus dem Heft: /admin und /studio sind React-Seiten, keine Doppelseiten.
@@ -48,8 +53,14 @@ const hoeren=(ziel,typ,fn,opt)=>{ziel.addEventListener(typ,fn,opt);hoerer.push([
 // Kauf, Anfrage und Konto sind in der Vorschau gesperrt, weil demoQuelle auf
 // alles mit {fehler:'vorschau'} antwortet.
 // Die Entscheidung selbst steht in notbetrieb.mjs — dort ist sie ohne Browser prüfbar.
-const klopfen=await anklopfen(optionen.anklopfAdresse);
-const gewaehlt=await quelleWaehlen(quelle,demoQuelle,{anklopfen:klopfen});
+// Im Studio gibt es keinen Vorschau-Betrieb. Der Rueckfall auf demoQuelle wuerde dem
+// Haus die Beispielhaeuser hinstellen — es bearbeitete fremde Daten und schriebe sie
+// in die eigene Zeile. Scheitert die Quelle hier, bleibt die Seite stehen und sagt es.
+const klopfen=bearbeiten?{erreichbar:null}:await anklopfen(optionen.anklopfAdresse);
+const gewaehlt=bearbeiten
+ ? await (async()=>{try{return {quelle,heft:await quelle.heft(),notbetrieb:false,leer:false,fehler:null};}
+   catch(e){return {quelle,heft:null,notbetrieb:false,leer:true,fehler:e};}})()
+ : await quelleWaehlen(quelle,demoQuelle,{anklopfen:klopfen});
 const notbetrieb=gewaehlt.notbetrieb;
 quelle=gewaehlt.quelle;
 const heft=gewaehlt.heft;
@@ -971,7 +982,7 @@ $('fold').oninput=e=>{fold=Number(e.target.value)/100;$('fold-value').textConten
 $('angle').oninput=e=>{angle=Number(e.target.value)*Math.PI/180;invalidate();};
 $('slow').onchange=e=>{speed=e.target.checked?.4:1;};
 $('replay').onclick=()=>{nav.replay();resetFold();angle=0;$('angle').value=0;$('tools-close').click();rememberHash(nav.route);invalidate();};
-hoeren(window,adresse.ereignis,()=>go(adresse.lesen(),false));
+if(adresse.ereignis)hoeren(window,adresse.ereignis,()=>go(adresse.lesen(),false));
 hoeren(window,'resize',()=>{world?.resize();syncRotate();uiKey='';invalidate();});
 hoeren(window,'keydown',e=>{
  if(drawer.open||e.target.closest('input,textarea,select,form'))return;

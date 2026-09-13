@@ -57,8 +57,23 @@ export function alleAdressen(){
 // Hash-Schreibweise der Vorschau (bleibt Standard im Prototyp)
 export const hashAusRoute=routeHash;
 export const routeAusHash=hash=>parseRoute(hash,counts,houses);
-/** Adressadapter: 'hash' für die Vorschau, 'pfad' im echten Projekt (History API, Basis-Präfix möglich). */
+/**
+ * Adressadapter: 'hash' für die Vorschau, 'pfad' im echten Projekt (History API,
+ * Basis-Präfix möglich), 'keine' für eine eingebettete Bühne ohne Adressführung.
+ *
+ * WARUM 'keine' DAZUKOMMT. `StudioHeft.tsx` übergab `adresse:"keine"` — ein Wert,
+ * den es nicht gab. Alles, was nicht 'pfad' ist, fiel auf den Hash-Adapter: das
+ * Studio hätte beim Blättern `location.hash` der Studio-Seite umgeschrieben und
+ * die React-Adresse mit `#/mode/1` verschmutzt. 'keine' liest eine feste Route,
+ * schreibt nie und hat kein Ereignis — der Einbettende führt die Adresse selbst.
+ */
 export function adressen(art='hash',basis=''){
+ if(art==='keine')return {
+  lesen:()=>({section:'mode',index:0}),
+  schreiben:()=>{},
+  gleich:()=>true,
+  ereignis:null
+ };
  if(art==='pfad')return {
   lesen:()=>routeAusPfad(location.pathname.replace(basis,'')+location.search),
   schreiben:(route,ersetzen=false)=>{const p=basis+pfadAusRoute(route);if(location.pathname+location.search!==p)history[ersetzen?'replaceState':'pushState'](null,'',p);},

@@ -81,9 +81,17 @@ export function heftFuellen(heft){
  leeren(media);Object.assign(media,heft.media||{});
  const hero=displays.hero,edit=displays.edit;leeren(displays);displays.hero=hero;displays.edit=edit;
  const haeuser=Object.values(houses).sort((a,b)=>Number(a.number)-Number(b.number)||a.name.localeCompare(b.name));
+ // B3, zweite Haelfte: EXISTIERT EINE BUEHNE, GEWINNT SIE. displayAusHaus komponiert nur
+ // noch als Ersatz. Der Zweig in world.mjs › display() liest genau dieses Feld und lief
+ // bis hier nie, weil niemand es fuellte.
+ const buehnen=heft.buehnen||{};
  for(const w of WELTEN){
   const eigene=haeuser.filter(h=>h.world===w&&h.products.length);
-  sections[w]=eigene.length?eigene.map((h,i)=>{displays[h.slug]=displayAusHaus(h,i);return h.slug;}):[(displays['leer-'+w]=displayLeer(w),'leer-'+w)];
+  sections[w]=eigene.length?eigene.map((h,i)=>{
+   displays[h.slug]=displayAusHaus(h,i);
+   if(buehnen[h.slug])displays[h.slug].buehne=buehnen[h.slug];
+   return h.slug;
+  }):[(displays['leer-'+w]=displayLeer(w),'leer-'+w)];
  }
  const stuecke=WELTEN.map(w=>Object.values(products).find(p=>p.world===w&&buehnenfaehig(p))?.id).filter(Boolean);
  displays.hero.pieces=stuecke;displays.edit.pieces=stuecke;displays.hero.house=haeuser[0]?.slug||null;
