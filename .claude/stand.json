@@ -1,7 +1,14 @@
 {
-  "aktualisiert": "2026-09-12",
+  "aktualisiert": "2026-09-13",
   "branch": "claude/auftrag-q-buehne",
-  "offene_prs": [],
+  "offene_prs": [
+    {
+      "nr": 202,
+      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8), in Arbeit",
+      "status": "Entwurf, 10 Commits voraus, kein Konflikt. FERTIG: B1 (Buehne aus Daten), B2 (Deko als Aufsteller), B3 erster Teil (Vortritt), B6 Logik (Klemme, erstes Ziehen), B4 der pruefbare Teil (Versionsriegel). 103/103 Heft-Tests, 353/353, VERIFY 5/5, REGRESSION 19/19, tsc 0, Bau gruen.",
+      "blockiert_durch": "Daoudas Entscheidungen. `messen` ist rot, aber BELEGT nicht wegen Teil 2: Vorschau gegen Vorschau ergibt #201 131 gefallen gegen #202 130. Kommentar steht am PR, kein zweiter noetig."
+    }
+  ],
   "merge_reihenfolge": [
     "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. main = 22471bc. Gemergt: #187, #188, #189, #190, #191, #192. Nachgeprueft auf origin/main, nicht vermutet: src/features/auth/tueren.ts, src/features/auth/registrieren.ts, src/heft03/uebernahme.mjs liegen dort, und sections.konto beginnt mit 'zugang'.",
     "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten 'merged', aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind.",
@@ -74,7 +81,7 @@
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-12",
+    "datum": "2026-09-13",
     "bestanden": 5,
     "gefallen": 0
   },
