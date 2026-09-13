@@ -9,6 +9,8 @@ import { LevelUpOverlay } from "@/features/studio/LevelUpOverlay";
 import { BauerAbend } from "./BauerAbend";
 import { BauerGespraech } from "./BauerGespraech";
 import { useZugScheduler } from "@/features/studio/zugScheduler";
+import { useBegleiter } from "@/hooks/useBegleiter";
+
 import { markRoomUsedOncePerSession, roomKeyForPath } from "@/lib/pawnSignal";
 import type { Plan } from "@/lib/planGate";
 
@@ -160,7 +162,59 @@ function ProfilMenue() {
   );
 }
 
+/**
+ * E3 — der Bauer spricht aus `begleiter_saetze`/`begleiter_regeln`, nicht mehr aus
+ * i18n-Schlüsseln im Code. Beim Betreten einer Fläche geht ein Ereignis rein,
+ * höchstens ein Satz kommt raus — und nur, wenn alle Platzhalter gefüllt sind.
+ */
+function BegleiterBlase({ designerId }: { designerId: string }) {
+  const { blase, melde, ablehnen, bereit } = useBegleiter("studio");
+  const { pathname } = useLocation();
+  const [zustand, setZustand] = useState<{ anfragen_offen: number; aufrufe: number; stuecke: number } | null>(null);
+
+  useEffect(() => {
+    let lebt = true;
+    void (async () => {
+      const [anfragen, werke] = await Promise.all([
+        supabase.from("message_threads").select("id", { count: "exact", head: true })
+          .eq("designer_id", designerId).eq("status", "open"),
+        supabase.from("products").select("view_count", { count: "exact" })
+          .eq("designer_id", designerId).eq("status", "published"),
+      ]);
+      if (!lebt) return;
+      const aufrufe = (werke.data ?? []).reduce((s, p) => s + Number((p as { view_count?: number }).view_count ?? 0), 0);
+      setZustand({ anfragen_offen: anfragen.count ?? 0, aufrufe, stuecke: werke.count ?? 0 });
+    })();
+    return () => { lebt = false; };
+  }, [designerId]);
+
+  useEffect(() => {
+    if (!bereit || !zustand) return;
+    melde("betreten", { ...zustand, kontext: pathname });
+  }, [bereit, zustand, pathname, melde]);
+
+  if (!blase) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="max-w-[26ch] border-[1.5px] border-white bg-white px-3 py-2 text-[0.72rem] leading-snug text-black"
+    >
+      {blase.text}
+      <button
+        type="button"
+        onClick={() => ablehnen(blase.satz_key)}
+        aria-label="Diesen Hinweis nicht mehr zeigen"
+        className="ml-2 align-top text-black/50 hover:text-black"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 interface Props { children: ReactNode; title: string; eyebrow?: string; ohneMiniBauer?: boolean }
+
 
 function Inner({ children, title, eyebrow, ohneMiniBauer }: Props) {
   const { designer } = useMyDesigner();
