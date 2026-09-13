@@ -2,7 +2,7 @@ import {THREE,CSS3DObject,CSS3DRenderer} from './dreiD.mjs';
 import {phase,smooth,clamp} from './model.mjs';
 import {cutouts,alphaHit,bilder} from './cutouts.mjs';
 import {products,displays} from './data.mjs';
-import {platzFuer,dekoNachEbenen} from './buehne.mjs';
+import {platzFuer,dekoNachEbenen,ausBuehneX,ausBuehneZ,buehneX,buehneZ} from './buehne.mjs';
 const PI=Math.PI;
 export function createWorld(container,readerLayer,onDirty){
  const materials=new Map(),textures=new Map(),cache=new Map();
@@ -155,6 +155,7 @@ function buildBook() {
 }
 function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   // Each face folds at its lower edge; the top rides the rising side walls.
+  // Die Basis wird zurueckgegeben (B6): beim Ziehen wandert der Sockel mit dem Werk.
   const base=group(stage.root,x,.07,z),walls=[];
   for(const side of [-1,1]) {
     const p=group(base,side*w/2,0,0);const f=box(p,.016,h,d,color,0,h/2,0);walls.push({p,axis:'z',sign:side});
@@ -164,6 +165,7 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   }
   const top=box(base,w,.02,d,color,0,h,0);
   stage.plinths.push({walls,top,h});return h;
+  return base;
 }
 
  function foldStage(stage,q) {
@@ -267,11 +269,15 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    // Die Rechnung steht in buehne.mjs und ist dort geprueft (platzFuer, 12 Tests).
    // Hier wird nur noch hingestellt — eine zweite Fassung waere eine zweite Wahrheit.
    const platz=platzFuer(stueck,products[id]);
-   addPlinth(stage,platz.x,platz.z,1.8,platz.lift,1.03);
+   const sockel=addPlinth(stage,platz.x,platz.z,1.8,platz.lift,1.03);
    const pivot=hinge(stage,platz.x,platz.z,platz.drehung,-1,.11+i*.055);
    const piece=standee(id,pivot,platz.hoehe);piece.g.position.y=platz.lift;
    piece.g.traverse(o=>{if(o.isMesh)o.userData.product=id;});
-   stage.products.push({id,object:piece.g,point:piece.point,oben:piece.oben});
+   // `fuss` und `sockel` sind die Gruppen, die beim Ziehen wandern (B6); `hoehe` ist
+   // die Hoehe, mit der die Flaeche GEBAUT wurde — der Schieber (B7) rechnet dagegen,
+   // statt die Geometrie neu zu erzeugen.
+   stage.products.push({id,object:piece.g,point:piece.point,oben:piece.oben,
+    fuss:pivot.parent,sockel,hoehe:platz.hoehe,nr:i});
   });
   // Deko der vorderen Ebene ZULETZT, damit sie wirklich vor den Werken liegt.
   fuerDeko(stage,ebenen.vorn);
@@ -389,6 +395,57 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    * Heute ist das ein No-op: es gibt noch keine Deko. Es ist der Riegel, der
    * sitzt, BEVOR die Deko kommt — nicht die Reparatur danach.
    */
+  /**
+   * Vom Finger auf einen Buehnenpunkt (B6) — die Rueckrichtung von platzFuer().
+   *
+   * Gerechnet wird im LOKALEN Raum der Buehne, nicht in Weltkoordinaten. Der Grund:
+   * `stage.root` haengt am Buch, und das Buch wird beim Blaettern gedreht, geneigt
+   * und gefaltet (foldStage). Eine Ebene in Weltkoordinaten waere je nach
+   * Blaetterstand woanders — das Stueck spraenge beim Ziehen. Der Strahl wird
+   * deshalb mit der Umkehrmatrix in den Buehnenraum geholt, wo der Boden immer
+   * y = 0 ist (hinge setzt seine Gruppen auf y .058, addPlinth auf .07).
+   *
+   * Zurueck kommen 0..1-Koordinaten, NICHT Welt-Meter: gespeichert wird in 0..1, und
+   * die Umrechnung steht genau einmal, in buehne.mjs. `null`, wenn der Strahl den
+   * Boden verfehlt — dann wurde neben die Buehne gezogen und nichts passiert.
+   */
+  buehnePunkt(x,y){
+   if(!currentStage)return null;
+   const m=masse();
+   pointer.set((x-m.l)/m.b*2-1,-(y-m.t)/m.h*2+1);
+   raycaster.setFromCamera(pointer,camera);
+   currentStage.root.updateMatrixWorld();
+   const strahl=raycaster.ray.clone().applyMatrix4(new THREE.Matrix4().copy(currentStage.root.matrixWorld).invert());
+   const treffer=new THREE.Vector3();
+   if(!strahl.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),treffer))return null;
+   return {x:ausBuehneX(treffer.x),z:ausBuehneZ(treffer.z)};
+  },
+  /**
+   * Ein Stueck an eine neue Stelle setzen (B6) und/oder anders hoch machen (B7).
+   *
+   * BEWUSST OHNE NEUBAU. `makeBuehne` einmal je Zug aufzurufen waere einfacher zu
+   * schreiben und beim Ziehen unbrauchbar: jede Zeigerbewegung erzeugte Geometrie,
+   * Texturen und Materialien neu. Stattdessen wandern hier nur zwei Gruppen.
+   *
+   * Die Hoehe wird GESKALIERT, nicht neu gebaut — und zwar in x UND y zugleich.
+   * Nur y zu skalieren zoege den Mantel in die Laenge; ein Aufsteller ist eine Flaeche
+   * der Breite hoehe*ratio, also muss beides mit demselben Faktor gehen.
+   */
+  stueckSetzen(nr,{x,z,hoehe}={}){
+   const p=(currentStage?.products||[])[nr];
+   if(!p||!p.fuss)return false;
+   if(Number.isFinite(x)){const wx=buehneX(x);p.fuss.position.x=wx;if(p.sockel)p.sockel.position.x=wx;}
+   if(Number.isFinite(z)){const wz=buehneZ(z);p.fuss.position.z=wz;if(p.sockel)p.sockel.position.z=wz;}
+   if(Number.isFinite(hoehe)&&p.hoehe>0){const k=hoehe/p.hoehe;p.object.scale.set(k,k,1);}
+   letzteSignatur='';onDirty();
+   return true;
+  },
+  /** Welches Stueck der Buehne liegt unter dem Finger? Nummer, nicht Werk-Kennung. */
+  stueckAn(x,y){
+   const id=this.hit(x,y);
+   if(!id)return -1;
+   return (currentStage?.products||[]).findIndex(p=>p.id===id);
+  },
   hit(x,y){const m=masse();pointer.set((x-m.l)/m.b*2-1,-(y-m.t)/m.h*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(currentStage?.root.children||[],true).find(hit=>hit.object.userData.product&&hit.object.userData.cutout&&hit.uv&&alphaHit(hit.object.userData.cutout,hit.uv.x,hit.uv.y))?.object.userData.product;}
  };
 }

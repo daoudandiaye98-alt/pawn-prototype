@@ -56,7 +56,15 @@ interface HeftEntwurf {
   buehne?: HeftBuehne;
   werke?: HeftWerk[];
 }
-type Griff = { stop(): void };
+type BuehnenWerk = { nr: number; werk_id: string; name: string; hoehe: number; geliehen: boolean };
+type Griff = {
+  stop(): void;
+  buehnenWerke(): BuehnenWerk[];
+  hoeheSetzen(nr: number, meter: number): unknown;
+  stellenFertig(nr: number): void;
+  aufstellerTauschen(werkId: string, cutoutUrl: string, ratio: number | null): Promise<boolean>;
+  HOEHE_SPANNE: { von: number; bis: number };
+};
 type StartHeft = (o: Record<string, unknown>) => Promise<Griff>;
 
 /** Was diese Huelle von `studioQuelle` braucht — mehr nicht. */
@@ -97,6 +105,12 @@ export default function StudioHeft() {
   const [veroeffentlicht, setVeroeffentlicht] = useState(false);
   const [werkeZahl, setWerkeZahl] = useState(0);
   const [busy, setBusy] = useState(false);
+  /* B6/B7/B8 — welches Werk ist angetippt, und was steht auf der Bühne?
+     Die Auswahl kommt aus dem Heft (`auf.gewaehlt`), nicht aus React: dort liegt der
+     Strahl, der weiß, was unter dem Finger war. React hält nur die Bedienelemente. */
+  const [gewaehlt, setGewaehlt] = useState(-1);
+  const [werke, setWerke] = useState<BuehnenWerk[]>([]);
+  const [freistellt, setFreistellt] = useState<string | null>(null);
 
   /* ——— Speichern: ein Entwurf, fünf Ziele ——— */
   const speichern = useCallback(async (entwurf: HeftEntwurf) => {
@@ -181,7 +195,17 @@ export default function StudioHeft() {
     }
   }, [designer, t]);
 
-  const gestellt = useCallback((entwurf: HeftEntwurf) => {
+  const gewaehltAus = useCallback((nr: number) => {
+    setGewaehlt(nr);
+    setWerke(griff.current?.buehnenWerke() ?? []);
+  }, []);
+
+  const gestellt = useCallback((meldung: { buehne?: unknown; stueck?: number } | HeftEntwurf) => {
+    setWerke(griff.current?.buehnenWerke() ?? []);
+    /* Das Heft meldet `{buehne, stueck}` (B6/B7), ältere Aufrufer einen ganzen Entwurf.
+       Beides landet in derselben Ablage — der Speicherpfad kennt nur `HeftEntwurf`. */
+    const b = (meldung as { buehne?: HeftBuehne }).buehne;
+    const entwurf: HeftEntwurf = b ? { ...(letzterEntwurf.current ?? {}), buehne: b } : (meldung as HeftEntwurf);
     letzterEntwurf.current = entwurf;
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
@@ -234,7 +258,7 @@ export default function StudioHeft() {
           adresse: "keine",
           assets: "/heft/assets/",
           bearbeiten: true,
-          auf: { gestellt, fehler: (e: Error) => setFehlt(e?.message ?? String(e)) },
+          auf: { gestellt, gewaehlt: gewaehltAus, fehler: (e: Error) => setFehlt(e?.message ?? String(e)) },
         });
         if (abgeraeumt) g.stop(); else griff.current = g;
       } catch (e) {
@@ -250,7 +274,7 @@ export default function StudioHeft() {
       for (const l of blaetter) l.remove();
       kasten.innerHTML = "";
     };
-  }, [designer, gestellt]);
+  }, [designer, gestellt, gewaehltAus]);
 
   const veroeffentlichen = async () => {
     if (!designer) return;
@@ -282,6 +306,34 @@ export default function StudioHeft() {
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  /**
+   * B8 — den geliehenen Aufsteller gegen einen echten tauschen.
+   *
+   * Die Bedingung ist NICHT „Werk ohne Freisteller": gemessen tragen drei von vier
+   * Werken einen, nur zeigt er auf ein Beispielbild des Prototyps unter /heft/assets/.
+   * Die Rechnung dazu steht in `buehne.mjs › geliehenerAufsteller`.
+   *
+   * `freistellen` schreibt `product_dna.heft.cutout_url` und `seitenverhaeltnis` selbst
+   * (freistellen/index.ts:186) — hier wird nur die Bühne nachgezogen, damit niemand die
+   * Seite neu laden muss, um sein eigenes Werk zu sehen.
+   */
+  const freistellen = async (werk: BuehnenWerk) => {
+    setFreistellt(werk.werk_id);
+    try {
+      const { data, error } = await supabase.functions.invoke("freistellen", { body: { product_id: werk.werk_id } });
+      if (error) throw error;
+      const a = data as { ok?: boolean; cutout_url?: string; seitenverhaeltnis?: number | null; message?: string } | null;
+      if (!a?.ok || !a.cutout_url) throw new Error(a?.message ?? t("studio.heft.freistellenFehler"));
+      await griff.current?.aufstellerTauschen(werk.werk_id, a.cutout_url, a.seitenverhaeltnis ?? null);
+      setWerke(griff.current?.buehnenWerke() ?? []);
+      toast.success(t("studio.heft.freigestellt", { werk: werk.name }));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setFreistellt(null);
     }
   };
 
@@ -327,6 +379,52 @@ export default function StudioHeft() {
           {veroeffentlicht ? t("studio.heft.zustand.veroeffentlicht") : t("studio.hausseite.publishButton")}
         </button>
       </div>
+
+      {/* B7/B8 — die Werkzeuge liegen HIER, nicht im Gerüst: das Gerüst gehört beiden
+          Hüllen, und ein Schieber, den das öffentliche Heft mitlädt und nie zeigt, wäre
+          genau die Leiche, die dieses Projekt ausmistet. */}
+      {werke.length > 0 && (
+        <div className="mb-4 border border-border bg-white p-4">
+          <p className="mb-3 text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground">
+            {gewaehlt >= 0 ? t("studio.heft.gewaehlt", { werk: werke[gewaehlt]?.name ?? "" }) : t("studio.heft.werkWaehlen")}
+          </p>
+          {gewaehlt >= 0 && werke[gewaehlt] && (
+            <label className="flex items-center gap-3 text-sm">
+              <span className="w-24 shrink-0 text-[0.62rem] uppercase tracking-[0.2em]">{t("studio.heft.hoehe")}</span>
+              <input
+                type="range" className="flex-1"
+                min={griff.current?.HOEHE_SPANNE.von ?? 0.3}
+                max={griff.current?.HOEHE_SPANNE.bis ?? 4}
+                step={0.05}
+                value={werke[gewaehlt].hoehe}
+                /* `input` zieht live (man sieht die Höhe wachsen), `change` meldet einmal
+                   ans Ende der Geste — sonst schriebe jeder Pixel eine Zeile. */
+                onChange={(e) => {
+                  griff.current?.hoeheSetzen(gewaehlt, Number(e.target.value));
+                  setWerke(griff.current?.buehnenWerke() ?? []);
+                }}
+                onPointerUp={() => griff.current?.stellenFertig(gewaehlt)}
+                onKeyUp={() => griff.current?.stellenFertig(gewaehlt)}
+              />
+              <span className="w-16 shrink-0 tabular-nums text-right">{werke[gewaehlt].hoehe.toFixed(2)} m</span>
+            </label>
+          )}
+          {werke.some((w) => w.geliehen) && (
+            <div className="mt-4 border-t border-border pt-3">
+              <p className="mb-2 text-[0.62rem] tracking-[0.14em] text-muted-foreground">{t("studio.heft.geliehenHinweis")}</p>
+              <div className="flex flex-wrap gap-2">
+                {werke.filter((w) => w.geliehen).map((w) => (
+                  <button key={w.werk_id} type="button" disabled={freistellt !== null}
+                    onClick={() => void freistellen(w)}
+                    className="min-h-[36px] border border-foreground px-3 py-1.5 text-[0.62rem] uppercase tracking-[0.2em] hover:bg-foreground hover:text-background disabled:opacity-50">
+                    {freistellt === w.werk_id ? t("studio.heft.freistelltLaeuft") : t("studio.heft.freistellen", { werk: w.name })}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {fehlt && (
         <p className="mb-4 border border-border bg-white p-4 text-sm">

@@ -14,6 +14,7 @@ import {demoQuelle,BILD_GRENZE} from './quelle.mjs';
 import {quelleWaehlen,anklopfen} from './notbetrieb.mjs';
 import {uebernahme} from './uebernahme.mjs';
 import {adressen} from './routen.mjs';
+import {nachDemZiehen,mitHoehe,geliehenerAufsteller,HOEHE} from './buehne.mjs';
 import {massZeile} from './store.mjs';
 
 // ---------------------------------------------------------------------------
@@ -35,6 +36,16 @@ let quelle=optionen.quelle||demoQuelle();
 const adresse=adressen(optionen.adresse||'hash',optionen.basis||'');
 const auf=optionen.auf||{};
 const bearbeiten=optionen.bearbeiten===true;
+// B6 — Zustand der laufenden Geste. -1 heisst: es zieht gerade niemand.
+let ziehtGerade=-1,gezogen=false;
+/**
+ * Der Entwurf, an dem gerade gestellt wird.
+ *
+ * Erst aus state.buehne — dort steht, was diese Sitzung schon geaendert hat. Sonst aus
+ * displays[…].buehne, wohin heftFuellen die Zeile aus heft_buehnen gelegt hat. Beides in
+ * DIESER Reihenfolge, sonst uebermalte jede Neuzeichnung das gerade Gezogene.
+ */
+const buehneJetzt=()=>state.buehne||displays[key(nav.route)]?.buehne||null;
 if(optionen.assets)assetBasis(optionen.assets);
 const zustimmungMelden=()=>{if(auf.zustimmung)auf.zustimmung(state.consent);};
 // Hinaus aus dem Heft: /admin und /studio sind React-Seiten, keine Doppelseiten.
@@ -68,7 +79,7 @@ if(gewaehlt.fehler){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{ar
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,archetypen:[],archetypProsa:'',archetypAbgelehnt:[],anproben:[],fitProduct:null};
+const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,archetypen:[],archetypProsa:'',archetypAbgelehnt:[],anproben:[],fitProduct:null,buehne:null,gewaehlt:-1};
 // Was mit Zustimmung gespeichert wurde, kommt zurück.
 {const alt=laden();if(alt&&alt.consent===true)Object.assign(state,alt,{denkt:false,message:'',reference:''});}
 if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!optionen.zustimmung;
@@ -1002,8 +1013,43 @@ try{
  world=createWorld($('stage'),$('reader-layer'),invalidate);
  world.display('hero');begleiterAufstellen();
  if(nav.route.section==='suche')nav.route.index=clamp(nav.route.index,0,searchCount(nav.route)-1);
- world.canvas.addEventListener('pointerdown',e=>{pointerStart={x:e.clientX,y:e.clientY};});
+ world.canvas.addEventListener('pointerdown',e=>{
+  pointerStart={x:e.clientX,y:e.clientY};
+  // B6 — im Studio faengt hier eine Geste an, kein Blaettern. Nur wenn die Buehne
+  // wirklich aufgeschlagen ist (fold>.9), sonst zieht man an einem halb gefalteten Blatt.
+  if(!bearbeiten||nav.status!=='ready'||drawer.open||reading(nav.route)||fold<=.9)return;
+  const nr=world.stueckAn(e.clientX,e.clientY);
+  if(nr<0)return;
+  state.gewaehlt=nr;ziehtGerade=nr;gezogen=false;
+  try{world.canvas.setPointerCapture(e.pointerId);}catch(_){}
+  auf.gewaehlt&&auf.gewaehlt(nr,buehneJetzt());
+ });
+ world.canvas.addEventListener('pointermove',e=>{
+  if(ziehtGerade<0)return;
+  const punkt=world.buehnePunkt(e.clientX,e.clientY);
+  if(!punkt)return;                      // neben die Buehne gezogen: nichts tut sich
+  e.preventDefault();
+  // Die Klemme steckt in nachDemZiehen/klemmeStueck, nicht hier. Sie HAELT, sie
+  // federt nicht zurueck: wer dagegen zieht, dessen Stueck bleibt stehen.
+  const entwurf=nachDemZiehen(buehneJetzt()||{stuecke:[]},ziehtGerade,punkt);
+  state.buehne=entwurf;gezogen=true;
+  const s=entwurf.stuecke[ziehtGerade];
+  if(s)world.stueckSetzen(ziehtGerade,{x:s.x,z:s.z});
+ });
+ const gesteEnde=e=>{
+  if(ziehtGerade<0)return;
+  const nr=ziehtGerade;ziehtGerade=-1;pointerStart=null;
+  try{world.canvas.releasePointerCapture(e.pointerId);}catch(_){}
+  // AM ENDE DER GESTE, nicht in ihrem Verlauf: sonst schriebe jede Zeigerbewegung
+  // eine Zeile in die Datenbank. Und nur, wenn wirklich gezogen wurde — ein blosses
+  // Antippen waehlt aus, es aendert nichts.
+  if(gezogen&&state.buehne)auf.gestellt&&auf.gestellt({buehne:state.buehne,stueck:nr});
+  gezogen=false;
+ };
+ world.canvas.addEventListener('pointerup',gesteEnde);
+ world.canvas.addEventListener('pointercancel',gesteEnde);
  world.canvas.addEventListener('pointerup',e=>{
+  if(bearbeiten)return;                  // im Studio blaettert der Finger nicht
   if(!pointerStart||nav.status!=='ready'||drawer.open||reading(nav.route))return;
   const dx=e.clientX-pointerStart.x,dy=e.clientY-pointerStart.y;pointerStart=null;
   if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){step(dx<0?1:-1);return;}
@@ -1025,6 +1071,50 @@ try{
 kontoLaden();
 return {
  go,route:()=>nav.route,state,refresh:readRefresh,quelle,kontoLaden,
+
+ /* ——— Was nur der Bearbeiten-Betrieb braucht (B7, B8) ———
+    Die Bedienelemente selbst liegen in React (StudioHeft.tsx), nicht im Geruest: das
+    Geruest gehoert BEIDEN Huellen, und ein Schieber, den das oeffentliche Heft mitlaedt
+    und nie zeigt, waere genau die Art Leiche, die dieses Projekt ausmistet. Hier steht
+    nur der Griff, an dem React zieht. */
+
+ /** Die Werke der aufgeschlagenen Buehne, so wie die Oberflaeche sie braucht. */
+ buehnenWerke(){
+  const b=buehneJetzt();
+  return (b?.stuecke||[]).map((st,nr)=>{
+   const prod=products[st.werk_id]||null;
+   return {nr,werk_id:st.werk_id,name:prod?.name||st.werk_id,
+    hoehe:st.hoehe_m||prod?.stage?.h||2.6,
+    // B8: die Bedingung ist NICHT „ohne Freisteller" — drei von vier Werken haben
+    // einen, nur aus dem Beispielvorrat. Die Rechnung steht in buehne.mjs.
+    geliehen:geliehenerAufsteller(prod)};
+  });
+ },
+ /** B7 — der Hoehenschieber. Geklemmt in buehne.mjs, nicht in der Oberflaeche. */
+ hoeheSetzen(nr,meter){
+  const b=buehneJetzt();if(!b)return null;
+  const stuecke=(b.stuecke||[]).map((st,i)=>i===nr?mitHoehe(st,meter):st);
+  if(!stuecke[nr])return null;
+  state.buehne={...b,stuecke,eigenhaendig:true};
+  world?.stueckSetzen(nr,{hoehe:stuecke[nr].hoehe_m});
+  return state.buehne;
+ },
+ /** Am Ende der Geste melden — der Schieber ruft das bei `change`, nicht bei `input`. */
+ stellenFertig(nr){
+  if(state.buehne)auf.gestellt&&auf.gestellt({buehne:state.buehne,stueck:nr});
+ },
+ /** B8 — der frische Aufsteller ist da; die Buehne zeigt ihn ohne Neuladen. */
+ async aufstellerTauschen(werkId,cutoutUrl,ratio){
+  const prod=products[werkId];if(!prod||!cutoutUrl)return false;
+  prod.dna=prod.dna||{};prod.dna.heft={...(prod.dna.heft||{}),cutout_url:cutoutUrl,seitenverhaeltnis:ratio};
+  prod.cutout=cutoutUrl;
+  cutouts.delete(werkId);
+  await prepareCutouts([prod]);
+  displayKey='';uiKey='';readRefresh();invalidate();
+  return true;
+ },
+ HOEHE_SPANNE:HOEHE,
+
  // Nach bezahlter Kasse: die Stücke dieses Hauses aus der Tasche nehmen. Muss hier stehen —
  // store.mjs schreibt nur den Zustand weg und kennt weder Fenster noch die Zahl im Kopf.
  tascheLeeren(haus){state.cart=haus?state.cart.filter(r=>!products[r.id]||products[r.id].house!==haus):[];updateCart();readRefresh();

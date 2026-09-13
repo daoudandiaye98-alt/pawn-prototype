@@ -1,9 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  BUEHNE, buehneX, buehneZ, EBENE_ZWEI, WERKE_MINDESTENS,
-  ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen, platzFuer, schreibEntwurf, nachDemZiehen, dekoNachEbenen,
-} from './buehne.mjs';
+import {BUEHNE, buehneX, buehneZ, EBENE_ZWEI, WERKE_MINDESTENS, ebeneVon, klemmeStueck, klemmeDeko, fehltZumVeroeffentlichen, platzFuer, schreibEntwurf, nachDemZiehen, dekoNachEbenen, ausBuehneX, ausBuehneZ, HOEHE, mitHoehe, geliehenerAufsteller} from './buehne.mjs';
 
 /*
  * Die Zahlen in diesen Tests sind KEINE Wunschwerte. Sie stehen so in
@@ -216,4 +213,61 @@ test('Deko traegt einen eigenen Namensraum und das Seitenverhaeltnis', () => {
   assert.equal(hinten[0].id, 'deko:wand_beton', 'nie mit einer Werk-UUID zu verwechseln');
   assert.equal(hinten[0].cutout, '/d/wand.webp');
   assert.equal(hinten[0].ratio, 1.4, 'spart das Nachmessen am Bild');
+});
+
+/* ——— B6/B7/B8: Ziehen, Hoehe, geliehene Aufsteller ——— */
+
+test('Hin und zurueck ergibt wieder dasselbe — sonst wandert ein Stueck beim Ziehen',()=>{
+ for(const x of [0,0.25,0.5,0.731,1]){
+  assert.ok(Math.abs(ausBuehneX(buehneX(x))-x)<1e-12,'x '+x);
+ }
+ for(const z of [EBENE_ZWEI.von,0.5,EBENE_ZWEI.bis]){
+  assert.ok(Math.abs(ausBuehneZ(buehneZ(z))-z)<1e-12,'z '+z);
+ }
+});
+
+test('Die Umkehrung trifft die heutigen Welt-Werte — bis auf die Rundung, und die ist benannt',()=>{
+ // x geht exakt auf: 5,6 ist keine gerundete Zahl.
+ assert.ok(Math.abs(ausBuehneX(-1.95)-0.1517857)<1e-6,'x trifft genau');
+
+ // z NICHT. Und das ist kein Fehler, sondern der Preis der Lesbarkeit: die exakte
+ // Tiefe waere 1,0666666…, das exakte z0 -0,0733333…. BUEHNE nennt drei LESBARE
+ // Zahlen (1.067 / -0.073), und die kosten hier eine Abweichung. Gemessen:
+ //
+ //   Welt-z 0,30 → 0,3495783  statt 0,35  →  0,450 mm auf der Buehne
+ //   Welt-z 0,62 → 0,6494845  statt 0,65  →  0,550 mm auf der Buehne
+ //
+ // Eine halbe Millimeter-Abweichung an einem 3 m hohen Mantel sieht niemand. Diese
+ // Pruefung nagelt sie auf ein Zehntel Prozent fest, damit sie klein BLEIBT — wer die
+ // Konstanten groeber rundet, wird hier rot.
+ for(const [weltZ,soll] of [[0.30,0.35],[0.62,0.65]]){
+  const ist=ausBuehneZ(weltZ);
+  assert.ok(Math.abs(ist-soll)<1e-3,'z '+weltZ+' ergibt '+ist.toFixed(7)+', erwartet ~'+soll);
+ }
+
+ // Worauf es beim Ziehen wirklich ankommt, ist die Umkehrbarkeit — und die ist exakt
+ // (eigener Test darueber). Die Rundung verschiebt die ganze Skala, sie verzerrt sie nicht.
+});
+
+test('mitHoehe klemmt auf 0,3 bis 4,0 und rundet auf Zentimeter',()=>{
+ assert.equal(mitHoehe({werk_id:'a'},2.5).hoehe_m,2.5);
+ assert.equal(mitHoehe({werk_id:'a'},0.05).hoehe_m,HOEHE.von,'eine Vase ist nicht 5 cm');
+ assert.equal(mitHoehe({werk_id:'a'},99).hoehe_m,HOEHE.bis,'und kein Werk ist 99 m hoch');
+ assert.equal(mitHoehe({werk_id:'a'},1.23456).hoehe_m,1.23,'Zentimeter reichen');
+ assert.deepEqual(mitHoehe({werk_id:'a',hoehe_m:2},'unsinn'),{werk_id:'a',hoehe_m:2},
+  'was keine Zahl ist, aendert nichts — lieber die alte Hoehe als NaN in der Datenbank');
+});
+
+test('B8: geliehen ist, was aus dem Beispielvorrat kommt — nicht nur was fehlt',()=>{
+ // Die gemessene Lage: drei von vier Werken tragen ein Beispielbild des Prototyps.
+ assert.equal(geliehenerAufsteller({dna:{heft:{cutout_url:'/heft/assets/cutout-coat.webp'}}}),true);
+ assert.equal(geliehenerAufsteller({dna:{heft:{cutout_url:'./heft/assets/cutout-art.webp'}}}),true);
+ assert.equal(geliehenerAufsteller({}),true,'gar keiner ist auch geliehen');
+ assert.equal(geliehenerAufsteller({dna:{heft:{cutout_url:''}}}),true);
+ // Und der eine echte, aus product-shots — der Knopf darf ihn NICHT anbieten.
+ assert.equal(geliehenerAufsteller({dna:{heft:{cutout_url:'product-shots/haus/cutouts/x.png'}}}),false);
+ assert.equal(geliehenerAufsteller({dna:{heft:{cutout_url:'https://x.supabase.co/storage/v1/object/sign/product-shots/a.png'}}}),false);
+ // Die Falle, die eine zu breite Regel stellen wuerde: ein Haus, das "heft/assets" im
+ // eigenen Pfad hat, aber aus dem Speicher kommt. Deshalb wird auf das Segment geprueft.
+ assert.equal(geliehenerAufsteller({dna:{heft:{cutout_url:'product-shots/mein-heft/assetsammlung/a.png'}}}),false);
 });

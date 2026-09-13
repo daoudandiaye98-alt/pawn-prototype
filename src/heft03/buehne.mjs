@@ -51,6 +51,23 @@ export const buehneX = (x) => (x - 0.5) * BUEHNE.breite;
 export const buehneZ = (z) => BUEHNE.z0 + z * BUEHNE.tiefe;
 
 /**
+ * Die Rueckrichtung — vom Welt-Punkt zurueck auf 0..1 (B6).
+ *
+ * Sie ist der Kern des Ziehens: der Strahl aus dem Finger trifft die Stellflaeche in
+ * WELT-Koordinaten, gespeichert wird aber in 0..1. Ohne Umkehrung muesste die Formel
+ * ein zweites Mal hingeschrieben werden — und zwei Fassungen derselben Rechnung sind
+ * zwei Wahrheiten, von denen eine irgendwann falsch wird.
+ */
+export const ausBuehneX = (weltX) => weltX / BUEHNE.breite + 0.5;
+export const ausBuehneZ = (weltZ) => (weltZ - BUEHNE.z0) / BUEHNE.tiefe;
+
+/**
+ * Die Spanne des Hoehenschiebers (B7). 0,3 m ist eine Vase, 4,0 m ein Wandbild —
+ * darueber hinaus steht nichts mehr auf einer Buehne, es haengt daneben.
+ */
+export const HOEHE = {von: 0.3, bis: 4.0};
+
+/**
  * Die Grenzen der Ebene 2. Sie stehen NICHT hier zur Wahl — der Trigger
  * `heft_buehne_pruefen` wirft `werk_nicht_auf_ebene_zwei`, sobald ein Stück
  * darunter oder darüber liegt. Diese Zahlen bilden ihn nach, damit die
@@ -90,6 +107,32 @@ export function klemmeDeko(deko, ebene) {
     ? fest(deko.z, EBENE_ZWEI.bis + 0.01, 1)
     : fest(deko.z, 0, EBENE_ZWEI.von - 0.01);
   return {...deko, x: fest(deko.x, 0, 1), z};
+}
+
+/**
+ * Die Hoehe eines Stuecks setzen (B7).
+ *
+ * Geklemmt wie alles andere: der Schieber kann nur 0,3–4,0 anbieten, aber er ist nicht
+ * die einzige Tuer — `auf.gestellt` kommt auch aus dem Ziehen, und eine Zeile aus der
+ * Datenbank kann alles enthalten. Geklemmt wird deshalb HIER, nicht in der Oberflaeche.
+ */
+export function mitHoehe(stueck, meter) {
+  const h = Number(meter);
+  if (!Number.isFinite(h)) return stueck;
+  return {...stueck, hoehe_m: Math.round(fest(h, HOEHE.von, HOEHE.bis) * 100) / 100};
+}
+
+/**
+ * Traegt dieses Werk einen GELIEHENEN Aufsteller? (B8)
+ *
+ * Die Bedingung „Werk ohne cutout_url" greift nie — drei von vier Werken haben einen,
+ * nur zeigt er auf ein Beispielbild des Prototyps unter /heft/assets/. Genau das ist
+ * die Bedingung: kein Freisteller ODER einer aus dem Beispielvorrat.
+ */
+export function geliehenerAufsteller(produkt) {
+  const url = produkt?.dna?.heft?.cutout_url ?? produkt?.cutout ?? produkt?.image ?? '';
+  if (!url) return true;
+  return /(^|\/)heft\/assets\//.test(String(url));
 }
 
 /**
