@@ -115,6 +115,10 @@ import StudioDNA from "./pages/studio/StudioDNA.tsx";
 import StudioPostfach from "./pages/studio/StudioPostfach.tsx";
 import StudioGeschaeft from "./pages/studio/StudioGeschaeft.tsx";
 import StudioRochade from "./pages/studio/StudioRochade.tsx";
+import DnaAvatar from "./pages/dna/DnaAvatar.tsx";
+import DnaRaeume from "./pages/dna/DnaRaeume.tsx";
+import DnaAnproben from "./pages/dna/DnaAnproben.tsx";
+
 
 import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
 import AdminMessages from "./pages/admin/AdminMessages.tsx";
@@ -211,6 +215,13 @@ const App = () => (
                 <Route path="/deine-dna/archetyp" element={<Heft />} />
                 <Route path="/deine-dna/massband" element={<Heft />} />
                 <Route path="/deine-dna/privacy" element={<Heft />} />
+                {/* D1/D2/D4 — die drei Flächen der eigenen Bilder. Sie gehören nicht
+                    ins Heft: hier lädt jemand Fotos von sich hoch, löscht sie, sieht
+                    Anproben. Eigene Seiten, eigene Zustände. */}
+                <Route path="/deine-dna/avatar" element={<DnaAvatar />} />
+                <Route path="/deine-dna/raeume" element={<DnaRaeume />} />
+                <Route path="/deine-dna/anproben" element={<DnaAnproben />} />
+
                 <Route path="/frag-pawn" element={<Heft />} />
                 <Route path="/vision" element={<Heft />} />
                 <Route path="/vision/:seite" element={<Heft />} />
