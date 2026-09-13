@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789291311203,
+      "tag": "0000_zuglogik_berechnen",
+      "breakpoints": true
+    }
+  ]
+}
