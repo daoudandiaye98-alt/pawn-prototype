@@ -22,6 +22,7 @@
 // funktionen.signieren(urls) → {url: signierteUrl} — einmal je Heft-Ladung, weil die Adapter bild() synchron rufen.
 import {demoHeft} from './data.mjs';
 import {heftAusZeilen,checkoutLines,cartByHouse,stilToRow,stilFromRow,orderFromRow} from './adapters.mjs';
+import {schreibEntwurf,fehltZumVeroeffentlichen,WERKE_MINDESTENS} from './buehne.mjs';
 
 const nichts=async()=>null;
 const kein=async()=>({ok:false});
@@ -373,5 +374,172 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    async registrieren(d){return (await funktionen.zugang?.registrieren?.(d))??{fehler:'Registrieren ist hier nicht eingerichtet.'};},
    async google(d){return (await funktionen.zugang?.google?.(d))??{fehler:'Google ist hier nicht eingerichtet.'};}
   }
+ };
+}
+
+/** Die Spalten der Buehne und ihres Katalogs. Wie SPALTEN: was nicht gebraucht wird, reist nicht mit. */
+export const SPALTEN_BUEHNE = {
+ buehnen:'id,designer_id,welt,blatt,layout,kicker,titel,text,boden,ruecken,licht,stuecke,deko,eigenhaendig,veroeffentlicht,version',
+ deko:'key,art,welt,ebene,hoehe_m,seitenverhaeltnis,cutout_url,name,tags'
+};
+
+/**
+ * studioQuelle — dieselbe Buehne, aber von innen (B4).
+ *
+ * WARUM SIE UEBERHAUPT GEBRAUCHT WIRD. `StudioHeft.tsx` erwartet diesen Export seit
+ * seinem ersten Tag und fand ihn nie. Darum — und nur darum — zeigte der Menuepunkt
+ * „Auftritt" eine leere weisse Flaeche: die Seite brach mit `fehlt = "studioQuelle"` ab,
+ * bevor das Heft startete. Das war Daoudas erster Mangel, und das hier ist seine Ursache.
+ *
+ * DER UNTERSCHIED ZU supabaseQuelle, in drei Saetzen:
+ *  1. Sie liest EIN Haus, nicht alle — `status` und `published` sind ihr gleich, denn ein
+ *     Haus muss seine Seite auch bearbeiten koennen, BEVOR sie veroeffentlicht ist.
+ *  2. Sie liest die Buehne dazu (`heft_buehnen`) und den Aufsteller-Katalog (`heft_deko`),
+ *     und haengt beides an `heft.buehnen`. Erst damit laeuft der Zweig in world.mjs › display().
+ *  3. Kaufen, Chatten, Bewerben gibt es hier nicht. Ein Editor ist kein Laden. Jede dieser
+ *     Methoden antwortet `{fehler:'studio'}` — sie fehlt nicht, sie ist ausdruecklich zu.
+ *
+ * Der Versionsriegel steht NICHT hier, sondern in `buehne.mjs › schreibEntwurf()` — dort ist
+ * er ohne Browser pruefbar. Diese Datei fuehrt nur aus, was er vorgibt.
+ */
+export function studioQuelle({client,haus,bild=u=>u,funktionen={}}={}){
+ if(!client)throw Error('studioQuelle braucht den supabase-js-Client.');
+ if(!haus)throw Error('studioQuelle braucht den Slug des eigenen Hauses.');
+ const fehlerText=e=>e?.message||String(e);
+ const nutzer=async()=>{const {data}=await client.auth.getUser();return data?.user||null;};
+ const zu=async()=>({fehler:'studio',text:'Das geht nur in der Ausgabe, nicht im Editor.'});
+ let hausId=null;
+
+ /** Der Katalog der Aufsteller, nach `key` — genau die Form, die dekoNachEbenen() erwartet. */
+ const dekoKatalog=async()=>{
+  const {data}=await client.from('heft_deko').select(SPALTEN_BUEHNE.deko).eq('aktiv',true);
+  return Object.fromEntries((data||[]).filter(r=>r&&r.key).map(r=>[r.key,r]));
+ };
+
+ return {
+  art:'studio',bild,bearbeitbar:true,haus,
+
+  async heft(){
+   const {data:designer,error:eD}=await client.from('designers').select(SPALTEN.designers).eq('slug',haus).maybeSingle();
+   if(eD)throw Error('designers: '+fehlerText(eD));
+   if(!designer)throw Error('Das Haus «'+haus+'» gibt es nicht.');
+   hausId=designer.id;
+   // Im Studio gilt JEDER Entwurf, nicht nur `published` — sonst koennte niemand
+   // eine Seite vorbereiten, die noch nicht oeffentlich ist.
+   const [{data:products,error:eP},{data:blocks},{data:themes},{data:media},{data:buehnen},katalog]=await Promise.all([
+    client.from('products').select(SPALTEN.products).eq('designer_id',designer.id).order('created_at',{ascending:false}).limit(400),
+    client.from('designer_page_blocks').select(SPALTEN.blocks).eq('designer_id',designer.id).order('position'),
+    client.from('house_themes').select(SPALTEN.themes).eq('designer_id',designer.id).eq('is_current',true),
+    client.from('media_assets').select(SPALTEN.media).eq('designer_id',designer.id).eq('kind','bild').neq('review_status','abgelehnt').limit(200),
+    client.from('heft_buehnen').select(SPALTEN_BUEHNE.buehnen).eq('designer_id',designer.id).order('blatt'),
+    dekoKatalog()
+   ]);
+   if(eP)throw Error('products: '+fehlerText(eP));
+   // Bildadressen in einer Runde auflösen — gleiche Begründung wie in supabaseQuelle.heft().
+   const roh=new Set(),merke=v=>{if(typeof v==='string'&&v)roh.add(v);};
+   for(const pr of products||[]){merke(pr.image_url);merke(pr.product_dna?.heft?.cutout_url);}
+   merke(designer.hero_image_url);merke(designer.avatar_url);merke(designer.banner_url);
+   merke(designer.portrait_url);merke(designer.atelier_image_url);
+   for(const m of media||[]){merke(m.url);merke(m.thumb_url);}
+   for(const k of Object.values(katalog))merke(k.cutout_url);
+   let karte={};
+   if(funktionen.signieren&&roh.size){try{karte=await funktionen.signieren([...roh])||{};}catch(e){karte={};}}
+   const bildAufgeloest=bildLoeser(karte,bild);
+   const modell=heftAusZeilen({
+    products:(products||[]).map(r=>({...r,status:'published'})),
+    designers:[{...designer,status:'active',published:true}],
+    blocks:blocks||[],themes:themes||[],media:media||[],collection:null,items:[]
+   },{bild:bildAufgeloest});
+   // Der Katalog reist MIT der Buehne, nicht daneben: world.mjs liest buehne.dekoKatalog,
+   // und eine Buehne ohne ihren Katalog stellte Aufsteller ohne Freistellung hin — also keine.
+   const nachKatalog=Object.fromEntries(Object.entries(katalog)
+    .map(([k,v])=>[k,{...v,cutout_url:v.cutout_url?bildAufgeloest(v.cutout_url):null}]));
+   const erste=(buehnen||[])[0]||null;
+   return {...modell,
+    buehnen:erste?{[haus]:{...erste,dekoKatalog:nachKatalog}}:{},
+    dekoKatalog:nachKatalog};
+  },
+
+  /** Eine Buehne lesen. `null` heisst: es gibt noch keine — der Aufrufer legt die erste an. */
+  async buehneLesen(welt=null,blatt=null){
+   if(!hausId){const {data}=await client.from('designers').select('id').eq('slug',haus).maybeSingle();hausId=data?.id||null;}
+   if(!hausId)return null;
+   let q=client.from('heft_buehnen').select(SPALTEN_BUEHNE.buehnen).eq('designer_id',hausId);
+   if(welt)q=q.eq('welt',welt);
+   if(blatt!=null)q=q.eq('blatt',blatt);
+   const {data}=await q.order('blatt').limit(1).maybeSingle();
+   return data||null;
+  },
+
+  /**
+   * Eine Buehne schreiben — mit dem Versionsriegel aus schreibEntwurf().
+   *
+   * Trifft die Bedingung keine Zeile, hat jemand anderes dazwischen geschrieben. Dann wird
+   * NICHTS ueberschrieben und der Aufrufer erfaehrt es (`{ueberholt:true}`), statt dass eine
+   * Aenderung lautlos verschwindet. Das ist der Fall „zwei Fenster offen".
+   */
+  async buehneSchreiben(entwurf={}){
+   if(!hausId){const {data}=await client.from('designers').select('id').eq('slug',haus).maybeSingle();hausId=data?.id||null;}
+   if(!hausId)return {fehler:'haus_unbekannt'};
+   const {bedingung,zeile}=schreibEntwurf(entwurf);
+   const mitHaus={...zeile,designer_id:hausId,welt:entwurf.welt??null,blatt:entwurf.blatt??0};
+   if(!bedingung.id){
+    const {data,error}=await client.from('heft_buehnen').insert(mitHaus).select(SPALTEN_BUEHNE.buehnen).maybeSingle();
+    return error?{fehler:fehlerText(error)}:{ok:true,buehne:data};
+   }
+   const {data,error}=await client.from('heft_buehnen').update(mitHaus)
+    .eq('id',bedingung.id).eq('version',bedingung.version)
+    .select(SPALTEN_BUEHNE.buehnen).maybeSingle();
+   if(error)return {fehler:fehlerText(error)};
+   if(!data){
+    const jetzt=await client.from('heft_buehnen').select('version').eq('id',bedingung.id).maybeSingle();
+    return {ueberholt:true,version:jetzt.data?.version??null};
+   }
+   return {ok:true,buehne:data};
+  },
+
+  /**
+   * Veroeffentlichen — und vorher sagen, was fehlt.
+   *
+   * Der Trigger `heft_buehne_pruefen` wirft `buehne_braucht_drei_werke` und
+   * `werk_nicht_auf_ebene_zwei`. Beides ist fuer den Menschen davor unsichtbar. Darum
+   * wird hier ZUERST gerechnet (fehltZumVeroeffentlichen) und nur dann geschrieben.
+   */
+  async buehneVeroeffentlichen(buehne={}){
+   const gruende=fehltZumVeroeffentlichen(buehne);
+   if(gruende.length)return {fehler:'unfertig',gruende,mindestens:WERKE_MINDESTENS};
+   if(!buehne.id)return {fehler:'unfertig',gruende:['die Bühne ist noch nicht gespeichert'],mindestens:WERKE_MINDESTENS};
+   const {data,error}=await client.from('heft_buehnen')
+    .update({veroeffentlicht:true,version:(buehne.version??0)+1})
+    .eq('id',buehne.id).eq('version',buehne.version??0)
+    .select(SPALTEN_BUEHNE.buehnen).maybeSingle();
+   if(error){
+    const t=fehlerText(error);
+    if(/buehne_braucht_drei_werke/.test(t))return {fehler:'unfertig',gruende:['noch nicht genug Werke'],mindestens:WERKE_MINDESTENS};
+    if(/werk_nicht_auf_ebene_zwei/.test(t))return {fehler:'unfertig',gruende:['ein Werk liegt nicht auf der mittleren Ebene'],mindestens:WERKE_MINDESTENS};
+    return {fehler:t};
+   }
+   if(!data)return {ueberholt:true};
+   return {ok:true,buehne:data};
+  },
+
+  dekoKatalog,
+
+  /* Ein Editor ist kein Laden. Diese Tueren sind zu, und zwar ausdruecklich —
+     nicht vergessen, sondern geschlossen. app.js ruft sie ohne `?.`, darum stehen sie da. */
+  chat:async()=>null,
+  kasse:zu,anfrage:zu,bewerbung:zu,vergessen:zu,
+  async vertraege(){return [];},
+  async texte(){return {};},
+  signal(){},
+  stil:{async laden(){return null;},speichern:zu},
+  masse:{async laden(){return null;},speichern:zu},
+  merkliste:{async laden(){return [];},setzen:zu},
+  konto:{
+   async aktuell(){const u=await nutzer();return u?{id:u.id,email:u.email,name:u.email}:null;},
+   anmelden:zu,async abmelden(){return {ok:true};},
+   async bestellungen(){return [];},async anfragen(){return [];},async rechnung(){return null;}
+  },
+  zugang:{anmelden:zu,registrieren:zu,google:zu}
  };
 }

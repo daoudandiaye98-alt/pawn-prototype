@@ -2,14 +2,34 @@ import {THREE,CSS3DObject,CSS3DRenderer} from './dreiD.mjs';
 import {phase,smooth,clamp} from './model.mjs';
 import {cutouts,alphaHit,bilder} from './cutouts.mjs';
 import {products,displays} from './data.mjs';
+import {platzFuer,dekoNachEbenen,ausBuehneX,ausBuehneZ,buehneX,buehneZ} from './buehne.mjs';
 const PI=Math.PI;
 export function createWorld(container,readerLayer,onDirty){
  const materials=new Map(),textures=new Map(),cache=new Map();
  let scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(33,innerWidth/innerHeight,.1,90);
  let book,leftPage,rightPage,leaf,shadow,currentStage,style='contour',currentId='';
  const printPlanes=[],paperMats=[];
+ /**
+  * WIE GROSS IST DIE BUEHNE? Bis hierher lautete die Antwort ueberall `innerWidth`
+  * und `innerHeight` — also das FENSTER. Im oeffentlichen Heft stimmt das, weil
+  * `#stage` per CSS `position:fixed;inset:0` ist: der Kasten IST das Fenster.
+  *
+  * Im Studio ist er es nicht. Dort sitzt die Buehne in einem 390- oder 1280-px-Kasten,
+  * und mit der Fenstergroesse waere alles daneben: das Bild verzerrt (camera.aspect),
+  * die Hotspots an der falschen Stelle, und `hit()` faende beim Tippen ein anderes
+  * Werk als das unter dem Finger — oder keines.
+  *
+  * Darum EINE Messung, von der alle lesen. Im oeffentlichen Heft liefert sie exakt
+  * dieselben Zahlen wie vorher (fixed;inset:0 → left 0, top 0, Fenstermass), die
+  * Umstellung ist dort also ein No-op. Belegt, nicht behauptet: die Aufnahme der
+  * Startseite ist vor und nach dieser Aenderung byteweise dieselbe.
+  */
+ const masse=()=>{
+  const r=container.getBoundingClientRect();
+  return {b:r.width||innerWidth,h:r.height||innerHeight,l:r.left,t:r.top};
+ };
  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));renderer.setSize(innerWidth,innerHeight);
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));{const m=masse();renderer.setSize(m.b,m.h);camera.aspect=m.b/m.h;camera.updateProjectionMatrix();}
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
  container.append(renderer.domElement);
@@ -135,6 +155,7 @@ function buildBook() {
 }
 function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   // Each face folds at its lower edge; the top rides the rising side walls.
+  // Die Basis wird zurueckgegeben (B6): beim Ziehen wandert der Sockel mit dem Werk.
   const base=group(stage.root,x,.07,z),walls=[];
   for(const side of [-1,1]) {
     const p=group(base,side*w/2,0,0);const f=box(p,.016,h,d,color,0,h/2,0);walls.push({p,axis:'z',sign:side});
@@ -143,7 +164,11 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
     const p=group(base,0,0,side*d/2);box(p,w,h,.016,color,0,h/2,0);walls.push({p,axis:'x',sign:-side});
   }
   const top=box(base,w,.02,d,color,0,h,0);
-  stage.plinths.push({walls,top,h});return h;
+  // `base` zurueck, nicht `h`: beim Ziehen (B6) wandert der Sockel mit dem Werk, und
+  // dafuer braucht der Aufrufer die GRUPPE. Das urspruengliche `return h` hat nie
+  // jemand gelesen — makeStage wirft den Wert weg, makeBuehne ist der einzige Leser.
+  stage.plinths.push({walls,top,h});
+  return base;
 }
 
  function foldStage(stage,q) {
@@ -165,7 +190,7 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
 }
 
  buildBook();
- const cssRenderer=new CSS3DRenderer();cssRenderer.setSize(innerWidth,innerHeight);cssRenderer.domElement.style.overflow='clip';readerLayer.append(cssRenderer.domElement);
+ const cssRenderer=new CSS3DRenderer();{const m=masse();cssRenderer.setSize(m.b,m.h);}cssRenderer.domElement.style.overflow='clip';readerLayer.append(cssRenderer.domElement);
  const spread=document.createElement('article');spread.className='spread';spread.setAttribute('aria-label','Geöffnete Doppelseite');
  const cssObject=new CSS3DObject(spread);cssObject.scale.setScalar(8.2/1200);cssObject.rotation.x=-PI/2;cssObject.position.set(0,.067,0);book.add(cssObject);
  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),temp=new THREE.Vector3();
@@ -174,8 +199,10 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   return textures.get(url);
  }
  const standeeMaps=new Map();
- function standee(id,parent){
-  const item=cutouts.get(id),g=group(parent),h=products[id]?.stage?.h||2.6,width=h*item.ratio;
+ function standee(id,parent,hoehe){
+  // `hoehe` kommt aus stuecke[].hoehe_m (B7). Ohne sie bleibt alles wie bisher:
+  // product_dna.heft.hoehe ueber products[].stage.h, sonst 2,6.
+  const item=cutouts.get(id),g=group(parent),h=hoehe||products[id]?.stage?.h||2.6,width=h*item.ratio;
   if(!standeeMaps.has(id)){const m=new THREE.Texture(item.image);m.needsUpdate=true;m.colorSpace=THREE.SRGBColorSpace;m.anisotropy=renderer.capabilities.getMaxAnisotropy();standeeMaps.set(id,m);}
   const map=standeeMaps.get(id);
   const mat=new THREE.MeshStandardMaterial({map,roughness:1,side:THREE.DoubleSide,transparent:false,alphaTest:.35});
@@ -184,8 +211,13 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   photo.userData.cutout=id;photo.receiveShadow=false;
   return {g,point:new THREE.Vector3(0,.05,.2),oben:new THREE.Vector3(0,h+.12,0)};
  }
- function makeStage(id,pieces){
-  const data={...displays[id],pieces:pieces||displays[id].pieces},stage={root:group(book),hinges:[],plinths:[],products:[],id};stage.root.visible=false;
+ /**
+  * Die Kulisse — Ruecken, Rahmen, Flanke. Woertlich aus makeStage
+  * herausgezogen, kein Zeichen geaendert: makeBuehne (die Buehne aus Daten)
+  * braucht dieselbe, und zwei Fassungen derselben Kulisse waeren zwei
+  * Wahrheiten. `data` braucht layout, color, architecture und pieces.length.
+  */
+ function kulisse(stage,data){
   if(data.layout==='fan'){
    const fluegel=data.pieces.length===3?[[-2.3,-.55,-.28,'#d9781f',3.0],[-.75,-1.1,.12,'#1f3d8a',3.1],[1.05,-1.08,-.14,'#8a1d22',2.95],[2.55,-.58,.36,'#f1ede5',2.5]]:[[-2.25,-.50,-.3,'#e5dfd4',2.9],[-.8,-1.05,.15,data.color,3.05],[1.1,-1.04,-.18,'#d4c7b5',2.85],[2.55,-.55,.4,'#f1ede5',2.5]];
    fluegel.forEach(([x,z,yaw,color,h],i)=>{
@@ -204,6 +236,80 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
    if(data.architecture!=='frame')mesh(new THREE.ExtrudeGeometry(arch,{depth:.025,bevelEnabled:false}),material('#ece5d9'),frame,0,0,.04);
    const side=hinge(stage,2.88,.04,.43,1,.08);polygon(side,[[-.4,0],[-.4,2.4],[.6,2.1],[.6,0]],'#f3efe6');
   }
+ }
+ /**
+  * B1 — die Buehne aus Daten, neben makeStage und nicht statt ihr.
+  *
+  * makeStage bleibt der Rueckfall (B3): wo keine Zeile in heft_buehnen steht,
+  * komponiert weiterhin displayAusHaus. Wo eine steht, gewinnt sie.
+  *
+  * DIE ABBILDUNG STEHT IN buehne.mjs, nicht hier — sie ist reine Rechnung und
+  * wird ohne Browser geprueft (buehne.test.mjs, 8 Tests). Die Konstanten sind
+  * gegen world.mjs:208 nachgerechnet und weichen bewusst von der Vorgabe ab;
+  * die Begruendung steht im Kopf von buehne.mjs.
+  *
+  * DREI TIEFENEBENEN, hart: Deko hinten (z < 0,35), Werke in der Mitte
+  * (0,35 bis 0,65), Deko vorn (z > 0,65). Der Datenbank-Trigger
+  * heft_buehne_pruefen erzwingt dasselbe; platzFuer klemmt schon hier, damit
+  * der Fehler gar nicht erst zur Datenbank laeuft.
+  */
+ function makeBuehne(buehne){
+  const stuecke=(buehne.stuecke||[]).filter(s=>cutouts.has(s.werk_id));
+  const stage={root:group(book),hinges:[],plinths:[],products:[],id:'buehne:'+(buehne.id||'')};
+  stage.root.visible=false;
+  // Die Kulisse liest dieselben Felder wie bei einer fest verdrahteten Buehne.
+  // `ruecken` ist jsonb; ohne Farbe bleibt das Papierweiss der Vorgabe.
+  kulisse(stage,{
+   layout:buehne.layout==='frei'?'frame':(buehne.layout||'fan'),
+   color:buehne.ruecken?.farbe||'#f1ede5',
+   architecture:buehne.layout==='frame'?'frame':undefined,
+   pieces:{length:stuecke.length},
+  });
+  const ebenen=dekoNachEbenen(buehne.deko,buehne.dekoKatalog||{});
+  fuerDeko(stage,ebenen.hinten);
+  stuecke.forEach((stueck,i)=>{
+   const id=stueck.werk_id;
+   // Die Rechnung steht in buehne.mjs und ist dort geprueft (platzFuer, 12 Tests).
+   // Hier wird nur noch hingestellt — eine zweite Fassung waere eine zweite Wahrheit.
+   const platz=platzFuer(stueck,products[id]);
+   const sockel=addPlinth(stage,platz.x,platz.z,1.8,platz.lift,1.03);
+   const pivot=hinge(stage,platz.x,platz.z,platz.drehung,-1,.11+i*.055);
+   const piece=standee(id,pivot,platz.hoehe);piece.g.position.y=platz.lift;
+   piece.g.traverse(o=>{if(o.isMesh)o.userData.product=id;});
+   // `fuss` und `sockel` sind die Gruppen, die beim Ziehen wandern (B6); `hoehe` ist
+   // die Hoehe, mit der die Flaeche GEBAUT wurde — der Schieber (B7) rechnet dagegen,
+   // statt die Geometrie neu zu erzeugen.
+   stage.products.push({id,object:piece.g,point:piece.point,oben:piece.oben,
+    fuss:pivot.parent,sockel,hoehe:platz.hoehe,nr:i});
+  });
+  // Deko der vorderen Ebene ZULETZT, damit sie wirklich vor den Werken liegt.
+  fuerDeko(stage,ebenen.vorn);
+  stage.materials=[];stage.fade=-1;
+  stage.root.traverse(o=>{if(o.isMesh){o.material=o.material.clone();stage.materials.push(o.material);}});
+  return stage;
+ }
+ /**
+  * B2 — Deko laeuft durch denselben Weg wie ein Werk: prepareCutouts, standee,
+  * Alphamaske. Nur so trifft alphaHit an einer Pflanze wirklich die Pflanze und
+  * nicht ihr Rechteck.
+  *
+  * SIE TRAEGT KEIN userData.product. Das ist die ganze Unterscheidung zwischen
+  * Buehnenbild und Ware: Deko ist Kulisse, kein Ziel — kein Drawer, kein
+  * Treffer in der Suche. Damit sie deshalb nicht die Werke dahinter verdeckt,
+  * prueft hit() auf product, BEVOR ein Treffer gilt (siehe dort).
+  *
+  * Kein Sockel: ein Aufsteller steht, ein Podest hebt ein WERK hervor.
+  */
+ function fuerDeko(stage,liste){
+  for(const d of liste){
+   if(!cutouts.has(d.id))continue; // ohne Freistellung kein Aufsteller
+   const pivot=hinge(stage,d.x,d.z,d.drehung,-1,.09);
+   standee(d.id,pivot,d.hoehe);
+  }
+ }
+ function makeStage(id,pieces){
+  const data={...displays[id],pieces:pieces||displays[id].pieces},stage={root:group(book),hinges:[],plinths:[],products:[],id};stage.root.visible=false;
+  kulisse(stage,data);
   data.pieces.forEach((id,i)=>{
    const n=data.pieces.length,x=n===1?.2:n===3?[-1.95,.15,2.05][i]:[-1.15,1.2][i],z=n===1?.53:n===3?[.6,.3,.62][i]:[.35,.65][i],h=products[id]?.stage?.lift??.17;
    addPlinth(stage,x,z,1.8,h,1.03);
@@ -216,14 +322,34 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   stage.root.traverse(o=>{if(o.isMesh){o.material=o.material.clone();stage.materials.push(o.material);}});
   cache.set(id+style+(pieces||[]).join(),stage);return stage;
  }
+ /**
+  * B3 — existiert eine Buehne, gewinnt sie. Existiert keine, bleibt alles beim
+  * Alten: displayAusHaus komponiert, makeStage stellt hin.
+  *
+  * Die Buehne haengt an displays[id].buehne, weil dort schon alles haengt, was
+  * eine Doppelseite ausmacht (data.mjs › displayAusHaus). Wer sie fuellt, ist
+  * B4 (studioQuelle); bis dahin ist das Feld leer und dieser Zweig laeuft nie.
+  *
+  * `version` gehoert in den Schluessel: wer eine Buehne umstellt und dieselbe
+  * Seite noch einmal aufschlaegt, soll die neue sehen und nicht die
+  * zwischengespeicherte alte.
+  */
  function display(id,pieces){
-  const schluessel=id+style+(pieces||[]).join();
+  const buehne=displays[id]?.buehne;
+  const schluessel=id+style+(pieces||[]).join()+(buehne?'|b'+(buehne.id||'')+'v'+(buehne.version||0):'');
   if(currentId===schluessel)return;
   if(currentStage)currentStage.root.visible=false;
-  currentStage=cache.get(schluessel)||makeStage(id,pieces);currentStage.root.visible=true;currentId=schluessel;letzteSignatur='';
+  currentStage=cache.get(schluessel)||(buehne?makeBuehne(buehne):makeStage(id,pieces));
+  if(buehne&&!cache.has(schluessel))cache.set(schluessel,currentStage);
+  currentStage.root.visible=true;currentId=schluessel;letzteSignatur='';
  }
  let letzteSignatur='';
  function render(pose,{angle=0,manualFold=1,interactive=false,search=false,paging=false}={}){
+  // `mobile` bleibt ABSICHTLICH am Fenster, nicht am Kasten: die @media-Regeln des
+  // Heft-CSS folgen ebenfalls dem Fenster. Liest das 3D den Kasten und das CSS das
+  // Fenster, entsteht ein Mischzustand — ein Handy-Buch in einer Desktop-Seite.
+  // Lieber durchgehend die eine Wahrheit, auch wenn die Studio-Vorschau darum bei
+  // 390 px die Desktop-Fassung zeigt (so steht es auch am Breiten-Knopf).
   const {lay,open,fold,read}=pose,mobile=innerWidth<760;
   book.scale.set((mobile?.9:1)+read*.13,1,1);
   book.rotation.set((1-lay)*PI/2+read*1.53,(-.15+angle)*lay*(1-read),read*.006);
@@ -236,25 +362,93 @@ function addPlinth(stage,x,z,w,h,d,color='#f2efe8') {
   shadow.visible=read<.75;
   const flat=mobile?[2.4,5.5,13.1]:[3.72,4.15,11.6],front=mobile?[0,2.0,20]:[0,.65,13.4];
   camera.position.set(...flat.map((a,i)=>a+(front[i]-a)*read));
-  const chrome=Math.min(search?200:112,Math.max(search?150:92,innerHeight*(search?.27:.15))),availableH=Math.min(innerHeight-chrome,innerWidth*.99/1.82),frontFov=2*Math.atan(5.32*innerHeight/(2*13.4*Math.max(availableH,180)))*180/PI;
-  const flatFov=Math.max(31,2*Math.atan(.376*innerHeight/(innerWidth*.78))*180/PI);
-  camera.fov=mobile?39+27*lay-28*read:flatFov+(frontFov-flatFov)*read;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  const m=masse();
+  const chrome=Math.min(search?200:112,Math.max(search?150:92,m.h*(search?.27:.15))),availableH=Math.min(m.h-chrome,m.b*.99/1.82),frontFov=2*Math.atan(5.32*m.h/(2*13.4*Math.max(availableH,180)))*180/PI;
+  const flatFov=Math.max(31,2*Math.atan(.376*m.h/(m.b*.78))*180/PI);
+  camera.fov=mobile?39+27*lay-28*read:flatFov+(frontFov-flatFov)*read;camera.aspect=m.b/m.h;camera.updateProjectionMatrix();
   camera.lookAt(mobile?0:-1.22*(1-read),mobile?1.85*(1-read):.5*(1-read)+(search?.40:.1)*read,0);camera.updateMatrixWorld(true);
   spread.style.opacity=(interactive&&read>.98)||paging?'1':'0';spread.inert=!(interactive&&read>.98);spread.setAttribute('aria-hidden',String(spread.inert));
   readerLayer.style.pointerEvents=interactive&&read>.98?'auto':'none';
   cssObject.visible=read>.5||paging;
   // Steht das Buch still (z. B. während des Blätterns zwischen zwei Leseseiten), wird WebGL nicht neu gezeichnet.
-  const signatur=[lay,open,fold,read,leaf.visible?pose.leaf.toFixed(3):0,angle,manualFold,innerWidth,innerHeight,currentId,currentStage?currentStage.fade:0,search?1:0].join('|');
+  const signatur=[lay,open,fold,read,leaf.visible?pose.leaf.toFixed(3):0,angle,manualFold,m.b,m.h,currentId,currentStage?currentStage.fade:0,search?1:0].join('|');
   if(signatur!==letzteSignatur){letzteSignatur=signatur;light.shadow.needsUpdate=true;renderer.render(scene,camera);}
   cssRenderer.render(scene,camera);
  }
  return {
   display,render,spread,canvas:renderer.domElement,
   updateHouse(slug,p){letzteSignatur='';for(const [id,d] of Object.entries(displays)){if(d.house!==slug)continue;d.color=p.accent;d.architecture=p.architecture;d.layout=p.architecture==='fan'?'fan':'frame';for(const [k,old] of [...cache]){if(!k.startsWith(id+style))continue;book.remove(old.root);old.root.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(o.material&&!standeeMaps.has(o.userData.cutout))o.material.dispose();}});cache.delete(k);if(currentStage===old)currentStage=null;}currentId='';}},
-  resize(){renderer.setSize(innerWidth,innerHeight);cssRenderer.setSize(innerWidth,innerHeight);letzteSignatur='';},
+  resize(){const m=masse();renderer.setSize(m.b,m.h);cssRenderer.setSize(m.b,m.h);camera.aspect=m.b/m.h;camera.updateProjectionMatrix();letzteSignatur='';},
   paperStyle(next){style=next;currentId='';letzteSignatur='';display(currentStage.id);onDirty();},
   setContent(html,theme){letzteSignatur='';spread.innerHTML=html;const vars=theme||{paper:'#f9f7f2',ink:'#252421',accent:'#733039',font:'Playfair'};for(const m of paperMats)m.color.set(vars.paper);for(const [k,v]of Object.entries(vars))spread.style.setProperty('--house-'+k,v);spread.dataset.theme=vars.theme||'';},
-  hotspots(oben=false){return(currentStage?.products||[]).map(p=>{p.object.localToWorld(temp.copy(oben?p.oben:p.point));temp.project(camera);return{id:p.id,x:(temp.x*.5+.5)*innerWidth,y:(-temp.y*.5+.5)*innerHeight};});},
-  hit(x,y){pointer.set(x/innerWidth*2-1,-y/innerHeight*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(currentStage?.root.children||[],true).find(hit=>hit.object.userData.cutout&&hit.uv&&alphaHit(hit.object.userData.cutout,hit.uv.x,hit.uv.y))?.object.userData.product;}
+  hotspots(oben=false){return(currentStage?.products||[]).map(p=>{p.object.localToWorld(temp.copy(oben?p.oben:p.point));temp.project(camera);const m=masse();return{id:p.id,x:(temp.x*.5+.5)*m.b,y:(-temp.y*.5+.5)*m.h};});},
+  /*
+   * DEKO DARF DEN KLICK NICHT VERDECKEN.
+   *
+   * Bis zur Buehne trug jeder Aufsteller ein userData.product — .find() konnte
+   * also gar nichts anderes treffen. Deko der vorderen Ebene (z > 0,65) steht
+   * VOR den Werken und traegt bewusst KEIN product: sie ist Kulisse, kein Ziel.
+   *
+   * Mit dem alten .find() haette der Strahl sie trotzdem als Treffer genommen
+   * — sie hat ja ein cutout und eine Alphamaske — und danach waere
+   * `?.object.userData.product` undefined gewesen. Das Werk DAHINTER waere
+   * unerreichbar geworden, ohne dass irgendwo ein Fehler auftaucht.
+   *
+   * Deshalb wird auf product geprueft, bevor der Treffer gilt, nicht danach.
+   * Heute ist das ein No-op: es gibt noch keine Deko. Es ist der Riegel, der
+   * sitzt, BEVOR die Deko kommt — nicht die Reparatur danach.
+   */
+  /**
+   * Vom Finger auf einen Buehnenpunkt (B6) — die Rueckrichtung von platzFuer().
+   *
+   * Gerechnet wird im LOKALEN Raum der Buehne, nicht in Weltkoordinaten. Der Grund:
+   * `stage.root` haengt am Buch, und das Buch wird beim Blaettern gedreht, geneigt
+   * und gefaltet (foldStage). Eine Ebene in Weltkoordinaten waere je nach
+   * Blaetterstand woanders — das Stueck spraenge beim Ziehen. Der Strahl wird
+   * deshalb mit der Umkehrmatrix in den Buehnenraum geholt, wo der Boden immer
+   * y = 0 ist (hinge setzt seine Gruppen auf y .058, addPlinth auf .07).
+   *
+   * Zurueck kommen 0..1-Koordinaten, NICHT Welt-Meter: gespeichert wird in 0..1, und
+   * die Umrechnung steht genau einmal, in buehne.mjs. `null`, wenn der Strahl den
+   * Boden verfehlt — dann wurde neben die Buehne gezogen und nichts passiert.
+   */
+  buehnePunkt(x,y){
+   if(!currentStage)return null;
+   const m=masse();
+   pointer.set((x-m.l)/m.b*2-1,-(y-m.t)/m.h*2+1);
+   raycaster.setFromCamera(pointer,camera);
+   currentStage.root.updateMatrixWorld();
+   const strahl=raycaster.ray.clone().applyMatrix4(new THREE.Matrix4().copy(currentStage.root.matrixWorld).invert());
+   const treffer=new THREE.Vector3();
+   if(!strahl.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),treffer))return null;
+   return {x:ausBuehneX(treffer.x),z:ausBuehneZ(treffer.z)};
+  },
+  /**
+   * Ein Stueck an eine neue Stelle setzen (B6) und/oder anders hoch machen (B7).
+   *
+   * BEWUSST OHNE NEUBAU. `makeBuehne` einmal je Zug aufzurufen waere einfacher zu
+   * schreiben und beim Ziehen unbrauchbar: jede Zeigerbewegung erzeugte Geometrie,
+   * Texturen und Materialien neu. Stattdessen wandern hier nur zwei Gruppen.
+   *
+   * Die Hoehe wird GESKALIERT, nicht neu gebaut — und zwar in x UND y zugleich.
+   * Nur y zu skalieren zoege den Mantel in die Laenge; ein Aufsteller ist eine Flaeche
+   * der Breite hoehe*ratio, also muss beides mit demselben Faktor gehen.
+   */
+  stueckSetzen(nr,{x,z,hoehe}={}){
+   const p=(currentStage?.products||[])[nr];
+   if(!p||!p.fuss)return false;
+   if(Number.isFinite(x)){const wx=buehneX(x);p.fuss.position.x=wx;if(p.sockel)p.sockel.position.x=wx;}
+   if(Number.isFinite(z)){const wz=buehneZ(z);p.fuss.position.z=wz;if(p.sockel)p.sockel.position.z=wz;}
+   if(Number.isFinite(hoehe)&&p.hoehe>0){const k=hoehe/p.hoehe;p.object.scale.set(k,k,1);}
+   letzteSignatur='';onDirty();
+   return true;
+  },
+  /** Welches Stueck der Buehne liegt unter dem Finger? Nummer, nicht Werk-Kennung. */
+  stueckAn(x,y){
+   const id=this.hit(x,y);
+   if(!id)return -1;
+   return (currentStage?.products||[]).findIndex(p=>p.id===id);
+  },
+  hit(x,y){const m=masse();pointer.set((x-m.l)/m.b*2-1,-(y-m.t)/m.h*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(currentStage?.root.children||[],true).find(hit=>hit.object.userData.product&&hit.object.userData.cutout&&hit.uv&&alphaHit(hit.object.userData.cutout,hit.uv.x,hit.uv.y))?.object.userData.product;}
  };
 }

@@ -639,6 +639,74 @@ function ueberspringenNichtUnterDerSchrift({ stil }) {
   return OK;
 }
 
+
+// ————————————————————————————————————————————————————————————————
+// Z20 — der Menuepunkt „Auftritt" zeigt die Doppelseite
+//
+// Von Daouda auf der laufenden Seite gefunden: „die bearbeitung der doppelseiten im
+// auftritt menuepunkt des designer studios zeigt aktuell noch nicht an". Der Rundgang
+// hat DREI Ursachen gefunden, und zwei davon sind hier mechanisch gedeckt.
+//
+// URSACHE 1 — StudioHeft.tsx holte `studioQuelle` aus quelle.mjs. Den Export gab es
+// nicht. Die Seite brach mit `fehlt = "studioQuelle"` ab, bevor das Heft startete.
+// Kein Absturz, keine Warnung, keine rote Pruefung: ein leerer weisser Rahmen.
+// Genau diese Luecke schliesst der erste Teil — jeder Name, den die Huelle aus einem
+// Heft-Modul zieht, muss dort wirklich stehen.
+//
+// URSACHE 2 — dort stand ein LEERES div. app.js sucht feste Knoten per
+// getElementById (#mobile-reader, #drawer-content, #hotspots …) und fand keinen.
+// Dazu KASTEN_STIL (contain:paint): ohne ihn spannt sich die Buehne ueber das
+// Fenster statt ueber den Kasten und deckt die Seite zu. Gemessen in Chromium,
+// Kasten 390x520: ohne Einsperrung ist #stage 1440x900, mit ihr 386x516.
+//
+// (Ursache 3, die fehlenden i18n-Schluessel, deckt der zweite Teil.)
+//
+// ENG GEHALTEN: geprueft werden nur die Namen, die StudioHeft.tsx TATSAECHLICH in der
+// Form `modul.name` liest, und nur die Schluessel, die sie mit t("studio.heft…")
+// benutzt. Die Pruefung waechst mit der Datei mit und erfindet nichts dazu.
+function auftrittZeigtDieSeite({ huelle, quelle, app, sprachen }) {
+  // OHNE die Kommentare — und das ist nicht Feinschliff, es ist der Unterschied
+  // zwischen Pruefung und Schein. Die erste Fassung dieser Kontrolle blieb GRUEN, als
+  // ich KASTEN_STIL aus dem Code entfernte: der Name stand noch im Kommentar darueber,
+  // und das Muster hatte die Prosa getroffen. Derselbe Fehler wie bei Z18, wo die
+  // Herkunftsnotiz aus #195 das Wort „Wand" trug. Wer Kommentare mitliest, prueft nichts.
+  const src = lies(huelle)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "");
+  const fehlt = [];
+
+  // 1 · Jeder Name, den die Huelle aus einem Heft-Modul zieht, steht dort auch.
+  for (const [datei, kuerzel] of [[quelle, "quelleModul"], [app, "appModul"]]) {
+    const modul = lies(datei);
+    const gesucht = new Set(
+      [...src.matchAll(new RegExp(kuerzel + "\\.([a-zA-Z_$][\\w$]*)", "g"))].map((m) => m[1]),
+    );
+    for (const name of gesucht) {
+      if (!new RegExp("export\\s+(?:async\\s+)?(?:function|const|let|class)\\s+" + name + "\\b").test(modul)
+        && !new RegExp("export\\s*\\{[^}]*\\b" + name + "\\b[^}]*\\}").test(modul)) {
+        fehlt.push(`${huelle} erwartet ${name} aus ${datei} — dort gibt es das nicht`);
+      }
+    }
+  }
+
+  // 2 · Jeder studio.heft-Schluessel, den sie benutzt, steht in ALLEN Sprachen.
+  const woerter = lies(sprachen);
+  const schluessel = new Set([...src.matchAll(/t\(\s*"(studio\.heft\.[\w.]+)"/g)].map((m) => m[1]));
+  for (const k of schluessel) {
+    // t() faellt auf den Schluessel selbst zurueck — ein fehlender Schluessel steht
+    // woertlich auf dem Bildschirm, statt einen Fehler zu werfen. Darum die Wache.
+    const treffer = (woerter.match(new RegExp('"' + k.replace(/\./g, "\\.") + '"\\s*:', "g")) || []).length;
+    if (treffer < 2) fehlt.push(`Sprachschluessel ${k} fehlt (${treffer} von 2 Woerterbuechern) — er stuende woertlich auf dem Bildschirm`);
+  }
+
+  // 3 · Das Geruest und die Einsperrung. Ohne beides ist die Flaeche wieder leer.
+  if (!/\bGERUEST\b/.test(src)) fehlt.push(`${huelle} setzt das Geruest nicht mehr ein — app.js faende keinen seiner Knoten`);
+  if (!/\bKASTEN_STIL\b/.test(src)) fehlt.push(`${huelle} sperrt die Buehne nicht mehr ein — sie spannt sich dann ueber das Fenster statt ueber den Kasten`);
+
+  return fehlt.length === 0 ? OK : nein(fehlt.slice(0, 6).join("\n      "));
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -659,6 +727,7 @@ const PRUEFUNGEN = {
   zaehlenNurMitErlaubnis,
   modeNieAnDieWand,
   ueberspringenNichtUnterDerSchrift,
+  auftrittZeigtDieSeite,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

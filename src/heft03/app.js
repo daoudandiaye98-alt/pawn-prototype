@@ -1,5 +1,5 @@
 import {Magazine,reading,key,routeHash,parseRoute,addCart,clamp} from './model.mjs';
-import {products,houses,displays,sections,labels,counts,asset,heftFuellen,ASSETS,assetBasis,buehnenfaehig,vorschauHinweis} from './data.mjs';
+import {products,houses,displays,sections,labels,counts,asset,heftFuellen,ASSETS,assetBasis,buehnenfaehig,vorschauHinweis,seitenNr} from './data.mjs';
 import {createWorld} from './world.mjs';
 import {readView,productView,cartView,applicationView,productCard,esc,money} from './views.mjs';
 import {prepareCutouts,prepareBilder,cutouts} from './cutouts.mjs';
@@ -14,6 +14,7 @@ import {demoQuelle,BILD_GRENZE} from './quelle.mjs';
 import {quelleWaehlen,anklopfen} from './notbetrieb.mjs';
 import {uebernahme} from './uebernahme.mjs';
 import {adressen} from './routen.mjs';
+import {nachDemZiehen,mitHoehe,geliehenerAufsteller,HOEHE} from './buehne.mjs';
 import {massZeile} from './store.mjs';
 
 // ---------------------------------------------------------------------------
@@ -23,13 +24,28 @@ import {massZeile} from './store.mjs';
 //   optionen.basis    : Pfad-Präfix bei 'pfad' (z. B. ''), optional.
 //   optionen.assets   : Basis der Heft-Bilder (Standard './assets/'; unter Vite z. B. '/heft/assets/').
 //   optionen.zustimmung: true|false|null — Zustimmung der Hülle (ConsentProvider) vorbelegen; optional.
-//   optionen.auf      : Rückrufe {navigiert(route), kauf(antwort), anfrage(ereignis), zustimmung(wert), fehler(e)} — optional.
+//   optionen.bearbeiten: true — Studio-Betrieb (B5). Die Buehne ist stellbar, und die
+//                        Beispielausgabe ist GESPERRT: wer seine eigene Seite bearbeitet,
+//                        darf niemals fremde Beispielhaeuser vor sich haben.
+//   optionen.auf      : Rückrufe {navigiert(route), kauf(antwort), anfrage(ereignis), zustimmung(wert), fehler(e), gestellt(entwurf)} — optional.
+//                        gestellt(entwurf) feuert nach jedem Stellen, Ziehen und Hoehenzug (B5).
 // Rückgabe: {go, route, state, refresh, stop}. Die Hülle (React) hält die Kopf-/Fußzeile, das Heft die Bühne.
 // ---------------------------------------------------------------------------
 export async function startHeft(optionen={}){
 let quelle=optionen.quelle||demoQuelle();
 const adresse=adressen(optionen.adresse||'hash',optionen.basis||'');
 const auf=optionen.auf||{};
+const bearbeiten=optionen.bearbeiten===true;
+// B6 — Zustand der laufenden Geste. -1 heisst: es zieht gerade niemand.
+let ziehtGerade=-1,gezogen=false;
+/**
+ * Der Entwurf, an dem gerade gestellt wird.
+ *
+ * Erst aus state.buehne — dort steht, was diese Sitzung schon geaendert hat. Sonst aus
+ * displays[…].buehne, wohin heftFuellen die Zeile aus heft_buehnen gelegt hat. Beides in
+ * DIESER Reihenfolge, sonst uebermalte jede Neuzeichnung das gerade Gezogene.
+ */
+const buehneJetzt=()=>state.buehne||displays[key(nav.route)]?.buehne||null;
 if(optionen.assets)assetBasis(optionen.assets);
 const zustimmungMelden=()=>{if(auf.zustimmung)auf.zustimmung(state.consent);};
 // Hinaus aus dem Heft: /admin und /studio sind React-Seiten, keine Doppelseiten.
@@ -48,8 +64,14 @@ const hoeren=(ziel,typ,fn,opt)=>{ziel.addEventListener(typ,fn,opt);hoerer.push([
 // Kauf, Anfrage und Konto sind in der Vorschau gesperrt, weil demoQuelle auf
 // alles mit {fehler:'vorschau'} antwortet.
 // Die Entscheidung selbst steht in notbetrieb.mjs — dort ist sie ohne Browser prüfbar.
-const klopfen=await anklopfen(optionen.anklopfAdresse);
-const gewaehlt=await quelleWaehlen(quelle,demoQuelle,{anklopfen:klopfen});
+// Im Studio gibt es keinen Vorschau-Betrieb. Der Rueckfall auf demoQuelle wuerde dem
+// Haus die Beispielhaeuser hinstellen — es bearbeitete fremde Daten und schriebe sie
+// in die eigene Zeile. Scheitert die Quelle hier, bleibt die Seite stehen und sagt es.
+const klopfen=bearbeiten?{erreichbar:null}:await anklopfen(optionen.anklopfAdresse);
+const gewaehlt=bearbeiten
+ ? await (async()=>{try{return {quelle,heft:await quelle.heft(),notbetrieb:false,leer:false,fehler:null};}
+   catch(e){return {quelle,heft:null,notbetrieb:false,leer:true,fehler:e};}})()
+ : await quelleWaehlen(quelle,demoQuelle,{anklopfen:klopfen});
 const notbetrieb=gewaehlt.notbetrieb;
 quelle=gewaehlt.quelle;
 const heft=gewaehlt.heft;
@@ -57,7 +79,7 @@ if(gewaehlt.fehler){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{ar
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,archetypen:[],archetypProsa:'',archetypAbgelehnt:[],anproben:[],fitProduct:null};
+const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,archetypen:[],archetypProsa:'',archetypAbgelehnt:[],anproben:[],fitProduct:null,buehne:null,gewaehlt:-1};
 // Was mit Zustimmung gespeichert wurde, kommt zurück.
 {const alt=laden();if(alt&&alt.consent===true)Object.assign(state,alt,{denkt:false,message:'',reference:''});}
 if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!optionen.zustimmung;
@@ -341,7 +363,7 @@ async function zugangAbsenden(modus,data){
 }
 
 function account(){go({section:'konto',index:state.profile?1:0});}
-function saved(){go({section:'konto',index:2});}
+function saved(){go({section:'konto',index:seitenNr('konto','saved')});}
 function search(){go({section:'suche',index:0});}
 function inquiry(id){
  const p=products[id];showDrawer('<p class="eyebrow">ANFRAGE AN '+houses[p.house].name+'</p><h2 id="dialog-title">'+p.name+'</h2><p>Erzähle dem Haus, was du dir vorstellst.</p><form data-inquiry-form><label>Deine E-Mail<input type="email" name="email" required></label><label>Deine Nachricht<textarea name="message" rows="6" minlength="15" required placeholder="Wunsch, Format oder eine Frage zur Arbeit"></textarea></label><button class="solid" type="submit">Anfrage prüfen</button></form><p class="small-note">In dieser Vorschau wird keine Nachricht verschickt.</p>');
@@ -759,11 +781,11 @@ function frame(now){
 hoeren(document,'click',e=>{
  const b=e.target.closest('button');if(!b||b.disabled)return;
  if(b.dataset.route){go({section:b.dataset.route,index:0});return;}
- if(b.dataset.goto){const [sec,idx]=b.dataset.goto.split(':');if(b.dataset.welt){state.stil.welt=b.dataset.welt;}if(b.dataset.stueck){state.fitProduct=b.dataset.stueck;}go({section:sec,index:isNaN(Number(idx))?(sections[sec]||[]).indexOf(idx):Number(idx)});return;}
+ if(b.dataset.goto){const [sec,idx]=b.dataset.goto.split(':');if(b.dataset.welt){state.stil.welt=b.dataset.welt;}if(b.dataset.stueck){state.fitProduct=b.dataset.stueck;}go({section:sec,index:seitenNr(sec,idx)});return;}
  if(b.dataset.groesse){const r=b.closest('#drawer-content')?.querySelector('input[name="size"][value="'+b.dataset.groesse+'"]');if(r){r.checked=true;toast('Größe '+b.dataset.groesse+' gesetzt.');}return;}
  if(b.dataset.house){house(b.dataset.house);return;}
  if(b.dataset.product){if(nav.status==='ready'||drawer.open)product(b.dataset.product);return;}
- if(b.dataset.page!==undefined){go({...nav.route,index:Number(b.dataset.page)});return;}
+ if(b.dataset.page!==undefined){go({...nav.route,index:seitenNr(nav.route.section,b.dataset.page)});return;}
  if(b.hasAttribute('data-return'))returnDisplay();
  if(b.dataset.save){zustimmungFragen();const id=b.dataset.save;state.saved=state.saved.includes(id)?state.saved.filter(s=>s!==id):[...state.saved,id];quelle.merkliste.setzen(id,state.saved.includes(id)).catch(()=>{});quelle.signal('merken',{product:products[id],an:state.saved.includes(id)});melden('merken',{werk_id:id,an:state.saved.includes(id),merkliste_n:state.saved.length,n:state.saved.length});b.textContent=state.saved.includes(id)?'♥ Gemerkt':'♡ Stück merken';readRefresh();toast(state.saved.includes(id)?'Gemerkt. Du findest es unter Mein PAWN — und ich lese es als Beleg.':'Aus deiner Merkliste entfernt.');}
  if(b.hasAttribute('data-archetyp-ja')){
@@ -869,11 +891,14 @@ hoeren(document,'click',e=>{
  if(b.dataset.werkSlug){const p2=Object.values(products).find(x=>x.slug===b.dataset.werkSlug);if(p2){drawer.close();product(p2.id);}return;}
  if(b.hasAttribute('data-reset-search'))go({section:'suche',index:0});
  if(b.hasAttribute('data-logout')){state.profile=null;quelle.konto.abmelden().catch(()=>{});readRefresh();toast('Abgemeldet.');}
- if(b.hasAttribute('data-dna-privacy'))go({section:'dna',index:7});
+ if(b.hasAttribute('data-dna-privacy'))go({section:'dna',index:seitenNr('dna','privacy')});
  if(b.hasAttribute('data-search-chat'))go({section:'suche',index:0});
  if(b.dataset.prompt){const [was,anlass,rahmen,satz]=b.dataset.prompt.split('|');state.frag={was,anlass,rahmen};state.message=satz||'';state.denkt=false;readRefresh();return;}
  if(b.dataset.fit){state.fitProduct=b.dataset.fit;readRefresh();}
- if(b.dataset.styleCheck){state.fitProduct=b.dataset.styleCheck;go({section:'dna',index:5});}
+ // DER FEHLER, DER HIER LAG: index 5 ist 'foto'. Gesetzt wird aber state.fitProduct,
+ // und das liest NUR die linie-Seite (extra-views.mjs > fitProduct). „Meine Linie
+ // pruefen" fuehrte also auf eine Seite, die das gewaehlte Stueck ignoriert.
+ if(b.dataset.styleCheck){state.fitProduct=b.dataset.styleCheck;go({section:'dna',index:seitenNr('dna','linie')});}
  if(b.dataset.blockUp!==undefined||b.dataset.blockDown!==undefined||b.dataset.blockToggle!==undefined){
   const slug=b.closest('[data-slug]').dataset.slug,st=studioState(slug),L=st.blocks;
   if(b.dataset.blockToggle!==undefined){const i=+b.dataset.blockToggle;L[i].on=!L[i].on;}
@@ -971,7 +996,7 @@ $('fold').oninput=e=>{fold=Number(e.target.value)/100;$('fold-value').textConten
 $('angle').oninput=e=>{angle=Number(e.target.value)*Math.PI/180;invalidate();};
 $('slow').onchange=e=>{speed=e.target.checked?.4:1;};
 $('replay').onclick=()=>{nav.replay();resetFold();angle=0;$('angle').value=0;$('tools-close').click();rememberHash(nav.route);invalidate();};
-hoeren(window,adresse.ereignis,()=>go(adresse.lesen(),false));
+if(adresse.ereignis)hoeren(window,adresse.ereignis,()=>go(adresse.lesen(),false));
 hoeren(window,'resize',()=>{world?.resize();syncRotate();uiKey='';invalidate();});
 hoeren(window,'keydown',e=>{
  if(drawer.open||e.target.closest('input,textarea,select,form'))return;
@@ -991,8 +1016,43 @@ try{
  world=createWorld($('stage'),$('reader-layer'),invalidate);
  world.display('hero');begleiterAufstellen();
  if(nav.route.section==='suche')nav.route.index=clamp(nav.route.index,0,searchCount(nav.route)-1);
- world.canvas.addEventListener('pointerdown',e=>{pointerStart={x:e.clientX,y:e.clientY};});
+ world.canvas.addEventListener('pointerdown',e=>{
+  pointerStart={x:e.clientX,y:e.clientY};
+  // B6 — im Studio faengt hier eine Geste an, kein Blaettern. Nur wenn die Buehne
+  // wirklich aufgeschlagen ist (fold>.9), sonst zieht man an einem halb gefalteten Blatt.
+  if(!bearbeiten||nav.status!=='ready'||drawer.open||reading(nav.route)||fold<=.9)return;
+  const nr=world.stueckAn(e.clientX,e.clientY);
+  if(nr<0)return;
+  state.gewaehlt=nr;ziehtGerade=nr;gezogen=false;
+  try{world.canvas.setPointerCapture(e.pointerId);}catch(_){}
+  auf.gewaehlt&&auf.gewaehlt(nr,buehneJetzt());
+ });
+ world.canvas.addEventListener('pointermove',e=>{
+  if(ziehtGerade<0)return;
+  const punkt=world.buehnePunkt(e.clientX,e.clientY);
+  if(!punkt)return;                      // neben die Buehne gezogen: nichts tut sich
+  e.preventDefault();
+  // Die Klemme steckt in nachDemZiehen/klemmeStueck, nicht hier. Sie HAELT, sie
+  // federt nicht zurueck: wer dagegen zieht, dessen Stueck bleibt stehen.
+  const entwurf=nachDemZiehen(buehneJetzt()||{stuecke:[]},ziehtGerade,punkt);
+  state.buehne=entwurf;gezogen=true;
+  const s=entwurf.stuecke[ziehtGerade];
+  if(s)world.stueckSetzen(ziehtGerade,{x:s.x,z:s.z});
+ });
+ const gesteEnde=e=>{
+  if(ziehtGerade<0)return;
+  const nr=ziehtGerade;ziehtGerade=-1;pointerStart=null;
+  try{world.canvas.releasePointerCapture(e.pointerId);}catch(_){}
+  // AM ENDE DER GESTE, nicht in ihrem Verlauf: sonst schriebe jede Zeigerbewegung
+  // eine Zeile in die Datenbank. Und nur, wenn wirklich gezogen wurde — ein blosses
+  // Antippen waehlt aus, es aendert nichts.
+  if(gezogen&&state.buehne)auf.gestellt&&auf.gestellt({buehne:state.buehne,stueck:nr});
+  gezogen=false;
+ };
+ world.canvas.addEventListener('pointerup',gesteEnde);
+ world.canvas.addEventListener('pointercancel',gesteEnde);
  world.canvas.addEventListener('pointerup',e=>{
+  if(bearbeiten)return;                  // im Studio blaettert der Finger nicht
   if(!pointerStart||nav.status!=='ready'||drawer.open||reading(nav.route))return;
   const dx=e.clientX-pointerStart.x,dy=e.clientY-pointerStart.y;pointerStart=null;
   if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){step(dx<0?1:-1);return;}
@@ -1014,6 +1074,50 @@ try{
 kontoLaden();
 return {
  go,route:()=>nav.route,state,refresh:readRefresh,quelle,kontoLaden,
+
+ /* ——— Was nur der Bearbeiten-Betrieb braucht (B7, B8) ———
+    Die Bedienelemente selbst liegen in React (StudioHeft.tsx), nicht im Geruest: das
+    Geruest gehoert BEIDEN Huellen, und ein Schieber, den das oeffentliche Heft mitlaedt
+    und nie zeigt, waere genau die Art Leiche, die dieses Projekt ausmistet. Hier steht
+    nur der Griff, an dem React zieht. */
+
+ /** Die Werke der aufgeschlagenen Buehne, so wie die Oberflaeche sie braucht. */
+ buehnenWerke(){
+  const b=buehneJetzt();
+  return (b?.stuecke||[]).map((st,nr)=>{
+   const prod=products[st.werk_id]||null;
+   return {nr,werk_id:st.werk_id,name:prod?.name||st.werk_id,
+    hoehe:st.hoehe_m||prod?.stage?.h||2.6,
+    // B8: die Bedingung ist NICHT „ohne Freisteller" — drei von vier Werken haben
+    // einen, nur aus dem Beispielvorrat. Die Rechnung steht in buehne.mjs.
+    geliehen:geliehenerAufsteller(prod)};
+  });
+ },
+ /** B7 — der Hoehenschieber. Geklemmt in buehne.mjs, nicht in der Oberflaeche. */
+ hoeheSetzen(nr,meter){
+  const b=buehneJetzt();if(!b)return null;
+  const stuecke=(b.stuecke||[]).map((st,i)=>i===nr?mitHoehe(st,meter):st);
+  if(!stuecke[nr])return null;
+  state.buehne={...b,stuecke,eigenhaendig:true};
+  world?.stueckSetzen(nr,{hoehe:stuecke[nr].hoehe_m});
+  return state.buehne;
+ },
+ /** Am Ende der Geste melden — der Schieber ruft das bei `change`, nicht bei `input`. */
+ stellenFertig(nr){
+  if(state.buehne)auf.gestellt&&auf.gestellt({buehne:state.buehne,stueck:nr});
+ },
+ /** B8 — der frische Aufsteller ist da; die Buehne zeigt ihn ohne Neuladen. */
+ async aufstellerTauschen(werkId,cutoutUrl,ratio){
+  const prod=products[werkId];if(!prod||!cutoutUrl)return false;
+  prod.dna=prod.dna||{};prod.dna.heft={...(prod.dna.heft||{}),cutout_url:cutoutUrl,seitenverhaeltnis:ratio};
+  prod.cutout=cutoutUrl;
+  cutouts.delete(werkId);
+  await prepareCutouts([prod]);
+  displayKey='';uiKey='';readRefresh();invalidate();
+  return true;
+ },
+ HOEHE_SPANNE:HOEHE,
+
  // Nach bezahlter Kasse: die Stücke dieses Hauses aus der Tasche nehmen. Muss hier stehen —
  // store.mjs schreibt nur den Zustand weg und kennt weder Fenster noch die Zahl im Kopf.
  tascheLeeren(haus){state.cart=haus?state.cart.filter(r=>!products[r.id]||products[r.id].house!==haus):[];updateCart();readRefresh();

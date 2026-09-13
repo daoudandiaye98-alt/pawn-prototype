@@ -37,13 +37,13 @@ export function markRoomUsedOncePerSession(designerId: string, roomKey: string):
 }
 
 const ROOM_KEYS: Array<{ prefix: string; key: string }> = [
-  { prefix: "/studio/produkte", key: "produkte" },
-  { prefix: "/studio/kampagnen", key: "inszenieren" },
-  { prefix: "/studio/mediathek", key: "mediathek" },
-  { prefix: "/studio/videothek", key: "videothek" },
-  { prefix: "/studio/hausseite", key: "hausseite" },
+  { prefix: "/studio/werke", key: "produkte" },
+  { prefix: "/studio/clips", key: "inszenieren" },
+  { prefix: "/studio/werke/bilder", key: "mediathek" },
+  { prefix: "/studio/clips/fertig", key: "videothek" },
+  { prefix: "/studio/doppelseite", key: "hausseite" },
   { prefix: "/studio/dna", key: "werkbuch" },
-  { prefix: "/studio/brand", key: "brand" },
+  { prefix: "/studio/doppelseite/stil", key: "brand" },
   { prefix: "/studio/content-begleiter", key: "content_begleiter" },
   { prefix: "/studio/automatik", key: "automatik" },
   { prefix: "/studio/empfehlungen", key: "empfehlungen" },

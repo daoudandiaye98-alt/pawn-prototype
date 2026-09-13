@@ -3,7 +3,7 @@
 // echte Pfade für pawn.vision (/mode, /haus/drape/2). Beide Richtungen stehen hier —
 // App.tsx, routen.js und vercel.json des echten Projekts müssen dieselben Pfade kennen.
 import {routeHash,parseRoute} from './model.mjs';
-import {sections,counts,houses,products} from './data.mjs';
+import {sections,counts,houses,products,seitenNr} from './data.mjs';
 
 const ABFRAGE=['q','world','house','max','available','sort'];
 // Sektion → Pfadsegment. Reihenfolge ist zugleich die Reihenfolge im Heft.
@@ -37,7 +37,7 @@ export function routeAusPfad(pfad){
  const params=new URLSearchParams(query),extra={};for(const k of ABFRAGE){const v=params.get(k);if(v)extra[k]=v.slice(0,240);}
  const [kopf,a,b]=teile;
  if(!kopf)return {section:'entdecken',index:0};
- if(kopf==='ausgewaehlt')return {section:'entdecken',index:1};
+ if(kopf==='ausgewaehlt')return {section:'entdecken',index:seitenNr('entdecken','edit')};
  if(kopf==='tasche')return {section:'entdecken',index:0,tasche:true};
  if(kopf==='werk'&&a){const p=Object.values(products).find(x=>x.slug===a||x.id===a);if(p)return {section:p.world,index:Math.max(0,sections[p.world].indexOf(p.house)),werk:p.id};}
  if(kopf==='haus'&&a&&houses[a])return {section:'haus',slug:a,index:Math.min(2,Math.max(0,(Number(b)||1)-1))};
@@ -57,8 +57,23 @@ export function alleAdressen(){
 // Hash-Schreibweise der Vorschau (bleibt Standard im Prototyp)
 export const hashAusRoute=routeHash;
 export const routeAusHash=hash=>parseRoute(hash,counts,houses);
-/** Adressadapter: 'hash' für die Vorschau, 'pfad' im echten Projekt (History API, Basis-Präfix möglich). */
+/**
+ * Adressadapter: 'hash' für die Vorschau, 'pfad' im echten Projekt (History API,
+ * Basis-Präfix möglich), 'keine' für eine eingebettete Bühne ohne Adressführung.
+ *
+ * WARUM 'keine' DAZUKOMMT. `StudioHeft.tsx` übergab `adresse:"keine"` — ein Wert,
+ * den es nicht gab. Alles, was nicht 'pfad' ist, fiel auf den Hash-Adapter: das
+ * Studio hätte beim Blättern `location.hash` der Studio-Seite umgeschrieben und
+ * die React-Adresse mit `#/mode/1` verschmutzt. 'keine' liest eine feste Route,
+ * schreibt nie und hat kein Ereignis — der Einbettende führt die Adresse selbst.
+ */
 export function adressen(art='hash',basis=''){
+ if(art==='keine')return {
+  lesen:()=>({section:'mode',index:0}),
+  schreiben:()=>{},
+  gleich:()=>true,
+  ereignis:null
+ };
  if(art==='pfad')return {
   lesen:()=>routeAusPfad(location.pathname.replace(basis,'')+location.search),
   schreiben:(route,ersetzen=false)=>{const p=basis+pfadAusRoute(route);if(location.pathname+location.search!==p)history[ersetzen?'replaceState':'pushState'](null,'',p);},

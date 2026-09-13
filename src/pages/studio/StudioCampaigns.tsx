@@ -3,6 +3,7 @@ import { StudioShell } from "@/components/pawn/StudioShell";
 // Teil O — das Beispielbild des Produktbild-Versprechens, lokal als WebP.
 import beispielProduktbild from "@/assets/teil-o/beispiel-produktbild.webp";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+import { CLIPS_TABS } from "@/features/studio/flaechen";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { HowItWorks } from "@/components/pawn/HowItWorks";
@@ -11,6 +12,7 @@ import { usePlanQuota, formatQuota, type Plan } from "@/features/campaign/quota"
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
+import { Link } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Check, MessageSquare, X } from "lucide-react";
@@ -138,17 +140,14 @@ export default function StudioCampaigns() {
 
   return (
     <StudioShell title={t("studioShell.nav.clips")} eyebrow={t("studio.campaigns.eyebrow")}>
-      <FlaechenTabs tabs={[
-        { label: t("studio.tabs.neu"), to: "/studio/clips" },
-        { label: t("studio.tabs.fertig"), to: "/studio/clips/fertig" },
-      ]} />
+      <FlaechenTabs tabs={CLIPS_TABS.map((f) => ({ label: t(f.labelKey), to: f.to }))} />
       {/* Teil O — das erste Versprechen der Fläche: professionelle Produktbilder
           aus Handyfotos. Die bestehende Produktbild-Funktion ist die erste
           Handlung; Videos folgen darunter als zweiter Abschnitt. */}
       <section className="al-karte mb-8 p-6 sm:p-8">
         <h2 className="max-w-2xl font-serif text-2xl leading-tight md:text-3xl">{t("studio.clips.versprechen")}</h2>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <a href="/studio/clips/neu" className="al-knopf-primaer">{t("studio.clips.produktbild.cta")}</a>
+          <Link to="/studio/clips/neu" className="al-knopf-primaer">{t("studio.clips.produktbild.cta")}</Link>
           <button
             type="button"
             onClick={() => setBeispielOffen((v) => !v)}
@@ -193,9 +192,9 @@ export default function StudioCampaigns() {
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t("studio.campaigns.intro")}
         </p>
-        <a href="/studio/kampagnen/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:opacity-90">
+        <Link to="/studio/clips/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.68rem] uppercase tracking-[0.28em] text-background hover:opacity-90">
           + {t("studio.campaigns.newCampaign")}
-        </a>
+        </Link>
       </div>
 
       {editionCards.length > 0 && (

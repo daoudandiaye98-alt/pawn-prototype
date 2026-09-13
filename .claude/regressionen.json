@@ -182,7 +182,15 @@
           "src"
         ],
         "adressen": [
-          "/auth"
+          "/auth",
+          "/studio/aufbau",
+          "/studio/produkte",
+          "/studio/mediathek",
+          "/studio/hausseite",
+          "/studio/kampagnen",
+          "/studio/videothek",
+          "/studio/brand",
+          "/studio/heft"
         ],
         "ausnahmen": [
           "src/App.tsx",
@@ -191,7 +199,7 @@
           "src/features/auth/tueren.ts",
           "src/__tests__/zugang.spec.ts"
         ],
-        "begruendung": "App.tsx deklariert die Route, Auth.tsx IST der Wegweiser. tueren.ts nennt /auth in der Zeile, die es ueberhaupt erst zum Wegweiser macht (sichererPfad weist /auth ab, sonst leitete die Seite auf sich selbst zurueck), und zugang.spec.ts prueft genau diese Zeile; heft03-adressen.spec prueft, dass /auth keine Heft-Adresse ist. Alle fuenf sind rechtmaessig — eine Kontrolle, die an rechtmaessigem Code rot wird, lehrt nur, Rot zu uebersehen. Gesucht wird nur die exakte Zeichenkette in Anfuehrungszeichen: /auth/v1/health, das notbetrieb.mjs zum Anklopfen braucht, trifft die Pruefung nicht."
+        "begruendung": "App.tsx deklariert die Route, Auth.tsx IST der Wegweiser. tueren.ts nennt /auth in der Zeile, die es ueberhaupt erst zum Wegweiser macht (sichererPfad weist /auth ab, sonst leitete die Seite auf sich selbst zurueck), und zugang.spec.ts prueft genau diese Zeile; heft03-adressen.spec prueft, dass /auth keine Heft-Adresse ist. Alle fuenf sind rechtmaessig — eine Kontrolle, die an rechtmaessigem Code rot wird, lehrt nur, Rot zu uebersehen. Gesucht wird nur die exakte Zeichenkette in Anfuehrungszeichen: /auth/v1/health, das notbetrieb.mjs zum Anklopfen braucht, trifft die Pruefung nicht. · AM 13.09. UM ACHT STUDIO-ADRESSEN ERWEITERT. Sie leiten seit dem Umbau auf werke/clips/doppelseite weiter, standen aber noch an 18 Stellen im lebenden Code — rund 50 Fundstellen. Zwei davon waren nicht nur Umwege, sondern tot: PawnDeck.tsx benutzt die Adressen als PRAEFIX zur Routenerkennung, und ein Praefix auf eine Adresse, die es nicht mehr gibt, trifft nie. /studio/heft kommt dazu, weil die Doppelseite jetzt unter /studio/doppelseite selbst liegt und /studio/heft nur noch Wegweiser ist. App.tsx bleibt ausgenommen: dort stehen die Weiterleitungen selbst."
       }
     },
     {
@@ -248,6 +256,18 @@
       "pruefung": "ueberspringenNichtUnterDerSchrift",
       "params": {
         "stil": "src/heft03/style.css"
+      }
+    },
+    {
+      "id": "Z20",
+      "zusage": "Der Menuepunkt \"Auftritt\" zeigt die Doppelseite — nie einen leeren Rahmen.",
+      "beleg": "Von Daouda auf der laufenden Seite gefunden: \"die bearbeitung der doppelseiten im auftritt menuepunkt des designer studios zeigt aktuell noch nicht an\". DREI unabhaengige Ursachen, keine davon schlug irgendwo an. (1) StudioHeft.tsx:181 holte studioQuelle aus quelle.mjs — den Export gab es nicht, die Seite brach mit fehlt=\"studioQuelle\" ab, bevor das Heft startete. (2) Dort stand ein LEERES div; app.js sucht #mobile-reader, #drawer-content, #hotspots u.a. per getElementById und fand keinen. (3) Elf i18n-Schluessel studio.heft.* fehlten in BEIDEN Woerterbuechern; t() faellt auf den Schluessel zurueck, also stand woertlich \"studio.heft.nochNicht\" auf dem Bildschirm. Dazu die Messung, an der alles haengt: das Heft-CSS setzt 15x position:fixed, darunter #stage{position:fixed;inset:0}. In Chromium, Kasten 390x520 mit dem echten style.css gemessen — ohne Einsperrung ist #stage 1440x900 und deckt die Seite zu, mit contain:paint 386x516. transform:scale(1) sperrt auch ein, DARF ABER NICHT: es eroeffnet einen 3D-Zeichenraum und zerstoert die Perspektive des CSS3DRenderer. · ROT VORGEFUEHRT am 2026-09-13, gegen ALLE VIER Ursachen einzeln: (a) export von studioQuelle entfernt -> 19/20; (b) studio.heft.nochNicht aus beiden Woerterbuechern geloescht -> 19/20; (c) KASTEN_STIL aus dem Code genommen -> 19/20; (d) GERUEST nicht mehr eingesetzt -> 19/20. Zurueck: 20/20. UND DER BEINAHE-FEHLER, weil er die lehrreichere Haelfte ist: die erste Fassung dieser Kontrolle blieb bei (c) GRUEN. KASTEN_STIL stand noch im Kommentar darueber, und das Muster hatte die Prosa getroffen statt den Code — derselbe Fehler wie bei Z18, wo die Herkunftsnotiz aus #195 das Wort \"Wand\" trug. Die Kontrolle streift jetzt Kommentare ab, bevor sie prueft. Eine Pruefung, die Prosa liest, prueft nichts.",
+      "pruefung": "auftrittZeigtDieSeite",
+      "params": {
+        "huelle": "src/pages/studio/StudioHeft.tsx",
+        "quelle": "src/heft03/quelle.mjs",
+        "app": "src/heft03/app.js",
+        "sprachen": "src/lib/i18n.tsx"
       }
     }
   ]

@@ -63,6 +63,10 @@ export function readView(route,state){
  if(route.section==='haus'){
   const h=houses[route.slug],title=state.presentations?.[h.slug]?.title?esc(state.presentations[h.slug].title):h.title;
   const stuecke=houseProducts(h.slug,state),erstes=products[stuecke[0]];
+  // Die zwei data-page-Zahlen in diesem Haus-Renderer bleiben Zahlen, und das ist
+  // kein Versehen: die Doppelseiten eines Hauses entstehen aus SEINEN Bausteinen,
+  // sie stehen nicht in `sections` und haben deshalb keine Namen. „1" heisst hier
+  // schlicht „die naechste Seite dieses Hauses". Ueberall sonst im Heft steht ein Name.
   if(i===0)return page(tag('HAUS '+h.number+' / '+h.location.toUpperCase())+windowDisplay(h,state),tag('EINE EIGENE HANDSCHRIFT')+'<h1>'+h.name+'</h1><h2 class="house-line">'+title+'</h2><p class="body-copy">'+h.intro+'</p><p class="haus-ort">'+h.location+' · '+labels[h.world]+'</p>'+zug('DEIN ZUG','Das Haus kennenlernen','Atelier, Haltung, ein Zitat.','data-page="1"'),'house-opening',h.world);
   if(i===1){
    const texte=h.blocks?houseBlocks(h.slug,state).filter(b=>b.on&&['editorial_text','zitat'].includes(b.kind)):[];
@@ -113,7 +117,7 @@ export function readView(route,state){
    tag('PAWN / UNSERE VISION')+'<h1>Culture<br>moves<br><em>fast.</em></h1>'
    +'<p class="body-copy lead">Jeden Tag entsteht mehr. Jeden Tag verschwindet mehr.</p>'
    +'<p class="bild-marke">Von tausend Arbeiten steht eine im Licht. PAWN sucht die anderen.</p>'
-   +zug('DEIN ZUG','Was wir sehen','Und was du hier findest.','data-page="1"'),{welt:'vision'});
+   +zug('DEIN ZUG','Was wir sehen','Und was du hier findest.','data-page="belief"'),{welt:'vision'});
   if(i===1)return page(
    tag('WAS WIR SEHEN')+'<img class="blatt-bild lesebild" src="'+asset('mensch-trio.webp')+'" alt="Drei junge Kreative in Kobalt, Orange und Oxblood">'
    +'<div class="lesetext">'
@@ -184,8 +188,8 @@ export function passformAssistent(p,state){
    ?'<p class="passform-satz"><strong>Deine Größe: '+groesse+'</strong>'+(begruendung?' — '+esc(begruendung):'')+'.</p><button class="solid" type="button" data-groesse="'+groesse+'">Größe '+groesse+' übernehmen</button>'
      +(knapp.length?'<p class="small-note">'+knapp.map(g=>esc(g.groesse)+': '+esc(g.grund)).join(' · ')+'</p>':'')
    :f.moeglich
-    ?'<p class="passform-satz">Keine Größe liegt in deinem Spielraum. '+esc((f.groessen.find(g=>g.stufe!=='unbekannt')||{}).grund||'')+'</p><button class="text-link" type="button" data-goto="dna:6">Maße prüfen <span aria-hidden="true">↗</span></button>'
-    :'<p class="passform-satz">Hinterleg deine Maße einmal — dann steht hier deine Größe.</p><button class="solid" type="button" data-goto="dna:6">Maße hinterlegen</button>';
+    ?'<p class="passform-satz">Keine Größe liegt in deinem Spielraum. '+esc((f.groessen.find(g=>g.stufe!=='unbekannt')||{}).grund||'')+'</p><button class="text-link" type="button" data-goto="dna:massband">Maße prüfen <span aria-hidden="true">↗</span></button>'
+    :'<p class="passform-satz">Hinterleg deine Maße einmal — dann steht hier deine Größe.</p><button class="solid" type="button" data-goto="dna:massband">Maße hinterlegen</button>';
  }else if(p.world==='mode'){
   /*
    * Mode OHNE Groessentabelle — und das ist kein Randfall, sondern die Anfertigung.
@@ -203,11 +207,11 @@ export function passformAssistent(p,state){
    * 12.09.2026 auf ein Haus, das es nicht gibt, und hat dort die Heft-Huelle gemessen
    * statt einer Werkseite. Die Augen waren offen und zeigten auf eine Wand.
    */
-  inhalt+='<p class="passform-satz">'+(m.chest_cm?'Deine Maße liegen vor — bei einer Anfertigung reisen sie mit deiner Anfrage.':'Dieses Stück entsteht auf Maß. Hinterleg deine Maße einmal — dann gehen sie mit deiner Anfrage.')+'</p>'+(m.chest_cm?'':'<button class="solid" type="button" data-goto="dna:6">Maße hinterlegen</button>');
+  inhalt+='<p class="passform-satz">'+(m.chest_cm?'Deine Maße liegen vor — bei einer Anfertigung reisen sie mit deiner Anfrage.':'Dieses Stück entsteht auf Maß. Hinterleg deine Maße einmal — dann gehen sie mit deiner Anfrage.')+'</p>'+(m.chest_cm?'':'<button class="solid" type="button" data-goto="dna:massband">Maße hinterlegen</button>');
  }else if(p.world==='interior'){
-  inhalt+='<p class="passform-satz">'+(state.foto?'Dein Raumfoto liegt vor. Im verbundenen System prüft PAWN hier Maß und Licht.':'Lade ein Foto von deinem Raum hoch — PAWN prüft, ob das Stück hineinpasst.')+'</p>'+(state.foto?'':'<button class="solid" type="button" data-goto="dna:4">Raumfoto hinzufügen</button>');
+  inhalt+='<p class="passform-satz">'+(state.foto?'Dein Raumfoto liegt vor. Im verbundenen System prüft PAWN hier Maß und Licht.':'Lade ein Foto von deinem Raum hoch — PAWN prüft, ob das Stück hineinpasst.')+'</p>'+(state.foto?'':'<button class="solid" type="button" data-goto="dna:foto">Raumfoto hinzufügen</button>');
  }else{
-  inhalt+='<p class="passform-satz">'+(st.form?'Dein Format: '+esc(st.form)+'.':'Wähle dein Format in der DNA — dann sagt PAWN, ob die Arbeit an deine Wand passt.')+'</p>'+(st.form?'':'<button class="solid" type="button" data-goto="dna:3">Format wählen</button>');
+  inhalt+='<p class="passform-satz">'+(st.form?'Dein Format: '+esc(st.form)+'.':'Wähle dein Format in der DNA — dann sagt PAWN, ob die Arbeit an deine Wand passt.')+'</p>'+(st.form?'':'<button class="solid" type="button" data-goto="dna:form">Format wählen</button>');
  }
  const urteilHtml=u?'<p class="passform-urteil '+(u.ja===true?'ja':u.ja===false?'nein':'')+'"><small>STEHT MIR DAS?</small>'+esc(u.text)+'</p>':'';
  return '<section class="passform"><p class="eyebrow">PASSFORM-ASSISTENT</p>'+inhalt+urteilHtml+(u&&u.ja!=null?'':'<button class="text-link" type="button" data-style-check="'+p.id+'">Meine Linie prüfen <span aria-hidden="true">↗</span></button>')+'</section>';
