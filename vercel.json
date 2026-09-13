@@ -218,6 +218,18 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/deine-dna/avatar/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/raeume/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/anproben/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/frag-pawn/?$",
       "dest": "/index.html"
     },

@@ -208,10 +208,11 @@ Deno.serve(async (req) => {
     if (!werkBild) return json({ ok: false, grund: "werk_ohne_bild", satz: "Von diesem Stück gibt es noch kein Bild." }, 200);
 
     // Bild der Kundin
-    const erwarteteArt = aktion === "anprobe" ? "ganzkoerper" : aktion === "raum" ? "raum" : "wand";
+    // D1 legt Ganzkörperbilder als art='avatar' an; ältere Zeilen heißen 'ganzkoerper'.
+    const erwarteteArten = aktion === "anprobe" ? ["ganzkoerper", "avatar"] : aktion === "raum" ? ["raum"] : ["wand"];
     let bildQuery = admin.from("kunden_bilder")
       .select("id, user_id, art, quelle_path, basis_path, masse, aktiv")
-      .eq("user_id", user_id).eq("aktiv", true).eq("art", erwarteteArt);
+      .eq("user_id", user_id).eq("aktiv", true).in("art", erwarteteArten);
     if (body.bild_id) bildQuery = bildQuery.eq("id", body.bild_id);
     const { data: b } = await bildQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
     const bild = b as { id: string; art: string; quelle_path: string; basis_path: string | null; masse: Record<string, unknown> | null } | null;
