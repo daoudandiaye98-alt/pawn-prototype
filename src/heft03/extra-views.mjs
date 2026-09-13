@@ -5,7 +5,7 @@ import {esc,money,productCard,zug,ausschnitt,spreadVoll} from './views.mjs';
 import {searchProducts,housePresentation} from './presentation.mjs';
 import {sections} from './data.mjs';
 import {belegeFigur} from './figuren.mjs';
-import {welten,richtungen,formen,fotoStufe,fuerWen,befund,urteil,bildVon} from './beratung.mjs';
+import {welten,richtungen,formen,anprobeStufe,fuerWen,befund,urteil,bildVon} from './beratung.mjs';
 const tag=t=>'<p class="eyebrow">'+t+'</p>';
 const button=(t,a,c='text-link')=>'<button class="'+c+'" '+a+'>'+t+' <span aria-hidden="true">↗</span></button>';
 const page=(l,r,c='',welt='')=>'<div class="spread-grid '+c+'"'+(welt?' data-welt="'+welt+'"':'')+'><section class="paper-page left-paper">'+l+'</section><section class="paper-page right-paper">'+r+'</section></div>';
@@ -340,7 +340,7 @@ export function extendedView(route,state){
    'gespraech',welt);
  }
  if(route.section==='dna'){
-  // Seiten heißen, nicht zählen: intro · welt · richtung · form · linie · foto · massband · privacy
+  // Seiten heißen, nicht zählen: intro · anprobe · welt · richtung · form · linie · archetyp · massband · privacy
   const NAMEN=sections.dna,name=NAMEN[i]||'intro',nr=n=>NAMEN.indexOf(n);
   const st=state.stil||{},welt=st.welt||'mode',weltName=welten.find(w=>w.wert===welt).name;
   const fragen={mode:'Steht mir das?',interior:'Passt das in meinen Raum?',kunst:'Passt das an meine Wand?'}[welt];
@@ -354,7 +354,19 @@ export function extendedView(route,state){
    +'<p class="body-copy lead">Deine Linie entsteht von selbst — aus dem, was du ansiehst, dir merkst und kaufst.</p>'
    +'<ol class="schritte knapp hell"><li><span>01</span><strong>Ansehen</strong></li><li><span>02</span><strong>Merken</strong></li><li><span>03</span><strong>Kaufen</strong></li></ol>'
    +'<p class="bild-marke">'+(state.saved.length?state.saved.length+(state.saved.length===1?' gemerktes Stück liegt':' gemerkte Stücke liegen')+' schon vor.':'Du musst nichts ausfüllen. Willst du schneller sein: vier Bilder, zwei Minuten.')+'</p>'
-   +zug('DEIN ZUG','Stilberatung starten','Vier Bilder. Zwei Minuten. Deine Linie.','data-page="'+nr('welt')+'"'),{welt:'dna',karte:true});
+   /*
+    * Daoudas Mangel woertlich: „aktuell fuehrt nur ein menuepunkt der ersten
+    * doppelseite zu dem Quiz, allerdings sollte es dort mehr content geben zum
+    * auswaehlen." Hier standen genau ein Knopf und ein Ziel. Jetzt stehen die
+    * vier Wege der DNA-Sektion nebeneinander — jeder benannt, keiner gezaehlt.
+    */
+   +'<div class="dna-features">'
+   +link('01','Die Anprobe',(anprobeStufe[(state.stil||{}).welt||'mode']||anprobeStufe.mode).satz,'data-page="'+nr('anprobe')+'"')
+   +link('02','Die Stilberatung','Vier Bilder. Zwei Minuten. Deine Linie.','data-page="'+nr('welt')+'"')
+   +link('03','Dein Archetyp','Wen PAWN in dir liest — und woran er es liest.','data-page="'+nr('archetyp')+'"')
+   +link('04','Deine Maße','Damit jedes Stück gegen deine Maße geprüft wird.','data-page="'+nr('massband')+'"')
+   +'</div>'
+   +zug('DEIN ZUG','Anprobe starten','Ein Bild. Dann trag es, bevor du es bestellst.','data-page="'+nr('anprobe')+'"'),{welt:'dna',karte:true});
   if(name==='welt')return page(
    schritt(1)+'<h1>Tipp deine<br><em>Welt an.</em></h1>'+pawnSagt('Tipp eine Welt an. Die Seite blättert von selbst weiter.')
    +'<div class="bauer-buehne">'+pawnGlyph('gross')+'</div><p class="tafel-legende">Du kannst später jederzeit wechseln.</p>',
@@ -372,7 +384,7 @@ export function extendedView(route,state){
     tag(esc(f.titel).toUpperCase()+' / VIER BILDER')+'<div class="bildwahl-reihe">'+f.werte.map(e=>kachel('form',e,nr('linie'))).join('')+'</div>','','dna');
   }
   if(name==='linie'){
-   const b=befund(st),auswahl=Object.values(products).filter(p=>p.world===welt).slice(0,3),gewaehlt=state.fitProduct?products[state.fitProduct]:null,u=urteil(st,gewaehlt);
+   const b=befund(st),auswahl=Object.values(products).filter(p=>p.world===welt).slice(0,3),gewaehlt=state.fitProduct?products[state.fitProduct]:null,u=urteil(st,gewaehlt,state.foto_befund);
    return page(
     tag('DEINE LINIE')+'<h1>'+esc(b.linie).replace(' & ','<br><em>&amp; ')+(b.linie.includes(' & ')?'</em>':'')+'</h1>'
     +(richtung?'<div class="recap-kachel gross"><img src="'+bildVon(richtung.bild)+'" alt=""><span><small>DEINE RICHTUNG</small><strong>'+esc(richtung.wert)+'</strong></span></div>':weltBild(260))
@@ -389,15 +401,54 @@ export function extendedView(route,state){
     +'<div class="insight'+(u?(u.ja===true?' ja':u.ja===false?' nein':''):'')+'" aria-live="polite"><small>'+esc(gewaehlt?gewaehlt.name.toUpperCase():'DEIN URTEIL')+'</small><p>'+esc(u?u.text:'Noch kein Stück gewählt.')+'</p></div>'
     +zug('DEIN ZUG','Ausgewählt für dich',b.fertig?'Drei Stücke, nach deiner Linie sortiert.':'Was PAWN dir jetzt schon zeigen kann.','data-goto="entdecken:edit"'),'','dna');
   }
-  if(name==='foto'){
-   const fo=fotoStufe[welt];
-   return spreadVoll(asset(fo.bild),fo.alt,
-    tag('ZUGABE / SCHÄRFER MIT FOTO')+'<h1>'+esc(fo.titel).replace(' ','<br><em>')+'</em></h1>'
-    +pawnSagt('Ein Foto reicht. Es bleibt auf deinem Gerät — ich lese nur, was dir steht: '+fo.liest.join(', ')+'.')
-    +'<ul class="liest">'+fo.liest.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>'
-    +(state.foto?'<p class="foto-liegt">Foto liegt vor: '+esc(state.foto)+'</p>':'')
-    +'<form data-foto-form class="aktionsreihe"><label class="reference-upload'+(state.foto?' hat-datei':'')+'"><i aria-hidden="true">'+(state.foto?'✓':'+')+'</i>'+(state.foto?'Anderes Foto':esc(fo.knopf))+'<input type="file" name="foto" accept="image/*" data-foto></label></form>'
-    +zug('DEIN ZUG',state.foto?'Weiter zu deinen Maßen':'Ohne Foto weiter','Zugabe zwei: Maße'+(welt==='mode'?'':welt==='interior'?' deines Raums':' deiner Wand')+'.','data-page="'+nr('massband')+'"'),{welt:'dna',rechts:false});
+  if(name==='anprobe'){
+   /*
+    * DIE ANPROBE — aus der frueheren `foto`-Seite, und sie steht jetzt VORNE.
+    *
+    * Daoudas Auftrag: die „steht mir das"-Sektion zuerst, inspiriert von
+    * trymira.style. Bild hoch, Aufsteller, anprobieren.
+    *
+    * Gebaut war davon alles ausser dem Anschluss: die Function `anprobe` ist
+    * ausgeliefert und kann sechs Aktionen, das Heft rief keine einzige davon —
+    * alle vier Chips endeten in einem Platzhalter-Toast.
+    *
+    * Das Foto arbeitet hier DOPPELT: es traegt die Anprobe UND den Farbbefund.
+    * Bis heute passierte mit dem Upload nichts ausser dem Dateinamen.
+    */
+   const an=anprobeStufe[welt]||anprobeStufe.mode,a=state.anprobe||{};
+   const auswahl=Object.values(products).filter(p=>p.world===welt&&p.image).slice(0,3);
+   const gewaehlt=a.stueck?products[a.stueck]:null;
+   const links=a.url
+    ?'<figure class="anprobe-ergebnis"><img src="'+esc(a.url)+'" alt="'+esc(an.ergebnis)+'"><figcaption>'+esc(gewaehlt?gewaehlt.name+' — '+an.ergebnis:an.ergebnis)+'</figcaption></figure>'
+     +'<div class="anprobe-urteil"><p class="tafel-legende">Passt es dir?</p><div class="wahlreihe">'
+     +'<button class="wahl'+(a.bewertung==='passt'?' an':'')+'" data-anprobe-bewerten="passt" aria-pressed="'+(a.bewertung==='passt'?'true':'false')+'">Passt</button>'
+     +'<button class="wahl'+(a.bewertung==='nicht'?' an':'')+'" data-anprobe-bewerten="nicht" aria-pressed="'+(a.bewertung==='nicht'?'true':'false')+'">Passt nicht</button>'
+     +'</div></div>'
+    :a.laeuft
+     ?'<div class="anprobe-wartet" aria-live="polite"><span class="anprobe-puls" aria-hidden="true"></span><p class="tafel-legende">PAWN legt es an. Das dauert einen Moment.</p></div>'
+     :'<img class="blatt-bild welt" style="height:320px" src="'+asset(an.bild)+'" alt="'+esc(an.alt)+'">';
+   return page(
+    tag('DIE ANPROBE')+'<h1>'+esc(an.titel).replace(' ','<br><em>')+'</em></h1>'
+    +pawnSagt(an.satz)
+    +links
+    +'<ul class="liest">'+an.liest.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>',
+    tag(a.bild_id?'DEIN BILD LIEGT / TIPP EIN STÜCK AN':'SCHRITT EINS / DEIN BILD')
+    +(a.bild_id
+      ?'<p class="foto-liegt">Bild liegt vor'+(a.bildName?': '+esc(a.bildName):'')+'.</p>'
+      :'<p class="tafel-legende">'+esc(an.satz)+'</p>')
+    +'<form data-anprobe-form class="aktionsreihe"><label class="reference-upload'+(a.bild_id?' hat-datei':'')+'"><i aria-hidden="true">'+(a.bild_id?'✓':'+')+'</i>'+esc(a.bild_id?an.ersatz:an.knopf)+'<input type="file" name="bild" accept="image/*" data-anprobe-datei></label></form>'
+    +'<div class="fit-pieces'+(auswahl.length>2?' drei':'')+'">'
+    +(auswahl.length
+      ?auswahl.map(p=>'<button data-anprobe-stueck="'+esc(p.id)+'"'+(a.bild_id?'':' disabled')+' aria-pressed="'+(a.stueck===p.id?'true':'false')+'" class="'+(a.stueck===p.id?'an':'')+'"><img src="'+p.image+'" alt="'+esc(p.name)+'"><span>'+esc(p.name)+'</span></button>').join('')
+      // Ehrlicher Leerzustand statt erfundener Stuecke — die Welt kann noch leer sein.
+      :'<p class="tafel-legende">In dieser Welt liegt noch kein Stück mit Bild. Die ersten Häuser ziehen ein.</p>')
+    +'</div>'
+    // Ein Nein der Function ist ein SATZ, kein stilles Nichts: Kontingent
+    // aufgebraucht, Einwilligung fehlt, falsche Welt. Er steht hier, wo gehandelt wird.
+    +(a.satz?'<div class="insight nein" aria-live="polite"><small>PAWN</small><p>'+esc(a.satz)+'</p></div>':'')
+    +(a.fehler?'<div class="insight nein" aria-live="polite"><small>FEHLER</small><p>'+esc(a.fehler)+'</p></div>':'')
+    +zug('DEIN ZUG',a.url?'Weiter zur Stilberatung':'Ohne Anprobe weiter','Vier Bilder. Zwei Minuten. Deine Linie.','data-page="'+nr('welt')+'"'),
+    '','dna');
   }
   /*
    * C2 — Der Archetyp. Die Seite, die sagt, wen PAWN in dir liest.
@@ -509,7 +560,7 @@ export function extendedView(route,state){
    +'<div><dt>Welt</dt><dd>'+esc(weltName)+'</dd><button class="text-link" data-page="'+nr('welt')+'">ändern</button></div>'
    +'<div><dt>Richtung</dt><dd>'+esc(st.richtung||'—')+'</dd><button class="text-link" data-page="'+nr('richtung')+'">ändern</button></div>'
    +'<div><dt>Form</dt><dd>'+esc(st.form||'—')+'</dd><button class="text-link" data-page="'+nr('form')+'">ändern</button></div>'
-   +'<div><dt>Foto</dt><dd>'+(state.foto?esc(state.foto):'—')+'</dd><button class="text-link" data-page="'+nr('foto')+'">ändern</button></div>'
+   +'<div><dt>Bild</dt><dd>'+(state.foto?esc(state.foto):(state.anprobe&&state.anprobe.bildName?esc(state.anprobe.bildName):'—'))+'</dd><button class="text-link" data-page="'+nr('anprobe')+'">ändern</button></div>'
    +'<div><dt>Maße</dt><dd>'+(state.measurements?.chest_cm||state.measurements?.wand?'Hinterlegt':'—')+'</dd><button class="text-link" data-page="'+nr('massband')+'">ändern</button></div>'
    +'<div><dt>Merkzettel</dt><dd>'+state.saved.length+(state.saved.length===1?' Stück':' Stücke')+'</dd><button class="text-link" data-route="konto">ansehen</button></div>'
    +'</dl>'

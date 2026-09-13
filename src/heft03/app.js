@@ -79,7 +79,7 @@ if(gewaehlt.fehler){try{auf.fehler&&auf.fehler(Object.assign(gewaehlt.fehler,{ar
 if(heft&&!heft.demo)heftFuellen(heft);
 const $=id=>document.getElementById(id);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,archetypen:[],archetypProsa:'',archetypAbgelehnt:[],anproben:[],fitProduct:null,buehne:null,gewaehlt:-1};
+const state={saved:[],cart:[],orders:[],requests:[],style:'',consent:null,pawnNote:'',rang:'bauer',denkt:false,stil:{},frag:{},foto:'',presentations:{},profile:null,goal:'',measurements:{},message:'',reference:'',referenzDaten:'',archetyp:null,archetypen:[],archetypProsa:'',archetypAbgelehnt:[],anproben:[],anprobe:{},avatar:null,foto_befund:null,fitProduct:null,buehne:null,gewaehlt:-1};
 // Was mit Zustimmung gespeichert wurde, kommt zurück.
 {const alt=laden();if(alt&&alt.consent===true)Object.assign(state,alt,{denkt:false,message:'',reference:''});}
 if(optionen.zustimmung!==undefined&&optionen.zustimmung!==null)state.consent=!!optionen.zustimmung;
@@ -464,7 +464,7 @@ function blaseWeg(){$('begleiter-blase').classList.remove('da');}
  * `begleiterTakt()`: ein Zeitgeber, der alle paar Sekunden einen festen Satz aus
  * einer Liste im Code zog, ohne irgendetwas zu wissen.
  */
-let begleiter=null,saetzeAusDerQuelle=[],stillTimer=null,blaseWegTimer=null,letzteBlase=null,werkSeit=0,richtungen=[],verweilTimer=null,verweilTimer2=null;
+let begleiter=null,saetzeAusDerQuelle=[],stillTimer=null,blaseWegTimer=null,letzteBlase=null,letzteBlaseDaten={},werkSeit=0,richtungen=[],verweilTimer=null,verweilTimer2=null;
 
 function begleiterKontext(){
  if(drawer.open)return 'werk';
@@ -520,7 +520,10 @@ function melden(ereignis,daten={}){
  if(!begleiter)return;
  const blase=begleiter.melde(ereignis,daten,begleiterZustand(daten));
  quelle.ereignis?.('heft',ereignis,daten)?.catch?.(()=>{});
- if(blase)blaseZeigen(blase);
+ /* Die Blase selbst traegt die Daten des Ereignisses NICHT — melde() gibt nur
+    Text, Schluessel und Aktion zurueck. Der Chip „Probier es an" braucht aber
+    das Werk, um das es ging. Darum hier gemerkt, neben der Blase. */
+ if(blase){letzteBlaseDaten=daten||{};blaseZeigen(blase);}
 }
 
 /** A4 — die Blase: Text, bis zu drei Chips, ein × rechts oben. */
@@ -611,6 +614,122 @@ async function archetypBestimmen(){
   {foto:!!state.foto,bestaetigt:false}
  );
  return state.archetyp;
+}
+
+/* ————————————————————————————————————————————————————————————————
+ * DIE ANPROBE (Block D) — der Anschluss, der fehlte.
+ *
+ * Alles darunter war gebaut und AUSGELIEFERT: supabase/functions/anprobe kann
+ * sechs Aktionen, die Tabellen `kunden_bilder` und `anproben` stehen, und
+ * archetyp.mjs rechnet aus einer einzigen Anprobe schon Zuversicht.
+ * Gerufen hat es niemand — hier stand ein Platzhalter-Toast.
+ *
+ * Der Ablauf, je Welt derselbe, nur mit anderem Bild und anderer Aktion:
+ *   Bild hoch  →  (Mode: freistellen)  →  Stueck antippen  →  nachfragen  →  Urteil
+ *
+ * Gerechnet wird im Hintergrund: `starten` antwortet SOFORT mit einer
+ * anprobe_id und laesst die Maschine laufen. Darum wird nachgefragt und nicht
+ * gewartet — ein haengender Aufruf waere auf dem Telefon ein weisses Blatt.
+ * ———————————————————————————————————————————————————————————————— */
+const ANPROBE_TAKT_MS=2500,ANPROBE_VERSUCHE=48;   // rund zwei Minuten
+let anprobeTakt=null,anprobeVersuch=0;
+const anprobeSetzen=neu=>{state.anprobe={...(state.anprobe||{}),...neu};readRefresh();};
+const anprobeWelt=()=>(state.stil||{}).welt||'mode';
+function anprobeTaktAus(){if(anprobeTakt){clearTimeout(anprobeTakt);anprobeTakt=null;}anprobeVersuch=0;}
+
+/** Ein Bild der Kundin waehlen. Es traegt die Anprobe UND den Farbbefund. */
+async function anprobeBildWaehlen(datei){
+ if(!datei)return;
+ anprobeTaktAus();
+ const welt=anprobeWelt(),art=quelle.anprobe.art(welt);
+ anprobeSetzen({fehler:'',satz:'',laeuft:false,url:'',id:null,bewertung:''});
+ const a=await quelle.anprobe.bild(datei,art);
+ if(!a||!a.ok){anprobeSetzen({fehler:a?.fehler||a?.satz||'Das Bild kam nicht durch.'});return;}
+ state.foto=a.name||datei.name||'';
+ anprobeSetzen({bild_id:a.bild_id,bildName:state.foto});
+ zustimmungFragen();
+ toast('Bild liegt. Jetzt ein Stück antippen.');
+ /* Nur Mode: die Person freistellen, damit das Stueck sauber sitzt. Misslingt es,
+    geht die Anprobe TROTZDEM weiter — die Function faellt dann auf quelle_path
+    zurueck. Ein Fehler hier darf den Weg nicht zumauern. */
+ if(art==='ganzkoerper'){
+  const r=await quelle.anprobe.bereinigen(a.bild_id);
+  if(r&&r.ok){state.avatar={bild_id:a.bild_id,url:r.basis_url||''};readRefresh();}
+ }
+ /* Und derselbe Upload traegt den Farbbefund. Bis heute passierte damit NICHTS
+    ausser dem Dateinamen — darum gab farbUrteil() in der Anwendung immer null. */
+ const fb=await quelle.foto(datei,welt);
+ if(fb&&fb.befund){state.foto_befund=fb.befund;readRefresh();}
+}
+
+/** Ein Stueck antippen — das stoesst die Anprobe an. */
+async function anprobeStarten(stueckId){
+ const a=state.anprobe||{};
+ if(!a.bild_id){anprobeSetzen({fehler:'',satz:'Dazu fehlt uns noch dein Bild.'});return;}
+ anprobeTaktAus();
+ anprobeSetzen({stueck:stueckId,laeuft:true,url:'',id:null,fehler:'',satz:'',bewertung:''});
+ const antwort=await quelle.anprobe.starten({welt:anprobeWelt(),product_id:stueckId,bild_id:a.bild_id});
+ if(!antwort||!antwort.ok){
+  anprobeSetzen({laeuft:false,satz:antwort?.satz||'',fehler:antwort?.satz?'':(antwort?.fehler||antwort?.grund||'Die Anprobe kam nicht zustande.')});
+  return;
+ }
+ state.anprobe={...(state.anprobe||{}),id:antwort.anprobe_id};
+ anprobeNachfragen(antwort.anprobe_id);
+}
+
+/** Nachfragen, bis sie fertig ist. Kein Warten im Aufruf — ein Takt. */
+function anprobeNachfragen(id){
+ anprobeTakt=setTimeout(async()=>{
+  anprobeTakt=null;
+  if((state.anprobe||{}).id!==id)return;          // die Kundin hat inzwischen etwas anderes getan
+  const r=await quelle.anprobe.stand(id);
+  if(r&&r.ok&&r.status==='fertig'&&r.result_url){
+   anprobeTaktAus();
+   const werk=(state.anprobe||{}).stueck;
+   state.anproben=[...(state.anproben||[]).filter(x=>x.id!==id),{id,art:quelle.anprobe.aktion(anprobeWelt()),product_id:werk,status:'fertig'}];
+   anprobeSetzen({laeuft:false,url:r.result_url,fehler:'',satz:''});
+   /* `anprobe_fertig` steht in STARKE_EREIGNISSE (begleiter.mjs) und hatte bis
+      heute keinen Absender — jede Regel darauf war unerreichbar. */
+   melden('anprobe_fertig',{werk_id:werk||null,welt:anprobeWelt(),ms:r.dauer_ms||null});
+   archetypBestimmen().then(()=>readRefresh()).catch(()=>{});
+   return;
+  }
+  if(r&&r.ok&&r.status==='fehler'){
+   anprobeTaktAus();
+   anprobeSetzen({laeuft:false,fehler:r.fehler||'Die Anprobe ist nicht durchgelaufen.'});
+   return;
+  }
+  if(++anprobeVersuch>=ANPROBE_VERSUCHE){
+   anprobeTaktAus();
+   anprobeSetzen({laeuft:false,satz:'Das dauert länger als sonst. Schau gleich noch einmal her.'});
+   return;
+  }
+  anprobeNachfragen(id);
+ },ANPROBE_TAKT_MS);
+}
+
+/** „Passt" oder „Passt nicht" — das Urteil der Kundin zaehlt, nicht das der Maschine. */
+async function anprobeBewerten(bewertung){
+ const id=(state.anprobe||{}).id;
+ if(!id)return;
+ anprobeSetzen({bewertung});
+ const r=await quelle.anprobe.bewerten(id,bewertung);
+ toast(r&&r.ok?(bewertung==='passt'?'Notiert — das steht dir.':'Notiert. Ich rechne es dagegen.'):'Das Urteil kam nicht durch.');
+}
+
+/*
+ * Was schon vorliegt. `state.anproben` war deklariert und wurde NIE gefuellt
+ * (die Pruefung in begleiterKontext war darum immer falsch), obwohl pawn-chat es
+ * erwartet und archetyp.mjs daraus Zuversicht rechnet.
+ */
+async function anprobenLaden(){
+ const m=await quelle.anprobe?.meine?.();
+ if(!m)return;
+ state.anproben=m.anproben||[];
+ const ganz=(m.bilder||[]).find(b=>b.art==='ganzkoerper');
+ if(ganz)state.avatar={bild_id:ganz.id,url:''};
+ const passend=(m.bilder||[]).find(b=>b.art===quelle.anprobe.art(anprobeWelt()));
+ if(passend&&!(state.anprobe||{}).bild_id)state.anprobe={...(state.anprobe||{}),bild_id:passend.id,bildName:passend.name||''};
 }
 
 /** Der Stillstand — bei jeder Eingabe zurückgesetzt. */
@@ -709,8 +828,12 @@ async function kontoLaden(){
   // was im Konto liegt; was der Gast vorher gesammelt hat, blieb fuer immer im
   // Browser. Die Entscheidung, WAS hinaufgeht, steht in uebernahme.mjs.
   const hinauf=uebernahme({stil:vorherigerStil,saved:vorherGemerkt},{stil:stil&&stil.stil,saved:Array.isArray(merk)?merk:[]});
-  if(hinauf.stil)quelle.stil.speichern(hinauf.stil,state.foto||'',state.measurements?.fuerWen||'').catch(()=>{});
+  // state.foto ist der DATEINAME, nicht der Befund — das gehoerte nie in die jsonb-Spalte.
+  if(hinauf.stil)quelle.stil.speichern(hinauf.stil,state.foto_befund||{},state.measurements?.fuerWen||'').catch(()=>{});
   for(const id of hinauf.merken)quelle.merkliste.setzen(id,true).catch(()=>{});
+  // Was an Bildern und Anproben schon im Konto liegt — state.anproben wurde bis
+  // heute nie gefuellt, obwohl pawn-chat und archetyp.mjs damit rechnen.
+  await anprobenLaden().catch(()=>{});
   updateCart();if(reading(nav.route))readRefresh();
  }catch(e){if(auf.fehler)auf.fehler(e);}
 }
@@ -848,7 +971,19 @@ hoeren(document,'click',e=>{
   if(f==='weg')return;
   if(f==='befund'){befundZeigen();return;}
   if(f&&f.startsWith('bewerten:')){toast(f.endsWith('passt')?'Notiert — das passt dir.':'Notiert.');return;}
-  // anprobe, raum, wand, freistellen bauen auf Lovables Functions auf (Block D bzw. B4).
+  /* HIER STAND DER PLATZHALTER. „Das kommt gleich — die Werkstatt dafuer wird
+     gerade angeschlossen." Die Werkstatt war die ganze Zeit angeschlossen: die
+     Function `anprobe` antwortet (401, nicht 404), also ist sie ausgeliefert.
+     Die drei Chips fuehren jetzt dorthin, wo die Anprobe steht — und wenn der
+     Chip ein Werk nennt, ist es beim Ankommen schon gewaehlt. */
+  if(f==='anprobe'||f==='raum'||f==='wand'){
+   const werk=letzteBlaseDaten&&letzteBlaseDaten.werk_id;
+   if(werk&&products[werk]){
+    state.stil={...(state.stil||{}),welt:products[werk].world||anprobeWelt()};
+    state.anprobe={...(state.anprobe||{}),stueck:werk};
+   }
+   go({section:'dna',index:seitenNr('dna','anprobe')});return;
+  }
   toast('Das kommt gleich — die Werkstatt dafür wird gerade angeschlossen.');return;}
  if(b.dataset.inquiry)inquiry(b.dataset.inquiry);
  if(b.dataset.remove){const [id,size]=b.dataset.remove.split('|');state.cart=state.cart.filter(r=>r.id!==id||r.size!==size);cart();updateCart();}
@@ -894,6 +1029,8 @@ hoeren(document,'click',e=>{
  if(b.hasAttribute('data-dna-privacy'))go({section:'dna',index:seitenNr('dna','privacy')});
  if(b.hasAttribute('data-search-chat'))go({section:'suche',index:0});
  if(b.dataset.prompt){const [was,anlass,rahmen,satz]=b.dataset.prompt.split('|');state.frag={was,anlass,rahmen};state.message=satz||'';state.denkt=false;readRefresh();return;}
+ if(b.dataset.anprobeStueck){anprobeStarten(b.dataset.anprobeStueck);return;}
+ if(b.dataset.anprobeBewerten){anprobeBewerten(b.dataset.anprobeBewerten);return;}
  if(b.dataset.fit){state.fitProduct=b.dataset.fit;readRefresh();}
  // DER FEHLER, DER HIER LAG: index 5 ist 'foto'. Gesetzt wird aber state.fitProduct,
  // und das liest NUR die linie-Seite (extra-views.mjs > fitProduct). „Meine Linie
@@ -924,6 +1061,7 @@ hoeren(document,'submit',e=>{
  if(f.hasAttribute('data-goal-form')){state.goal=data.goal;readRefresh();toast('Deine Richtung ist vorgemerkt.');}
  if(f.hasAttribute('data-measure-form')){state.measurements={...state.measurements,...data};zustimmungFragen();quelle.masse.speichern(massZeile(state.measurements,state.stil)).catch(()=>{});readRefresh();toast(f.hasAttribute('data-raum')?'Gespeichert. Jede Empfehlung wird jetzt räumlich geprüft.':'Gespeichert. Jedes Stück wird jetzt gegen deine Maße geprüft.');}
 if(f.hasAttribute('data-foto-form'))return;
+ if(f.hasAttribute('data-anprobe-form'))return;   // das Feld arbeitet ueber 'change', nicht ueber Absenden
  if(f.hasAttribute('data-conversation-form')){state.message=data.message;state.denkt=true;state.antwort=null;readRefresh();fragen(data.message);}
  if(f.hasAttribute('data-presentation-form')){
   const slug=f.dataset.slug,st=studioState(slug);
@@ -937,6 +1075,7 @@ if(f.hasAttribute('data-foto-form'))return;
 });
 
 hoeren(document,'change',e=>{
+ if(e.target.hasAttribute('data-anprobe-datei')){anprobeBildWaehlen(e.target.files?.[0]||null);return;}
  const pf=e.target.closest('[data-presentation-form]');
  if(pf){
   const f=e.target.form;

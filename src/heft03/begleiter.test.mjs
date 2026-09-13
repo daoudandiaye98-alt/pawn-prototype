@@ -207,9 +207,12 @@ function ereignisseAusAppJs() {
 
 test('jedes Ereignis des Katalogs wird auch gemeldet — ausser denen spaeterer Bloecke', () => {
   const gemeldet = new Set(ereignisseAusAppJs());
-  // Diese zwei entstehen erst mit Block C (Archetyp) und Block D (Anprobe). Steht der
-  // Block, faellt der Name hier raus und der Test verlangt die Verdrahtung.
-  const spaeter = new Set(['archetyp_bestaetigt', 'anprobe_fertig']);
+  // Hier standen zwei Namen. 'archetyp_bestaetigt' war schon verdrahtet und stand
+  // trotzdem noch drin — die Ausnahme war veraltet. 'anprobe_fertig' ist mit der
+  // Anprobe dazugekommen (app.js > anprobeNachfragen). Beide raus: der Test
+  // verlangt die Verdrahtung jetzt wirklich. Die Liste bleibt leer, damit ein
+  // neuer Ereignisname hier nicht still geparkt werden kann.
+  const spaeter = new Set([]);
   const fehlt = katalog.ereignisse.filter((e) => !gemeldet.has(e) && !spaeter.has(e));
   assert.deepEqual(fehlt, [], 'Regeln zu diesen Ereignissen koennten nie feuern');
   // Und umgekehrt: was gemeldet wird, sollte der Katalog kennen — sonst redet der Code

@@ -66,6 +66,42 @@ export const fotoStufe={
   knopf:'Foto von der Wand hinzufügen',liest:['Freie Fläche','Licht','Umgebung','Farben']}
 };
 
+/*
+ * DIE ANPROBE — was je Welt hochgeladen wird und was danach passiert.
+ *
+ * Daoudas Auftrag woertlich: „man laedt Bilder hoch fuer mode von sich, fuer
+ * interior und kunst von einem raum, dann wird ein avatar gerendert, wo man dann
+ * das produkt schonmal anprobieren kann."
+ *
+ * Das ist NICHT dasselbe wie `fotoStufe` darueber: die liest Farben aus einem
+ * Gesicht. Die Anprobe braucht fuer Mode die GANZE Figur, sonst hat das Stueck
+ * nichts, worauf es sitzen kann — die Function erwartet darum die Bildart
+ * `ganzkoerper` (supabase/functions/anprobe/index.ts:211), nicht `gesicht`.
+ */
+export const anprobeStufe={
+ mode:{art:'ganzkoerper',aktion:'anprobe',bild:'foto-spiegel.webp',
+  alt:'Eine Frau vor einem dreiteiligen Spiegel',
+  titel:'Steht mir das?',
+  satz:'Ein Bild von dir, ganz. Dann zieh ein Stück an, bevor du es bestellst.',
+  knopf:'Foto von dir hinzufügen',ersatz:'Anderes Foto',
+  liest:['Deine Figur','Deine Haltung','Hautton','Was dir steht'],
+  ergebnis:'Du trägst es.'},
+ interior:{art:'raum',aktion:'raum',bild:'foto-raum.webp',
+  alt:'Ein leerer Raum im Sonnenlicht',
+  titel:'Passt das in meinen Raum?',
+  satz:'Ein Bild deines Raums. Dann stell ein Stück hinein, bevor du es bestellst.',
+  knopf:'Foto vom Raum hinzufügen',ersatz:'Anderer Raum',
+  liest:['Lichtrichtung','Bodenfarbe','Wandton','Vorhandenes'],
+  ergebnis:'Es steht bei dir.'},
+ kunst:{art:'wand',aktion:'wand',bild:'foto-wand.webp',
+  alt:'Eine leere Wand über einem Sofa',
+  titel:'Passt das an meine Wand?',
+  satz:'Ein Bild deiner Wand. Dann häng ein Werk auf, bevor du es bestellst.',
+  knopf:'Foto von der Wand hinzufügen',ersatz:'Andere Wand',
+  liest:['Freie Fläche','Licht','Umgebung','Farben'],
+  ergebnis:'Es hängt bei dir.'}
+};
+
 export const fuerWen=['Damen','Herren','Beides'];
 
 // Deine Linie: aus zwei Antworten ein Wortpaar und ein Satz, den man sich merken kann.

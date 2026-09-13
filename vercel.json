@@ -11,6 +11,13 @@
       }
     },
     {
+      "src": "^/deine-dna/foto/?$",
+      "status": 301,
+      "headers": {
+        "Location": "/deine-dna/anprobe"
+      }
+    },
+    {
       "src": "^/designers/?$",
       "status": 301,
       "headers": {
@@ -186,6 +193,10 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/deine-dna/anprobe/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/deine-dna/welt/?$",
       "dest": "/index.html"
     },
@@ -199,10 +210,6 @@
     },
     {
       "src": "^/deine-dna/linie/?$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/deine-dna/foto/?$",
       "dest": "/index.html"
     },
     {
@@ -255,6 +262,10 @@
     },
     {
       "src": "^/dna/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/deine-dna/foto/?$",
       "dest": "/index.html"
     },
     {
