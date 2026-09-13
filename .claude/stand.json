@@ -4,9 +4,9 @@
   "offene_prs": [
     {
       "nr": 202,
-      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8), in Arbeit",
-      "status": "Entwurf, 10 Commits voraus, kein Konflikt. FERTIG: B1 (Buehne aus Daten), B2 (Deko als Aufsteller), B3 erster Teil (Vortritt), B6 Logik (Klemme, erstes Ziehen), B4 der pruefbare Teil (Versionsriegel). 103/103 Heft-Tests, 353/353, VERIFY 5/5, REGRESSION 19/19, tsc 0, Bau gruen.",
-      "blockiert_durch": "Daoudas Entscheidungen. `messen` ist rot, aber BELEGT nicht wegen Teil 2: Vorschau gegen Vorschau ergibt #201 131 gefallen gegen #202 130. Kommentar steht am PR, kein zweiter noetig."
+      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel",
+      "status": "Entwurf, 15 Commits voraus. B1-B8 VOLLSTAENDIG. 119/119 Heft-Tests, 353/353, VERIFY 5/5, REGRESSION 20/20, tsc 0, Bau gruen. Zusage Z20 neu, gegen alle vier Ursachen einzeln rot vorgefuehrt.",
+      "blockiert_durch": "Nichts im Code. Offen bleiben nur Daoudas Entscheidungen (Drei-Werke-Regel, gefallene Gates) und die Augen auf der Vorschau — /studio/doppelseite braucht ein angemeldetes Haus, das kann der Container nicht."
     }
   ],
   "merge_reihenfolge": [
@@ -58,13 +58,12 @@
     }
   },
   "naechster_zug": [
-    "1. B4 zweiter Teil — heft() parametrisieren statt verdoppeln, dann studioQuelle. Mit frischem Kopf anfangen, es ist der Weg, ueber den das ganze Heft seine Daten holt.",
-    "2. DAOUDA: freistellen ueber Lovable ausrollen. Ohne ausgerollte Gegenstelle ist B8 eine Attrappe — eine war schon der Bild-Upload in Block A.",
-    "3. DAOUDA: die Beilage teil-o-migrationen.zip. Ohne sie bleibt E4 offen, supabase/migrations/ bei 166 statt 173. Keine Platzhalter anlegen.",
-    "4. DAOUDA: OFFENE-LISTE.md anlegen, wenn sie das fuehrende Papier sein soll. Sie liegt nicht im Repo.",
-    "5. DAOUDA: die 3-Werke-Regel. Der Trigger verlangt drei Werke je Buehne, drape hat je Welt eins — heute kann KEIN Haus veroeffentlichen. fehltZumVeroeffentlichen() sagt es der Oberflaeche schon, aber die Entscheidung ist deine.",
-    "6. Die Gate-Entscheidung bleibt offen: 4.7 Seitengewicht, 3.3 Kontrast, 3.5 Trefferflaechen, 3.4 Fokus. 3.8 ist erledigt und am Pruefstand belegt.",
-    "7. UNVERAENDERT OFFEN: M3 zweiter Teil, M5, C4 erster Teil und C5."
+    "1. PR #202 mergen — B1-B8 sind fertig, 20/20 Zusagen, kein Konflikt. Danach die spaeteren PRs EINER NACH DEM ANDEREN (Falle #190/#191: gestapelte Zweige meldeten gemergt und lagen nicht auf main).",
+    "2. PR 2 des Plans — die sechs falschen dna:-Spruenge auf NAMEN statt Zahlen. MUSS vor der Anprobe kommen: wer eine Seite in die DNA-Liste einschiebt, verschiebt dieselben Indizes wieder (so ist 1b91aae entstanden).",
+    "3. PR 3 — das Cockpit-Leck: AdminDesigners.tsx:28 fragt select(\"*\") auf designers OHNE Lade-Pruefer, und RoleGate:42 laesst Anonyme durch. Die Spalten-Messung dazu steht schon in DIE_LOECHER_AUF_DER_LIVE_DATENBANK.",
+    "4. DAOUDA: die Drei-Werke-Regel. heft_buehnen hat 0 Zeilen, drape hat je Welt EIN Werk, der Trigger verlangt drei. Die Oberflaeche sagt es jetzt ehrlich vorher, aber der Weg endet dort.",
+    "5. DAOUDA: die gefallenen Gates 4.7, 3.3, 3.5, 3.4 — steht seit Teil 1 offen.",
+    "6. DAOUDA: OFFENE-LISTE.md fehlt im Repo, obwohl Auftrag Q sie zum fuehrenden Papier erklaert. Und teil-o-migrationen.zip ist nie angekommen (166 statt 173 Dateien)."
   ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
@@ -188,13 +187,13 @@
       "WO_DER_BEWEIS_HERKOMMT": "BERICHTIGUNG an mir selbst: ich hatte B4 „blockiert, weil Supabase hier nicht erreichbar ist\" genannt. Das war zu kurz gegriffen. Die VERCEL-VORSCHAU erreicht Supabase — deshalb misst der Pruefstand dort echte Daten. Der Beweis fuer studioQuelle kommt also eine Stufe spaeter, nicht gar nicht. Genau dafuer gibt es den Pruefstand; der Container hat fuer den Browser kein Netz, der Runner schon."
     }
   },
-  "EIN_FEHLER_VON_MIR_IN_DIESER_RUNDE": {
-    "was": "Beim Einsetzen des Mode-Zweigs (R2b) ging die Zeile `}else if(p.world==='interior'){` verloren. Interior lief danach in den Kunst-Zweig — derselbe Fehler eine Welt weiter.",
-    "was_ihn_NICHT_gefangen_hat": "node --test 81/81, npm test 353/353, tsc 0, VERIFY 5/5, npm run build gruen. Kein Werkzeug hat es gemeldet, weil passformAssistent nirgends geprueft wurde.",
-    "was_ihn_gefangen_hat": "Die Rot-Vorfuehrung von Z18 — also das Ritual selbst, nicht eine Pruefung, die schon da war.",
-    "folge": "Z18 deckt jetzt die REIHENFOLGE der drei Welten (mode -> interior -> Auffang), nicht bloss den einen Satz.",
-    "lehre_fuer_die_naechste_schicht": "Nach jedem Einsetzen eines Zweigs in eine if/else-Kette die Kette selbst nachzaehlen. Ein Textersatz, der einen Anker verschluckt, ist syntaktisch gueltig und faellt durch jede Pruefung, die den Rumpf nicht liest."
-  },
+  "EIN_FEHLER_VON_MIR_IN_DIESER_RUNDE": [
+    "DIE BYTEWEISE AUFNAHME TAUGT HIER NICHT. Ich wollte belegen, dass world.mjs > masse() das oeffentliche Heft nicht anfasst, und verglich Aufnahmen vorher/nachher. Sie unterschieden sich — und ich haette daraus fast geschlossen, meine Aenderung sei schuld. Kontrollmessung: DREI Aufnahmen DESSELBEN Baus ergaben drei verschiedene Pruefsummen (716903c5 / 14ba5c4c / 80095347). Die Buehne animiert. Der belastbare Beweis war arithmetisch: #stage.getBoundingClientRect() ist bei 1440x900, 390x844 und 834x1112 exakt {l:0,t:0,b:Fenster,h:Fenster} — also liefert masse() dort dieselben Zahlen. MERKREGEL: erst die Methode auf Reproduzierbarkeit pruefen, dann aus ihr schliessen.",
+    "ZWEIMAL GEGEN DEN FALSCHEN ZUSTAND GEMESSEN. Der Wisch-Test meldete \"blaettert nicht\" — weil das Heft noch in seiner Eroeffnung stand (body.is-intro), wo der Finger von jeher nicht blaettert. Und ich prueste auf data-page statt auf die Adresse. Nach #skip und mit der Adresse als Groesse: /mode -> /mode/2, beide Werke oeffnen ihr Fenster. Kein Befund, sondern zwei Messfehler.",
+    "EINE PRUEFUNG, DIE PROSA LIEST, PRUEFT NICHTS. Die erste Fassung von Z20 blieb gruen, als ich KASTEN_STIL aus dem Code nahm — der Name stand noch im Kommentar darueber. Genau derselbe Fehler wie bei Z18 (Herkunftsnotiz aus #195 mit dem Wort \"Wand\"), und er war im Repo schon geloest. Ich haette nachsehen muessen statt neu zu erfinden. Z20 streift Kommentare jetzt ab.",
+    "pkill -f \"vite preview\" erschlaegt sich selbst (Exit 144) — das Muster steht in seiner eigenen Befehlszeile. Stand schon als Stolperstein hier, und ich bin wieder hineingelaufen. Der Weg ist ueber den Port: ss -lptn \"sport = :PORT\".",
+    "curl erreicht 127.0.0.1 nicht ohne --noproxy \"*\" — HTTPS_PROXY faengt es ab. Und vite preview braucht --host 127.0.0.1, sonst bindet es auf :: und stirbt mit EAFNOSUPPORT. Beides steht in scripts/verify/sicht.sh:47, ich habe es erst nach zwei Fehlversuchen gelesen."
+  ],
   "AUGEN_FUER_DIE_BUEHNE": {
     "DIE_FRAGE": "Teil 2 verlangt Aufnahmen als Abnahme („Buehne sichtbar → Aufnahme, 1280 und 390\"). Kann dieser Container die 3D-Buehne ueberhaupt rendern? Ohne Antwort waere jede Fertigmeldung zu Teil 2 eine Behauptung.",
     "ANTWORT_JA_ABER_NUR_UEBER_DIST": "Gemessen am 12.09.: `npx vite preview --host 127.0.0.1 --port N` auf dem gebauten dist/ rendert die Buehne vollstaendig. Bei 1280x900 nach rund 12 s: canvas 1280x900, Ladeflaeche weg, drei Hotspots, echte Hausdaten („DRAPÉ. In Bewegung.\", „Wool Coat ansehen\"). KEINE Datenbank noetig — die Demo-Daten aus data.mjs und cutouts.json reichen.",
@@ -203,5 +202,16 @@
     "WAS_NOCH_FEHLT": "Nach 14 s steht die Seite noch auf is-intro/is-opening — die Aufsteller erscheinen erst nach der Eroeffnung. Fuer eine Aufnahme der Buehne muss #skip geklickt werden. Die Eroeffnung dauert laut Block A 5,8 s + 2,6 s.",
     "NEBENBEI_BESTAETIGT": "Die Kopfzeile steht auf ENGLISCH. Das ist der bereits unter wartet_auf_mensch notierte D2-Punkt, nicht neu und nicht von dieser Arbeit.",
     "STOLPERSTEIN": "pkill -f \"vite preview\" trifft den eigenen Befehl mit, weil das Muster in dessen Kommandozeile steht. Exit 144. Enger fassen oder die PID merken."
-  }
+  },
+  "DAOUDAS_AUFTRITT_MANGEL": {
+    "was_er_sagte": "die bearbeitung der doppelseiten im auftritt menuepunkt des designer studios zeigt aktuell noch nicht an",
+    "DREI_URSACHEN_NICHT_EINE": [
+      "1 · studioQuelle gab es nicht. StudioHeft.tsx:181 erwartete den Export seit seinem ersten Tag; die Seite brach mit fehlt=\"studioQuelle\" ab, BEVOR das Heft startete. Das war B4 aus Teil 2 — Daoudas Mangel und der offene Auftrag waren DIESELBE Arbeit.",
+      "2 · Dort stand ein LEERES div. app.js sucht #mobile-reader, #drawer-content, #hotspots u.a. per getElementById und fand keinen. Das Geruest liegt jetzt in src/heft03/geruest.ts, EINMAL fuer beide Huellen.",
+      "3 · Das Heft-CSS fehlte ganz. Jetzt als <link>, abraeumbar."
+    ],
+    "DIE_MESSUNG_AN_DER_ALLES_HAENGT": "Das Heft-CSS setzt 15x position:fixed, darunter #stage,#reader-layer{position:fixed;inset:0}. In einem begrenzten Kasten spannt sich das ueber das FENSTER. Chromium, Kasten 390x520, echtes style.css: ohne Einsperrung #stage 1440x900 (deckt die ganze Seite zu — genau die leere weisse Flaeche), mit contain:paint 386x516. transform:scale(1) sperrt AUCH ein, DARF ABER NICHT: es eroeffnet einen 3D-Zeichenraum und zerstoert die Perspektive des CSS3DRenderer, der die Doppelseite traegt. Darum KASTEN_STIL = contain:paint.",
+    "WAS_NICHT_GEHEILT_IST": "@media-Regeln und vw beziehen sich weiter auf das Fenster, nicht auf den Kasten. Die Studio-Vorschau bei 390 px zeigt die Buehne schmaler, aber KEINE echte Handy-Ansicht — die Kopfzeile laeuft rechts hinaus. Steht als Satz am Breiten-Knopf (studio.heft.breiteHinweis). Wer eine echte Mobil-Vorschau will, braucht einen iframe (eigenes Dokument, eigener Viewport) — das ist ein eigener Zug, nicht dieser."
+  },
+  "DIE_KORREKTUR_DIE_ICH_DAOUDA_SCHULDE": "freistellen IST DEPLOYT. Ich habe mehrfach gewarnt, B8 bleibe eine Attrappe bis zu seinem Lovable-Deploy, und ihn darauf warten lassen. Kontrollmessung ueber den Antwortcode: eine NICHT vorhandene Function antwortet 404; anprobe, freistellen, generate-tryon und seed-testaccounts antworten 401 — also deployt, nur Anmeldung noetig. Die Warnung war falsch. B8 ist gebaut und ruft die echte Function."
 }
