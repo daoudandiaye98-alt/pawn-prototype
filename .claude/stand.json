@@ -179,5 +179,17 @@
     "was_ihn_gefangen_hat": "Die Rot-Vorfuehrung von Z18 — also das Ritual selbst, nicht eine Pruefung, die schon da war.",
     "folge": "Z18 deckt jetzt die REIHENFOLGE der drei Welten (mode -> interior -> Auffang), nicht bloss den einen Satz.",
     "lehre_fuer_die_naechste_schicht": "Nach jedem Einsetzen eines Zweigs in eine if/else-Kette die Kette selbst nachzaehlen. Ein Textersatz, der einen Anker verschluckt, ist syntaktisch gueltig und faellt durch jede Pruefung, die den Rumpf nicht liest."
-  }
+  },
+  "DAS_COCKPIT_LECK_IST_IN_DER_OBERFLAECHE_ZU": {
+    "was": "Drei Stellen im Cockpit holten Daten von `designers`, ohne dass jemand angemeldet sein musste. Die Kette war geschlossen: RoleGate laesst Nicht-Angemeldete bewusst durch, die Datenbank gibt anon alle 60 Spalten frei und begrenzt nur die Zeilen (USING published = true), und diese drei Stellen fragten ohne Konto-Pruefer.",
+    "die_drei": [
+      "AdminDesigners.tsx — select(*), alle 60 Spalten, bei jedem Aufschlagen von /admin/designers",
+      "AdminPayments.tsx — die Stripe-Kennungen ausdruecklich in der Spaltenliste, ohne Pruefer",
+      "useCockpitBuhne.ts — stripe_charges_enabled fuer bis zu 20 Haeuser beim Aufschlagen von /admin; AdminOverviews Pruefer gilt fuer SEINEN Effekt, nicht fuer diesen Haken"
+    ],
+    "gegenprobe": "JEDE andere Cockpit-Abfrage auf designers benannte ihre Spalten schon (AdminCampaigns, AdminEditionen, AdminMessages, AdminArchetypen, useAdminData). AdminDesigners war die EINZIGE mit select(*). Die Reparatur ist damit nicht breiter als der Fehler.",
+    "nicht_geschlossen": "DAS LOCH IN DER DATENBANK. Der GRANT SELECT ON public.designers TO anon steht weiter, und die Policy begrenzt nur Zeilen, nicht Spalten. Das ist Aufgabe M3 Teil 2 und braucht Daoudas Wort — zumauern kann das oeffentliche Heft treffen.",
+    "zusage": "Z20 auf dem Zweig claude/heft-frontend-integration-0bjnzf, Kontrolle keineStripeDatenOhneRolle, gegen alle drei Ursachen einzeln rot vorgefuehrt."
+  },
+  "Z13_WAR_AUF_MAIN_GEBROCHEN": "Beim Bauen der Cockpit-Pruefung aufgefallen: src/pages/dna/DnaShell.tsx (neu aus dem Lovable-Commit 467563a 'Changes') verlinkt auf /auth — eine Adresse, die seit Teil L10 nur noch auf /konto weiterleitet. Zusage Z13 war damit auf main rot. Eine Zeile, mitrepariert. Merkregel: die Kontrollen fangen auch, was NICHT aus dieser Arbeit kommt — sie muessen deshalb auch dann gelesen werden, wenn man glaubt, nichts Einschlaegiges angefasst zu haben."
 }
