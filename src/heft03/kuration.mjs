@@ -32,7 +32,7 @@ export function archetypWoerter(state){
 export const ARCHETYP_GEWICHT=1;
 
 export function passung(p,state){
- const u=urteil(state.stil||{},p);
+ const u=urteil(state.stil||{},p,state.foto_befund);
  let n=u?(u.ja===true?(/beiden/.test(u.text)?3:2):u.ja===false?0:1):1;
  if((state.saved||[]).includes(p.id))n+=1.5;
  if((state.stil||{}).welt===p.world)n+=.5;

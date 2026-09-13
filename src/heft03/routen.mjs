@@ -10,7 +10,11 @@ const ABFRAGE=['q','world','house','max','available','sort'];
 export const PFAD={entdecken:'',mode:'mode',interior:'interior',kunst:'kunst',haeuser:'haeuser',dna:'deine-dna','frag-pawn':'frag-pawn','fuer-designer':'fuer-designer',vision:'vision',suche:'suche',konto:'konto',haus:'haus'};
 const SEKTION=Object.fromEntries(Object.entries(PFAD).map(([k,v])=>[v,k]));
 // Umzüge aus dem alten Frontend (Ziel: 301 in vercel.json)
-export const UMZUEGE={'/dna':'/deine-dna','/designers':'/haeuser','/designers/all':'/haeuser','/boutique':'/ausgewaehlt','/neu':'/ausgewaehlt','/cart':'/tasche','/account':'/konto','/shop':'/suche','/inhalt':'/','/kuratierter-raum':'/vision','/drei-welten':'/haeuser','/verzeichnis':'/suche','/apply':'/fuer-designer/2'};
+export const UMZUEGE={'/dna':'/deine-dna','/designers':'/haeuser','/designers/all':'/haeuser','/boutique':'/ausgewaehlt','/neu':'/ausgewaehlt','/cart':'/tasche','/account':'/konto','/shop':'/suche','/inhalt':'/','/kuratierter-raum':'/vision','/drei-welten':'/haeuser','/verzeichnis':'/suche','/apply':'/fuer-designer/2',
+ /* Die foto-Seite ist die Anprobe geworden und nach vorn gerueckt (Auftrag Q,
+    Daoudas Entscheidung). Ohne diese Zeile laege ein alter Link auf der
+    Einstiegskarte statt auf der Seite, die er meinte. */
+ '/deine-dna/foto':'/deine-dna/anprobe'};
 
 function seitenName(route){
  const s=route.section;

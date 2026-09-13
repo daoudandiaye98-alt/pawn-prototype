@@ -1152,3 +1152,23 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .pawn-meint{margin:24px 0 6px;padding:12px 14px;border-left:1.5px solid var(--house-accent,#6d2230);background:#f1ece3}
 .pawn-meint small{display:block;font:400 9px Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557;margin-bottom:5px}
 @media(max-width:759px){.archetyp-figur .pawn-mark{width:78px}.belege .tafel svg{max-width:150px}}
+
+/* ————————————————————————————————————————————————————————————————
+   DIE ANPROBE. Drei neue Klassen, mehr nicht — alles Uebrige nutzt, was
+   schon steht (.fit-pieces, .insight, .liest, .wahlreihe, .dna-features).
+
+   Harte Kanten, kein Radius, kein Grau als Flaeche: der Rahmen ist eine
+   1.5px-Linie mit hartem Versatzschatten, wie ueberall im Heft. */
+.anprobe-ergebnis{margin:26px 0 0;border:1.5px solid #1a1613;box-shadow:6px 6px 0 #1a1613;background:var(--house-paper,#f9f7f2)}
+.anprobe-ergebnis img{display:block;width:100%;max-height:430px;object-fit:contain}
+.anprobe-ergebnis figcaption{border-top:1.5px solid #1a1613;padding:11px 14px;font:400 10px Inter,sans-serif;letter-spacing:.2em;text-transform:uppercase}
+.anprobe-urteil{margin-top:18px}
+.anprobe-urteil .tafel-legende{margin-bottom:10px}
+
+/* Das Warten. Kein Kreisel, kein Prozentbalken: eine Linie, die laeuft —
+   ehrlich, weil niemand weiss, wie weit die Maschine ist. */
+.anprobe-wartet{margin:26px 0 0;border:1.5px solid #1a1613;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center}
+.anprobe-puls{display:block;width:120px;height:1.5px;background:#1a1613;transform-origin:left;animation:anprobe-lauf 1.5s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes anprobe-lauf{0%{transform:scaleX(.08)}50%{transform:scaleX(1)}100%{transform:scaleX(.08)}}
+@media(prefers-reduced-motion:reduce){.anprobe-puls{animation:none;transform:scaleX(1)}}
+@media(max-width:759px){.anprobe-ergebnis img{max-height:320px}.anprobe-wartet{min-height:190px}}

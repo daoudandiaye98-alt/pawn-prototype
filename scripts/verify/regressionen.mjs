@@ -707,6 +707,69 @@ function auftrittZeigtDieSeite({ huelle, quelle, app, sprachen }) {
   return fehlt.length === 0 ? OK : nein(fehlt.slice(0, 6).join("\n      "));
 }
 
+// Z21 — die Anprobe ist angeschlossen, nicht angekuendigt
+//
+// Von Daouda auf der laufenden Seite gefunden: „Die Dna sektion muss noch
+// ueberarbeitet werden … die steht mir das sektion als erstes, und zwar wie
+// beauftragt inspiriert von trymira.style."
+//
+// Was dahinter lag, war NICHT fehlendes Backend. Die Function `anprobe` ist
+// ausgeliefert (gemessen ueber 401-statt-404) und kann sechs Aktionen. Das Heft
+// rief keine einzige: app.js beantwortete die Chips `anprobe`, `raum` und `wand`
+// mit dem Satz „Das kommt gleich — die Werkstatt dafuer wird gerade angeschlossen."
+// Ein Platzhalter ist keine leere Stelle, die auffaellt — er ist eine Stelle, die
+// AUSSIEHT wie Arbeit. Nichts wurde je rot.
+//
+// ENG GEHALTEN, drei Saetze, mehr nicht:
+//   1 · Jede Methode, die das Heft auf `quelle.anprobe` ruft, gibt es in ALLEN DREI
+//       Quellen (echt, Vorschau, Studio) — app.js ruft sie ohne `?.`, eine fehlende
+//       waere ein harter Absturz mitten auf der Seite.
+//   2 · Der Platzhaltersatz steht nicht mehr in der Chip-Behandlung.
+//   3 · `anprobe_fertig` hat einen Absender. Es steht in STARKE_EREIGNISSE und war
+//       das einzige Ereignis des Katalogs ohne einen.
+function anprobeIstAngeschlossen({ quelle, app }) {
+  const ohneProsa = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const q = ohneProsa(lies(quelle));
+  const a = ohneProsa(lies(app));
+  const fehlt = [];
+
+  // 1 · Was app.js und die Seiten auf quelle.anprobe rufen, muss es dreimal geben.
+  const seiten = ohneProsa(lies("src/heft03/extra-views.mjs"));
+  const gerufen = new Set(
+    [...(a + seiten).matchAll(/quelle\.anprobe\.([a-zA-Z_$][\w$]*)/g)].map((m) => m[1]),
+  );
+  // Die drei Quellen als Abschnitte: ab „anprobe:{" bis zur naechsten Zeile, die
+  // wieder auf Quellenebene beginnt. Gezaehlt wird je Abschnitt, nicht in der Datei —
+  // sonst genuegte EINE Quelle, und die Vorschau stuerzte trotzdem ab.
+  const abschnitte = [...q.matchAll(/anprobe:\s*\{/g)].map((m) => {
+    let tiefe = 0, i = m.index + m[0].length - 1;
+    for (; i < q.length; i++) {
+      if (q[i] === "{") tiefe++;
+      else if (q[i] === "}" && --tiefe === 0) break;
+    }
+    return q.slice(m.index, i + 1);
+  });
+  if (abschnitte.length < 3) {
+    fehlt.push(`nur ${abschnitte.length} von 3 Quellen haben einen anprobe-Block (echt, Vorschau, Studio)`);
+  }
+  for (const name of gerufen) {
+    const ohne = abschnitte.filter((b) => !new RegExp("\\b" + name + "\\s*[:(]").test(b)).length;
+    if (ohne) fehlt.push(`quelle.anprobe.${name} wird gerufen, fehlt aber in ${ohne} der ${abschnitte.length} Quellen — app.js ruft ohne ?.`);
+  }
+
+  // 2 · Kein Platzhalter mehr fuer die drei Chips.
+  if (/die Werkstatt daf/.test(a) && /f\s*===?\s*'anprobe'/.test(a) === false) {
+    fehlt.push("app.js beantwortet die Anprobe-Chips wieder mit dem Platzhaltersatz");
+  }
+
+  // 3 · Das Ereignis hat einen Absender.
+  if (!/melden\('anprobe_fertig'/.test(a)) {
+    fehlt.push("anprobe_fertig wird nirgends gemeldet — jede Begleiter-Regel darauf waere unerreichbar");
+  }
+
+  return fehlt.length === 0 ? OK : nein(fehlt.slice(0, 6).join("\n      "));
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -728,6 +791,7 @@ const PRUEFUNGEN = {
   modeNieAnDieWand,
   ueberspringenNichtUnterDerSchrift,
   auftrittZeigtDieSeite,
+  anprobeIstAngeschlossen,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

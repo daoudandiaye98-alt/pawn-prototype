@@ -1,7 +1,41 @@
 // Bilder des Hefts. Die Basis ist umstellbar (assetBasis('/heft/assets/')), damit das Heft auch unter Vite/public liegt.
 export const ASSETS={basis:'./assets/'};
 export const asset=name=>ASSETS.basis+name;
-export function assetBasis(b){ASSETS.basis=b.endsWith('/')?b:b+'/';}
+/*
+ * DER FEHLER, DER HIER LAG — gemessen am 2026-09-13 in Chromium auf dem gebauten
+ * Stand, nicht vermutet: auf /deine-dna/linie trugen alle drei Werkbilder
+ * src="./assets/cutout-coat.webp" und naturalWidth 0. Der Browser loest das
+ * RELATIV zur Adresse auf, also zu /deine-dna/assets/… — dort liegt nichts.
+ *
+ * Ursache: products, houses und media werden beim Laden des Moduls gebaut und
+ * rufen asset() SOFORT, mit der Grundeinstellung './assets/'. assetBasis() kam
+ * erst danach (app.js > startHeft, aus optionen.assets='/heft/assets/') und
+ * aenderte nur ASSETS.basis — die schon gebauten Zeichenketten nie.
+ *
+ * Deshalb zieht die Umstellung jetzt nach. ENG: nur Werte, die mit der ALTEN
+ * Basis beginnen, nur in diesen drei Buechern, nur eine Ebene tief plus Listen.
+ * Ein Bild, das aus der Datenbank kommt, faengt nie mit './assets/' an und wird
+ * darum nie angefasst.
+ */
+export function assetBasis(b){
+ const alt=ASSETS.basis,neu=b.endsWith('/')?b:b+'/';
+ ASSETS.basis=neu;
+ if(alt===neu)return;
+ /* Tief, weil die Adressen verschieden tief liegen: products[x].image eine Ebene,
+    houses[x].lookbook[] in einer Liste, displays[x] wieder anders. In Ort geaendert,
+    damit jede bestehende Bezugnahme dieselbe Aenderung sieht. */
+ const ziehNach=knoten=>{
+  if(!knoten||typeof knoten!=='object')return;
+  for(const [k,w] of Object.entries(knoten)){
+   if(typeof w==='string'){if(w.startsWith(alt))knoten[k]=neu+w.slice(alt.length);}
+   else ziehNach(w);
+  }
+ };
+ /* Und der SCHNAPPSCHUSS gehoert dazu — sonst holt demoWiederherstellen() (und
+    damit jeder Vorschau-Betrieb, der ueber demoHeft() laeuft) die alte Basis zurueck.
+    Genau daran war es zu sehen: die Aufnahme der Vorschau zeigte drei kaputte Bilder. */
+ for(const buch of [products,houses,media,displays,schnappschuss])ziehNach(buch);
+}
 export const products={
  coat:{id:'coat',slug:'wool-coat',name:'Wool Coat',house:'drape',price:480,image:asset('cutout-coat.webp'),material:'Wolle · Futter aus Viskose',description:'Ein Mantel mit großzügigem Revers und weicher, gebundener Taille. Die Silhouette lässt dem Material Raum.',sizes:['XS','S','M','L'],inventory_mode:'made_to_order',stock_quantity:null,lead:'Anfertigung · 3–4 Wochen',world:'mode',kind:'produkt',dna:{materials:['Wolle'],silhouette:['Weit','Gerade'],colors:['Elfenbein'],mood:['Klar','Weich'],tags:['mantel']},stage:{h:3.08,lift:.17},note:'Weiche Wolle. Eine starke, ruhige Silhouette.'},
  dress:{id:'dress',slug:'plisse-01',name:'Plissé No. 01',house:'drape',price:290,image:asset('cutout-dress.webp'),material:'Plissierter Stoff · Seidenmischung',description:'Eine helle Silhouette zwischen Bewegung und Ruhe. Feine Falten geben dem Kleid seine eigene Architektur.',sizes:['S','M','L'],inventory_mode:'stock',stock_quantity:3,lead:'Versand in 3–5 Tagen',world:'mode',kind:'produkt',dna:{materials:['Seide'],silhouette:['Weit','Lagen'],colors:['Creme'],mood:['Weich','Laut'],tags:['kleid']},stage:{h:2.92,lift:.17},note:'Plissé, das Bewegung sichtbar macht.'},
@@ -33,7 +67,7 @@ export const displays={
  traces:{kicker:'KUNST / HAUS 24',title:'Spuren.<br><em>Die bleiben.</em>',text:'Jede Schicht hält einen Moment fest. Freie Arbeiten und neue Perspektiven aus dem Atelier.',action:'Arbeit entdecken',product:'art',pieces:['art'],layout:'frame',color:'#1f3a2c',house:'traces'},
  gestures:{kicker:'KUNST / HAUS 24',title:'Im Dialog<br><em>entstehen.</em>',text:'Manche Arbeiten beginnen mit einem Gespräch. Entdecke Auftragsarbeiten und die Menschen dahinter.',action:'Auftragsarbeit anfragen',product:'art',inquiry:'art',pieces:['art'],layout:'fan',color:'#2b4a3a',house:'traces'}
 };
-export const sections={entdecken:['hero','edit'],mode:['drape','noir'],interior:['forme','terre'],kunst:['traces','gestures'],haeuser:['welten','mode','interior','kunst'],dna:['intro','welt','richtung','form','linie','foto','archetyp','massband','privacy'],suche:['results'],konto:['zugang','start','saved','orders','requests','settings'],'frag-pawn':['dialog'],'fuer-designer':['invitation','studio'],vision:['vision','belief','work']};
+export const sections={entdecken:['hero','edit'],mode:['drape','noir'],interior:['forme','terre'],kunst:['traces','gestures'],haeuser:['welten','mode','interior','kunst'],dna:['intro','anprobe','welt','richtung','form','linie','archetyp','massband','privacy'],suche:['results'],konto:['zugang','start','saved','orders','requests','settings'],'frag-pawn':['dialog'],'fuer-designer':['invitation','studio'],vision:['vision','belief','work']};
 export const labels={entdecken:'Entdecken',mode:'Mode',interior:'Interior',kunst:'Kunst',haeuser:'Unsere Häuser',dna:'DNA','fuer-designer':'Für Designer',vision:'Vision',haus:'Haus',suche:'Suche',konto:'Mein PAWN','frag-pawn':'Frag PAWN'};
 export const counts=Object.fromEntries(Object.entries(sections).map(([k,v])=>[k,v.length]));
 

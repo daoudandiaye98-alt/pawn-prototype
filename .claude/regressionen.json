@@ -269,6 +269,16 @@
         "app": "src/heft03/app.js",
         "sprachen": "src/lib/i18n.tsx"
       }
+    },
+    {
+      "id": "Z21",
+      "zusage": "Die Anprobe im Heft ist angeschlossen — kein Chip und kein Knopf endet in einem Platzhalter.",
+      "beleg": "Von Daouda auf der laufenden Seite gefunden: \"Die Dna sektion muss noch ueberarbeitet werden, aktuell fuehrt nur ein menuepunkt der ersten doppelseite zu dem Quiz, allerdings sollte es dort mehr content geben zum auswaehlen; die steht mir das sektion als erstes, und zwar wie beauftragt inspiriert von trymira.style.\" WAS DAHINTER LAG, WAR NICHT FEHLENDES BACKEND. supabase/functions/anprobe/index.ts kann sechs Aktionen (bereinigen, anprobe, raum, wand, stand, bewerten) und ist AUSGELIEFERT — gemessen ueber 401-statt-404. Das Heft rief keine einzige davon: app.js beantwortete die Chips anprobe, raum und wand mit dem Satz \"Das kommt gleich — die Werkstatt dafuer wird gerade angeschlossen.\" Dazu drei stille Luecken derselben Kette: state.avatar wurde gelesen (begleiterZustand) und war NIE deklariert, also blieb jede Begleiter-Regel darauf unerreichbar; state.anproben war deklariert und wurde nie gefuellt; anprobe_fertig stand in STARKE_EREIGNISSE und hatte keinen Absender. EIN PLATZHALTER IST KEINE LEERE STELLE — er sieht aus wie Arbeit. Durchgerutscht sind: 120/120 Heft-Tests, 354/354 Vitest, tsc 0, VERIFY 6/6 und der Bau. · ROT VORGEFUEHRT am 2026-09-13, gegen alle DREI Saetze der Kontrolle einzeln: (a) `starten` aus dem anprobe-Block der Vorschau-Quelle entfernt -> 20/21; (b) die Chip-Verzweigung auf `if(false)` gesetzt, sodass der Platzhaltersatz wieder greift -> 20/21; (c) melden('anprobe_fertig') in melden('anprobe_spaeter') umbenannt -> 20/21. Zurueck: 21/21. Der zweite Satz zaehlt je QUELLE und nicht je Datei — sonst genuegte ein einziger anprobe-Block, und die Vorschau stuerzte trotzdem ab, weil app.js diese Methoden ohne `?.` ruft.",
+      "pruefung": "anprobeIstAngeschlossen",
+      "params": {
+        "quelle": "src/heft03/quelle.mjs",
+        "app": "src/heft03/app.js"
+      }
     }
   ]
 }

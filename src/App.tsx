@@ -202,11 +202,11 @@ const App = () => (
                     ausgeschrieben und nicht als Platzhalter: so bekommt ein erfundener
                     Name die 404 und nicht die erste Seite. */}
                 <Route path="/deine-dna" element={<Heft />} />
+                <Route path="/deine-dna/anprobe" element={<Heft />} />
                 <Route path="/deine-dna/welt" element={<Heft />} />
                 <Route path="/deine-dna/richtung" element={<Heft />} />
                 <Route path="/deine-dna/form" element={<Heft />} />
                 <Route path="/deine-dna/linie" element={<Heft />} />
-                <Route path="/deine-dna/foto" element={<Heft />} />
                 <Route path="/deine-dna/archetyp" element={<Heft />} />
                 <Route path="/deine-dna/massband" element={<Heft />} />
                 <Route path="/deine-dna/privacy" element={<Heft />} />
@@ -224,6 +224,7 @@ const App = () => (
                         serverseitig zur 301; hier gilt sie fuer Klicks in der App,
                         wo kein Server dazwischen liegt. ——— */}
                 <Route path="/dna" element={<Navigate to="/deine-dna" replace />} />
+                <Route path="/deine-dna/foto" element={<Navigate to="/deine-dna/anprobe" replace />} />
                 <Route path="/designers" element={<Navigate to="/haeuser" replace />} />
                 <Route path="/designers/all" element={<Navigate to="/haeuser" replace />} />
                 <Route path="/boutique" element={<Navigate to="/ausgewaehlt" replace />} />

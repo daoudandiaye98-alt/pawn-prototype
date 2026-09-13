@@ -39,11 +39,11 @@ export const ROUTEN = [
   "/haus/:slug/:blatt",
   "/werk/:slug",
   "/deine-dna",
+  "/deine-dna/anprobe",
   "/deine-dna/welt",
   "/deine-dna/richtung",
   "/deine-dna/form",
   "/deine-dna/linie",
-  "/deine-dna/foto",
   "/deine-dna/archetyp",
   "/deine-dna/massband",
   "/deine-dna/privacy",
@@ -57,6 +57,7 @@ export const ROUTEN = [
   "/konto/:seite",
   "/tasche",
   "/dna",
+  "/deine-dna/foto",
   "/designers",
   "/designers/all",
   "/boutique",
@@ -180,6 +181,8 @@ export const ROUTEN = [
  */
 export const UMZUEGE = [
   { von: "/dna", nach: "/deine-dna" },
+  // Die foto-Seite ist die Anprobe geworden und nach vorn gerueckt (Auftrag Q).
+  { von: "/deine-dna/foto", nach: "/deine-dna/anprobe" },
   { von: "/designers", nach: "/haeuser" },
   { von: "/designers/all", nach: "/haeuser" },
   { von: "/boutique", nach: "/ausgewaehlt" },
