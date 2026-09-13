@@ -228,7 +228,7 @@ function Inner({ children, title, eyebrow, ohneMiniBauer }: Props) {
           Teil O: nach dem ersten Besuch feiner ~20-s-Puls + Hinweis-Satz als Tooltip. */}
       {designer && !ohneMiniBauer && (
         <>
-          <div className="fixed bottom-24 left-4 z-40 lg:bottom-6 lg:left-6">
+          <div className="fixed bottom-24 left-4 z-40 flex items-end gap-3 lg:bottom-6 lg:left-6">
             <BauerAbend
               size={52}
               onTap={() => setGespraechOffen(true)}
@@ -236,10 +236,12 @@ function Inner({ children, title, eyebrow, ohneMiniBauer }: Props) {
               className="al-bauer-puls"
               title={t("studio.bauer.hinweis")}
             />
+            <BegleiterBlase designerId={designer.id} />
           </div>
           <BauerGespraech open={gespraechOffen} onClose={() => setGespraechOffen(false)} plan={(designer.plan as Plan) ?? "haus"} />
         </>
       )}
+
 
       <div className="flex flex-wrap items-center gap-4 border-t border-white/10 px-5 py-4 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground md:px-10 lg:pl-[150px]">
         <Link to="/impressum" className="hover:text-foreground">{t("studioShell.legal.impressum")}</Link>
