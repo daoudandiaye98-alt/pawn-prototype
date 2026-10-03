@@ -1,27 +1,34 @@
 {
-  "aktualisiert": "2026-09-13",
-  "branch": "claude/heft-frontend-integration-0bjnzf",
+  "aktualisiert": "2026-10-03",
+  "branch": "claude/dna-anprobe",
   "offene_prs": [
     {
       "nr": 203,
       "titel": "Sicherheit: kein Stripe-Datum im Cockpit, bevor die Rolle feststeht",
-      "status": "Entwurf, 6 Dateien + Sperrdatei. Zweig auf main. tsc 0, npm test 356/356, VERIFY 5/5, REGRESSION 20/20, Bau gruen. Zusage Z20 (keineStripeDatenOhneRolle), gegen alle drei Ursachen einzeln rot vorgefuehrt.",
-      "blockiert_durch": "Nichts. SOLLTE ZUERST GEMERGT WERDEN: klein, schliesst das Leck, und traegt die Sperrdatei-Reparatur, ohne die auf diesem main KEIN Pruefstand laeuft."
+      "status": "Traegt jetzt AUCH die Reparatur der Launch-Gates 3.3/3.4/3.5/4.7 (zwei Commits, siehe DIE_LAUNCH_GATES). tsc 0, vitest 360/360, VERIFY 5/5, REGRESSION 20/20, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen. Launch-Gates lokal mit echten Daten: 0 gefallen auf allen 35 Kombinationen (vorher 93), Seitengewicht je Seite 2,38-2,87 MB nach der Zaehlung des Pruefstands.",
+      "blockiert_durch": "Nichts. ZUERST mergen: Leck zu, Sperrdatei repariert, Gates gruen — ohne diesen PR ist jeder andere rot."
     },
     {
       "nr": 202,
       "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel + der Routen-Rundgang",
-      "status": "Entwurf, 20 Commits. B1-B8 VOLLSTAENDIG. 120/120 Heft-Tests, 353/353, VERIFY 5/5, REGRESSION 20/20, tsc 0, Bau gruen. Zusagen Z20 (Auftritt) und Z13 (um acht Studio-Adressen erweitert), je rot vorgefuehrt. Netto -572 Zeilen in der Routen-Runde.",
-      "blockiert_durch": "Nichts im Code. `messen` ist rot, aber BELEGT nicht wegen dieses PRs: 129 gefallene Gates hier gegen 131 auf main, und alle gehoeren zu den vier Familien 3.3/3.4/3.5/4.7, ueber die Daouda entscheidet."
+      "status": "Entwurf, B1-B8 vollstaendig. Basis-Merge mit #203 IM ZWEIG ERLEDIGT (Leck, Sperrdatei, Launch-Gates): Z20 Stripe / Z21 Auftritt neu nummeriert, StudioHausseite aus der lazy-Liste, die vier Woerterbuch-Hunks auf src/lib/woerterbuch.ts, Z21 liest jetzt woerterbuch.ts. tsc 0, vitest 360/360, VERIFY 6/6, REGRESSION 21/21, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen.",
+      "blockiert_durch": "#203 (traegt dieselben Commits; nach dessen Merge zeigt der Diff nur noch #202)."
+    },
+    {
+      "nr": 204,
+      "titel": "Die Anprobe steht — und sie steht vorne (DNA-Sektion, Auftrag Q)",
+      "status": "Entwurf. Die Anprobe-Seite (DNA, Platz 1), verdrahtet an supabase/functions/anprobe, /deine-dna/foto zieht per 301 auf /deine-dna/anprobe. Zusage Z22 (anprobeIstAngeschlossen; im Zweig hiess sie Z21, beim Merge mit #202 neu nummeriert). #202 und #203 sind im Zweig schon zusammengefuehrt (Launch-Gates inklusive). tsc 0, vitest 361/361, VERIFY 6/6, REGRESSION 22/22, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen.",
+      "blockiert_durch": "#202. Nach dessen Merge: Basis auf main umstellen (delete_branch_on_merge ist aus), main hineinmergen — es kommen nur Merge-Commits, kein Konflikt erwartet."
     }
   ],
   "merge_reihenfolge": [
-    "1. #203 ZUERST. Es schliesst das Cockpit-Leck UND repariert package-lock.json. Ohne die zweite Haelfte bricht `npm ci` auf main ab und der Pruefstand kommt gar nicht zum Messen — das blockiert jeden PR, auch Daoudas eigene Merges.",
-    "2. #202 danach. Es sitzt auf einem aelteren main und hat deshalb die Sperrdatei-Falle noch nicht gesehen; nach dem Merge von #203 wird es sie sehen und braucht dann einen Basis-Merge.",
+    "1. #203 ZUERST — Leck, Sperrdatei, Launch-Gates.",
+    "2. #202: Basis-Merge ist im Zweig schon gemacht (siehe offene_prs). Nach dem Merge von #203 noch einmal main hineinmergen — es kommt nur der Merge-Commit, kein Konflikt erwartet. Das geprobte Rezept fuer den Fall, dass doch: regressionen.json/.mjs Z20 = keineStripeDatenOhneRolle, Z21 = auftrittZeigtDieSeite; App.tsx die lazy-Fassung nehmen, Zeile `const StudioHausseite = lazy(...)` streichen; i18n.tsx von main nehmen, die Woerterbuch-Hunks auf src/lib/woerterbuch.ts (`git diff 09ce200 <dieser Zweig> -- src/lib/i18n.tsx | sed 's#src/lib/i18n.tsx#src/lib/woerterbuch.ts#g' | git apply`); Z21 params.sprachen = src/lib/woerterbuch.ts.",
+    "3. #204: Basis auf main umstellen, main hineinmergen. Die Anprobe-Zusage wird Z22.",
     "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 ging 20 Sekunden vor #191 durch, beide meldeten 'merged', und die Dateien lagen trotzdem nicht auf main. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind."
   ],
   "wartet_auf_mensch": [
-    "DIE 119 GEFALLENEN LAUNCH GATES, neu und zum ersten Mal belegt: 4.7 Seitengewicht, 3.5 Trefferflaechen, 3.3 Kontrast, 3.4 Tastaturfokus. Sie auf die Norm zu ziehen aendert das AUSSEHEN des Hefts — und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Vorher sind zwei Zweifel zu klaeren (3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand) — niemand soll Gestaltung aendern, wo ein Messfehler sitzt. Vollstaendig im Kommentar an PR #194.",
+    "DIE LAUNCH GATES sind repariert, OHNE dass das Heft anders aussieht (#203, DIE_LAUNCH_GATES). Offen bleiben ZWEI VERHALTENSENTSCHEIDUNGEN, die nur Daouda trifft: D1 — gtag.js (163.510 B) erst nach Zustimmung laden statt auf jeder Seite; D2 — die naechsten Doppelseiten nicht vorausladen (/, /mode, /tasche: drei-welten 240.702 B + foto-spiegel 59.954 B; /konto: 196.446 B). Ohne beide liegt die schwerste Seite rund 340 kB unter 3 MB — und jedes neue Werk mit Freisteller wiegt auf ALLEN sieben Seiten mit (app.js laedt die Freisteller aller Buehnen-Werke). Sichtbar geaendert, zur Abnahme auf der Vorschau: neun leise Grautoene je 1-2 Stufen dunkler (Farbton gleich) · die Welt-Knoepfe verschwinden hinter dem offenen Seitenfenster (vorher schimmerten sie durch den Schleier) · Eingabefelder im Heft zeigen beim Fokus wieder einen Strich · 'Direkt entdecken' bleibt beim Tab-Fokus waehrend der Eroeffnung sichtbar · auf Touch-Geraeten: Schatten der Welt-Chips 1-2 px anders, und die Seitenpunkte sind dort reine Anzeige (Direktsprung per Punkt entfaellt — 15x1 px traf ohnehin kein Finger; geblaettert wird mit den Pfeilen und durch Wischen). EINE GESTALTUNGSFRAGE BLEIBT: die vier Papier-Toene (.piece-caption, .haus-ort, Formular, .empty-paper) halten auf den Hauspapieren Editorial/Galerie/Atelier/Archiv nur 3,6-4,5:1 (vorher weniger; der Pruefstand ist zufrieden, WCAG nicht ueberall). Dunkler ginge, waere aber sichtbar.",
     "L15 FREISTELLEN — der Auftragssatz ist klar, aber die genannte Vorlage widerspricht ihm, und deshalb wird hier nicht gebaut: src/heft03/referenz/freistellen.py sagt in ihrem eigenen Kopf ‚NICHT auf echte Produktfotos anwenden — gruene Kleidung wuerde zerstoert. Fuer reale Ware gehoert eine Segmentierung in die Medienpipeline.‘ Sie schlaegt einen Farbbereich frei, kein Motiv. Auf einem echten Werkbild loescht sie Teile des Stuecks. FRAGE, die nur Daouda beantworten kann: soll das Freistellen ueber die bestehende Edge Function generate-product-shot laufen (kostet FAL-Guthaben je Bild), oder ueber etwas anderes? Ohne diese Antwort wuerde ich raten, und ein Rateschluss loescht echte Werkbilder.",
     "F2 — DIE WEISSE SEITE BEIM BLAETTERN, nicht nachstellbar und deshalb nicht repariert. Im Container laesst sich die Doppelseite nicht aufschlagen: WebGL laeuft, die Buehne rendert, aber nach 40 Scroll-Schritten existiert kein .spread im DOM. Ich kann die Ursache nicht belegen und rate nicht. Was hilft: eine Aufnahme mitten in der Drehung, oder die Antwort auf die Frage, ob es beim ersten Blaettern passiert oder bei jedem.",
     "F1 — gebaut, aber IM CONTAINER NICHT BEWIESEN. Gemessen wurde mit echtem Chromium gegen den gebauten Stand, die Fassung MIT und OHNE Reparatur: beide Laeufe sind ununterscheidbar (Geruest erscheint nach 12,7 s, 39 ms spaeter ist die Gestaltung da). Der Grund: vite preview liefert das CSS von 127.0.0.1 sofort, das Zeitfenster, in dem Daouda das Aufblitzen sieht, entsteht erst ueber eine echte Leitung. Die Vercel-Vorschau ist vom Container aus nicht lesbar (302 auf die Anmeldung, das Umgehungsgeheimnis liegt nicht hier). DER BEWEIS IST DAOUDAS BLICK: pawn.vision aufrufen und sehen, ob links noch ein unformatierter Block aufblitzt.",
@@ -55,13 +62,14 @@
     }
   },
   "naechster_zug": [
-    "1. DAOUDA: #203 mergen. Klein, schliesst das Leck, macht den Pruefstand wieder lauffaehig.",
-    "2. DAOUDA: #202 mergen. Danach auf origin/main nachsehen, ob die Dateien wirklich dort liegen.",
-    "3. PR 4 — die Anprobe in der DNA-Seite. JETZT moeglich, weil die Spruenge auf NAMEN stehen (data.mjs > seitenNr): ein Einschieben verschiebt nichts mehr. Die foto-Seite wird die Anprobe-Seite und zieht von Platz 5 auf Platz 1 (Daoudas Entscheidung). Backend ist fertig und deployt — supabase/functions/anprobe kann bereinigen/anprobe/raum/wand/stand/bewerten. Es fehlt NUR die Verdrahtung: quelle.anprobe, der Platzhalter-Toast in app.js:829, state.avatar (existiert nicht, wird aber gelesen), state.anproben (wird nie gefuellt), das Melden von anprobe_fertig.",
-    "4. PR 5 — Clips layout-bewusst. Der Knopf 'Freisteller' in StudioMediathek ruft generate-product-shot (weisses JPEG) statt freistellen (echter Freisteller). Damit ist die Kette Clips → product_dna.heft → Buehne an genau dieser Stelle gerissen.",
-    "5. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message). Dazu der Fehler in app.js:874 — die Beispiel-Prompts rufen kein fragen(), die Edge Function sieht den Satz nie.",
-    "6. Die zwei Vorschlagspapiere: docs/vorschlag-mini-pawn.md und docs/vorschlag-cockpit.md.",
-    "7. DAOUDA, unveraendert offen: die Drei-Werke-Regel · die gefallenen Gates 4.7/3.3/3.5/3.4 · der GRANT auf designers (M3 Teil 2) · teil-o-migrationen.zip (166 statt 173 Dateien) · OFFENE-LISTE.md fehlt im Repo."
+    "1. #203 mergen (Daouda hat das Mergen dieser Runde freigegeben). Danach origin/main pruefen.",
+    "2. #202: nach dem Merge von #203 main hineinmergen, messen gruen, mergen, origin/main pruefen (die Falle #190/#191).",
+    "3. #204: nach dem Merge von #202 die Basis auf main umstellen, main hineinmergen, messen gruen, mergen, origin/main pruefen.",
+    "4. Was die Gates NACH der Eroeffnung noch finden wuerden (die CI misst waehrend der Eroeffnung, 4,3 s nach dem Laden): 3.5 'Das Haus entdecken ↗' auf /suche (86×15 bzw. 50×8 px) und 'DEIN ZUG' auf /haus/drape 844 quer (43 px). Kein Gate faellt heute daran — aber sobald der Pruefstand spaeter misst, werden sie rot.",
+    "5. PR 5 — Clips layout-bewusst (Freisteller-Knopf in StudioMediathek ruft generate-product-shot statt freistellen).",
+    "6. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message); app.js: die Beispiel-Prompts rufen kein fragen().",
+    "7. Die zwei Vorschlagspapiere: docs/vorschlag-mini-pawn.md und docs/vorschlag-cockpit.md.",
+    "8. DAOUDA, unveraendert offen: die Drei-Werke-Regel · D1/D2 (oben) · der GRANT auf designers (M3 Teil 2) · teil-o-migrationen.zip (166 statt 173 Dateien) · OFFENE-LISTE.md fehlt im Repo."
   ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
@@ -78,8 +86,8 @@
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-09-13",
-    "bestanden": 5,
+    "datum": "2026-10-03",
+    "bestanden": 6,
     "gefallen": 0
   },
   "lastprobe": {
@@ -104,7 +112,7 @@
       "Noch nicht gebaut": "Stilfoto (/deine-dna/foto) und Bild in Frag PAWN — Zweig 2. Freistellen — H6, eigener PR."
     }
   },
-  "letzter_pruefer": "2026-09-12 · Block A · PRUEFER: 8/10 · WIDERLEGT: 3. Zwei echte Funde: (1) darfZaehlen wurde in quelle.mjs geprueft, aber nie von der Huelle uebergeben — der Typ in heft.d.ts kannte es nicht, also hat ereignis() NIE geschrieben, mit oder ohne Zustimmung. Repariert, Zusage Z17, rot vorgefuehrt. (2) Meine Zahl '15 von 16 Ereignissen' war falsch; richtig 14 von 16. Beides in metrik.md und hier berichtigt.",
+  "letzter_pruefer": "2026-10-03 · Launch-Gates (#203) · PRUEFER: 21/30 · WIDERLEGT: 13, 23, 24, 25, 28, 29, 30 · NICHT PRUEFBAR: 26, 27. Nachgezogen: (13) der Kontrast-Kommentar behauptete >= 4,6 auch auf Papier — gilt nur gegen Weiss, jetzt ehrlich, die Papier-Luecke steht in wartet_auf_mensch; (23)/(24) die nicht genannten sichtbaren Folgen und die Touch-Seitenpunkte stehen jetzt im Commit und hier; (29) Wache app-rahmen.spec.ts, rot vorgefuehrt; (28) dieser Stand. (25) ist keine Verschlechterung: Englisch lud das Woerterbuch vorher im Haupt-Buendel, jetzt bei Bedarf — die Auto-Uebersetzung startet ein Laden spaeter. (26)/(27) misst die CI bzw. die lokale Sonde (alle 35 Kombinationen gruen).",
   "DIE_DATENBANKFRAGE_IST_ENTSCHIEDEN": {
     "entscheidung": "Daouda am 12.09.2026: rnakubexbqfgfciynqpt ist die echte Datenbank. CLAUDE.md ist berichtigt.",
     "bestaetigt_ueber_Lovable": "Zugang laeuft NICHT ueber das Supabase-MCP (dort 'You do not have permission'), sondern ueber das Lovable-MCP: query_database mit project_id 81416573-4f0e-4ff7-a863-43988a85e8d2 (Projekt pawn-archive-muse). DAS IST DER WEG FUER JEDE KUENFTIGE MESSUNG AN DER ECHTEN DATENBANK.",
@@ -177,5 +185,15 @@
     "reparatur": "npm install --package-lock-only, also das Werkzeug des Projekts. Gemessen: 60 Eintraege NEU, 0 entfernt, 0 Versionsaenderungen, davon 48 esbuild-Plattformpakete. Kein vorhandenes Paket verschoben.",
     "warum_jetzt_und_vorher_nicht": "In einer frueheren Runde habe ich ausdruecklich davon ABGERATEN, die Sperrdatei anzufassen: der Umbau bewegte damals ~6000 Zeilen und behob KEINEN belegten Fehler. Jetzt gibt es den Fehler, und die Reparatur ist klein. Die Regel hat sich nicht geaendert, die Faktenlage schon.",
     "liegt_in": "#203"
+  },
+  "DIE_LAUNCH_GATES": {
+    "befund": "Auf main, #202, #203 und #204 fielen dieselben ~130 Gates aus vier Familien. Keiner der PRs hat sie verursacht — sie hielten aber jeden rot.",
+    "4.7_gewicht": "App.tsx band 73 Seiten fest ein, i18n.tsx trug beide Woerterbuecher (~305 kB), dazu Toasts/Copilot/Einwilligung/Studio-Schriften fuer jede Adresse — alles im Haupt-Buendel, das auch jede Heft-Seite laedt. Repariert: React.lazy je Seite (Reihenfolge der Routen unveraendert), Woerterbuecher byte-gleich nach src/lib/woerterbuch.ts (geladen bei Bedarf), Rahmen src/AppRahmen.tsx nur ausserhalb des Hefts. index.js 2.183.619 B -> 474.753 B. Lokal nach der Zaehlung des Pruefstands: 2.379.736 B (/, /mode, /konto, /haus) bis 2.869.600 B (/suche).",
+    "3.3_kontrast": "Neun leise Grautoene im selben Farbton nur so weit abgedunkelt, dass sie >= 4,6:1 halten. Die Passform im Seitenfenster zeigte wegen `#drawer p` (Spezifitaet) einen anderen Ton als ihre eigenen Regeln. Welt-Knoepfe hinter dem offenen Seitenfenster: visibility:hidden.",
+    "3.4_fokus": "#skip geht nach der Eroeffnung aus dem DOM (kommt beim Abbau zurueck), das Seitenfenster oeffnet auf seiner Ueberschrift, der Begleiter ist in Eroeffnung/Blaettern/Drehen visibility:hidden, Formularfelder zeigen ihren Fokus wieder, Randpfeile aria-disabled statt disabled (gleiches Aussehen).",
+    "3.5_trefferflaechen": "Nur @media(pointer:coarse): Bedienelemente wachsen unsichtbar auf 44 px (Polster+Gegenrand, durchsichtiger Rand+background-clip). Seitenpunkte auf Touch-Geraeten reine Anzeige, geblaettert wird mit den Pfeilen. Mit der Maus aendert sich nichts.",
+    "nicht_drin": "D1 (gtag nach Zustimmung) und D2 (kein Vorausladen) — Verhalten, Daoudas Entscheidung.",
+    "die_zwei_alten_zweifel": "Beide geklaert, beide waren KEIN Messartefakt: 3.4 fiel an fokussierbaren Knoepfen, die unsichtbar waren (opacity 0 statt visibility hidden: Begleiter, #skip nach der Eroeffnung) oder deren Fokusregel verlor (Formularfelder) — repariert. 3.3 kam nicht aus dem leeren Zustand, sondern aus echten leisen Toenen (#scene-note 4,31, #scroll-hint 4,02 …).",
+    "wache": "src/__tests__/app-rahmen.spec.ts: ausserhalb des Rahmens nur Heft und Umzuege, das Heft nie im Rahmen, im Heft t() nur nach ladeWoerterbuch(). Jede der drei Regeln einmal rot vorgefuehrt."
   }
 }

@@ -14,6 +14,7 @@ footer{position:fixed;left:3.4%;right:3.4%;bottom:51px;height:57px;border-top:1p
 .is-intro .editorial,.is-intro footer,.is-intro #scene-note{transition:opacity 1.05s ease}
 .is-intro.is-opening .editorial,.is-intro.is-opening footer,.is-intro.is-opening #scene-note{opacity:1}
 .is-intro.is-opening #intro-caption,.is-intro.is-opening #skip{opacity:0;transition:opacity .7s ease;pointer-events:none}.is-turning .editorial,.is-turning #hotspots{opacity:0;pointer-events:none}.is-turning .editorial button,.is-intro .editorial button,.is-turning .hotspot,.is-intro .hotspot{pointer-events:none}
+.is-intro.is-opening #skip:focus-visible{opacity:1;pointer-events:auto;transition:none}
 .motion-tools{position:fixed;left:3.4%;bottom:21px;z-index:25;font-size:10px;color:#80786a}#tools-toggle{font-size:10px;padding:0;display:flex;gap:30px;align-items:center}#tools-panel{position:absolute;bottom:32px;left:0;width:280px;padding:22px;background:#fffdf9;border:1px solid #e4ddd2;box-shadow:0 12px 45px #00000012;color:#544d43}.tool-heading{font:19px Playfair;margin-bottom:23px;display:flex;justify-content:space-between;align-items:center}#tools-close{font-size:24px}.motion-tools label{font-size:11px;margin-top:18px;display:block}.motion-tools input[type=range]{width:100%;display:block;margin-top:12px;accent-color:#645849}.motion-tools output{float:right}.motion-tools legend{font-size:11px}.motion-tools fieldset{border:0;padding:0}.motion-tools .small-note{font-size:10px;line-height:1.7}.segmented{display:flex;margin-top:10px}.segmented label{margin:0;width:50%;text-align:center}.segmented input{position:absolute;opacity:0}.segmented span{display:block;padding:10px;border:1px solid #cec4b3}.segmented input:checked+span{background:#544839;color:#fff}.segmented input:focus-visible+span{outline:2px solid #8b424a;outline-offset:2px}.prototype-badge{position:fixed;right:3.4%;bottom:23px;font-size:8px;letter-spacing:1.6px;color:#a39c91;z-index:7}
 #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;z-index:100;font:500 24px Playfair,Georgia,serif;color:#232220}#loading>span{height:1px;width:100px;background:#ddd;margin:24px;position:relative;overflow:hidden}
 #loading>span::after{content:'';position:absolute;left:-35px;width:35px;height:1px;background:#333;animation:load 1.4s infinite}
@@ -124,6 +125,8 @@ body.is-rotate{overflow:hidden}
  #intro-caption small{margin-bottom:.5rem}
  #intro-caption em{font-size:.95rem}
  #skip{top:10.5rem;bottom:auto}
+ /* Mit dem Finger waechst der Knopf um 9 px nach oben (Trefferflaechen, weiter unten). Quer haengt er oben — also dieselben 9 px hinauf, die Schrift bleibt stehen. */
+ @media(pointer:coarse){#skip{top:calc(10.5rem - 9px)}}
 }
 
 /* Hotspots stehen am Fuß der Arbeit, mit einer feinen Linie wie ein Museumsschild. */
@@ -137,14 +140,16 @@ body.is-rotate{overflow:hidden}
 .page-id{gap:14px}
 .divider{width:30px;background:#cdc5b7}
 #page-dots{gap:7px;align-items:center}
-#page-dots button{width:15px;height:1px;border-radius:0;background:#d5cfc4}
-#page-dots button[aria-current]{height:2px;background:#282622}
+#page-dots button,#page-dots>span{width:15px;height:1px;border-radius:0;background:#d5cfc4}
+#page-dots button[aria-current],#page-dots>span.an{height:2px;background:#282622}
+#page-dots>span.aus{opacity:.32}
 .pagination>button{color:#4a453d}
+.pagination>button[aria-disabled=true]{cursor:default;opacity:.32}
 @media(max-width:759px){
  .hotspot{transform:translate(-50%,-50%) translateY(-34px)}
  .hotspot:before{height:34px}
  #counter{font-size:13px}
- #page-dots button{width:10px}
+ #page-dots button,#page-dots>span{width:10px}
 }
 
 @media(prefers-reduced-motion:reduce){#loading>span::after{animation:none;left:33px}}
@@ -208,6 +213,10 @@ body.is-rotate{overflow:hidden}
 .paper-page form textarea{border:1px solid #d5cdbe;padding:12px;font-size:15px;line-height:1.7;max-width:none}
 .paper-page form input::placeholder,.paper-page form textarea::placeholder{color:#a79c8b;font-style:italic}
 .paper-page form input:focus,.paper-page form textarea:focus{outline:0;border-color:var(--house-accent,#733039)}
+/* Kontrolle 3.4: die Zeile darüber verliert bei Eingabefeldern gegen die Grundregel (0,2,2 gegen 0,4,2) — der Strich
+   färbte sich nie, und outline:0 nahm den Ring. Das Feld zeigte keinen Fokus. Jetzt färbt sich der Strich wie gedacht
+   und wird 2 px stark, damit man ihn auch auf der verkleinerten Doppelseite (Telefon quer) noch sieht. */
+.paper-page form input:not([type=radio]):not([type=checkbox]):not([type=color]):focus{border-color:var(--house-accent,#733039);box-shadow:0 1px 0 var(--house-accent,#733039)}
 .paper-page form label{letter-spacing:.14em;text-transform:uppercase;font-size:9px;color:#8d8478}
 
 /* Vorschlagszeilen sind Zeilen, keine Knöpfe. */
@@ -422,6 +431,24 @@ body[data-motion=ready] .gestochen .schicht{animation:tafel-zieht 1.4s cubic-bez
 .paper-page:after{color:#6b6355}
 .house-list button small,.product-card small{color:#4f473c}
 .paper-page h1,.paper-page h2,.paper-page h3,.house-line{color:#141310}
+/* Kontrolle 3.3 — dieselben Töne (Farbton unverändert), nur abgedunkelt. Gegen Weiß halten alle ≥ 4,6:1,
+   der Prüfstand ist mit allen zufrieden. Auf Papier weniger: die vier Papier-Töne (.piece-caption, .haus-ort, Formular, .empty-paper) halten auf
+   #f9f7f2 ≥ 4,5:1, auf den vier Hauspapieren (Editorial #f6f1e7 … Archiv #dedfdc) nur 3,6–4,5 — vorher noch weniger.
+   Ob sie dort dunkler werden, ist eine Gestaltungsfrage (stand.json, wartet_auf_mensch). */
+#scene-note{color:#7a746a}
+#scroll-hint{color:#797369}
+.motion-tools{color:#7b7467}
+.piece-caption>small{color:#806e58}
+#search-toolbar>p{color:#7c7367}
+/* #drawer p (1,0,1) überstimmt hier .passform .eyebrow, .passform-satz und .passform-urteil (0,2,0 bzw. 0,1,0) — gezeigt wird #drawer p. Dessen Ton, abgedunkelt. */
+#drawer .passform p{color:#71695c}
+.haus-ort,.paper-page form label{color:#756d62}
+.empty-paper{color:#7d705e}
+/* Liegt das Seitenfenster offen, decken Schleier und Unschärfe die Bühne. Die Welt-Knöpfe dahinter
+   sind nicht bedienbar — und ihre weiße Schrift auf dem verschleierten Schwarz nicht lesbar. Also weg. */
+body:has(#drawer[open]) #hotspots{visibility:hidden}
+/* inert setzt app.js nur zusammen mit opacity:0 (Eröffnung, Blättern, Lesen). Unsichtbar heißt dann auch: nicht da. */
+#hotspots[inert]{visibility:hidden}
 
 /* ---------- Hochglanz: das Papier fängt Licht ---------- */
 .paper-page{background-image:linear-gradient(118deg,#ffffff6b 0%,#ffffff1a 26%,#ffffff00 46%,#0000000a 100%)}
@@ -826,8 +853,8 @@ label.choice input{width:20px;height:20px;accent-color:#100e0c}
 /* === Der Bauer im Raum: begleitet, spricht in kleinen Blasen, öffnet das Gespräch === */
 #begleiter{position:fixed;right:3.4%;bottom:118px;z-index:9;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
 #begleiter>*{pointer-events:auto}
-.is-intro #begleiter,.is-turning #begleiter,.is-rotate #begleiter{opacity:0;pointer-events:none;transition:opacity .4s}
-#begleiter{transition:opacity .5s .3s}
+.is-intro #begleiter,.is-turning #begleiter,.is-rotate #begleiter{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .4s,visibility 0s .4s}
+#begleiter{transition:opacity .5s .3s,visibility 0s .3s}
 .begleiter-blase{max-width:250px;background:#fff;color:#1c1a17;border:1px solid #1c1a17;padding:11px 14px;font:italic 400 13.5px/1.45 Playfair,Georgia,serif;
  position:relative;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s cubic-bezier(.2,.65,.25,1);box-shadow:4px 4px 0 #100e0c1f}
 .begleiter-blase.da{opacity:1;transform:none}
@@ -1071,6 +1098,51 @@ blockquote cite{display:block;font:400 11px Inter,sans-serif;letter-spacing:.16e
 /* Konto › Bestellungen: Zeilen aus der Quelle */
 .bestellungen{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid #d6cfc3}.bestellungen li{display:grid;gap:4px;padding:12px 0;border-bottom:1px solid #d6cfc3}.bestellungen small{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6a6053}.bestellungen strong{font-family:'Playfair Display',Georgia,serif;font-weight:500;font-size:19px;letter-spacing:-.2px}.bestellungen span{font-size:13px;color:#655e54}
 .tasche-haus{margin-top:18px}.tasche-haus>.eyebrow{font-size:10px;letter-spacing:2px;color:#6a6053;margin:0 0 8px}.tasche-haus+.tasche-haus{border-top:1px solid #d6cfc3;padding-top:14px}
+
+/* ---------- Trefferflächen (Kontrolle 3.5): ein Finger braucht 44 px ---------- */
+/* Gemessen wird der Kasten des Bedienelements selbst. Er wächst unsichtbar: Polster mit
+   Gegenrand, bei gefüllten Knöpfen ein durchsichtiger Rand mit background-clip — die gemalte
+   Fläche bleibt, wo sie war. Ihr harter Schatten kommt dann als drop-shadow, denn box-shadow
+   hinge am größeren Kasten. Nur für den Finger: mit der Maus ändert sich hier nichts.
+   Steht absichtlich NACH allen Regeln, die es überstimmt (.passform, .hotspot.welt …). */
+/* Das zugeklappte Filterfeld zeigt nichts — seine Felder sind nicht da, also auch nicht messbar. */
+#search-toolbar details:not([open])>div{display:none}
+@media(pointer:coarse){
+ .site-header .wordmark{min-width:44px;min-height:44px;text-align:left}
+ #menu-toggle{min-height:44px;align-items:center;margin-block:-15px}
+ #search-open,#account-open{display:grid;place-items:center;width:44px;height:44px;margin:-12px}
+ #cart-open{min-height:44px;padding-block:15px;margin-block:-5px}
+ /* wächst nach oben; quer gleicht die Querformat-Abfrage oben die 9 px aus */
+ #skip{padding-top:19px;min-height:44px}
+ #return-display{padding-block:17.5px;margin-block:-13.5px}
+ .pagination>button{width:44px;height:44px;margin:-4.5px}
+ #tools-toggle{padding-block:16px;margin-block:-16px}
+ /* Plus auf der Bühne: der Kreis bleibt 32 px, der Ring wandert vom Rand in einen Innenschatten */
+ .hotspot{width:44px;height:44px;border:6px solid transparent;background-clip:padding-box;box-shadow:inset 0 0 0 1px #b3a897,0 2px 10px #00000010}
+ .hotspot:before{top:calc(100% - 1px)}
+ .hotspot:after{top:6px;right:calc(100% + 9px)}
+ .hotspot.welt{border:2px solid transparent;background-clip:padding-box;box-shadow:none;filter:drop-shadow(5px 5px 0 #100e0c26);transform:translate(-50%,-100%) translateY(-8px);transition:transform .3s cubic-bezier(.2,.65,.25,1),filter .3s}
+ .hotspot.welt:hover{transform:translate(-50%,-100%) translateY(-14px);box-shadow:none;filter:drop-shadow(8px 8px 0 var(--house-accent,#733039))}
+ .dialog-close{min-width:44px;right:18px;border:solid transparent;border-width:0 4px;background-clip:padding-box}
+ .designer-link{padding-top:23px;margin-top:-23px}
+ /* wächst nach unten (nach oben läge es auf der Notiz); die Linie wird an derselben Stelle gezogen */
+ .editorial .text-link{padding-bottom:29px;margin-bottom:-19px;border-bottom-color:transparent;background:linear-gradient(#a8a299,#a8a299) 0 calc(100% - 18px)/100% 1px no-repeat}
+ .passform .text-link{padding-top:18px;margin-top:-8px}
+ #drawer .passform .solid{border-color:transparent;background-clip:padding-box;padding:13px 17px;margin:5px -1px -1px;box-shadow:none;filter:drop-shadow(4px 4px 0 #100e0c1f);transition:transform .25s cubic-bezier(.2,.65,.25,1),filter .25s}
+ #drawer .passform .solid:hover{box-shadow:none;filter:drop-shadow(7px 7px 0 var(--house-accent,#733039))}
+ #search-toolbar input[type=search]{min-height:44px;padding-top:18px;margin-top:-8px;background-clip:content-box}
+ /* „Finden": wächst nur nach oben, ins ruhige Weiß über der Leiste — darunter bewegt sich die Bühne */
+ #search-toolbar .solid{border:solid transparent;border-width:5px 0 0;background-clip:padding-box;padding:11px 17px;margin-top:-5px;box-shadow:none;filter:drop-shadow(4px 4px 0 #100e0c1f);transition:transform .25s cubic-bezier(.2,.65,.25,1),filter .25s}
+ #search-toolbar .solid:hover{box-shadow:none;filter:drop-shadow(7px 7px 0 var(--house-accent,#733039))}
+ /* Mit Tastaturring zurück zum box-shadow: drop-shadow würfe sonst auch den Ring als Schatten */
+ #search-toolbar .solid:focus-visible,#drawer .passform .solid:focus-visible{filter:none;box-shadow:4px 4px 0 #100e0c1f}
+ .hotspot.welt:focus-visible{filter:none;box-shadow:5px 5px 0 #100e0c26}
+}
+@media(pointer:coarse) and (max-width:759px){
+ #search-open,#account-open{margin:-13.5px}
+ .hotspot{border-width:7px}
+ #search-toolbar input[type=search]{padding-top:20px;margin-top:-10px}
+}
 
 /* Die gepflegten Welt-Angaben im Seitenfenster (views.mjs › weltAngaben). Eine Zeile je
    Feld, Beschriftung leise, Wert lesbar — dieselbe Anmutung wie die Bewerbungs-Übersicht. */

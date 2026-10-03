@@ -172,7 +172,7 @@ verkaufen.
 | `src/pages/studio/` | Designer-Studio: Bühne mit „Nächster Zug", Kollektion, Kampagnen-Funnel, Bestellungen mit Versand-Kette, Plan, Retrospektive |
 | `src/pages/admin/` | Admin-Cockpit: Overview, KI/Denklogik, Trends, Posting, Zahlungen, Aktionen-Log, Archiv, Editionen |
 | `src/features/campaign/renderer.ts` | Browser-Video-Renderer (Canvas + MediaRecorder). Reel-Safe-Zones oben 14 %, unten 20 % |
-| `src/lib/i18n.tsx` | Wörterbücher `de` und `en`. `en` ist über `Record<keyof typeof de, string>` an `de` gefesselt |
+| `src/lib/woerterbuch.ts` | Wörterbücher `de` und `en`. `en` ist über `Record<keyof typeof de, string>` an `de` gefesselt. `src/lib/i18n.tsx` lädt sie erst bei Bedarf (`ladeWoerterbuch`) |
 | `src/lib/planGate.ts` | Die einzige Leseklinke für Plangrenzen im Browser |
 | `tools/pruefstand/` | Browser-Messung, vier Breiten, schreibt Zahlen und Aufnahmen |
 
