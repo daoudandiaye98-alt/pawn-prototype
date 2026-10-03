@@ -855,6 +855,9 @@ label.choice input{width:20px;height:20px;accent-color:#100e0c}
 #begleiter>*{pointer-events:auto}
 .is-intro #begleiter,.is-turning #begleiter,.is-rotate #begleiter{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .4s,visibility 0s .4s}
 #begleiter{transition:opacity .5s .3s,visibility 0s .3s}
+/* Zu Beginn der Eröffnung sofort weg, ohne Ausblenden: der Ladeschirm geht im Bild davor, und während der
+   0,4 s Ausblenden wäre der Knopf fast durchsichtig, aber noch zu erreichen (Kontrolle 3.4 fing genau das). */
+.is-intro #begleiter{transition:none}
 .begleiter-blase{max-width:250px;background:#fff;color:#1c1a17;border:1px solid #1c1a17;padding:11px 14px;font:italic 400 13.5px/1.45 Playfair,Georgia,serif;
  position:relative;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s cubic-bezier(.2,.65,.25,1);box-shadow:4px 4px 0 #100e0c1f}
 .begleiter-blase.da{opacity:1;transform:none}
