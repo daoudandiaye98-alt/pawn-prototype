@@ -31,27 +31,9 @@ import { track } from "@/lib/analytics";
 import { Seo } from "@/components/palace/Seo";
 import { JsonLd, SITE_URL } from "@/components/palace/JsonLd";
 import { pfadAusRoute, routeAusPfad } from "@/heft03/routen.mjs";
-import geruestRoh from "./referenz/index.html?raw";
+import { GERUEST, KOERPER_KLASSE, stylesheet } from "./geruest";
 import heftCss from "./style.css?url";
 import schriftenCss from "./schriften.css?url";
-
-/**
- * Das Gerüst: alles zwischen `<body>` und `</body>`, ohne den Starter der Vorschau und
- * ohne den Vorschau-Stempel (Entscheidung D6 — der Regler „Papier & Bewegung" bleibt).
- */
-const GERUEST = (() => {
-  const anfang = geruestRoh.indexOf("<body");
-  const ende = geruestRoh.lastIndexOf("</body>");
-  const koerper = geruestRoh.slice(anfang, ende);
-  return koerper
-    .slice(koerper.indexOf(">") + 1)
-    .replace(/<script[\s\S]*?<\/script>/g, "")
-    .replace(/<span class="prototype-badge">[\s\S]*?<\/span>/g, "")
-    .trim();
-})();
-
-/** Die Klassen, die das Heft am `<body>` setzt und `stop()` wieder abräumt. */
-const KOERPER_KLASSE = "is-intro";
 
 /* Der Griff kommt aus `heft.d.ts` (`interface HeftGriff`), nicht aus einer Ableitung über
    `Awaited<ReturnType<…>>`. Der Unterschied ist nicht kosmetisch: die Ableitung war immer
@@ -86,15 +68,6 @@ function blattGeladen(el: HTMLLinkElement, frist = 12000): Promise<void> {
 }
 
 /** Ein Stylesheet, das nur solange gilt, wie das Heft offen ist. */
-function stylesheet(href: string): HTMLLinkElement {
-  const el = document.createElement("link");
-  el.rel = "stylesheet";
-  el.href = href;
-  el.dataset.heft03 = "";
-  document.head.appendChild(el);
-  return el;
-}
-
 export default function HeftRoute03() {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();

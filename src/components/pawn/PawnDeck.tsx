@@ -21,11 +21,11 @@ import { schreibePawnSignal, roomKeyForPath } from "@/lib/pawnSignal";
  */
 
 const ROUTE_GUIDE: Array<{ prefix: string; key: string }> = [
-  { prefix: "/studio/produkte", key: "studio.guide.route.produkte" },
-  { prefix: "/studio/kampagnen", key: "studio.guide.route.kampagnen" },
-  { prefix: "/studio/hausseite", key: "studio.guide.route.hausseite" },
-  { prefix: "/studio/mediathek", key: "studio.guide.route.mediathek" },
-  { prefix: "/studio/videothek", key: "studio.guide.route.videothek" },
+  { prefix: "/studio/werke", key: "studio.guide.route.produkte" },
+  { prefix: "/studio/clips", key: "studio.guide.route.kampagnen" },
+  { prefix: "/studio/doppelseite", key: "studio.guide.route.hausseite" },
+  { prefix: "/studio/werke/bilder", key: "studio.guide.route.mediathek" },
+  { prefix: "/studio/clips/fertig", key: "studio.guide.route.videothek" },
   { prefix: "/studio/dna", key: "studio.guide.route.dna" },
 ];
 

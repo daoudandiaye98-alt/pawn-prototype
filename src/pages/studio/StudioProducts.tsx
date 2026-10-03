@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+import { WERKE_TABS } from "@/features/studio/flaechen";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -247,14 +248,10 @@ export default function StudioProducts() {
 
   return (
     <StudioShell title={t("studioShell.nav.werke")} eyebrow={t("studio.products.eyebrow")}>
-      <FlaechenTabs tabs={[
-        { label: t("studio.tabs.werke"), to: "/studio/werke" },
-        { label: t("studio.tabs.bilder"), to: "/studio/werke/bilder" },
-        { label: "Rochade", to: "/studio/werke/rochade" },
-      ]} />
+      <FlaechenTabs tabs={WERKE_TABS.map((f) => ({ label: t(f.labelKey), to: f.to }))} />
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{total} {total === 1 ? t("studio.products.pieceSingular") : t("studio.products.piecePlural")} · {t("studio.products.pageInfo", { page: page + 1, total: totalPages })}</p>
-        <Link to="/studio/produkte/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
+        <Link to="/studio/werke/neu" className="flex items-center gap-2 border border-foreground bg-foreground px-4 py-2 text-[0.65rem] uppercase tracking-[0.28em] text-background hover:bg-black">
           <Plus className="h-3 w-3" /> {t("studio.products.newPiece")}
         </Link>
       </div>
@@ -266,7 +263,7 @@ export default function StudioProducts() {
           description={t("studio.products.emptyBody")}
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link to="/studio/produkte/neu" className="inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
+              <Link to="/studio/werke/neu" className="inline-flex items-center gap-2 border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
                 <Plus className="h-3 w-3" /> {t("studio.products.firstPieceCta")}
               </Link>
               {/* Wer schon eine Seite hat, soll sie nicht abtippen müssen. */}

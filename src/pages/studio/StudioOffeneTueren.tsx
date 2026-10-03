@@ -250,7 +250,7 @@ export default function StudioOffeneTueren() {
 
                 {!isEditing && FREMDGESTEUERTE_ART.has(door.art) && (
                   <div className="mt-4">
-                    <Link to="/studio/kampagnen" className="text-[0.65rem] uppercase tracking-[0.24em] underline">
+                    <Link to="/studio/clips" className="text-[0.65rem] uppercase tracking-[0.24em] underline">
                       {t("studio.tueren.action.zurEntscheidung")}
                     </Link>
                   </div>

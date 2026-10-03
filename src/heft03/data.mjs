@@ -36,6 +36,28 @@ export const displays={
 export const sections={entdecken:['hero','edit'],mode:['drape','noir'],interior:['forme','terre'],kunst:['traces','gestures'],haeuser:['welten','mode','interior','kunst'],dna:['intro','welt','richtung','form','linie','foto','archetyp','massband','privacy'],suche:['results'],konto:['zugang','start','saved','orders','requests','settings'],'frag-pawn':['dialog'],'fuer-designer':['invitation','studio'],vision:['vision','belief','work']};
 export const labels={entdecken:'Entdecken',mode:'Mode',interior:'Interior',kunst:'Kunst',haeuser:'Unsere Häuser',dna:'DNA','fuer-designer':'Für Designer',vision:'Vision',haus:'Haus',suche:'Suche',konto:'Mein PAWN','frag-pawn':'Frag PAWN'};
 export const counts=Object.fromEntries(Object.entries(sections).map(([k,v])=>[k,v.length]));
+
+/**
+ * Die Seitenzahl zu einem NAMEN — und der Grund, warum es sie gibt.
+ *
+ * Commit 1b91aae hat 'archetyp' in sections.dna eingeschoben. Damit rutschten
+ * massband von 6 auf 7 und privacy von 7 auf 8 — und die hartkodierten Zahlen in
+ * den Sprungknoepfen wurden nicht nachgezogen. Sechs Knoepfe landeten danach auf
+ * der falschen Doppelseite, monatelang, ohne dass irgendetwas rot wurde. Der
+ * unangenehmste: „Meine Linie pruefen" setzte state.fitProduct und sprang dann auf
+ * eine Seite, die state.fitProduct gar nicht liest.
+ *
+ * Eine Zahl im Code bindet an eine REIHENFOLGE. Ein Name bindet an eine SACHE.
+ * Reihenfolgen aendern sich, Sachen nicht. Darum steht ab hier ueberall der Name.
+ *
+ * -1, wenn es die Seite nicht gibt — der Aufrufer klemmt ohnehin (Magazine.go).
+ */
+export const seitenNr=(sektion,name)=>{
+ const liste=sections[sektion]||[];
+ if(typeof name==='number')return name;
+ const n=Number(name);
+ return Number.isFinite(n)&&String(name).trim()!==''?n:liste.indexOf(name);
+};
 export const demoNotice='Gestaltungsvorschau · Beispielhäuser und Beispielpreise';
 // Derselbe Satz plus den dritten Teil, den der Streifen im Vorschau-Betrieb braucht:
 // wer Beispielpreise sieht, muss erfahren, dass er sie nicht bezahlen kann. Ein Satz,
@@ -81,9 +103,17 @@ export function heftFuellen(heft){
  leeren(media);Object.assign(media,heft.media||{});
  const hero=displays.hero,edit=displays.edit;leeren(displays);displays.hero=hero;displays.edit=edit;
  const haeuser=Object.values(houses).sort((a,b)=>Number(a.number)-Number(b.number)||a.name.localeCompare(b.name));
+ // B3, zweite Haelfte: EXISTIERT EINE BUEHNE, GEWINNT SIE. displayAusHaus komponiert nur
+ // noch als Ersatz. Der Zweig in world.mjs › display() liest genau dieses Feld und lief
+ // bis hier nie, weil niemand es fuellte.
+ const buehnen=heft.buehnen||{};
  for(const w of WELTEN){
   const eigene=haeuser.filter(h=>h.world===w&&h.products.length);
-  sections[w]=eigene.length?eigene.map((h,i)=>{displays[h.slug]=displayAusHaus(h,i);return h.slug;}):[(displays['leer-'+w]=displayLeer(w),'leer-'+w)];
+  sections[w]=eigene.length?eigene.map((h,i)=>{
+   displays[h.slug]=displayAusHaus(h,i);
+   if(buehnen[h.slug])displays[h.slug].buehne=buehnen[h.slug];
+   return h.slug;
+  }):[(displays['leer-'+w]=displayLeer(w),'leer-'+w)];
  }
  const stuecke=WELTEN.map(w=>Object.values(products).find(p=>p.world===w&&buehnenfaehig(p))?.id).filter(Boolean);
  displays.hero.pieces=stuecke;displays.edit.pieces=stuecke;displays.hero.house=haeuser[0]?.slug||null;

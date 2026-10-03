@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+import { CLIPS_TABS } from "@/features/studio/flaechen";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { PawnEmptyState } from "@/components/pawn/PawnEmptyState";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
@@ -61,10 +62,7 @@ export default function StudioVideothek() {
 
   return (
     <StudioShell title={t("studioShell.nav.clips")} eyebrow={t("studio.videothek.eyebrow")}>
-      <FlaechenTabs tabs={[
-        { label: t("studio.tabs.neu"), to: "/studio/clips" },
-        { label: t("studio.tabs.fertig"), to: "/studio/clips/fertig" },
-      ]} />
+      <FlaechenTabs tabs={CLIPS_TABS.map((f) => ({ label: t(f.labelKey), to: f.to }))} />
       <p className="max-w-2xl text-sm text-muted-foreground">
         {t("studio.videothek.description")}
       </p>
@@ -73,7 +71,7 @@ export default function StudioVideothek() {
           className="mt-10"
           title={t("studio.videothek.empty")}
           action={
-            <Link to="/studio/kampagnen/neu" className="inline-flex items-center border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
+            <Link to="/studio/clips/neu" className="inline-flex items-center border border-foreground px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.28em] hover:bg-foreground hover:text-background">
               {t("studio.videothek.emptyCta")}
             </Link>
           }

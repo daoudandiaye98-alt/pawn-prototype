@@ -102,7 +102,6 @@ const StudioPlan = lazy(() => import("./pages/studio/StudioPlan.tsx"));
 const StudioVideothek = lazy(() => import("./pages/studio/StudioVideothek.tsx"));
 const StudioMediathek = lazy(() => import("./pages/studio/StudioMediathek.tsx"));
 const StudioContentBegleiter = lazy(() => import("./pages/studio/StudioContentBegleiter.tsx"));
-const StudioHausseite = lazy(() => import("./pages/studio/StudioHausseite.tsx"));
 const StudioHeft = lazy(() => import("./pages/studio/StudioHeft.tsx"));
 const StudioReferrals = lazy(() => import("./pages/studio/StudioReferrals.tsx"));
 const StudioBeweis = lazy(() => import("./pages/studio/StudioBeweis.tsx"));
@@ -299,8 +298,13 @@ const App = () => (
                 <Route path="/studio/werke/neu" element={<RoleGate role="designer"><StudioStueckNeu /></RoleGate>} />
                 <Route path="/studio/werke/bilder" element={<RoleGate role="designer"><StudioMediathek /></RoleGate>} />
                 <Route path="/studio/werke/rochade" element={<RoleGate role="designer"><StudioRochade /></RoleGate>} />
-                <Route path="/studio/doppelseite" element={<RoleGate role="designer"><StudioHausseite /></RoleGate>} />
-                <Route path="/studio/heft" element={<RoleGate role="designer"><StudioHeft /></RoleGate>} />
+                {/* `/studio/doppelseite` rendert das Heft SELBST. Vorher stand hier ein
+                    Zwischenhalt (StudioHausseite → Navigate → /studio/heft): das Dock leuchtete
+                    dabei auf keinem Raum, der Tab „Seite" bekam nie `aria-current`, und eine
+                    Adresse, die nur weiterleitet, bricht Zusage Z13. `/studio/heft` bleibt als
+                    Wegweiser stehen, weil die Adresse kurz im Umlauf war. */}
+                <Route path="/studio/doppelseite" element={<RoleGate role="designer"><StudioHeft /></RoleGate>} />
+                <Route path="/studio/heft" element={<Navigate to="/studio/doppelseite" replace />} />
                 <Route path="/studio/doppelseite/stil" element={<RoleGate role="designer"><StudioBrand /></RoleGate>} />
                 <Route path="/studio/clips" element={<RoleGate role="designer"><StudioCampaigns /></RoleGate>} />
                 <Route path="/studio/clips/neu" element={<RoleGate role="designer"><StudioCampaignNew /></RoleGate>} />

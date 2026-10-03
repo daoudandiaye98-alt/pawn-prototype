@@ -120,7 +120,7 @@ export default function StudioBeweis() {
               <PawnEmptyState
                 title={t("studio.beweis.empty.besuche.title")}
                 description={t("studio.beweis.empty.besuche.body")}
-                action={<Link to="/studio/hausseite" className="text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.empty.besuche.cta")}</Link>}
+                action={<Link to="/studio/doppelseite" className="text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.empty.besuche.cta")}</Link>}
               />
             ) : (
               <>
@@ -153,7 +153,7 @@ export default function StudioBeweis() {
               <PawnEmptyState
                 title={t("studio.beweis.empty.bestellungen.title")}
                 description={t("studio.beweis.empty.bestellungen.body")}
-                action={<Link to="/studio/produkte" className="text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.empty.bestellungen.cta")}</Link>}
+                action={<Link to="/studio/werke" className="text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.empty.bestellungen.cta")}</Link>}
               />
             ) : (
               <>
@@ -195,7 +195,7 @@ export default function StudioBeweis() {
               <PawnEmptyState
                 title={t("studio.beweis.empty.medien.title")}
                 description={t("studio.beweis.empty.medien.body")}
-                action={<Link to="/studio/mediathek" className="text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.empty.medien.cta")}</Link>}
+                action={<Link to="/studio/werke/bilder" className="text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.empty.medien.cta")}</Link>}
               />
             ) : (
               <>
@@ -203,7 +203,7 @@ export default function StudioBeweis() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {t("studio.beweis.medienAngenommen", { n: medien.angenommen })} · {t("studio.beweis.medienEingereicht", { n: medien.eingereicht })}
                 </p>
-                <Link to="/studio/mediathek" className="mt-3 inline-block text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.zurMediathek")}</Link>
+                <Link to="/studio/werke/bilder" className="mt-3 inline-block text-[0.65rem] uppercase tracking-[0.24em] underline">{t("studio.beweis.zurMediathek")}</Link>
               </>
             )}
           </Kachel>

@@ -214,7 +214,7 @@ export function zugangSeite(state){
    tag('DEIN ZUGANG')
    +'<h2>Willkommen,<br><em>'+esc(p.name||'du')+'.</em></h2>'
    +'<p class="body-copy">Merkzettel, Bestellungen und deine Linie liegen hinter dieser Seite.</p>'
-   +link('01','Mein PAWN','Merkzettel, Bestellungen, Anfragen','data-page="1"')
+   +link('01','Mein PAWN','Merkzettel, Bestellungen, Anfragen','data-page="start"')
    +(tuer?link('02',tuer[0],tuer[2],'data-aussen="'+tuer[1]+'"'):'')
    +'<div class="aktionsreihe">'+button('Abmelden','data-logout','outline')+'</div>',
    'account-spread');
@@ -297,10 +297,10 @@ export function extendedView(route,state){
    +zug('DEIN ZUG','Auftragsarbeiten ansehen','Kunst, die im Gespräch entsteht.','data-route="kunst"'),{welt:'dna',rechts:false});
   if(i===5)return page(
    tag('MEIN PAWN / EINSTELLUNGEN')+'<h1>Zugang,<br><em>Angaben, Gedächtnis.</em></h1><p class="body-copy">Dein Name, deine E-Mail — und was PAWN sich merken darf.</p>'
-   +link('01','Was PAWN sich merkt','Sehen, ändern, löschen','data-dna-privacy')+link('02','Bestellungen','Deine Stücke und Anfertigungen','data-page="3"')
+   +link('01','Was PAWN sich merkt','Sehen, ändern, löschen','data-dna-privacy')+link('02','Bestellungen','Deine Stücke und Anfertigungen','data-page="orders"')
    +'<p class="small-note">Adresse und Zahlung gibst du beim Bezahlen an — sie hängen an der Bestellung.</p>',
    tag('DEINE ANGABEN')+pawnSagt('Zwei Felder. Mehr brauche ich nicht.')+'<form data-profile-form><label>Dein Name<input name="name" maxlength="50" required value="'+esc(state.profile?.name||'')+'"></label><label>E-Mail<input name="email" type="email" required value="'+esc(state.profile?.email||'')+'"></label><button class="solid">Speichern</button></form>'
-   +'<div class="aktionsreihe">'+button('Zurück zu Mein PAWN','data-page="1"')+button('Abmelden','data-logout','outline')+'</div>');
+   +'<div class="aktionsreihe">'+button('Zurück zu Mein PAWN','data-page="start"')+button('Abmelden','data-logout','outline')+'</div>');
   if(i===2)return page(
    tag('MEIN PAWN / MERKZETTEL')+'<h1>Deine<br><em>Auswahl.</em></h1><p class="body-copy">'+(n?'Stücke, bei denen du stehen geblieben bist. Tipp eines an, um es wieder zu öffnen.':'Noch nichts gemerkt. Tipp ein Stück an — ich merke es dir.')+'</p>'+pawnSagt('Jedes gemerkte Stück ist ein Beleg. Daraus lese ich deine Linie.')+'<img class="blatt-bild" src="'+asset('edit-tonleiter.webp')+'" alt="Sechs Papierproben in einer aufsteigenden Reihe">',
    tag('DEIN MERKZETTEL / '+stueckZahl.toUpperCase())+(n?'<div class="profile-saved">'+state.saved.map(productCard).join('')+'</div>':'<p class="tafel-legende">Drei Stücke, mit denen andere anfangen:</p><div class="fit-pieces drei merk-leer">'+kuratiere('edit',state).map(id=>'<button data-product="'+id+'"><img src="'+products[id].image+'" alt="'+esc(products[id].name)+'"><span>'+esc(products[id].name)+'</span></button>').join('')+'</div>')
@@ -316,8 +316,8 @@ export function extendedView(route,state){
    tag(state.profile?'WILLKOMMEN ZURÜCK':'ZUTRITT')
    +(state.profile
     ?'<h2>Willkommen zurück,<br><em>'+esc(state.profile.name||'du')+'.</em></h2>'
-     +link('01','Merkzettel',stueckZahl,'data-page="2"')+link('02','Deine DNA',linie?'Deine Linie: '+esc(linie)+((state.stil||{}).form?' & '+esc(state.stil.form):''):'Noch keine Linie','data-route="dna"')+link('03','Bestellungen','Deine Stücke und Anfertigungen','data-page="3"')+link('04','Anfragen','Im Dialog mit den Häusern','data-page="4"')+link('05','Einstellungen','Zugang, Angaben, Gedächtnis','data-page="5"')
-     +zug('DEIN ZUG',linie?'Ausgewählt für dich':'Deine Linie lesen',linie?'Drei Stücke nach deiner Linie.':'Vier Bilder, zwei Minuten.',linie?'data-goto="entdecken:1"':'data-goto="dna:welt"')
+     +link('01','Merkzettel',stueckZahl,'data-page="saved"')+link('02','Deine DNA',linie?'Deine Linie: '+esc(linie)+((state.stil||{}).form?' & '+esc(state.stil.form):''):'Noch keine Linie','data-route="dna"')+link('03','Bestellungen','Deine Stücke und Anfertigungen','data-page="orders"')+link('04','Anfragen','Im Dialog mit den Häusern','data-page="requests"')+link('05','Einstellungen','Zugang, Angaben, Gedächtnis','data-page="settings"')
+     +zug('DEIN ZUG',linie?'Ausgewählt für dich':'Deine Linie lesen',linie?'Drei Stücke nach deiner Linie.':'Vier Bilder, zwei Minuten.',linie?'data-goto="entdecken:edit"':'data-goto="dna:welt"')
     :'<h2>Trag dich<br><em>ein.</em></h2><p class="body-copy">Merkzettel, Bestellungen, deine Linie — an einem Platz, auch beim nächsten Öffnen.</p><form data-profile-form><label>Dein Name<input name="name" autocomplete="given-name" maxlength="50" placeholder="Wie heißt du?" required></label><label>E-Mail<input name="email" type="email" autocomplete="email" placeholder="du@beispiel.de" required></label><button class="solid">Konto anlegen</button></form><p class="small-note">Vorschau — es wird nichts gesendet. Gespeichert wird nur auf diesem Gerät, wenn du es erlaubst.</p>'),
    'account-spread');
  }
@@ -387,7 +387,7 @@ export function extendedView(route,state){
     tag(fragen.toUpperCase()+' / TIPP EIN STÜCK AN')+pawnSagt('Tipp ein Stück an. Ich sage dir, ob es zu deiner Linie passt — und warum.')
     +'<div class="fit-pieces'+(auswahl.length>2?' drei':'')+'">'+auswahl.map(p=>'<button data-fit="'+p.id+'" aria-pressed="'+(state.fitProduct===p.id?'true':'false')+'" class="'+(state.fitProduct===p.id?'an':'')+'"><img src="'+p.image+'" alt="'+esc(p.name)+'"><span>'+esc(p.name)+'</span></button>').join('')+'</div>'
     +'<div class="insight'+(u?(u.ja===true?' ja':u.ja===false?' nein':''):'')+'" aria-live="polite"><small>'+esc(gewaehlt?gewaehlt.name.toUpperCase():'DEIN URTEIL')+'</small><p>'+esc(u?u.text:'Noch kein Stück gewählt.')+'</p></div>'
-    +zug('DEIN ZUG','Ausgewählt für dich',b.fertig?'Drei Stücke, nach deiner Linie sortiert.':'Was PAWN dir jetzt schon zeigen kann.','data-goto="entdecken:1"'),'','dna');
+    +zug('DEIN ZUG','Ausgewählt für dich',b.fertig?'Drei Stücke, nach deiner Linie sortiert.':'Was PAWN dir jetzt schon zeigen kann.','data-goto="entdecken:edit"'),'','dna');
   }
   if(name==='foto'){
    const fo=fotoStufe[welt];
@@ -516,7 +516,7 @@ export function extendedView(route,state){
    +'<label class="choice"><input type="checkbox" data-consent '+(state.consent?'checked':'')+'> <span>PAWN darf sich das merken</span></label>'
    +'<p class="small-note">'+(state.consent?'Gespeichert auf diesem Gerät. Mit Konto auch auf anderen.':'Ohne Häkchen ist nach dem Schließen alles weg.')+'</p>'
    +'<div class="aktionsreihe">'+button('Alles löschen','data-clear-memory','outline')+button('Als Datei sichern','data-export','outline')+'</div>'
-   +zug('DEIN ZUG','Ausgewählt für dich','Was PAWN dir aus all dem zeigt.','data-goto="entdecken:1"'),'','dna');
+   +zug('DEIN ZUG','Ausgewählt für dich','Was PAWN dir aus all dem zeigt.','data-goto="entdecken:edit"'),'','dna');
  }
  return null;
 }

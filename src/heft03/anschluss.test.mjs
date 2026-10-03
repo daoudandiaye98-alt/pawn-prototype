@@ -1,6 +1,7 @@
 // Anschluss-Tests: echte Zeilenformen → Heft-Modell → Adressen → Kuration. Läuft ohne Browser.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {zeilen} from './fixtures/zeilen.mjs';
 import {heftAusZeilen,productFromRow,themeFromRow,checkoutLines,cartByHouse,stilToRow,stilFromRow} from './adapters.mjs';
 import {heftFuellen,demoWiederherstellen,products,houses,sections,displays,counts,kuration} from './data.mjs';
@@ -12,7 +13,7 @@ import {chatAntwort,SPALTEN,demoQuelle,bildLoeser,bilderTauglich,BILD_GRENZE} fr
 import {readView} from './views.mjs';
 import {quelleWaehlen,anklopfen,FRIST_MS,ANKLOPF_FRIST_MS} from './notbetrieb.mjs';
 import {extendedView} from './extra-views.mjs';
-import {sections as SEKTIONEN,counts as ZAEHLER} from './data.mjs';
+import {sections as SEKTIONEN,counts as ZAEHLER,seitenNr} from './data.mjs';
 import {uebernahme} from './uebernahme.mjs';
 
 test('Zeilen → Heft: nur zeigbare, veröffentlichte Stücke aktiver, veröffentlichter Häuser',()=>{
@@ -390,16 +391,40 @@ test('L5: kein Verweis in Mein PAWN zeigt nach dem Umbau ins Leere',()=>{
  for(let i=0;i<SEKTIONEN.konto.length;i++){
   const html=extendedView({section:'konto',index:i},zustand);
   assert.ok(typeof html==='string'&&html.length>100,'Seite '+i+' rendert');
-  for(const m of html.matchAll(/data-page="(\d+)"/g)){
-   const ziel=Number(m[1]);
-   assert.ok(ziel>=0&&ziel<=letzte,'Seite '+i+' verweist auf data-page='+ziel+', es gibt aber nur 0 bis '+letzte);
+  // Die Verweise stehen jetzt als NAMEN da, nicht als Zahlen — seit sie beim
+  // Einschieben einer Seite nicht mehr verrutschen sollen (data.mjs > seitenNr).
+  // Die Absicht dieser Pruefung bleibt dieselbe: kein Verweis zeigt ins Leere.
+  for(const m of html.matchAll(/data-page="([a-z0-9-]+)"/g)){
+   const ziel=seitenNr('konto',m[1]);
+   assert.ok(ziel>=0&&ziel<=letzte,'Seite '+i+' verweist auf data-page="'+m[1]+'" → '+ziel+', es gibt aber nur 0 bis '+letzte);
    gesehen.add(ziel);
   }
  }
- // Die Verweise muessen die verschobenen Seiten treffen, nicht die alten Zahlen.
- assert.ok(gesehen.has(1),'„Mein PAWN" ist jetzt Seite 1');
- assert.ok(gesehen.has(2),'der Merkzettel Seite 2');
- assert.ok(gesehen.has(5),'die Einstellungen Seite 5');
+ // Und sie muessen die richtigen Seiten treffen — hier gegen die NAMEN geprueft,
+ // damit ein kuenftiges Einschieben den Test nicht falsch-gruen laesst.
+ assert.ok(gesehen.has(seitenNr('konto','start')),'„Mein PAWN" wird verlinkt');
+ assert.ok(gesehen.has(seitenNr('konto','saved')),'der Merkzettel wird verlinkt');
+ assert.ok(gesehen.has(seitenNr('konto','settings')),'die Einstellungen werden verlinkt');
+});
+
+test('Namen statt Zahlen: kein Sprung im Heft nennt mehr eine Seitenzahl',()=>{
+ // Die Wurzel des Fehlers aus 1b91aae, als Test. Geprueft wird die Form, die ein
+ // Einschieben ueberlebt: data-goto="<sektion>:<name>" und index:seitenNr(...).
+ // AUSGENOMMEN bleibt der Haus-Renderer — die Doppelseiten eines Hauses entstehen
+ // aus dessen Bausteinen, stehen nicht in `sections` und haben keine Namen.
+ const quellen=['views.mjs','extra-views.mjs','app.js','routen.mjs']
+  .map(n=>[n,readFileSync(new URL('./'+n,import.meta.url),'utf8')]);
+ for(const [name,roh] of quellen){
+  const code=roh.replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*\/\/.*$/gm,'');
+  for(const m of code.matchAll(/data-goto="([a-z-]+):(\d+)"/g)){
+   assert.fail(name+' springt auf '+m[1]+' Seite '+m[2]+' — eine Zahl bindet an die Reihenfolge, ein Name an die Sache');
+  }
+  for(const m of code.matchAll(/section:'([a-z-]+)',index:(\d+)/g)){
+   if(m[2]==='0')continue;                         // 0 ist „der Anfang der Sektion", das verrutscht nie
+   if(!SEKTIONEN[m[1]])continue;                   // Sektionen ohne benannte Seiten (haus)
+   assert.fail(name+' springt auf '+m[1]+' Seite '+m[2]+' statt auf einen Namen');
+  }
+ }
 });
 
 // ————————————————————————————————————————————————————————————————

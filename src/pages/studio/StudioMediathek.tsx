@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StudioShell } from "@/components/pawn/StudioShell";
 import { FlaechenTabs } from "@/components/pawn/FlaechenTabs";
+import { WERKE_TABS } from "@/features/studio/flaechen";
 import { PawnLoading } from "@/components/pawn/PawnLoading";
 import { useMyDesigner } from "@/features/studio/useMyDesigner";
 import { useAuth } from "@/lib/auth";
@@ -218,10 +219,7 @@ export default function StudioMediathek() {
 
   return (
     <StudioShell title={t("studioShell.nav.werke")} eyebrow={t("studio.mediathek.eyebrow")}>
-      <FlaechenTabs tabs={[
-        { label: t("studio.tabs.werke"), to: "/studio/werke" },
-        { label: t("studio.tabs.bilder"), to: "/studio/werke/bilder" },
-      ]} />
+      <FlaechenTabs tabs={WERKE_TABS.map((f) => ({ label: t(f.labelKey), to: f.to }))} />
       <p className="max-w-2xl text-sm text-muted-foreground">
         {t("studio.mediathek.intro")}
       </p>
@@ -250,7 +248,7 @@ export default function StudioMediathek() {
 
       {filtered.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">
-          {t("studio.mediathek.empty.pre")} <a href="/studio/kampagnen/neu" className="underline">{t("studio.mediathek.empty.linkLabel")}</a>{t("studio.mediathek.empty.post")}
+          {t("studio.mediathek.empty.pre")} <Link to="/studio/clips/neu" className="underline">{t("studio.mediathek.empty.linkLabel")}</Link>{t("studio.mediathek.empty.post")}
         </p>
       ) : (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

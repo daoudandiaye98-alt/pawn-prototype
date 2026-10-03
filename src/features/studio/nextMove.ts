@@ -89,7 +89,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
         headline: `Deine Kampagne „${pendingCampaign.title}" wartet auf Freigabe.`,
         reason: "Ein Klick, dann geht sie in die Warteschlange und wird gepostet.",
         cta: "Kampagne ansehen",
-        to: "/studio/kampagnen",
+        to: "/studio/clips",
         urgency: "mittel",
       };
     }
@@ -109,7 +109,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
         headline: "Lade ein Foto von dir hoch.",
         reason: "Menschen kaufen von Menschen. Ein Porträt macht deinen Auftritt echt.",
         cta: "Porträt hinzufügen",
-        to: "/studio/brand",
+        to: "/studio/doppelseite/stil",
         urgency: "sanft",
       };
     }
@@ -119,7 +119,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
         headline: "Erzähl in drei Sätzen, wer du bist.",
         reason: "Dein Manifest steht auf jeder deiner Seiten oben — die erste Berührung mit Käufer:innen.",
         cta: "Manifest schreiben",
-        to: "/studio/brand",
+        to: "/studio/doppelseite/stil",
         urgency: "sanft",
       };
     }
@@ -129,7 +129,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
         headline: "Zeit für dein erstes Stück.",
         reason: "Ein einziges Foto, Titel, Preis — mehr braucht es zum Start nicht. Ich helfe beim Text.",
         cta: "Neues Stück anlegen",
-        to: "/studio/produkte",
+        to: "/studio/werke",
         urgency: "mittel",
       };
     }
@@ -151,7 +151,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
         headline: `„${trendTerm}" steigt gerade — hast du etwas in dieser Richtung?`,
         reason: "Wenn ja, lade es hoch, solange die Welle da ist.",
         cta: "Stück hinzufügen",
-        to: "/studio/produkte",
+        to: "/studio/werke",
         urgency: "sanft",
       };
     }
@@ -160,7 +160,7 @@ export function useNextMove({ designerId, level, hasStory, hasPortrait, publishe
       headline: "Es ist gerade ruhig. Perfekter Moment für eine Kampagne.",
       reason: "Zwölf Sekunden Video, in wenigen Minuten fertig — das lenkt den Blick auf ein Stück.",
       cta: "Kampagne starten",
-      to: "/studio/kampagnen/neu",
+      to: "/studio/clips/neu",
       urgency: "sanft",
     };
   }, [openOrder, pendingCampaign, openThread, hasPortrait, hasStory, publishedCount, trendTerm, dnaGap, level?.level]);

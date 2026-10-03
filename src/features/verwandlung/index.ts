@@ -24,11 +24,11 @@ export interface VerwandlungStep {
 }
 
 export const VERWANDLUNG_STEPS: VerwandlungStep[] = [
-  { key: "erstes_stueck_at", label: "Erstes Stück", glyph: "♟", to: "/studio/produkte" },
-  { key: "erste_kampagne_at", label: "Erste Kampagne", glyph: "♞", to: "/studio/kampagnen" },
+  { key: "erstes_stueck_at", label: "Erstes Stück", glyph: "♟", to: "/studio/werke" },
+  { key: "erste_kampagne_at", label: "Erste Kampagne", glyph: "♞", to: "/studio/clips" },
   { key: "erster_verkauf_at", label: "Erster Verkauf", glyph: "♝", to: "/studio/bestellungen" },
-  { key: "erste_premiere_at", label: "Erste Première", glyph: "♜", to: "/studio/videothek" },
-  { key: "eigene_welt_at", label: "Eigene Welt gestaltet", glyph: "♛", to: "/studio/hausseite" },
+  { key: "erste_premiere_at", label: "Erste Première", glyph: "♜", to: "/studio/clips/fertig" },
+  { key: "eigene_welt_at", label: "Eigene Welt gestaltet", glyph: "♛", to: "/studio/doppelseite" },
 ];
 
 const EMPTY: HouseMilestones = {
