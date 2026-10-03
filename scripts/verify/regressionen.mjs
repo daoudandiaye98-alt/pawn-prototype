@@ -639,6 +639,53 @@ function ueberspringenNichtUnterDerSchrift({ stil }) {
   return OK;
 }
 
+
+// ————————————————————————————————————————————————————————————————
+// Z20 — keine Cockpit-Seite holt Stripe-Daten, bevor die Rolle feststeht
+//
+// Der belegte Fehler, und er war erreichbar, nicht theoretisch:
+//  · RoleGate laesst Nicht-Angemeldete BEWUSST durch (RoleGate.tsx, „DER DURCHLASS").
+//  · Die Datenbank gibt anon per `GRANT SELECT ON public.designers TO anon` ALLE
+//    Spalten frei und begrenzt nur die ZEILEN (`USING (published = true)`). Eine
+//    Spaltenbegrenzung gibt es dort nicht. Gemessen und in stand.json festgehalten:
+//    60 Spalten, darunter ACHT Stripe-Spalten, user_id und revenue_share_pct.
+//  · AdminDesigners.tsx fragte `select("*")` — OHNE Konto-Pruefer, bei jedem
+//    Aufschlagen von /admin/designers. AdminPayments fragte die Stripe-Kennungen
+//    ausdruecklich ab, ebenfalls ohne Pruefer. useCockpitBuhne desgleichen.
+//
+// Zwei Zusagen in einer, beide statisch entscheidbar:
+//  1. Keine Cockpit-Abfrage auf `designers` benutzt `select("*")`. Jede andere tat
+//     das schon nie — AdminDesigners war die einzige.
+//  2. Jede Datei, die eine Stripe-Spalte ABFRAGT, traegt den Rollen-Pruefer.
+//
+// OHNE KOMMENTARE geprueft, und das ist die Lehre aus dem Beinahe-Fehler bei Z20 im
+// Heft: dort blieb die erste Fassung gruen, weil der gesuchte Name noch im Kommentar
+// darueber stand. AdminDesigners.tsx nennt die Stripe-Spalten heute genau dort — in
+// der Begruendung. Eine Pruefung, die Prosa liest, prueft nichts.
+function keineStripeDatenOhneRolle({ orte, wache }) {
+  const fehlt = [];
+  for (const ort of orte) {
+    for (const datei of dateien(ort, [".ts", ".tsx"])) {
+      const rel = datei.slice(WURZEL.length + 1);
+      const code = readFileSync(datei, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      // `head: true` ist AUSGENOMMEN, und das ist kein Schlupfloch: PostgREST liefert
+      // damit gar keinen Rumpf, nur die Zahl im Header. useAdminData zaehlt so an
+      // fuenf Stellen in Folge — es ist das Muster dieser Datei, nicht ihr Versehen.
+      // Eine Pruefung, die daran rot wird, lehrt nur, Rot zu uebersehen.
+      for (const m of code.matchAll(/from\("designers"\)\s*\.select\(\s*"\*"([^)]*)\)/g)) {
+        if (/head:\s*true/.test(m[1])) continue;
+        fehlt.push(`${rel}: select("*") auf designers — das holt auch die acht Stripe-Spalten`);
+      }
+      if (/stripe_[a-z_]+/.test(code) && !code.includes(wache)) {
+        fehlt.push(`${rel}: fragt eine Stripe-Spalte ab, ohne \`${wache}\` davor`);
+      }
+    }
+  }
+  return fehlt.length === 0 ? OK : nein(fehlt.slice(0, 8).join("\n      "));
+}
+
 const PRUEFUNGEN = {
   wege,
   planPlatzhalter,
@@ -659,6 +706,7 @@ const PRUEFUNGEN = {
   zaehlenNurMitErlaubnis,
   modeNieAnDieWand,
   ueberspringenNichtUnterDerSchrift,
+  keineStripeDatenOhneRolle,
 };
 
 const { zusagen } = JSON.parse(lies(".claude/regressionen.json"));

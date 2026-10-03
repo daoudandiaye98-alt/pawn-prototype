@@ -55,7 +55,7 @@ function Referenz({
           value={cm}
           onChange={(e) => setCm(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
           placeholder="Breite in cm"
-          className="w-36 border-[1.5px] border-black bg-white px-3 py-2 font-sans text-sm text-black outline-none"
+          className="w-36 border-[1.5px] border-black bg-white px-3 py-2 font-sans text-sm text-black"
         />
         <Knopf
           disabled={!bereit}

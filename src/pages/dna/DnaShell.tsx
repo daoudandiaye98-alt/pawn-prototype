@@ -30,7 +30,7 @@ export function DnaShell({
                 Deine Bilder gehören dir allein — dafür brauchst du ein Konto.
               </p>
               <Link
-                to="/auth"
+                to="/konto"
                 className="mt-5 inline-block border-[1.5px] border-black px-6 py-3 text-[0.68rem] uppercase tracking-[0.24em] text-black transition-colors hover:bg-black hover:text-white"
               >
                 Anmelden

@@ -1,21 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { captureReferralCode } from "@/features/referral";
 import { captureLeadRef } from "@/features/acquisition/leadAttribution";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/store/cart";
 import { CoreProvider } from "@/core";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { I18nProvider } from "@/lib/i18n";
+import { I18nProvider, ladeWoerterbuch } from "@/lib/i18n";
 import { RoomShiftProvider } from "@/features/os/roomShift";
 import { PersonalizationProvider } from "@/features/personalization";
 import { ConsentProvider } from "@/lib/consent";
-import { ConsentBanner } from "@/components/palace/ConsentBanner";
-import { CopilotProvider } from "@/components/pawn/CopilotDrawer";
 import { lazy, Suspense } from "react";
-import { istHeftAdresse } from "@/heft03/adressen";
 
 /*
  * Teil H — das Heft ist das oeffentliche Frontend. EINE Komponente fuer alle
@@ -46,11 +41,16 @@ const Heft = () => (
   </Suspense>
 );
 
-/**
- * Die Einwilligungsleiste steht nur ausserhalb des Hefts. Im Heft fragt PAWN selbst,
- * genau dann, wenn es zum ersten Mal etwas zu merken gaebe — zwei Dialoge zur selben
- * Frage waeren einer zu viel.
+/*
+ * Alles, was nicht das Heft ist, haengt an einem Rahmen (src/AppRahmen.tsx: Toasts,
+ * Admin-Copilot, Einwilligungsleiste, Studio-Schriften) und laedt seine Seite erst, wenn
+ * man sie aufruft. Fest eingebunden lag jede Seite, jedes Studio und das ganze Woerterbuch
+ * im Haupt-Buendel, das auch jede Heft-Seite laedt. Gemessen am 02.10.2026 mit echten Daten:
+ * index.js 2.184 kB vorher; jede der sieben Heft-Seiten des Pruefstands schwerer als 3 MB.
+ * Der Rahmen kommt zusammen mit dem Woerterbuch — keine Seite darunter zeichnet ohne Text.
  */
+const AppRahmen = lazy(() => Promise.all([import("./AppRahmen"), ladeWoerterbuch()]).then(([m]) => m));
+
 /* Zwei Umzuege tragen einen Abschnitt mit — sie brauchen darum eine eigene Zeile
    statt eines festen Ziels. Serverseitig macht dasselbe die 301-Regel aus routen.js. */
 function WerkUmzug() {
@@ -62,90 +62,85 @@ function HausUmzug() {
   return <Navigate to={`/haus/${slug}`} replace />;
 }
 
-function EinwilligungAusserhalbDesHefts() {
-  const { pathname } = useLocation();
-  return istHeftAdresse(pathname) ? null : <ConsentBanner />;
-}
-
-import AdminContent from "./pages/admin/AdminContent.tsx";
-import AdminWerbung from "./pages/admin/AdminWerbung.tsx";
-import AdminAktionen from "./pages/admin/AdminAktionen.tsx";
-import AdminBegleiter from "./pages/admin/AdminBegleiter.tsx";
-import AdminArchetypen from "./pages/admin/AdminArchetypen.tsx";
+const AdminContent = lazy(() => import("./pages/admin/AdminContent.tsx"));
+const AdminWerbung = lazy(() => import("./pages/admin/AdminWerbung.tsx"));
+const AdminAktionen = lazy(() => import("./pages/admin/AdminAktionen.tsx"));
+const AdminBegleiter = lazy(() => import("./pages/admin/AdminBegleiter.tsx"));
+const AdminArchetypen = lazy(() => import("./pages/admin/AdminArchetypen.tsx"));
 
 
-import Preise from "./pages/Preise.tsx";
-import PreiseMaison from "./pages/PreiseMaison.tsx";
-import Apply from "./pages/Apply.tsx";
-import Start from "./pages/Start.tsx";
-import Einladung from "./pages/Einladung.tsx";
-import Datenschutz from "./pages/Datenschutz.tsx";
-import Impressum from "./pages/Impressum.tsx";
-import Versand from "./pages/Versand.tsx";
-import AGB from "./pages/AGB.tsx";
-import Widerruf from "./pages/Widerruf.tsx";
-import Barrierefreiheit from "./pages/Barrierefreiheit.tsx";
-import WiePawnKiNutzt from "./pages/WiePawnKiNutzt.tsx";
-import VertragKuendigen from "./pages/VertragKuendigen.tsx";
-import OrderConfirmation from "./pages/OrderConfirmation.tsx";
-import StudioOverview from "./pages/studio/StudioOverview.tsx";
-import StudioProducts from "./pages/studio/StudioProducts.tsx";
-import StudioStueckNeu from "./pages/studio/StudioStueckNeu.tsx";
-import StudioOrders from "./pages/studio/StudioOrders.tsx";
-import StudioVersand from "./pages/studio/StudioVersand.tsx";
-import StudioBrand from "./pages/studio/StudioBrand.tsx";
-import StudioCampaigns from "./pages/studio/StudioCampaigns.tsx";
-import StudioMessages from "./pages/studio/StudioMessages.tsx";
-import StudioPayout from "./pages/studio/StudioPayout.tsx";
-import StudioCopilot from "./pages/studio/StudioCopilot.tsx";
-import StudioSettings from "./pages/studio/StudioSettings.tsx";
-import StudioAutomatik from "./pages/studio/StudioAutomatik.tsx";
-import StudioVertraege from "./pages/studio/StudioVertraege.tsx";
-import StudioOffeneTueren from "./pages/studio/StudioOffeneTueren.tsx";
-import StudioCampaignNew from "./pages/studio/StudioCampaignNew.tsx";
-import StudioPlan from "./pages/studio/StudioPlan.tsx";
-import StudioVideothek from "./pages/studio/StudioVideothek.tsx";
-import StudioMediathek from "./pages/studio/StudioMediathek.tsx";
-import StudioContentBegleiter from "./pages/studio/StudioContentBegleiter.tsx";
-import StudioHausseite from "./pages/studio/StudioHausseite.tsx";
-import StudioHeft from "./pages/studio/StudioHeft.tsx";
-import StudioReferrals from "./pages/studio/StudioReferrals.tsx";
-import StudioBeweis from "./pages/studio/StudioBeweis.tsx";
-import StudioDNA from "./pages/studio/StudioDNA.tsx";
-import StudioPostfach from "./pages/studio/StudioPostfach.tsx";
-import StudioGeschaeft from "./pages/studio/StudioGeschaeft.tsx";
-import StudioRochade from "./pages/studio/StudioRochade.tsx";
-import DnaAvatar from "./pages/dna/DnaAvatar.tsx";
-import DnaRaeume from "./pages/dna/DnaRaeume.tsx";
-import DnaAnproben from "./pages/dna/DnaAnproben.tsx";
+const Preise = lazy(() => import("./pages/Preise.tsx"));
+const PreiseMaison = lazy(() => import("./pages/PreiseMaison.tsx"));
+const Apply = lazy(() => import("./pages/Apply.tsx"));
+const Start = lazy(() => import("./pages/Start.tsx"));
+const Einladung = lazy(() => import("./pages/Einladung.tsx"));
+const Datenschutz = lazy(() => import("./pages/Datenschutz.tsx"));
+const Impressum = lazy(() => import("./pages/Impressum.tsx"));
+const Versand = lazy(() => import("./pages/Versand.tsx"));
+const AGB = lazy(() => import("./pages/AGB.tsx"));
+const Widerruf = lazy(() => import("./pages/Widerruf.tsx"));
+const Barrierefreiheit = lazy(() => import("./pages/Barrierefreiheit.tsx"));
+const WiePawnKiNutzt = lazy(() => import("./pages/WiePawnKiNutzt.tsx"));
+const VertragKuendigen = lazy(() => import("./pages/VertragKuendigen.tsx"));
+const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation.tsx"));
+const StudioOverview = lazy(() => import("./pages/studio/StudioOverview.tsx"));
+const StudioProducts = lazy(() => import("./pages/studio/StudioProducts.tsx"));
+const StudioStueckNeu = lazy(() => import("./pages/studio/StudioStueckNeu.tsx"));
+const StudioOrders = lazy(() => import("./pages/studio/StudioOrders.tsx"));
+const StudioVersand = lazy(() => import("./pages/studio/StudioVersand.tsx"));
+const StudioBrand = lazy(() => import("./pages/studio/StudioBrand.tsx"));
+const StudioCampaigns = lazy(() => import("./pages/studio/StudioCampaigns.tsx"));
+const StudioMessages = lazy(() => import("./pages/studio/StudioMessages.tsx"));
+const StudioPayout = lazy(() => import("./pages/studio/StudioPayout.tsx"));
+const StudioCopilot = lazy(() => import("./pages/studio/StudioCopilot.tsx"));
+const StudioSettings = lazy(() => import("./pages/studio/StudioSettings.tsx"));
+const StudioAutomatik = lazy(() => import("./pages/studio/StudioAutomatik.tsx"));
+const StudioVertraege = lazy(() => import("./pages/studio/StudioVertraege.tsx"));
+const StudioOffeneTueren = lazy(() => import("./pages/studio/StudioOffeneTueren.tsx"));
+const StudioCampaignNew = lazy(() => import("./pages/studio/StudioCampaignNew.tsx"));
+const StudioPlan = lazy(() => import("./pages/studio/StudioPlan.tsx"));
+const StudioVideothek = lazy(() => import("./pages/studio/StudioVideothek.tsx"));
+const StudioMediathek = lazy(() => import("./pages/studio/StudioMediathek.tsx"));
+const StudioContentBegleiter = lazy(() => import("./pages/studio/StudioContentBegleiter.tsx"));
+const StudioHausseite = lazy(() => import("./pages/studio/StudioHausseite.tsx"));
+const StudioHeft = lazy(() => import("./pages/studio/StudioHeft.tsx"));
+const StudioReferrals = lazy(() => import("./pages/studio/StudioReferrals.tsx"));
+const StudioBeweis = lazy(() => import("./pages/studio/StudioBeweis.tsx"));
+const StudioDNA = lazy(() => import("./pages/studio/StudioDNA.tsx"));
+const StudioPostfach = lazy(() => import("./pages/studio/StudioPostfach.tsx"));
+const StudioGeschaeft = lazy(() => import("./pages/studio/StudioGeschaeft.tsx"));
+const StudioRochade = lazy(() => import("./pages/studio/StudioRochade.tsx"));
+const DnaAvatar = lazy(() => import("./pages/dna/DnaAvatar.tsx"));
+const DnaRaeume = lazy(() => import("./pages/dna/DnaRaeume.tsx"));
+const DnaAnproben = lazy(() => import("./pages/dna/DnaAnproben.tsx"));
 
 
-import AdminCampaigns from "./pages/admin/AdminCampaigns.tsx";
-import AdminMessages from "./pages/admin/AdminMessages.tsx";
-import AdminPayments from "./pages/admin/AdminPayments.tsx";
-import AdminDesigners from "./pages/admin/AdminDesigners.tsx";
-import AdminPosting from "./pages/admin/AdminPosting.tsx";
-import Auth from "./pages/Auth.tsx";
-import Kontakt from "./pages/Kontakt.tsx";
-import Presse from "./pages/Presse.tsx";
+const AdminCampaigns = lazy(() => import("./pages/admin/AdminCampaigns.tsx"));
+const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.tsx"));
+const AdminPayments = lazy(() => import("./pages/admin/AdminPayments.tsx"));
+const AdminDesigners = lazy(() => import("./pages/admin/AdminDesigners.tsx"));
+const AdminPosting = lazy(() => import("./pages/admin/AdminPosting.tsx"));
+const Auth = lazy(() => import("./pages/Auth.tsx"));
+const Kontakt = lazy(() => import("./pages/Kontakt.tsx"));
+const Presse = lazy(() => import("./pages/Presse.tsx"));
 
-import AdminOverview from "./pages/admin/AdminOverview.tsx";
-import AdminDNA from "./pages/admin/AdminDNA.tsx";
-import AdminProducts from "./pages/admin/AdminProducts.tsx";
-import AdminAI from "./pages/admin/AdminAI.tsx";
-import AdminApplications from "./pages/admin/AdminApplications.tsx";
-import AdminKI from "./pages/admin/AdminKI.tsx";
-import AdminTrends from "./pages/admin/AdminTrends.tsx";
-import AdminAkquise from "./pages/admin/AdminAkquise.tsx";
-import AdminFeldzug from "./pages/admin/AdminFeldzug.tsx";
-import AdminWachstum from "./pages/admin/AdminWachstum.tsx";
-import AdminJarvis from "./pages/admin/AdminJarvis.tsx";
-import AdminArchiv from "./pages/admin/AdminArchiv.tsx";
-import AdminEditionen from "./pages/admin/AdminEditionen.tsx";
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
+const AdminDNA = lazy(() => import("./pages/admin/AdminDNA.tsx"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
+const AdminAI = lazy(() => import("./pages/admin/AdminAI.tsx"));
+const AdminApplications = lazy(() => import("./pages/admin/AdminApplications.tsx"));
+const AdminKI = lazy(() => import("./pages/admin/AdminKI.tsx"));
+const AdminTrends = lazy(() => import("./pages/admin/AdminTrends.tsx"));
+const AdminAkquise = lazy(() => import("./pages/admin/AdminAkquise.tsx"));
+const AdminFeldzug = lazy(() => import("./pages/admin/AdminFeldzug.tsx"));
+const AdminWachstum = lazy(() => import("./pages/admin/AdminWachstum.tsx"));
+const AdminJarvis = lazy(() => import("./pages/admin/AdminJarvis.tsx"));
+const AdminArchiv = lazy(() => import("./pages/admin/AdminArchiv.tsx"));
+const AdminEditionen = lazy(() => import("./pages/admin/AdminEditionen.tsx"));
 
-import PortalOverview from "./pages/portal/PortalOverview.tsx";
-import PortalEditor from "./pages/portal/PortalEditor.tsx";
-import PortalOnboarding from "./pages/portal/PortalOnboarding.tsx";
+const PortalOverview = lazy(() => import("./pages/portal/PortalOverview.tsx"));
+const PortalEditor = lazy(() => import("./pages/portal/PortalEditor.tsx"));
+const PortalOnboarding = lazy(() => import("./pages/portal/PortalOnboarding.tsx"));
 
 import { RoleGate } from "@/features/access/RoleGate";
 import { PortalGate } from "@/features/access/PortalGate";
@@ -173,8 +168,6 @@ function LeadCapture() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner />
       <BrowserRouter>
         <I18nProvider>
         <AuthProvider>
@@ -183,10 +176,10 @@ const App = () => (
               <ConsentProvider>
               <PersonalizationProvider>
               <RoomShiftProvider>
-              <CopilotProvider>
 
               <ReferralCapture />
               <LeadCapture />
+              <Suspense fallback={null}>
               <Routes>
 
                 {/* ——— Das Heft. Jede dieser Adressen ist eine Doppelseite. ——— */}
@@ -218,9 +211,11 @@ const App = () => (
                 {/* D1/D2/D4 — die drei Flächen der eigenen Bilder. Sie gehören nicht
                     ins Heft: hier lädt jemand Fotos von sich hoch, löscht sie, sieht
                     Anproben. Eigene Seiten, eigene Zustände. */}
+                <Route element={<AppRahmen />}>
                 <Route path="/deine-dna/avatar" element={<DnaAvatar />} />
                 <Route path="/deine-dna/raeume" element={<DnaRaeume />} />
                 <Route path="/deine-dna/anproben" element={<DnaAnproben />} />
+                </Route>
 
                 <Route path="/frag-pawn" element={<Heft />} />
                 <Route path="/vision" element={<Heft />} />
@@ -255,6 +250,7 @@ const App = () => (
                 <Route path="/designer/:slug" element={<HausUmzug />} />
 
                 {/* ——— Was eine eigene Seite bleibt. ——— */}
+                <Route element={<AppRahmen />}>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/preise" element={<Preise />} />
                 <Route path="/preise/maison" element={<PreiseMaison />} />
@@ -343,9 +339,9 @@ const App = () => (
                 <Route path="/portal/editor" element={<RoleGate role="designer"><PortalEditor /></RoleGate>} />
 
                 <Route path="*" element={<NotFound />} />
+                </Route>
               </Routes>
-              <EinwilligungAusserhalbDesHefts />
-              </CopilotProvider>
+              </Suspense>
               </RoomShiftProvider>
 
               </PersonalizationProvider>
@@ -357,7 +353,6 @@ const App = () => (
         </AuthProvider>
         </I18nProvider>
       </BrowserRouter>
-    </TooltipProvider>
   </QueryClientProvider>
 );
 

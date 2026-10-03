@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { AdminShell } from "@/components/pawn/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ interface BusinessProfile {
 
 export default function AdminPayments() {
   const { locale } = useI18n();
+  const { user, roles } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [designers, setDesigners] = useState<DesignerLite[]>([]);
   const [products, setProducts] = useState<ProductLite[]>([]);
@@ -36,7 +38,14 @@ export default function AdminPayments() {
   const [payout, setPayout] = useState<BusinessProfile | null>(null);
   const [payoutMasked, setPayoutMasked] = useState(true);
 
+  /* Zweite Haelfte desselben Lecks. Diese Seite fragt die Stripe-Kennungen der Haeuser
+     AUSDRUECKLICH ab (unten in der Spaltenliste) — und lief dabei ohne Konto-Pruefer,
+     bei jedem Aufschlagen. RoleGate laesst Nicht-Angemeldete bewusst durch, also
+     genuegte die Adresse /admin/zahlungen. Hier darf die Spaltenliste bleiben, wie sie
+     ist: eine Zahlungsseite OHNE Auszahlungsstand waere keine. Was fehlte, war der
+     Pruefer davor. */
   useEffect(() => {
+    if (!user || !roles.includes("admin")) { setLoading(false); return; }
     (async () => {
       const [o, d, p, cCommission, cBusiness] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(500),
@@ -53,7 +62,8 @@ export default function AdminPayments() {
       setPayout((cBusiness.data?.value ?? null) as unknown as BusinessProfile | null);
       setLoading(false);
     })();
-  }, []);
+    // user und roles gehoeren in die Liste: sonst laedt die Seite nach dem Anmelden nie nach.
+  }, [user, roles]);
 
   const productBySlug = useMemo(() => new Map(products.map((p) => [p.slug, p])), [products]);
   const designerById = useMemo(() => new Map(designers.map((d) => [d.id, d])), [designers]);

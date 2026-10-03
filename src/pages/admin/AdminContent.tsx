@@ -16,7 +16,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Image as ImageIcon, Search, Sparkles } from "lucide-react";
 import { TranslationWarmup } from "./TranslationWarmup";
-import { deDict, enDict, useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n";
+import { de as deDict, en as enDict } from "@/lib/woerterbuch";
 
 
 type Lang = "de" | "en";
@@ -39,7 +40,7 @@ export default function AdminContent() {
   const [settingsBusy, setSettingsBusy] = useState(false);
 
   // Teil 25, Punkt 5: Übersteuerungen für fehlende/verbesserte englische Fassungen
-  // der Studio-Oberflächentexte (statisches Wörterbuch in src/lib/i18n.tsx).
+  // der Studio-Oberflächentexte (statisches Wörterbuch in src/lib/woerterbuch.ts).
   const [i18nOverrides, setI18nOverrides] = useState<Record<string, I18nOverrideRow>>({});
   const [i18nSearch, setI18nSearch] = useState("");
   const [i18nBusyKey, setI18nBusyKey] = useState<string | null>(null);
