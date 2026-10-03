@@ -42,7 +42,7 @@
       "beleg": "66acaf8 („Kunst“ hiess auf Englisch „Type“ statt „Art“), a0f597d (Sprachgesetz durchsetzen)",
       "pruefung": "sprachschluessel",
       "params": {
-        "datei": "src/lib/i18n.tsx",
+        "datei": "src/lib/woerterbuch.ts",
         "fessel": "const en: Record<keyof typeof de, string>"
       }
     },

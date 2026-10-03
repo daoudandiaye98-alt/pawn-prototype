@@ -28,7 +28,7 @@ Die, bei der du dich am unwohlsten fühlst. Genau die wird gerne stillschweigend
 
 **3 · Was wurde übersehen?**
 Drei Kandidaten, die in diesem Projekt fast immer fehlen:
-- die englische Seite (`src/lib/i18n.tsx` — jeder neue deutsche Schlüssel braucht
+- die englische Seite (`src/lib/woerterbuch.ts` — jeder neue deutsche Schlüssel braucht
   seine Entsprechung, sonst ist es ein **Typfehler**)
 - der leere Zustand und der Fehlerzustand
 - 390 px

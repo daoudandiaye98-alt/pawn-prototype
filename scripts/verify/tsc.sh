@@ -5,7 +5,7 @@
 # weg — und die CI faehrt nur den Pruefstand. Ein Typfehler kaeme also durch Bau
 # UND CI und fiele erst live auf. Beleg: b540aba „Fixiert Build-Error & Deploy".
 #
-# Nebenwirkung, die zaehlt: src/lib/i18n.tsx deklariert
+# Nebenwirkung, die zaehlt: src/lib/woerterbuch.ts deklariert
 # `const en: Record<keyof typeof de, string>`. Ein deutscher Schluessel ohne
 # englische Entsprechung ist damit ein TYPFEHLER — aber nur, wenn jemand tsc
 # laufen laesst. Genau das tut dieses Skript.
