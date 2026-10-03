@@ -86,11 +86,14 @@ test('Urteil liest die Stil-DNA des Stücks, nicht eine Id-Liste',()=>{
 });
 
 test('Adressen: Route ↔ Pfad in beide Richtungen, Umzüge bekannt',()=>{
- for(const r of [{section:'entdecken',index:0},{section:'entdecken',index:1},{section:'mode',index:1},{section:'dna',index:4},{section:'haus',slug:'drape',index:2},{section:'suche',index:0,q:'wolle'},{section:'konto',index:1},{section:'fuer-designer',index:1}]){
+ for(const r of [{section:'entdecken',index:0},{section:'entdecken',index:1},{section:'mode',index:1},{section:'dna',index:seitenNr('dna','linie')},{section:'haus',slug:'drape',index:2},{section:'suche',index:0,q:'wolle'},{section:'konto',index:1},{section:'fuer-designer',index:1}]){
   const p=pfadAusRoute(r),z=routeAusPfad(p);
   assert.equal(pfadAusRoute(z),p,JSON.stringify(r));
  }
- assert.equal(pfadAusRoute({section:'dna',index:4}),'/deine-dna/linie');
+ // Der Name, nicht die Zahl — die 4 stand hier und wurde rot, als 'anprobe' nach
+ // vorn rueckte. Genau der Fehler von 1b91aae, diesmal im Test selbst.
+ assert.equal(pfadAusRoute({section:'dna',index:seitenNr('dna','linie')}),'/deine-dna/linie');
+ assert.equal(UMZUEGE['/deine-dna/foto'],'/deine-dna/anprobe');
  assert.deepEqual(routeAusPfad('/werk/wool-coat'),{section:'mode',index:0,werk:'coat'});
  assert.deepEqual(routeAusPfad('/nirgends/3'),{section:'entdecken',index:0});
  assert.ok(alleAdressen().includes('/haus/drape/2'));

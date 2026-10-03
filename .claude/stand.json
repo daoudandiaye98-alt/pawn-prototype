@@ -1,6 +1,6 @@
 {
   "aktualisiert": "2026-10-03",
-  "branch": "claude/auftrag-q-buehne",
+  "branch": "claude/dna-anprobe",
   "offene_prs": [
     {
       "nr": 202,
@@ -11,8 +11,8 @@
     {
       "nr": 204,
       "titel": "Die Anprobe steht — und sie steht vorne (DNA-Sektion, Auftrag Q)",
-      "status": "Entwurf, Basis ist der Zweig von #202 (claude/auftrag-q-buehne). Zusage anprobeIstAngeschlossen.",
-      "blockiert_durch": "#202. Nach dessen Merge die Basis auf main umstellen (delete_branch_on_merge ist aus, die Basis bliebe sonst der alte Zweig)."
+      "status": "Entwurf. Die Anprobe-Seite (DNA, Platz 1), verdrahtet an supabase/functions/anprobe, /deine-dna/foto zieht per 301 auf /deine-dna/anprobe. Zusage Z22 (anprobeIstAngeschlossen; im Zweig hiess sie Z21, beim Merge mit #202 neu nummeriert). #202 (mit #203 und der Begleiter-Reparatur fb9d82a) ist im Zweig zusammengefuehrt. messen war auf e86e4e9 schon gruen. tsc 0, vitest 361/361, VERIFY 6/6, REGRESSION 22/22, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen.",
+      "blockiert_durch": "#202. Nach dessen Merge: Basis auf main umstellen (delete_branch_on_merge ist aus), main hineinmergen — es kommen nur Merge-Commits, kein Konflikt erwartet."
     }
   ],
   "merge_reihenfolge": [
@@ -58,7 +58,7 @@
   "naechster_zug": [
     "1. #203 ist gemergt (a78ed7f).",
     "2. #202: nach dem Merge von #203 main hineinmergen, messen gruen, mergen, origin/main pruefen (die Falle #190/#191).",
-    "3. #204: Basis auf main, Basis-Merge, messen gruen, mergen, origin/main pruefen.",
+    "3. #204: nach dem Merge von #202 die Basis auf main umstellen, main hineinmergen, messen gruen, mergen, origin/main pruefen.",
     "4. Was die Gates NACH der Eroeffnung noch finden wuerden (die CI misst waehrend der Eroeffnung, 4,3 s nach dem Laden): 3.5 'Das Haus entdecken ↗' auf /suche (86×15 bzw. 50×8 px) und 'DEIN ZUG' auf /haus/drape 844 quer (43 px). Kein Gate faellt heute daran — aber sobald der Pruefstand spaeter misst, werden sie rot.",
     "5. PR 5 — Clips layout-bewusst (Freisteller-Knopf in StudioMediathek ruft generate-product-shot statt freistellen).",
     "6. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message); app.js: die Beispiel-Prompts rufen kein fragen().",

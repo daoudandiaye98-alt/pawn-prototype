@@ -64,6 +64,20 @@ export function demoQuelle(){
   async archetypen(){return [];},
   async archetyp(){return null;},
   async archetypBestaetigen(){return null;},
+  /* Die Anprobe schickt echte Bilder an echte Rechner und kostet echtes Geld. In der
+     Vorschau ist sie deshalb ZU — aber ehrlich zu, mit einem Satz, den die Seite
+     anzeigen kann. Ein stilles `null` haette wie „laedt noch" ausgesehen. */
+  anprobe:{
+   art:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'ganzkoerper',
+   aktion:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'anprobe',
+   async bild(){return {fehler:'Vorschau — hier wird nichts hochgeladen.'};},
+   async bereinigen(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
+   async starten(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
+   async stand(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
+   async bewerten(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
+   async meine(){return {bilder:[],anproben:[]};}
+  },
+  async foto(){return {fehler:'Vorschau — hier wird nichts gelesen.'};},
   texte:async()=>({}),
   vertraege:async()=>[],
   vergessen:kein,
@@ -151,6 +165,26 @@ export function bildLoeser(karte,bild){
   if(!Object.prototype.hasOwnProperty.call(karte,u))return bild(u);
   return karte[u]?bild(karte[u]):null;
  };
+}
+
+/** 8 MB — dieselbe Grenze, die ChatDrawer fuer taste-uploads zieht. */
+export const ANPROBE_GRENZE=8*1024*1024;
+
+/*
+ * Ein Ruf an die Function `anprobe`. Sie antwortet auf WEICHE Absagen mit 200
+ * und einem `satz` (Kontingent, fehlende Einwilligung, falsche Welt) — die
+ * kommen als `data` an und muessen die Kundin erreichen. HARTE Fehler (401,
+ * 404, 500) macht supabase-js zu `error`; der Rumpf liegt dann in error.context.
+ * Ohne dieses Auspacken verloere die Kundin genau die Saetze, die erklaeren,
+ * was zu tun ist.
+ */
+async function anprobeRuf(client,fehlerText,body){
+ const {data,error}=await client.functions.invoke('anprobe',{body});
+ if(!error)return data||{ok:false,fehler:'keine Antwort'};
+ let rumpf=null;
+ try{rumpf=await error?.context?.json?.();}catch(e){rumpf=null;}
+ if(rumpf&&typeof rumpf==='object')return {...rumpf,ok:false};
+ return {ok:false,fehler:fehlerText(error)};
 }
 
 export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sichten=false}={}){
@@ -365,6 +399,97 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
     .insert({user_id:u.id,session_id:sitzung()??null,flaeche,ereignis:art,daten:daten??{}});
    return error?null:true;
   },
+  /*
+   * ————————————————————————————————————————————————————————————————
+   * DIE ANPROBE (Block D). Bild hoch, Aufsteller, Urteil.
+   *
+   * Das Backend steht seit Block D und ist AUSGELIEFERT — gemessen ueber
+   * 401-statt-404: `anprobe`, `freistellen` und `generate-tryon` antworten.
+   * Gerufen hat es bis heute NIEMAND: app.js beantwortete alle vier Chips mit
+   * dem Platzhalter „Das kommt gleich". Hier steht der fehlende Anschluss.
+   *
+   * Was die Function NICHT tut: hochladen. Sie erwartet eine fertige Zeile in
+   * `kunden_bilder` mit `quelle_path` im Eimer `kunden-bilder` und sucht sie
+   * ueber user_id + art + aktiv (anprobe/index.ts:212). Das Hochladen ist
+   * deshalb Sache des Hefts.
+   *
+   * WAS HIER NICHT GEMESSEN WERDEN KONNTE: die Schreibrechte am Eimer.
+   * Die Migration 20261001130000_kunden_bilder_anproben.sql liegt NICHT im
+   * Repo (supabase/migrations/LIESMICH.md) — Policy und Eimer sind von hier
+   * aus unsichtbar. Darum reicht `bild()` den ECHTEN Fehlertext durch und
+   * erfindet keinen Erfolg: schlaegt das Hochladen fehl, steht der Grund auf
+   * dem Bildschirm, statt dass die Seite still haengen bleibt.
+   * ————————————————————————————————————————————————————————————————
+   */
+  anprobe:{
+   /** Welche Bildart und welche Aktion eine Welt braucht. Die Function prueft dasselbe noch einmal. */
+   art:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'ganzkoerper',
+   aktion:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'anprobe',
+   /** Ein Bild der Kundin in den Eimer legen und die Zeile dazu anlegen. */
+   async bild(datei,art){
+    const u=await nutzer();if(!u)return {fehler:'Dafür brauchst du ein Konto.'};
+    if(!datei||!String(datei.type||'').startsWith('image/'))return {fehler:'Bitte ein Bild wählen.'};
+    if(datei.size>ANPROBE_GRENZE)return {fehler:'Das Bild ist zu groß — höchstens 8 MB.'};
+    const sauber=String(datei.name||'bild.jpg').replace(/[^a-zA-Z0-9.-]/g,'_');
+    const pfad=u.id+'/'+Date.now()+'-'+sauber;
+    const {error:hoch}=await client.storage.from('kunden-bilder')
+     .upload(pfad,datei,{contentType:datei.type||'image/jpeg',upsert:false});
+    if(hoch)return {fehler:fehlerText(hoch)};
+    // Das aeltere Bild derselben Art stilllegen — die Function nimmt immer das
+    // neueste aktive, und zwei aktive Zeilen waeren eine Verwechslung im Wartestand.
+    await client.from('kunden_bilder').update({aktiv:false})
+     .eq('user_id',u.id).eq('art',art).eq('aktiv',true);
+    const {data,error}=await client.from('kunden_bilder')
+     .insert({user_id:u.id,art,quelle_path:pfad,name:datei.name||null,aktiv:true,status:'neu'})
+     .select('id,art,status').maybeSingle();
+    if(error)return {fehler:fehlerText(error)};
+    return {ok:true,bild_id:data?.id||null,art,name:datei.name||null};
+   },
+   /** Nur fuer Mode: die Person freistellen, damit das Stueck sauber sitzt. Darf fehlschlagen. */
+   async bereinigen(bild_id){return anprobeRuf(client,fehlerText,{aktion:'bereinigen',bild_id});},
+   /** Die Anprobe anstossen. Antwortet sofort mit {anprobe_id}; gerechnet wird im Hintergrund. */
+   async starten({welt='mode',product_id,bild_id,platz}={}){
+    const aktion=welt==='interior'?'raum':welt==='kunst'?'wand':'anprobe';
+    return anprobeRuf(client,fehlerText,{aktion,product_id,bild_id:bild_id||undefined,platz:platz||undefined});
+   },
+   /** Nachfragen, wie weit sie ist. status: laeuft · fertig · fehler */
+   async stand(anprobe_id){return anprobeRuf(client,fehlerText,{aktion:'stand',anprobe_id});},
+   /** „Passt" oder „Passt nicht" — das Urteil der Kundin, nicht das der Maschine. */
+   async bewerten(anprobe_id,bewertung){return anprobeRuf(client,fehlerText,{aktion:'bewerten',anprobe_id,bewertung});},
+   /*
+    * Was schon vorliegt. `state.anproben` war deklariert und wurde NIE gefuellt
+    * (app.js:573 prueft darum immer falsch), obwohl die Gegenseite es erwartet
+    * (pawn-chat/index.ts) und archetyp.mjs daraus Zuversicht rechnet.
+    */
+   async meine(){
+    const u=await nutzer();if(!u)return {bilder:[],anproben:[]};
+    const [{data:bilder},{data:anproben}]=await Promise.all([
+     client.from('kunden_bilder').select('id,art,status,name,aktiv')
+      .eq('user_id',u.id).eq('aktiv',true).order('created_at',{ascending:false}).limit(6),
+     client.from('anproben').select('id,art,status,product_id,bewertung,created_at')
+      .eq('user_id',u.id).order('created_at',{ascending:false}).limit(20)
+    ]);
+    return {bilder:bilder||[],anproben:anproben||[]};
+   }
+  },
+  /*
+   * Das Stilfoto lesen lassen. Bis heute passierte mit dem Upload NICHTS ausser
+   * dem Dateinamen (app.js: `state.foto = datei.name`) — der Modus 'stilfoto' in
+   * pawn-chat wurde im ganzen Heft von niemandem gerufen. Folge: `farbUrteil()`
+   * in beratung.mjs gab in der Anwendung immer null zurueck, weil kein Aufrufer
+   * das dritte Argument (den Farb-Befund) je hatte.
+   */
+  async foto(datei,welt='mode'){
+   const u=await nutzer();if(!u)return {fehler:'Dafür brauchst du ein Konto.'};
+   const bilder=bilderTauglich([datei]);
+   if(!bilder.length)return {fehler:'Bitte ein Bild wählen — höchstens 2 MB.'};
+   const {data,error}=await client.functions.invoke('pawn-chat',{
+    body:{mode:'stilfoto',image_urls:bilder,session_id:sitzung(),page_context:{route:'/dna',welt}}
+   });
+   if(error)return {fehler:fehlerText(error)};
+   const befund=data?.foto_befund||data?.befund||null;
+   return befund&&typeof befund==='object'?{ok:true,befund}:{ok:true,befund:null};
+  },
   /* Anmelden, Registrieren und Google liegen in der React-Huelle, nicht hier: dort lebt
      supabase.auth samt Sitzung, dort steht der Vergleich der beiden Passwoerter
      (features/auth/registrieren.ts), und dort weiss man, welche Tuer die Rolle oeffnet.
@@ -529,6 +654,16 @@ export function studioQuelle({client,haus,bild=u=>u,funktionen={}}={}){
      nicht vergessen, sondern geschlossen. app.js ruft sie ohne `?.`, darum stehen sie da. */
   chat:async()=>null,
   kasse:zu,anfrage:zu,bewerbung:zu,vergessen:zu,
+  /* Auch die Anprobe ist im Editor zu: sie gehoert der Kundin, nicht dem Haus.
+     Sie steht hier trotzdem VOLLSTAENDIG, weil app.js ihre Methoden ohne `?.`
+     ruft — eine fehlende waere im Studio ein harter Absturz, kein Nein. */
+  anprobe:{
+   art:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'ganzkoerper',
+   aktion:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'anprobe',
+   bild:zu,bereinigen:zu,starten:zu,stand:zu,bewerten:zu,
+   async meine(){return {bilder:[],anproben:[]};}
+  },
+  foto:zu,
   async vertraege(){return [];},
   async texte(){return {};},
   signal(){},

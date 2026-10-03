@@ -176,7 +176,7 @@ export function groesseAus(m={},p){
  return vorhanden.reduce((best,r)=>Math.abs(reihe.indexOf(r)-idx)<Math.abs(reihe.indexOf(best)-idx)?r:best,vorhanden[0]);
 }
 export function passformAssistent(p,state){
- const m=state.measurements||{},st=state.stil||{},u=urteil(st,p),groesse=groesseAus(m,p);
+ const m=state.measurements||{},st=state.stil||{},u=urteil(st,p,state.foto_befund),groesse=groesseAus(m,p);
  const f=passform(m,p);
  let inhalt='';
  if(p.sizes?.length){

@@ -170,7 +170,16 @@ export {massZeile as measurementsToRow} from './store.mjs';
 
 /** Heft-Stilprofil → Zeile der vorgeschlagenen Tabelle kunden_stil (s. integration/sql/) */
 export function stilToRow(stil={},foto={},fuerWen=''){
- return {welt:stil.welt||null,richtung:stil.richtung||null,form:stil.form||null,fuer_wen:fuerWen||null,foto_befund:foto&&Object.keys(foto).length?foto:null,quelle:'heft-quiz'};
+ /*
+  * DER FEHLER, DER HIER LAG: geprueft wurde `Object.keys(foto).length`. Das ist bei
+  * einem STRING auch wahr — `Object.keys('mantel.jpg').length` ist 10. Der Aufrufer
+  * in app.js uebergab genau das: `state.foto`, den Dateinamen. Damit landete ein
+  * Dateiname als JSON-Zeichenkette in einer jsonb-Spalte, die
+  * {farben_passen[], farben_meiden[]} erwartet. Der zweite Aufrufer uebergab {} —
+  * darum fiel es nie auf. Jetzt muss es ein echtes Objekt sein.
+  */
+ const echterBefund=foto&&typeof foto==='object'&&!Array.isArray(foto)&&Object.keys(foto).length?foto:null;
+ return {welt:stil.welt||null,richtung:stil.richtung||null,form:stil.form||null,fuer_wen:fuerWen||null,foto_befund:echterBefund,quelle:'heft-quiz'};
 }
 export function stilFromRow(row){
  if(!row)return {stil:{},foto:{}};
