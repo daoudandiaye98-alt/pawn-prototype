@@ -6,24 +6,17 @@ Doppelungen vorhandener Migrationen, drei sind hierher umgezogen
 (`20260930100000_rechte_zunageln.sql`, `20260930110000_anon_leserechte.sql`,
 `20260930120000_rechte_ist_kauf_freigeschaltet.sql`).
 
-## Auf der Datenbank verbucht, im Repo noch ohne Datei
+In Auftrag R2 sind zwei weitere Schritte aus `drizzle/migrations` hierher
+umgezogen: `20261002100000_zuglogik_berechnen.sql` und
+`20261002110000_kunden_bilder_art_avatar.sql`. Der Ordner `drizzle/migrations`
+existiert nicht mehr. Neue Schritte gehoeren ausschliesslich hierher.
 
-Diese sieben Versionen stehen in `supabase_migrations.schema_migrations` der
-Datenbank `rnakubexbqfgfciynqpt` und sind dort angewendet. Die zugehörigen
-SQL-Dateien fehlen im Repo und werden von Daouda nachgelegt. Bis dahin bildet
-der Ordner die Datenbank **nicht vollständig** ab.
+## Nachgelegt in Auftrag R2
 
-| Version | erwarteter Dateiname |
-|---|---|
-| 20261001100000 | `20261001100000_begleiter.sql` |
-| 20261001110000 | `20261001110000_schaufenster.sql` |
-| 20261001120000 | `20261001120000_archetypen.sql` |
-| 20261001130000 | `20261001130000_kunden_bilder_anproben.sql` |
-| 20261001140000 | `20261001140000_begleiter_saetze_regeln.sql` |
-| 20261001150000 | `20261001150000_deko_quelle.sql` |
-| 20261001160000 | `20261001160000_designers_spalten_fuer_gaeste.sql` |
-
-Leere Platzhalterdateien werden hier bewusst **nicht** angelegt.
+Die sieben Versionen `20261001100000` bis `20261001160000` waren auf
+`rnakubexbqfgfciynqpt` angewendet und verbucht, ihre Dateien fehlten im Repo.
+Sie sind jetzt angelegt (Inhalt unveraendert, nicht erneut ausgefuehrt). Der
+Ordner bildet die Datenbank damit wieder vollstaendig ab.
 
 ## Namenskollision im Blick behalten
 

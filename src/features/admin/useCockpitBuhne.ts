@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 /**
  * Teil 30 — Datenlage für die Bühne im Cockpit. Alles hier ist regelbasiert und
@@ -38,8 +39,15 @@ function isManualChannel(channel: string | null): boolean {
 
 export function useCockpitBuhne(refreshKey: number | string = 0): CockpitBuhneData {
   const [data, setData] = useState<CockpitBuhneData>(EMPTY);
+  const { user, roles } = useAuth();
 
   useEffect(() => {
+    /* Dieser Haken fragt stripe_charges_enabled fuer bis zu 20 Haeuser ab und lief
+       ungebremst, sobald jemand /admin aufschlug. AdminOverview hat zwar einen eigenen
+       Pruefer, aber der gilt fuer SEINEN Effekt, nicht fuer diesen hier. Es ist nur ein
+       Ja/Nein-Wert, keine Kennung — aber dieselbe Klasse wie das Leck an
+       AdminDesigners, und in zwei Zeilen geschlossen. */
+    if (!user || !roles.includes("admin")) return;
     let alive = true;
     (async () => {
       const since24h = new Date(Date.now() - 24 * 3600_000).toISOString();
@@ -132,7 +140,7 @@ export function useCockpitBuhne(refreshKey: number | string = 0): CockpitBuhneDa
       });
     })();
     return () => { alive = false; };
-  }, [refreshKey]);
+  }, [refreshKey, user, roles]);
 
   return data;
 }

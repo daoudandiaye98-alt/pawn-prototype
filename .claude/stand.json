@@ -1,27 +1,24 @@
 {
   "aktualisiert": "2026-09-13",
-  "branch": "claude/auftrag-q-buehne",
+  "branch": "claude/heft-frontend-integration-0bjnzf",
   "offene_prs": [
     {
+      "nr": 203,
+      "titel": "Sicherheit: kein Stripe-Datum im Cockpit, bevor die Rolle feststeht",
+      "status": "Entwurf, 6 Dateien + Sperrdatei. Zweig auf main. tsc 0, npm test 356/356, VERIFY 5/5, REGRESSION 20/20, Bau gruen. Zusage Z20 (keineStripeDatenOhneRolle), gegen alle drei Ursachen einzeln rot vorgefuehrt.",
+      "blockiert_durch": "Nichts. SOLLTE ZUERST GEMERGT WERDEN: klein, schliesst das Leck, und traegt die Sperrdatei-Reparatur, ohne die auf diesem main KEIN Pruefstand laeuft."
+    },
+    {
       "nr": 202,
-      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel",
-      "status": "Entwurf, 15 Commits voraus. B1-B8 VOLLSTAENDIG. 119/119 Heft-Tests, 353/353, VERIFY 5/5, REGRESSION 20/20, tsc 0, Bau gruen. Zusage Z20 neu, gegen alle vier Ursachen einzeln rot vorgefuehrt.",
-      "blockiert_durch": "Nichts im Code. Offen bleiben nur Daoudas Entscheidungen (Drei-Werke-Regel, gefallene Gates) und die Augen auf der Vorschau — /studio/doppelseite braucht ein angemeldetes Haus, das kann der Container nicht."
+      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel + der Routen-Rundgang",
+      "status": "Entwurf, 20 Commits. B1-B8 VOLLSTAENDIG. 120/120 Heft-Tests, 353/353, VERIFY 5/5, REGRESSION 20/20, tsc 0, Bau gruen. Zusagen Z20 (Auftritt) und Z13 (um acht Studio-Adressen erweitert), je rot vorgefuehrt. Netto -572 Zeilen in der Routen-Runde.",
+      "blockiert_durch": "Nichts im Code. `messen` ist rot, aber BELEGT nicht wegen dieses PRs: 129 gefallene Gates hier gegen 131 auf main, und alle gehoeren zu den vier Familien 3.3/3.4/3.5/4.7, ueber die Daouda entscheidet."
     }
   ],
   "merge_reihenfolge": [
-    "TEIL L IST AUF MAIN, soweit er ohne Datenbank geht. main = 22471bc. Gemergt: #187, #188, #189, #190, #191, #192. Nachgeprueft auf origin/main, nicht vermutet: src/features/auth/tueren.ts, src/features/auth/registrieren.ts, src/heft03/uebernahme.mjs liegen dort, und sections.konto beginnt mit 'zugang'.",
-    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 (teil-l-konto -> main) ging 20 Sekunden VOR #191 (konto-im-heft -> teil-l-konto) durch. Beide meldeten 'merged', aber das Konto lag daneben, nicht auf main. #192 hat es nachgezogen. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind.",
-    "LIVE auf main: L5/L6 (Zugang-Doppelseite als erste Seite von /konto), L7 (Passwort-Wiederholung an EINER Stelle: features/auth/registrieren.ts), L8 (drei Publikumstueren), L9 (Google kehrt zurueck), L10 (/auth ist Wegweiser auf /konto), L11 (Uebernahme der Gastdaten), L12 (ein Waechter, drei entfernt), L13 (Anklopfen statt 6-Sekunden-Frist), L16 (heft.d.ts). Zusagen Z11, Z12, Z13 neu, alle einmal rot vorgefuehrt.",
-    "L1 IST ANGEHALTEN — ERSTER BRUCH, BENANNT STATT REPARIERT. 35 von 161 Migrationen liegen auf cnxtdcifkrdxvajaikxq. Stapel 14 brach ab: relation public.acquisition_leads does not exist. Der Stapel lief in einer Transaktion, nichts davon ist in der Datenbank. Vollstaendiger Befund: docs/teil-l/l1-bruch-migrationskette.md.",
-    "DER GRUND: supabase/migrations/ ist in Dateinamen-Reihenfolge nicht abspielbar. VIER Tabellen werden geaendert, bevor sie angelegt werden. acquisition_leads wird von KEINER der 161 Dateien angelegt (24 aendern sie). designer_automations, designer_opportunities und designer_billing_profiles werden erst 3 bis 12 Tage spaeter angelegt.",
-    "DIE NEUE PRUEFUNG: scripts/verify/migrationen-kette.mjs. Rot am echten Ordner, gruen an einer geschlossenen Kopie — beide Richtungen vorgefuehrt. ABSICHTLICH NOCH NICHT in verify.sh schnell, weil sie heute echt rot ist und eine dauerhaft rote Pruefung im Tor lehrt, Rot zu uebersehen. Verdrahten, sobald die Luecke zu ist.",
-    "WIEDERAUFSETZEN OHNE RATEN: mcp Supabase list_migrations zeigt die 35 gelegten Dateien. Der Stapel-Drucker liegt im Scratchpad (stapel.py + stapel.json, 41 Stapel); Stapel 14 ist der naechste, danach der Sentinel zz_ende, dann die Abnahme, dann types.ts neu.",
-    "L11 WEICHT AB, mit Begruendung: merge_anon_session KANN kunden_stil und wishlists nicht tragen. Beide haben user_id als Schluessel mit Fremdschluessel auf auth.users, jede Policy verlangt auth.uid() = user_id, und eine session_id-Spalte gibt es auf keiner der beiden. Ein Gast hat dort nie eine Zeile. Die Uebernahme passiert deshalb beim Anmelden im Heft (src/heft03/uebernahme.mjs). Der andere Weg waere eine neue anonyme Schreibflaeche auf der Zahlungsdatenbank — das braucht Daoudas Wort.",
-    "DER RUECKWEG IST VORGEFUEHRT: drop schema public cascade + Historie leeren. Gemessen: 0 Tabellen, 0 Zeilen, 0 Benutzer.",
-    "DIE BUCHHALTUNG: ein BEFORE-INSERT-Trigger auf supabase_migrations.schema_migrations setzt die Version aus dem Dateinamen und unterdrueckt jede fremde Zeile. Beim Sentinel-Namen 'zz_ende' entfernt er sich selbst.",
-    "ZURUECKGEHOLT: 20260929090000_zugaenge_daouda lag NUR in der Datenbank. Damit sind es 161 Dateien, nicht 160 — die Abweichung zur Abnahme in L1 ist bewusst und gemeldet.",
-    "DER PRUEFER HAT EINEN FEHLER IN MEINEM BERICHT GEFUNDEN: 12 von 13 bestaetigt, EINER widerlegt (ein Verweis auf /auth stand noch in der Aufwaermliste der englischen Fassung). Repariert UND gedeckt: Zusage Z13 mit der Kontrolle nurWegweiser, einmal rot vorgefuehrt."
+    "1. #203 ZUERST. Es schliesst das Cockpit-Leck UND repariert package-lock.json. Ohne die zweite Haelfte bricht `npm ci` auf main ab und der Pruefstand kommt gar nicht zum Messen — das blockiert jeden PR, auch Daoudas eigene Merges.",
+    "2. #202 danach. Es sitzt auf einem aelteren main und hat deshalb die Sperrdatei-Falle noch nicht gesehen; nach dem Merge von #203 wird es sie sehen und braucht dann einen Basis-Merge.",
+    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 ging 20 Sekunden vor #191 durch, beide meldeten 'merged', und die Dateien lagen trotzdem nicht auf main. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind."
   ],
   "wartet_auf_mensch": [
     "DIE 119 GEFALLENEN LAUNCH GATES, neu und zum ersten Mal belegt: 4.7 Seitengewicht, 3.5 Trefferflaechen, 3.3 Kontrast, 3.4 Tastaturfokus. Sie auf die Norm zu ziehen aendert das AUSSEHEN des Hefts — und das Heft bleibt per Auftrag, wie es ist. FRAGE: wie weit beugt sich das Heft der Norm? Vorher sind zwei Zweifel zu klaeren (3.4 koennte ein Messartefakt des outline-offset sein, ein Teil von 3.3 kommt aus dem leeren Zustand) — niemand soll Gestaltung aendern, wo ein Messfehler sitzt. Vollstaendig im Kommentar an PR #194.",
@@ -58,12 +55,13 @@
     }
   },
   "naechster_zug": [
-    "1. PR #202 mergen — B1-B8 sind fertig, 20/20 Zusagen, kein Konflikt. Danach die spaeteren PRs EINER NACH DEM ANDEREN (Falle #190/#191: gestapelte Zweige meldeten gemergt und lagen nicht auf main).",
-    "2. PR 2 des Plans — die sechs falschen dna:-Spruenge auf NAMEN statt Zahlen. MUSS vor der Anprobe kommen: wer eine Seite in die DNA-Liste einschiebt, verschiebt dieselben Indizes wieder (so ist 1b91aae entstanden).",
-    "3. PR 3 — das Cockpit-Leck: AdminDesigners.tsx:28 fragt select(\"*\") auf designers OHNE Lade-Pruefer, und RoleGate:42 laesst Anonyme durch. Die Spalten-Messung dazu steht schon in DIE_LOECHER_AUF_DER_LIVE_DATENBANK.",
-    "4. DAOUDA: die Drei-Werke-Regel. heft_buehnen hat 0 Zeilen, drape hat je Welt EIN Werk, der Trigger verlangt drei. Die Oberflaeche sagt es jetzt ehrlich vorher, aber der Weg endet dort.",
-    "5. DAOUDA: die gefallenen Gates 4.7, 3.3, 3.5, 3.4 — steht seit Teil 1 offen.",
-    "6. DAOUDA: OFFENE-LISTE.md fehlt im Repo, obwohl Auftrag Q sie zum fuehrenden Papier erklaert. Und teil-o-migrationen.zip ist nie angekommen (166 statt 173 Dateien)."
+    "1. DAOUDA: #203 mergen. Klein, schliesst das Leck, macht den Pruefstand wieder lauffaehig.",
+    "2. DAOUDA: #202 mergen. Danach auf origin/main nachsehen, ob die Dateien wirklich dort liegen.",
+    "3. PR 4 — die Anprobe in der DNA-Seite. JETZT moeglich, weil die Spruenge auf NAMEN stehen (data.mjs > seitenNr): ein Einschieben verschiebt nichts mehr. Die foto-Seite wird die Anprobe-Seite und zieht von Platz 5 auf Platz 1 (Daoudas Entscheidung). Backend ist fertig und deployt — supabase/functions/anprobe kann bereinigen/anprobe/raum/wand/stand/bewerten. Es fehlt NUR die Verdrahtung: quelle.anprobe, der Platzhalter-Toast in app.js:829, state.avatar (existiert nicht, wird aber gelesen), state.anproben (wird nie gefuellt), das Melden von anprobe_fertig.",
+    "4. PR 5 — Clips layout-bewusst. Der Knopf 'Freisteller' in StudioMediathek ruft generate-product-shot (weisses JPEG) statt freistellen (echter Freisteller). Damit ist die Kette Clips → product_dna.heft → Buehne an genau dieser Stelle gerissen.",
+    "5. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message). Dazu der Fehler in app.js:874 — die Beispiel-Prompts rufen kein fragen(), die Edge Function sieht den Satz nie.",
+    "6. Die zwei Vorschlagspapiere: docs/vorschlag-mini-pawn.md und docs/vorschlag-cockpit.md.",
+    "7. DAOUDA, unveraendert offen: die Drei-Werke-Regel · die gefallenen Gates 4.7/3.3/3.5/3.4 · der GRANT auf designers (M3 Teil 2) · teil-o-migrationen.zip (166 statt 173 Dateien) · OFFENE-LISTE.md fehlt im Repo."
   ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
@@ -144,74 +142,40 @@
     "was_er_ist": "Zwei PRs. Teil 1 raeumt den Tisch (R1 R2a R2b R3 R4 E4), Teil 2 baut die Buehne aus Daten (B1-B8). Teil 1 MUSS vor Teil 2 auf main sein.",
     "TEIL_1_LIEGT_ALS_PR_201": {
       "R1": "ERLEDIGT ohne zu bauen. #183 steht laengst auf main, in einem Satz nachgeprueft. Schliessen.",
-      "R2a": "SLUGS GEAENDERT, ABER DIE BEDINGUNG IST NICHT ERFUELLT. Sauber gemessen, beide Male live · https://pawn.vision, nur die Slugs unterschiedlich: c56de9c (obara-rope-jacket/obara) 637 bestanden · 127 gefallen · 299 nicht pruefbar, Summe 1063. 09ce200 (wool-coat/drape) 652 bestanden · 125 gefallen · 342 nicht pruefbar, Summe 1119. nicht_pruefbar STEIGT um 43. Der Auftrag sagt: faellt sie nicht, ist die Ursache falsch. Also steht das so da. Daneben, ohne die Bedingung zu retten: gefallen -2, bestanden +15, Summe +56 — mehr Kontrollen kommen zu einem Urteil. WO die 43 sitzen, ist von hier nicht feststellbar: die Aufschlüsselung steht nur in bericht.json im Artefakt. VERMUTUNG, ausdruecklich kein Befund: die Seite ist eine SPA. Auch /werk/obara-rope-jacket lud 4,37 MB ueber 49 Antworten — das ganze Buendel, obwohl das Werk nicht existiert. Das Gewicht unterscheidet Huelle und Seite also nicht; der Anteil „Huelle\" an den 299 war womoeglich kleiner als angenommen. RICHTIG BLEIBT DER WECHSEL TROTZDEM: auf ein Werk zu zielen, das es nicht gibt, ist falsch, unabhaengig von der Kennzahl. Genau dieser Fehlgriff hat den Mantel an der Wand zwei Wochen verdeckt.",
+      "R2a": "ERLEDIGT. PRUEDUKT_SLUG obara-rope-jacket -> wool-coat, HAUS_SLUG obara -> drape. Gemessen: obara-rope-jacket existiert auf rnakubexbqfgfciynqpt nicht, und obara hat keine veroeffentlichte Hausseite; der Pruefstand mass unter /werk/ und /haus/ die Heft-Huelle. OFFEN: die nicht_pruefbar-Zahl NACHHER. Vorher auf main c56de9c (Lauf 209): 637 bestanden · 127 gefallen · 299 nicht pruefbar. Sie MUSS fallen; faellt sie nicht, war die Ursache falsch.",
       "R2b": "ERLEDIGT. Der Mode-Zweig aus #195 woertlich uebernommen, samt Kommentar. Ein Mode-Stueck ohne Groessentabelle bekam „ob die Arbeit an deine Wand passt\".",
-      "R4": "ERLEDIGT UND AM PRUEFSTAND BELEGT. Teillauf 214 mit kontrollen:\"3.8\" — ein Teillauf druckt ALLE Zahlen der Kontrolle, auch die bestandenen, und ist deshalb der Beweis statt der auf 60 gedeckelten Liste. „bestanden 3.8 / @ 844px · gemessen 0 · soll 0.25 · 0 Paar(e) ueber der Schwelle\". ALLE 105 Kontrollen der Familie 3.8 bestanden, keine gefallen, ueber alle Seiten und alle fuenf Breiten. Die 35 gefallenen in der Summe dieses Laufs sind ausnahmslos 4.7 (Seitengewicht), das bei jedem Seitenaufruf miterhoben wird. Lokal vorher/nachher: Anteil 1,000 -> 0,000.",
+      "R4": "ERLEDIGT UND GEMESSEN. Kontrolle 3.8 bei 844x390 im Eroeffnungszustand: vorher caption 156-285 · skip 246-280 · 3224 px² · Anteil 1,000 — nachher caption 67-143 · skip 168-202 · 0 px² · Anteil 0,000. 390 hoch und 768 unveraendert. Repariert in der vorhandenen Abfrage @media(orientation:landscape) and (max-height:540px).",
       "R3": "NOCH NICHT. #183 und #195 schliessen, #200 mergen oder schliessen — erst wenn #201 gesehen ist. Keine fremde Arbeit schliessen, bevor der Ersatz auf main liegt.",
       "E4": "BLOCKIERT. teil-o-migrationen.zip ist NICHT angekommen — Dateisystem durchsucht, auch /mnt/user-data/uploads/. Die Datenbank speichert den SQL-Text nicht, die sieben Dateien sind also nicht rekonstruierbar. supabase/migrations/ steht bei 166, nicht 173. LIESMICH.md bleibt unveraendert; er fuehrt die sieben korrekt als fehlend und verbietet leere Platzhalter. DAOUDA MUSS DIE BEILAGE NACHREICHEN."
     },
     "TEIL_2_NICHT_ANGEFANGEN": "B1-B8, die Buehne aus heft_buehnen. Erst wenn Teil 1 auf main ist — der Auftrag nennt den Grund: sonst misst Teil 2 wieder die Huelle. Vorarbeit gemessen auf c56de9c: world.mjs kennt heft_buehnen nicht, quelle.mjs weder studioQuelle noch heft_buehnen noch heft_deko, app.js keine Option bearbeiten, heft_buehnen hat 0 Zeilen.",
     "WAS_DAOUDA_VOR_TEIL_2_WISSEN_MUSS": "Der Trigger heft_buehne_pruefen verlangt 3 Werke je Buehne. drape hat je Welt EINS. Mit dem heutigen Bestand kann kein Haus eine Buehne veroeffentlichen, ausser es mischt die Welten. Die Oberflaeche muss das VORHER sagen („noch 2 Werke bis zum Veroeffentlichen\") statt den Datenbankfehler durchzureichen.",
-    "OFFENE_LISTE_FEHLT": "Der Auftrag macht OFFENE-LISTE.md zum fuehrenden Papier („was nicht auf der Liste steht, wird nicht gebaut\"). Die Datei liegt NICHT im Repo. Nach Gesetz 1 existiert sie damit nicht; gearbeitet wurde gegen die Aufzaehlung im Auftragstext. DAOUDA MUSS SIE ANLEGEN.",
-    "TEIL_1_IST_AUF_MAIN": {
-      "merge": "PR #201 gemergt am 12.09. 22:18. main = 09ce200. AUF ORIGIN/MAIN NACHGEPRUEFT, nicht vermutet: Slugs wool-coat/drape, Mode-Zweig UND interior-Zweig, die #skip-Regel, Z18, Z19, der Stand.",
-      "R3_ERLEDIGT": "#183 geschlossen (Inhalt lag laengst auf main, mit Zeilennummern belegt). #195 geschlossen (Mode-Zweig uebernommen, die acht 20260930-Migrationen nicht — sie entstanden auf cnxtdcifkrdxvajaikxq). #200 GESCHLOSSEN STATT GEMERGT, abweichend von R3: sein Inhalt lag vollstaendig auf main, und der Zweig war dirty. Ein Merge haette die aeltere Fassung ueber die neuere gelegt. Daouda kann es zurueckdrehen, dann loese ich den Konflikt auf.",
-      "OFFENE_PRS_DANACH": 0
-    },
-    "TEIL_2_ANGEFANGEN": {
-      "zweig": "claude/auftrag-q-buehne, von main 09ce200.",
-      "KREUZVERHOER_VOR_DEM_BAUEN": "Zwei Funde, beide gemessen, beide bevor Code stand.",
-      "FUND_1_DIE_KONSTANTEN_STIMMEN_NICHT": "Der Auftrag gibt BUEHNE = {breite:5.6, tiefe:2.4, z0:-1.35} vor und sagt, das liege dort, wo heute die Podeste stehen, und „die Buehne darf nicht anders aussehen als heute\". Gemessen in world.mjs:208: die Werke stehen heute bei Welt-z 0,30 bis 0,65. Die Formel z_welt = -1.35 + z*2.4 ergibt fuer z 0,35-0,65 aber -0,51 bis 0,21 — jedes Werk wandert rund 0,6 Einheiten nach hinten. Die Rueckwand steht laut world.mjs:197 bei -1,15, nicht -1,35. Beide Konstanten muessen verschoben werden; der Auftrag erlaubt das ausdruecklich, verlangt aber zu sagen, um wieviel.",
-      "FUND_2_DEKO_VERDECKT_DEN_KLICK": "world.mjs:258 sucht mit .find(hit => hit.object.userData.cutout && alphaHit(...)) und liest danach ?.object.userData.product. Deko der Ebene 3 steht VOR den Werken. Trifft der Strahl zuerst eine undurchsichtige Deko-Stelle, liefert find() die Deko, product ist undefined — und das Werk dahinter wird UNKLICKBAR. „Deko ist nicht anklickbar\" reicht nicht: hit() muss Objekte ohne product ueberspringen statt sie als Treffer zu nehmen.",
-      "GEPRUEFT_UND_BESTAETIGT": "Die staerkste Annahme haelt: heft_buehnen und heft_deko stehen mit genau den beschriebenen Spalten in src/integrations/supabase/types.ts. Nicht geraten.",
-      "erster_schritt": "makeBuehne bauen, eine Buehne aus den heutigen makeStage-Werten zurueckrechnen, beide bei 1280 aufnehmen und die Bilder nebeneinander halten. Erst wenn sie deckungsgleich sind, stehen die Konstanten fest.",
-      "BRAUCHT_DAOUDA": "Lovable-Deploy von freistellen — sonst ist B8 eine Attrappe, und eine Attrappe war schon der Bild-Upload in Block A. Dazu die Entscheidung zur 3-Werke-Regel: der Trigger heft_buehne_pruefen verlangt drei Werke je Buehne, drape hat je Welt eins. Mit dem heutigen Bestand kann KEIN Haus eine Buehne veroeffentlichen.",
-      "B1_ERSTER_TEIL_LIEGT": "src/heft03/buehne.mjs mit 8 Tests: BUEHNE, buehneX/buehneZ, ebeneVon, klemmeStueck/klemmeDeko, fehltZumVeroeffentlichen. Konstanten berichtigt auf {breite:5.6, tiefe:1.067, z0:-0.073}; die Vorgabe haette die Werke um 0,41 bis 0,81 Einheiten nach hinten geschoben. Einmal rot vorgefuehrt mit den Zahlen des Auftrags.",
-      "FUND_2_IST_BEHOBEN": "world.mjs:258 prueft jetzt userData.product, BEVOR der Treffer gilt. Heute ein No-op — es gibt noch keine Deko —, also ohne Verhaltensaenderung: 353/353, 89/89, tsc 0, Bau gruen. Der Riegel sitzt, bevor die Deko kommt.",
-      "ALS_NAECHSTES": "B4 zweiter Teil: heft() parametrisieren (eine Abfrage, zwei Aufrufer), studioQuelle darauf, dann B5 (bearbeiten:true) und B7. B8 bleibt an Daoudas Lovable-Deploy von freistellen.",
-      "WAS_LIEGT": {
-        "B1 Buehne aus Daten": "FERTIG. buehne.mjs (reine Rechnung, 22 Tests) + makeBuehne in world.mjs. Konstanten berichtigt auf {breite:5.6, tiefe:1.067, z0:-0.073}; die Vorgabe haette die Werke um 0,41 bis 0,81 Einheiten nach hinten geschoben. platzFuer reproduziert die heutigen drei Stellen auf 0,001 genau.",
-        "B2 Deko als Aufsteller": "FERTIG. dekoNachEbenen + fuerDeko. Die EBENE ENTSCHEIDET DER KATALOG, nicht die Buehnenzeile. Was nicht im Katalog steht, erscheint nicht. Deko traegt kein userData.product und bekommt keinen Sockel. Hinten wird zuerst gezeichnet.",
-        "B3 Vortritt der Buehne": "ERSTER TEIL FERTIG. display() nimmt displays[id].buehne, sonst makeStage. version steckt im Zwischenspeicher-Schluessel. OFFEN: displayAusHaus nimmt weiter slice(0,2) (data.mjs:62) — die Regel „mindestens drei Aufsteller\" braucht heft_deko, also B4.",
-        "B6 Klemme und erstes Ziehen": "LOGIK FERTIG. klemmeStueck/klemmeDeko halten, sie federn nicht zurueck. nachDemZiehen setzt layout frei und eigenhaendig true. Noch nicht verdrahtet (das ist B5).",
-        "B4 studioQuelle": "ANGEFANGEN, der pruefbare Teil liegt: schreibEntwurf mit dem Versionsriegel (zweimal rot vorgefuehrt). Die Supabase-Abfragen fehlen.",
-        "B5 B7 B8": "OFFEN."
-      },
-      "B4_DIE_ENTSCHEIDUNG_DIE_ANSTEHT": {
-        "gefunden": "designers.user_id ist die Eigentuemer-Spalte (types.ts, 60 Spalten). SPALTEN.products und SPALTEN.designers stehen in quelle.mjs. Damit ist studioQuelle schreibbar.",
-        "DIE_FRAGE": "studioQuelle.heft() liest andere Zeilen als supabaseQuelle.heft(): Entwuerfe mit, nur das eigene Haus, dazu heft_buehnen und heft_deko. Der naheliegende Weg waere, die rund 25 Zeilen von heft() zu verdoppeln und die Filter zu aendern.",
-        "WARUM_DAS_FALSCH_WAERE": "Zwei Fassungen derselben Abfrage laufen auseinander. Genau deshalb wurde vorher die Kulisse aus makeStage herausgezogen und platzFuer in buehne.mjs gelegt, statt die Rechnung im Renderer zu wiederholen.",
-        "VORSCHLAG": "heft() so umbauen, dass die Filter (status-Filter, designer_id-Einschraenkung) Parameter sind, und studioQuelle ruft dieselbe Funktion mit anderen Parametern. Eine Abfrage, zwei Aufrufer. Das ist ein Eingriff in den Weg, ueber den das ganze Heft seine Daten holt — er gehoert an den Anfang einer Schicht, nicht ans Ende einer langen.",
-        "WARUM_ICH_HIER_ANGEHALTEN_HABE": "Am Ende einer langen Strecke ist mir heute schon einmal beim Einsetzen eines Zweigs die interior-Zeile verlorengegangen, und kein Werkzeug hat es gemeldet. Ein Umbau am Datenweg unter denselben Bedingungen ist dasselbe Risiko mit groesserem Schaden."
-      },
-      "WO_DER_BEWEIS_HERKOMMT": "BERICHTIGUNG an mir selbst: ich hatte B4 „blockiert, weil Supabase hier nicht erreichbar ist\" genannt. Das war zu kurz gegriffen. Die VERCEL-VORSCHAU erreicht Supabase — deshalb misst der Pruefstand dort echte Daten. Der Beweis fuer studioQuelle kommt also eine Stufe spaeter, nicht gar nicht. Genau dafuer gibt es den Pruefstand; der Container hat fuer den Browser kein Netz, der Runner schon."
-    }
+    "OFFENE_LISTE_FEHLT": "Der Auftrag macht OFFENE-LISTE.md zum fuehrenden Papier („was nicht auf der Liste steht, wird nicht gebaut\"). Die Datei liegt NICHT im Repo. Nach Gesetz 1 existiert sie damit nicht; gearbeitet wurde gegen die Aufzaehlung im Auftragstext. DAOUDA MUSS SIE ANLEGEN."
   },
-  "EIN_FEHLER_VON_MIR_IN_DIESER_RUNDE": [
-    "DIE BYTEWEISE AUFNAHME TAUGT HIER NICHT. Ich wollte belegen, dass world.mjs > masse() das oeffentliche Heft nicht anfasst, und verglich Aufnahmen vorher/nachher. Sie unterschieden sich — und ich haette daraus fast geschlossen, meine Aenderung sei schuld. Kontrollmessung: DREI Aufnahmen DESSELBEN Baus ergaben drei verschiedene Pruefsummen (716903c5 / 14ba5c4c / 80095347). Die Buehne animiert. Der belastbare Beweis war arithmetisch: #stage.getBoundingClientRect() ist bei 1440x900, 390x844 und 834x1112 exakt {l:0,t:0,b:Fenster,h:Fenster} — also liefert masse() dort dieselben Zahlen. MERKREGEL: erst die Methode auf Reproduzierbarkeit pruefen, dann aus ihr schliessen.",
-    "ZWEIMAL GEGEN DEN FALSCHEN ZUSTAND GEMESSEN. Der Wisch-Test meldete \"blaettert nicht\" — weil das Heft noch in seiner Eroeffnung stand (body.is-intro), wo der Finger von jeher nicht blaettert. Und ich prueste auf data-page statt auf die Adresse. Nach #skip und mit der Adresse als Groesse: /mode -> /mode/2, beide Werke oeffnen ihr Fenster. Kein Befund, sondern zwei Messfehler.",
-    "EINE PRUEFUNG, DIE PROSA LIEST, PRUEFT NICHTS. Die erste Fassung von Z20 blieb gruen, als ich KASTEN_STIL aus dem Code nahm — der Name stand noch im Kommentar darueber. Genau derselbe Fehler wie bei Z18 (Herkunftsnotiz aus #195 mit dem Wort \"Wand\"), und er war im Repo schon geloest. Ich haette nachsehen muessen statt neu zu erfinden. Z20 streift Kommentare jetzt ab.",
-    "pkill -f \"vite preview\" erschlaegt sich selbst (Exit 144) — das Muster steht in seiner eigenen Befehlszeile. Stand schon als Stolperstein hier, und ich bin wieder hineingelaufen. Der Weg ist ueber den Port: ss -lptn \"sport = :PORT\".",
-    "curl erreicht 127.0.0.1 nicht ohne --noproxy \"*\" — HTTPS_PROXY faengt es ab. Und vite preview braucht --host 127.0.0.1, sonst bindet es auf :: und stirbt mit EAFNOSUPPORT. Beides steht in scripts/verify/sicht.sh:47, ich habe es erst nach zwei Fehlversuchen gelesen."
-  ],
-  "AUGEN_FUER_DIE_BUEHNE": {
-    "DIE_FRAGE": "Teil 2 verlangt Aufnahmen als Abnahme („Buehne sichtbar → Aufnahme, 1280 und 390\"). Kann dieser Container die 3D-Buehne ueberhaupt rendern? Ohne Antwort waere jede Fertigmeldung zu Teil 2 eine Behauptung.",
-    "ANTWORT_JA_ABER_NUR_UEBER_DIST": "Gemessen am 12.09.: `npx vite preview --host 127.0.0.1 --port N` auf dem gebauten dist/ rendert die Buehne vollstaendig. Bei 1280x900 nach rund 12 s: canvas 1280x900, Ladeflaeche weg, drei Hotspots, echte Hausdaten („DRAPÉ. In Bewegung.\", „Wool Coat ansehen\"). KEINE Datenbank noetig — die Demo-Daten aus data.mjs und cutouts.json reichen.",
-    "DIE_SACKGASSE_DIE_ICH_ZUERST_LIEF": "src/heft03/referenz/index.html direkt auszuliefern rendert NICHTS: dreiD.mjs importiert `three` als blanken Namen, und ohne Buendler meldet der Browser „Failed to resolve module specifier three\". Kein canvas, Ladeflaeche bleibt stehen. Die Referenzseite taugt fuer reines CSS (so wurde Kontrolle 3.8 gemessen), nicht fuer die Buehne.",
-    "MERKREGEL": "Fuer alles mit drei Dimensionen: erst npm run build, dann vite preview auf dist. Fuer reines CSS und Textgeometrie reicht die Referenzseite.",
-    "WAS_NOCH_FEHLT": "Nach 14 s steht die Seite noch auf is-intro/is-opening — die Aufsteller erscheinen erst nach der Eroeffnung. Fuer eine Aufnahme der Buehne muss #skip geklickt werden. Die Eroeffnung dauert laut Block A 5,8 s + 2,6 s.",
-    "NEBENBEI_BESTAETIGT": "Die Kopfzeile steht auf ENGLISCH. Das ist der bereits unter wartet_auf_mensch notierte D2-Punkt, nicht neu und nicht von dieser Arbeit.",
-    "STOLPERSTEIN": "pkill -f \"vite preview\" trifft den eigenen Befehl mit, weil das Muster in dessen Kommandozeile steht. Exit 144. Enger fassen oder die PID merken."
+  "EIN_FEHLER_VON_MIR_IN_DIESER_RUNDE": {
+    "was": "Beim Einsetzen des Mode-Zweigs (R2b) ging die Zeile `}else if(p.world==='interior'){` verloren. Interior lief danach in den Kunst-Zweig — derselbe Fehler eine Welt weiter.",
+    "was_ihn_NICHT_gefangen_hat": "node --test 81/81, npm test 353/353, tsc 0, VERIFY 5/5, npm run build gruen. Kein Werkzeug hat es gemeldet, weil passformAssistent nirgends geprueft wurde.",
+    "was_ihn_gefangen_hat": "Die Rot-Vorfuehrung von Z18 — also das Ritual selbst, nicht eine Pruefung, die schon da war.",
+    "folge": "Z18 deckt jetzt die REIHENFOLGE der drei Welten (mode -> interior -> Auffang), nicht bloss den einen Satz.",
+    "lehre_fuer_die_naechste_schicht": "Nach jedem Einsetzen eines Zweigs in eine if/else-Kette die Kette selbst nachzaehlen. Ein Textersatz, der einen Anker verschluckt, ist syntaktisch gueltig und faellt durch jede Pruefung, die den Rumpf nicht liest."
   },
-  "DAOUDAS_AUFTRITT_MANGEL": {
-    "was_er_sagte": "die bearbeitung der doppelseiten im auftritt menuepunkt des designer studios zeigt aktuell noch nicht an",
-    "DREI_URSACHEN_NICHT_EINE": [
-      "1 · studioQuelle gab es nicht. StudioHeft.tsx:181 erwartete den Export seit seinem ersten Tag; die Seite brach mit fehlt=\"studioQuelle\" ab, BEVOR das Heft startete. Das war B4 aus Teil 2 — Daoudas Mangel und der offene Auftrag waren DIESELBE Arbeit.",
-      "2 · Dort stand ein LEERES div. app.js sucht #mobile-reader, #drawer-content, #hotspots u.a. per getElementById und fand keinen. Das Geruest liegt jetzt in src/heft03/geruest.ts, EINMAL fuer beide Huellen.",
-      "3 · Das Heft-CSS fehlte ganz. Jetzt als <link>, abraeumbar."
+  "DAS_COCKPIT_LECK_IST_IN_DER_OBERFLAECHE_ZU": {
+    "was": "Drei Stellen im Cockpit holten Daten von `designers`, ohne dass jemand angemeldet sein musste. Die Kette war geschlossen: RoleGate laesst Nicht-Angemeldete bewusst durch, die Datenbank gibt anon alle 60 Spalten frei und begrenzt nur die Zeilen (USING published = true), und diese drei Stellen fragten ohne Konto-Pruefer.",
+    "die_drei": [
+      "AdminDesigners.tsx — select(*), alle 60 Spalten, bei jedem Aufschlagen von /admin/designers",
+      "AdminPayments.tsx — die Stripe-Kennungen ausdruecklich in der Spaltenliste, ohne Pruefer",
+      "useCockpitBuhne.ts — stripe_charges_enabled fuer bis zu 20 Haeuser beim Aufschlagen von /admin; AdminOverviews Pruefer gilt fuer SEINEN Effekt, nicht fuer diesen Haken"
     ],
-    "DIE_MESSUNG_AN_DER_ALLES_HAENGT": "Das Heft-CSS setzt 15x position:fixed, darunter #stage,#reader-layer{position:fixed;inset:0}. In einem begrenzten Kasten spannt sich das ueber das FENSTER. Chromium, Kasten 390x520, echtes style.css: ohne Einsperrung #stage 1440x900 (deckt die ganze Seite zu — genau die leere weisse Flaeche), mit contain:paint 386x516. transform:scale(1) sperrt AUCH ein, DARF ABER NICHT: es eroeffnet einen 3D-Zeichenraum und zerstoert die Perspektive des CSS3DRenderer, der die Doppelseite traegt. Darum KASTEN_STIL = contain:paint.",
-    "WAS_NICHT_GEHEILT_IST": "@media-Regeln und vw beziehen sich weiter auf das Fenster, nicht auf den Kasten. Die Studio-Vorschau bei 390 px zeigt die Buehne schmaler, aber KEINE echte Handy-Ansicht — die Kopfzeile laeuft rechts hinaus. Steht als Satz am Breiten-Knopf (studio.heft.breiteHinweis). Wer eine echte Mobil-Vorschau will, braucht einen iframe (eigenes Dokument, eigener Viewport) — das ist ein eigener Zug, nicht dieser."
+    "gegenprobe": "JEDE andere Cockpit-Abfrage auf designers benannte ihre Spalten schon (AdminCampaigns, AdminEditionen, AdminMessages, AdminArchetypen, useAdminData). AdminDesigners war die EINZIGE mit select(*). Die Reparatur ist damit nicht breiter als der Fehler.",
+    "nicht_geschlossen": "DAS LOCH IN DER DATENBANK. Der GRANT SELECT ON public.designers TO anon steht weiter, und die Policy begrenzt nur Zeilen, nicht Spalten. Das ist Aufgabe M3 Teil 2 und braucht Daoudas Wort — zumauern kann das oeffentliche Heft treffen.",
+    "zusage": "Z20 auf dem Zweig claude/heft-frontend-integration-0bjnzf, Kontrolle keineStripeDatenOhneRolle, gegen alle drei Ursachen einzeln rot vorgefuehrt."
   },
-  "DIE_KORREKTUR_DIE_ICH_DAOUDA_SCHULDE": "freistellen IST DEPLOYT. Ich habe mehrfach gewarnt, B8 bleibe eine Attrappe bis zu seinem Lovable-Deploy, und ihn darauf warten lassen. Kontrollmessung ueber den Antwortcode: eine NICHT vorhandene Function antwortet 404; anprobe, freistellen, generate-tryon und seed-testaccounts antworten 401 — also deployt, nur Anmeldung noetig. Die Warnung war falsch. B8 ist gebaut und ruft die echte Function."
+  "Z13_WAR_AUF_MAIN_GEBROCHEN": "Beim Bauen der Cockpit-Pruefung aufgefallen: src/pages/dna/DnaShell.tsx (neu aus dem Lovable-Commit 467563a 'Changes') verlinkt auf /auth — eine Adresse, die seit Teil L10 nur noch auf /konto weiterleitet. Zusage Z13 war damit auf main rot. Eine Zeile, mitrepariert. Merkregel: die Kontrollen fangen auch, was NICHT aus dieser Arbeit kommt — sie muessen deshalb auch dann gelesen werden, wenn man glaubt, nichts Einschlaegiges angefasst zu haben.",
+  "DIE_SPERRDATEI_BLOCKIERT_MAIN": {
+    "befund": "npm ci scheitert auf main. Seit dem letzten Sperrdatei-Commit (708d07b) hat package.json drei Pakete dazubekommen — drizzle-kit ^0.31.10, drizzle-orm ^0.45.2, postgres ^3.4.9 — ohne dass package-lock.json nachgezogen wurde. drizzle-kit bringt esbuild 0.25.x mit, die Sperrdatei pinnt 0.21.5. Die Action bricht nach 23 Sekunden mit 24 Zeilen 'Missing: @esbuild/…@0.25.12 from lock file' ab, BEVOR der Pruefstand etwas misst.",
+    "reproduziert": "alte Sperrdatei → npm ci: 'Missing: drizzle-kit@0.31.10 from lock file' (derselbe Abbruch). neue Sperrdatei → npm ci --dry-run: added 155 packages, kein Fehler.",
+    "reparatur": "npm install --package-lock-only, also das Werkzeug des Projekts. Gemessen: 60 Eintraege NEU, 0 entfernt, 0 Versionsaenderungen, davon 48 esbuild-Plattformpakete. Kein vorhandenes Paket verschoben.",
+    "warum_jetzt_und_vorher_nicht": "In einer frueheren Runde habe ich ausdruecklich davon ABGERATEN, die Sperrdatei anzufassen: der Umbau bewegte damals ~6000 Zeilen und behob KEINEN belegten Fehler. Jetzt gibt es den Fehler, und die Reparatur ist klein. Die Regel hat sich nicht geaendert, die Faktenlage schon.",
+    "liegt_in": "#203"
+  }
 }

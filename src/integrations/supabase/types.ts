@@ -5349,6 +5349,7 @@ export type Database = {
         Args: { _email: string; _user_id: string }
         Returns: undefined
       }
+      zuglogik_berechnen: { Args: never; Returns: string }
     }
     Enums: {
       ai_integration_kind:
