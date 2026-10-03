@@ -23,7 +23,7 @@ import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { registrieren } from "@/features/auth/registrieren";
 import { sichererPfad, tuerFuerRollen } from "@/features/auth/tueren";
-import { useI18n } from "@/lib/i18n";
+import { ladeWoerterbuch, useI18n } from "@/lib/i18n";
 import { useConsent } from "@/lib/consent";
 import { bildVariante, signiereMedia } from "@/lib/media";
 import { createCustomRequestThread } from "@/features/messages/customRequest";
@@ -132,6 +132,7 @@ export default function HeftRoute03() {
       return { ok: true };
     },
     async registrieren(d) {
+      await ladeWoerterbuch(); // beide Saetze stehen im Woerterbuch, das das Heft sonst nie laedt
       const { fehler } = await registrieren(signUp, d, t("auth.passwordMismatch"));
       if (fehler) return { fehler };
       return { ok: true, bestaetigung: t("auth.checkEmail") };

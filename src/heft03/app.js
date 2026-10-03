@@ -134,6 +134,9 @@ if(notbetrieb){
 }
 let world,paging=null,raf=null,dirty=true,lastTime=0,uiKey='',displayKey='',speed=1,fold=1,angle=0,activeProduct=null,lastFocus=null,toastTimer,wheelSum=0,wheelTime=0,wheelLock=0,applicationStep=0,applicationValues={},pointerStart;
 const drawer=$('drawer');
+// Den Überspringen-Knopf gibt es nur, solange die Eröffnung läuft. Danach geht er aus dem DOM statt
+// auf hidden — ein Knopf, der nichts mehr tut, soll auch nicht mehr zu erreichen sein (Kontrolle 3.4).
+const skipKnopf=$('skip');
 // Flacher Lesemodus, wenn die Doppelseite keine Fläche hätte (Handy quer, Hochformat-Tablet) oder kein 3D läuft.
 const istLeser=()=>innerWidth<760||innerHeight<540||!world;
 // Hochformat auf kleinen Geräten: Drehhinweis mit sichtbarem Ausweg in die gestapelte Lesespalte.
@@ -146,6 +149,11 @@ function syncRotate(){
 $('rotate-skip').onclick=()=>{rotateDismissed=true;syncRotate();uiKey='';invalidate();};
 portrait.addEventListener('change',()=>{if(!portrait.matches)rotateDismissed=false;syncRotate();});
 syncRotate();
+// Mit dem Finger sind die Seitenpunkte (15×1 px) kein Ziel, das man treffen kann (Kontrolle 3.5).
+// Dort stehen sie als reine Anzeige — dasselbe Bild, kein Knopf —, geblättert wird mit den Pfeilen
+// daneben (44 px). Wechselt die Zeigerart, baut sync() die Reihe neu.
+const grob=matchMedia('(pointer: coarse)');
+hoeren(grob,'change',()=>{uiKey='';invalidate();});
 function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3500);}
 function invalidate(){dirty=true;if(!raf){lastTime=performance.now();raf=requestAnimationFrame(frame);}}
 function count(){return nav.route.section==='haus'?3:nav.route.section==='suche'?searchCount(nav.route):counts[nav.route.section];}
@@ -305,7 +313,10 @@ function readRefresh(still=true){speichern(state);chatRefresh();
 function showDrawer(html){
  if(!drawer.open)lastFocus=document.activeElement;
  $('drawer-content').innerHTML=html;
- if(!drawer.open)drawer.showModal();
+ // Der Einstieg ins Fenster ist seine Überschrift (tabindex -1), nicht das ×: showModal() setzte den
+ // Fokus sonst auf den ersten Knopf — wer das Fenster öffnet, stünde schon auf „Schließen" (Kontrolle 3.4).
+ const titel=$('dialog-title');if(titel)titel.tabIndex=-1;
+ if(!drawer.open){drawer.showModal();titel?.focus({preventScroll:true});}
  drawer.scrollTop=0;invalidate();
 }
 // Ein geöffnetes Werk hat seine eigene Adresse (/werk/<slug>): Teilen, Zurück-Taste und die
@@ -743,16 +754,18 @@ function sync(){
  document.body.dataset.section=route.section;document.body.dataset.page=String(route.index+1);document.body.dataset.motion=nav.status;
  $('editorial').inert=!ready||isRead||fold<.9;$('editorial').setAttribute('aria-hidden',String($('editorial').inert));
  $('hotspots').inert=!ready||isRead||fold<.9;$('hotspots').style.opacity=fold<.9?'0':'';
- $('skip').hidden=nav.status!=='intro';$('intro-caption').hidden=nav.status!=='intro';
+ if(nav.status==='intro'){if(!skipKnopf.isConnected)$('intro-caption').after(skipKnopf);}else skipKnopf.remove();$('intro-caption').hidden=nav.status!=='intro';
  $('mobile-reader').hidden=!(isRead&&ready&&innerWidth<760);
  $('return-display').textContent='← Zur Bühne';
  $('reading-label').textContent=route.section==='haus'?'HAUS '+houses[route.slug].number+' / '+houses[route.slug].name:labels[route.section].toUpperCase();
  $('section-label').textContent=route.section==='haus'?houses[route.slug].name:labels[route.section];
  $('counter').textContent=String(route.index+1).padStart(2,'0')+' / '+String(count()).padStart(2,'0');
- $('previous').disabled=!ready||route.index===0;$('next').disabled=!ready||route.index===count()-1;
+ // Am Rand der Sektion bleibt der Pfeil erreichbar und sagt „nicht verfügbar" (aria-disabled), statt aus der
+ // Tastaturfolge zu fallen — gesperrt (disabled) ist er nur, solange nichts blättern kann (Eröffnung, Blatt fliegt).
+ $('previous').disabled=!ready;$('next').disabled=!ready;$('previous').setAttribute('aria-disabled',String(route.index===0));$('next').setAttribute('aria-disabled',String(route.index===count()-1));
  $('scroll-hint').textContent=route.index===count()-1?'Letzte Seite · Der Zug führt weiter':isRead&&istLeser()?'Seite lesen · Mit den Pfeilen weiterblättern':'Scrollen, um zu blättern →';
  $('fold').disabled=!ready||isRead;$('angle').disabled=isRead;$('replay').disabled=nav.status==='turn';
- $('page-dots').innerHTML=Array.from({length:count()},(_,i)=>'<button data-page="'+i+'" aria-label="Doppelseite '+(i+1)+'" '+(i===route.index?'aria-current="page"':'')+' '+(!ready?'disabled':'')+'></button>').join('');
+ $('page-dots').innerHTML=Array.from({length:count()},(_,i)=>grob.matches?'<span aria-hidden="true" class="'+(i===route.index?'an':'')+(!ready?' aus':'')+'"></span>':'<button data-page="'+i+'" aria-label="Doppelseite '+(i+1)+'" '+(i===route.index?'aria-current="page"':'')+' '+(!ready?'disabled':'')+'></button>').join('');
  document.querySelectorAll('#main-nav [data-route]').forEach(b=>{const active=b.dataset.route===route.section||(route.section==='haus'&&b.dataset.route==='haeuser');b.toggleAttribute('aria-current',active);if(active)b.setAttribute('aria-current','page');});
 }
 function frame(now){
@@ -987,9 +1000,9 @@ drawer.addEventListener('close',()=>{
  werkSeit=0;stillstandNeu();
  lastFocus?.focus({preventScroll:true});wheelLock=performance.now()+500;invalidate();});
 drawer.addEventListener('click',e=>{if(e.target===drawer&&e.clientX<drawer.getBoundingClientRect().left)drawer.close();});
-$('previous').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('return-display').onclick=returnDisplay;
+$('previous').onclick=()=>{if($('previous').getAttribute('aria-disabled')!=='true')step(-1);};$('next').onclick=()=>{if($('next').getAttribute('aria-disabled')!=='true')step(1);};$('return-display').onclick=returnDisplay;
 $('scene-action').onclick=()=>{const c=displays[sections[nav.route.section][nav.route.index]];if(c.inquiry)inquiry(c.inquiry);else if(c.product)product(c.product);else go({section:c.section,index:0});};
-$('skip').onclick=()=>{nav.skip();invalidate();};
+skipKnopf.onclick=()=>{nav.skip();invalidate();};
 $('tools-toggle').onclick=()=>{const show=$('tools-panel').hidden;$('tools-panel').hidden=!show;$('tools-toggle').setAttribute('aria-expanded',String(show));};
 $('tools-close').onclick=()=>{$('tools-panel').hidden=true;$('tools-toggle').setAttribute('aria-expanded','false');$('tools-toggle').focus();};
 $('fold').oninput=e=>{fold=Number(e.target.value)/100;$('fold-value').textContent=e.target.value+' %';invalidate();};
@@ -1131,6 +1144,8 @@ return {
   if(streifenMass){streifenMass.disconnect();streifenMass=null;}
   if(streifen){streifen.remove();streifen=null;document.body.classList.remove('hat-vorschau-streifen');document.documentElement.style.removeProperty('--vorschau-hoehe');}
   for(const id of ['cart-open','account-open']){const knopf=$(id);if(knopf){knopf.disabled=false;knopf.removeAttribute('title');}}
+  // Das Gerüst setzt React nur einmal — der Überspringen-Knopf kommt zurück an seinen Platz.
+  if(!skipKnopf.isConnected)$('intro-caption')?.after(skipKnopf);
   if(world?.dispose)world.dispose();world=null;}
 };
 }
