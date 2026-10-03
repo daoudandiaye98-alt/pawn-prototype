@@ -3,16 +3,10 @@
   "branch": "claude/auftrag-q-buehne",
   "offene_prs": [
     {
-      "nr": 203,
-      "titel": "Sicherheit: kein Stripe-Datum im Cockpit, bevor die Rolle feststeht",
-      "status": "Traegt jetzt AUCH die Reparatur der Launch-Gates 3.3/3.4/3.5/4.7 (zwei Commits, siehe DIE_LAUNCH_GATES). tsc 0, vitest 360/360, VERIFY 5/5, REGRESSION 20/20, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen. Launch-Gates lokal mit echten Daten: 0 gefallen auf allen 35 Kombinationen (vorher 93), Seitengewicht je Seite 2,38-2,87 MB nach der Zaehlung des Pruefstands.",
-      "blockiert_durch": "Nichts. ZUERST mergen: Leck zu, Sperrdatei repariert, Gates gruen — ohne diesen PR ist jeder andere rot."
-    },
-    {
       "nr": 202,
       "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel + der Routen-Rundgang",
-      "status": "Entwurf, B1-B8 vollstaendig. Basis-Merge mit #203 IM ZWEIG ERLEDIGT (Leck, Sperrdatei, Launch-Gates): Z20 Stripe / Z21 Auftritt neu nummeriert, StudioHausseite aus der lazy-Liste, die vier Woerterbuch-Hunks auf src/lib/woerterbuch.ts, Z21 liest jetzt woerterbuch.ts. tsc 0, vitest 360/360, VERIFY 6/6, REGRESSION 21/21, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen.",
-      "blockiert_durch": "#203 (traegt dieselben Commits; nach dessen Merge zeigt der Diff nur noch #202)."
+      "status": "Entwurf, B1-B8 vollstaendig. main (mit #203) ist hineingemergt; dazu fb9d82a — der Begleiter-Knopf blieb beim Start der Eroeffnung 0,4 s erreichbar, waehrend er verblasste (der einzige Befund, den messen auf diesem Zweig noch hatte: 772 bestanden, 1 gefallen, 3.4 auf / bei 1920). Z20 Stripe / Z21 Auftritt, Z21 liest src/lib/woerterbuch.ts. tsc 0, vitest 360/360, VERIFY 6/6, REGRESSION 21/21.",
+      "blockiert_durch": "Nichts mehr ausser messen auf dem neuen Kopf."
     },
     {
       "nr": 204,
@@ -22,7 +16,7 @@
     }
   ],
   "merge_reihenfolge": [
-    "1. #203 ZUERST — Leck, Sperrdatei, Launch-Gates.",
+    "1. #203 — GEMERGT am 03.10. (a78ed7f), Dateien auf origin/main geprueft.",
     "2. #202: Basis-Merge ist im Zweig schon gemacht (siehe offene_prs). Nach dem Merge von #203 noch einmal main hineinmergen — es kommt nur der Merge-Commit, kein Konflikt erwartet. Das geprobte Rezept fuer den Fall, dass doch: regressionen.json/.mjs Z20 = keineStripeDatenOhneRolle, Z21 = auftrittZeigtDieSeite; App.tsx die lazy-Fassung nehmen, Zeile `const StudioHausseite = lazy(...)` streichen; i18n.tsx von main nehmen, die Woerterbuch-Hunks auf src/lib/woerterbuch.ts (`git diff 09ce200 <dieser Zweig> -- src/lib/i18n.tsx | sed 's#src/lib/i18n.tsx#src/lib/woerterbuch.ts#g' | git apply`); Z21 params.sprachen = src/lib/woerterbuch.ts.",
     "3. #204: Basis auf main umstellen, main hineinmergen. Die Anprobe-Zusage wird Z22.",
     "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 ging 20 Sekunden vor #191 durch, beide meldeten 'merged', und die Dateien lagen trotzdem nicht auf main. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind."
@@ -62,7 +56,7 @@
     }
   },
   "naechster_zug": [
-    "1. #203 mergen (Daouda hat das Mergen dieser Runde freigegeben). Danach origin/main pruefen.",
+    "1. #203 ist gemergt (a78ed7f).",
     "2. #202: nach dem Merge von #203 main hineinmergen, messen gruen, mergen, origin/main pruefen (die Falle #190/#191).",
     "3. #204: Basis auf main, Basis-Merge, messen gruen, mergen, origin/main pruefen.",
     "4. Was die Gates NACH der Eroeffnung noch finden wuerden (die CI misst waehrend der Eroeffnung, 4,3 s nach dem Laden): 3.5 'Das Haus entdecken ↗' auf /suche (86×15 bzw. 50×8 px) und 'DEIN ZUG' auf /haus/drape 844 quer (43 px). Kein Gate faellt heute daran — aber sobald der Pruefstand spaeter misst, werden sie rot.",
