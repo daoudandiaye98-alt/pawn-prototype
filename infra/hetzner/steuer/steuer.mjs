@@ -148,7 +148,12 @@ const TRESOR_FELDER = [
 ];
 const ERLAUBT = new Set(TRESOR_FELDER.flatMap(([, f]) => f.map(([n]) => n)));
 const AUTH_NAMEN = new Set(["GOOGLE_CLIENT_ID", "GOOGLE_SECRET"]);
+// Nur aus dem unterschriebenen Umzugs-Paket, nie aus dem Formular: der
+// Dienst-Schlüssel des alten Projekts für die privaten Eimer. Landet allein in
+// umzug.env — die Funktionen sehen ihn nie, und nach dem Umschalten wird er gelöscht.
+const UMZUG_NAMEN = new Set(["ALT_SCHLUESSEL"]);
 const FUNKTIONEN_ENV = path.join(GEHEIM, "funktionen.env");
+const UMZUG_ENV = path.join(GEHEIM, "umzug.env");
 
 function envLesen(datei) {
   const karte = new Map();
@@ -166,16 +171,19 @@ function envSchreiben(datei, karte) {
   fs.renameSync(datei + ".neu", datei);
 }
 
-async function schluesselUebernehmen(werte) {
+async function schluesselUebernehmen(werte, { ausPaket = false } = {}) {
   const fn = envLesen(FUNKTIONEN_ENV);
   const stackEnvDatei = path.join(STACK, ".env");
   const stack = envLesen(stackEnvDatei);
-  let funktionenGeaendert = false, authGeaendert = false;
+  const umzug = envLesen(UMZUG_ENV);
+  let funktionenGeaendert = false, authGeaendert = false, umzugGeaendert = false;
   const gesetzt = [];
   for (const [name, wert] of Object.entries(werte)) {
-    if (!ERLAUBT.has(name) || typeof wert !== "string") continue;
+    if (typeof wert !== "string") continue;
     const w = wert.trim();
     if (!w) continue;
+    if (ausPaket && UMZUG_NAMEN.has(name)) { umzug.set(name, w); umzugGeaendert = true; gesetzt.push(name); continue; }
+    if (!ERLAUBT.has(name)) continue;
     if (AUTH_NAMEN.has(name)) { stack.set(name, w); authGeaendert = true; }
     else { fn.set(name, w); funktionenGeaendert = true; }
     if (name === "RESEND_API_KEY") { stack.set("SMTP_PASS", w); authGeaendert = true; }
@@ -184,6 +192,7 @@ async function schluesselUebernehmen(werte) {
   if (stack.get("GOOGLE_CLIENT_ID") && stack.get("GOOGLE_SECRET")) stack.set("GOOGLE_ENABLED", "true");
   if (funktionenGeaendert) envSchreiben(FUNKTIONEN_ENV, fn);
   if (authGeaendert) envSchreiben(stackEnvDatei, stack);
+  if (umzugGeaendert) envSchreiben(UMZUG_ENV, umzug);
   const neu = [];
   if (funktionenGeaendert) neu.push("functions");
   if (authGeaendert) neu.push("auth");
@@ -258,7 +267,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { ok: r.code === 0, ...r });
       }
       const werte = paketOeffnen(daten.paket || daten);
-      const gesetzt = await schluesselUebernehmen(werte);
+      const gesetzt = await schluesselUebernehmen(werte, { ausPaket: true });
       return json(res, 200, { ok: true, gesetzt });
     }
 

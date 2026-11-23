@@ -57,7 +57,9 @@ if (aktion === "schluessel") {
   if (r.grund || r.roh || r.fehler) console.error(`[steuer] ${r.status} ${r.grund || r.fehler || r.roh}`);
   process.exitCode = r.code ?? (r.ok ? 0 : 1);
 } else if (aktion === "paket") {
-  const paket = JSON.parse(fs.readFileSync(rest[0], "utf8"));
+  // Nimmt die ganze Antwort der Brücke ({namen, paket}) oder nur das Paket.
+  const roh = JSON.parse(fs.readFileSync(rest[0], "utf8"));
+  const paket = roh.paket || roh;
   console.log(JSON.stringify(await senden("/_steuer/paket", { paket }), null, 2));
 } else {
   console.error("aktion: lage | befehl <cmd> [timeout] | befehl-datei <datei> [timeout] | paket <datei> | schluessel <id> [tage]");

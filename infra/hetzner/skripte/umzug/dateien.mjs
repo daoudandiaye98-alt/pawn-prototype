@@ -8,14 +8,16 @@
  * Danach bekommen alle Einträge ihren ursprünglichen Besitzer zurück.
  *
  *   ALT_URL=https://<alt>.supabase.co   (Standard: das alte PAWN-Projekt)
- *   ALT_SCHLUESSEL=…                    optional: Schlüssel mit Lesezugriff auf private Eimer
+ *   ALT_SCHLUESSEL=…                    Schlüssel mit Lesezugriff auf private Eimer; Standard:
+ *                                       aus /etc/pawn/umzug.env (kommt verschlüsselt über die Brücke)
  *   node dateien.mjs [--nur <eimer>]
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
 const ALT = (process.env.ALT_URL || "https://rnakubexbqfgfciynqpt.supabase.co").replace(/\/$/, "");
-const ALT_KEY = process.env.ALT_SCHLUESSEL || "";
+const ausUmzugEnv = (n) => { try { return (fs.readFileSync("/etc/pawn/umzug.env", "utf8").match(new RegExp(`^${n}=(.+)$`, "m")) || [])[1] || ""; } catch { return ""; } };
+const ALT_KEY = process.env.ALT_SCHLUESSEL || ausUmzugEnv("ALT_SCHLUESSEL");
 const env = Object.fromEntries(fs.readFileSync("/opt/pawn/stack/.env", "utf8").split("\n").filter((z) => /^[A-Z0-9_]+=/.test(z)).map((z) => [z.slice(0, z.indexOf("=")), z.slice(z.indexOf("=") + 1)]));
 const NEU = "http://127.0.0.1:8000";
 const SERVICE = env.SERVICE_ROLE_KEY;
@@ -33,6 +35,9 @@ const eimer = Object.fromEntries(sql("select id, public from storage.buckets").t
 const liste = sql(`select json_build_object('b', bucket_id, 'n', name, 'm', metadata->>'mimetype', 's', (metadata->>'size')::bigint)
   from umzug.besitzer ${nur ? `where bucket_id = '${nur.replace(/'/g, "''")}'` : ""} order by bucket_id, name`)
   .trim().split("\n").filter(Boolean).map((z) => JSON.parse(z));
+
+const privat = liste.filter((o) => !eimer[o.b]).length;
+if (privat && !ALT_KEY) console.log(`Achtung: ${privat} Dateien liegen in privaten Eimern, aber ALT_SCHLUESSEL fehlt — erst die Brücke laufen lassen.`);
 
 const pfad = (n) => n.split("/").map(encodeURIComponent).join("/");
 let ok = 0, fehler = 0, bytes = 0;

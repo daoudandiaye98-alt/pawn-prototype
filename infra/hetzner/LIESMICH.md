@@ -57,6 +57,9 @@ nur auf dem Server in `/etc/pawn/funktionen.env` (Rechte 600). Zwei Wege hinein:
 2. **Umzug aus dem alten Backend:** `werkzeug/geheimnis-bruecke.mjs` baut eine
    Einmal-Function, die die alten Schlüssel nur verschlüsselt (mit dem öffentlichen
    Schlüssel dieses Servers) herausgibt. Nur dieser Server kann das Paket öffnen.
+   Im selben Paket kommt der Dienst-Schlüssel des alten Projekts (`ALT_SCHLUESSEL`)
+   für die privaten Eimer mit. Er landet nur in `/etc/pawn/umzug.env`, nie bei den
+   Funktionen, und das Formular kann ihn nicht setzen.
 
 ## Der Umzug aus Lovable Cloud (einmalig)
 
@@ -68,9 +71,14 @@ alte Adressen umgeschrieben, Takt-Aufträge aus.
 1. `skripte/umzug/zugang-erzeugen.mjs` — befristete Leserolle; nur der Hash verlässt den Server
 2. `skripte/umzug/abzug.sh` — Rollen, Schema, Daten, Historie, Takt-Aufträge, Rechte, Zählung
 3. `skripte/umzug/einspielen.sh` — alles in EINER Transaktion; Takt-Aufträge danach AUS
-4. `skripte/umzug/dateien.mjs` — Dateien holen, Besitzer zurück
+4. `skripte/umzug/dateien.mjs` — Dateien holen, Besitzer zurück; private Eimer mit
+   `ALT_SCHLUESSEL` aus der Brücke (ohne ihn warnt das Skript vorher)
 5. `skripte/umzug/vergleich.sh` — Zeilen und Rechte alt gegen neu
-6. Umschalten (DNS), dann Takt-Aufträge im alten System aus und im neuen an
+6. Umschalten (DNS). Die Takt-Aufträge im alten System sind seit dem 23.11.2026
+   pausiert (Liste: `takt-vor-dem-umzug.md`). Im neuen bleiben sie aus, bis Daouda
+   sie nach der Überarbeitung einzeln wieder anschaltet.
+7. Aufräumen: Rolle `pawn_umzug` in der alten Datenbank löschen, die Brücken-Function
+   löschen, `/etc/pawn/umzug.env` löschen, den Hetzner-Token widerrufen.
 
 `skripte/umzug/frisch.sh` setzt vor dem Umschalten alles zurück, um den Umzug zu
 wiederholen. Nach dem Umschalten (`/etc/pawn/live`) ist es gesperrt.
