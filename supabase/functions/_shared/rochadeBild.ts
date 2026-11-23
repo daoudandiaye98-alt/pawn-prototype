@@ -27,7 +27,9 @@
 
 // ImageScript läuft in Deno wie in Node — dieselbe Datei ist deshalb im
 // Trockenlauf prüfbar, ohne Deploy.
-import { Image } from "npm:imagescript@1.3.0";
+// npm:imagescript lädt in der Edge Runtime seine Node-Codecs und bricht ab („unsupported arch/platform“,
+// gemessen am 23.11.2026). Die Deno-Fassung ist reines WASM — dieselbe, die pawn-jarvis schon nutzt.
+import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
 
 /* ------------------------------------------------------------------ Maße */
 

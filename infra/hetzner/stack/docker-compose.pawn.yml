@@ -1,0 +1,69 @@
+# PAWN-Überlagerung für das offizielle Supabase-Docker-Setup (self-hosted/v0.8.5).
+#
+# Gestartet wird immer über ./pawn-compose im Stack-Ordner — das legt diese Datei
+# über die offizielle docker-compose.yml. Geändert wird nur, was PAWN anders braucht:
+#   · nichts lauscht nach außen außer Caddy (80/443); alles andere nur auf 127.0.0.1
+#   · Google-Anmeldung und Mail (Resend) für die Anmeldung
+#   · die KI-Funktionen bekommen ihre Schlüssel aus /etc/pawn/funktionen.env
+#   · der Datenbank-Pooler (Supavisor) bleibt aus — es greift niemand von außen zu
+#   · Caddy holt die Zertifikate und liefert das Frontend aus
+
+services:
+  api-gw:
+    ports: !override
+      - "127.0.0.1:8000:8000"
+
+  studio:
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  auth:
+    environment:
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${API_EXTERNAL_URL}/callback
+      GOTRUE_SMTP_MAX_FREQUENCY: 1s
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: ${RATE_LIMIT_EMAIL_SENT:-60}
+      GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: "true"
+
+  functions:
+    env_file:
+      - path: /etc/pawn/funktionen.env
+        required: false
+    environment:
+      # Funktionen, die ohne Anmeldung erreichbar sein müssen (Webhooks, Formulare) —
+      # erzeugt aus supabase/config.toml (verify_jwt = false).
+      FUNCTIONS_NO_VERIFY: ${FUNCTIONS_NO_VERIFY:-}
+      # Öffentliche Adresse für Links, die Funktionen nach außen geben.
+      PAWN_API_URL: ${SUPABASE_PUBLIC_URL}
+      PAWN_SITE_URL: ${SITE_URL}
+
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+    shm_size: 256m
+
+  supavisor:
+    profiles: ["aus"]
+
+  caddy:
+    container_name: pawn-caddy
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - path: /etc/pawn/caddy.env
+        required: true
+    volumes:
+      - /opt/pawn/caddy:/etc/caddy:ro
+      - /opt/pawn/web:/srv/web:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  caddy-data:
+  caddy-config:

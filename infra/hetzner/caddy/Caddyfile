@@ -1,0 +1,75 @@
+# PAWN · Caddy — die Tür des eigenen Servers.
+# Holt die Zertifikate selbst (Let's Encrypt), liefert das Frontend aus und
+# reicht die Backend-Wege an das Supabase-Gateway weiter.
+#
+# Werte kommen aus /etc/pawn/caddy.env (siehe skripte/einrichten.sh):
+#   PAWN_WEB_HOSTS     z. B. "pawn.vision, neu.pawn.vision"
+#   PAWN_WWW_HOST      z. B. "www.pawn.vision"
+#   PAWN_DOMAIN        z. B. "pawn.vision"
+#   PAWN_API_HOST      z. B. "api.pawn.vision"
+#   PAWN_STUDIO_HOST   z. B. "studio.pawn.vision"
+#   ACME_EMAIL         Kontakt für Let's Encrypt
+
+{
+	email {$ACME_EMAIL}
+	admin localhost:2019
+}
+
+(sicherheit) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
+}
+
+# ── Das Frontend (das Heft, das Studio, das Cockpit) ─────────────────────
+{$PAWN_WEB_HOSTS} {
+	import sicherheit
+	encode zstd gzip
+	root * /srv/web/aktuell
+
+	@startseite path / /index.html
+	header @startseite Cache-Control "no-cache"
+
+	import /etc/caddy/pawn/routen.caddy
+}
+
+{$PAWN_WWW_HOST} {
+	redir https://{$PAWN_DOMAIN}{uri} 308
+}
+
+# ── Das Backend (Datenbank, Anmeldung, Dateien, KI-Funktionen) ───────────
+{$PAWN_API_HOST} {
+	import sicherheit
+	encode zstd gzip
+
+	handle /_steuer/* {
+		reverse_proxy 127.0.0.1:7070
+	}
+	handle /_tresor* {
+		reverse_proxy 127.0.0.1:7070
+	}
+
+	@supabase path /auth/v1/* /rest/v1/* /graphql/v1 /graphql/v1/* /realtime/v1/* /storage/v1/* /functions/v1/* /sso/* /.well-known/*
+	handle @supabase {
+		reverse_proxy 127.0.0.1:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		respond "PAWN" 200
+	}
+}
+
+# ── Das Studio der Datenbank (nur mit Passwort) ──────────────────────────
+{$PAWN_STUDIO_HOST} {
+	import sicherheit
+	basic_auth {
+		import /etc/caddy/pawn/studio-zugang
+	}
+	reverse_proxy 127.0.0.1:3000
+}

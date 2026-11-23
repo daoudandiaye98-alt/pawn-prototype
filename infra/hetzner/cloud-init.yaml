@@ -1,0 +1,20 @@
+#cloud-config
+# PAWN · Erster Start eines neuen Servers.
+# Die Platzhalter in doppelten Unterstrichen setzt werkzeug/hetzner.mjs beim Anlegen ein:
+# Branch, Domain und der öffentliche Schlüssel fürs Steuerpult (kein Geheimnis).
+package_update: true
+packages: [git, curl, jq, nodejs, rsync, postgresql-client]
+write_files:
+  - path: /etc/pawn/zweig
+    permissions: "0644"
+    content: "__ZWEIG__\n"
+  - path: /etc/pawn/domain
+    permissions: "0644"
+    content: "__DOMAIN__\n"
+  - path: /etc/pawn/zugang/__ZUGANG_ID__.pub
+    permissions: "0644"
+    content: |
+__ZUGANG_PUB__
+runcmd:
+  - [bash, -c, "mkdir -p /opt/pawn && git clone --depth 50 --branch \"$(cat /etc/pawn/zweig)\" https://github.com/daoudandiaye98-alt/pawn-prototype /opt/pawn/repo"]
+  - [bash, -c, "bash /opt/pawn/repo/infra/hetzner/skripte/einrichten.sh"]

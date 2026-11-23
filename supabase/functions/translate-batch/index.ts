@@ -49,24 +49,28 @@ Deno.serve(async (req) => {
     });
     if (missing.length === 0) return json({ translations });
 
-    // 2) Lücken übersetzen
-    const key = Deno.env.get("LOVABLE_API_KEY");
-    if (!key) return json({ translations, error: "LOVABLE_API_KEY fehlt" });
+    // 2) Lücken übersetzen — über das Lovable-Gateway, falls noch hinterlegt,
+    //    sonst direkt bei OpenAI (eigener Server, keine Lovable-Abhängigkeit).
+    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!lovableKey && !openaiKey) return json({ translations, error: "kein Übersetzungsmodell hinterlegt (OPENAI_API_KEY)" });
 
     const payload = Object.fromEntries(missing.map((t, i) => [String(i), t]));
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({
-        model: MODEL,
-        reasoning_effort: "none",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: JSON.stringify(payload) },
-        ],
-      }),
-    });
+    const nachricht = [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: JSON.stringify(payload) },
+    ];
+    const res = lovableKey
+      ? await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Lovable-API-Key": lovableKey },
+          body: JSON.stringify({ model: MODEL, reasoning_effort: "none", response_format: { type: "json_object" }, messages: nachricht }),
+        })
+      : await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
+          body: JSON.stringify({ model: Deno.env.get("PAWN_UEBERSETZUNG_MODELL") ?? "gpt-4o-mini", temperature: 0.2, response_format: { type: "json_object" }, messages: nachricht }),
+        });
 
     if (res.status === 429) return json({ translations, error: "rate_limit" }, 200);
     if (res.status === 402) return json({ translations, error: "credits_exhausted" }, 200);

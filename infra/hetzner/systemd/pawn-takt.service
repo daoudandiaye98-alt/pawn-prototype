@@ -1,0 +1,9 @@
+[Unit]
+Description=PAWN Takt (neuen Stand aus dem Repo bereitstellen)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/pawn/repo/infra/hetzner/skripte/takt.sh
+StandardOutput=append:/var/log/pawn-takt.log
+StandardError=append:/var/log/pawn-takt.log

@@ -1,0 +1,9 @@
+[Unit]
+Description=PAWN nächtliche Sicherung
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/pawn/repo/infra/hetzner/skripte/sicherung.sh
+StandardOutput=append:/var/log/pawn-sicherung.log
+StandardError=append:/var/log/pawn-sicherung.log
