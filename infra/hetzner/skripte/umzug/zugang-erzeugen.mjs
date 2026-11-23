@@ -13,13 +13,14 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 
 const DATEI = "/etc/pawn/umzug.env";
-let passwort;
-try {
-  passwort = (fs.readFileSync(DATEI, "utf8").match(/^UMZUG_PASSWORT=(.+)$/m) || [])[1];
-} catch { /* neu */ }
+let bisher = "";
+try { bisher = fs.readFileSync(DATEI, "utf8"); } catch { /* neu */ }
+let passwort = (bisher.match(/^UMZUG_PASSWORT=(.+)$/m) || [])[1];
 if (!passwort) {
   passwort = crypto.randomBytes(32).toString("base64url");
-  fs.writeFileSync(DATEI, `UMZUG_ROLLE=pawn_umzug\nUMZUG_PASSWORT=${passwort}\n`, { mode: 0o600 });
+  // Andere Zeilen bleiben stehen — etwa ALT_SCHLUESSEL, falls die Brücke zuerst lief.
+  const rest = bisher.split("\n").filter((z) => z && !/^UMZUG_(ROLLE|PASSWORT)=/.test(z));
+  fs.writeFileSync(DATEI, [`UMZUG_ROLLE=pawn_umzug`, `UMZUG_PASSWORT=${passwort}`, ...rest].join("\n") + "\n", { mode: 0o600 });
 }
 
 const salz = crypto.randomBytes(16);

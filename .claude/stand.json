@@ -1,27 +1,21 @@
 {
-  "aktualisiert": "2026-10-03",
-  "branch": "claude/dna-anprobe",
+  "aktualisiert": "2026-11-23",
+  "branch": "claude/eigenes-zuhause",
   "offene_prs": [
     {
-      "nr": 202,
-      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel + der Routen-Rundgang",
-      "status": "Entwurf, B1-B8 vollstaendig. main (mit #203) ist hineingemergt; dazu fb9d82a — der Begleiter-Knopf blieb beim Start der Eroeffnung 0,4 s erreichbar, waehrend er verblasste (der einzige Befund, den messen auf diesem Zweig noch hatte: 772 bestanden, 1 gefallen, 3.4 auf / bei 1920). Z20 Stripe / Z21 Auftritt, Z21 liest src/lib/woerterbuch.ts. tsc 0, vitest 360/360, VERIFY 6/6, REGRESSION 21/21.",
-      "blockiert_durch": "Nichts mehr ausser messen auf dem neuen Kopf."
-    },
-    {
-      "nr": 204,
-      "titel": "Die Anprobe steht — und sie steht vorne (DNA-Sektion, Auftrag Q)",
-      "status": "Entwurf. Die Anprobe-Seite (DNA, Platz 1), verdrahtet an supabase/functions/anprobe, /deine-dna/foto zieht per 301 auf /deine-dna/anprobe. Zusage Z22 (anprobeIstAngeschlossen; im Zweig hiess sie Z21, beim Merge mit #202 neu nummeriert). #202 (mit #203 und der Begleiter-Reparatur fb9d82a) ist im Zweig zusammengefuehrt. messen war auf e86e4e9 schon gruen. tsc 0, vitest 361/361, VERIFY 6/6, REGRESSION 22/22, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen.",
-      "blockiert_durch": "#202. Nach dessen Merge: Basis auf main umstellen (delete_branch_on_merge ist aus), main hineinmergen — es kommen nur Merge-Commits, kein Konflikt erwartet."
+      "nr": null,
+      "titel": "Zweig claude/eigenes-zuhause — PAWN auf eigenem Hetzner-Server (ohne PR)",
+      "status": "c6c6e06 Paket, 3600211 Fernzugang + Takt-Notiz, 2290e24 private Eimer. Im Container komplett geprobt (Dienste, 50/50 Functions, 42/42 Tabellen, Rechte gleich, Anmeldung, Dateien, Brücke). VERIFY 6/6.",
+      "blockiert_durch": "Hetzner-API-Token von Daouda. Wird NICHT vor dem Umschalten nach main gemergt — der Server zieht den Zweig direkt (/etc/pawn/zweig)."
     }
   ],
   "merge_reihenfolge": [
-    "1. #203 — GEMERGT am 03.10. (a78ed7f), Dateien auf origin/main geprueft.",
-    "2. #202: Basis-Merge ist im Zweig schon gemacht (siehe offene_prs). Nach dem Merge von #203 noch einmal main hineinmergen — es kommt nur der Merge-Commit, kein Konflikt erwartet. Das geprobte Rezept fuer den Fall, dass doch: regressionen.json/.mjs Z20 = keineStripeDatenOhneRolle, Z21 = auftrittZeigtDieSeite; App.tsx die lazy-Fassung nehmen, Zeile `const StudioHausseite = lazy(...)` streichen; i18n.tsx von main nehmen, die Woerterbuch-Hunks auf src/lib/woerterbuch.ts (`git diff 09ce200 <dieser Zweig> -- src/lib/i18n.tsx | sed 's#src/lib/i18n.tsx#src/lib/woerterbuch.ts#g' | git apply`); Z21 params.sprachen = src/lib/woerterbuch.ts.",
-    "3. #204: Basis auf main umstellen, main hineinmergen. Die Anprobe-Zusage wird Z22.",
-    "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 ging 20 Sekunden vor #191 durch, beide meldeten 'merged', und die Dateien lagen trotzdem nicht auf main. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind."
+    "#202, #203, #204 sind am 03.10. gemergt (origin/main, per REST geprüft am 23.11.).",
+    "claude/eigenes-zuhause: erst nach dem Umschalten nach main; vorher zieht der Server-Takt den Zweig selbst."
   ],
   "wartet_auf_mensch": [
+    "UMZUG (23.11.): Daouda hat allem zugestimmt ('ja zu allem', Akquise nur pausieren, System übernehmen, überarbeiten, dann wieder aktivieren). Einziger Blocker: der Hetzner-API-Token (Lesen & Schreiben). Hetzners Roboter-Prüfung lässt den Agenten-Browser nicht durch — nicht umgehen.",
+    "Später im Umzug, nur Daouda: Google-OAuth-Client (Weiterleitung https://api.pawn.vision/auth/v1/callback), OK für Stripe-Webhook-Umstellung, OK für Datenschutz-Text (neuer Hoster Hetzner).",
     "DIE LAUNCH GATES sind repariert, OHNE dass das Heft anders aussieht (#203, DIE_LAUNCH_GATES). Offen bleiben ZWEI VERHALTENSENTSCHEIDUNGEN, die nur Daouda trifft: D1 — gtag.js (163.510 B) erst nach Zustimmung laden statt auf jeder Seite; D2 — die naechsten Doppelseiten nicht vorausladen (/, /mode, /tasche: drei-welten 240.702 B + foto-spiegel 59.954 B; /konto: 196.446 B). Ohne beide liegt die schwerste Seite rund 340 kB unter 3 MB — und jedes neue Werk mit Freisteller wiegt auf ALLEN sieben Seiten mit (app.js laedt die Freisteller aller Buehnen-Werke). Sichtbar geaendert, zur Abnahme auf der Vorschau: neun leise Grautoene je 1-2 Stufen dunkler (Farbton gleich) · die Welt-Knoepfe verschwinden hinter dem offenen Seitenfenster (vorher schimmerten sie durch den Schleier) · Eingabefelder im Heft zeigen beim Fokus wieder einen Strich · 'Direkt entdecken' bleibt beim Tab-Fokus waehrend der Eroeffnung sichtbar · auf Touch-Geraeten: Schatten der Welt-Chips 1-2 px anders, und die Seitenpunkte sind dort reine Anzeige (Direktsprung per Punkt entfaellt — 15x1 px traf ohnehin kein Finger; geblaettert wird mit den Pfeilen und durch Wischen). EINE GESTALTUNGSFRAGE BLEIBT: die vier Papier-Toene (.piece-caption, .haus-ort, Formular, .empty-paper) halten auf den Hauspapieren Editorial/Galerie/Atelier/Archiv nur 3,6-4,5:1 (vorher weniger; der Pruefstand ist zufrieden, WCAG nicht ueberall). Dunkler ginge, waere aber sichtbar.",
     "L15 FREISTELLEN — der Auftragssatz ist klar, aber die genannte Vorlage widerspricht ihm, und deshalb wird hier nicht gebaut: src/heft03/referenz/freistellen.py sagt in ihrem eigenen Kopf ‚NICHT auf echte Produktfotos anwenden — gruene Kleidung wuerde zerstoert. Fuer reale Ware gehoert eine Segmentierung in die Medienpipeline.‘ Sie schlaegt einen Farbbereich frei, kein Motiv. Auf einem echten Werkbild loescht sie Teile des Stuecks. FRAGE, die nur Daouda beantworten kann: soll das Freistellen ueber die bestehende Edge Function generate-product-shot laufen (kostet FAL-Guthaben je Bild), oder ueber etwas anderes? Ohne diese Antwort wuerde ich raten, und ein Rateschluss loescht echte Werkbilder.",
     "F2 — DIE WEISSE SEITE BEIM BLAETTERN, nicht nachstellbar und deshalb nicht repariert. Im Container laesst sich die Doppelseite nicht aufschlagen: WebGL laeuft, die Buehne rendert, aber nach 40 Scroll-Schritten existiert kein .spread im DOM. Ich kann die Ursache nicht belegen und rate nicht. Was hilft: eine Aufnahme mitten in der Drehung, oder die Antwort auf die Frage, ob es beim ersten Blaettern passiert oder bei jedem.",
@@ -56,9 +50,11 @@
     }
   },
   "naechster_zug": [
-    "1. #203 ist gemergt (a78ed7f).",
-    "2. #202: nach dem Merge von #203 main hineinmergen, messen gruen, mergen, origin/main pruefen (die Falle #190/#191).",
-    "3. #204: nach dem Merge von #202 die Basis auf main umstellen, main hineinmergen, messen gruen, mergen, origin/main pruefen.",
+    "UMZUG, sobald der Token da ist: node infra/hetzner/werkzeug/hetzner.mjs angebot fsn1 (Preis gegen Freigabe CX33 ~8,99 € netto + 20 % Backup) → anlegen cx33 fsn1 claude/eigenes-zuhause sitzung-2026-11-23 infra/hetzner/zugang/sitzung-2026-11-23.pub --backups → DNS api/studio/neu.pawn.vision als A/AAAA bei Vercel → /_steuer/lage beobachten.",
+    "UMZUG, Daten: zugang-erzeugen.mjs auf dem Server → Rolle in rnak per Lovable query_database → abzug.sh → einspielen.sh → Brücke mit dem echten Server-PEM bauen, über den Lovable-Agenten ausliefern (kostet Guthaben), Paket an /_steuer/paket → dateien.mjs (private Eimer per ALT_SCHLUESSEL) → vergleich.sh.",
+    "UMZUG, Umschalten: neu.pawn.vision prüfen (Heft, Login, Bilder, Frag PAWN, Studio) → neuer JARVIS_CRON_SECRET (der alte steht in der Git-Historie) → DNS pawn.vision + www auf den Server, /etc/pawn/live → Aufräumen (pawn_umzug, Brücke, umzug.env, Token widerrufen) → CLAUDE.md und pawn-kontext auf das neue Zuhause umschreiben.",
+    "Alle 32 Takt-Aufträge sind im alten System pausiert (Liste: infra/hetzner/skripte/umzug/takt-vor-dem-umzug.md) und bleiben auch im neuen aus, bis Daouda sie nach der Überarbeitung einzeln wieder anschaltet.",
+    "DANACH (Daoudas Reihenfolge): 2. das ganze Projekt kartografieren (Karte: https://claude.ai/artifact/VLetGB5WuYT7s5waw8MTcX), 3. Staub abschütteln, bis PAWN heute starten könnte.",
     "4. Was die Gates NACH der Eroeffnung noch finden wuerden (die CI misst waehrend der Eroeffnung, 4,3 s nach dem Laden): 3.5 'Das Haus entdecken ↗' auf /suche (86×15 bzw. 50×8 px) und 'DEIN ZUG' auf /haus/drape 844 quer (43 px). Kein Gate faellt heute daran — aber sobald der Pruefstand spaeter misst, werden sie rot.",
     "5. PR 5 — Clips layout-bewusst (Freisteller-Knopf in StudioMediathek ruft generate-product-shot statt freistellen).",
     "6. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message); app.js: die Beispiel-Prompts rufen kein fragen().",
@@ -80,7 +76,7 @@
   ],
   "hinweis_tor": "Die Übergabe-Sperre in tor.sh vergleicht gegen den Hauptzweig, nicht gegen HEAD. Solange stand.json noch NICHT auf main liegt, ist der Vergleichswert leer und die Sperre kann auf diesem Zweig gar nicht greifen — sie wird erst nach dem Merge scharf. Vorgeführt wurde sie deshalb über TOR_HAUPTZWEIG=4e44f01: Exit 2 bei unveränderten Urteilsfeldern, Exit 0 wenn der Zweig sie angefasst hat, Exit 0 bei stop_hook_active.",
   "letzter_verify": {
-    "datum": "2026-10-03",
+    "datum": "2026-11-23",
     "bestanden": 6,
     "gefallen": 0
   },
@@ -106,7 +102,7 @@
       "Noch nicht gebaut": "Stilfoto (/deine-dna/foto) und Bild in Frag PAWN — Zweig 2. Freistellen — H6, eigener PR."
     }
   },
-  "letzter_pruefer": "2026-10-03 · Launch-Gates (#203) · PRUEFER: 21/30 · WIDERLEGT: 13, 23, 24, 25, 28, 29, 30 · NICHT PRUEFBAR: 26, 27. Nachgezogen: (13) der Kontrast-Kommentar behauptete >= 4,6 auch auf Papier — gilt nur gegen Weiss, jetzt ehrlich, die Papier-Luecke steht in wartet_auf_mensch; (23)/(24) die nicht genannten sichtbaren Folgen und die Touch-Seitenpunkte stehen jetzt im Commit und hier; (29) Wache app-rahmen.spec.ts, rot vorgefuehrt; (28) dieser Stand. (25) ist keine Verschlechterung: Englisch lud das Woerterbuch vorher im Haupt-Buendel, jetzt bei Bedarf — die Auto-Uebersetzung startet ein Laden spaeter. (26)/(27) misst die CI bzw. die lokale Sonde (alle 35 Kombinationen gruen).",
+  "letzter_pruefer": "2026-11-23 · Private Eimer (2290e24) · PRUEFER: 17/20 · WIDERLEGT: keine · NICHT PRUEFBAR: Merge-Daten #202-#204 (per REST geprüft, nicht im Repo), alte Datenbank (32 Takt-Aufträge pausiert), echte Deno-Laufzeit der Brücke (prüft der Lovable-Agent beim Ausliefern). Befund 12 behoben: zugang-erzeugen.mjs überschrieb umzug.env ganz und hätte einen zuerst eingetroffenen ALT_SCHLUESSEL gelöscht — behält jetzt andere Zeilen (Probe: Lauf 1 behält ALT, Lauf 2 ändert das Passwort nicht, source ok). Befund 14 (signierter Zugang kann umzug.env lesen) ist gewollt; Aufräum-Schritt 7 löscht die Datei.",
   "DIE_DATENBANKFRAGE_IST_ENTSCHIEDEN": {
     "entscheidung": "Daouda am 12.09.2026: rnakubexbqfgfciynqpt ist die echte Datenbank. CLAUDE.md ist berichtigt.",
     "bestaetigt_ueber_Lovable": "Zugang laeuft NICHT ueber das Supabase-MCP (dort 'You do not have permission'), sondern ueber das Lovable-MCP: query_database mit project_id 81416573-4f0e-4ff7-a863-43988a85e8d2 (Projekt pawn-archive-muse). DAS IST DER WEG FUER JEDE KUENFTIGE MESSUNG AN DER ECHTEN DATENBANK.",
@@ -189,5 +185,11 @@
     "nicht_drin": "D1 (gtag nach Zustimmung) und D2 (kein Vorausladen) — Verhalten, Daoudas Entscheidung.",
     "die_zwei_alten_zweifel": "Beide geklaert, beide waren KEIN Messartefakt: 3.4 fiel an fokussierbaren Knoepfen, die unsichtbar waren (opacity 0 statt visibility hidden: Begleiter, #skip nach der Eroeffnung) oder deren Fokusregel verlor (Formularfelder) — repariert. 3.3 kam nicht aus dem leeren Zustand, sondern aus echten leisen Toenen (#scene-note 4,31, #scroll-hint 4,02 …).",
     "wache": "src/__tests__/app-rahmen.spec.ts: ausserhalb des Rahmens nur Heft und Umzuege, das Heft nie im Rahmen, im Heft t() nur nach ladeWoerterbuch(). Jede der drei Regeln einmal rot vorgefuehrt."
+  },
+  "DER_UMZUG_AUF_DEN_EIGENEN_SERVER": {
+    "entschieden": "23.11.2026 von Daouda: eigenes Backend, eigene Datenbank, eigener Server bei Hetzner, Domain bleibt. Offizielles Supabase-Self-Hosting (self-hosted/v0.8.5) + Caddy, umgezogen statt neu geschrieben.",
+    "wo": "infra/hetzner (LIESMICH.md), Projekt-Doku claude/pawn-umzug-hetzner.md",
+    "steuerung": "Steuerpult https://api.pawn.vision/_steuer (Ed25519, Sitzungsschlüssel infra/hetzner/zugang/sitzung-2026-11-23.pub gültig bis 30.11.), Tresor /_tresor, Takt alle 2 Min.",
+    "altes_backend": "rnakubexbqfgfciynqpt: 32 Takt-Aufträge, 31 waren aktiv, seit 23.11. alle pausiert (cron.alter_job). Private Eimer mit Dateien: einladungen 53, taste-uploads 7, mediathek 2."
   }
 }
