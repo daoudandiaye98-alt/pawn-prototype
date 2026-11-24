@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {stueckWaehlen,drehFlaechen,drehIndex,drehZu,ringTiefe,drehbuehneHtml,MAX_STUECKE} from './drehbuehne.mjs';
+import {stueckWaehlen,drehFlaechen,drehIndex,drehZu,ringTiefe,drehbuehneHtml,spiegelHtml,MAX_STUECKE} from './drehbuehne.mjs';
 
 test('Auswahl: an, ab, und beim vierten Stueck bleibt sie stehen',()=>{
  let r=stueckWaehlen([],'a');assert.deepEqual(r,{auswahl:['a'],zuViele:false});
@@ -64,4 +64,35 @@ test('HTML: ehrlich beschriftet, maskiert, Ansichten nur wenn es etwas zu drehen
  const boese=drehbuehneHtml({url:'x" onerror="alert(1)'});
  assert.doesNotMatch(boese,/" onerror="/);
  assert.equal(drehbuehneHtml({}),'');
+});
+
+test('Vorher, Drehknopf und Enthuellung: nur wenn es sie braucht',()=>{
+ const drei={url:'v.jpg',ansichtenStatus:'fertig',ansichten:{vorne:'v.jpg',seite:'s.jpg',hinten:'h.jpg'}};
+ const ohne=drehbuehneHtml(drei);
+ assert.doesNotMatch(ohne,/data-anprobe-vorher/);                    // kein eigenes Bild bekannt: kein Vorher
+ assert.doesNotMatch(ohne,/enthuellt/);
+ assert.match(ohne,/data-anprobe-drehen="1"/);                       // drei Flaechen: der Drehknopf im Bild
+ const mit=drehbuehneHtml({...drei,vorherAn:true},{vorher:'ich.jpg',enthuellen:true});
+ assert.match(mit,/class="drehbuehne enthuellt zeigt-vorher" style="--vorhang-seit:-0ms"/);
+ const mitten=drehbuehneHtml(drei,{enthuellen:420.6});
+ assert.match(mitten,/style="--vorhang-seit:-421ms"/);               // neu gezeichnet: der Vorhang setzt fort
+ assert.doesNotMatch(drehbuehneHtml(drei,{enthuellen:1500}),/enthuellt/);   // vorbei: kein Vorhang mehr
+ assert.match(mit,/data-anprobe-vorher aria-pressed="true"/);
+ assert.match(mit,/class="drehbuehne-vorher" src="ich.jpg" alt="Vorher: dein Bild" aria-hidden="false"/);
+ assert.doesNotMatch(drehbuehneHtml({url:'v.jpg'}),/data-anprobe-drehen/);   // eine Flaeche: nichts zu drehen
+});
+
+test('Spiegel: dein Bild im selben Rahmen — wartend mit Scan, maskiert, ohne Bild leer',()=>{
+ const bereit=spiegelHtml({bild:'ich.jpg',titel:'Mantel 01',anzahl:1});
+ assert.match(bereit,/Dein Spiegel/);
+ assert.match(bereit,/Outfit anprobieren/);
+ assert.doesNotMatch(bereit,/spiegel-scan/);
+ assert.doesNotMatch(bereit,/data-drehbuehne/);                     // der Spiegel dreht nicht
+ const laeuft=spiegelHtml({bild:'ich.jpg',titel:'<i>Mantel</i>',laeuft:true});
+ assert.match(laeuft,/aria-busy="true"/);
+ assert.match(laeuft,/spiegel-scan/);
+ assert.match(laeuft,/PAWN legt an/);
+ assert.match(laeuft,/&lt;i&gt;Mantel&lt;\/i&gt;/);
+ assert.match(spiegelHtml({bild:'ich.jpg'}),/Noch nichts gewählt/);
+ assert.equal(spiegelHtml({}),'');
 });
