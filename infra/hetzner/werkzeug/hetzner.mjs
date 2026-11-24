@@ -35,20 +35,18 @@ const [, , aktion, ...a] = process.argv;
 if (aktion === "angebot") {
   const ort = a[0] || "fsn1";
   const { server_types } = await api("GET", "/server_types?per_page=50");
-  const { datacenters } = await api("GET", "/datacenters?per_page=50");
-  const dcs = datacenters.filter((d) => d.location.name === ort);
-  const verfuegbar = new Set(dcs.flatMap((d) => d.server_types.available));
-  const { primary_ips } = await api("GET", "/primary_ips?per_page=1").catch(() => ({ primary_ips: [] }));
-  void primary_ips;
+  // Seit 2026 steht die Verfügbarkeit am Servertyp selbst (locations[].available);
+  // /datacenters ist abgeschaltet (Hetzner-Changelog 2026-06-02).
   const zeilen = server_types
-    .filter((t) => !t.deprecation && t.architecture === "x86")
+    .filter((t) => !t.deprecation)
     .map((t) => {
       const p = t.prices.find((x) => x.location === ort);
-      return p && { name: t.name, kerne: t.cores, ram: t.memory, platte: t.disk, netto: Number(p.price_monthly.net), brutto: Number(p.price_monthly.gross), da: verfuegbar.has(t.id) };
+      const da = (t.locations || []).some((l) => l.name === ort && l.available);
+      return p && { name: t.name, arch: t.architecture, kerne: t.cores, ram: t.memory, platte: t.disk, netto: Number(p.price_monthly.net), brutto: Number(p.price_monthly.gross), da };
     })
     .filter(Boolean)
     .sort((x, y) => x.netto - y.netto);
-  for (const z of zeilen) console.log(`${z.da ? "✓" : "✗"} ${z.name.padEnd(7)} ${String(z.kerne).padStart(2)} Kerne ${String(z.ram).padStart(4)} GB RAM ${String(z.platte).padStart(4)} GB  ${euro(z.netto)} netto / ${euro(z.brutto)} brutto im Monat`);
+  for (const z of zeilen) console.log(`${z.da ? "✓" : "✗"} ${z.name.padEnd(7)} ${z.arch.padEnd(4)} ${String(z.kerne).padStart(2)} Kerne ${String(z.ram).padStart(4)} GB RAM ${String(z.platte).padStart(4)} GB  ${euro(z.netto)} netto / ${euro(z.brutto)} brutto im Monat`);
   const { pricing } = await api("GET", "/pricing");
   const ip = pricing.primary_ips?.find((p) => p.type === "ipv4")?.prices?.find((p) => p.location === ort);
   if (ip) console.log(`IPv4-Adresse: ${euro(ip.price_monthly.net)} netto / ${euro(ip.price_monthly.gross)} brutto im Monat`);

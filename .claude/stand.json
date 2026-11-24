@@ -1,12 +1,12 @@
 {
-  "aktualisiert": "2026-11-23",
+  "aktualisiert": "2026-11-24",
   "branch": "claude/eigenes-zuhause",
   "offene_prs": [
     {
       "nr": null,
       "titel": "Zweig claude/eigenes-zuhause — PAWN auf eigenem Hetzner-Server (ohne PR)",
       "status": "c6c6e06 Paket, 3600211 Fernzugang + Takt-Notiz, 2290e24 private Eimer. Im Container komplett geprobt (Dienste, 50/50 Functions, 42/42 Tabellen, Rechte gleich, Anmeldung, Dateien, Brücke). VERIFY 6/6.",
-      "blockiert_durch": "Hetzner-API-Token von Daouda. Wird NICHT vor dem Umschalten nach main gemergt — der Server zieht den Zweig direkt (/etc/pawn/zweig)."
+      "blockiert_durch": "Server-Wahl von Daouda: der freigegebene CX33 ist am 24.11. in allen EU-Standorten ausverkauft (Hetzner-API). Angeboten: A) CPX32 Helsinki 36,49 € netto inkl. Backup+IPv4, B) CPX22 20,29 €, C) warten. Wird NICHT vor dem Umschalten nach main gemergt — der Server zieht den Zweig direkt."
     }
   ],
   "merge_reihenfolge": [
@@ -14,7 +14,7 @@
     "claude/eigenes-zuhause: erst nach dem Umschalten nach main; vorher zieht der Server-Takt den Zweig selbst."
   ],
   "wartet_auf_mensch": [
-    "UMZUG (23.11.): Daouda hat allem zugestimmt ('ja zu allem', Akquise nur pausieren, System übernehmen, überarbeiten, dann wieder aktivieren). Einziger Blocker: der Hetzner-API-Token (Lesen & Schreiben). Hetzners Roboter-Prüfung lässt den Agenten-Browser nicht durch — nicht umgehen.",
+    "UMZUG: Server-Wahl A/B/C (CX33 ausverkauft, siehe offene_prs). Hetzner-Projekt „PAWN\" (ID 16908063) und Token „pawn-umzug\" (Lesen & Schreiben) sind seit 24.11. angelegt; der Token liegt nur im Agenten-Container unter ~/.pawn/hcloud-token, nie im Repo. Hetzner-Konto ohne 2FA — Daouda soll sie einschalten.",
     "Später im Umzug, nur Daouda: Google-OAuth-Client (Weiterleitung https://api.pawn.vision/auth/v1/callback), OK für Stripe-Webhook-Umstellung, OK für Datenschutz-Text (neuer Hoster Hetzner).",
     "DIE LAUNCH GATES sind repariert, OHNE dass das Heft anders aussieht (#203, DIE_LAUNCH_GATES). Offen bleiben ZWEI VERHALTENSENTSCHEIDUNGEN, die nur Daouda trifft: D1 — gtag.js (163.510 B) erst nach Zustimmung laden statt auf jeder Seite; D2 — die naechsten Doppelseiten nicht vorausladen (/, /mode, /tasche: drei-welten 240.702 B + foto-spiegel 59.954 B; /konto: 196.446 B). Ohne beide liegt die schwerste Seite rund 340 kB unter 3 MB — und jedes neue Werk mit Freisteller wiegt auf ALLEN sieben Seiten mit (app.js laedt die Freisteller aller Buehnen-Werke). Sichtbar geaendert, zur Abnahme auf der Vorschau: neun leise Grautoene je 1-2 Stufen dunkler (Farbton gleich) · die Welt-Knoepfe verschwinden hinter dem offenen Seitenfenster (vorher schimmerten sie durch den Schleier) · Eingabefelder im Heft zeigen beim Fokus wieder einen Strich · 'Direkt entdecken' bleibt beim Tab-Fokus waehrend der Eroeffnung sichtbar · auf Touch-Geraeten: Schatten der Welt-Chips 1-2 px anders, und die Seitenpunkte sind dort reine Anzeige (Direktsprung per Punkt entfaellt — 15x1 px traf ohnehin kein Finger; geblaettert wird mit den Pfeilen und durch Wischen). EINE GESTALTUNGSFRAGE BLEIBT: die vier Papier-Toene (.piece-caption, .haus-ort, Formular, .empty-paper) halten auf den Hauspapieren Editorial/Galerie/Atelier/Archiv nur 3,6-4,5:1 (vorher weniger; der Pruefstand ist zufrieden, WCAG nicht ueberall). Dunkler ginge, waere aber sichtbar.",
     "L15 FREISTELLEN — der Auftragssatz ist klar, aber die genannte Vorlage widerspricht ihm, und deshalb wird hier nicht gebaut: src/heft03/referenz/freistellen.py sagt in ihrem eigenen Kopf ‚NICHT auf echte Produktfotos anwenden — gruene Kleidung wuerde zerstoert. Fuer reale Ware gehoert eine Segmentierung in die Medienpipeline.‘ Sie schlaegt einen Farbbereich frei, kein Motiv. Auf einem echten Werkbild loescht sie Teile des Stuecks. FRAGE, die nur Daouda beantworten kann: soll das Freistellen ueber die bestehende Edge Function generate-product-shot laufen (kostet FAL-Guthaben je Bild), oder ueber etwas anderes? Ohne diese Antwort wuerde ich raten, und ein Rateschluss loescht echte Werkbilder.",
@@ -50,16 +50,17 @@
     }
   },
   "naechster_zug": [
-    "UMZUG, sobald der Token da ist: node infra/hetzner/werkzeug/hetzner.mjs angebot fsn1 (Preis gegen Freigabe CX33 ~8,99 € netto + 20 % Backup) → anlegen cx33 fsn1 claude/eigenes-zuhause sitzung-2026-11-23 infra/hetzner/zugang/sitzung-2026-11-23.pub --backups → DNS api/studio/neu.pawn.vision als A/AAAA bei Vercel → /_steuer/lage beobachten.",
+    "DER PLAN: docs/fahrplan.md (Spiegel des Docs https://claude.ai/artifact/HMgPF6gXzpxAdGF1Q7LRfv) — sechs Schritte mit Fertig-wenn je Schritt und den zehn Entscheidungen, die nur Daouda trifft. Reihenfolge bestimmt Daouda.",
+    "UMZUG, sobald Daouda A/B/C sagt: HCLOUD_TOKEN=$(cat ~/.pawn/hcloud-token) node infra/hetzner/werkzeug/hetzner.mjs angebot hel1 (Preis gegen die Wahl prüfen) → anlegen <typ> hel1 claude/eigenes-zuhause sitzung-2026-11-23 infra/hetzner/zugang/sitzung-2026-11-23.pub --backups → DNS api/studio/neu.pawn.vision als A/AAAA bei Vercel → /_steuer/lage beobachten. Achtung: der Sitzungsschlüssel gilt bis 30.11.",
     "UMZUG, Daten: zugang-erzeugen.mjs auf dem Server → Rolle in rnak per Lovable query_database → abzug.sh → einspielen.sh → Brücke mit dem echten Server-PEM bauen, über den Lovable-Agenten ausliefern (kostet Guthaben), Paket an /_steuer/paket → dateien.mjs (private Eimer per ALT_SCHLUESSEL) → vergleich.sh.",
-    "UMZUG, Umschalten: neu.pawn.vision prüfen (Heft, Login, Bilder, Frag PAWN, Studio) → neuer JARVIS_CRON_SECRET (der alte steht in der Git-Historie) → DNS pawn.vision + www auf den Server, /etc/pawn/live → Aufräumen (pawn_umzug, Brücke, umzug.env, Token widerrufen) → CLAUDE.md und pawn-kontext auf das neue Zuhause umschreiben.",
-    "Alle 32 Takt-Aufträge sind im alten System pausiert (Liste: infra/hetzner/skripte/umzug/takt-vor-dem-umzug.md) und bleiben auch im neuen aus, bis Daouda sie nach der Überarbeitung einzeln wieder anschaltet.",
-    "DANACH (Daoudas Reihenfolge): 2. das ganze Projekt kartografieren (Karte: https://claude.ai/artifact/VLetGB5WuYT7s5waw8MTcX), 3. Staub abschütteln, bis PAWN heute starten könnte.",
-    "4. Was die Gates NACH der Eroeffnung noch finden wuerden (die CI misst waehrend der Eroeffnung, 4,3 s nach dem Laden): 3.5 'Das Haus entdecken ↗' auf /suche (86×15 bzw. 50×8 px) und 'DEIN ZUG' auf /haus/drape 844 quer (43 px). Kein Gate faellt heute daran — aber sobald der Pruefstand spaeter misst, werden sie rot.",
-    "5. PR 5 — Clips layout-bewusst (Freisteller-Knopf in StudioMediathek ruft generate-product-shot statt freistellen).",
-    "6. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message); app.js: die Beispiel-Prompts rufen kein fragen().",
-    "7. Die zwei Vorschlagspapiere: docs/vorschlag-mini-pawn.md und docs/vorschlag-cockpit.md.",
-    "8. DAOUDA, unveraendert offen: die Drei-Werke-Regel · D1/D2 (oben) · der GRANT auf designers (M3 Teil 2) · teil-o-migrationen.zip (166 statt 173 Dateien) · OFFENE-LISTE.md fehlt im Repo."
+    "UMZUG, Umschalten: neu.pawn.vision prüfen (Heft, Login, Bilder, Frag PAWN, Studio) → neuer JARVIS_CRON_SECRET → DNS pawn.vision + www auf den Server, /etc/pawn/live → Aufräumen (pawn_umzug, Brücke, umzug.env, Hetzner-Token widerrufen) → CLAUDE.md und pawn-kontext auf das neue Zuhause umschreiben.",
+    "SOFORT WICHTIG (Fahrplan, Unabhängigkeit): IDM-VTON (in anprobe und generate-tryon über fal) steht unter CC BY-NC-SA 4.0 — vor dem Start ersetzen (FASHN VTON v1.5, Apache 2.0).",
+    "Alle 32 Takt-Aufträge sind im alten System pausiert (Liste: infra/hetzner/skripte/umzug/takt-vor-dem-umzug.md) und bleiben auch im neuen aus, bis Daouda sie einzeln wieder anschaltet.",
+    "AUS OKTOBER, weiter gültig (gehen in Schritt 2 und 3 des Fahrplans auf): 4. Was die Gates NACH der Eroeffnung noch finden wuerden (die CI misst waehrend der Eroeffnung, 4,3 s nach dem Laden): 3.5 'Das Haus entdecken ↗' auf /suche (86×15 bzw. 50×8 px) und 'DEIN ZUG' auf /haus/drape 844 quer (43 px). Kein Gate faellt heute daran — aber sobald der Pruefstand spaeter misst, werden sie rot.",
+    "AUS OKTOBER, weiter gültig (gehen in Schritt 2 und 3 des Fahrplans auf): 5. PR 5 — Clips layout-bewusst (Freisteller-Knopf in StudioMediathek ruft generate-product-shot statt freistellen).",
+    "AUS OKTOBER, weiter gültig (gehen in Schritt 2 und 3 des Fahrplans auf): 6. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message); app.js: die Beispiel-Prompts rufen kein fragen().",
+    "AUS OKTOBER, weiter gültig (gehen in Schritt 2 und 3 des Fahrplans auf): 7. Die zwei Vorschlagspapiere: docs/vorschlag-mini-pawn.md und docs/vorschlag-cockpit.md.",
+    "AUS OKTOBER, weiter gültig (gehen in Schritt 2 und 3 des Fahrplans auf): 8. DAOUDA, unveraendert offen: die Drei-Werke-Regel · D1/D2 (oben) · der GRANT auf designers (M3 Teil 2) · teil-o-migrationen.zip (166 statt 173 Dateien) · OFFENE-LISTE.md fehlt im Repo."
   ],
   "nicht_pruefbar": [
     "DER PRUEFSTAND HAT WIEDER AUGEN, und das ist der wichtigste Satz dieser Uebergabe. Er war ab L13 blind durch EIGENEN Code: der Huellen-Waechter zaehlte das Anklopfen aus notbetrieb.mjs (/auth/v1/health, net::ERR_ABORTED — ein Abbruch, den das Heft selbst ausloest) als fehlende Daten und entwertete jede Seite. Repariert (EIGENE_ABBRUECHE in pruefstand.config.ts, an vier Faellen vorgefuehrt). GEMESSEN: Lauf #150 = 1 messbares Gate, Lauf #151 = 768. Damit ist auch die alte Frage beantwortet: der Runner ERREICHT das neue Projekt, die Seiten kamen mit Inhalt an.",
