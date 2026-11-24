@@ -1,6 +1,6 @@
 {
   "aktualisiert": "2026-11-24",
-  "branch": "main — Anprobe-Arbeit: claude/anprobe-optik (PR #206). Der VOLLE Stand (Umzug auf Hetzner, Fahrplan) steht auf dem Zweig claude/eigenes-zuhause in .claude/stand.json und docs/fahrplan.md — dort zuerst lesen.",
+  "branch": "main — Anprobe-Arbeit: claude/anprobe-optik-live (PR #206). Der VOLLE Stand (Umzug auf Hetzner, Fahrplan) steht auf dem Zweig claude/eigenes-zuhause in .claude/stand.json und docs/fahrplan.md — dort zuerst lesen.",
   "offene_prs": [
     {
       "nr": 206,
