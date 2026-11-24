@@ -713,7 +713,11 @@ function anprobeNachfragen(id){
    const werk=(state.anprobe||{}).stueck;
    state.anproben=[...(state.anproben||[]).filter(x=>x.id!==id),{id,art:quelle.anprobe.aktion(anprobeWelt()),product_id:werk,status:'fertig'}];
    const an=r.ansichten&&typeof r.ansichten==='object'?r.ansichten:{};
-   anprobeSetzen({laeuft:false,url:r.result_url,ansichten:{...an,vorne:an.vorne||r.result_url},ansichtenStatus:r.ansichten_status||'',dreh:0,fehler:'',satz:''});
+   /* Was getragen wird, sagt die FUNCTION, nicht die Auswahl: die alte Fassung kennt
+      `product_ids` nicht und zieht nur das erste Stueck an. Dann steht auch nur dieses
+      im Titel — sonst behauptete die Seite ein Outfit, das niemand gerechnet hat. */
+   const stuecke=Array.isArray(r.stuecke)&&r.stuecke.length?r.stuecke.filter(Boolean):[werk].filter(Boolean);
+   anprobeSetzen({laeuft:false,url:r.result_url,stuecke,ansichten:{...an,vorne:an.vorne||r.result_url},ansichtenStatus:r.ansichten_status||'',dreh:0,fehler:'',satz:''});
    /* Die Drehbuehne: Seite und Ruecken entstehen erst JETZT, im Hintergrund. Eine alte
       Fassung der Function kennt `ansichten_status` nicht (null) — dann bleibt es
       still bei der Vorderansicht, und die Buehne zeigt eine Flaeche statt drei.
