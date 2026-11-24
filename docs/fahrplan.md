@@ -69,7 +69,7 @@ Die Strecke: Handyfoto rein, freistellen, Produktfoto aus mehreren Ansichten, An
 - **Gebaut am 24.11., die Drehbühne:** Ein Outfit aus bis zu drei Stücken wird in einem Bild angezogen. Danach rechnet PAWN Seite und Rücken im Hintergrund, und das Ergebnis dreht sich auf einer 3D-Bühne: per Antippen, Pfeiltaste oder Wischen, bei reduzierter Bewegung als Überblendung.
 - An jedem Ergebnis steht „Mit KI erzeugt". Die Anprobe läuft nur mit Einwilligung, Seite und Rücken höchstens drei Mal je Anprobe.
 - **Kosten:** 0,15 $ je Bild, rund 0,45 $ für eine Anprobe mit Seite und Rücken. Das zahlt PAWN.
-- **Live:** nach einem Lovable-Deploy von `anprobe` und `generate-tryon` oder mit dem Umzug. Bis dahin läuft die alte Anprobe, das Heft zeigt dann ehrlich nur eine Ansicht.
+- **Live seit 24.11.:** #205 gemergt, `anprobe` und `generate-tryon` über Lovable ausgeliefert. Die neue Optik (dein Bild im Rahmen, „PAWN legt an", Vorhang, Vorher/Nachher) wartet als #206 auf den Merge.
 - **Augen:** `node tools/anprobe-probe.mjs [ruhig|bewegt|mobil] [sechs] [alt|fehlschlag]`.
 
 **Eigene Technik (kommerziell nutzbar):** Freistellen BiRefNet (MIT) · Produktfoto und Ansichten Qwen-Image-Edit-2511 (Apache 2.0) · Anprobe FASHN VTON v1.5 (Apache 2.0) · Video Wan 2.2 TI2V-5B (Apache 2.0, ab 24 GB).
@@ -138,7 +138,7 @@ Kosten netto/Monat: Stufe 1 CPX32 36,49 € (später CX43 19,69 €) · Stufe 2 
 
 - [ ] Server: A, B oder C (Schritt 1)
 - [ ] Hetzner: Zwei-Faktor-Anmeldung einschalten
-- [ ] Anprobe live schalten: jetzt per Lovable-Deploy von `anprobe` und `generate-tryon` (kostet Guthaben) oder erst mit dem Umzug
+- [x] Anprobe live schalten — erledigt am 24.11. (#205 + Lovable-Deploy); offen nur noch #206 (Optik)
 - [ ] Google-Anmeldung: eigener Zugang, Weiterleitung `https://api.pawn.vision/auth/v1/callback`
 - [ ] Stripe: OK für die neue Webhook-Adresse
 - [ ] Datenschutzerklärung: OK für Hetzner
