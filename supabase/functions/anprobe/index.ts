@@ -302,11 +302,13 @@ Deno.serve(async (req) => {
       /* Sperre ohne Migration (Prüferfund 24.11.): geschrieben wird nur, wenn der gespeicherte
          Zähler noch der gelesene ist. Zwei gleichzeitige Aufrufe starten so nicht doppelt — und
          bezahlen nicht doppelt. Postgres prüft die Bedingung nach der Zeilensperre neu. */
-      const gespeichert = (handle.ansichten ?? null) as { versuche?: unknown } | null;
+      // Verglichen wird der TEXT, den Postgres mit ->> liest — fehlt der Zähler (oder der ganze
+      // Stand), ist er dort NULL. So passt die Bedingung zu jeder gespeicherten Form.
+      const gespeichert = ((handle.ansichten ?? null) as { versuche?: unknown } | null)?.versuche;
       let sperre = admin.from("anproben").update({ request_handle: { ...handle, ansichten: neuerStand } } as never).eq("id", anprobeId);
-      sperre = gespeichert && typeof gespeichert.versuche === "number"
-        ? sperre.eq("request_handle->ansichten->>versuche", String(gespeichert.versuche))
-        : sperre.is("request_handle->ansichten", null);
+      sperre = gespeichert === undefined || gespeichert === null
+        ? sperre.is("request_handle->ansichten->>versuche", null)
+        : sperre.eq("request_handle->ansichten->>versuche", String(gespeichert));
       const { data: gewonnen, error: sperrFehler } = await sperre.select("id");
       if (sperrFehler) {
         // Kennt die Datenbank den Filter nicht, geht es ohne Sperre weiter — lieber einmal zu viel als nie.
