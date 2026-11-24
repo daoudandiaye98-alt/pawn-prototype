@@ -60,11 +60,17 @@ Die Strecke: Handyfoto rein, freistellen, Produktfoto aus mehreren Ansichten, An
 | --- | --- | --- |
 | Freistellen | Heft-Seite (`freistellen`) | fal: BiRefNet, rembg |
 | Produktfoto, Inszenierung | Werke, Mediathek, neue Kampagne, neues Stück | fal: „nano-banana" (Google) |
-| Anprobe | Heft und Kampagne (`anprobe`, `generate-tryon`) | fal: IDM-VTON, Kling Kolors, „nano-banana" |
+| Anprobe | Heft und Kampagne (`anprobe`, `generate-tryon`) | fal: „nano-banana-pro", Kling Kolors als Ersatz; IDM-VTON seit 24.11. raus |
 | Kampagnen-Video | neue Kampagne, Editionen | fal: Wan 2.2, Kling 2.1 |
 | Texte, Jarvis, DNA | Studio, Heft, Admin | Anthropic, OpenAI, Lovable-Gateway |
 
-**Mira:** Zur Chrome-Erweiterung gibt es keinen offenen Quellcode. Auf GitHub unter dem Namen nur ein leeres Projekt (MiraFit) und die Support-Seiten einer iPhone-App. Übernommen wird das Muster: freistellen beim Hochladen, Anprobe nur nach Einwilligung und ohne Speichern des Fotos, Tageslimit.
+**Mira, richtig:** Gemeint ist die Chrome-Erweiterung von [trymira.style](https://www.trymira.style), „Mira: Virtual Try-on", Version 0.2.14. Sie ist nicht quelloffen; nachgebaut ist das Muster, nicht der Code. Vergleich mit Google, FASHN und den Namensvettern im Doc, Tab „Anprobe: Mira & Co.".
+
+- **Gebaut am 24.11., die Drehbühne:** Ein Outfit aus bis zu drei Stücken wird in einem Bild angezogen. Danach rechnet PAWN Seite und Rücken im Hintergrund, und das Ergebnis dreht sich auf einer 3D-Bühne: per Antippen, Pfeiltaste oder Wischen, bei reduzierter Bewegung als Überblendung.
+- An jedem Ergebnis steht „Mit KI erzeugt". Die Anprobe läuft nur mit Einwilligung, Seite und Rücken höchstens drei Mal je Anprobe.
+- **Kosten:** 0,15 $ je Bild, rund 0,45 $ für eine Anprobe mit Seite und Rücken. Das zahlt PAWN.
+- **Live:** nach einem Lovable-Deploy von `anprobe` und `generate-tryon` oder mit dem Umzug. Bis dahin läuft die alte Anprobe, das Heft zeigt dann ehrlich nur eine Ansicht.
+- **Augen:** `node tools/anprobe-probe.mjs [ruhig|bewegt|mobil] [sechs] [alt|fehlschlag]`.
 
 **Eigene Technik (kommerziell nutzbar):** Freistellen BiRefNet (MIT) · Produktfoto und Ansichten Qwen-Image-Edit-2511 (Apache 2.0) · Anprobe FASHN VTON v1.5 (Apache 2.0) · Video Wan 2.2 TI2V-5B (Apache 2.0, ab 24 GB).
 
@@ -119,20 +125,20 @@ Ablauf: Angel findet Profile (Stil-Matrix) → PAWN-KI schreibt persönlich, mit
 | Post | Resend | Angels Mailserver | 1 |
 | Alle KI-Aufrufe | fest verdrahtet | KI-Weiche „eigen" / „Dienst" | 1 |
 | Produktfoto, Ansichten | fal (Google) | Qwen-Image-Edit-2511 | 2 |
-| Anprobe | fal (IDM-VTON, Kling) | FASHN VTON v1.5 | 2 |
+| Anprobe | fal (nano-banana-pro, Kling) | FASHN VTON v1.5 | 2 |
 | Video | fal (Wan, Kling) | Wan 2.2 | 2 |
 | Texte, Jarvis, Beratung | Anthropic, OpenAI, Lovable | über Angel | 3 |
 | Zahlungen | Stripe | bleibt Stripe | — |
 
 Kosten netto/Monat: Stufe 1 CPX32 36,49 € (später CX43 19,69 €) · Stufe 2 GEX45 (24 GB, Helsinki) 214 € + 209 € Einrichtung (Stand 13.10.2026).
 
-**Sofort wichtig:** IDM-VTON steht unter CC BY-NC-SA 4.0 (nicht kommerziell) und wird vor dem Start ersetzt.
+**Erledigt am 24.11.:** IDM-VTON steht unter CC BY-NC-SA 4.0 (nicht kommerziell). Es ist aus Anprobe und Studio-Model-Fotos entfernt; ein Test schlägt an, falls es (in irgendeiner Schreibweise) zurückkommt. Wirksam mit dem nächsten Lovable-Deploy oder dem Umzug.
 
 ## Was nur Daouda entscheidet
 
 - [ ] Server: A, B oder C (Schritt 1)
 - [ ] Hetzner: Zwei-Faktor-Anmeldung einschalten
-- [ ] Mira: Link, falls ein anderes GitHub-Projekt gemeint ist
+- [ ] Anprobe live schalten: jetzt per Lovable-Deploy von `anprobe` und `generate-tryon` (kostet Guthaben) oder erst mit dem Umzug
 - [ ] Google-Anmeldung: eigener Zugang, Weiterleitung `https://api.pawn.vision/auth/v1/callback`
 - [ ] Stripe: OK für die neue Webhook-Adresse
 - [ ] Datenschutzerklärung: OK für Hetzner
