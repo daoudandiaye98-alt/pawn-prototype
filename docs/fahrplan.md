@@ -107,6 +107,8 @@ Vorhanden, seit 23.11. pausiert: Profil-Zyklus, stündlicher Versand mit Aufwär
 
 Ablauf: Angel findet Profile (Stil-Matrix) → PAWN-KI schreibt persönlich, mit den Werken des Hauses → Daouda gibt jede Welle frei → kleine Wellen, Abmeldung, Wächter → Haus zieht ein (Schritt 3) → Start ab Daoudas Schwelle.
 
+**Fertig, wenn:** der Einladungsweg anwaltlich geprüft ist · jede Einladung mit echten Werken und Abmeldelink nach Daoudas Freigabe rausgeht · die Startschwelle erreicht ist und nur die Takt-Aufträge wieder laufen, die Daouda einzeln freigibt.
+
 ## Unabhängigkeit
 
 | Bereich | Heute | Eigen | Stufe |
