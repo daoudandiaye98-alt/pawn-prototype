@@ -22,7 +22,7 @@ describe("Lizenzwache", () => {
   });
   // Prüferfund 24.11.: die Wache kannte nur EINE Schreibweise je Modell.
   it("erkennt jede Schreibweise: Bindestrich, Unterstrich, Leerzeichen", () => {
-    for (const m of ["fal-ai/cat-vton", "fal-ai/ootd", "fal-ai/stable-viton", "x/IDM_VTON", "y/stable viton", "z/CatVTON"]) {
+    for (const m of ["fal-ai/cat-vton", "fal-ai/ootd", "fal-ai/ootd_hd", "x/ootd2", "levihsu/OOTDiffusion", "fal-ai/stable-viton", "x/IDM_VTON", "y/stable viton", "z/CatVTON"]) {
       expect(erlaubtesModell(m, BILDMODELL), m).toBe(BILDMODELL);
     }
     expect(erlaubtesModell("fal-ai/fashn/tryon/v1.5", BILDMODELL)).toBe("fal-ai/fashn/tryon/v1.5");
@@ -139,6 +139,7 @@ describe("Kosten je Bild", () => {
     expect(centJeBild(BILDMODELL)).toBe(15);
     expect(centJeBild(BILDMODELL, undefined, "4K")).toBe(30);
     expect(centJeBild("fal-ai/nano-banana/edit")).toBe(4);
+    expect(centJeBild("fal-ai/nano-banana-2/edit")).toBe(8);
     expect(centJeBild(KOLORS)).toBe(12);
     expect(centJeBild(BILDMODELL, 9)).toBe(9);
     expect(centJeBild(BILDMODELL, -1)).toBe(15);

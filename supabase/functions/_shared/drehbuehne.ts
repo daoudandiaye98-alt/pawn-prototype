@@ -35,7 +35,7 @@ export const KOLORS = "fal-ai/kling/v1-5/kolors-virtual-try-on";
  * Modell in ai_config, wird es trotzdem nie gerufen; an seine Stelle tritt der Ersatz.
  * Jede Schreibweise zählt: fal führt etwa `fal-ai/cat-vton` mit Bindestrich (Prüferfund 24.11.).
  */
-export const NICHT_KOMMERZIELL = /idm[-_ ]?vton|cat[-_ ]?vton|\bootd(?:iffusion)?\b|stable[-_ ]?viton/i;
+export const NICHT_KOMMERZIELL = /idm[-_ ]?vton|cat[-_ ]?vton|(?:^|[^a-z])ootd(?:iffusion)?(?![a-z])|stable[-_ ]?viton/i;
 export function erlaubtesModell(modell: unknown, ersatz: string): string {
   const m = typeof modell === "string" ? modell.trim() : "";
   return m && !NICHT_KOMMERZIELL.test(m) ? m : ersatz;
@@ -43,12 +43,14 @@ export function erlaubtesModell(modell: unknown, ersatz: string): string {
 
 /**
  * Was ein gerechnetes Bild kostet, in Cent (fal-Preisliste, Stand 24.11.2026): Nano Banana Pro
- * 15 ¢ (4K doppelt), Nano Banana 4 ¢, alles Unbekannte 12 ¢. Ein Satz aus ai_config gewinnt.
+ * 15 ¢ (4K doppelt), Nano Banana 2 8 ¢, Nano Banana 4 ¢, alles Unbekannte 12 ¢. Ein Satz aus
+ * ai_config gewinnt.
  */
 export function centJeBild(modell: unknown, satz?: unknown, aufloesung?: unknown): number {
   if (typeof satz === "number" && Number.isFinite(satz) && satz >= 0) return satz;
   const m = typeof modell === "string" ? modell : "";
   if (/nano-banana-pro|gemini-3-pro/i.test(m)) return aufloesung === "4K" ? 30 : 15;
+  if (/nano-banana-2/i.test(m)) return 8;
   if (/nano-banana|gemini-2\.5-flash|gemini-25-flash/i.test(m)) return 4;
   return 12;
 }
