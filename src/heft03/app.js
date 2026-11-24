@@ -749,9 +749,9 @@ function anprobeNachfragen(id){
  *
  * Ein eigener Takt, getrennt von der Anprobe: die Vorderansicht steht schon, die
  * Buehne waechst nur nach. Ein Bildmodell braucht dafuer 20 bis 60 Sekunden; nach
- * drei Minuten wird still aufgehoert — die Vorderansicht bleibt, nichts luegt.
+ * vier Minuten wird still aufgehoert — die Vorderansicht bleibt, nichts luegt.
  * ———————————————————————————————————————————————————————————————— */
-const ANSICHTEN_TAKT_MS=3000,ANSICHTEN_VERSUCHE=60;
+const ANSICHTEN_TAKT_MS=3000,ANSICHTEN_VERSUCHE=80;   // vier Minuten: zwei Bilder zu je bis 150 s, parallel, plus Ablage
 let ansichtenTakt=null,ansichtenVersuch=0;
 function ansichtenTaktAus(){if(ansichtenTakt){clearTimeout(ansichtenTakt);ansichtenTakt=null;}ansichtenVersuch=0;}
 
@@ -762,12 +762,14 @@ function buehneSetzen(neu){
  if(fokus)[...document.querySelectorAll('[data-drehbuehne]')].find(el=>el.getClientRects().length)?.focus({preventScroll:true});
 }
 
-async function anprobeAnsichtenHolen(id){
+async function anprobeAnsichtenHolen(id,{laut=false}={}){
  ansichtenTaktAus();
+ if(laut)buehneSetzen({ansichtenStatus:'laeuft'});
  const r=await quelle.anprobe.ansichten(id);
  if((state.anprobe||{}).id!==id)return;
- // Ein Nein ist hier KEIN Fehler auf dem Bildschirm: die Vorderansicht steht, die Buehne bleibt eine Flaeche.
- if(!r||!r.ok){buehneSetzen({ansichtenStatus:'fehler'});return;}
+ // Ein Nein ist hier KEIN Fehler auf dem Bildschirm: die Vorderansicht steht, die Buehne bleibt
+ // eine Flaeche. Nur wer selbst „noch einmal" gedrueckt hat, bekommt den Satz der Function.
+ if(!r||!r.ok){buehneSetzen({ansichtenStatus:'fehler'});if(laut)toast(r?.satz||'Seite und Rücken kamen nicht zustande.');return;}
  ansichtenNachfragen(id);
 }
 
@@ -1141,6 +1143,7 @@ hoeren(document,'click',e=>{
  if(b.dataset.anprobeStueck){anprobeStueckTippen(b.dataset.anprobeStueck);return;}
  if(b.hasAttribute('data-anprobe-los')){anprobeStarten((state.anprobe||{}).auswahl||[]);return;}
  if(b.dataset.anprobeAnsicht){anprobeZuAnsicht(Number(b.dataset.anprobeAnsicht));return;}
+ if(b.hasAttribute('data-anprobe-ansichten-neu')){const id=(state.anprobe||{}).id;if(id)anprobeAnsichtenHolen(id,{laut:true});return;}
  if(b.dataset.anprobeBewerten){anprobeBewerten(b.dataset.anprobeBewerten);return;}
  if(b.dataset.fit){state.fitProduct=b.dataset.fit;readRefresh();}
  // DER FEHLER, DER HIER LAG: index 5 ist 'foto'. Gesetzt wird aber state.fitProduct,

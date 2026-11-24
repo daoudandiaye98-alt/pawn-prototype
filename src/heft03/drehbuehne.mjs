@@ -94,6 +94,10 @@ export function drehbuehneHtml(a,{titel='',ergebnis='',anhang=''}={}){
   +(titel?'<p class="drehbuehne-titel">'+esc(titel)+'</p>':'')
   +(ergebnis?'<p class="drehbuehne-satz">'+esc(ergebnis)+'</p>':'')
   +liste
+  // Ist Seite oder Ruecken gescheitert, darf die Kundin es noch einmal anstossen — die
+  // Function erlaubt hoechstens drei Laeufe je Anprobe und sagt es, wenn es genug ist.
+  +((a&&a.ansichtenStatus)==='fehler'&&n<ANSICHTEN.length
+   ?'<button class="drehbuehne-nochmal" data-anprobe-ansichten-neu>Seite und Rücken noch einmal</button>':'')
   +'<small class="drehbuehne-ki">Mit KI erzeugt</small>'
   +anhang
   +'</figcaption></figure>';

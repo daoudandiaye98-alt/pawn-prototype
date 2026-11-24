@@ -57,6 +57,10 @@ test('HTML: ehrlich beschriftet, maskiert, Ansichten nur wenn es etwas zu drehen
  const wartend=drehbuehneHtml({url:'v.jpg',ansichtenStatus:'laeuft'});
  assert.match(wartend,/Rücken <small>entsteht<\/small>/);
  assert.match(wartend,/Der Rücken entsteht\./);
+ assert.doesNotMatch(drei,/data-anprobe-ansichten-neu/);
+ const gescheitert=drehbuehneHtml({url:'v.jpg',ansichtenStatus:'fehler',ansichten:{vorne:'v.jpg',seite:'s.jpg'}});
+ assert.match(gescheitert,/data-anprobe-ansichten-neu/);                    // nur Seite kam: noch einmal anbieten
+ assert.doesNotMatch(drehbuehneHtml({url:'v.jpg'}),/data-anprobe-ansichten-neu/);   // alte Function: kein Knopf
  const boese=drehbuehneHtml({url:'x" onerror="alert(1)'});
  assert.doesNotMatch(boese,/" onerror="/);
  assert.equal(drehbuehneHtml({}),'');

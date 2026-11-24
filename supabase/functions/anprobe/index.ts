@@ -24,9 +24,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
-  ansichtAusDatei, ansichtenStand, ansichtPfad, ansichtPrompt, anprobePrompt, AVATAR_PROMPT,
-  BILDMODELL, bildParameter, darfAnsichtenStarten, erlaubtesModell, KOLORS, NACHANSICHTEN,
-  notizKurz, stueckeAusAuftrag, stueckeDerAnprobe, type Ansicht, type Nachansicht, type Stueck,
+  anprobePrompt, ansichtAusDatei, ansichtenStand, ansichtPfad, ansichtPrompt, AVATAR_PROMPT, BILDMODELL, bildParameter, centJeBild, darfAnsichtenStarten, erlaubtesModell, KOLORS, NACHANSICHTEN, notizKurz, stueckeAusAuftrag, stueckeDerAnprobe, type Ansicht, type Nachansicht, type Stueck,
 } from "../_shared/drehbuehne.ts";
 
 const MATTING = "fal-ai/birefnet";
@@ -120,7 +118,8 @@ async function kostenBuchen(admin: SupabaseClient, bilder: number, info: Record<
   if (bilder <= 0) return;
   try {
     const { data: costsCfg } = await admin.from("ai_config").select("value").eq("key", "ai_action_costs_cents").maybeSingle();
-    const cents = ((costsCfg?.value as Record<string, number> | null)?.[KOSTENSTELLE]) ?? 12;
+    const satz = (costsCfg?.value as Record<string, number> | null)?.[KOSTENSTELLE];
+    const cents = centJeBild(info.modell, satz, info.aufloesung);
     await admin.from("ai_logs").insert({
       agent_id: KOSTENSTELLE,
       model: String(info.modell ?? "tryon"),
@@ -300,7 +299,22 @@ Deno.serve(async (req) => {
       const cfg = (cfgRow?.value ?? {}) as { edit_model?: string; ansichten_modell?: string; aufloesung?: string };
       const modell = erlaubtesModell(cfg.ansichten_modell ?? cfg.edit_model, BILDMODELL);
       const neuerStand = { status: "laeuft" as const, seit: new Date().toISOString(), versuche: stand.versuche + 1 };
-      await admin.from("anproben").update({ request_handle: { ...handle, ansichten: neuerStand } } as never).eq("id", anprobeId);
+      /* Sperre ohne Migration (Prüferfund 24.11.): geschrieben wird nur, wenn der gespeicherte
+         Zähler noch der gelesene ist. Zwei gleichzeitige Aufrufe starten so nicht doppelt — und
+         bezahlen nicht doppelt. Postgres prüft die Bedingung nach der Zeilensperre neu. */
+      const gespeichert = (handle.ansichten ?? null) as { versuche?: unknown } | null;
+      let sperre = admin.from("anproben").update({ request_handle: { ...handle, ansichten: neuerStand } } as never).eq("id", anprobeId);
+      sperre = gespeichert && typeof gespeichert.versuche === "number"
+        ? sperre.eq("request_handle->ansichten->>versuche", String(gespeichert.versuche))
+        : sperre.is("request_handle->ansichten", null);
+      const { data: gewonnen, error: sperrFehler } = await sperre.select("id");
+      if (sperrFehler) {
+        // Kennt die Datenbank den Filter nicht, geht es ohne Sperre weiter — lieber einmal zu viel als nie.
+        console.warn("[anprobe] ansichten-sperre:", sperrFehler.message);
+        await admin.from("anproben").update({ request_handle: { ...handle, ansichten: neuerStand } } as never).eq("id", anprobeId);
+      } else if (!gewonnen || !(gewonnen as unknown[]).length) {
+        return json({ ok: true, status: "laeuft", fehlend });
+      }
 
       const start = Date.now();
       const lauf = (async () => {
@@ -325,7 +339,7 @@ Deno.serve(async (req) => {
             ansichten: { ...neuerStand, status: gelungen === 0 ? "fehler" : "fertig", ...(gescheitert.length ? { fehlend: gescheitert } : {}) },
           },
         } as never).eq("id", anprobeId);
-        await kostenBuchen(admin, gelungen, { art: "ansichten", anprobe_id: anprobeId, modell, ms: Date.now() - start });
+        await kostenBuchen(admin, gelungen, { art: "ansichten", anprobe_id: anprobeId, modell, aufloesung: cfg.aufloesung, ms: Date.now() - start });
       })();
       imHintergrund(lauf);
       return json({ ok: true, status: "laeuft", fehlend });
@@ -413,9 +427,11 @@ Deno.serve(async (req) => {
     const lauf = (async () => {
       let ergebnisUrl = "";
       let fehler = "";
+      let gerechnetMit = RAUM_MODELL;
       if (aktion === "anprobe") {
         // Erst das Bildmodell: es zieht auch Taschen, Schuhe, Schmuck und ganze Outfits an.
         const stuecke: Stueck[] = werke.map((w) => ({ name: w.name, notiz: w.designer_note }));
+        gerechnetMit = anprobeModell;
         let r = await falSubmitAndPoll(FAL_KEY, anprobeModell, {
           prompt: anprobePrompt(stuecke, cfg.fidelity_rules),
           image_urls: [personenBild, ...werkBilder],
@@ -424,7 +440,8 @@ Deno.serve(async (req) => {
         // Ersatz nur für EIN Stück: Kolors kennt kein Outfit. IDM-VTON wird nie gerufen —
         // CC BY-NC-SA 4.0, nicht kommerziell (erlaubtesModell in ../_shared/drehbuehne.ts).
         if (!r.ok && werke.length === 1) {
-          r = await falSubmitAndPoll(FAL_KEY, erlaubtesModell(cfg.tryon_model, KOLORS), {
+          gerechnetMit = erlaubtesModell(cfg.tryon_model, KOLORS);
+          r = await falSubmitAndPoll(FAL_KEY, gerechnetMit, {
             human_image_url: personenBild, garment_image_url: werkBild,
             fidelity_prompt: cfg.fidelity_rules ?? "Do not change the face, body or proportions of the person.",
           });
@@ -468,7 +485,7 @@ Deno.serve(async (req) => {
          Haus. Deshalb wird die Plattform-Ausgabe in ai_logs geschrieben, Kostenstelle kunde_anprobe. */
       await kostenBuchen(admin, 1, {
         art: aktion, anprobe_id, product_id: p.id, result_path: pfad,
-        modell: aktion === "anprobe" ? anprobeModell : RAUM_MODELL, ms: Date.now() - start,
+        modell: gerechnetMit, aufloesung: cfg.aufloesung, ms: Date.now() - start,
       });
     })();
     imHintergrund(lauf);
