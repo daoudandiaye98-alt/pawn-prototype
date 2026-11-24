@@ -101,3 +101,24 @@ describe("Stand der Nachansichten", () => {
     expect(ansichtenStand({ ansichten: { status: "fertig", fehlend: ["hinten", "oben"] } }).fehlend).toEqual(["hinten"]);
   });
 });
+
+/*
+ * Keine Function darf ein nicht-kommerziell lizenziertes Anprobe-Modell als festen Wert
+ * tragen. Belegter Anlass (24.11.2026): `fal-ai/idm-vton` stand als Ersatzmodell in
+ * `anprobe` UND `generate-tryon` — beide erzeugen Bilder für verkaufte Ware.
+ * Eng gefasst: nur Modell-Kennungen in Anführungszeichen, keine Kommentare.
+ */
+describe("Lizenz — kein Nicht-kommerziell-Modell in den Functions", () => {
+  it("keine Function nennt idm-vton, catvton, ootd oder stableviton als Modell", async () => {
+    const { readdirSync, readFileSync, existsSync } = await import("node:fs");
+    const basis = "supabase/functions";
+    const funde: string[] = [];
+    for (const ordner of readdirSync(basis)) {
+      const datei = `${basis}/${ordner}/index.ts`;
+      if (!existsSync(datei)) continue;
+      const text = readFileSync(datei, "utf8");
+      for (const m of text.matchAll(/["'`]fal-ai\/[^"'`]*(idm-vton|catvton|ootdiffusion|ootd-|stableviton)[^"'`]*["'`]/gi)) funde.push(`${datei}: ${m[0]}`);
+    }
+    expect(funde).toEqual([]);
+  });
+});
