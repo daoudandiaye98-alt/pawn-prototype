@@ -1,12 +1,14 @@
 /**
  * Virtual Try-On: kombiniert ein Kleidungsstück-Foto mit einem KI-Basis-Model
- * (fal.ai Kolors Virtual Try-On), optional weitergereicht an generate-broll für einen Clip.
+ * (fal.ai Kolors Virtual Try-On; Ersatz: Bildmodell nano-banana-pro/edit — nie IDM-VTON, dessen
+ * Lizenz den Verkauf verbietet), optional weitergereicht an generate-broll für einen Clip.
  *
  * Body: { product_id, source_image_url, mode: 'shot' | 'clip', model_style: 'weiblich'|'männlich'|'divers' }
  * Config: ai_config.tryon_provider steuert Modelle, Prompts, Pool, Fidelity, Limits.
  */
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { anprobePrompt, bildParameter, BILDMODELL, erlaubtesModell, KOLORS } from "../_shared/drehbuehne.ts";
 
 function jwtSub(auth: string | null): string | null {
   if (!auth?.startsWith("Bearer ")) return null;
@@ -28,6 +30,7 @@ type TryonConfig = {
   base_model_image_model?: string;
   base_model_prompt?: string;
   fidelity_rules?: string;
+  aufloesung?: string;
   shot_disclosure?: string;
   clip_motion_suffix?: string;
 };
@@ -147,8 +150,11 @@ Deno.serve(async (req) => {
     // Load config
     const { data: cfgRow } = await admin.from("ai_config").select("value").eq("key", "tryon_provider").maybeSingle();
     const cfg = ((cfgRow?.value ?? {}) as TryonConfig & { base_model_image_size?: string });
-    const tryonModel = cfg.tryon_model ?? "fal-ai/kling/v1-5/kolors-virtual-try-on";
-    const tryonModelAlt = cfg.tryon_model_alt ?? "fal-ai/idm-vton";
+    // Lizenzwaechter (24.11.2026): IDM-VTON & Co. stehen unter Nicht-kommerziell-Lizenzen
+    // (CC BY-NC-SA) und duerfen fuer verkaufte Ware nie laufen — auch nicht, wenn ai_config
+    // sie nennt. Der Ersatz ist ein Bildmodell, das das Stueck anzieht.
+    const tryonModel = erlaubtesModell(cfg.tryon_model, KOLORS);
+    const tryonModelAlt = erlaubtesModell(cfg.tryon_model_alt, BILDMODELL);
     const basePromptTpl = cfg.base_model_prompt ?? "full body studio photograph of a professional fashion model, {style}, plain white background";
     const fidelity = cfg.fidelity_rules ?? "";
     const clipMotionSuffix = cfg.clip_motion_suffix ?? "";
@@ -285,14 +291,16 @@ Deno.serve(async (req) => {
     };
     let tryonResult = await falSubmitAndPoll(FAL_KEY, tryonModel, tryonBody, 90_000);
     if (!tryonResult.ok) {
-      // retry with alt using idm-vton schema
-      const altBody = {
-        human_image_url: baseImageUrl,
-        garment_image_url: body.source_image_url,
-        person_image_url: baseImageUrl,
-        garm_image_url: body.source_image_url,
-        description: fidelity,
-      };
+      // Ersatz: Bildmodelle (nano-banana, gemini) bekommen eine Anweisung und beide Bilder,
+      // ein Anprobe-Modell bekommt sein Schema (Person + Stueck).
+      const istBildmodell = /nano-banana|gemini|\/edit$/i.test(tryonModelAlt);
+      const altBody = istBildmodell
+        ? {
+          prompt: anprobePrompt([{ name: p.name || "the piece" }], fidelity),
+          image_urls: [baseImageUrl, body.source_image_url],
+          num_images: 1, output_format: "jpeg", ...bildParameter(tryonModelAlt, cfg.aufloesung),
+        }
+        : { human_image_url: baseImageUrl, garment_image_url: body.source_image_url, fidelity_prompt: fidelity };
       tryonResult = await falSubmitAndPoll(FAL_KEY, tryonModelAlt, altBody, 90_000);
     }
     if (!tryonResult.ok) {
