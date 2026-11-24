@@ -87,6 +87,7 @@ const lage=()=>p.evaluate(w=>{const z=document.querySelector(w+' [data-drehbuehn
   ansichten:[...z.querySelectorAll('[data-anprobe-ansicht]')].map(x=>x.textContent+(x.getAttribute('aria-pressed')==='true'?'*':'')).join('|'),
   titel:z.querySelector('.drehbuehne-titel')?.textContent||'',nochmal:!!z.querySelector('[data-anprobe-ansichten-neu]'),
   hash:location.hash,ueberlauf:s?Math.max(0,s.scrollHeight-s.clientHeight):null};},W);
+const ueberlauf=()=>p.evaluate(w=>[...document.querySelectorAll(w+' .paper-page')].map(s=>Math.max(0,s.scrollHeight-s.clientHeight)),W);
 const vorn=l=>(l?.flaechen||[]).find(f=>f.endsWith('*'))||'';
 
 console.log('Lauf',LAUF);
@@ -98,13 +99,27 @@ soll('Stücke sichtbar',zahl===(SECHS?6:2),String(zahl));
 await L('[data-anprobe-stueck]').nth(0).click();await p.waitForTimeout(300);
 await L('[data-anprobe-stueck]').nth(1).click();await p.waitForTimeout(500);
 soll('Knopf nennt das Outfit',(await L('[data-anprobe-los]').textContent())?.includes('(2)'));
+const spiegel=await p.evaluate(w=>{const z=document.querySelector(w+' .drehbuehne.spiegel');return z?{bild:(z.querySelector('.spiegel-bild')?.getAttribute('src')||'').replace(/^.*\//,''),titel:z.querySelector('.drehbuehne-titel')?.textContent||''}:null;},W);
+soll('Spiegel zeigt dein Bild und die Wahl',!!spiegel&&/mensch-cape|^blob:|[0-9a-f-]{36}$/.test(spiegel.bild)&&spiegel.titel==='Mantel 01 + Hemd 03',JSON.stringify(spiegel));
+soll('Upload-Knopf zeigt die Miniatur',await L('.upload-mini').count()===1);
+soll('Gewählte Stücke tragen 1 und 2',JSON.stringify(await L('.stueck-nr').allTextContents())==='["1","2"]');
+soll('Spiegel: keine Seite läuft über',(await ueberlauf()).every(x=>x===0),JSON.stringify(await ueberlauf()));
 await schuss('a-auswahl',mobil?null:'');
 await L('[data-anprobe-los]').click();await p.waitForTimeout(800);
 soll('Outfit geht als product_ids',JSON.stringify(await p.evaluate(()=>globalThis.__start?.product_ids))==='["p-1","p-2"]');
-await p.waitForFunction(w=>!!document.querySelector(w+' [data-drehbuehne]'),W,{timeout:20000}).catch(()=>{});
+soll('PAWN legt an: Spiegel mit Scan',await L('.drehbuehne.spiegel.laeuft .spiegel-scan').count()===1);
+if(!ruhig){const t1=await L('.spiegel-scan').first().evaluate(e=>getComputedStyle(e).transform);await p.waitForTimeout(700);
+ const t2=await L('.spiegel-scan').first().evaluate(e=>getComputedStyle(e).transform);
+ soll('Die Scan-Linie fährt',t1!==t2&&t2!=='none',t1+' → '+t2);}
+await schuss('a2-laeuft',mobil?null:'');
+await p.waitForFunction(w=>!!document.querySelector(w+' [data-drehbuehne]'),W,{timeout:20000,polling:50}).catch(()=>{});
+if(!ruhig){
+ if(process.env.LANGSAM)await p.addStyleTag({content:'.drehbuehne.enthuellt .drehbuehne-raum::after{animation-duration:6s!important}'});
+ await p.waitForTimeout(process.env.LANGSAM?900:350);await schuss('a3-vorhang','[data-drehbuehne]');
+ soll('Der Vorhang hebt sich',await p.evaluate(w=>{const r=document.querySelector(w+' .drehbuehne.enthuellt .drehbuehne-raum');if(!r)return false;const m=getComputedStyle(r,'::after').transform;return m!=='none';},W));}
 await p.waitForTimeout(1500);
 let l=await lage();
-soll('Seite läuft nicht über',l?.ueberlauf===0,'Überlauf '+l?.ueberlauf+' px');
+soll('Bühne: keine Seite läuft über',(await ueberlauf()).every(x=>x===0),JSON.stringify(await ueberlauf()));
 if(ALT){
  soll('alte Function: eine Ansicht, Titel nur das erste Stück',l?.flaechen.length===1&&l?.titel==='Mantel 01',JSON.stringify(l));
  soll('alte Function: kein ansichten-Ruf',!(await p.evaluate(()=>globalThis.__rufe)).includes('ansichten'));
@@ -134,6 +149,13 @@ if(ALT){
  await p.mouse.move(r.x+r.width/2+60,r.y+r.height/2);await p.mouse.down();await p.mouse.move(r.x+r.width/2-60,r.y+r.height/2,{steps:6});await p.mouse.up();
  await p.waitForTimeout(1600);l=await lage();
  soll('Wischen dreht',vorn(l).startsWith('foto-spiegel'),vorn(l));
+ await L('[data-anprobe-drehen="1"]').click();await p.waitForTimeout(1600);l=await lage();
+ soll('Drehknopf im Bild dreht weiter',vorn(l).startsWith('mensch-trio'),vorn(l));
+ await L('[data-anprobe-vorher]').click();await p.waitForTimeout(700);
+ soll('Vorher blendet dein Bild ein',await p.evaluate(w=>{const z=document.querySelector(w+' [data-drehbuehne]');return !!z&&z.classList.contains('zeigt-vorher')&&getComputedStyle(z.querySelector('.drehbuehne-vorher')).opacity==='1';},W));
+ await schuss('g-vorher','[data-drehbuehne]');
+ await L('[data-anprobe-vorher]').click();await p.waitForTimeout(700);
+ soll('Nachher wieder da',await p.evaluate(w=>!document.querySelector(w+' [data-drehbuehne]').classList.contains('zeigt-vorher'),W));
  if(process.env.LANGSAM){await p.addStyleTag({content:'.drehring{transition-duration:9s!important;transition-timing-function:linear!important}'});
   await L('[data-anprobe-ansicht="0"]').click();for(const t of [1,2,3]){await p.waitForTimeout(1300);await schuss('l-'+t,'[data-drehbuehne]');}}
 }
