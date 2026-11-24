@@ -74,6 +74,7 @@ export function demoQuelle(){
    async bereinigen(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
    async starten(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
    async stand(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
+   async ansichten(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
    async bewerten(){return {ok:false,satz:'Vorschau — die Anprobe ist hier zu.'};},
    async meine(){return {bilder:[],anproben:[]};}
   },
@@ -447,13 +448,20 @@ export function supabaseQuelle({client,bild=u=>u,funktionen={},adressen={},sicht
    },
    /** Nur fuer Mode: die Person freistellen, damit das Stueck sauber sitzt. Darf fehlschlagen. */
    async bereinigen(bild_id){return anprobeRuf(client,fehlerText,{aktion:'bereinigen',bild_id});},
-   /** Die Anprobe anstossen. Antwortet sofort mit {anprobe_id}; gerechnet wird im Hintergrund. */
-   async starten({welt='mode',product_id,bild_id,platz}={}){
+   /**
+    * Die Anprobe anstossen. Antwortet sofort mit {anprobe_id}; gerechnet wird im Hintergrund.
+    * `product_ids` = ein Outfit aus bis zu drei Stuecken (nur Mode). `product_id` bleibt das
+    * erste Stueck — so versteht auch die alte Fassung der Function den Auftrag noch.
+    */
+   async starten({welt='mode',product_id,product_ids,bild_id,platz}={}){
     const aktion=welt==='interior'?'raum':welt==='kunst'?'wand':'anprobe';
-    return anprobeRuf(client,fehlerText,{aktion,product_id,bild_id:bild_id||undefined,platz:platz||undefined});
+    const mehrere=Array.isArray(product_ids)&&product_ids.length>1?product_ids:undefined;
+    return anprobeRuf(client,fehlerText,{aktion,product_id,product_ids:mehrere,bild_id:bild_id||undefined,platz:platz||undefined});
    },
-   /** Nachfragen, wie weit sie ist. status: laeuft · fertig · fehler */
+   /** Nachfragen, wie weit sie ist. status: laeuft · fertig · fehler — dazu `ansichten` und `ansichten_status`. */
    async stand(anprobe_id){return anprobeRuf(client,fehlerText,{aktion:'stand',anprobe_id});},
+   /** Die Drehbühne: Seite und Rücken im Hintergrund nachrechnen lassen. Antwortet sofort. */
+   async ansichten(anprobe_id){return anprobeRuf(client,fehlerText,{aktion:'ansichten',anprobe_id});},
    /** „Passt" oder „Passt nicht" — das Urteil der Kundin, nicht das der Maschine. */
    async bewerten(anprobe_id,bewertung){return anprobeRuf(client,fehlerText,{aktion:'bewerten',anprobe_id,bewertung});},
    /*
@@ -660,7 +668,7 @@ export function studioQuelle({client,haus,bild=u=>u,funktionen={}}={}){
   anprobe:{
    art:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'ganzkoerper',
    aktion:welt=>welt==='interior'?'raum':welt==='kunst'?'wand':'anprobe',
-   bild:zu,bereinigen:zu,starten:zu,stand:zu,bewerten:zu,
+   bild:zu,bereinigen:zu,starten:zu,stand:zu,ansichten:zu,bewerten:zu,
    async meine(){return {bilder:[],anproben:[]};}
   },
   foto:zu,

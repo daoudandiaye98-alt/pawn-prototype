@@ -6,6 +6,7 @@ import {searchProducts,housePresentation} from './presentation.mjs';
 import {sections} from './data.mjs';
 import {belegeFigur} from './figuren.mjs';
 import {welten,richtungen,formen,anprobeStufe,fuerWen,befund,urteil,bildVon} from './beratung.mjs';
+import {drehbuehneHtml} from './drehbuehne.mjs';
 const tag=t=>'<p class="eyebrow">'+t+'</p>';
 const button=(t,a,c='text-link')=>'<button class="'+c+'" '+a+'>'+t+' <span aria-hidden="true">↗</span></button>';
 const page=(l,r,c='',welt='')=>'<div class="spread-grid '+c+'"'+(welt?' data-welt="'+welt+'"':'')+'><section class="paper-page left-paper">'+l+'</section><section class="paper-page right-paper">'+r+'</section></div>';
@@ -414,35 +415,58 @@ export function extendedView(route,state){
     *
     * Das Foto arbeitet hier DOPPELT: es traegt die Anprobe UND den Farbbefund.
     * Bis heute passierte mit dem Upload nichts ausser dem Dateinamen.
+    *
+    * DIE DREHBUEHNE (24.11.2026, Muster: Mira): in Mode steht das Ergebnis in drei
+    * Ansichten — vorne, Seite, Ruecken — und dreht sich per Knopf, Pfeiltaste oder
+    * Wischen; angezogen wird ein Outfit aus bis zu drei Stuecken. Raum und Wand
+    * bleiben EIN Bild in seinem eigenen Format: ein Zimmer hat keinen Ruecken.
     */
-   const an=anprobeStufe[welt]||anprobeStufe.mode,a=state.anprobe||{};
-   const auswahl=Object.values(products).filter(p=>p.world===welt&&p.image).slice(0,3);
-   const gewaehlt=a.stueck?products[a.stueck]:null;
-   const links=a.url
-    ?'<figure class="anprobe-ergebnis"><img src="'+esc(a.url)+'" alt="'+esc(an.ergebnis)+'"><figcaption>'+esc(gewaehlt?gewaehlt.name+' — '+an.ergebnis:an.ergebnis)+'</figcaption></figure>'
-     +'<div class="anprobe-urteil"><p class="tafel-legende">Passt es dir?</p><div class="wahlreihe">'
+   const an=anprobeStufe[welt]||anprobeStufe.mode,a=state.anprobe||{},istMode=welt==='mode';
+   const alle=Object.values(products).filter(p=>p.world===welt&&p.image);
+   const gewaehlteIds=istMode?(a.auswahl||[]):(a.stueck?[a.stueck]:[]);
+   // Feste Reihenfolge: ein Antippen darf die Stuecke nicht umsortieren. Nur ein Werk,
+   // das von aussen gewaehlt kam (Chip im Gespraech) und nicht vorne liegt, rueckt ans Ende.
+   const sichtbar=alle.slice(0,istMode?6:3);
+   const fehlen=gewaehlteIds.map(id=>products[id]).filter(p=>p&&p.world===welt&&p.image&&!sichtbar.includes(p));
+   const auswahl=fehlen.length?[...sichtbar.slice(0,sichtbar.length-fehlen.length),...fehlen]:sichtbar;
+   const getragen=(istMode&&a.stuecke&&a.stuecke.length?a.stuecke:[a.stueck]).map(id=>products[id]).filter(Boolean);
+   const titel=getragen.map(p=>p.name).join(' + ');
+   const urteilHtml='<div class="anprobe-urteil"><p class="tafel-legende">Passt es dir?</p><div class="wahlreihe">'
      +'<button class="wahl'+(a.bewertung==='passt'?' an':'')+'" data-anprobe-bewerten="passt" aria-pressed="'+(a.bewertung==='passt'?'true':'false')+'">Passt</button>'
      +'<button class="wahl'+(a.bewertung==='nicht'?' an':'')+'" data-anprobe-bewerten="nicht" aria-pressed="'+(a.bewertung==='nicht'?'true':'false')+'">Passt nicht</button>'
-     +'</div></div>'
+     +'</div></div>';
+   // Steht die Buehne, IST sie der Inhalt der Seite: die Erklaerung davor (PAWN sagt,
+   // was gelesen wird) tritt zurueck — die Seite hat feste Hoehe, und das Urteil darf
+   // nicht unter den Rand rutschen.
+   const buehne=!!(a.url&&istMode);
+   const links=a.url
+    ?(istMode
+      ?drehbuehneHtml(a,{titel,ergebnis:an.ergebnis,anhang:urteilHtml})
+      :'<figure class="anprobe-ergebnis"><img src="'+esc(a.url)+'" alt="'+esc(an.ergebnis)+'"><figcaption><span>'+esc(titel?titel+' — '+an.ergebnis:an.ergebnis)+'</span><small>Mit KI erzeugt</small></figcaption></figure>'+urteilHtml)
     :a.laeuft
      ?'<div class="anprobe-wartet" aria-live="polite"><span class="anprobe-puls" aria-hidden="true"></span><p class="tafel-legende">PAWN legt es an. Das dauert einen Moment.</p></div>'
      :'<img class="blatt-bild welt" style="height:320px" src="'+asset(an.bild)+'" alt="'+esc(an.alt)+'">';
    return page(
     tag('DIE ANPROBE')+'<h1>'+esc(an.titel).replace(' ','<br><em>')+'</em></h1>'
-    +pawnSagt(an.satz)
+    +(buehne?'':pawnSagt(an.satz))
     +links
-    +'<ul class="liest">'+an.liest.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>',
-    tag(a.bild_id?'DEIN BILD LIEGT / TIPP EIN STÜCK AN':'SCHRITT EINS / DEIN BILD')
+    +(buehne?'':'<ul class="liest">'+an.liest.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>'),
+    tag(a.bild_id?(istMode?'DEIN BILD LIEGT / WÄHL BIS ZU DREI STÜCKE':'DEIN BILD LIEGT / TIPP EIN STÜCK AN'):'SCHRITT EINS / DEIN BILD')
     +(a.bild_id
       ?'<p class="foto-liegt">Bild liegt vor'+(a.bildName?': '+esc(a.bildName):'')+'.</p>'
       :'<p class="tafel-legende">'+esc(an.satz)+'</p>')
     +'<form data-anprobe-form class="aktionsreihe"><label class="reference-upload'+(a.bild_id?' hat-datei':'')+'"><i aria-hidden="true">'+(a.bild_id?'✓':'+')+'</i>'+esc(a.bild_id?an.ersatz:an.knopf)+'<input type="file" name="bild" accept="image/*" data-anprobe-datei></label></form>'
-    +'<div class="fit-pieces'+(auswahl.length>2?' drei':'')+'">'
+    +'<div class="fit-pieces'+(auswahl.length>3?' sechs':auswahl.length>2?' drei':'')+'">'
     +(auswahl.length
-      ?auswahl.map(p=>'<button data-anprobe-stueck="'+esc(p.id)+'"'+(a.bild_id?'':' disabled')+' aria-pressed="'+(a.stueck===p.id?'true':'false')+'" class="'+(a.stueck===p.id?'an':'')+'"><img src="'+p.image+'" alt="'+esc(p.name)+'"><span>'+esc(p.name)+'</span></button>').join('')
+      ?auswahl.map(p=>{const drin=gewaehlteIds.includes(p.id);return '<button data-anprobe-stueck="'+esc(p.id)+'"'+(a.bild_id?'':' disabled')+' aria-pressed="'+(drin?'true':'false')+'" class="'+(drin?'an':'')+'"><img src="'+esc(p.image)+'" alt="'+esc(p.name)+'"><span>'+esc(p.name)+'</span></button>';}).join('')
       // Ehrlicher Leerzustand statt erfundener Stuecke — die Welt kann noch leer sein.
       :'<p class="tafel-legende">In dieser Welt liegt noch kein Stück mit Bild. Die ersten Häuser ziehen ein.</p>')
     +'</div>'
+    // Mode zieht erst mit diesem Knopf an — ein Antippen waehlt nur aus, es kostet nichts.
+    +(istMode&&auswahl.length
+      ?'<button class="solid anprobe-los" data-anprobe-los'+(!a.bild_id||!gewaehlteIds.length||a.laeuft?' disabled':'')+'>'
+       +(gewaehlteIds.length>1?'Outfit anprobieren ('+gewaehlteIds.length+')':'Anprobieren')+'</button>'
+      :'')
     // Ein Nein der Function ist ein SATZ, kein stilles Nichts: Kontingent
     // aufgebraucht, Einwilligung fehlt, falsche Welt. Er steht hier, wo gehandelt wird.
     +(a.satz?'<div class="insight nein" aria-live="polite"><small>PAWN</small><p>'+esc(a.satz)+'</p></div>':'')

@@ -1247,3 +1247,59 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 @keyframes anprobe-lauf{0%{transform:scaleX(.08)}50%{transform:scaleX(1)}100%{transform:scaleX(.08)}}
 @media(prefers-reduced-motion:reduce){.anprobe-puls{animation:none;transform:scaleX(1)}}
 @media(max-width:759px){.anprobe-ergebnis img{max-height:320px}.anprobe-wartet{min-height:190px}}
+.anprobe-ergebnis figcaption{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.anprobe-ergebnis figcaption small{font:inherit;letter-spacing:.16em;color:#6d6557;white-space:nowrap}
+
+/* ————————————————————————————————————————————————————————————————
+   DIE DREHBUEHNE — vorne, Seite, Ruecken auf einem Ring (Muster: Mira).
+
+   Links der Ring, rechts die Spalte: was getragen wird, die Ansichten zum
+   Antippen, der KI-Hinweis, das Urteil. So bleibt die Seite in ihrer festen
+   Hoehe — gemessen: die gestapelte Fassung lief 245 px ueber den Rand.
+
+   Drei Flaechen stehen als gleichseitiges Dreieck im Raum; die Tiefe rechnet
+   drehbuehne.mjs in cqw, damit der Ring mit der Buehne waechst. `--dreh` ist ein
+   ZAEHLER, keine Position — darum dreht der Ring immer den kurzen Weg.
+   Gedreht wird per Stilangabe, nie per Neuzeichnen (app.js > anprobeDrehen). */
+.drehbuehne{display:grid;grid-template-columns:272px minmax(0,1fr);margin:22px 0 0;border:1.5px solid #1a1613;box-shadow:6px 6px 0 #1a1613;background:var(--house-paper,#f9f7f2)}
+.drehbuehne-raum{position:relative;width:100%;aspect-ratio:4/5;perspective:1400px;container-type:inline-size;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab;background:#fff;border-right:1.5px solid #1a1613}
+.drehbuehne:not(:has(.drehbuehne-ansichten)) .drehbuehne-raum{cursor:default}
+.drehring{position:absolute;inset:0;transform-style:preserve-3d;transform:translateZ(calc(var(--tiefe) * -1)) rotateY(calc(var(--dreh) * var(--winkel) * -1));transition:transform .8s cubic-bezier(.2,.65,.25,1)}
+.drehflaeche{position:absolute;inset:0;background:#fff;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(calc(var(--j) * var(--winkel))) translateZ(var(--tiefe))}
+.drehflaeche img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.drehflaeche.wartet{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center;background:var(--house-paper,#f9f7f2)}
+.drehbuehne-seite{display:flex;flex-direction:column;gap:10px;padding:16px 15px 15px;min-width:0}
+.drehbuehne-titel{font:500 19px/1.25 Playfair,Georgia,serif;color:#1a1613;overflow-wrap:anywhere}
+.drehbuehne-satz{font:italic 500 14px/1.4 Playfair,Georgia,serif;color:#6d6557;margin-top:-6px}
+.drehbuehne-label,.drehbuehne-ki{font:400 9px/1.4 Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557}
+.drehbuehne-label{margin-top:6px}
+.drehbuehne-ansichten{list-style:none;margin:-4px 0 0;padding:0;border-top:1.5px solid #1a1613}
+.drehbuehne-ansicht{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 9px;border-bottom:1px solid #d6cdbd;font:400 13px Inter,sans-serif;color:#3a352d;text-align:left;transition:background-color .25s,color .25s}
+.drehbuehne-ansicht small{font-size:9px;letter-spacing:.16em;text-transform:uppercase;opacity:1;color:inherit}
+.drehbuehne-ansicht[aria-pressed=true],.drehbuehne-ansicht:hover{background:#1a1613;color:#fff}
+.drehbuehne-seite .anprobe-urteil{margin-top:auto;padding-top:4px}
+.drehbuehne-seite .anprobe-urteil .tafel-legende{margin-bottom:8px}
+.drehbuehne-seite .wahl{padding:7px 12px;font-size:12px}
+.anprobe-los{margin-top:14px}
+/* Bis zu sechs Stuecke in Mode: zwei Reihen zu drei, kleiner — die Seite hat feste Hoehe. */
+.fit-pieces.sechs{flex-wrap:wrap;gap:10px 14px}
+.fit-pieces.sechs button{width:calc((100% - 28px) / 3)}
+.fit-pieces.sechs img{height:104px}
+.fit-pieces.sechs span{font-size:13px;margin:7px 0 0}
+/* Ohne Raumbewegung — oder ohne Containereinheiten — wird ueberblendet statt gedreht. */
+@media(prefers-reduced-motion:reduce){
+ .drehring,.drehflaeche{transform:none;transition:none}
+ .drehflaeche{transition:opacity .25s}
+ .drehflaeche[aria-hidden=true]{opacity:0;pointer-events:none}
+ .drehbuehne-ansicht{transition:none}
+}
+@supports not (width:1cqw){
+ .drehring,.drehflaeche{transform:none;transition:none}
+ .drehflaeche[aria-hidden=true]{opacity:0;pointer-events:none}
+}
+@media(max-width:759px){
+ .drehbuehne{grid-template-columns:minmax(0,1fr)}
+ .drehbuehne-raum{width:min(100%,330px);margin:0 auto;border-right:0}
+ .drehbuehne-seite{border-top:1.5px solid #1a1613}
+ .fit-pieces.sechs img{height:96px}
+}
