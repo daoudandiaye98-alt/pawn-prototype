@@ -700,7 +700,7 @@ async function anprobeStarten(ids){
  if(!a.bild_id){anprobeSetzen({fehler:'',satz:'Dazu fehlt uns noch dein Bild.'});return;}
  if(!liste.length){anprobeSetzen({fehler:'',satz:'Wähl zuerst ein Stück.'});return;}
  anprobeTaktAus();ansichtenTaktAus();
- anprobeSetzen({stueck:liste[0],stuecke:liste,laeuft:true,url:'',id:null,ansichten:null,ansichtenStatus:'',dreh:0,fehler:'',satz:'',bewertung:''});
+ anprobeSetzen({stueck:liste[0],stuecke:liste,laeuft:true,laeuftAb:Date.now(),url:'',id:null,ansichten:null,ansichtenStatus:'',dreh:0,fehler:'',satz:'',bewertung:''});
  const antwort=await quelle.anprobe.starten({welt:anprobeWelt(),product_id:liste[0],product_ids:liste,bild_id:a.bild_id});
  if(!antwort||!antwort.ok){
   anprobeSetzen({laeuft:false,satz:antwort?.satz||'',fehler:antwort?.satz?'':(antwort?.fehler||antwort?.grund||'Die Anprobe kam nicht zustande.')});

@@ -450,7 +450,7 @@ export function extendedView(route,state){
       ?drehbuehneHtml(a,{titel,ergebnis:an.ergebnis,anhang:urteilHtml,vorher:meinBild,enthuellen:a.enthuellenAb?Date.now()-a.enthuellenAb:false})
       :'<figure class="anprobe-ergebnis"><img src="'+esc(a.url)+'" alt="'+esc(an.ergebnis)+'"><figcaption><span>'+esc(titel?titel+' — '+an.ergebnis:an.ergebnis)+'</span><small>Mit KI erzeugt</small></figcaption></figure>'+urteilHtml)
     :istMode&&meinBild
-     ?spiegelHtml({bild:meinBild,titel:a.laeuft?titel:auswahlTitel,laeuft:!!a.laeuft,anzahl:gewaehlteIds.length})
+     ?spiegelHtml({bild:meinBild,titel:a.laeuft?titel:auswahlTitel,laeuft:!!a.laeuft,anzahl:gewaehlteIds.length,laeuftSeit:a.laeuftAb?Date.now()-a.laeuftAb:0})
     :a.laeuft
      ?'<div class="anprobe-wartet" aria-live="polite"><span class="anprobe-puls" aria-hidden="true"></span><p class="tafel-legende">PAWN legt es an. Das dauert einen Moment.</p></div>'
      :'<img class="blatt-bild welt" style="height:320px" src="'+asset(an.bild)+'" alt="'+esc(an.alt)+'">';

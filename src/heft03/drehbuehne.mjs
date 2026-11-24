@@ -123,13 +123,15 @@ export function drehbuehneHtml(a,{titel='',ergebnis='',anhang='',vorher='',enthu
  * Bild und eine Linie faehrt darueber (nur transform). Kommt das Ergebnis, steht an derselben
  * Stelle die Buehne — der Rahmen springt nie, nur sein Inhalt wechselt.
  */
-export function spiegelHtml({bild='',titel='',laeuft=false,anzahl=0}={}){
+export function spiegelHtml({bild='',titel='',laeuft=false,anzahl=0,laeuftSeit=0}={}){
  if(!bild)return '';
+ // Wie der Vorhang haengt der Scan an der Uhr: zeichnet das Heft neu, faehrt die Linie dort weiter.
+ const scanSeit=laeuft&&Number(laeuftSeit)>0?Math.round(Number(laeuftSeit)):0;
  const satz=laeuft?'Meist dauert es unter einer Minute.'
   :anzahl?'Bereit. „Outfit anprobieren“ zieht es dir an.':'Wähl rechts bis zu drei Stücke.';
  return '<figure class="drehbuehne spiegel'+(laeuft?' laeuft':'')+'"'+(laeuft?' aria-busy="true"':'')+'>'
   +'<div class="drehbuehne-raum"><img class="spiegel-bild" src="'+esc(bild)+'" alt="Dein Bild" draggable="false">'
-  +(laeuft?'<span class="spiegel-schleier" aria-hidden="true"></span><span class="spiegel-scan" aria-hidden="true"></span>':'')
+  +(laeuft?'<span class="spiegel-schleier" aria-hidden="true"></span><span class="spiegel-scan" aria-hidden="true"'+(scanSeit?' style="--scan-seit:-'+scanSeit+'ms"':'')+'></span>':'')
   +'</div>'
   +'<figcaption class="drehbuehne-seite">'
   +'<p class="drehbuehne-label">'+(laeuft?'PAWN legt an':'Dein Spiegel')+'</p>'

@@ -91,6 +91,7 @@ test('Spiegel: dein Bild im selben Rahmen — wartend mit Scan, maskiert, ohne B
  const laeuft=spiegelHtml({bild:'ich.jpg',titel:'<i>Mantel</i>',laeuft:true});
  assert.match(laeuft,/aria-busy="true"/);
  assert.match(laeuft,/spiegel-scan/);
+ assert.match(spiegelHtml({bild:'ich.jpg',laeuft:true,laeuftSeit:1234.4}),/--scan-seit:-1234ms/);   // neu gezeichnet: der Scan faehrt weiter
  assert.match(laeuft,/PAWN legt an/);
  assert.match(laeuft,/&lt;i&gt;Mantel&lt;\/i&gt;/);
  assert.match(spiegelHtml({bild:'ich.jpg'}),/Noch nichts gewählt/);

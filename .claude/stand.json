@@ -1,18 +1,12 @@
 {
-  "aktualisiert": "2026-10-03",
-  "branch": "claude/dna-anprobe",
+  "aktualisiert": "2026-11-24",
+  "branch": "main — Anprobe-Arbeit: claude/anprobe-optik (PR #206). Der VOLLE Stand (Umzug auf Hetzner, Fahrplan) steht auf dem Zweig claude/eigenes-zuhause in .claude/stand.json und docs/fahrplan.md — dort zuerst lesen.",
   "offene_prs": [
     {
-      "nr": 202,
-      "titel": "Auftrag Q, Teil 2 — Die Buehne als Daten (B1-B8) + Daoudas Auftritt-Mangel + der Routen-Rundgang",
-      "status": "Entwurf, B1-B8 vollstaendig. main (mit #203) ist hineingemergt; dazu fb9d82a — der Begleiter-Knopf blieb beim Start der Eroeffnung 0,4 s erreichbar, waehrend er verblasste (der einzige Befund, den messen auf diesem Zweig noch hatte: 772 bestanden, 1 gefallen, 3.4 auf / bei 1920). Z20 Stripe / Z21 Auftritt, Z21 liest src/lib/woerterbuch.ts. tsc 0, vitest 360/360, VERIFY 6/6, REGRESSION 21/21.",
-      "blockiert_durch": "Nichts mehr ausser messen auf dem neuen Kopf."
-    },
-    {
-      "nr": 204,
-      "titel": "Die Anprobe steht — und sie steht vorne (DNA-Sektion, Auftrag Q)",
-      "status": "Entwurf. Die Anprobe-Seite (DNA, Platz 1), verdrahtet an supabase/functions/anprobe, /deine-dna/foto zieht per 301 auf /deine-dna/anprobe. Zusage Z22 (anprobeIstAngeschlossen; im Zweig hiess sie Z21, beim Merge mit #202 neu nummeriert). #202 (mit #203 und der Begleiter-Reparatur fb9d82a) ist im Zweig zusammengefuehrt. messen war auf e86e4e9 schon gruen. tsc 0, vitest 361/361, VERIFY 6/6, REGRESSION 22/22, Fokus-Waechter 0, vercel.json auf Stand, Bau gruen.",
-      "blockiert_durch": "#202. Nach dessen Merge: Basis auf main umstellen (delete_branch_on_merge ist aus), main hineinmergen — es kommen nur Merge-Commits, kein Konflikt erwartet."
+      "nr": 206,
+      "titel": "Anprobe-Optik: ein Rahmen, drei Zustände (Spiegel → PAWN legt an → Drehbühne), Vorhang, Vorher/Nachher",
+      "status": "offen, nur Frontend (src/heft03 + tools/anprobe-probe.mjs). Kein Lovable-Deploy, keine Migration. Probe 20/20 (ruhig, mobil, sechs), alt 13/13, fehlschlag 21/21, bewegt 22/22.",
+      "blockiert_durch": "Merge durch Daouda (Merges nach main löst die Sicherheitssperre nur mit seinem ausdrücklichen OK aus)."
     }
   ],
   "merge_reihenfolge": [
@@ -22,6 +16,8 @@
     "DIE FALLE, DIE EINMAL ZUGESCHNAPPT IST: #190 ging 20 Sekunden vor #191 durch, beide meldeten 'merged', und die Dateien lagen trotzdem nicht auf main. Merkregel: bei gestapelten Zweigen IMMER nach dem Merge auf origin/main nachsehen, ob die Dateien wirklich da sind."
   ],
   "wartet_auf_mensch": [
+    "#206 mergen (Anprobe-Optik, nur Frontend).",
+    "GitHub Actions ist wegen eines Abrechnungsproblems gesperrt („account is locked due to a billing issue“) — der Prüfstand-Check „messen“ startet nicht und steht deshalb rot. Nur Daouda kann das in den GitHub-Einstellungen lösen.",
     "DIE LAUNCH GATES sind repariert, OHNE dass das Heft anders aussieht (#203, DIE_LAUNCH_GATES). Offen bleiben ZWEI VERHALTENSENTSCHEIDUNGEN, die nur Daouda trifft: D1 — gtag.js (163.510 B) erst nach Zustimmung laden statt auf jeder Seite; D2 — die naechsten Doppelseiten nicht vorausladen (/, /mode, /tasche: drei-welten 240.702 B + foto-spiegel 59.954 B; /konto: 196.446 B). Ohne beide liegt die schwerste Seite rund 340 kB unter 3 MB — und jedes neue Werk mit Freisteller wiegt auf ALLEN sieben Seiten mit (app.js laedt die Freisteller aller Buehnen-Werke). Sichtbar geaendert, zur Abnahme auf der Vorschau: neun leise Grautoene je 1-2 Stufen dunkler (Farbton gleich) · die Welt-Knoepfe verschwinden hinter dem offenen Seitenfenster (vorher schimmerten sie durch den Schleier) · Eingabefelder im Heft zeigen beim Fokus wieder einen Strich · 'Direkt entdecken' bleibt beim Tab-Fokus waehrend der Eroeffnung sichtbar · auf Touch-Geraeten: Schatten der Welt-Chips 1-2 px anders, und die Seitenpunkte sind dort reine Anzeige (Direktsprung per Punkt entfaellt — 15x1 px traf ohnehin kein Finger; geblaettert wird mit den Pfeilen und durch Wischen). EINE GESTALTUNGSFRAGE BLEIBT: die vier Papier-Toene (.piece-caption, .haus-ort, Formular, .empty-paper) halten auf den Hauspapieren Editorial/Galerie/Atelier/Archiv nur 3,6-4,5:1 (vorher weniger; der Pruefstand ist zufrieden, WCAG nicht ueberall). Dunkler ginge, waere aber sichtbar.",
     "L15 FREISTELLEN — der Auftragssatz ist klar, aber die genannte Vorlage widerspricht ihm, und deshalb wird hier nicht gebaut: src/heft03/referenz/freistellen.py sagt in ihrem eigenen Kopf ‚NICHT auf echte Produktfotos anwenden — gruene Kleidung wuerde zerstoert. Fuer reale Ware gehoert eine Segmentierung in die Medienpipeline.‘ Sie schlaegt einen Farbbereich frei, kein Motiv. Auf einem echten Werkbild loescht sie Teile des Stuecks. FRAGE, die nur Daouda beantworten kann: soll das Freistellen ueber die bestehende Edge Function generate-product-shot laufen (kostet FAL-Guthaben je Bild), oder ueber etwas anderes? Ohne diese Antwort wuerde ich raten, und ein Rateschluss loescht echte Werkbilder.",
     "F2 — DIE WEISSE SEITE BEIM BLAETTERN, nicht nachstellbar und deshalb nicht repariert. Im Container laesst sich die Doppelseite nicht aufschlagen: WebGL laeuft, die Buehne rendert, aber nach 40 Scroll-Schritten existiert kein .spread im DOM. Ich kann die Ursache nicht belegen und rate nicht. Was hilft: eine Aufnahme mitten in der Drehung, oder die Antwort auf die Frage, ob es beim ersten Blaettern passiert oder bei jedem.",
@@ -56,9 +52,9 @@
     }
   },
   "naechster_zug": [
-    "1. #203 ist gemergt (a78ed7f).",
-    "2. #202: nach dem Merge von #203 main hineinmergen, messen gruen, mergen, origin/main pruefen (die Falle #190/#191).",
-    "3. #204: nach dem Merge von #202 die Basis auf main umstellen, main hineinmergen, messen gruen, mergen, origin/main pruefen.",
+    "ANPROBE LIVE (24.11.): #205 gemergt (a1fa07c), Vercel-Deploy fertig. Functions `anprobe` und `generate-tryon` über den Lovable-Agenten ausgeliefert (0,4 Credits; Quell-Hashes 328b54b0…f273 / e5d4955b…37d9). Danach hat Lovable selbst zwei Commits auf main geschoben: 4a67747 (previewAuthStorage.ts, automatisch erzeugt) und 1572654 (.lovable/north-star) — tsc grün.",
+    "ANPROBE-AUGEN: node tools/anprobe-probe.mjs [ruhig|bewegt|mobil] [sechs] [alt|fehlschlag] (Vite auf 8080, PRUEFSTAND_CHROMIUM) — gestellte Function, letzte Zeile ANPROBE-PROBE: n/n.",
+    "Offen nach #206: echte Anprobe auf pawn.vision einmal mit echtem Konto durchklicken (Daouda) — die Function-Antworten sind nur gestellt geprüft; ai_logs (Kostenstelle kunde_anprobe) danach ansehen.",
     "4. Was die Gates NACH der Eroeffnung noch finden wuerden (die CI misst waehrend der Eroeffnung, 4,3 s nach dem Laden): 3.5 'Das Haus entdecken ↗' auf /suche (86×15 bzw. 50×8 px) und 'DEIN ZUG' auf /haus/drape 844 quer (43 px). Kein Gate faellt heute daran — aber sobald der Pruefstand spaeter misst, werden sie rot.",
     "5. PR 5 — Clips layout-bewusst (Freisteller-Knopf in StudioMediathek ruft generate-product-shot statt freistellen).",
     "6. PR 6 — Frag PAWN: das Textfeld EXISTIERT, zwei Riegel halten es zu (fr.rahmen||frei und !state.message); app.js: die Beispiel-Prompts rufen kein fragen().",

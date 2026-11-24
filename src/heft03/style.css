@@ -1274,15 +1274,16 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .drehbuehne-label,.drehbuehne-ki{font:400 9px/1.4 Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557}
 .drehbuehne-label{margin-top:6px}
 .drehbuehne-ansichten{list-style:none;margin:-4px 0 0;padding:0;border-top:1.5px solid #1a1613}
-.drehbuehne-ansicht{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 9px;border-bottom:1px solid #d6cdbd;font:400 13px Inter,sans-serif;color:#3a352d;text-align:left;transition:background-color .25s,color .25s}
+.drehbuehne-ansicht{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 9px;border-bottom:1px solid #d6cdbd;font:400 13px Inter,sans-serif;color:#3a352d;text-align:left}
 .drehbuehne-ansicht small{font-size:9px;letter-spacing:.16em;text-transform:uppercase;opacity:1;color:inherit}
 .drehbuehne-ansicht[aria-pressed=true],.drehbuehne-ansicht:hover{background:#1a1613;color:#fff}
-/* Gewaehlt ist mehr als Hover: ein Quadrat vor dem Namen — sonst saehen die Ansicht, die
+/* Hover und Gewaehlt invertieren SOFORT — animiert werden im Heft nur transform und opacity.
+   Gewaehlt ist mehr als Hover: ein Quadrat vor dem Namen — sonst saehen die Ansicht, die
    vorne steht, und die unter dem Zeiger gleich aus (Prueferfund 24.11.). */
 .drehbuehne-ansicht[aria-pressed=true]:before{content:'';width:6px;height:6px;background:currentColor;margin-right:9px;align-self:center;flex:none}
 .drehbuehne-ansicht[aria-pressed=true]{justify-content:flex-start}
 .drehbuehne-ansicht[aria-pressed=true] small{margin-left:auto}
-.drehbuehne-nochmal{align-self:flex-start;padding:6px 10px;border:1px solid #1a1613;font:400 11px Inter,sans-serif;color:#1a1613;transition:background-color .25s,color .25s}
+.drehbuehne-nochmal{align-self:flex-start;padding:6px 10px;border:1px solid #1a1613;font:400 11px Inter,sans-serif;color:#1a1613}
 .drehbuehne-nochmal:hover{background:#1a1613;color:#fff}
 .drehbuehne-seite .anprobe-urteil{margin-top:auto;padding-top:4px}
 .drehbuehne-seite .anprobe-urteil .tafel-legende{margin-bottom:8px}
@@ -1298,7 +1299,6 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
  .drehring,.drehflaeche{transform:none;transition:none}
  .drehflaeche{transition:opacity .25s}
  .drehflaeche[aria-hidden=true]{opacity:0;pointer-events:none}
- .drehbuehne-ansicht{transition:none}
 }
 @supports not (width:1cqw){
  .drehring,.drehflaeche{transform:none;transition:none}
@@ -1313,7 +1313,7 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .spiegel.laeuft .spiegel-bild{filter:grayscale(1)}
 .spiegel-schleier{position:absolute;inset:0;background:var(--house-paper,#f9f7f2);opacity:.42}
 .spiegel-scan{position:absolute;left:0;right:0;top:0;height:1.5px;background:#1a1613;box-shadow:0 1px 0 #fff;will-change:transform;
- animation:spiegel-scan 2.6s cubic-bezier(.45,0,.55,1) infinite alternate}
+ animation:spiegel-scan 2.6s cubic-bezier(.45,0,.55,1) var(--scan-seit,0ms) infinite alternate}
 @keyframes spiegel-scan{from{transform:translateY(0)}to{transform:translateY(calc(125cqw - 2px))}}
 .spiegel .drehbuehne-seite .anprobe-puls{margin-top:auto}
 /* Die Enthuellung: ein Vorhang aus Papier hebt sich — einmal, wenn das Ergebnis kommt. */
@@ -1327,8 +1327,7 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
  transition:opacity .35s cubic-bezier(.2,.65,.25,1)}
 .zeigt-vorher .drehbuehne-vorher{opacity:1}
 .drehbuehne-knopf{position:absolute;z-index:3;display:grid;place-items:center;min-width:34px;height:34px;padding:0 11px;
- background:var(--house-paper,#f9f7f2);color:#1a1613;border:1.5px solid #1a1613;font:500 9px/1 Inter,sans-serif;letter-spacing:.2em;text-transform:uppercase;
- transition:background-color .25s,color .25s}
+ background:var(--house-paper,#f9f7f2);color:#1a1613;border:1.5px solid #1a1613;font:500 9px/1 Inter,sans-serif;letter-spacing:.2em;text-transform:uppercase}
 .drehbuehne-knopf:hover,.drehbuehne-knopf[aria-pressed=true]{background:#1a1613;color:#fff}
 .vorher-knopf{top:10px;left:10px}
 .weiter-knopf{right:10px;bottom:10px;width:34px;padding:0;font-size:17px;letter-spacing:0;text-transform:none}
@@ -1345,7 +1344,7 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
  .spiegel-scan{display:none}
  .drehbuehne.enthuellt .drehbuehne-raum::after{display:none}
  .drehbuehne.enthuellt .drehbuehne-seite{animation:none}
- .drehbuehne-vorher,.drehbuehne-knopf{transition:none}
+ .drehbuehne-vorher{transition:none}
 }
 @media(max-width:759px){
  .drehbuehne-ansicht,.drehbuehne-nochmal{min-height:44px}
