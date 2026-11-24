@@ -1274,15 +1274,16 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .drehbuehne-label,.drehbuehne-ki{font:400 9px/1.4 Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#6d6557}
 .drehbuehne-label{margin-top:6px}
 .drehbuehne-ansichten{list-style:none;margin:-4px 0 0;padding:0;border-top:1.5px solid #1a1613}
-.drehbuehne-ansicht{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 9px;border-bottom:1px solid #d6cdbd;font:400 13px Inter,sans-serif;color:#3a352d;text-align:left;transition:background-color .25s,color .25s}
+.drehbuehne-ansicht{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 9px;border-bottom:1px solid #d6cdbd;font:400 13px Inter,sans-serif;color:#3a352d;text-align:left}
 .drehbuehne-ansicht small{font-size:9px;letter-spacing:.16em;text-transform:uppercase;opacity:1;color:inherit}
 .drehbuehne-ansicht[aria-pressed=true],.drehbuehne-ansicht:hover{background:#1a1613;color:#fff}
-/* Gewaehlt ist mehr als Hover: ein Quadrat vor dem Namen — sonst saehen die Ansicht, die
+/* Hover und Gewaehlt invertieren SOFORT — animiert werden im Heft nur transform und opacity.
+   Gewaehlt ist mehr als Hover: ein Quadrat vor dem Namen — sonst saehen die Ansicht, die
    vorne steht, und die unter dem Zeiger gleich aus (Prueferfund 24.11.). */
 .drehbuehne-ansicht[aria-pressed=true]:before{content:'';width:6px;height:6px;background:currentColor;margin-right:9px;align-self:center;flex:none}
 .drehbuehne-ansicht[aria-pressed=true]{justify-content:flex-start}
 .drehbuehne-ansicht[aria-pressed=true] small{margin-left:auto}
-.drehbuehne-nochmal{align-self:flex-start;padding:6px 10px;border:1px solid #1a1613;font:400 11px Inter,sans-serif;color:#1a1613;transition:background-color .25s,color .25s}
+.drehbuehne-nochmal{align-self:flex-start;padding:6px 10px;border:1px solid #1a1613;font:400 11px Inter,sans-serif;color:#1a1613}
 .drehbuehne-nochmal:hover{background:#1a1613;color:#fff}
 .drehbuehne-seite .anprobe-urteil{margin-top:auto;padding-top:4px}
 .drehbuehne-seite .anprobe-urteil .tafel-legende{margin-bottom:8px}
@@ -1298,13 +1299,58 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
  .drehring,.drehflaeche{transform:none;transition:none}
  .drehflaeche{transition:opacity .25s}
  .drehflaeche[aria-hidden=true]{opacity:0;pointer-events:none}
- .drehbuehne-ansicht{transition:none}
 }
 @supports not (width:1cqw){
  .drehring,.drehflaeche{transform:none;transition:none}
  .drehflaeche[aria-hidden=true]{opacity:0;pointer-events:none}
 }
+/* ————————————————————————————————————————————————————————————————
+   EIN RAHMEN, DREI ZUSTAENDE: dein Bild (Spiegel) → PAWN legt an → die Buehne.
+   Der Rahmen springt nie; nur sein Inhalt wechselt. Bewegt wird ausschliesslich
+   transform und opacity. Bei reduzierter Bewegung steht alles still. */
+.drehbuehne.spiegel .drehbuehne-raum{cursor:default}
+.spiegel-bild{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+.spiegel.laeuft .spiegel-bild{filter:grayscale(1)}
+.spiegel-schleier{position:absolute;inset:0;background:var(--house-paper,#f9f7f2);opacity:.42}
+.spiegel-scan{position:absolute;left:0;right:0;top:0;height:1.5px;background:#1a1613;box-shadow:0 1px 0 #fff;will-change:transform;
+ animation:spiegel-scan 2.6s cubic-bezier(.45,0,.55,1) var(--scan-seit,0ms) infinite alternate}
+@keyframes spiegel-scan{from{transform:translateY(0)}to{transform:translateY(calc(125cqw - 2px))}}
+.spiegel .drehbuehne-seite .anprobe-puls{margin-top:auto}
+/* Die Enthuellung: ein Vorhang aus Papier hebt sich — einmal, wenn das Ergebnis kommt. */
+.drehbuehne.enthuellt .drehbuehne-raum::after{content:'';position:absolute;inset:0;z-index:4;background:var(--house-paper,#f9f7f2);
+ border-bottom:1.5px solid #1a1613;transform-origin:50% 0;pointer-events:none;animation:vorhang .95s cubic-bezier(.65,0,.35,1) calc(120ms + var(--vorhang-seit,0ms)) both}
+@keyframes vorhang{from{transform:scaleY(1)}to{transform:scaleY(0)}}
+.drehbuehne.enthuellt .drehbuehne-seite{animation:seite-rein .6s cubic-bezier(.2,.65,.25,1) calc(550ms + var(--vorhang-seit,0ms)) both}
+@keyframes seite-rein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* Vorher / Nachher: das eigene Bild liegt flach ueber dem Ring und wird nur eingeblendet. */
+.drehbuehne-vorher{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:contain;background:#fff;opacity:0;pointer-events:none;
+ transition:opacity .35s cubic-bezier(.2,.65,.25,1)}
+.zeigt-vorher .drehbuehne-vorher{opacity:1}
+.drehbuehne-knopf{position:absolute;z-index:3;display:grid;place-items:center;min-width:34px;height:34px;padding:0 11px;
+ background:var(--house-paper,#f9f7f2);color:#1a1613;border:1.5px solid #1a1613;font:500 9px/1 Inter,sans-serif;letter-spacing:.2em;text-transform:uppercase}
+.drehbuehne-knopf:hover,.drehbuehne-knopf[aria-pressed=true]{background:#1a1613;color:#fff}
+.vorher-knopf{top:10px;left:10px}
+.weiter-knopf{right:10px;bottom:10px;width:34px;padding:0;font-size:17px;letter-spacing:0;text-transform:none}
+/* Die Stuecke: gewaehlt = Rahmen am Bild und eine eckige Marke mit der Reihenfolge. */
+.fit-pieces.anprobe-stuecke .stueck-bild{display:inline-block;position:relative;margin:0;font:inherit;line-height:0}
+.fit-pieces.anprobe-stuecke button.an:after{content:none}
+.fit-pieces.anprobe-stuecke button.an img{outline:1.5px solid #1a1613;outline-offset:5px}
+.fit-pieces.anprobe-stuecke button:not(:disabled):hover img{outline:1.5px solid #1a1613;outline-offset:5px}
+.stueck-nr{position:absolute;top:-12px;left:-12px;min-width:24px;height:24px;padding:0 6px;display:grid;place-items:center;
+ background:#1a1613;color:#fff;font:600 11px/1 Inter,sans-serif;z-index:1}
+.upload-mini{width:26px;height:26px;object-fit:cover;border:1.5px solid #fff;flex:none;background:#fff}
+.anprobe-bildname{font:italic 400 13px Playfair,Georgia,serif;color:#3a352d;margin:8px 0 0}
+@media(prefers-reduced-motion:reduce){
+ .spiegel-scan{display:none}
+ .drehbuehne.enthuellt .drehbuehne-raum::after{display:none}
+ .drehbuehne.enthuellt .drehbuehne-seite{animation:none}
+ .drehbuehne-vorher{transition:none}
+}
 @media(max-width:759px){
+ .drehbuehne-ansicht,.drehbuehne-nochmal{min-height:44px}
+ .drehbuehne-seite .wahl{min-height:44px;padding:10px 14px}
+ .drehbuehne-knopf{height:44px;min-width:44px}
+ .weiter-knopf{width:44px}
  .drehbuehne{grid-template-columns:minmax(0,1fr)}
  .drehbuehne-raum{width:min(100%,330px);margin:0 auto;border-right:0}
  .drehbuehne-seite{border-top:1.5px solid #1a1613}

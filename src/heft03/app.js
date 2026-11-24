@@ -654,13 +654,21 @@ async function anprobeBildWaehlen(datei){
  if(!datei)return;
  anprobeTaktAus();ansichtenTaktAus();
  const welt=anprobeWelt(),art=quelle.anprobe.art(welt);
- anprobeSetzen({fehler:'',satz:'',laeuft:false,url:'',id:null,bewertung:'',ansichten:null,ansichtenStatus:'',dreh:0,stuecke:[]});
+ anprobeSetzen({fehler:'',satz:'',laeuft:false,url:'',id:null,bewertung:'',ansichten:null,ansichtenStatus:'',dreh:0,stuecke:[],vorherAn:false});
  const a=await quelle.anprobe.bild(datei,art);
  if(!a||!a.ok){anprobeSetzen({fehler:a?.fehler||a?.satz||'Das Bild kam nicht durch.'});return;}
  state.foto=a.name||datei.name||'';
- anprobeSetzen({bild_id:a.bild_id,bildName:state.foto});
+ /* Der Spiegel zeigt das Bild SOFORT — als Adresse nur in diesem Browser (es geht dafuer
+    nirgendwohin). Erst NACH dem gelungenen Hochladen: sonst zeigte der Spiegel ein neues
+    Bild, waehrend die Anprobe noch das alte nimmt. Die alte Adresse wird freigegeben,
+    das alte freigestellte Bild vergessen. */
+ const vorher=(state.anprobe||{}).vorschau;
+ if(vorher&&vorher.startsWith('blob:'))try{URL.revokeObjectURL(vorher);}catch(_){}
+ let vorschau='';try{vorschau=URL.createObjectURL(datei);}catch(_){}
+ if(state.avatar)state.avatar={...state.avatar,url:''};
+ anprobeSetzen({bild_id:a.bild_id,bildName:state.foto,vorschau});
  zustimmungFragen();
- toast('Bild liegt. Jetzt ein Stück antippen.');
+ toast(art==='ganzkoerper'?'Bild liegt. Wähl bis zu drei Stücke.':'Bild liegt. Jetzt ein Stück antippen.');
  /* Nur Mode: die Person freistellen, damit das Stueck sauber sitzt. Misslingt es,
     geht die Anprobe TROTZDEM weiter — die Function faellt dann auf quelle_path
     zurueck. Ein Fehler hier darf den Weg nicht zumauern. */
@@ -692,7 +700,7 @@ async function anprobeStarten(ids){
  if(!a.bild_id){anprobeSetzen({fehler:'',satz:'Dazu fehlt uns noch dein Bild.'});return;}
  if(!liste.length){anprobeSetzen({fehler:'',satz:'Wähl zuerst ein Stück.'});return;}
  anprobeTaktAus();ansichtenTaktAus();
- anprobeSetzen({stueck:liste[0],stuecke:liste,laeuft:true,url:'',id:null,ansichten:null,ansichtenStatus:'',dreh:0,fehler:'',satz:'',bewertung:''});
+ anprobeSetzen({stueck:liste[0],stuecke:liste,laeuft:true,laeuftAb:Date.now(),url:'',id:null,ansichten:null,ansichtenStatus:'',dreh:0,fehler:'',satz:'',bewertung:''});
  const antwort=await quelle.anprobe.starten({welt:anprobeWelt(),product_id:liste[0],product_ids:liste,bild_id:a.bild_id});
  if(!antwort||!antwort.ok){
   anprobeSetzen({laeuft:false,satz:antwort?.satz||'',fehler:antwort?.satz?'':(antwort?.fehler||antwort?.grund||'Die Anprobe kam nicht zustande.')});
@@ -717,7 +725,9 @@ function anprobeNachfragen(id){
       `product_ids` nicht und zieht nur das erste Stueck an. Dann steht auch nur dieses
       im Titel — sonst behauptete die Seite ein Outfit, das niemand gerechnet hat. */
    const stuecke=Array.isArray(r.stuecke)&&r.stuecke.length?r.stuecke.filter(Boolean):[werk].filter(Boolean);
-   anprobeSetzen({laeuft:false,url:r.result_url,stuecke,ansichten:{...an,vorne:an.vorne||r.result_url},ansichtenStatus:r.ansichten_status||'',dreh:0,fehler:'',satz:''});
+   /* Die Enthuellung haengt an einem ZEITPUNKT: wird mittendrin neu gezeichnet (gleich danach
+      tut es archetypBestimmen), setzt der Vorhang fort statt neu zu fallen; nach 1,3 s ist er weg. */
+   anprobeSetzen({laeuft:false,url:r.result_url,stuecke,ansichten:{...an,vorne:an.vorne||r.result_url},ansichtenStatus:r.ansichten_status||'',dreh:0,fehler:'',satz:'',enthuellenAb:Date.now(),vorherAn:false});
    /* Die Drehbuehne: Seite und Ruecken entstehen erst JETZT, im Hintergrund. Eine alte
       Fassung der Function kennt `ansichten_status` nicht (null) — dann bleibt es
       still bei der Vorderansicht, und die Buehne zeigt eine Flaeche statt drei.
@@ -806,6 +816,16 @@ function anprobeDrehen(delta){
   el.querySelector('.drehring')?.style.setProperty('--dreh',String(dreh));
   el.querySelectorAll('.drehflaeche').forEach((x,j)=>x.setAttribute('aria-hidden',j===i?'false':'true'));
   el.querySelectorAll('[data-anprobe-ansicht]').forEach((x,j)=>x.setAttribute('aria-pressed',j===i?'true':'false'));
+ });
+}
+/** Vorher / Nachher: das eigene Bild ueber die Buehne legen — direkt am DOM, wie das Drehen. */
+function anprobeVorher(){
+ const an=!(state.anprobe||{}).vorherAn;
+ state.anprobe={...(state.anprobe||{}),vorherAn:an};
+ document.querySelectorAll('[data-drehbuehne]').forEach(el=>{
+  el.classList.toggle('zeigt-vorher',an);
+  el.querySelector('.drehbuehne-vorher')?.setAttribute('aria-hidden',an?'false':'true');
+  el.querySelector('[data-anprobe-vorher]')?.setAttribute('aria-pressed',an?'true':'false');
  });
 }
 /** Eine Ansicht antippen: die Buehne dreht den kurzen Weg dorthin. */
@@ -1143,6 +1163,8 @@ hoeren(document,'click',e=>{
  if(b.dataset.anprobeStueck){anprobeStueckTippen(b.dataset.anprobeStueck);return;}
  if(b.hasAttribute('data-anprobe-los')){anprobeStarten((state.anprobe||{}).auswahl||[]);return;}
  if(b.dataset.anprobeAnsicht){anprobeZuAnsicht(Number(b.dataset.anprobeAnsicht));return;}
+ if(b.dataset.anprobeDrehen){anprobeDrehen(Number(b.dataset.anprobeDrehen)<0?-1:1);return;}
+ if(b.hasAttribute('data-anprobe-vorher')){anprobeVorher();return;}
  if(b.hasAttribute('data-anprobe-ansichten-neu')){const id=(state.anprobe||{}).id;if(id)anprobeAnsichtenHolen(id,{laut:true});return;}
  if(b.dataset.anprobeBewerten){anprobeBewerten(b.dataset.anprobeBewerten);return;}
  if(b.dataset.fit){state.fitProduct=b.dataset.fit;readRefresh();}

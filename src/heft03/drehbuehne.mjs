@@ -72,10 +72,16 @@ const esc=t=>String(t??'').replace(/[&<>"']/g,c=>ESC[c]);
  * `titel` = die Namen der Stuecke, `ergebnis` = der Satz der Welt („Du trägst es.").
  * Ohne Vorderansicht gibt es keine Buehne — dann ein leerer Text.
  */
-export function drehbuehneHtml(a,{titel='',ergebnis='',anhang=''}={}){
+export function drehbuehneHtml(a,{titel='',ergebnis='',anhang='',vorher='',enthuellen=false}={}){
  const f=drehFlaechen(a);
  if(!f.length)return '';
  const n=f.length,dreh=Number(a&&a.dreh)||0,i=drehIndex(dreh,0,n),winkel=n>1?360/n:0;
+ const vorherAn=!!(vorher&&a&&a.vorherAn);
+ /* `enthuellen` = wie viele Millisekunden die Enthuellung schon laeuft (oder false). Zeichnet
+    das Heft mittendrin neu, setzt der Vorhang dort fort, wo er war (negative Verzoegerung),
+    statt von vorn zu fallen — die Bewegung haengt an der Uhr, nicht am Neuzeichnen. */
+ const vorhangSeit=typeof enthuellen==='number'&&enthuellen>=0?Math.round(enthuellen):(enthuellen===true?0:-1);
+ const enthuellt=vorhangSeit>=0&&vorhangSeit<1300;
  const flaechen=f.map((x,j)=>'<div class="drehflaeche'+(x.wartet?' wartet':'')+'" style="--j:'+j+'" aria-hidden="'+(j===i?'false':'true')+'">'
   +(x.url
    ?'<img src="'+esc(x.url)+'" alt="'+esc(x.name+': '+(titel?titel+' — ':'')+ergebnis)+'" draggable="false">'
@@ -88,8 +94,16 @@ export function drehbuehneHtml(a,{titel='',ergebnis='',anhang=''}={}){
    +'</ul>'
   :'';
  const name=(titel||'Deine Anprobe')+' — '+n+(n===1?' Ansicht':' Ansichten')+(n>1?'. Mit den Pfeiltasten drehen.':'');
- return '<figure class="drehbuehne" data-drehbuehne tabindex="0" aria-roledescription="Drehbühne" aria-label="'+esc(name)+'">'
-  +'<div class="drehbuehne-raum"><div class="drehring" style="--dreh:'+dreh+';--winkel:'+winkel+'deg;--tiefe:'+ringTiefe(n)+'cqw">'+flaechen+'</div></div>'
+ return '<figure class="drehbuehne'+(enthuellt?' enthuellt':'')+(vorherAn?' zeigt-vorher':'')+'"'+(enthuellt?' style="--vorhang-seit:-'+vorhangSeit+'ms"':'')+' data-drehbuehne tabindex="0" aria-roledescription="Drehbühne" aria-label="'+esc(name)+'">'
+  +'<div class="drehbuehne-raum"><div class="drehring" style="--dreh:'+dreh+';--winkel:'+winkel+'deg;--tiefe:'+ringTiefe(n)+'cqw">'+flaechen+'</div>'
+  // Vorher: das eigene Bild liegt FLACH ueber dem Ring und wird nur eingeblendet (opacity) —
+  // so bleibt der Vergleich ruhig, egal welche Ansicht gerade vorne steht.
+  +(vorher
+   ?'<img class="drehbuehne-vorher" src="'+esc(vorher)+'" alt="Vorher: dein Bild" aria-hidden="'+(vorherAn?'false':'true')+'" draggable="false">'
+    +'<button class="drehbuehne-knopf vorher-knopf" data-anprobe-vorher aria-pressed="'+(vorherAn?'true':'false')+'">Vorher</button>'
+   :'')
+  +(n>1?'<button class="drehbuehne-knopf weiter-knopf" data-anprobe-drehen="1" aria-label="Weiter drehen"><span aria-hidden="true">↻</span></button>':'')
+  +'</div>'
   +'<figcaption class="drehbuehne-seite">'
   +(titel?'<p class="drehbuehne-titel">'+esc(titel)+'</p>':'')
   +(ergebnis?'<p class="drehbuehne-satz">'+esc(ergebnis)+'</p>':'')
@@ -100,5 +114,29 @@ export function drehbuehneHtml(a,{titel='',ergebnis='',anhang=''}={}){
    ?'<button class="drehbuehne-nochmal" data-anprobe-ansichten-neu>Seite und Rücken noch einmal</button>':'')
   +'<small class="drehbuehne-ki">Mit KI erzeugt</small>'
   +anhang
+  +'</figcaption></figure>';
+}
+
+/**
+ * Der Spiegel — derselbe Rahmen wie die Drehbuehne, BEVOR es ein Ergebnis gibt: links das
+ * eigene Bild, rechts was gewaehlt ist. Laeuft die Anprobe, legt sich ein Schleier ueber das
+ * Bild und eine Linie faehrt darueber (nur transform). Kommt das Ergebnis, steht an derselben
+ * Stelle die Buehne — der Rahmen springt nie, nur sein Inhalt wechselt.
+ */
+export function spiegelHtml({bild='',titel='',laeuft=false,anzahl=0,laeuftSeit=0}={}){
+ if(!bild)return '';
+ // Wie der Vorhang haengt der Scan an der Uhr: zeichnet das Heft neu, faehrt die Linie dort weiter.
+ const scanSeit=laeuft&&Number(laeuftSeit)>0?Math.round(Number(laeuftSeit)):0;
+ const satz=laeuft?'Meist dauert es unter einer Minute.'
+  :anzahl?'Bereit. „Outfit anprobieren“ zieht es dir an.':'Wähl rechts bis zu drei Stücke.';
+ return '<figure class="drehbuehne spiegel'+(laeuft?' laeuft':'')+'"'+(laeuft?' aria-busy="true"':'')+'>'
+  +'<div class="drehbuehne-raum"><img class="spiegel-bild" src="'+esc(bild)+'" alt="Dein Bild" draggable="false">'
+  +(laeuft?'<span class="spiegel-schleier" aria-hidden="true"></span><span class="spiegel-scan" aria-hidden="true"'+(scanSeit?' style="--scan-seit:-'+scanSeit+'ms"':'')+'></span>':'')
+  +'</div>'
+  +'<figcaption class="drehbuehne-seite">'
+  +'<p class="drehbuehne-label">'+(laeuft?'PAWN legt an':'Dein Spiegel')+'</p>'
+  +'<p class="drehbuehne-titel">'+esc(titel||'Noch nichts gewählt')+'</p>'
+  +'<p class="drehbuehne-satz" aria-live="polite">'+esc(satz)+'</p>'
+  +(laeuft?'<span class="anprobe-puls" aria-hidden="true"></span>':'')
   +'</figcaption></figure>';
 }
