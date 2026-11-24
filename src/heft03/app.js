@@ -16,6 +16,7 @@ import {uebernahme} from './uebernahme.mjs';
 import {adressen} from './routen.mjs';
 import {nachDemZiehen,mitHoehe,geliehenerAufsteller,HOEHE} from './buehne.mjs';
 import {massZeile} from './store.mjs';
+import {stueckWaehlen,drehFlaechen,drehIndex,drehZu,MAX_STUECKE} from './drehbuehne.mjs';
 
 // ---------------------------------------------------------------------------
 // startHeft(optionen) — das Heft in einer Seite aufstellen.
@@ -651,9 +652,9 @@ function anprobeTaktAus(){if(anprobeTakt){clearTimeout(anprobeTakt);anprobeTakt=
 /** Ein Bild der Kundin waehlen. Es traegt die Anprobe UND den Farbbefund. */
 async function anprobeBildWaehlen(datei){
  if(!datei)return;
- anprobeTaktAus();
+ anprobeTaktAus();ansichtenTaktAus();
  const welt=anprobeWelt(),art=quelle.anprobe.art(welt);
- anprobeSetzen({fehler:'',satz:'',laeuft:false,url:'',id:null,bewertung:''});
+ anprobeSetzen({fehler:'',satz:'',laeuft:false,url:'',id:null,bewertung:'',ansichten:null,ansichtenStatus:'',dreh:0,stuecke:[]});
  const a=await quelle.anprobe.bild(datei,art);
  if(!a||!a.ok){anprobeSetzen({fehler:a?.fehler||a?.satz||'Das Bild kam nicht durch.'});return;}
  state.foto=a.name||datei.name||'';
@@ -673,13 +674,26 @@ async function anprobeBildWaehlen(datei){
  if(fb&&fb.befund){state.foto_befund=fb.befund;readRefresh();}
 }
 
-/** Ein Stueck antippen — das stoesst die Anprobe an. */
-async function anprobeStarten(stueckId){
+/**
+ * Ein Stueck antippen. In Mode waehlt das aus (ein Outfit aus bis zu drei Stuecken,
+ * angezogen wird mit „Anprobieren"); in Raum und Wand stoesst es die Anprobe direkt an.
+ */
+function anprobeStueckTippen(id){
+ if(anprobeWelt()!=='mode'){anprobeStarten([id]);return;}
+ const r=stueckWaehlen((state.anprobe||{}).auswahl,id,MAX_STUECKE);
+ if(r.zuViele){toast('Höchstens drei Stücke auf einmal.');return;}
+ anprobeSetzen({auswahl:r.auswahl,satz:'',fehler:''});
+}
+
+/** Die Anprobe anstossen — mit einem Stueck oder einem ganzen Outfit. */
+async function anprobeStarten(ids){
  const a=state.anprobe||{};
+ const liste=[...new Set((Array.isArray(ids)?ids:[ids]).filter(Boolean))].slice(0,MAX_STUECKE);
  if(!a.bild_id){anprobeSetzen({fehler:'',satz:'Dazu fehlt uns noch dein Bild.'});return;}
- anprobeTaktAus();
- anprobeSetzen({stueck:stueckId,laeuft:true,url:'',id:null,fehler:'',satz:'',bewertung:''});
- const antwort=await quelle.anprobe.starten({welt:anprobeWelt(),product_id:stueckId,bild_id:a.bild_id});
+ if(!liste.length){anprobeSetzen({fehler:'',satz:'Wähl zuerst ein Stück.'});return;}
+ anprobeTaktAus();ansichtenTaktAus();
+ anprobeSetzen({stueck:liste[0],stuecke:liste,laeuft:true,url:'',id:null,ansichten:null,ansichtenStatus:'',dreh:0,fehler:'',satz:'',bewertung:''});
+ const antwort=await quelle.anprobe.starten({welt:anprobeWelt(),product_id:liste[0],product_ids:liste,bild_id:a.bild_id});
  if(!antwort||!antwort.ok){
   anprobeSetzen({laeuft:false,satz:antwort?.satz||'',fehler:antwort?.satz?'':(antwort?.fehler||antwort?.grund||'Die Anprobe kam nicht zustande.')});
   return;
@@ -698,7 +712,14 @@ function anprobeNachfragen(id){
    anprobeTaktAus();
    const werk=(state.anprobe||{}).stueck;
    state.anproben=[...(state.anproben||[]).filter(x=>x.id!==id),{id,art:quelle.anprobe.aktion(anprobeWelt()),product_id:werk,status:'fertig'}];
-   anprobeSetzen({laeuft:false,url:r.result_url,fehler:'',satz:''});
+   const an=r.ansichten&&typeof r.ansichten==='object'?r.ansichten:{};
+   anprobeSetzen({laeuft:false,url:r.result_url,ansichten:{...an,vorne:an.vorne||r.result_url},ansichtenStatus:r.ansichten_status||'',dreh:0,fehler:'',satz:''});
+   /* Die Drehbuehne: Seite und Ruecken entstehen erst JETZT, im Hintergrund. Eine alte
+      Fassung der Function kennt `ansichten_status` nicht (null) — dann bleibt es
+      still bei der Vorderansicht, und die Buehne zeigt eine Flaeche statt drei.
+      Ein gescheiterter Lauf ('fehler') wird NICHT von selbst wiederholt: jede Ansicht
+      kostet echtes Geld, und ein stiller Wiederholer waere eine offene Kasse. */
+   if(r.ansichten_status==='offen'||r.ansichten_status==='laeuft')anprobeAnsichtenHolen(id);
    /* `anprobe_fertig` steht in STARKE_EREIGNISSE (begleiter.mjs) und hatte bis
       heute keinen Absender — jede Regel darauf war unerreichbar. */
    melden('anprobe_fertig',{werk_id:werk||null,welt:anprobeWelt(),ms:r.dauer_ms||null});
@@ -717,6 +738,75 @@ function anprobeNachfragen(id){
   }
   anprobeNachfragen(id);
  },ANPROBE_TAKT_MS);
+}
+
+/* ————————————————————————————————————————————————————————————————
+ * DIE DREHBUEHNE — Seite und Ruecken zur fertigen Vorderansicht (Muster: Mira).
+ *
+ * Ein eigener Takt, getrennt von der Anprobe: die Vorderansicht steht schon, die
+ * Buehne waechst nur nach. Ein Bildmodell braucht dafuer 20 bis 60 Sekunden; nach
+ * drei Minuten wird still aufgehoert — die Vorderansicht bleibt, nichts luegt.
+ * ———————————————————————————————————————————————————————————————— */
+const ANSICHTEN_TAKT_MS=3000,ANSICHTEN_VERSUCHE=60;
+let ansichtenTakt=null,ansichtenVersuch=0;
+function ansichtenTaktAus(){if(ansichtenTakt){clearTimeout(ansichtenTakt);ansichtenTakt=null;}ansichtenVersuch=0;}
+
+/** Wie anprobeSetzen — haelt aber den Fokus auf der Buehne, wenn er dort war (sonst stuende die Pfeiltaste ins Leere). */
+function buehneSetzen(neu){
+ const fokus=!!document.activeElement?.closest?.('[data-drehbuehne]');
+ anprobeSetzen(neu);
+ if(fokus)[...document.querySelectorAll('[data-drehbuehne]')].find(el=>el.getClientRects().length)?.focus({preventScroll:true});
+}
+
+async function anprobeAnsichtenHolen(id){
+ ansichtenTaktAus();
+ const r=await quelle.anprobe.ansichten(id);
+ if((state.anprobe||{}).id!==id)return;
+ // Ein Nein ist hier KEIN Fehler auf dem Bildschirm: die Vorderansicht steht, die Buehne bleibt eine Flaeche.
+ if(!r||!r.ok){buehneSetzen({ansichtenStatus:'fehler'});return;}
+ ansichtenNachfragen(id);
+}
+
+function ansichtenNachfragen(id){
+ ansichtenTakt=setTimeout(async()=>{
+  ansichtenTakt=null;
+  if((state.anprobe||{}).id!==id)return;
+  const r=await quelle.anprobe.stand(id);
+  if((state.anprobe||{}).id!==id)return;
+  if(r&&r.ok){
+   const jetzt=state.anprobe||{},alt=jetzt.ansichten||{},neu=r.ansichten||{};
+   const status=r.ansichten_status||'';
+   // Schon gezeigte Bilder behalten ihre Adresse: jede Antwort signiert NEU, und eine
+   // neue Adresse liesse ein Bild flackern, das sich gar nicht geaendert hat.
+   if(Object.keys(neu).some(k=>!alt[k])||status!==jetzt.ansichtenStatus)buehneSetzen({ansichten:{...neu,...alt},ansichtenStatus:status});
+   if(status==='fertig'||status==='fehler'){ansichtenTaktAus();return;}
+  }
+  if(++ansichtenVersuch>=ANSICHTEN_VERSUCHE){ansichtenTaktAus();buehneSetzen({ansichtenStatus:'fehler'});return;}
+  ansichtenNachfragen(id);
+ },ANSICHTEN_TAKT_MS);
+}
+
+/**
+ * Die Buehne drehen. KEIN readRefresh: ein Neuzeichnen ersetzt den Ring, und ein
+ * neuer Ring hat keinen Uebergang — er spraenge, statt zu drehen. Darum wird der
+ * Zaehler direkt gesetzt, auf JEDER Buehne (Doppelseite und Lesespalte tragen je eine).
+ */
+function anprobeDrehen(delta){
+ const a=state.anprobe||{},f=drehFlaechen(a);
+ if(f.length<2)return;
+ const dreh=(Number(a.dreh)||0)+delta,i=drehIndex(dreh,0,f.length);
+ state.anprobe={...a,dreh};
+ document.querySelectorAll('[data-drehbuehne]').forEach(el=>{
+  el.querySelector('.drehring')?.style.setProperty('--dreh',String(dreh));
+  el.querySelectorAll('.drehflaeche').forEach((x,j)=>x.setAttribute('aria-hidden',j===i?'false':'true'));
+  el.querySelectorAll('[data-anprobe-ansicht]').forEach((x,j)=>x.setAttribute('aria-pressed',j===i?'true':'false'));
+ });
+}
+/** Eine Ansicht antippen: die Buehne dreht den kurzen Weg dorthin. */
+function anprobeZuAnsicht(ziel){
+ const a=state.anprobe||{},n=drehFlaechen(a).length;
+ const d=drehZu(a.dreh,ziel,n);
+ if(d)anprobeDrehen(d);
 }
 
 /** „Passt" oder „Passt nicht" — das Urteil der Kundin zaehlt, nicht das der Maschine. */
@@ -992,8 +1082,10 @@ hoeren(document,'click',e=>{
   if(f==='anprobe'||f==='raum'||f==='wand'){
    const werk=letzteBlaseDaten&&letzteBlaseDaten.werk_id;
    if(werk&&products[werk]){
-    state.stil={...(state.stil||{}),welt:products[werk].world||anprobeWelt()};
-    state.anprobe={...(state.anprobe||{}),stueck:werk};
+    const welt=products[werk].world||anprobeWelt(),vorher=(state.anprobe||{}).auswahl||[];
+    state.stil={...(state.stil||{}),welt};
+    // In Mode ist „gewaehlt" eine Auswahl (bis zu drei Stuecke) — das genannte Werk kommt dazu.
+    state.anprobe={...(state.anprobe||{}),stueck:werk,...(welt==='mode'?{auswahl:vorher.includes(werk)?vorher:[...vorher,werk].slice(-MAX_STUECKE)}:{})};
    }
    go({section:'dna',index:seitenNr('dna','anprobe')});return;
   }
@@ -1042,7 +1134,9 @@ hoeren(document,'click',e=>{
  if(b.hasAttribute('data-dna-privacy'))go({section:'dna',index:seitenNr('dna','privacy')});
  if(b.hasAttribute('data-search-chat'))go({section:'suche',index:0});
  if(b.dataset.prompt){const [was,anlass,rahmen,satz]=b.dataset.prompt.split('|');state.frag={was,anlass,rahmen};state.message=satz||'';state.denkt=false;readRefresh();return;}
- if(b.dataset.anprobeStueck){anprobeStarten(b.dataset.anprobeStueck);return;}
+ if(b.dataset.anprobeStueck){anprobeStueckTippen(b.dataset.anprobeStueck);return;}
+ if(b.hasAttribute('data-anprobe-los')){anprobeStarten((state.anprobe||{}).auswahl||[]);return;}
+ if(b.dataset.anprobeAnsicht){anprobeZuAnsicht(Number(b.dataset.anprobeAnsicht));return;}
  if(b.dataset.anprobeBewerten){anprobeBewerten(b.dataset.anprobeBewerten);return;}
  if(b.dataset.fit){state.fitProduct=b.dataset.fit;readRefresh();}
  // DER FEHLER, DER HIER LAG: index 5 ist 'foto'. Gesetzt wird aber state.fitProduct,
@@ -1153,8 +1247,22 @@ hoeren(window,'resize',()=>{world?.resize();syncRotate();uiKey='';invalidate();}
 hoeren(window,'keydown',e=>{
  if(drawer.open||e.target.closest('input,textarea,select,form'))return;
  if(e.key==='Escape'){closeMenu();if(!$('pawn-chat').hidden){chatSchliessen();$('begleiter-knopf').focus({preventScroll:true});}}
+ // Auf der Drehbuehne drehen die Pfeile die Buehne, nicht das Heft.
+ if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&e.target.closest('[data-drehbuehne]')){e.preventDefault();anprobeDrehen(e.key==='ArrowRight'?1:-1);return;}
  if(['ArrowRight','PageDown','ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();step(['ArrowRight','PageDown'].includes(e.key)?1:-1);}
 });
+/* Wischen auf der Drehbuehne dreht sie. touch-action:pan-y (style.css) laesst das
+   senkrechte Scrollen beim Browser und gibt die waagrechte Geste hierher. Die
+   Doppelseite liegt UEBER der Leinwand (#reader-layer .spread nimmt Zeiger), darum
+   blaettert dieselbe Geste nicht zugleich das Heft. */
+let wisch=null;
+hoeren(document,'pointerdown',e=>{wisch=e.target.closest?.('.drehbuehne-raum')?{x:e.clientX,y:e.clientY}:null;});
+hoeren(document,'pointerup',e=>{
+ if(!wisch)return;
+ const dx=e.clientX-wisch.x,dy=e.clientY-wisch.y;wisch=null;
+ if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.2)anprobeDrehen(dx<0?1:-1);
+});
+hoeren(document,'pointercancel',()=>{wisch=null;});
 hoeren(window,'wheel',e=>{
  if(e.ctrlKey||drawer.open||e.target.closest('.motion-tools,#mobile-reader,form,nav,.profile-saved,.conversation,#pawn-chat,#begleiter,#rotate,.lesetext,#search-toolbar'))return;
  e.preventDefault();const now=performance.now();if(nav.status!=='ready'||now<wheelLock)return;
