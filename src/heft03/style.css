@@ -1277,6 +1277,13 @@ body.hat-vorschau-streifen .site-header{top:var(--vorschau-hoehe,0px)}
 .drehbuehne-ansicht{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 9px;border-bottom:1px solid #d6cdbd;font:400 13px Inter,sans-serif;color:#3a352d;text-align:left;transition:background-color .25s,color .25s}
 .drehbuehne-ansicht small{font-size:9px;letter-spacing:.16em;text-transform:uppercase;opacity:1;color:inherit}
 .drehbuehne-ansicht[aria-pressed=true],.drehbuehne-ansicht:hover{background:#1a1613;color:#fff}
+/* Gewaehlt ist mehr als Hover: ein Quadrat vor dem Namen — sonst saehen die Ansicht, die
+   vorne steht, und die unter dem Zeiger gleich aus (Prueferfund 24.11.). */
+.drehbuehne-ansicht[aria-pressed=true]:before{content:'';width:6px;height:6px;background:currentColor;margin-right:9px;align-self:center;flex:none}
+.drehbuehne-ansicht[aria-pressed=true]{justify-content:flex-start}
+.drehbuehne-ansicht[aria-pressed=true] small{margin-left:auto}
+.drehbuehne-nochmal{align-self:flex-start;padding:6px 10px;border:1px solid #1a1613;font:400 11px Inter,sans-serif;color:#1a1613;transition:background-color .25s,color .25s}
+.drehbuehne-nochmal:hover{background:#1a1613;color:#fff}
 .drehbuehne-seite .anprobe-urteil{margin-top:auto;padding-top:4px}
 .drehbuehne-seite .anprobe-urteil .tafel-legende{margin-bottom:8px}
 .drehbuehne-seite .wahl{padding:7px 12px;font-size:12px}

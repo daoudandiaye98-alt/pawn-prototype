@@ -9,8 +9,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ansichtAusDatei, ansichtenStand, ansichtPfad, ansichtPrompt, anprobePrompt, AVATAR_PROMPT,
-  BILDMODELL, bildParameter, darfAnsichtenStarten, erlaubtesModell, KOLORS, LAUF_GILT_MS, MAX_VERSUCHE,
-  notizKurz, stueckeAusAuftrag, stueckeDerAnprobe,
+  BILDMODELL, bildParameter, centJeBild, darfAnsichtenStarten, erlaubtesModell, KOLORS, LAUF_GILT_MS, MAX_VERSUCHE,
+  NICHT_KOMMERZIELL, notizKurz, stueckeAusAuftrag, stueckeDerAnprobe,
 } from "../../supabase/functions/_shared/drehbuehne";
 
 describe("Lizenzwache", () => {
@@ -19,6 +19,14 @@ describe("Lizenzwache", () => {
     expect(erlaubtesModell("  FAL-AI/IDM-VTON  ", BILDMODELL)).toBe(BILDMODELL);
     expect(erlaubtesModell("someone/catvton-flux", BILDMODELL)).toBe(BILDMODELL);
     expect(erlaubtesModell("levihsu/ootdiffusion", BILDMODELL)).toBe(BILDMODELL);
+  });
+  // Prüferfund 24.11.: die Wache kannte nur EINE Schreibweise je Modell.
+  it("erkennt jede Schreibweise: Bindestrich, Unterstrich, Leerzeichen", () => {
+    for (const m of ["fal-ai/cat-vton", "fal-ai/ootd", "fal-ai/stable-viton", "x/IDM_VTON", "y/stable viton", "z/CatVTON"]) {
+      expect(erlaubtesModell(m, BILDMODELL), m).toBe(BILDMODELL);
+    }
+    expect(erlaubtesModell("fal-ai/fashn/tryon/v1.5", BILDMODELL)).toBe("fal-ai/fashn/tryon/v1.5");
+    expect(erlaubtesModell("fal-ai/bootdrop-edit", BILDMODELL)).toBe("fal-ai/bootdrop-edit");   // eng: kein Treffer mitten im Wort
   });
   it("lässt erlaubte Modelle durch und fällt bei Leerem auf den Ersatz", () => {
     expect(erlaubtesModell("fal-ai/nano-banana/edit", BILDMODELL)).toBe("fal-ai/nano-banana/edit");
@@ -117,8 +125,22 @@ describe("Lizenz — kein Nicht-kommerziell-Modell in den Functions", () => {
       const datei = `${basis}/${ordner}/index.ts`;
       if (!existsSync(datei)) continue;
       const text = readFileSync(datei, "utf8");
-      for (const m of text.matchAll(/["'`]fal-ai\/[^"'`]*(idm-vton|catvton|ootdiffusion|ootd-|stableviton)[^"'`]*["'`]/gi)) funde.push(`${datei}: ${m[0]}`);
+      // Jede Modellkennung in Anführungszeichen, gegen dieselbe Wache wie zur Laufzeit.
+      for (const m of text.matchAll(/["'`]((?:fal-ai|fal|fashn|replicate)\/[^"'`\s]+)["'`]/g)) {
+        if (NICHT_KOMMERZIELL.test(m[1])) funde.push(`${datei}: ${m[1]}`);
+      }
     }
     expect(funde).toEqual([]);
+  });
+});
+
+describe("Kosten je Bild", () => {
+  it("bucht, was fal berechnet — und ai_config gewinnt", () => {
+    expect(centJeBild(BILDMODELL)).toBe(15);
+    expect(centJeBild(BILDMODELL, undefined, "4K")).toBe(30);
+    expect(centJeBild("fal-ai/nano-banana/edit")).toBe(4);
+    expect(centJeBild(KOLORS)).toBe(12);
+    expect(centJeBild(BILDMODELL, 9)).toBe(9);
+    expect(centJeBild(BILDMODELL, -1)).toBe(15);
   });
 });
